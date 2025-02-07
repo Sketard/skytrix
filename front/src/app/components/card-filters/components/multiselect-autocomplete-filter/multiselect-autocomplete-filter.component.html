@@ -1,0 +1,32 @@
+<mat-form-field class="multiselectField">
+  <mat-label>{{ inputLabel }}</mat-label>
+  <input
+    class="multiselectField-input"
+    matInput
+    type="text"
+    [formControl]="inputDisplay"
+    [matAutocomplete]="auto"
+    [required]="form | isFormControlRequired"
+    (keyup)="handleSuppression($event)" />
+  <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+    <mat-option
+      *ngFor="let option of filteredOptions"
+      class="multiselectField-input-option"
+      [value]="explicitedSelectedOptionsSubject.value"
+      [title]="option.name | translate"
+      (onSelectionChange)="onEnter($event, option)">
+      <div
+        class="multiselectField-input-option-value"
+        (click)="selectOption(option, $event)">
+        <mat-checkbox
+          [checked]="form.value.includes(option.id)"
+          (click)="toggleSelection(option, $event)"
+        >
+        </mat-checkbox>
+        <div class="multiselectField-input-option-value-name">
+          {{ option.name | translate }}
+        </div>
+      </div>
+    </mat-option>
+  </mat-autocomplete>
+</mat-form-field>

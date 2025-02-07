@@ -1,0 +1,25 @@
+.multiselectField {
+  width: 100%;
+
+  &-input {
+    &-option {
+      ::ng-deep .mat-option-text {
+        display: flex !important;
+        align-items: center !important;
+        overflow: none !important;
+      }
+
+      &-value {
+        display: flex;
+        align-items: center;
+
+        &-name {
+          width: 90%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+}

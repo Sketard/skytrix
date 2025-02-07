@@ -1,0 +1,24 @@
+<mat-form-field class="autocompleteField" [title]="inputLabel">
+  <mat-label>{{ inputLabel }}</mat-label>
+  <input
+    matInput
+    class="autocompleteField-input"
+    type="text"
+    [formControl]="inputDisplay"
+    [matAutocomplete]="auto"
+    [required]="required || (form | isFormControlRequired)"
+    (keyup)="handleSuppression($event)"
+    (click)="openPanel()"
+    [name]="inputLabel" />
+  <mat-autocomplete #auto="matAutocomplete" (optionSelected)="selectOption($event)" [displayWith]="displayFn">
+    <mat-option
+      class="autocompleteField-option"
+      *ngFor="let option of filteredOptions"
+      [value]="option"
+      [title]="option.name | translate">
+      <div class="autocompleteField-option-text">
+        {{ option.name | translate }}
+      </div>
+    </mat-option>
+  </mat-autocomplete>
+</mat-form-field>

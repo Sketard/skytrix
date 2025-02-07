@@ -1,0 +1,13 @@
+@import 'mixin';
+
+.multipleActionButtons {
+  position: relative;
+  @include icon-as-button;
+
+  &-dots {
+    transform: rotate(90deg) !important;
+    font-size: 0.8em;
+    position: absolute;
+    margin-left: -0.5em;
+  }
+}

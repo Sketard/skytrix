@@ -1,0 +1,88 @@
+<div
+  class="cardContainer"
+  *ngIf="displayType.OWNED !== displayMode(); else ownedDisplay"
+  [ngClass]="cardSize[size()]"
+  cdkDrag
+  [cdkDragDisabled]="!deckBuildMode()"
+  [cdkDragData]="cardDetail()"
+  (cdkDragStarted)="handleDragStart($event)"
+  (dblclick)="handleClick($event)">
+  <div class="cardContainer-card" [ngClass]="cardSize[size()]" [class.cropped]="cropped()">
+    <div class="cardContainer-card-banInfo" *ngIf="card.banInfo < 3" [ngClass]="cardSize[size()]">
+      <div>
+        {{ card.banInfo }}
+      </div>
+    </div>
+    <ng-container *ngIf="deckBuildMode()">
+      <div
+        class="cardContainer-card-number"
+        *ngIf="ownedCardService.shortOwnedCards$ | async | findGroupedOwnedCard: cardDetail() as number">
+        {{ number }}
+      </div>
+    </ng-container>
+    <img
+      *ngIf="cardDetail() && cardDetail().images && cardDetail().images[0]"
+      [alt]="''"
+      [imgLoader]="cardDetail().images[0].smallUrl"
+      [customToolTip]="cardDetail()" />
+  </div>
+  <div *ngIf="displayType.INFORMATIVE === displayMode()" class="cardContainer-infos">
+    <strong>{{ card.name }}</strong>
+    <div class="cardContainer-infos-iconContainers">
+      <span *ngIf="card.hasAttributeIcon" class="cardContainer-infos-iconContainers-icon"
+      ><img [src]="'assets/images/attributes/' + card.attribute + '.svg'" [alt]="card.attribute" />{{ card.attribute }}</span
+      >
+      <span class="cardContainer-infos-iconContainers-icon">
+        <img *ngIf="card.isMonster" [src]="'assets/images/races/' + card.race + '.webp'" [alt]="card.race" />{{ card.race }}
+      </span>
+    </div>
+    <div>
+      <span>{{ card.displayAtk }}</span>
+      @if (card.hasDefense) {
+        / <span>{{ card.displayDef }}</span>
+      } @else if (card.isLink) {
+        / Lien <span>{{ card.linkval }}</span>
+      } @else {
+      }
+    </div>
+  </div>
+</div>
+<ng-template #ownedDisplay>
+  <div class="ownedContainer" *ngFor="let set of cardDetail().sets">
+    <ng-container *ngIf="ownedCardService.shortOwnedCards$ | async | findOwnedCard: set.id as ownedCard">
+      <mat-form-field class="ownedContainer-quantity">
+        <mat-icon
+          class="ownedContainer-quantity-minus"
+          matPrefix
+          fontIcon="exposure_neg_1"
+          (click)="increaseQuantity(-1, ownedCard); $event.stopPropagation()"
+          (keyup)="increaseQuantity(-1, ownedCard); $event.stopPropagation()"
+        ></mat-icon>
+        <input
+          type="number"
+          class="form-control"
+          matInput
+          name="value"
+          [value]="ownedCard.number"
+          (blur)="updateQuantity($event, ownedCard)"
+          min="0"
+          oninput="validity.valid||(value=0)" />
+        <mat-icon
+          class="ownedContainer-quantity-plus"
+          matSuffix
+          fontIcon="exposure_plus_1"
+          (click)="increaseQuantity(1, ownedCard); $event.stopPropagation()"
+          (keyup)="increaseQuantity(1, ownedCard); $event.stopPropagation()"
+        ></mat-icon>
+      </mat-form-field>
+      <div class="ownedContainer-code">{{ set.code }}</div>
+      <div class="ownedContainer-card">
+        <div class="cardContainer-card SMALL">
+          <img [src]="cardDetail().images[0].smallUrl" alt="" />
+        </div>
+        <div class="ownedContainer-card-name">{{ card.name }}</div>
+      </div>
+      <div class="ownedContainer-rarity" [ngClass]="set.cssRarityCode">{{ set.rarity }}</div>
+    </ng-container>
+  </div>
+</ng-template>

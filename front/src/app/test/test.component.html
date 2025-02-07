@@ -1,0 +1,31 @@
+<button class="bl">Toutes les cartes</button>
+<div>
+  <autocomplete-filter></autocomplete-filter>
+</div>
+
+<mat-form-field class="example-full-width">
+  <mat-label>Favorite food</mat-label>
+  <input matInput placeholder="Ex. Pizza" value="Sushi" />
+</mat-form-field>
+
+<mat-form-field class="test">
+  <button matSuffix mat-icon-button>
+    <mat-icon fontIcon="home"></mat-icon>
+  </button>
+
+  <mat-icon matPrefix fontIcon="home"></mat-icon>
+  <input matInput placeholder="Ex. Pizza" value="Sushi" />
+</mat-form-field>
+
+<mat-button-toggle-group name="fontStyle" aria-label="Font Style">
+  <mat-button-toggle>
+    <mat-icon>notifications</mat-icon>
+  </mat-button-toggle>
+  <mat-button-toggle>
+    <mat-icon>home</mat-icon>
+  </mat-button-toggle>
+</mat-button-toggle-group>
+
+<mat-checkbox> I'm a checkbox </mat-checkbox>
+
+<!--<card-list [cardsDetails$]="cardsDetails$" [cropped]="cropped" [size]="size" [mosaic]="mosaic"></card-list>-->

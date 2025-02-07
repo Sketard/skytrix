@@ -1,0 +1,22 @@
+{
+  "card_type": {
+    "FUSION": "Fusion",
+    "SYNCHRO": "Synchro",
+    "XYZ": "XYZ",
+    "LINK": "Lien",
+    "MONSTER": "Monstre",
+    "RITUAL": "Rituel",
+    "PENDULUM": "Pendule",
+    "TOON": "Toon",
+    "TUNER": "Syntoniseur",
+    "UNION": "Union",
+    "GEMINI": "Gémeau",
+    "FLIP": "Flip",
+    "EFFECT": "Effet",
+    "NORMAL": "Normal",
+    "SPELL": "Magie",
+    "TRAP": "Piège",
+    "TOKEN": "Jeton",
+    "SKILL": "Compétence"
+  }
+}

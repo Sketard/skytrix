@@ -1,0 +1,77 @@
+<div
+  class="tooltip"
+  *ngIf="
+    tooltipService.cardDetail()?.card?.description && tooltipService.cardDetail() as cardDetail
+  ">
+  <button matSuffix mat-icon-button class="tooltip-favorite mat-elevation-z0" (click)="toggleFavorite(cardDetail.card.id!, cardDetail.favorite)">
+    @if (cardDetail.favorite) {
+      <mat-icon [title]="'Supprimer des favoris'" class="tooltip-favorite-added" fontIcon="star"></mat-icon>
+    } @else {
+      <mat-icon [title]="'Ajouter aux favoris'" fontIcon="star_border"></mat-icon>
+    }
+  </button>
+
+
+  <div class="tooltip-leftPart">
+    <div class="tooltip-leftPart-imageContainer">
+      <img
+        class="tooltip-leftPart-imageContainer-image"
+        *ngIf="cardDetail && cardDetail.images && cardDetail.images[0]"
+        [src]="cardDetail.images[0].url" [alt]="cardDetail.card.name" />
+      <div class="tooltip-leftPart-imageContainer-banInfo" *ngIf="cardDetail.card.banInfo < 3">
+        <div>
+          {{ cardDetail.card.banInfo }}
+        </div>
+      </div>
+    </div>
+    <div class="tooltip-leftPart-add" *ngIf="deckBuildService()">
+      <div class="tooltip-leftPart-add-numbers">
+        <ng-container class="tooltip-leftPart-add-numbers" *ngFor="let e of  [].constructor(maxCardCopy); index as i">
+          <div class="tooltip-leftPart-add-numbers-number"
+               [class.placeholder]="i + 1 > numberOfCopy()"
+               [class.notAllowed]="i + 1 > cardDetail.card.banInfo"
+          ></div>
+        </ng-container>
+      </div>
+
+      <div class="tooltip-leftPart-add-buttons">
+        <button mat-flat-button [disabled]="numberOfCopy() === 0" (click)="addOrRemove(-1)">-1</button>
+        <button mat-flat-button [disabled]="maxNumberOfCopyReached()" (click)="addOrRemove(+1)">+1</button>
+      </div>
+    </div>
+  </div>
+  <div class="tooltip-infos">
+    <div class="tooltip-infos-name">{{ cardDetail.card.name }}</div>
+    <div class="tooltip-infos-details">
+      <div class="tooltip-infos-details-iconContainers">
+        <span *ngIf="cardDetail.card.hasAttributeIcon" class="tooltip-infos-details-iconContainers-icon"
+        ><img [src]="'assets/images/attributes/' + cardDetail.card.attribute + '.svg'" [alt]="cardDetail.card.attribute" />{{
+            cardDetail.card.attribute
+          }}</span>
+        <span class="tooltip-infos-details-iconContainers-icon">
+          <img
+            *ngIf="cardDetail.card.isMonster || cardDetail.card.isSpellOrTrap"
+            [src]="'assets/images/races/' + cardDetail.card.race + '.webp'" [alt]="cardDetail.card.race" />{{ cardDetail.card.race }}
+        </span>
+        <span *ngIf="cardDetail.card.level" class="tooltip-infos-details-iconContainers-icon">
+          <img [src]="'assets/images/level.webp'" [alt]="cardDetail.card.level" />{{ cardDetail.card.level }}
+        </span>
+      </div>
+      <div class="tooltip-infos-details-iconContainers">
+        <span *ngIf="cardDetail.card.displayAtk as atk" class="tooltip-infos-details-iconContainers-icon">
+          <strong>ATK :&nbsp;</strong>{{ atk }}
+        </span>
+        @if (cardDetail.card.hasDefense) {
+          <span class="tooltip-infos-details-iconContainers-icon"
+          ><strong>DEF :&nbsp;</strong>{{ cardDetail.card.displayDef }}
+          </span>
+        } @else if (cardDetail.card.isLink) {
+          <strong class="tooltip-infos-details-iconContainers-icon">Lien :&nbsp; </strong
+          ><span>{{ cardDetail.card.linkval }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="tooltip-infos-description" [innerHTML]="cardDetail.card.description"></div>
+  </div>
+</div>

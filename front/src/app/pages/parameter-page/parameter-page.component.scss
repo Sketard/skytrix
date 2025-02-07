@@ -1,0 +1,12 @@
+.parameters {
+  padding: 1em;
+
+  &-buttons {
+    display: flex;
+    flex-direction: column;
+
+    button {
+      margin-top: 1em;
+    }
+  }
+}

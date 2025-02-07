@@ -1,0 +1,48 @@
+@keyframes wiggle {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(5deg);
+  }
+
+  50% {
+    transform: rotate(0deg);
+  }
+
+  75% {
+    transform: rotate(-5deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+$chase-animation: chase 2.5s infinite linear both;
+$chase-dot-animation: chase-dot 2s infinite ease-in-out both;
+$chase-dot-before-animation: chase-dot-before 2s infinite ease-in-out both;
+
+@keyframes chase {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes chase-dot {
+  80%,
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes chase-dot-before {
+  50% {
+    transform: scale(0.4);
+  }
+  100%,
+  0% {
+    transform: scale(1);
+  }
+}

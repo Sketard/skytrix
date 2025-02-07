@@ -1,0 +1,14 @@
+.cardsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+
+  card {
+    margin-right: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .OWNED {
+    width: 100%;
+  }
+}

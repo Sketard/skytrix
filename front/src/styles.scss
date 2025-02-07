@@ -1,0 +1,125 @@
+@import 'material';
+@import 'app/styles/variable';
+
+body {
+  font-size: 1rem;
+  font-weight: 400;
+  text-align: left;
+  width: 100%;
+  height: 100%;
+}
+
+html {
+  font-family: sans-serif;
+  line-height: 1.15;
+}
+
+html,
+body,
+.mat-app-background {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 4px;
+  box-shadow: 0 5px 5px -3px rgba(255, 255, 255, 0.2),
+  0 8px 10px 1px rgba(255, 255, 255, 0.14),
+  0 3px 14px 2px rgba(255, 255, 255, 0.12);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(255, 255, 255.2, 1);
+}
+
+.mat-mdc-icon-button[disabled],
+.mat-mdc-icon-button.mat-mdc-button-disabled {
+  filter: opacity(0.5);
+}
+
+.mat-mdc-option {
+  .mat-pseudo-checkbox {
+    display: none !important;
+  }
+}
+
+.toggleIconFilter {
+  mat-button-toggle-group {
+    width: 100%;
+  }
+
+  mat-button-toggle {
+    flex: 1 1 100%;
+    box-sizing: border-box;
+    align-items: center;
+    flex-direction: row;
+    display: flex;
+    height: 32px;
+  }
+}
+
+.mdc-button {
+  border: 0px;
+  border-radius: 2px;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: all 0.1s ease 0s;
+  white-space: nowrap;
+  box-shadow: $blue 0px 0px 0px 2px;
+  font-weight: 600;
+  background-color: $black;
+  color: rgb(238, 238, 238);
+  font-size: 0.8rem;
+}
+
+.mat-mdc-unelevated-button:not(:disabled) {
+  --mdc-filled-button-label-text-color: #{$white};
+  --mdc-filled-button-container-color: #{$black};
+}
+
+.mat-mdc-unelevated-button[disabled], .mat-mdc-unelevated-button.mat-mdc-button-disabled {
+  --mdc-filled-button-disabled-label-text-color: #{$grey};
+}
+
+.mdc-switch--checked {
+  .mdc-switch__icon {
+    --mdc-switch-selected-icon-color: transparent;
+  }
+}
+
+
+.mdc-switch {
+  .mdc-switch__icon {
+    --mdc-switch-unselected-icon-color: transparent;
+  }
+}
+
+a, button {
+  cursor: pointer;
+}
+
+
+
+
+

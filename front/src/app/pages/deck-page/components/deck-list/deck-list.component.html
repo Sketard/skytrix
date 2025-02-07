@@ -1,0 +1,11 @@
+<div class="deckPage">
+  <deck-box class="deckPage-deck" [add]="true"></deck-box>
+  <div class="deckPage-deck" *ngFor="let deck of deckBuildService.decks$ | async">
+    <deck-box [deck]="deck"></deck-box>
+    <mat-icon
+      class="deckPage-deck-remove"
+      fontIcon="delete"
+      (click)="removeDeck(deck!.id!); $event.stopPropagation()"
+      (keyup)="removeDeck(deck!.id!); $event.stopPropagation()"></mat-icon>
+  </div>
+</div>

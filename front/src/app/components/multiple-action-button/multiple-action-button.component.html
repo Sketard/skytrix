@@ -1,0 +1,10 @@
+<div class="multipleActionButtons">
+  <button mat-icon-button class="mat-elevation-z0" [matMenuTriggerFor]="menu">
+    <mat-icon>{{ icon() }}</mat-icon>
+    <mat-icon class="multipleActionButtons-dots">keyboard_control</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item *ngFor="let button of buttons()" [title]="button.label" (click)="button.callback()">{{ button.label }}</button>
+  </mat-menu>
+</div>
+

@@ -1,0 +1,72 @@
+@import '../../styles/variable';
+
+.cardSearchPage {
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  &.deckBuildMode {
+    .cardSearchPage-searcher {
+      width: 100%;
+    }
+
+    .cardSearchPage-searcher-bar {
+      margin: 1em;
+    }
+  }
+
+  &-searcher {
+    width: calc(100% - 300px);
+    display: grid;
+    grid-template-rows: auto 1fr;
+
+    &-bar {
+      height: 100px;
+      margin: 4rem 2rem 1rem 2rem;
+
+      &-displayMode {
+        margin-bottom: 1em;
+
+        mat-button-toggle-group {
+          border-radius: 0;
+          border: 0;
+        }
+
+        mat-button-toggle {
+          mat-icon {
+            transform: scale(0.8);
+          }
+        }
+
+        .mat-button-toggle-checked {
+          background-color: $blue;
+        }
+
+        ::ng-deep .mat-button-toggle-label-content {
+          padding: 0 !important;
+        }
+
+        ::ng-deep .mat-button-toggle-label-content {
+          line-height: 0 !important;
+        }
+
+        mat-icon {
+          transform: scale(0.8);
+        }
+      }
+    }
+
+    &-result {
+      padding: 0 0 0 2rem;
+      height: 100%;
+      overflow: auto;
+    }
+  }
+
+  &-filters {
+    padding: 0 1em;
+    width: 300px;
+    background-color: black;
+    height: 100%;
+  }
+}

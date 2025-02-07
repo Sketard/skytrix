@@ -1,0 +1,12 @@
+@import '../../styles/variable';
+
+.tooltip-container {
+  border-radius: 4px;
+  background-color: $black;
+  color: $white;
+
+  &-simpleText {
+    padding: 1em;
+    font-size: 0.9em;
+  }
+}

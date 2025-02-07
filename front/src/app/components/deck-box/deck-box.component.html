@@ -1,0 +1,18 @@
+<div
+  class="deckBox"
+  [title]="deck()?.name || 'Ajouter un deck'"
+  [routerLink]="add() ? '/decks/builder' : '/decks/' + deck()!.id">
+  <div class="deckBox-preview" *ngIf="!add() && deck()?.urls">
+    <img class="deckBox-preview-card" *ngFor="let url of deck()!.urls" [src]="url" alt="" />
+  </div>
+  @if (!add()) {
+    <img class="deckBox-image" [src]="'/assets/images/deckbox.webp'" alt="deckbox" />
+  } @else {
+    <div>
+      <mat-icon class="deckBox-add">add_circle_outline</mat-icon>
+    </div>
+  }
+  <div class="deckBox-name">
+    {{ deck()?.name }}
+  </div>
+</div>

@@ -1,0 +1,46 @@
+<div class="cardFilters" *ngIf="searchService()">
+  <div class="cardFilters-header">
+    <h4>
+      Filtre
+    </h4>
+    <div class="test">
+      <button matSuffix mat-icon-button *ngIf="filtersOpened()" (click)="closeFilters()">
+        <mat-icon fontIcon="close"></mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="cardFilters-filter">
+    <app-multiselect-autocomplete-filter
+      [form]="localForm.controls.types"
+      [inputLabel]="'Type de carte'"
+      [options$]="types | stringArrayToShortResourceArray : 'card_type.' | toObservable">
+    </app-multiselect-autocomplete-filter>
+  </div>
+  <div class="cardFilters-filter">
+    <app-between-filter
+      [minForm]="localForm.controls.minAtk"
+      [maxForm]="localForm.controls.maxAtk"
+      [inputLabel]="'ATK'">
+    </app-between-filter>
+  </div>
+  <div class="cardFilters-filter">
+    <app-between-filter
+      [minForm]="localForm.controls.minDef"
+      [maxForm]="localForm.controls.maxDef"
+      [inputLabel]="'DEF'">
+    </app-between-filter>
+  </div>
+  <div class="cardFilters-filter">
+    <app-toggle-icon-filter
+      [form]="localForm.controls.attribute" [toggleIcons]="toggleIcons"
+      [inputLabel]="'Attribut'">
+    </app-toggle-icon-filter>
+  </div>
+  <div class="cardFilters-buttons" *ngIf="filtersOpened()">
+    <button mat-flat-button (click)="search()">Rechercher</button>
+    <button mat-flat-button (click)="clearFilters()">
+      <mat-icon fontIcon="delete"></mat-icon>
+    </button>
+  </div>
+</div>

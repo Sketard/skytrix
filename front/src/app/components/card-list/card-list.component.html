@@ -1,0 +1,11 @@
+<div class="cardsContainer" cdkDropList id="cardList">
+  <card
+    [ngClass]="displayMode()"
+    *ngFor="let cardDetail of cardsDetails$() | async"
+    [cardDetail]="cardDetail"
+    [displayMode]="displayMode()"
+    [size]="size()"
+    [cropped]="cropped()"
+    [deckBuildMode]="deckBuildMode()"
+    [searchService]="searchService()"></card>
+</div>

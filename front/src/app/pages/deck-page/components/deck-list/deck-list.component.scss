@@ -1,0 +1,22 @@
+@import '../../../../styles/variable';
+
+.deckPage {
+  display: flex;
+  flex-wrap: wrap;
+
+  &-deck {
+    position: relative;
+    margin: 1rem;
+
+    &-remove {
+      position: absolute;
+      top: 0;
+      right: 2rem;
+      background-color: $red;
+      border: 1px solid $white;
+      padding: 3px;
+      z-index: 10000;
+      cursor: pointer;
+    }
+  }
+}

@@ -1,0 +1,14 @@
+<div class="toggleIconFilter">
+  <div class="toggleIconFilter-name">
+    {{ inputLabel() }}
+  </div>
+  <mat-button-toggle-group
+    [value]="form().value"
+    hideSingleSelectionIndicator
+  >
+    <mat-button-toggle *ngFor="let toggleIcon of toggleIcons()" [value]="toggleIcon.value" (change)="toggleChange($event)" [title]="toggleIcon.title">
+      <img [src]="toggleIcon.icon" [title]="toggleIcon.title" [alt]="toggleIcon.title" />
+    </mat-button-toggle>
+  </mat-button-toggle-group>
+</div>
+

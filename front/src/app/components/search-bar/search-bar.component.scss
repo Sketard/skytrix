@@ -1,0 +1,59 @@
+@import 'variable';
+@import 'mixin';
+
+.searchBar {
+  display: flex;
+  align-items: center;
+
+  &-input {
+    width: 100%;
+
+    ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+      background-color: $white !important;
+    }
+
+    ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+      color: $black;
+    }
+
+    ::ng-deep .mdc-text-field--filled {
+      border-radius: 0;
+    }
+
+    .mat-icon {
+      color: $black;
+    }
+
+    input::placeholder {
+      color: $unselected-black;
+    }
+
+    button {
+      margin-right: 1em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    &-filters {
+      position: relative;
+
+      &-number {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        z-index: 10000;
+        height: 21px;
+        width: 21px;
+        border: 1px solid $blue;
+        background-color: $black;
+        border-radius: 100%;
+        color: $blue;
+        font-size: 0.7em;
+      }
+    }
+  }
+}

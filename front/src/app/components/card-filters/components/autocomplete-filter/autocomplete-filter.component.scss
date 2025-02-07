@@ -1,0 +1,19 @@
+.autocompleteField {
+  width: 100%;
+
+  &-option {
+    .mat-option-text {
+      display: flex !important;
+      align-items: center !important;
+      overflow: none !important;
+    }
+
+    &-text {
+      width: 100%;
+
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}

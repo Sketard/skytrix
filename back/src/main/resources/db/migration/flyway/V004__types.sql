@@ -1,0 +1,1 @@
+ALTER TABLE card RENAME COLUMN type TO types;

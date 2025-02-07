@@ -1,0 +1,34 @@
+<div class="grid">
+  <div class="grid-list">
+    @for (slot of [].constructor(slotNumber()); track i; let i = $index) {
+      {{ slot }}
+      <div class="grid-list-slot grid" [ngClass]="deckZone()"></div>
+    }
+  </div>
+  <div class="grid-list element" [ngClass]="deckZone() + staticDeckZone.LOCK">
+    @for (cardDetail of cardDetails(); track cardDetail.id + i; let i = $index) {
+      <div
+        class="grid-list-slot card"
+        [ngClass]="deckZone()"
+        cdkDropList
+        (cdkDropListDropped)="drop($event)"
+        cdkDropListOrientation="horizontal"
+        [cdkDropListData]="{ item: cardDetail, index: i }"
+        [id]="deckZone() || staticDeckZone.OTHER">
+        <card
+          cdkDrag
+          [ngClass]="displayMode"
+          [cardDetail]="cardDetail.card"
+          [displayMode]="displayMode"
+          [size]="size()"
+          [cropped]="false"
+          [searchService]="deckBuildService"
+          [cdkDragData]="cardDetail"
+          [cdkDragDisabled]="!cardDetail.card.card.id"
+          [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
+          (contextmenu)="onRightClick($event, deckZone(), i)">
+        </card>
+      </div>
+    }
+  </div>
+</div>

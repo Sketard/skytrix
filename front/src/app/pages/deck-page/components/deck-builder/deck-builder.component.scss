@@ -1,0 +1,136 @@
+@import 'variable';
+@import 'mixin';
+
+.deckBuilder {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+
+  &-viewer {
+    padding: 1em;
+    position: relative;
+
+    &-hand {
+      transition: all 0.5s ease-in-out;
+      background-color: $black;
+      position: absolute;
+      width: 90%;
+      bottom: -100%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      border-radius: 10px;
+      border: 1px solid $blue;
+      padding: 1em;
+
+      &.opened {
+        bottom: 1em;
+      }
+    }
+  }
+
+  &-side {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+
+    &-tools {
+      margin: 2em 1em 0 1em;
+
+      &-deckName {
+        width: 100%;
+
+        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+          background-color: $white !important;
+        }
+
+        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+          color: $black;
+        }
+
+        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+          caret-color: $black;
+        }
+
+        ::ng-deep .mdc-text-field--filled {
+          border-top-left-radius: 0;
+          border-top-right-radius: 0;
+          border-bottom-right-radius: 0;
+          border-bottom-left-radius: 0;
+        }
+
+        .mat-icon {
+          color: $black;
+        }
+
+        input::placeholder {
+          color: $unselected-black;
+          opacity: 0.1;
+        }
+      }
+
+      &-buttons {
+        display: flex;
+
+        @include icon-as-button;
+
+        &-save {
+          color: $white;
+        }
+
+        &-print {
+          color: $white;
+        }
+
+        &-hand {
+          filter: brightness(0) invert(1);
+        }
+      }
+    }
+
+    &-images {
+      text-align: center;
+
+      &-slots {
+        display: flex;
+        align-items: center;
+        margin: 1em 0;
+        margin: auto;
+        background-color: #00226b;
+        position: relative;
+        width: calc($DECK_CARD_WIDTH * 3 + 12px * 3);
+      }
+    }
+
+    &-searcher {
+      height: calc(100% - 310px);
+      width: 100%;
+      min-width: 300px;
+    }
+
+    &-filters {
+      transition: all 0.5s ease-out;
+      background-color: black;
+      padding: 1em;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 100%;
+      right: -100%;
+      z-index: 999;
+
+      &.opened {
+        left: 0;
+        right: 0;
+        opacity: 1;
+      }
+    }
+  }
+}

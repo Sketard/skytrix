@@ -1,0 +1,17 @@
+@import '../../../../styles/mixin';
+
+.betweenFilter {
+  &-name {
+    @include filter-section-name;
+  }
+
+  &-inputs {
+    display: flex;
+    justify-content: space-between;
+
+    mat-form-field {
+      width: 45%;
+    }
+  }
+
+}

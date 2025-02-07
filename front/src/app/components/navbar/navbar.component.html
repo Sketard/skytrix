@@ -1,0 +1,14 @@
+<div class="navbar">
+  <img class="navbar-logo" src="/assets/images/logo.webp" alt="logo" />
+  <a *ngFor="let tab of tabs" [routerLink]="tab.path" routerLinkActive="activebutton" ariaCurrentWhenActive="page">
+    <mat-icon [fontIcon]="tab.icon"></mat-icon>
+    {{ tab.name }}
+  </a>
+  <div class="navbar-account">
+    <div class="navbar-account-pseudo">
+      Bienvenue {{ user()?.pseudo }} !
+    </div>
+    <button mat-flat-button (click)="logout()">Se déconnecter</button>
+  </div>
+
+</div>
