@@ -1,23 +1,22 @@
-import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
-import { FindOwnedCardPipe } from '../../core/pipes/find-owned-card.pipe';
-import { OwnedCardService } from '../../services/owned-card.service';
-import { AsyncPipe, CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, input, Output } from '@angular/core';
-import { CardDetail } from '../../core/model/card-detail';
-import { Card } from '../../core/model/card';
-import { CardDisplayType } from '../../core/enums/card-display-type';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { ShortOwnedCardDTO } from '../../core/model/dto/short-owned-card-dto';
-import { FindGroupedOwnedCardPipe } from '../../core/pipes/find-grouped-owned-card';
-import { CdkDrag, CdkDragStart } from '@angular/cdk/drag-drop';
-import { Router } from '@angular/router';
-import { TooltipService } from '../../services/tooltip.service';
-import { ToolTipRendererDirective } from '../../core/directives/tooltip.directive';
-import { ImgLoaderDirective } from '../../core/directives/img-loader.directive';
-import { SearchServiceCore } from '../../services/search-service-core.service';
+import {DeckBuildService, DeckZone} from '../../services/deck-build.service';
+import {FindOwnedCardPipe} from '../../core/pipes/find-owned-card.pipe';
+import {OwnedCardService} from '../../services/owned-card.service';
+import {AsyncPipe, CommonModule} from '@angular/common';
+import {ChangeDetectionStrategy, Component, EventEmitter, input, Output} from '@angular/core';
+import {CardDetail} from '../../core/model/card-detail';
+import {Card} from '../../core/model/card';
+import {CardDisplayType} from '../../core/enums/card-display-type';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatInputModule} from '@angular/material/input';
+import {MatIconModule} from '@angular/material/icon';
+import {FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {ShortOwnedCardDTO} from '../../core/model/dto/short-owned-card-dto';
+import {FindGroupedOwnedCardPipe} from '../../core/pipes/find-grouped-owned-card';
+import {CdkDrag, CdkDragStart} from '@angular/cdk/drag-drop';
+import {Router} from '@angular/router';
+import {TooltipService} from '../../services/tooltip.service';
+import {ToolTipRendererDirective} from '../../core/directives/tooltip.directive';
+import {ImgLoaderDirective} from '../../core/directives/img-loader.directive';
 
 @Component({
   selector: 'card',
@@ -46,7 +45,6 @@ export class CardComponent {
   readonly cropped = input<boolean>(false);
   readonly displayMode = input<CardDisplayType>(CardDisplayType.INFORMATIVE);
   readonly deckBuildMode = input<boolean>(false);
-  readonly searchService = input<SearchServiceCore>();
 
   @Output() loaded = new EventEmitter<number>();
 
@@ -63,7 +61,8 @@ export class CardComponent {
     private readonly deckBuildService: DeckBuildService,
     private readonly router: Router,
     private readonly tooltipService: TooltipService
-  ) {}
+  ) {
+  }
 
   get card(): Card {
     return this.cardDetail().card;
@@ -100,4 +99,5 @@ export enum CardSize {
   BIG,
   MEDIUM,
   SMALL,
+  PLAYGROUND
 }

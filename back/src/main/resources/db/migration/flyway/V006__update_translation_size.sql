@@ -1,0 +1,1 @@
+ALTER TABLE translation ALTER COLUMN name TYPE VARCHAR(255);

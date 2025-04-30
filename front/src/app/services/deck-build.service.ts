@@ -1,13 +1,13 @@
-import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, signal } from '@angular/core';
-import { BehaviorSubject, map, Observable, take } from 'rxjs';
-import { Deck } from '../core/model/deck';
-import { CardDetail } from '../core/model/card-detail';
-import { CreateDeckDTO } from '../core/model/dto/create-deck-dto';
-import { DeckDTO } from '../core/model/dto/deck-dto';
-import { ShortDeckDTO } from '../core/model/dto/short-deck-dto';
-import { ShortDeck } from '../core/model/short-deck';
-import { SearchServiceCore } from './search-service-core.service';
+import {HttpClient} from '@angular/common/http';
+import {computed, Injectable, signal} from '@angular/core';
+import {BehaviorSubject, map, Observable, take} from 'rxjs';
+import {Deck} from '../core/model/deck';
+import {CardDetail} from '../core/model/card-detail';
+import {CreateDeckDTO} from '../core/model/dto/create-deck-dto';
+import {DeckDTO} from '../core/model/dto/deck-dto';
+import {ShortDeckDTO} from '../core/model/dto/short-deck-dto';
+import {ShortDeck} from '../core/model/short-deck';
+import {SearchServiceCore} from './search-service-core.service';
 
 export enum DeckZone {
   MAIN = 'mainDeck',
@@ -24,7 +24,6 @@ export class DeckBuildService extends SearchServiceCore {
   private readonly deckState = signal<Deck>(new Deck());
   readonly deck = this.deckState.asReadonly();
   readonly deckEmpty = computed(() => !this.deck().hasCard);
-  readonly isMainValid = computed(() => !this.deck().isMainValid);
   readonly mainCardNumber = computed(() => this.deck().mainCardNumber);
   readonly extraCardNumber = computed(() => this.deck().extraCardNumber);
   readonly sideCardNumber = computed(() => this.deck().sideCardNumber);

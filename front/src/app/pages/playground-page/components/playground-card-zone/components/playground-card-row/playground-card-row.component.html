@@ -1,31 +1,28 @@
-<div class="grid">
+<div class="grid" *ngIf="cardDetails">
   <div class="grid-list">
     @for (slot of [].constructor(slotNumber()); track i; let i = $index) {
       {{ slot }}
-      <div class="grid-list-slot grid" [ngClass]="deckZone()"></div>
+      <div class="grid-list-slot grid" [ngClass]="zone()"></div>
     }
   </div>
-  <div class="grid-list element" [ngClass]="deckZone() + staticDeckZone.LOCK">
+  <div class="grid-list element" [ngClass]="zone()">
     @for (cardDetail of cardDetails(); track cardDetail.id + i; let i = $index) {
       <div
         class="grid-list-slot card"
-        [ngClass]="deckZone()"
+        [ngClass]="zone()"
         cdkDropList
         (cdkDropListDropped)="drop($event)"
         cdkDropListOrientation="horizontal"
         [cdkDropListData]="{ item: cardDetail, index: i }"
-        [id]="deckZone() || staticDeckZone.OTHER">
+        [id]="zone() + ''">
         <card
           cdkDrag
-          [ngClass]="displayMode"
           [cardDetail]="cardDetail.card"
           [displayMode]="displayMode"
           [size]="size()"
           [cropped]="false"
-          [cdkDragData]="cardDetail"
-          [cdkDragDisabled]="!cardDetail.card.card.id"
-          [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
-          (contextmenu)="onRightClick($event, deckZone(), i)">
+          [cdkDragData]="{card : cardDetail.card, source: {zone: zone(), index: i}}"
+          (contextmenu)="onRightClick($event, zone(), i)">
         </card>
       </div>
     }

@@ -1,0 +1,14 @@
+<div class="playground" cdkDropListGroup>
+  <playground-card-zone></playground-card-zone>
+  <div
+    class="test"
+    cdkDropList
+  >
+    <card
+      cdkDrag
+      [cardDetail]="playGroundService.deck().mainDeck.at(0)?.card!"
+      [cdkDragData]="{card: playGroundService.deck().mainDeck.at(0)?.card}"
+      [displayMode]="displayMode"
+    ></card>
+  </div>
+</div>
