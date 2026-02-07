@@ -1,5 +1,10 @@
 package com.skytrix.model.entity;
 
+import com.skytrix.model.dto.yugipro.YugiproCardDTO;
+import com.skytrix.model.enums.Attribute;
+import com.skytrix.model.enums.Language;
+import com.skytrix.model.enums.Race;
+import com.skytrix.model.enums.Type;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,27 +17,20 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
-
-import static com.skytrix.model.enums.Language.EN;
-import static com.skytrix.model.enums.Language.FR;
-import static com.skytrix.utils.CoreUtils.filter;
-import static com.skytrix.utils.CoreUtils.mapToList;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.skytrix.model.dto.yugipro.YugiproCardDTO;
-import com.skytrix.model.enums.Attribute;
-import com.skytrix.model.enums.Language;
-import com.skytrix.model.enums.Race;
-import com.skytrix.model.enums.Type;
-
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.skytrix.model.enums.Language.EN;
+import static com.skytrix.model.enums.Language.FR;
+import static com.skytrix.utils.CoreUtils.filter;
+import static com.skytrix.utils.CoreUtils.mapToList;
 
 @Entity
 @NoArgsConstructor
@@ -57,6 +55,7 @@ public class Card {
     private Short linkval;
     private List<String> linkmarkers;
     private Short banInfo;
+    private Integer genesysPoint;
 
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<CardSet> sets = new ArrayList<>();
