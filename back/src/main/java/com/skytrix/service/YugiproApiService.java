@@ -102,8 +102,6 @@ public class YugiproApiService {
             YugiproCardDTO cardFetch;
             try {
                 cardFetch = findAny(fetchedCardsEn, fetchedCard -> Objects.equals(card.getPasscode(), fetchedCard.getId()));
-                card.setBanInfo(cardFetch.getTcgBanInfo());
-                card.setGenesysPoint(cardFetch.getGenesysPoint());
             } catch(NoSuchElementException e) {
                 cardFetch = requester.fetchUnit(card.getName());
                 if (cardFetch == null) {
