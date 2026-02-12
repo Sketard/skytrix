@@ -1,0 +1,20 @@
+<div class="sim-hand"
+     [class.empty]="isEmpty()"
+     [class.zone--just-dropped]="justDropped()"
+     cdkDropList
+     [cdkDropListData]="ZoneId.HAND"
+     [cdkDropListSortingDisabled]="false"
+     (cdkDropListDropped)="onDrop($event)"
+     (animationend)="onGlowAnimationEnd()">
+  @for (card of cards(); track card.instanceId) {
+    <app-sim-card [cardInstance]="card"
+                  size="hand"
+                  cdkDrag
+                  [cdkDragData]="card"
+                  [attr.aria-label]="'Drag ' + card.card.card.name"
+                  (cdkDragStarted)="onDragStarted()"
+                  (cdkDragEnded)="onDragEnded()"
+                  (hovered)="onCardHovered($event)"
+                  (unhovered)="onCardUnhovered()" />
+  }
+</div>

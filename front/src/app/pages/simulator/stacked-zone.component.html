@@ -1,0 +1,52 @@
+<div class="sim-stacked-zone"
+     [class.empty]="cardCount() === 0"
+     [class.zone--just-dropped]="justDropped()"
+     [class.deck--shake]="deckShake()"
+     cdkDropList
+     [cdkDropListData]="zoneId()"
+     [cdkDropListSortingDisabled]="true"
+     (cdkDropListDropped)="onDrop($event)"
+     (animationend)="onAnimationEnd($event)"
+     (click)="onZoneClick()"
+     (contextmenu)="onContextMenu($event)"
+     [matBadge]="cardCount()"
+     matBadgePosition="above after"
+     [matBadgeHidden]="cardCount() === 0">
+  @if (topCard(); as card) {
+    <app-sim-card [cardInstance]="card"
+                  [forceFaceDown]="showFaceDown()"
+                  cdkDrag
+                  [cdkDragData]="card"
+                  [cdkDragDisabled]="!isDeckZone() || cardCount() === 0"
+                  [attr.aria-label]="isDeckZone() ? 'Draw card from deck' : null"
+                  (hovered)="onCardHovered($event)"
+                  (unhovered)="onCardUnhovered()"
+                  (cdkDragStarted)="onDragStarted()"
+                  (cdkDragEnded)="onDragEnded()" />
+  }
+  <span class="zone-label">{{ zoneConfig().label }}</span>
+  @if (isDeckZone()) {
+    <span #deckMenuTrigger="matMenuTrigger"
+          #menuAnchor
+          [matMenuTriggerFor]="deckMenu"
+          class="context-menu-anchor"></span>
+    <mat-menu #deckMenu="matMenu">
+      <button mat-menu-item (click)="onShuffle()">
+        <mat-icon>shuffle</mat-icon>
+        <span>Shuffle</span>
+      </button>
+      <button mat-menu-item (click)="onSearch()">
+        <mat-icon>search</mat-icon>
+        <span>Search</span>
+      </button>
+      <button mat-menu-item (click)="onMill()">
+        <mat-icon>archive</mat-icon>
+        <span>Mill (N)</span>
+      </button>
+      <button mat-menu-item (click)="onReveal()">
+        <mat-icon>visibility</mat-icon>
+        <span>Reveal (N)</span>
+      </button>
+    </mat-menu>
+  }
+</div>

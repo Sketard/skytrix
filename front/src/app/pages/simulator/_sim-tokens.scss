@@ -1,0 +1,29 @@
+@use 'sass:list';
+
+// Simulator SCSS Design Tokens
+// Source: UX Design Specification — Design System Foundation
+
+// Color tokens
+$sim-bg: #0a0e1a;
+$sim-surface: #111827;
+$sim-surface-elevated: #1e293b;
+$sim-accent-primary: #00d4ff;
+$sim-accent-secondary: #d4a017;
+$sim-zone-border: rgba(#00d4ff, 0.15);
+$sim-zone-highlight: rgba(#00d4ff, 0.3);
+$sim-zone-glow-success: rgba(#d4a017, 0.4);
+$sim-text-primary: #f1f5f9;
+$sim-text-secondary: #94a3b8;
+$sim-error: #ef4444;
+$sim-overlay-backdrop: rgba(#0a0e1a, 0.7);
+
+// Spacing tokens
+$sim-gap-zone: 0.5rem;
+$sim-gap-card: 0.25rem;
+$sim-padding-zone: 0.5rem;
+$sim-padding-overlay: 1rem;
+$sim-radius-zone: 0.375rem;
+$sim-radius-card: 0.25rem;
+
+// Card dimension token
+$sim-card-aspect-ratio: list.slash(59, 86);

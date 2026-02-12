@@ -19,7 +19,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ### Requirements Overview
 
 **Functional Requirements:**
-34 functional requirements across 7 categories covering simulation initialization, card movement via drag & drop across 20 interconnected game zones, card actions (draw, summon, activate, send to GY, banish, return), deck operations (search, mill, reveal/excavate), zone inspection with expandable overlays, card state management (face-down/flip, ATK/DEF toggle), and session management (undo/redo with Command pattern, reset, keyboard shortcuts).
+34 functional requirements across 7 categories covering simulation initialization, card movement via drag & drop across 18 interconnected game zones, card actions (draw, summon, activate, send to GY, banish, return), deck operations (search, mill, reveal/excavate), zone inspection with expandable overlays, card state management (face-down/flip, ATK/DEF toggle), and session management (undo/redo with Command pattern, reset, keyboard shortcuts).
 
 The simulator is fully manual with no rules engine — the player has complete freedom over card placement and actions. This eliminates rules engine complexity but places the burden on intuitive UX and flexible state management.
 
@@ -49,12 +49,13 @@ The simulator is fully manual with no rules engine — the player has complete f
 
 ### Cross-Cutting Concerns Identified
 
-- **Board state management:** Single source of truth for all 20 zones, card positions, card states (face-up/down, ATK/DEF). Must support efficient querying and updates.
+- **Board state management:** Single source of truth for all 18 zones, card positions, card states (face-up/down, ATK/DEF). Must support efficient querying and updates.
 - **Command pattern integration:** Every user action that modifies board state must be wrapped in a command for undo/redo. CompositeCommand for batch operations. This permeates all action handlers.
-- **Drag & drop orchestration:** cdkDropListGroup connects all 20 zones. Zone capacity enforcement, visual feedback during drag, and drop validation are cross-cutting across all zone components.
+- **Drag & drop orchestration:** cdkDropListGroup connects all 18 zones. Zone capacity enforcement, visual feedback during drag, and drop validation are cross-cutting across all zone components.
 - **Performance discipline:** OnPush + signals throughout. No unnecessary re-renders when only one zone changes. cdkDropListSortingDisabled on single-card zones.
 - **Card rendering consistency:** Cards appear in multiple contexts (hand, board zones, overlays, tooltips) — consistent rendering logic needed.
-- **Visual density management:** 20 zones on a single screen requires planned visual hierarchy (primary vs secondary zones), discoverable actions without a rules engine to guide the player, and overlay interaction patterns that don't obscure the board.
+- **Board scaling:** The board uses a fixed 16:9 aspect ratio container that scales via `transform: scale()` to fit the available viewport space. The scale factor must be computed reactively (viewport resize, navbar toggle) and propagated to the board component.
+- **Visual density management:** 18 zones on a single screen requires planned visual hierarchy (primary vs secondary zones), discoverable actions without a rules engine to guide the player, and overlay interaction patterns that don't obscure the board.
 
 ## Starter Template Evaluation
 
@@ -144,6 +145,14 @@ SimulatorPage (page container — loads deck, orchestrates)
 - ZoneComponent is generic: adapts behavior based on ZoneId (single-card enforcement, dual-purpose Pendulum indicator)
 - CardComponent is unique and reused everywhere: handles face-up/down, ATK/DEF rotation, drag handle
 
+**Board Scaling Model: Fixed 16:9 with Proportional Scaling**
+- The board container has fixed internal dimensions (16:9 aspect ratio). Zone sizes use fixed proportions inside this container — no `fr`/`minmax()`.
+- The container scales via `transform: scale()` to fit the available viewport space (width × height minus navbar height if visible).
+- Scale factor: `min(availableWidth / boardWidth, availableHeight / boardHeight)` — computed as a signal in `BoardComponent`, reactive to `window.resize` and navbar collapse state.
+- The board is centered in the available space; empty space (letterboxing) shows the app background.
+- No breakpoints, no responsive layout changes — the grid structure is invariant; only the scale factor changes.
+- `transform-origin: top center` to anchor scaling from the top of the available area.
+
 **Command Pattern Design: Delta-Based**
 - Interface: `SimCommand { execute(): void; undo(): void; }`
 - Delta-based: each command stores minimum data to do/undo (cardId, fromZone, toZone, indices)
@@ -219,12 +228,18 @@ User Action (drag drop / button / keyboard)
 
 | Service | Responsibility | Owns |
 |---|---|---|
-| `BoardStateService` | Holds board state signal + computed derivations, provides zone queries, handles initialization/reset, deck operations (shuffle, draw logic, mill) | `boardState` signal, all computed zone signals |
+| `BoardStateService` | Holds board state signal + computed derivations, provides zone queries, handles initialization/reset, deck operations (shuffle, draw logic, mill). Also owns cross-cutting UI interaction signals: `hoveredCard` (with 50ms debounce) and `isDragging` — needed by multiple components for pill/overlay/inspector suppression. | `boardState` signal, all computed zone signals, `hoveredCard` signal, `isDragging` signal |
 | `CommandStackService` | Exposes semantic action methods (`moveCard()`, `drawCard()`, `flipCard()`, etc.), creates and executes commands internally, manages undo/redo stacks, exposes `canUndo`/`canRedo` | `undoStack`, `redoStack` signals, Command class instantiation |
 
 - Only 2 services for the simulator — no DeckService (deck operations are trivial methods in BoardStateService)
 - Command classes are internal to CommandStackService — components never see them
 - If a new concern emerges, prefer adding a method to an existing service over creating a new one
+
+**Collapsible Navbar Signal Flow:**
+- The navbar collapse state (`navbarCollapsed` signal) lives in the **NavbarComponent** (or a shared app-level service if multiple components need it). It is NOT a simulator service concern.
+- On the simulator page, the navbar starts **collapsed by default**. On all other pages, it starts expanded. This is driven by the route — `SimulatorPageComponent` sets `navbarCollapsed = true` on init.
+- `BoardComponent` reads the navbar height (or collapsed state) to compute its scale factor. This can be done via a `ResizeObserver` on the viewport area above the board, or by reading `navbarCollapsed` and computing available height = `window.innerHeight - navbarHeight`.
+- Navbar toggle state is **ephemeral** — not persisted across navigations.
 
 ### Component Communication Patterns
 
@@ -241,11 +256,18 @@ User Action (drag drop / button / keyboard)
 - `cdkDropListEnterPredicate` on single-card zones to reject drop when occupied
 - On `cdkDragDrop` event: component extracts `fromZone`, `toZone`, `cardId`, `indices` → calls `CommandStackService`
 
+### Context Menu Pattern
+
+- `event.preventDefault()` on `contextmenu` event on the **entire board** in all builds (including `isDevMode()`). The native browser context menu is never shown on the board. The navbar retains native context menu.
+- **Stacked zones** (Deck, ED): right-click opens `mat-menu` with zone-specific actions (Shuffle, Search for Deck; View for ED).
+- **Board cards**: right-click opens `mat-menu` with card state actions (Flip face-down/up, Change to ATK/DEF). Menu items are dynamic, computed from current card state.
+- No custom context menu component — `mat-menu` used directly. This is consistent with the "no new abstractions" principle.
+
 ### Error Handling Patterns
 
 - Invalid drops (zone full, same zone): silently ignored — no toast, no error. Card returns to origin via CDK default behavior.
 - Empty deck draw attempt: visual feedback on deck zone (brief highlight/shake), no toast. Prevented by `isDeckEmpty` computed disabling draw actions.
-- No try/catch around commands — commands operate on known-good state. If state is corrupted, reset is the recovery path.
+- Drop handlers in components wrap `CommandStackService` calls in try/catch — catch blocks silently ignore errors and let CDK return the card to its origin. Commands themselves operate on known-good state; the try/catch guards against unexpected runtime errors. If state is corrupted, reset is the recovery path.
 
 ### Debug Observability Pattern
 
@@ -267,8 +289,9 @@ User Action (drag drop / button / keyboard)
 - Direct `boardState.update()` from a component — always go through CommandStackService
 - Creating a new service for a single method — add to existing services
 - Using RxJS Subjects for state that should be signals
-- Storing UI-only state (overlay open/closed, drag preview) in BoardStateService — keep UI state in components
+- Storing UI-only state (overlay open/closed, drag preview) in BoardStateService — keep UI state in components. Exception: `isDragging` and `hoveredCard` are cross-cutting interaction signals that live in BoardStateService because multiple components need them for suppression logic.
 - Exposing Command classes outside of CommandStackService
+- Treating `faceDown` as hidden information — in a solo simulator, the player knows all their own cards. `faceDown` is a **positional state** (gameplay choice), not an information barrier. The card inspector always shows full details regardless of face-down state. Extra Deck overlay displays all cards face-up (owner knows ED contents). Deck/ED zones display a card-back image when `count > 0` (never appear visually empty).
 
 ## Project Structure & Boundaries
 
@@ -298,9 +321,18 @@ front/src/app/
 │       ├── sim-card.component.ts           # Card rendering — face-up/down, ATK/DEF, drag handle
 │       ├── sim-card.component.html
 │       ├── sim-card.component.scss
-│       ├── overlay.component.ts            # Zone inspection overlay — 3 modes (search, inspect, reveal)
-│       ├── overlay.component.html
-│       ├── overlay.component.scss
+│       ├── pile-overlay.component.ts       # Pile inspection overlay — 3 modes (browse, search, reveal)
+│       ├── pile-overlay.component.html
+│       ├── pile-overlay.component.scss
+│       ├── xyz-material-peek.component.ts  # XYZ overlay material pill — material borders + drag-to-detach
+│       ├── xyz-material-peek.component.html
+│       ├── xyz-material-peek.component.scss
+│       ├── card-inspector.component.ts     # Hover-triggered card detail side panel (replaces card-tooltip in simulator)
+│       ├── card-inspector.component.html
+│       ├── card-inspector.component.scss
+│       ├── control-bar.component.ts        # Undo/Redo/Reset buttons + keyboard shortcut hints
+│       ├── control-bar.component.html
+│       ├── control-bar.component.scss
 │       ├── board-state.service.ts          # Board state signal + computed derivations + deck ops
 │       ├── command-stack.service.ts         # Semantic action methods + command creation + undo/redo
 │       ├── simulator.models.ts             # ZoneId enum, CardInstance, SimCommand interface, zone config
@@ -319,7 +351,7 @@ front/src/app/
 ### Naming Conventions
 
 **Component Selectors:** All simulator components use the `app-sim-` prefix to avoid collisions with existing components (e.g., existing `app-card` vs simulator's `app-sim-card`).
-- `app-sim-board`, `app-sim-zone`, `app-sim-stacked-zone`, `app-sim-hand`, `app-sim-card`, `app-sim-overlay`
+- `app-sim-board`, `app-sim-zone`, `app-sim-stacked-zone`, `app-sim-hand`, `app-sim-card`, `app-sim-pile-overlay`, `app-sim-xyz-material-peek`, `app-sim-card-inspector`, `app-sim-control-bar`
 
 ### Route Addition
 
@@ -345,8 +377,11 @@ Single component, single template — mode determines which cards are displayed 
 **Component Boundaries:**
 - `SimulatorPage` ← only component that injects route params and loads deck data from existing `DeckBuildService`
 - `Board`, `Zone`, `StackedZone`, `Hand` ← receive data via signal inputs, emit user actions via outputs
-- `SimCard` ← pure presentation, receives `CardInstance` input
-- `Overlay` ← opened/closed by parent component, receives zone data and mode as inputs
+- `SimCard` ← pure presentation, receives `CardInstance` input. If XYZ with materials: renders material peek borders and delegates to `XyzMaterialPeek`.
+- `PileOverlay` ← opened/closed by parent component, receives zone data and mode as inputs
+- `XyzMaterialPeek` ← pill overlay for XYZ material management, CDK drag sources for detach
+- `CardInspector` ← hover-triggered side panel for card detail (replaces existing card-tooltip in simulator context)
+- `ControlBar` ← Undo/Redo/Reset buttons with keyboard shortcut hints
 
 **Service Boundaries:**
 - `BoardStateService` ← owns all state, provides computed derivations. No component writes to it directly.
@@ -354,8 +389,6 @@ Single component, single template — mode determines which cards are displayed 
 - `commands/` folder ← internal implementation detail of `CommandStackService`. No component imports from here.
 
 **Reuse of Existing Code:**
-- `card-tooltip` component (existing) ← reused for card detail on hover
-- `tooltip.directive` (existing) ← reused for tooltip trigger
 - `Card` model from `core/model/card.ts` ← card data reference in `CardInstance`
 - `DeckBuildService` or deck data service ← loads deck card list for initialization
 - `AuthService` ← route guard, unchanged
@@ -368,10 +401,10 @@ Single component, single template — mode determines which cards are displayed 
 | Simulation Init (FR1-5) | `simulator-page.component.ts`, `board-state.service.ts` |
 | Card Movement (FR6-10) | `zone.component.ts`, `hand.component.ts`, `board.component.ts`, `command-stack.service.ts`, `move-card.command.ts` |
 | Card Actions (FR11-17) | `command-stack.service.ts`, `move-card.command.ts`, `draw-card.command.ts` |
-| Deck Operations (FR18-21) | `overlay.component.ts`, `board-state.service.ts`, `composite.command.ts` |
-| Zone Inspection (FR22-24) | `stacked-zone.component.ts`, `overlay.component.ts` |
-| Card State (FR25-28) | `sim-card.component.ts`, `flip-card.command.ts`, `toggle-position.command.ts`, existing `card-tooltip` |
-| Session Mgmt (FR29-34) | `command-stack.service.ts`, `simulator-page.component.ts` (reset, shortcuts) |
+| Deck Operations (FR18-21) | `pile-overlay.component.ts`, `board-state.service.ts`, `composite.command.ts` |
+| Zone Inspection (FR22-24) | `stacked-zone.component.ts`, `pile-overlay.component.ts`, `xyz-material-peek.component.ts` |
+| Card State (FR25-28) | `sim-card.component.ts`, `flip-card.command.ts`, `toggle-position.command.ts`, `card-inspector.component.ts` |
+| Session Mgmt (FR29-34) | `command-stack.service.ts`, `control-bar.component.ts`, `board.component.ts` (shortcuts) |
 
 ### Data Flow
 

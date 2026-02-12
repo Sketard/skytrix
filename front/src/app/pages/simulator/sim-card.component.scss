@@ -1,0 +1,85 @@
+@use 'sim-tokens' as *;
+
+:host {
+  display: block;
+  position: relative;
+}
+
+.sim-card {
+  aspect-ratio: $sim-card-aspect-ratio;
+  width: 100%;
+  border-radius: $sim-radius-card;
+  overflow: hidden;
+  position: relative;
+
+  &.def-position {
+    transform: rotate(90deg);
+  }
+
+  &.hand-size {
+    width: auto;
+    height: 100%;
+  }
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-back {
+  width: 100%;
+  height: 100%;
+  background: $sim-surface-elevated;
+  border: 1px solid $sim-zone-border;
+  box-sizing: border-box;
+}
+
+.material-peek-borders {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.material-border {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: $sim-surface-elevated;
+  border: 1px solid $sim-zone-border;
+  border-radius: $sim-radius-card;
+}
+
+// CDK DragDrop card styles
+:host.cdk-drag-preview {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transform: scale(1.05);
+  opacity: 0.9;
+  z-index: 1000;
+}
+
+:host.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+:host.cdk-drag-animating {
+  transition: transform 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host.cdk-drag-preview {
+    transform: none;
+    transition: none;
+  }
+
+  :host.cdk-drag-placeholder {
+    transition: none;
+  }
+
+  :host.cdk-drag-animating {
+    transition: none;
+  }
+}

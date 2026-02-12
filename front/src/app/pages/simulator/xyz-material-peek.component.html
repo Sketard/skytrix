@@ -1,0 +1,36 @@
+@if (isOpen()) {
+  @if (xyzCard(); as xyz) {
+    <div class="material-peek-panel" role="complementary" aria-label="XYZ overlay materials">
+      <div class="peek-header">
+        <h3 class="peek-title">{{ overlayTitle() }}</h3>
+        <button class="peek-close" (click)="close()" aria-label="Close material peek">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="peek-subtitle">{{ xyzName() }}</div>
+
+      <div cdkDropList
+           [cdkDropListData]="peekState()?.zoneId"
+           [cdkDropListEnterPredicate]="noDrop"
+           class="material-list">
+        @for (material of materials(); track material.instanceId) {
+          <div class="material-row"
+               cdkDrag
+               [cdkDragData]="material"
+               cdkDragPreviewContainer="global"
+               (cdkDragStarted)="onDragStarted()"
+               (cdkDragEnded)="onDragEnded()"
+               (mouseenter)="onCardHovered(material)"
+               (mouseleave)="onCardUnhovered()">
+            <img [src]="material.image.smallUrl"
+                 [alt]="material.card.card.name"
+                 class="material-image" />
+            <span class="material-name">{{ material.card.card.name }}</span>
+            <mat-icon class="drag-handle">drag_indicator</mat-icon>
+          </div>
+        }
+      </div>
+    </div>
+  }
+}

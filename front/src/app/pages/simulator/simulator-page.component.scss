@@ -1,0 +1,7 @@
+@use 'sim-tokens' as *;
+
+.sim-page {
+  height: 100vh;
+  background: $sim-bg;
+  overflow: hidden;
+}

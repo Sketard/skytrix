@@ -1,5 +1,6 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+lastStep: 14
 inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 ---
 
@@ -7,6 +8,13 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 
 **Author:** Axel
 **Date:** 2026-02-08
+**Last Revised:** 2026-02-12
+
+### Revision History
+
+| Date | Source | Changes |
+|---|---|---|
+| 2026-02-12 | Sprint Retro (Epics 1-5) | **A.** Fixed 16:9 aspect ratio layout with proportional scaling (Master Duel zoom-out style), replaces flexible CSS Grid responsive model. **B.** Face-down behavior rethought for solo context: inspector shows full details for face-down cards, ED overlay displays all cards face-up (no eye icon/grouping), deck/ED zones show card-back when count > 0. **C.** `preventDefault()` on right-click for entire board in all builds (incl. devMode); right-click gesture reserved for future custom context menu. **D.** Collapsible navbar: chevron toggle at navbar border, collapses to ~32px thin bar, collapsed by default on simulator page only. |
 
 ---
 
@@ -26,10 +34,10 @@ The core workflow is: build deck → test combos → iterate — all within a si
 
 ### Key Design Challenges
 
-1. **Visual Density Management** — 18 zones on a single screen. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Future mobile adaptation must be considered in the CSS Grid layout design.
+1. **Visual Density Management** — 18 zones on a single screen with a fixed 16:9 aspect ratio. The board scales proportionally to fit the available viewport space (Master Duel "zoom-out" style) — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
 2. **Action Discoverability** — Without a rules engine to guide the player, all available actions (mill, search, reveal, flip, toggle position, banish, return to hand/deck) must be intuitively discoverable through the interface. No tutorial — the UI must be self-explanatory.
 3. **Drag & Drop Precision** — Targeting the correct zone among 18 while dragging a card. Visual feedback during drag (zone highlighting, capacity indicators) is critical to avoid frustrating mis-drops.
-4. **Future Mobile Readiness** — While MVP is desktop-only, the layout architecture (CSS Grid) should be designed with eventual portrait/touch adaptation in mind to avoid a full redesign later.
+4. **Future Mobile Readiness** — While MVP is desktop-only, the fixed 16:9 scaling model naturally adapts to any screen size. Mobile will lock to landscape orientation (like Master Duel). Touch interaction (tap-to-place) is a post-MVP design effort.
 
 ### Design Opportunities
 
@@ -50,8 +58,8 @@ The core loop is: **load deck → shuffle → draw 5 → execute combo via drag 
 - **Primary Platform:** Desktop web (Angular 19 SPA) — mouse + keyboard interaction
 - **Input Model:** Mouse-driven drag & drop as primary, keyboard shortcuts as accelerators
 - **Hover Dependency:** Card tooltips on hover are integral to the experience — desktop-only capability leveraged fully
-- **Screen Requirements:** Large screen assumed — 18 zones displayed simultaneously without scrolling
-- **Future Mobile Consideration (Post-MVP):** CSS Grid layout architecture will use relative units and named grid areas to enable eventual portrait/touch adaptation without full redesign. Pill and overlay interactions will need touch equivalents (tap, long press) in mobile version.
+- **Screen Requirements:** The board has a fixed 16:9 aspect ratio and scales to fit the viewport via `transform: scale()`. No scrolling, no minimum size threshold — the board always fits. Letterboxing (empty space) filled by the app's existing background. Card details remain accessible at any scale via hover/inspector.
+- **Future Mobile Consideration (Post-MVP):** The fixed 16:9 scaling model naturally adapts to any screen. Mobile will lock to landscape orientation (like Master Duel). Touch interaction requires a dedicated tap-to-place mode (post-MVP design). Pill and overlay interactions will need touch equivalents (tap, long press) in mobile version.
 - **Offline:** Not required — deck data loaded at initialization, then all processing is client-side and ephemeral
 - **No Backend Dependency:** Zero network calls during simulation — all state is local
 
@@ -437,9 +445,9 @@ The simulator's identity is captured in one interaction: picking up a card and p
 | `$sim-radius-card` | `0.25rem` | Card border radius |
 
 **Layout Principles:**
-1. **Fullscreen board** — The simulator board occupies 100% of the viewport. No sidebar, no permanent toolbar. Controls appear contextually (pills, overlays).
-2. **CSS Grid with named areas** — Each of the 18 zones has a named grid area. Mobile adaptation will rearrange areas without changing component structure.
-3. **Relative sizing** — Zone dimensions use `fr` units and `minmax()` for responsive behavior within the grid. Cards scale proportionally.
+1. **Fixed 16:9 aspect ratio board** — The board is a fixed-ratio container that scales proportionally to fit the available viewport space (below the navbar area, when visible). Scaling is achieved via `transform: scale()` on the board container — a single scale factor applied to the entire board. The board floats over the app's existing background; empty space (letterboxing) uses the app background, not black bars.
+2. **CSS Grid with named areas** — Inside the fixed-ratio container, each of the 18 zones has a named grid area. Zone dimensions use fixed proportions (not `fr` + `minmax()`), since the container itself handles viewport adaptation via scaling.
+3. **Dynamic rescaling on navbar toggle** — The available viewport space changes when the collapsible navbar is shown/hidden. The board recalculates its scale factor dynamically to always fit within the available space, maintaining the 16:9 ratio.
 4. **Overlay positioning** — Pile overlays open to the side or bottom (never centered fullscreen) to keep the board visible as a drag target during pill-to-drag flow.
 
 ### Accessibility Considerations
@@ -460,7 +468,7 @@ The simulator's identity is captured in one interaction: picking up a card and p
 
 ### Design Directions Explored
 
-Eight design directions were generated and evaluated via interactive HTML mockups ([ux-design-directions.html](ux-design-directions.html)):
+Eight design directions were generated and evaluated via interactive HTML mockups:
 
 1. **Master Duel Classic** — Subtle cyan borders, dark navy surfaces, atmospheric. Faithful to Master Duel premium aesthetics.
 2. **Neon Arena** — Amplified neon glow, electric atmosphere. High visual intensity.
@@ -515,7 +523,7 @@ grid-template-areas:
 **Stacked Zone Interactions:**
 - **Deck / Extra Deck:** Right-click opens a small context menu (Shuffle, Search). No dedicated pill buttons for Mill — milling is done by dragging the top card from Deck to GY.
 - **Graveyard / Banished:** Click opens side overlay with card list and card images. Cards are draggable from overlay to board.
-- **Deck and ED are face-down** — card backs displayed. Extra Deck Pendulum monsters are face-up (game rule).
+- **Deck zone** — displays card-back image when `count > 0` (never appears visually empty). **Extra Deck overlay** — all cards displayed face-up (solo context: ED contents are known to the owner). No eye icon, no "face-down" grouping.
 
 **Card Images in Overlay:**
 - When a pile overlay (GY, Banished, Deck search) is open, card images are displayed alongside card names for visual identification. Design to be tested and iterated.
@@ -708,3 +716,450 @@ flowchart TD
 4. **Overlay as drag source** — Every card in an overlay (GY, Banished, Deck Search) is immediately draggable. No "select then place" — see it, grab it, drag it.
 5. **XYZ material peek** — Materials are always subtly visible (border peek). Full inspection requires one click. Detach requires one drag. Minimum friction for a complex mechanic.
 6. **Hover is passive, click is active** — Hover = read information (tooltip). Click = open interaction (pills, overlays, flip). Clear mental model: looking vs. doing.
+
+## Component Strategy
+
+### Design System Components
+
+**Angular Material 19.1.1 + CDK — Available Foundation:**
+
+| Component | Usage in Simulator |
+|---|---|
+| `mat-icon` | Zone labels, control bar icons, overlay action icons |
+| `mat-button` / `mat-icon-button` | Control bar (Undo, Redo, Reset), overlay action buttons |
+| `mat-menu` | Right-click context menu on Deck and Extra Deck (Shuffle, Search) |
+| `mat-tooltip` | Card name preview on hover (lightweight, non-blocking) |
+| `mat-badge` | Card count badges on stacked zones (GY, Banished, Deck, ED) |
+| `CDK DragDrop` | Core drag & drop interaction — `cdkDrag`, `cdkDropList`, `cdkDropListGroup` |
+| `CDK Overlay` | Pile overlays (GY, Banished, Search), XYZ material pill |
+
+**Gap Analysis — Components NOT Available in Angular Material:**
+
+| Need | Gap | Solution |
+|---|---|---|
+| Game board grid | No game board component | Custom `SimBoardComponent` with CSS Grid named areas |
+| Single-card zone | No card slot component | Custom `SimZoneComponent` — drag target + card display |
+| Stacked zone (GY, Deck) | No pile/stack component | Custom `SimStackedZoneComponent` with `StackedZoneConfig` |
+| Hand fan layout | No horizontal card fan | Custom `SimHandComponent` — drag-reorderable card row |
+| Card rendering | No game card component | Custom `SimCardComponent` — image, position, drag source |
+| XYZ material peek | No stacked indicator | Custom `SimXyzMaterialPeekComponent` — material borders + pill |
+| Pile inspection overlay | CDK Overlay exists, but no card list pattern | Custom `SimPileOverlayComponent` — card image + name + drag row |
+| Undo/Redo/Reset bar | No game control bar | Custom `SimControlBarComponent` — session controls |
+| Card effect inspector | No card detail panel for game context | Custom `SimCardInspectorComponent` — hover-triggered side panel |
+
+### Custom Components
+
+#### SimBoardComponent (Root Container)
+
+**Purpose:** Root component that renders the fixed 16:9 aspect ratio board container and orchestrates all child zones. The container scales via `transform: scale()` to fit the available viewport space (accounting for navbar visibility). Inside, a 7x4 CSS Grid renders the 18 zones.
+**Content:** 18 zones rendered via named grid areas. Injects `BoardStateService` for zone data. Computes scale factor reactively based on viewport dimensions and navbar state.
+**Actions:** Handles global keyboard shortcuts (Ctrl+Z, Ctrl+Y). Manages `isDragging` signal suppression for pills.
+**States:** Default (board ready), Loading (deck loading), Empty (no deck loaded).
+**Variants:** None — single layout. The board scales proportionally, never changes structure.
+**Accessibility:** `role="application"`, `aria-label="Yu-Gi-Oh simulator board"`. Keyboard shortcut hints in control bar.
+
+#### SimZoneComponent (Single-Card Zone)
+
+**Purpose:** Renders a single-card zone (Monster, S/T, EMZ, Field). Serves as a CDK drop target.
+**Content:** One card (via `SimCardComponent`) or empty state with zone label.
+**Actions:** Drop target for drag operations. Delegates card interactions to `SimCardComponent`.
+**States:** Empty (zone label visible), Occupied (card displayed), Drag-hover (cyan highlight when valid drop target), Drag-active (card being dragged out).
+**Variants:** Configured via `zoneType` input — `'monster'`, `'spell-trap'`, `'emz'`, `'field'`. Visual styling adapts (field zone has subtle distinct border). **SimFieldZoneComponent eliminated** — `SimZoneComponent` with `zoneType: 'field'` handles all cases.
+**Accessibility:** `role="listbox"`, `aria-label` with zone name (e.g., "Monster Zone 3"). Drop feedback announced via `aria-live`.
+
+#### SimStackedZoneComponent (Multi-Card Zone)
+
+**Purpose:** Renders stacked zones (Deck, Extra Deck, Graveyard, Banished) with card count badge and interaction triggers.
+**Content:** Top card preview (or card back image for face-down zones). When `count > 0`, the zone must always display a card-back image — never appear visually empty. Card count badge, context menu trigger.
+**Actions:** Click → open pile overlay. Right-click on Deck/ED → `mat-menu` context menu (Shuffle, Search). Drag from top card (Deck → GY for mill).
+**States:** Empty (0 cards — dimmed), Has-cards (badge visible), Overlay-open (pill active).
+**Configuration:** Uses `StackedZoneConfig` pattern instead of component variants:
+
+```typescript
+interface StackedZoneConfig {
+  zoneType: 'deck' | 'extra-deck' | 'graveyard' | 'banished';
+  faceDown: boolean;           // Deck=true (card-back displayed when count>0), ED=false (all face-up in overlay, solo context), GY=false, Banished=mixed
+  contextMenu: boolean;        // true for Deck, ED
+  contextMenuItems: string[];  // ['shuffle', 'search'] for Deck
+  clickAction: 'overlay' | 'none';  // GY/Banished → overlay, Deck → top-drag
+  topCardDraggable: boolean;   // true for Deck (mill), false for GY
+}
+```
+
+**Context menu:** Uses `mat-menu` directly — **SimContextMenuComponent eliminated** as unnecessary abstraction.
+**Banished face-down cards:** Visible to player but visually distinct (card back image + subtle "face-down" indicator icon). Separate visual group within the pile overlay.
+**Accessibility:** `aria-label` with zone name + card count. Context menu keyboard accessible via Shift+F10.
+
+#### SimHandComponent (Hand Zone)
+
+**Purpose:** Horizontal card row with drag reordering support. Spans 5 grid columns.
+**Content:** 0-N cards rendered as `SimCardComponent` instances. Cards face-up to player.
+**Actions:** Drag cards to board zones, drag to reorder within hand, receive cards from board/overlays.
+**States:** Empty (subtle placeholder), Has-cards (cards displayed with spacing), Drag-reorder (CDK sort animation active).
+**Variants:** None — single responsive layout.
+**Accessibility:** `role="listbox"`, cards are `role="option"`. Arrow keys for card navigation.
+
+#### SimCardComponent (Individual Card)
+
+**Purpose:** Renders a single card with image, position state, and drag behavior. **Owns XYZ material peek responsibility** — if the card is an XYZ monster with materials, it renders the material border peek and handles the material pill trigger.
+**Content:** Card image (from existing skytrix card image service), position indicator (ATK/DEF orientation), face-up/face-down state.
+**Actions:** Drag source (CDK `cdkDrag`). Click → card interaction (flip, position change). Hover → tooltip with card name. If XYZ with materials: click → opens `SimXyzMaterialPeekComponent` pill.
+**States:** Face-up ATK (vertical), Face-up DEF (horizontal), Face-down DEF (horizontal, card back image — must display the Yu-Gi-Oh! card back, never invisible/empty), Dragging (elevated, semi-transparent origin), XYZ-with-materials (border peek visible below).
+**Variants:** Board card vs. hand card vs. overlay card (sizing and interaction differ).
+**Interaction:** Hover shows slight image enlargement for visual confirmation before click/drag.
+**Accessibility:** `role="option"`, `aria-label` with card name and position. `aria-grabbed` during drag.
+
+#### SimXyzMaterialPeekComponent (XYZ Material Management)
+
+**Purpose:** Shows XYZ overlay materials as a pill/dropdown when an XYZ card is clicked. Each material is a drag source for detach operations.
+**Content:** List of attached material cards (image thumbnail + name). Material count badge.
+**Actions:** Each material row is a CDK drag source — drag to GY (detach) or other zone.
+**States:** Hidden (default), Open (pill visible with material list), Animating (material being dragged out).
+**Variants:** None.
+**Technical Note:** Uses CDK Overlay positioned relative to the XYZ card. Must share `cdkDropListGroup` with board zones for cross-container drag — **flagged as technical risk requiring early spike**.
+**Accessibility:** `role="listbox"` for material list, `aria-label` per material.
+
+#### SimPileOverlayComponent (Pile Inspection)
+
+**Purpose:** Side overlay that opens when a stacked zone is clicked. Shows all cards in the pile with images. Cards are draggable to board zones.
+**Content:** Card list with image thumbnail + card name per row. Scrollable for large piles.
+**Actions:** Each card row is a CDK drag source. Search mode adds a filter input. Close button or click-outside to dismiss.
+**States:** Closed, Open-browse (GY, Banished — all cards visible face-up), Open-search (Deck search — filter input active, deck shuffled after close), Open-view (ED — all cards displayed face-up, no "face-down" grouping, no eye icon. In Yu-Gi-Oh!, the Extra Deck contents are known to the owner — only hidden from opponent. Solo context: no separation needed).
+**Variants:** Mode determined by source zone (browse/search/view).
+**Technical Note:** Overlay positioning avoids covering the board center — opens to the side. Must share `cdkDropListGroup` with board for drag-to-board. Same technical risk as XYZ material pill.
+**Accessibility:** `role="dialog"`, `aria-modal="true"`, focus trap when open. Filter input `aria-label="Search cards"`.
+
+#### SimCardInspectorComponent (Card Effect Reader)
+
+**Purpose:** Fixed side panel that displays full card details on hover. Replaces the existing skytrix white tooltip with a dark-themed, simulator-integrated inspector. Allows reading card effects without interrupting gameplay flow.
+**Content:** Full-size card image, card name, attribute icon + race icon + level/rank/link, ATK/DEF values, full effect description text (scrollable). No deck-building buttons (+1/-1) — simulator context only.
+**Trigger:** Hover on any face-up `SimCardComponent` (board, hand, or overlay) updates the `hoveredCard` signal in `BoardStateService`. Inspector reacts to this signal.
+**Position:** Fixed panel on the right side of the viewport, overlaying the board edge. Not part of the CSS Grid — uses `position: fixed` with `$sim-surface` background and subtle left border. Appears/disappears with a fast fade transition (~100ms).
+**States:** Hidden (no card hovered, or `isDragging` active), Visible (card hovered — image + stats + effect text displayed).
+**Suppression:** Hidden when `isDragging` is true — reading effects during drag would obstruct the interaction. Reappears when drag ends.
+**Styling:** `$sim-surface` background, `$sim-text-primary` for card name and effect text, `$sim-text-secondary` for stat labels. Card image uses existing `CardImageDTO.url` (full resolution). Effect text rendered via `[innerHTML]` with `<br>` formatting (same as existing `CardDTO.description` preprocessing).
+**Face-down cards:** Inspector shows **full card details** (image, name, stats, effect text) even for face-down cards. In a solo simulator, the player knows all their own cards — hiding information serves no purpose. The card's face-down *positional state* on the board is a gameplay choice, not an information barrier.
+**Accessibility:** `role="complementary"`, `aria-label="Card inspector"`, `aria-live="polite"` for content updates on hover change.
+
+#### Collapsible Navbar
+
+**Purpose:** The app navbar can be collapsed to maximize board space. On the simulator page, the navbar starts **collapsed by default**. On all other pages, the navbar remains expanded by default.
+
+**Toggle Mechanism:**
+- A **chevron button** positioned at the border between the navbar and the main content area, acting as a visual "tab" or "handle"
+- Navbar expanded → chevron points **up** (↑ = "collapse"). Navbar collapsed → chevron points **down** (↓ = "expand")
+- The chevron remains visible in both states
+
+**Collapsed State:**
+- The navbar collapses to a **thin bar (~32px height)** containing only the chevron toggle button
+- No logo, no text, no navigation links — just the toggle control
+- The thin bar provides a persistent affordance to re-expand
+
+**Expanded State:**
+- Full navbar as it exists today — all navigation links, logo, etc.
+
+**Board Interaction:**
+- When the navbar collapses/expands, the available viewport space changes
+- The board's `transform: scale()` factor recalculates dynamically to fit the new available space, maintaining the 16:9 ratio
+- Transition should be smooth (~200ms) with the board rescaling in sync
+
+**Scope:**
+- Collapsed-by-default behavior applies **only to the simulator page**
+- Other pages (deck builder, deck list, etc.) retain the expanded navbar by default
+- The user's toggle choice is ephemeral (not persisted across page navigations)
+
+#### SimControlBarComponent (Session Controls)
+
+**Purpose:** Undo / Redo / Reset buttons positioned in the controls grid area (bottom-left).
+**Content:** Three icon buttons with tooltips. Optional action count indicators.
+**Actions:** Undo (Ctrl+Z), Redo (Ctrl+Y), Reset (Ctrl+Shift+R with confirmation dialog).
+**States:** Undo-available / Undo-disabled (stack empty), Redo-available / Redo-disabled, Reset always available.
+**Variants:** None.
+**Accessibility:** `aria-label` per button, keyboard shortcuts announced in tooltips.
+
+### Component Implementation Strategy
+
+**Architecture Principles:**
+
+1. **All standalone components** — No NgModule. Each component is self-contained with explicit imports.
+2. **OnPush change detection everywhere** — Signal-based reactivity. Components react to `BoardStateService` signals.
+3. **`isDragging` and `hoveredCard` global signals** — Live in `BoardStateService` (not cascaded via `@Input`). `isDragging` suppresses pills, overlays, and card inspector during drag. `hoveredCard` drives the `SimCardInspectorComponent` reactively.
+4. **`StackedZoneConfig` over variants** — One `SimStackedZoneComponent` configured per zone type via a config object, not separate components per zone.
+5. **CDK `cdkDropListGroup` sharing** — Board zones, hand, overlays, and XYZ material pills all belong to the same drop list group. This enables cross-container drag (overlay → board, material pill → GY). **Early technical spike recommended** to validate CDK Overlay + DragDrop interop.
+6. **Existing card image service** — Card images loaded from skytrix's existing `CardImageDTO` / `ImgLoaderDirective` infrastructure. No new image loading logic.
+
+**Component Hierarchy:**
+
+```
+SimBoardComponent (root grid)
+├── SimZoneComponent × 13 (MZ1-5, ST1-5, EMZ-L, EMZ-R, Field)
+│   └── SimCardComponent (0-1 per zone)
+│       └── SimXyzMaterialPeekComponent (conditional, XYZ only)
+├── SimStackedZoneComponent × 4 (Deck, ED, GY, Banished)
+│   └── SimPileOverlayComponent (conditional, on click/context-menu)
+├── SimHandComponent (1)
+│   └── SimCardComponent × N (0-N cards in hand)
+├── SimControlBarComponent (1)
+└── SimCardInspectorComponent (1, fixed position, hover-driven)
+```
+
+### Implementation Roadmap
+
+**Phase 1 — MVP-A Core (Critical Path):**
+
+- `SimBoardComponent` — CSS Grid layout, zone rendering, keyboard shortcut capture
+- `SimZoneComponent` — Drop target, card display, zone highlighting during drag
+- `SimCardComponent` — Card image, drag source, face-up/down/ATK/DEF states
+- `SimHandComponent` — Card row with drag reordering
+- `SimStackedZoneComponent` — Card count badge, top card display, click trigger
+- `SimControlBarComponent` — Undo/Redo/Reset with keyboard shortcuts
+- `SimCardInspectorComponent` — Hover-triggered side panel with card image, stats, and effect text
+
+**Phase 2 — MVP-A Complete (Full Interaction):**
+
+- `SimPileOverlayComponent` — Side overlay with card images and drag-to-board
+- `SimXyzMaterialPeekComponent` — Material pill with drag-to-detach
+- Context menu integration (`mat-menu` on Deck/ED for Shuffle, Search)
+- **CDK DragDrop + Overlay interop spike** — Validate `cdkDropListGroup` sharing across overlay boundaries
+
+**Phase 3 — Post-MVP Enhancements:**
+
+- `SimTokenComponent` — Token creation UI and token card rendering (post-MVP)
+- `SimCounterBadgeComponent` — Counter management on face-up cards (post-MVP)
+- Card pills on board cards — Quick-action pills on individual cards (post-MVP)
+- Card effect tooltip — Enhanced tooltip with full card text and image (informed by existing skytrix tooltip pattern)
+
+## UX Consistency Patterns
+
+### Drag & Drop Patterns
+
+**Drag Initiation:**
+- Hover on any face-up card → cursor changes to `grab`
+- `hoveredCard` signal updates in `BoardStateService` with **50ms debounce** — prevents flicker during fast mouse traversal across multiple cards, and naturally suppresses hover events during drag (since drag starts before debounce fires)
+- Click and hold → card "lifts" (scale: 1.05, box-shadow increase), `isDragging` signal set to `true`
+- Board enters drag mode: valid zones illuminate with `$sim-zone-highlight`, pills/overlays/inspector suppressed
+
+**During Drag:**
+- Card preview follows cursor via `cdkDragPreviewContainer: 'global'` — ensures correct z-index when dragging from overlays or pills that use CDK Overlay (overlay has high z-index, preview must be above it)
+- Valid target zones glow cyan (`$sim-zone-highlight`) on hover
+- Invalid zones (occupied single-card zones) show **no reaction** — silent rejection. No card replacement allowed; player must clear the zone first (drag existing card away, then place new card)
+- Hand zone supports reordering (CDK sort animation)
+
+**Cross-Container Drag:**
+- `cdkDropListGroup` directive placed on `SimBoardComponent` root element — all drop lists (board zones, hand, overlay card rows, XYZ material pill rows) are children of this group
+- This enables drag from overlay → board, material pill → GY, hand → zone, zone → zone without explicit `cdkDropListConnectedTo` wiring
+- Dynamic overlays (pile overlays, XYZ pills) automatically join the group as children of the root component
+
+**Drop Behavior:**
+- Drop on valid zone: card snaps into position (< 100ms transition), gold settle glow via CSS `@keyframes` + `.zone--just-dropped` class (removed after animation completes — pure CSS, no Angular signal needed)
+- Drop on invalid zone: card returns to origin with smooth animation (CDK default revert behavior)
+- Board state signal updates → computed signals propagate → OnPush re-renders affected zones only
+- Command pushed to undo stack
+
+**Drag from Overlay:**
+- Source pile overlay **stays open** during drag-from-overlay — allows multi-card operations (e.g., drag 3 cards from GY to board without re-opening overlay each time)
+- Overlay closes automatically **after the last drop** if user clicks outside or interacts elsewhere
+- Other overlays remain suppressed during drag (only source overlay stays)
+
+### Overlay & Panel Patterns
+
+**Pile Overlay Lifecycle:**
+- Click on stacked zone → pile overlay opens to the side (never centered fullscreen)
+- Opening a **new** pile overlay **auto-closes** the currently open overlay — maximum one pile overlay visible at a time
+- Overlay stays open during drag-from-overlay; closes after drop if user navigates away
+- Click-outside or Escape key → overlay closes
+- Empty stacked zone click → opens empty overlay with subtle message ("No cards in [zone name]") — confirms the zone interaction works and avoids "nothing happened" confusion
+
+**Card Inspector Panel:**
+- Fixed panel on right side of viewport, driven by `hoveredCard` signal (50ms debounced)
+- When a pile overlay is open on the right side → inspector **repositions to the left** via a computed signal (`inspectorPosition = overlay.isOpen && overlay.side === 'right' ? 'left' : 'right'`) — no OverlayPositionService needed, pure reactive computation
+- Hidden when `isDragging` is `true` — reappears when drag ends
+- Face-down cards: inspector shows **full card details** (solo context — player knows all own cards)
+
+**Overlay Z-Index Hierarchy:**
+1. Drag preview (highest — `cdkDragPreviewContainer: 'global'`)
+2. Context menus (`mat-menu` CDK Overlay)
+3. Pile overlays (`SimPileOverlayComponent`)
+4. Card inspector (`SimCardInspectorComponent` — `position: fixed`)
+5. Board zones (base level)
+
+### Context Menu Patterns
+
+**Stacked Zone Context Menu (Deck, Extra Deck):**
+- Trigger: `contextmenu` event (right-click) on `SimStackedZoneComponent`
+- Uses `mat-menu` directly — no custom component wrapper
+- Deck menu items: **Shuffle**, **Search** (opens pile overlay in search mode)
+- Extra Deck menu items: **View** (opens pile overlay in view mode)
+- Menu dismissed on item selection or click-outside
+
+**Board Card Context Menu (Card State Toggle):**
+- Trigger: `contextmenu` event (right-click) on `SimCardComponent` **when on the board** (not in hand or overlay)
+- Uses `mat-menu` with contextual items based on current card state:
+  - Face-up ATK position → options: **Flip face-down**, **Change to DEF**
+  - Face-up DEF position → options: **Flip face-down**, **Change to ATK**
+  - Face-down DEF position → options: **Flip face-up (ATK)**, **Flip face-up (DEF)**
+- Card state change is a board state command → pushed to undo stack
+- Menu items are dynamic, computed from current card state signal
+
+**Context Menu Production Rule:**
+- `event.preventDefault()` on `contextmenu` event on the **entire board**, in **all builds** (including `isDevMode()`). The native browser context menu is never shown on the board — it breaks drag & drop flow and is not useful during simulator interaction.
+- The **navbar** retains the native browser context menu (useful for debugging links, navigation, etc.).
+- **Right-click gesture reserved:** The right-click on the board is blocked from native behavior but the gesture is reserved for a future custom context menu (e.g., card quick-actions). Not implemented now — just ensure `preventDefault()` is in place so the gesture is available later.
+
+### Feedback & State Indication Patterns
+
+**Card Placement Feedback (Gold Glow):**
+- On successful drop: target zone receives `.zone--just-dropped` CSS class
+- CSS `@keyframes` animation: gold glow (`$sim-accent-secondary`) fades from 0.4 opacity to 0 over ~400ms
+- Class removed after animation completes (via `animationend` event listener)
+- Pure CSS approach — no Angular signal, no timer, no subscription
+
+**Drag Zone Highlighting:**
+- Valid zones: `$sim-zone-highlight` (cyan at 0.3 opacity) + border intensification
+- Invalid/occupied zones: no visual change — silent rejection
+- Hand zone: accepts drops (return to hand) with cyan highlight
+
+**Card State Indicators:**
+- Face-up ATK: card vertical, full image visible
+- Face-up DEF: card rotated 90° (horizontal), full image visible
+- Face-down: card back image displayed on the board (must never appear invisible/empty). Inspector shows full card details regardless (solo context — player knows all own cards)
+- XYZ with materials: 2-3px offset card borders visible below the XYZ card
+
+**Stacked Zone Badges:**
+- `mat-badge` with card count, always visible when count > 0
+- Badge uses `$sim-accent-primary` (cyan) background
+- Count updates reactively via computed signal from board state
+
+### Keyboard Shortcut Patterns
+
+**Defined Shortcuts:**
+
+| Shortcut | Action | Scope |
+|---|---|---|
+| `Ctrl+Z` | Undo last board action | Global (captured by `SimBoardComponent`) |
+| `Ctrl+Y` | Redo last undone action | Global |
+| `Escape` | Close active overlay/menu | Global |
+
+**Reset — No Keyboard Shortcut:**
+- Reset is button-only (`SimControlBarComponent`) — **no keyboard shortcut assigned**
+- `Ctrl+Shift+R` conflicts with browser hard refresh across Chrome/Firefox/Edge — assigning it would either fail silently or trigger unintended browser behavior
+- Reset requires confirmation dialog, making a shortcut less useful (still needs mouse click to confirm)
+
+**Shortcut Principles:**
+- All shortcuts captured at `SimBoardComponent` level via `@HostListener('document:keydown')`
+- Shortcuts disabled when focus is in a text input (e.g., pile overlay search filter)
+- Shortcut hints displayed as tooltips on `SimControlBarComponent` buttons
+
+### Loading & Empty State Patterns
+
+**Empty Stacked Zone:**
+- Visual: dimmed zone with zone label, no card image, badge hidden (count = 0)
+- Click: opens empty overlay with subtle message — e.g., "No cards in Graveyard" — confirms zone works, avoids "nothing happened" confusion
+- Same overlay component, just empty content state
+
+**Empty Hand:**
+- Visual: dashed border only (subtle `$sim-zone-border` with `border-style: dashed`)
+- No placeholder text — dashed border is sufficient visual affordance
+- Drop target remains active (cards can be returned to empty hand)
+
+**Deck Loading State:**
+- Brief loading indicator while deck data loads from skytrix API
+- Board zones render immediately (empty state) — cards populate once data arrives
+- Shuffle + draw 5 animation plays after load completes
+
+**Undo/Redo Stack States:**
+- Undo stack empty → Undo button disabled (dimmed icon, `aria-disabled`)
+- Redo stack empty → Redo button disabled
+- **Undo scope: board state only** — undo does NOT re-open previously closed overlays, does NOT restore inspector state, does NOT reverse UI-only actions (opening/closing panels). Undo reverses card movements, position changes, and zone state changes exclusively
+
+## Responsive Design & Accessibility
+
+### Responsive Strategy
+
+**Approach:** Fixed 16:9 aspect ratio with proportional scaling (Master Duel "zoom-out" model). The board is a fixed-size internal layout that scales via `transform: scale()` to fit the available viewport space. No breakpoint-based layout changes — the board structure is identical at every viewport size. Card details remain accessible at any scale via hover/inspector.
+
+**Key Principle:** The board never scrolls, never changes grid structure, and never hides zones. The only variable is the scale factor. This eliminates breakpoint-specific CSS and responsive layout bugs entirely.
+
+### Scaling Model
+
+The board container has a fixed internal resolution (e.g., 1920×1080 logical pixels at 16:9). The scale factor is computed as:
+
+```
+availableWidth = viewport width
+availableHeight = viewport height - navbar height (if visible)
+scaleX = availableWidth / boardInternalWidth
+scaleY = availableHeight / boardInternalHeight
+scale = min(scaleX, scaleY)
+```
+
+The board is centered in the available space. Empty space (letterboxing) shows the app's existing background — the board floats over it.
+
+### Viewport Considerations
+
+| Context | Behavior |
+|---|---|
+| **Desktop (any size)** | Board scales to fit. Card inspector as fixed side panel (overlays board edge). Full drag & drop with mouse. |
+| **Small window / laptop** | Board scales down proportionally. All zones remain visible and functional. Inspector may overlap more of the board. |
+| **Mobile (post-MVP)** | Display locked to landscape orientation. Same scaling model applies. Touch interaction (tap-to-place) designed separately post-MVP. |
+
+**No breakpoints for layout changes.** The board grid structure is invariant. Only the scale factor changes.
+
+### Mobile (Post-MVP)
+
+- **Landscape-locked display** — like Master Duel on mobile, the simulator locks to landscape orientation
+- **Tap-to-Place Mode (Required for Mobile Card Movement):**
+  - CDK DragDrop is incompatible with touch on small screens — drag triggers scroll, scroll interferes with drop detection
+  - Alternative interaction: tap card → card highlights (cyan selection) → tap target zone → card moves. Two taps replace one drag.
+  - This mode must be designed and implemented separately (post-MVP)
+- Card inspector becomes full-screen modal on tap
+- Context menus replaced by long-press or dedicated buttons
+
+### Accessibility Strategy
+
+**Compliance Level:** Pragmatic WCAG AA — not pursuing formal certification, but following AA guidelines where they align with good UX. Solo personal tool: keyboard navigation and contrast are high priority; screen reader support is low priority.
+
+**Already Defined (Previous Steps):**
+
+| Requirement | Status | Source |
+|---|---|---|
+| Color contrast ≥ 4.5:1 (text) | Validated | Step 7 — all text tokens exceed AA |
+| Color contrast ≥ 3:1 (UI components) | Validated | Step 7 — cyan 8.2:1, gold 7.1:1 |
+| Non-color feedback (drag) | Defined | Step 7 — border + glow + scale |
+| Keyboard shortcuts | Defined | Step 12 — Ctrl+Z, Ctrl+Y, Escape |
+| ARIA roles on components | Defined | Step 11 — per component spec |
+| Focus indicators | Default | Angular Material default focus rings |
+
+**Keyboard Navigation:**
+- Tab order follows visual grid: left→right, top→bottom
+- Arrow keys navigate within zones (hand cards, overlay card lists)
+- Escape closes active overlay/menu and returns focus to triggering zone
+- Keyboard shortcuts disabled when focus is in text input (search filter)
+
+**ARIA Implementation:**
+- `SimBoardComponent`: `role="application"`, `aria-label="Yu-Gi-Oh simulator board"`
+- `SimZoneComponent`: `role="listbox"`, `aria-label="[Zone Name]"`
+- `SimHandComponent`: `role="listbox"`, cards are `role="option"`
+- `SimCardInspectorComponent`: `role="complementary"`, `aria-live="polite"`
+- `SimPileOverlayComponent`: `role="dialog"`, `aria-modal="true"`, focus trap
+- Drag feedback: `aria-grabbed` on dragged card, `aria-dropeffect` on valid zones
+
+**Reduced Motion:**
+- Respect `prefers-reduced-motion` media query
+- When active: disable gold glow animation, card lift scale, overlay fade transitions, CDK drag placeholder transitions (`.cdk-drag-placeholder`, `.cdk-drag-animating`)
+- Functional behavior unchanged — only decorative animations suppressed
+- **Dev-only toggle:** `SimControlBarComponent` includes a reduced-motion toggle button behind `isDevMode()` guard — applies `.force-reduced-motion` class on the board root, allowing testing without changing OS settings
+
+### Testing Strategy
+
+**MVP Testing (Pragmatic):**
+- Primary user (Axel) tests on personal desktop setup
+- Chrome DevTools responsive mode for breakpoint verification
+- **Visual regression tests (Playwright):** Automated screenshots at 1280px, 1100px, and 800px viewport widths. Compared against baseline to detect CSS Grid breakage. Minimal script (~10 lines), integrated into CI.
+- Lighthouse accessibility audit for automated AA checks
+- Manual keyboard-only navigation test (tab through all zones, trigger shortcuts)
+
+**Post-MVP Testing (When Mobile Added):**
+- Real device testing on tablet (landscape)
+- Touch interaction validation with CDK DragDrop
+- Touch target size audit (44×44px minimum)
+- Tap-to-place mode functional testing

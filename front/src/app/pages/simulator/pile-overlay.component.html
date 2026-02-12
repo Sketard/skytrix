@@ -1,0 +1,101 @@
+@if (isOpen()) {
+  <div class="overlay-panel"
+       #overlayPanel
+       tabindex="-1"
+       cdkDropList
+       [cdkDropListData]="activeZone()"
+       [cdkDropListSortingDisabled]="true"
+       [cdkDropListEnterPredicate]="noDrop">
+
+    <!-- Header -->
+    <div class="overlay-header">
+      <h3 class="overlay-title">{{ overlayTitle() }}</h3>
+      <button class="overlay-close" (click)="close()" aria-label="Close overlay">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Search input -->
+    @if (isSearchMode()) {
+      <div class="search-input-wrapper">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input class="search-input"
+               type="text"
+               placeholder="Filter by name..."
+               aria-label="Search cards"
+               [value]="filterText()"
+               (input)="onFilterInput($event)"
+               #searchInput />
+      </div>
+    }
+
+    <!-- Empty state -->
+    @if (isEmpty()) {
+      <div class="overlay-empty">
+        <span>{{ emptyMessage() }}</span>
+      </div>
+    } @else {
+      <!-- Grouped display for ED / Banished (browse mode only) -->
+      @if (needsGrouping() && !isSearchMode() && !isRevealMode()) {
+        @if (faceUpCards().length > 0) {
+          <div class="card-group">
+            <span class="group-label">Face-up</span>
+            @for (card of faceUpCards(); track card.instanceId) {
+              <div class="overlay-card-row"
+                   cdkDrag
+                   [cdkDragData]="card"
+                   cdkDragPreviewContainer="global"
+                   (cdkDragStarted)="onDragStarted()"
+                   (cdkDragEnded)="onDragEnded()"
+                   [attr.aria-label]="card.card.card.name + ' - drag to move'">
+                <app-sim-card [cardInstance]="card"
+                              [size]="'hand'"
+                              (hovered)="onCardHovered($event)"
+                              (unhovered)="onCardUnhovered()" />
+                <span class="card-name">{{ card.card.card.name }}</span>
+              </div>
+            }
+          </div>
+        }
+        @if (faceDownCards().length > 0) {
+          <div class="card-group">
+            <span class="group-label">Face-down</span>
+            @for (card of faceDownCards(); track card.instanceId) {
+              <div class="overlay-card-row face-down-row"
+                   cdkDrag
+                   [cdkDragData]="card"
+                   cdkDragPreviewContainer="global"
+                   (cdkDragStarted)="onDragStarted()"
+                   (cdkDragEnded)="onDragEnded()"
+                   [attr.aria-label]="'Face-down card - drag to move'">
+                <app-sim-card [cardInstance]="card"
+                              [size]="'hand'"
+                              (hovered)="onCardHovered($event)"
+                              (unhovered)="onCardUnhovered()" />
+                <span class="card-name face-down-label">Face-down</span>
+                <mat-icon class="face-down-icon">visibility_off</mat-icon>
+              </div>
+            }
+          </div>
+        }
+      } @else {
+        <!-- Flat display for search/reveal/GY browse -->
+        @for (card of displayCards(); track card.instanceId) {
+          <div class="overlay-card-row"
+               cdkDrag
+               [cdkDragData]="card"
+               cdkDragPreviewContainer="global"
+               (cdkDragStarted)="onDragStarted()"
+               (cdkDragEnded)="onDragEnded()"
+               [attr.aria-label]="card.card.card.name + ' - drag to move'">
+            <app-sim-card [cardInstance]="card"
+                          [size]="'hand'"
+                          (hovered)="onCardHovered($event)"
+                          (unhovered)="onCardUnhovered()" />
+            <span class="card-name">{{ card.card.card.name }}</span>
+          </div>
+        }
+      }
+    }
+  </div>
+}
