@@ -2,23 +2,41 @@
 
 :host {
   display: block;
+  width: 100%;
   height: 100%;
 }
 
 .board-container {
+  width: 100%;
   height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: hidden;
+  background: $sim-bg;
   position: relative;
 }
 
 .sim-board {
   display: grid;
   grid-template-areas:
-    '.        .     emz-l   .      emz-r   .      banish'
-    'field    m1    m2      m3     m4      m5     gy'
-    'ed       st1   st2     st3    st4     st5    deck'
-    'controls hand  hand    hand   hand    hand   .';
-  grid-template-columns: minmax(60px, 1fr) repeat(5, minmax(70px, 1fr)) minmax(60px, 1fr);
-  grid-template-rows: auto 1fr 1fr auto;
-  gap: $sim-gap-zone;
-  height: 100%;
+    '.     .     emz-l   .      emz-r   .      banish'
+    'field m1    m2      m3     m4      m5     gy'
+    'ed    st1   st2     st3    st4     st5    deck'
+    'hand  hand  hand    hand   hand    hand   hand';
+  // Grid 1060×720: cols 148*7+4*6=1060, rows 200*3+108+4*3=720
+  grid-template-columns: repeat(7, 148px);
+  grid-template-rows: 200px 200px 200px 108px;
+  gap: $sim-gap-zone-px;
+  width: 1060px;
+  height: 720px;
+  flex-shrink: 0;
+  transform-origin: top center;
+  transition: transform 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-board {
+    transition: none;
+  }
 }

@@ -1,5 +1,7 @@
 <div class="board-container" cdkDropListGroup [class.force-reduced-motion]="forceReducedMotion()">
-  <div class="sim-board" role="application" aria-label="Yu-Gi-Oh simulator board">
+  <div class="sim-board" role="application" aria-label="Yu-Gi-Oh simulator board"
+       [style.transform]="'scale(' + scaleFactor() + ')'"
+  >
     <!-- Row 1: Extra Monster Zones + Banish -->
     <app-sim-zone [zoneId]="ZoneId.EXTRA_MONSTER_L" [style.grid-area]="'emz-l'" />
     <app-sim-zone [zoneId]="ZoneId.EXTRA_MONSTER_R" [style.grid-area]="'emz-r'" />
@@ -23,10 +25,12 @@
     <app-sim-zone [zoneId]="ZoneId.SPELL_TRAP_5" [style.grid-area]="'st5'" />
     <app-sim-stacked-zone [zoneId]="ZoneId.MAIN_DECK" [style.grid-area]="'deck'" />
 
-    <!-- Row 4: Controls + Hand -->
-    <app-sim-control-bar [style.grid-area]="'controls'" />
+    <!-- Row 4: Hand -->
     <app-sim-hand [style.grid-area]="'hand'" />
   </div>
+
+  <!-- Control bar — floating, outside grid -->
+  <app-sim-control-bar />
 
   <!-- Pile overlay — inside cdkDropListGroup container, outside grid -->
   <app-sim-pile-overlay />

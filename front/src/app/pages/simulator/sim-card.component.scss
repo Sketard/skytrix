@@ -1,13 +1,16 @@
 @use 'sim-tokens' as *;
 
 :host {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
 }
 
 .sim-card {
   aspect-ratio: $sim-card-aspect-ratio;
-  width: 100%;
+  height: 100%;
+  width: auto;
   border-radius: $sim-radius-card;
   overflow: hidden;
   position: relative;
@@ -17,8 +20,7 @@
   }
 
   &.hand-size {
-    width: auto;
-    height: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -27,14 +29,6 @@
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.card-back {
-  width: 100%;
-  height: 100%;
-  background: $sim-surface-elevated;
-  border: 1px solid $sim-zone-border;
-  box-sizing: border-box;
 }
 
 .material-peek-borders {
@@ -55,8 +49,11 @@
 
 // CDK DragDrop card styles
 :host.cdk-drag-preview {
+  // Reset individual transform properties leaked from hand fan layout
+  translate: none;
+  rotate: none;
+  scale: 1.05;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  transform: scale(1.05);
   opacity: 0.9;
   z-index: 1000;
 }
@@ -66,7 +63,8 @@
 }
 
 :host.cdk-drag-animating {
-  transition: transform 200ms ease;
+  // Instant — prevents CDK "fly back to source" animation on cross-container drops
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

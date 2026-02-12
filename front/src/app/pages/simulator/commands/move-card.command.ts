@@ -8,8 +8,13 @@ export interface MaterialContext {
 
 export class MoveCardCommand implements SimCommand {
   private readonly cardInstance: CardInstance;
+  private readonly movedCard: CardInstance;
   private readonly fromIndex: number;
   private readonly originalMaterials?: CardInstance[];
+
+  private static isFaceDownZone(zone: ZoneId): boolean {
+    return zone === ZoneId.MAIN_DECK || zone === ZoneId.EXTRA_DECK;
+  }
 
   constructor(
     private readonly boardState: BoardStateService,
@@ -41,6 +46,12 @@ export class MoveCardCommand implements SimCommand {
         this.originalMaterials = [...(hostCard?.overlayMaterials ?? [])];
       }
     }
+
+    // Adjust faceDown based on target zone (except attach — materials have no face state)
+    const targetFaceDown = MoveCardCommand.isFaceDownZone(toZone);
+    this.movedCard = materialContext?.type === 'attach' || targetFaceDown === this.cardInstance.faceDown
+      ? this.cardInstance
+      : { ...this.cardInstance, faceDown: targetFaceDown };
   }
 
   execute(): void {
@@ -68,9 +79,9 @@ export class MoveCardCommand implements SimCommand {
         );
         const toCards = [...state[this.toZone]];
         if (this.toIndex !== undefined && this.toIndex >= 0) {
-          toCards.splice(this.toIndex, 0, this.cardInstance);
+          toCards.splice(this.toIndex, 0, this.movedCard);
         } else {
-          toCards.push(this.cardInstance);
+          toCards.push(this.movedCard);
         }
         newState[this.toZone] = toCards;
         return newState;
@@ -78,16 +89,16 @@ export class MoveCardCommand implements SimCommand {
       return;
     }
 
-    // Normal move (existing behavior)
+    // Normal move
     this.boardState.boardState.update(state => {
       const newState = { ...state };
       newState[this.fromZone] = state[this.fromZone].filter(c => c.instanceId !== this.cardInstanceId);
       if (this.toIndex !== undefined && this.toIndex >= 0) {
         const target = [...newState[this.toZone]];
-        target.splice(this.toIndex, 0, this.cardInstance);
+        target.splice(this.toIndex, 0, this.movedCard);
         newState[this.toZone] = target;
       } else {
-        newState[this.toZone] = [...newState[this.toZone], this.cardInstance];
+        newState[this.toZone] = [...newState[this.toZone], this.movedCard];
       }
       return newState;
     });

@@ -18,12 +18,19 @@ $sim-error: #ef4444;
 $sim-overlay-backdrop: rgba(#0a0e1a, 0.7);
 
 // Spacing tokens
-$sim-gap-zone: 0.5rem;
+$sim-gap-zone: 0.25rem;
+$sim-gap-zone-px: 4px;
 $sim-gap-card: 0.25rem;
-$sim-padding-zone: 0.5rem;
+$sim-padding-zone: 0.25rem;
 $sim-padding-overlay: 1rem;
 $sim-radius-zone: 0.375rem;
 $sim-radius-card: 0.25rem;
 
 // Card dimension token
 $sim-card-aspect-ratio: list.slash(59, 86);
+
+// Hand fan tokens
+$sim-hand-card-height: 96px;
+$sim-hand-hover-lift: -24px;
+$sim-hand-hover-scale: 1.08;
+$sim-hand-transition: 200ms ease;

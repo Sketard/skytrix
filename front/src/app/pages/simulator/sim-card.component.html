@@ -1,11 +1,9 @@
 <div class="sim-card"
      [class.def-position]="isDefPosition()"
      [class.hand-size]="size() === 'hand'"
-     (mouseenter)="hovered.emit(cardInstance())"
-     (mouseleave)="unhovered.emit()"
-     (click)="onCardClick()">
+     (click)="clicked.emit(cardInstance())">
   @if (isFaceDown()) {
-    <div class="card-back"></div>
+    <img src="assets/images/card_back.jpg" alt="Card back" class="card-image">
   } @else {
     <img [src]="imageUrl()" [alt]="cardInstance().card.card.name" class="card-image">
   }

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, ViewChild, computed, inject, input, isDevMode, signal } from '@angular/core';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { MatBadgeModule } from '@angular/material/badge';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { BoardStateService } from './board-state.service';
@@ -15,7 +15,7 @@ import { SimCardComponent } from './sim-card.component';
   styleUrl: './stacked-zone.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatBadgeModule, MatIconModule, MatMenuModule, SimCardComponent],
+  imports: [DragDropModule, MatIconModule, MatMenuModule, SimCardComponent],
 })
 export class SimStackedZoneComponent {
   readonly zoneId = input.required<ZoneId>();
@@ -32,8 +32,8 @@ export class SimStackedZoneComponent {
     const c = this.cards();
     return c.length > 0 ? c[c.length - 1] : null;
   });
-  readonly showFaceDown = computed(() =>
-    this.zoneId() === ZoneId.MAIN_DECK || this.zoneId() === ZoneId.EXTRA_DECK
+  readonly showFaceDown = computed<boolean | null>(() =>
+    this.zoneId() === ZoneId.MAIN_DECK || this.zoneId() === ZoneId.EXTRA_DECK ? true : null
   );
   readonly zoneConfig = computed(() => ZONE_CONFIG[this.zoneId()]);
   readonly isDeckZone = computed(() => this.zoneId() === ZoneId.MAIN_DECK);
@@ -82,23 +82,17 @@ export class SimStackedZoneComponent {
   }
 
   onZoneClick(): void {
-    if (this.isDeckZone()) {
-      if (this.cardCount() === 0) {
-        this.triggerDeckShake();
-      } else {
-        this.deckMenuTrigger?.openMenu();
-      }
+    if (this.isDeckZone() && this.cardCount() === 0) {
+      this.triggerDeckShake();
       return;
     }
     this.boardState.openOverlay(this.zoneId());
   }
 
+  // preventDefault handled by board-level @HostListener('contextmenu')
   onContextMenu(event: MouseEvent): void {
     if (this.isDeckZone()) {
       if (this.boardState.isDragging()) return;
-      if (!isDevMode()) {
-        event.preventDefault();
-      }
       if (this.menuAnchor) {
         const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
         this.menuAnchor.nativeElement.style.left = `${event.clientX - rect.left}px`;
@@ -143,14 +137,6 @@ export class SimStackedZoneComponent {
     } catch (e) {
       if (isDevMode()) console.warn('Reveal failed', e);
     }
-  }
-
-  onCardHovered(card: CardInstance): void {
-    this.boardState.setHoveredCard(card);
-  }
-
-  onCardUnhovered(): void {
-    this.boardState.setHoveredCard(null);
   }
 
   onDragStarted(): void {

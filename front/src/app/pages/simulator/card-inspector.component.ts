@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject } from '@angular/core';
 import { BoardStateService } from './board-state.service';
 
 @Component({
@@ -12,31 +12,27 @@ import { BoardStateService } from './board-state.service';
     '[attr.aria-label]': '"Card inspector"',
     'aria-live': 'polite',
     '[class.visible]': 'isVisible()',
-    '[class.expanded]': 'isExpanded()',
-    '[class.position-left]': 'inspectorPosition() === "left"',
   },
 })
 export class SimCardInspectorComponent {
   private readonly boardState = inject(BoardStateService);
+  private readonly elementRef = inject(ElementRef);
 
-  readonly hoveredCard = this.boardState.hoveredCard;
-  readonly isDragging = this.boardState.isDragging;
+  readonly selectedCard = this.boardState.selectedCard;
 
-  readonly isVisible = computed(() =>
-    this.hoveredCard() !== null && !this.isDragging()
-  );
+  readonly isVisible = computed(() => this.selectedCard() !== null);
 
-  readonly isFaceDown = computed(() =>
-    this.hoveredCard()?.faceDown ?? false
-  );
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isVisible()) {
+      this.boardState.clearSelection();
+    }
+  }
 
-  readonly inspectorPosition = computed(() =>
-    this.boardState.isOverlayOpen() || this.boardState.isMaterialPeekOpen() ? 'left' : 'right'
-  );
-
-  readonly isExpanded = signal(false);
-
-  toggleDrawer(): void {
-    this.isExpanded.update(v => !v);
+  @HostListener('document:mousedown', ['$event'])
+  onDocumentMousedown(event: MouseEvent): void {
+    if (!this.isVisible()) return;
+    if (this.elementRef.nativeElement.contains(event.target as HTMLElement)) return;
+    this.boardState.clearSelection();
   }
 }

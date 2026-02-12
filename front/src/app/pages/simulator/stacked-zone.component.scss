@@ -16,10 +16,17 @@
   height: 100%;
   box-sizing: border-box;
   position: relative;
+  overflow: hidden;
 
   &.empty {
     opacity: 0.5;
   }
+}
+
+// Constrain card to available zone height
+app-sim-card {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .zone-label {
@@ -29,11 +36,6 @@
   text-align: center;
   margin-top: 4px;
   user-select: none;
-}
-
-// Badge color override (M3 CSS custom property — no ::ng-deep)
-:host {
-  --mat-badge-background-color: #{$sim-accent-primary};
 }
 
 // CDK DragDrop feedback

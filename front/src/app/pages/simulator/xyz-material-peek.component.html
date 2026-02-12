@@ -21,8 +21,7 @@
                cdkDragPreviewContainer="global"
                (cdkDragStarted)="onDragStarted()"
                (cdkDragEnded)="onDragEnded()"
-               (mouseenter)="onCardHovered(material)"
-               (mouseleave)="onCardUnhovered()">
+               (click)="onCardClicked(material)">
             <img [src]="material.image.smallUrl"
                  [alt]="material.card.card.name"
                  class="material-image" />

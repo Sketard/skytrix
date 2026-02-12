@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject, isDevMode } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, HostListener, inject, isDevMode, signal, untracked } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ZoneId } from './simulator.models';
 import { SimZoneComponent } from './zone.component';
@@ -10,6 +10,7 @@ import { SimXyzMaterialPeekComponent } from './xyz-material-peek.component';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { SimControlBarComponent } from './control-bar.component';
+import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 
 @Component({
   selector: 'app-sim-board',
@@ -23,7 +24,33 @@ export class SimBoardComponent {
   protected readonly ZoneId = ZoneId;
   private readonly boardState = inject(BoardStateService);
   private readonly commandStack = inject(CommandStackService);
+  private readonly navbarCollapse = inject(NavbarCollapseService);
   readonly forceReducedMotion = this.boardState.forceReducedMotion;
+
+  protected readonly scaleFactor = signal(1);
+
+  constructor() {
+    effect(() => {
+      this.navbarCollapse.navbarWidth();
+      untracked(() => this.recalculateScale());
+    });
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.recalculateScale();
+  }
+
+  private recalculateScale(): void {
+    const availableWidth = window.innerWidth - this.navbarCollapse.navbarWidth();
+    const availableHeight = window.innerHeight;
+    this.scaleFactor.set(Math.min(availableWidth / 1060, availableHeight / 720, 1));
+  }
+
+  @HostListener('contextmenu', ['$event'])
+  onContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+  }
 
   @HostListener('document:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {

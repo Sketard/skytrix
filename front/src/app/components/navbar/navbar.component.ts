@@ -1,9 +1,9 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatButton } from '@angular/material/button';
+import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 
 class Tab {
   name: string;
@@ -19,18 +19,21 @@ class Tab {
 
 @Component({
   selector: 'navbar',
-  imports: [CommonModule, MatIconModule, RouterLinkActive, RouterLink, MatButton],
+  imports: [MatIconModule, RouterLinkActive, RouterLink, MatButton],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NavbarComponent {
+  private readonly navbarCollapse = inject(NavbarCollapseService);
+  private readonly authService = inject(AuthService);
+
   public tabs: Array<Tab> = [];
-
   public user = this.authService.user;
+  readonly collapsed = this.navbarCollapse.collapsed;
 
-  constructor(private readonly authService: AuthService) {
+  constructor() {
     this.addTab(new Tab('Construction de deck', 'folder', '/decks'));
     this.addTab(new Tab('Recherche de cartes', 'search', '/search'));
     this.addTab(new Tab('Paramètres', 'settings_suggest', '/parameters'));
@@ -38,6 +41,10 @@ export class NavbarComponent {
 
   private addTab(tab: Tab) {
     this.tabs.push(tab);
+  }
+
+  toggle(): void {
+    this.navbarCollapse.toggle();
   }
 
   public logout() {

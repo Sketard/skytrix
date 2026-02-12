@@ -147,7 +147,7 @@ SimulatorPage (page container — loads deck, orchestrates)
 
 **Board Scaling Model: Fixed 16:9 with Proportional Scaling**
 - The board container has fixed internal dimensions (16:9 aspect ratio). Zone sizes use fixed proportions inside this container — no `fr`/`minmax()`.
-- The container scales via `transform: scale()` to fit the available viewport space (width × height minus navbar height if visible).
+- The container scales via `transform: scale()` to fit the available viewport space (width minus navbar width if expanded × height).
 - Scale factor: `min(availableWidth / boardWidth, availableHeight / boardHeight)` — computed as a signal in `BoardComponent`, reactive to `window.resize` and navbar collapse state.
 - The board is centered in the available space; empty space (letterboxing) shows the app background.
 - No breakpoints, no responsive layout changes — the grid structure is invariant; only the scale factor changes.
@@ -238,7 +238,7 @@ User Action (drag drop / button / keyboard)
 **Collapsible Navbar Signal Flow:**
 - The navbar collapse state (`navbarCollapsed` signal) lives in the **NavbarComponent** (or a shared app-level service if multiple components need it). It is NOT a simulator service concern.
 - On the simulator page, the navbar starts **collapsed by default**. On all other pages, it starts expanded. This is driven by the route — `SimulatorPageComponent` sets `navbarCollapsed = true` on init.
-- `BoardComponent` reads the navbar height (or collapsed state) to compute its scale factor. This can be done via a `ResizeObserver` on the viewport area above the board, or by reading `navbarCollapsed` and computing available height = `window.innerHeight - navbarHeight`.
+- `BoardComponent` reads the navbar width (or collapsed state) to compute its scale factor. This can be done via a `ResizeObserver` on the viewport area beside the board, or by reading `navbarCollapsed` and computing available width = `window.innerWidth - navbarWidth`.
 - Navbar toggle state is **ephemeral** — not persisted across navigations.
 
 ### Component Communication Patterns
