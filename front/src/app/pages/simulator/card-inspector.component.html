@@ -1,0 +1,58 @@
+@if (isVisible()) {
+  @if (hoveredCard(); as card) {
+    <div class="drawer-bar" (click)="toggleDrawer()">
+      @if (isFaceDown()) {
+        <span class="drawer-bar-text">Face-down card</span>
+      } @else {
+        <span class="drawer-bar-text">{{ card.card.card.name }}</span>
+      }
+      <span class="drawer-toggle">{{ isExpanded() ? '▼' : '▲' }}</span>
+    </div>
+
+    @if (isFaceDown()) {
+      <div class="inspector-content">
+        <div class="card-back-large"></div>
+      </div>
+    } @else {
+      <div class="inspector-content">
+        <img [src]="card.image.url || card.image.smallUrl"
+             [alt]="card.card.card.name"
+             class="inspector-image" />
+        <div class="inspector-details">
+          <h3 class="card-name">{{ card.card.card.name }}</h3>
+          @if (card.card.card.isMonster) {
+            <div class="card-stats">
+              @if (card.card.card.attribute) {
+                <span class="stat">{{ card.card.card.attribute }}</span>
+              }
+              @if (card.card.card.race) {
+                <span class="stat">{{ card.card.card.race }}</span>
+              }
+              @if (card.card.card.isLink) {
+                <span class="stat">Link-{{ card.card.card.linkval }}</span>
+              } @else if (card.card.card.level) {
+                <span class="stat">Lv. {{ card.card.card.level }}</span>
+              }
+              @if (card.card.card.scale) {
+                <span class="stat">Scale {{ card.card.card.scale }}</span>
+              }
+            </div>
+            <div class="card-atk-def">
+              <span>ATK {{ card.card.card.displayAtk }}</span>
+              @if (card.card.card.hasDefense) {
+                <span>DEF {{ card.card.card.displayDef }}</span>
+              }
+            </div>
+          } @else {
+            <div class="card-stats">
+              @if (card.card.card.race) {
+                <span class="stat">{{ card.card.card.race }}</span>
+              }
+            </div>
+          }
+          <div class="card-effect" [innerHTML]="card.card.card.description"></div>
+        </div>
+      </div>
+    }
+  }
+}

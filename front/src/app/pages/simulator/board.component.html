@@ -1,0 +1,39 @@
+<div class="board-container" cdkDropListGroup [class.force-reduced-motion]="forceReducedMotion()">
+  <div class="sim-board" role="application" aria-label="Yu-Gi-Oh simulator board">
+    <!-- Row 1: Extra Monster Zones + Banish -->
+    <app-sim-zone [zoneId]="ZoneId.EXTRA_MONSTER_L" [style.grid-area]="'emz-l'" />
+    <app-sim-zone [zoneId]="ZoneId.EXTRA_MONSTER_R" [style.grid-area]="'emz-r'" />
+    <app-sim-stacked-zone [zoneId]="ZoneId.BANISH" [style.grid-area]="'banish'" />
+
+    <!-- Row 2: Field + Monster Zones + GY -->
+    <app-sim-zone [zoneId]="ZoneId.FIELD_SPELL" [style.grid-area]="'field'" />
+    <app-sim-zone [zoneId]="ZoneId.MONSTER_1" [style.grid-area]="'m1'" />
+    <app-sim-zone [zoneId]="ZoneId.MONSTER_2" [style.grid-area]="'m2'" />
+    <app-sim-zone [zoneId]="ZoneId.MONSTER_3" [style.grid-area]="'m3'" />
+    <app-sim-zone [zoneId]="ZoneId.MONSTER_4" [style.grid-area]="'m4'" />
+    <app-sim-zone [zoneId]="ZoneId.MONSTER_5" [style.grid-area]="'m5'" />
+    <app-sim-stacked-zone [zoneId]="ZoneId.GRAVEYARD" [style.grid-area]="'gy'" />
+
+    <!-- Row 3: ED + Spell/Trap Zones + Deck -->
+    <app-sim-stacked-zone [zoneId]="ZoneId.EXTRA_DECK" [style.grid-area]="'ed'" />
+    <app-sim-zone [zoneId]="ZoneId.SPELL_TRAP_1" [style.grid-area]="'st1'" />
+    <app-sim-zone [zoneId]="ZoneId.SPELL_TRAP_2" [style.grid-area]="'st2'" />
+    <app-sim-zone [zoneId]="ZoneId.SPELL_TRAP_3" [style.grid-area]="'st3'" />
+    <app-sim-zone [zoneId]="ZoneId.SPELL_TRAP_4" [style.grid-area]="'st4'" />
+    <app-sim-zone [zoneId]="ZoneId.SPELL_TRAP_5" [style.grid-area]="'st5'" />
+    <app-sim-stacked-zone [zoneId]="ZoneId.MAIN_DECK" [style.grid-area]="'deck'" />
+
+    <!-- Row 4: Controls + Hand -->
+    <app-sim-control-bar [style.grid-area]="'controls'" />
+    <app-sim-hand [style.grid-area]="'hand'" />
+  </div>
+
+  <!-- Pile overlay — inside cdkDropListGroup container, outside grid -->
+  <app-sim-pile-overlay />
+
+  <!-- XYZ material peek — inside cdkDropListGroup container, outside grid -->
+  <app-sim-xyz-material-peek />
+
+  <!-- Inspector — inside cdkDropListGroup container, outside grid -->
+  <app-sim-card-inspector />
+</div>

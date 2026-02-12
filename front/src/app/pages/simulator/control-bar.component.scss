@@ -1,0 +1,53 @@
+@use 'sim-tokens' as *;
+
+:host {
+  display: block;
+}
+
+.control-bar {
+  display: flex;
+  align-items: center;
+  gap: $sim-gap-card;
+  padding: $sim-padding-zone;
+  height: 100%;
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background: $sim-zone-border;
+  margin: 0 $sim-gap-card;
+}
+
+button {
+  color: $sim-text-primary;
+  transition: background 100ms ease;
+
+  &:hover:not(:disabled) {
+    background: $sim-surface-elevated;
+  }
+
+  &:disabled {
+    color: $sim-text-secondary;
+    opacity: 0.4;
+  }
+}
+
+.debug-info {
+  color: $sim-text-secondary;
+  font-size: 11px;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+}
+
+:host-context(.force-reduced-motion) {
+  button {
+    transition: none;
+  }
+}

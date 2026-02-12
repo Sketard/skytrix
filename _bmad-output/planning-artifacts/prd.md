@@ -209,7 +209,7 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 - FR6: The player can move a card from any zone to any other zone via drag & drop
 - FR7: The player can reorder cards within the hand zone
 - FR8: The system enforces zone capacity (single-card zones accept only one card)
-- FR9: All 20 game zones are available: hand, monster (1-5), spell/trap (1-5), Extra Monster (2), Pendulum (2), field spell, graveyard, banish, extra deck, main deck
+- FR9: All 18 physical game zones are available: hand, monster (1-5), spell/trap (1-5 — ST1/ST5 double as Pendulum L/R per Master Rule 5), Extra Monster (2), field spell, graveyard, banish, extra deck, main deck
 - FR10: The player can see visual feedback on drop zones during drag, indicating which zones can accept the card
 
 ### Card Actions
@@ -240,7 +240,7 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 - FR25: The player can set a card face-down (displaying card back)
 - FR26: The player can flip a face-down card face-up
 - FR27: The player can toggle a monster's battle position (ATK/DEF visual indicator)
-- FR28: The player can view card details (enlarged image and effect text) by hovering over any card, including face-down cards
+- FR28: The player can view card details (enlarged image and effect text) by hovering over any face-up card via the card inspector side panel. Face-down cards show card back only — no effect text revealed.
 
 ### Session Management
 

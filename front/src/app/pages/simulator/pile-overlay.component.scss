@@ -1,0 +1,181 @@
+@use 'sim-tokens' as *;
+
+.overlay-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100vh;
+  background: $sim-surface;
+  border-left: 1px solid $sim-zone-border;
+  z-index: 50;
+  overflow-y: auto;
+  padding: $sim-padding-overlay;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: overlay-fade-in 150ms ease-out;
+}
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid $sim-zone-border;
+}
+
+.overlay-title {
+  color: $sim-text-primary;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.overlay-close {
+  background: none;
+  border: none;
+  color: $sim-text-secondary;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: $sim-radius-zone;
+
+  &:hover {
+    color: $sim-text-primary;
+    background: $sim-surface-elevated;
+  }
+}
+
+.overlay-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: $sim-text-secondary;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.group-label {
+  color: $sim-text-secondary;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0;
+}
+
+.overlay-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border-radius: $sim-radius-zone;
+  cursor: grab;
+
+  &:hover {
+    background: $sim-surface-elevated;
+  }
+
+  app-sim-card {
+    width: 40px;
+    flex-shrink: 0;
+  }
+}
+
+.card-name {
+  color: $sim-text-primary;
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.face-down-row {
+  opacity: 0.7;
+}
+
+.face-down-label {
+  color: $sim-text-secondary;
+  font-style: italic;
+}
+
+.face-down-icon {
+  color: $sim-text-secondary;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: $sim-surface-elevated;
+  border-radius: $sim-radius-zone;
+  border: 1px solid $sim-zone-border;
+
+  &:focus-within {
+    border-color: $sim-accent-primary;
+  }
+}
+
+.search-icon {
+  color: $sim-text-secondary;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: $sim-text-primary;
+  font-size: 0.875rem;
+  font-family: inherit;
+
+  &::placeholder {
+    color: $sim-text-secondary;
+  }
+}
+
+// CDK drag styling for overlay cards
+.overlay-card-row.cdk-drag-preview {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  background: $sim-surface-elevated;
+  border-radius: $sim-radius-zone;
+  z-index: 1100;
+}
+
+.overlay-card-row.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  .overlay-panel {
+    animation: none;
+  }
+}
+
+:host-context(.force-reduced-motion) .overlay-panel {
+  animation: none;
+}

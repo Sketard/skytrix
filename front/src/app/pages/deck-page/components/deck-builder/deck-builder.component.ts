@@ -25,6 +25,7 @@ import { CardSearcherComponent } from '../../../../components/card-searcher/card
 import { HandTestComponent } from './components/hand-test/hand-test.component';
 import { NgIf } from '@angular/common';
 import { TooltipService } from '../../../../services/tooltip.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-deck-builder',
@@ -80,7 +81,8 @@ export class DeckBuilderComponent {
   constructor(
     public deckBuildService: DeckBuildService,
     private readonly exportService: ExportService,
-    private readonly tooltipService: TooltipService
+    private readonly tooltipService: TooltipService,
+    private readonly router: Router
   ) {
     this.deckBuildService.resetDeck();
     this.tooltipService.setActiveSearchService(this.deckBuildService);
@@ -179,5 +181,11 @@ export class DeckBuilderComponent {
 
   public toggleTestHand() {
     this.deckBuildService.toggleHandTestOpened();
+  }
+
+  public navigateToSimulator() {
+    const deckId = this.deckBuildService.deck().id;
+    if (!deckId) return;
+    this.router.navigate(['/decks', deckId, 'simulator']);
   }
 }

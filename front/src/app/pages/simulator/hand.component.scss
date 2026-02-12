@@ -1,0 +1,52 @@
+@use 'sim-tokens' as *;
+
+:host {
+  display: block;
+}
+
+.sim-hand {
+  display: flex;
+  gap: $sim-gap-card;
+  padding: $sim-padding-zone;
+  min-height: 80px;
+  border: 1px solid $sim-zone-border;
+  border-radius: $sim-radius-zone;
+  align-items: center;
+  height: 100%;
+  box-sizing: border-box;
+
+  &.empty {
+    border-style: dashed;
+  }
+}
+
+// CDK DragDrop feedback
+.sim-hand.cdk-drop-list-receiving {
+  background: $sim-zone-highlight;
+  border-color: $sim-accent-primary;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+// Gold glow on successful drop
+@keyframes gold-glow {
+  0% { box-shadow: 0 0 12px 4px $sim-zone-glow-success; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.zone--just-dropped {
+  animation: gold-glow 400ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zone--just-dropped {
+    animation: none;
+  }
+
+  .cdk-drag-placeholder {
+    transition: none;
+  }
+}

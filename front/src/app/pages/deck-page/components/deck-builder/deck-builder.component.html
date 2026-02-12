@@ -37,6 +37,14 @@
               <img src="assets/images/icons/hand_cards.svg" alt="" />
             </mat-icon>
           </button>
+          <button
+            mat-icon-button
+            class="mat-elevation-z0"
+            [disabled]="!deckBuildService.deck().id"
+            [title]="'Tester les combos'"
+            (click)="navigateToSimulator()">
+            <mat-icon class="deckBuilder-side-tools-buttons-save">sports_esports</mat-icon>
+          </button>
         </div>
       </div>
 
