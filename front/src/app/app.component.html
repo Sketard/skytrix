@@ -1,12 +1,14 @@
 <div class="app mat-app-background dark-theme no-transition">
   <app-loader></app-loader>
-  <div class="dark-theme-navbar" *ngIf="connectedUser()">
+  @if (connectedUser()) {
     <navbar></navbar>
-  </div>
-  <div class="dark-theme-content" [class.full]="!connectedUser()">
+  }
+  <main class="dark-theme-content" [class.full]="!connectedUser()">
     <router-outlet></router-outlet>
-  </div>
-  <div class="dark-theme-tooltip" *ngIf="connectedUser()">
-    <card-tooltip></card-tooltip>
-  </div>
+  </main>
+  @if (connectedUser()) {
+    <div class="dark-theme-tooltip">
+      <card-tooltip></card-tooltip>
+    </div>
+  }
 </div>

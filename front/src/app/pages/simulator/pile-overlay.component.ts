@@ -31,21 +31,36 @@ export class SimPileOverlayComponent {
 
   readonly isSearchMode = computed(() => this.mode() === 'search');
   readonly isRevealMode = computed(() => this.mode() === 'reveal');
+  readonly isBrowseMode = computed(() => this.mode() === 'browse');
+
+  readonly searchExpanded = signal(false);
+  readonly isSearchActive = computed(() => this.isSearchMode() || this.searchExpanded());
 
   readonly filterText = signal('');
 
-  readonly filteredCards = computed(() => {
+  readonly zoneIcon = computed(() => {
+    const zone = this.activeZone();
+    switch (zone) {
+      case ZoneId.GRAVEYARD: return 'whatshot';
+      case ZoneId.BANISH: return 'block';
+      case ZoneId.EXTRA_DECK: return 'auto_awesome';
+      case ZoneId.MAIN_DECK: return 'style';
+      default: return 'layers';
+    }
+  });
+
+  readonly displayCards = computed(() => {
+    if (this.isRevealMode()) return this.boardState.revealCards();
     const allCards = this.cards();
-    if (!this.isSearchMode()) return allCards;
+    if (!this.isSearchActive()) return allCards;
     const filter = this.filterText().toLowerCase().trim();
     if (!filter) return allCards;
     return allCards.filter(c => c.card.card.name?.toLowerCase().includes(filter));
   });
 
-  readonly displayCards = computed(() => {
-    if (this.isRevealMode()) return this.boardState.revealCards();
-    if (this.isSearchMode()) return this.filteredCards();
-    return this.cards();
+  readonly cardForceFaceDown = computed<boolean | null>(() => {
+    if (!this.isBrowseMode()) return false;
+    return this.activeZone() === ZoneId.EXTRA_DECK ? false : null;
   });
 
   readonly zoneName = computed(() => {
@@ -53,34 +68,20 @@ export class SimPileOverlayComponent {
     return zone !== null ? ZONE_CONFIG[zone].label : '';
   });
 
-  readonly overlayTitle = computed(() => {
+  readonly ariaLabel = computed(() => {
     const m = this.mode();
-    if (m === 'search') return 'Deck Search';
-    if (m === 'reveal') {
-      const count = this.boardState.revealCards().length;
-      return `Reveal — ${count} card${count !== 1 ? 's' : ''}`;
-    }
-    return this.zoneName();
+    if (m === 'search') return 'Deck search overlay';
+    if (m === 'reveal') return 'Deck reveal overlay';
+    return `${this.zoneName()} overlay`;
   });
-
-  readonly ariaLabel = computed(() => `${this.overlayTitle()} overlay`);
 
   readonly isEmpty = computed(() => this.displayCards().length === 0);
 
   readonly emptyMessage = computed(() => {
-    if (this.isSearchMode() && this.filterText().trim()) return 'No matching cards';
+    if (this.isSearchActive() && this.filterText().trim()) return 'No matching cards';
     if (this.isRevealMode()) return 'All revealed cards moved';
     return `No cards in ${this.zoneName()}`;
   });
-
-  readonly isExtraDeck = computed(() => this.activeZone() === ZoneId.EXTRA_DECK);
-  readonly isBanished = computed(() => this.activeZone() === ZoneId.BANISH);
-  readonly faceDownCards = computed(() => this.cards().filter(c => c.faceDown));
-  readonly faceUpCards = computed(() => this.cards().filter(c => !c.faceDown));
-
-  readonly needsGrouping = computed(
-    () => (this.isExtraDeck() || this.isBanished()) && this.faceDownCards().length > 0,
-  );
 
   readonly noDrop = (): boolean => false;
 
@@ -90,9 +91,7 @@ export class SimPileOverlayComponent {
     effect(() => {
       if (this.isOpen()) {
         if (this.isSearchMode()) {
-          requestAnimationFrame(() => {
-            this.searchInputRef()?.nativeElement.focus();
-          });
+          requestAnimationFrame(() => this.searchInputRef()?.nativeElement.focus());
         } else {
           setTimeout(() => {
             const panel = this.elementRef.nativeElement.querySelector('.overlay-panel');
@@ -104,11 +103,19 @@ export class SimPileOverlayComponent {
   }
 
   close(): void {
-    if (this.isSearchMode()) {
-      this.boardState.shuffleDeckSilent();
-    }
     this.filterText.set('');
+    this.searchExpanded.set(false);
     this.boardState.closeOverlay();
+  }
+
+  toggleSearch(): void {
+    const expanding = !this.searchExpanded();
+    this.searchExpanded.set(expanding);
+    if (expanding) {
+      requestAnimationFrame(() => this.searchInputRef()?.nativeElement.focus());
+    } else {
+      this.filterText.set('');
+    }
   }
 
   onFilterInput(event: Event): void {
@@ -123,12 +130,8 @@ export class SimPileOverlayComponent {
     this.boardState.isDragging.set(false);
   }
 
-  onCardHovered(card: CardInstance): void {
-    this.boardState.setHoveredCard(card);
-  }
-
-  onCardUnhovered(): void {
-    this.boardState.setHoveredCard(null);
+  onCardClicked(card: CardInstance): void {
+    this.boardState.selectCard(card);
   }
 
   @HostListener('document:keydown.escape', ['$event'])

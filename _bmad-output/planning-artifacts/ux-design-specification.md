@@ -15,6 +15,7 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 | Date | Source | Changes |
 |---|---|---|
 | 2026-02-12 | Sprint Retro (Epics 1-5) | **A.** Fixed 16:9 aspect ratio layout with proportional scaling (Master Duel zoom-out style), replaces flexible CSS Grid responsive model. **B.** Face-down behavior rethought for solo context: inspector shows full details for face-down cards, ED overlay displays all cards face-up (no eye icon/grouping), deck/ED zones show card-back when count > 0. **C.** `preventDefault()` on right-click for entire board in all builds (incl. devMode); right-click gesture reserved for future custom context menu. **D.** Collapsible navbar: chevron toggle at navbar border, collapses to ~32px thin bar, collapsed by default on simulator page only. |
+| 2026-02-12 | UX Review | **E.** Standardized pill drag: all stacked zones (Deck, ED, GY, Banished) support direct drag from the pill — grabs the top card with identical behavior to dragging a board card. Click still opens overlay for deeper card access. |
 
 ---
 
@@ -76,12 +77,20 @@ The core loop is: **load deck → shuffle → draw 5 → execute combo via drag 
 
 Pills are contextual action buttons that provide access to stacked zone operations. They are a **minimal complement** to drag & drop, not a parallel interaction system. Pills exist only where drag alone cannot reach: **hidden cards inside stacked zones**.
 
-**Zone Pills (Stacked Zones — Essential):**
-- Appear on **click** (not hover) on stacked zones (deck, graveyard, banish, extra deck)
+**Direct Drag from Pill (Top Card — Primary Interaction):**
+- **Dragging directly on a stacked zone pill grabs the top card** — identical behavior to dragging a card from any board zone (same cursor `grab`, same lift animation, same drop targets, same visual feedback)
+- The pill acts as a **transparent proxy** for its top card during drag. The drag preview shows the actual top card (card image for face-up zones, card back for Deck)
+- This standardizes the interaction across ALL stacked zones: Deck, Extra Deck, Graveyard, Banished — one gesture, same behavior everywhere
+- Applies to all common operations: mill (drag Deck pill → GY), recover (drag GY pill → Hand/zone), banish return (drag Banished pill → Hand/zone), ED summon (drag ED pill → zone)
+- **Empty pill (count = 0):** drag is disabled — cursor `not-allowed`, reduced opacity visual cue
+- This is the **fastest path** for the most frequent stacked zone action (taking the top card)
+
+**Zone Pills — Click for Deeper Access (Secondary Interaction):**
+- **Click** (not hover) on stacked zones opens the pile overlay to see and interact with ALL stacked cards
 - Click trigger avoids accidental activations during drag operations across the board
-- Primary purpose: open the pile view overlay to see and interact with stacked cards
-- Zone-specific actions: Draw, Mill N, Shuffle, Search (deck); View (GY, banish, extra deck)
-- These are the ONLY way to access hidden/stacked cards — essential for gameplay
+- Primary purpose: access cards **beyond the top card** — browse, search, select specific cards
+- Zone-specific actions: Shuffle, Search (deck); View (GY, banish, extra deck)
+- This is the ONLY way to access hidden/stacked cards below the top — essential for gameplay
 
 **Card Pills (Board Cards — Nice-to-Have, Post-MVP-A):**
 - Optional shortcut pills on hover over cards on the board (Send to GY, Banish, Flip, Toggle ATK/DEF)
@@ -521,8 +530,9 @@ grid-template-areas:
 - The simulator imposes no placement validation — full manual control.
 
 **Stacked Zone Interactions:**
-- **Deck / Extra Deck:** Right-click opens a small context menu (Shuffle, Search). No dedicated pill buttons for Mill — milling is done by dragging the top card from Deck to GY.
-- **Graveyard / Banished:** Click opens side overlay with card list and card images. Cards are draggable from overlay to board.
+- **All stacked zones (Deck, ED, GY, Banished):** Drag directly on the pill to grab the top card — same behavior as dragging a board card. Click opens the pile overlay for deeper card access.
+- **Deck / Extra Deck:** Right-click opens a small context menu (Shuffle, Search). Milling is done by dragging the Deck pill directly to GY (grabs top card automatically).
+- **Graveyard / Banished:** Click opens side overlay with card list and card images. Direct drag on pill grabs top card for quick recovery to hand/zone.
 - **Deck zone** — displays card-back image when `count > 0` (never appears visually empty). **Extra Deck overlay** — all cards displayed face-up (solo context: ED contents are known to the owner). No eye icon, no "face-down" grouping.
 
 **Card Images in Overlay:**
@@ -579,7 +589,7 @@ flowchart TD
     H --> I[Zone highlights cyan during drag]
     I --> J[Drop → card snaps, gold settle glow]
     J --> K{Card triggers mill/search?}
-    K -->|Mill| L[Drag top card from Deck to GY]
+    K -->|Mill| L[Drag Deck pill to GY - grabs top card]
     K -->|Search| M[Right-click Deck → Search → overlay opens with card images]
     M --> N[Find card in overlay → drag to Hand or zone]
     K -->|No| O[Next action]
@@ -596,7 +606,7 @@ flowchart TD
 
 **Key Interactions:**
 - **Drag from Hand → Zone:** Card lifts (scale 1.05), valid zones highlight cyan, drop snaps with gold glow
-- **Mill:** No button — drag the visible top-card of the Deck directly to GY
+- **Mill:** No button — drag directly on Deck pill to GY (grabs top card automatically, same behavior as dragging any board card)
 - **Search Deck:** Right-click Deck → context menu "Search" → side overlay with card images → drag to destination
 - **GY trigger:** Click GY zone → side overlay opens → see card with image → drag to field or banish
 - **Reset:** Single button with brief confirmation → clears board, reshuffles, draws 5
@@ -696,7 +706,8 @@ flowchart TD
 | Pattern | Description | Used In |
 |---|---|---|
 | **Drag-to-zone** | Primary interaction — grab card, drop on target zone with visual feedback | All journeys |
-| **Pile inspection** | Click stacked zone or right-click Deck → overlay with card images + drag sources | All journeys |
+| **Drag-from-pill** | Drag on stacked zone pill → grabs top card with same behavior as board card drag | All journeys |
+| **Pile inspection** | Click stacked zone → overlay for deeper card access; right-click Deck → context menu | All journeys |
 | **Undo chain** | Ctrl+Z reverses actions one by one, enabling exploration and error recovery | Journey 2, 3 |
 | **Reset cycle** | Quick board reset → reshuffle → draw 5 for next test hand | Journey 1, 2 |
 | **Hover-to-learn** | Card tooltip provides effect text without interrupting flow | Journey 1, 3 |
@@ -710,7 +721,7 @@ flowchart TD
 
 ### Flow Optimization Principles
 
-1. **Zero-step mill** — No button, no menu. Drag top card from Deck to GY. One gesture replaces three clicks.
+1. **Pill-as-proxy** — Drag on any stacked zone pill = grab top card. Same behavior as board cards. Mill = drag Deck pill to GY. Recover from GY = drag GY pill to hand. One gesture, zero learning curve.
 2. **Undo as exploration, not error correction** — Undo is a creative tool, not a safety net. The flow encourages branching: try line A, undo, try line B, compare.
 3. **Right-click economy** — Context menus ONLY on Deck and ED zones (Shuffle, Search). No right-click elsewhere. Keeps the interaction space predictable.
 4. **Overlay as drag source** — Every card in an overlay (GY, Banished, Deck Search) is immediately draggable. No "select then place" — see it, grab it, drag it.
@@ -771,7 +782,7 @@ flowchart TD
 
 **Purpose:** Renders stacked zones (Deck, Extra Deck, Graveyard, Banished) with card count badge and interaction triggers.
 **Content:** Top card preview (or card back image for face-down zones). When `count > 0`, the zone must always display a card-back image — never appear visually empty. Card count badge, context menu trigger.
-**Actions:** Click → open pile overlay. Right-click on Deck/ED → `mat-menu` context menu (Shuffle, Search). Drag from top card (Deck → GY for mill).
+**Actions:** Drag on pill → grabs top card with identical behavior to board card drag (same cursor, lift, preview, drop targets). Click → open pile overlay for deeper card access. Right-click on Deck/ED → `mat-menu` context menu (Shuffle, Search).
 **States:** Empty (0 cards — dimmed), Has-cards (badge visible), Overlay-open (pill active).
 **Configuration:** Uses `StackedZoneConfig` pattern instead of component variants:
 
@@ -782,7 +793,7 @@ interface StackedZoneConfig {
   contextMenu: boolean;        // true for Deck, ED
   contextMenuItems: string[];  // ['shuffle', 'search'] for Deck
   clickAction: 'overlay' | 'none';  // GY/Banished → overlay, Deck → top-drag
-  topCardDraggable: boolean;   // true for Deck (mill), false for GY
+  topCardDraggable: boolean;   // true for ALL stacked zones — drag on pill grabs top card (same behavior as board card drag)
 }
 ```
 
@@ -824,7 +835,7 @@ interface StackedZoneConfig {
 **Purpose:** Side overlay that opens when a stacked zone is clicked. Shows all cards in the pile with images. Cards are draggable to board zones.
 **Content:** Card list with image thumbnail + card name per row. Scrollable for large piles.
 **Actions:** Each card row is a CDK drag source. Search mode adds a filter input. Close button or click-outside to dismiss.
-**States:** Closed, Open-browse (GY, Banished — all cards visible face-up), Open-search (Deck search — filter input active, deck shuffled after close), Open-view (ED — all cards displayed face-up, no "face-down" grouping, no eye icon. In Yu-Gi-Oh!, the Extra Deck contents are known to the owner — only hidden from opponent. Solo context: no separation needed).
+**States:** Closed, Open-browse (GY, Banished — all cards visible face-up), Open-search (Deck search — filter input active, no auto-shuffle on close — shuffling is the player's manual responsibility via right-click Deck → Shuffle), Open-view (ED — all cards displayed face-up, no "face-down" grouping, no eye icon. In Yu-Gi-Oh!, the Extra Deck contents are known to the owner — only hidden from opponent. Solo context: no separation needed).
 **Variants:** Mode determined by source zone (browse/search/view).
 **Technical Note:** Overlay positioning avoids covering the board center — opens to the side. Must share `cdkDropListGroup` with board for drag-to-board. Same technical risk as XYZ material pill.
 **Accessibility:** `role="dialog"`, `aria-modal="true"`, focus trap when open. Filter input `aria-label="Search cards"`.
@@ -846,12 +857,12 @@ interface StackedZoneConfig {
 **Purpose:** The app navbar can be collapsed to maximize board space. On the simulator page, the navbar starts **collapsed by default**. On all other pages, the navbar remains expanded by default.
 
 **Toggle Mechanism:**
-- A **chevron button** positioned at the border between the navbar and the main content area, acting as a visual "tab" or "handle"
-- Navbar expanded → chevron points **up** (↑ = "collapse"). Navbar collapsed → chevron points **down** (↓ = "expand")
+- A **chevron button** positioned at the border between the navbar (vertical sidebar) and the main content area, acting as a visual "tab" or "handle"
+- Navbar expanded → chevron points **←** (left = "collapse toward edge"). Navbar collapsed → chevron points **→** (right = "expand")
 - The chevron remains visible in both states
 
 **Collapsed State:**
-- The navbar collapses to a **thin bar (~32px height)** containing only the chevron toggle button
+- The navbar collapses to a **thin bar (~32px width)** containing only the chevron toggle button
 - No logo, no text, no navigation links — just the toggle control
 - The thin bar provides a persistent affordance to re-expand
 
@@ -945,9 +956,15 @@ SimBoardComponent (root grid)
 - Invalid zones (occupied single-card zones) show **no reaction** — silent rejection. No card replacement allowed; player must clear the zone first (drag existing card away, then place new card)
 - Hand zone supports reordering (CDK sort animation)
 
+**Drag from Stacked Zone Pill (Top Card Proxy):**
+- Dragging on any stacked zone pill (Deck, ED, GY, Banished) grabs the **top card** — identical behavior to dragging a board card
+- Same cursor (`grab` → `grabbing`), same lift animation (scale 1.05, shadow), same drag preview (actual card image or card back for Deck), same valid drop targets, same drop feedback
+- The pill is a transparent proxy — the user makes no mental distinction between "drag from board" and "drag from pile"
+- Empty pill (count = 0): drag disabled, cursor `not-allowed`, reduced opacity
+
 **Cross-Container Drag:**
-- `cdkDropListGroup` directive placed on `SimBoardComponent` root element — all drop lists (board zones, hand, overlay card rows, XYZ material pill rows) are children of this group
-- This enables drag from overlay → board, material pill → GY, hand → zone, zone → zone without explicit `cdkDropListConnectedTo` wiring
+- `cdkDropListGroup` directive placed on `SimBoardComponent` root element — all drop lists (board zones, hand, overlay card rows, XYZ material pill rows, stacked zone pills) are children of this group
+- This enables drag from pill → zone, overlay → board, material pill → GY, hand → zone, zone → zone without explicit `cdkDropListConnectedTo` wiring
 - Dynamic overlays (pile overlays, XYZ pills) automatically join the group as children of the root component
 
 **Drop Behavior:**
@@ -1085,8 +1102,8 @@ SimBoardComponent (root grid)
 The board container has a fixed internal resolution (e.g., 1920×1080 logical pixels at 16:9). The scale factor is computed as:
 
 ```
-availableWidth = viewport width
-availableHeight = viewport height - navbar height (if visible)
+availableWidth = viewport width - navbar width (if expanded)
+availableHeight = viewport height
 scaleX = availableWidth / boardInternalWidth
 scaleY = availableHeight / boardInternalHeight
 scale = min(scaleX, scaleY)

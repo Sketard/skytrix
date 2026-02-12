@@ -12,11 +12,15 @@ import { CommandStackService } from './command-stack.service';
   imports: [MatIconModule, MatButtonModule, MatTooltipModule],
   templateUrl: './control-bar.component.html',
   styleUrl: './control-bar.component.scss',
+  host: {
+    '[class.pile-open]': 'isPileOpen()',
+  },
 })
 export class SimControlBarComponent {
   private readonly boardState = inject(BoardStateService);
   private readonly commandStack = inject(CommandStackService);
 
+  readonly isPileOpen = this.boardState.isOverlayOpen;
   readonly canUndo = this.commandStack.canUndo;
   readonly canRedo = this.commandStack.canRedo;
 

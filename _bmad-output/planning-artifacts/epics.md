@@ -1,6 +1,7 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
-inputDocuments: ['prd.md', 'architecture.md', 'ux-design-specification.md', 'yugioh-game-rules.md']
+inputDocuments: ['prd.md', 'architecture.md', 'ux-design-specification.md', 'yugioh-game-rules.md', 'implementation-readiness-report-2026-02-12.md']
+context: 'Post-IR update — aligning epics with revised UX spec (2026-02-12). Correcting E1-E5 divergences, adding E6-E7 new requirements.'
 ---
 
 # skytrix - Epic Breakdown
@@ -40,7 +41,7 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 - FR25: The player can set a card face-down (displaying card back) via right-click context menu
 - FR26: The player can flip a face-down card face-up via right-click context menu
 - FR27: The player can toggle a monster's battle position (ATK/DEF) via right-click context menu
-- FR28: The player can view card details (enlarged image and effect text) by hovering over any face-up card via the SimCardInspectorComponent side panel. Face-down cards show card back only — no effect text revealed.
+- FR28: The player can view card details (enlarged image and effect text) by hovering over any card via the SimCardInspectorComponent side panel. Face-down cards: inspector shows full card details (solo context — player knows all own cards). Face-down is a positional state, not an information barrier.
 - FR29: The player can undo the last action performed (board state only — does not restore UI state like overlays)
 - FR30: The player can redo a previously undone action
 - FR31: The player can undo/redo batch operations as a single unit (e.g., mill 3 undoes all 3 card moves at once)
@@ -77,10 +78,12 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 - Debug panel dev-only behind `isDevMode()`
 - Reset is NOT a command — clears both stacks, reinitializes board
 
-**From UX Design Specification:**
+**From UX Design Specification (revised 2026-02-12):**
 - SimCardInspectorComponent: hover-triggered fixed side panel (dark theme, scrollable effect text, no deck-building buttons)
+- Face-down cards: inspector shows **full card details** (solo context — player knows all own cards). Face-down is a positional state, not an information barrier
 - Card State Toggle: right-click `mat-menu` on board cards (Flip face-down, Change to DEF/ATK — dynamic items based on current state)
-- Context menu on Deck/ED: `mat-menu` (Shuffle, Search) — `event.preventDefault()` only in production
+- Context menu on Deck/ED: `mat-menu` (Shuffle, Search / View)
+- `event.preventDefault()` on `contextmenu` event on the **entire board** in **all builds** (including `isDevMode()`). Native browser context menu never shown on the board. Navbar retains native context menu
 - Gold glow feedback: CSS `@keyframes` + `.zone--just-dropped` class (pure CSS, no Angular signal)
 - Pile overlay auto-close: opening new overlay closes current one (max 1 visible)
 - Pile overlay stays open during drag-from-overlay (closes after drop if user navigates away)
@@ -88,18 +91,22 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 - Empty hand: dashed border only, no placeholder text
 - `hoveredCard` signal with 50ms debounce in BoardStateService
 - `isDragging` global signal suppresses inspector/pills/overlays during drag
-- Inspector repositioning: computed signal moves panel to left when pile overlay is on right
+- Inspector repositioning: computed signal moves panel to left when pile overlay is on right — fixed side panel at all viewport sizes
 - `cdkDragPreviewContainer: 'global'` for correct z-index when dragging from overlays
 - No card replacement on occupied single-card zones — must clear zone first
 - Undo scope: board state only (not UI state like overlays/inspector)
 - No keyboard shortcut for Reset — button only (Ctrl+Shift+R conflicts with browser)
-- Responsive: 3 breakpoints (≥1280px desktop, 1024-1279px compact, 768-1023px tablet)
-- Zone priorities: P1 (16 zones always visible), P2 (4 stacked compressible), P3 (controls/inspector on-demand)
-- Collapsible bottom drawer inspector on compact desktop (40px bar, click-to-expand)
-- Mobile (<768px): consultation-only, tap-to-place post-MVP, dismissible banner
+- **Fixed 16:9 aspect ratio layout** with `transform: scale()` proportional scaling — no breakpoints, no responsive layout changes. Board never scrolls, never changes grid structure, never hides zones. Scale factor = `min(availableWidth / boardWidth, availableHeight / boardHeight)`. Centered with letterboxing
+- Board rescales dynamically on navbar toggle (available viewport space changes)
+- **Collapsible navbar (vertical sidebar):** chevron toggle at navbar border (← collapse, → expand), collapsed by default on simulator page only, ~32px **width** thin bar when collapsed (no logo, no links — just toggle control). Expanded by default on all other pages. Ephemeral state (not persisted)
+- Mobile (post-MVP): landscape-locked, same 16:9 scaling model, tap-to-place designed separately
+- Deck zone: card-back image when `count > 0` (never appears visually empty)
+- **Extra Deck overlay:** all cards displayed **face-up**, no grouping, no eye icon (solo context — ED contents known to owner)
+- **ED "View" mode:** right-click ED → "View" opens pile overlay in browse mode (all cards face-up)
+- **No auto-shuffle:** deck search does NOT auto-shuffle on close — shuffling is the player's manual responsibility (right-click Deck → Shuffle)
 - `prefers-reduced-motion` support (disable glow, scale, CDK drag transitions)
 - Dev-only reduced-motion toggle in SimControlBarComponent
-- Visual regression tests: Playwright screenshots at 3 breakpoints
+- Visual regression tests: Playwright screenshots at 3 viewport widths (1280, 1100, 800)
 - Dual-accent color system: Cyan #00d4ff (interaction) + Gold #d4a017 (status)
 - Master Duel Classic visual direction (dark atmospheric board)
 - XYZ overlay material mechanics: borders peeking, click for pill, drag to detach
@@ -133,7 +140,7 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 | FR25 | Epic 3 | Set card face-down via context menu |
 | FR26 | Epic 3 | Flip face-down card face-up via context menu |
 | FR27 | Epic 3 | Toggle ATK/DEF position via context menu |
-| FR28 | Epic 3 | Card inspector on hover (face-up only) |
+| FR28 | Epic 3 + Epic 6 | Card inspector on hover (all cards). Epic 6 corrects face-down behavior |
 | FR18 | Epic 4 | Search deck and pick card |
 | FR19 | Epic 4 | Mill top N cards to GY |
 | FR20 | Epic 4 | Reveal/excavate top N cards |
@@ -186,8 +193,8 @@ The player can manage card states (face-down, flip face-up, ATK/DEF position tog
 - SimCardInspectorComponent: fixed side panel, `hoveredCard` signal with 50ms debounce, dark theme, scrollable effect text, no deck-building buttons
 - Card State Toggle: right-click `mat-menu` on SimCardComponent (board only). Dynamic menu items based on current card state.
 - FlipCardCommand + TogglePositionCommand added to CommandStackService
-- Face-down cards: inspector shows card back only (no effect text)
-- `event.preventDefault()` on contextmenu only in production (`isDevMode()` guard)
+- Face-down cards: inspector shows **full card details** (solo context — positional state, not information barrier)
+- `event.preventDefault()` on contextmenu on **entire board** in **all builds** (including `isDevMode()`). Navbar retains native context menu
 
 ### Epic 4: Zone Inspection & Deck Operations
 
@@ -217,6 +224,19 @@ The player can undo and redo card actions, batch undo composite operations (e.g.
 - Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y (redo), Escape (close overlay). No shortcut for Reset.
 - Reset is NOT a command — clears both stacks, reinitializes board state with confirmation dialog
 - Undo scope: board state only (does not restore overlay/inspector UI state)
+
+### Epic 6: Post-Retro UX Alignment
+
+The player benefits from a board with a fixed 16:9 layout that scales proportionally, a collapsible navbar to maximize board space, a functional context menu in dev mode, an inspector that shows full details for face-down cards, and a View mode for the Extra Deck.
+
+**FRs covered:** FR28 (correction — face-down inspector behavior), + post-retro UX requirements (E1-E7)
+
+**Implementation Notes:**
+- Story 6.1: Fixed 16:9 layout + `transform: scale()` — HIGH impact, CSS refactor of entire board. Removes 3 breakpoints, replaces with single scale factor. `min(availableWidth / boardWidth, availableHeight / boardHeight)`, centered with letterboxing. Board rescales on navbar toggle.
+- Story 6.2: Face-down rendering fixes (4 fixes) — MEDIUM impact, multi-component. Card-back on board, inspector full details, ED overlay all face-up (no grouping/eye icon), deck/ED visual when count > 0.
+- Story 6.3: Board-wide `preventDefault` in all builds — LOW impact, quick fix. Remove `isDevMode()` guard from `contextmenu` handler on board. Navbar retains native context menu.
+- Story 6.4: Collapsible navbar — MEDIUM impact. Chevron toggle at navbar border, collapsed by default on simulator page (~32px thin bar). Board recalculates scale factor on toggle. Ephemeral state.
+- Epic 6 is standalone — builds on implemented Epics 1-5, requires no future epics to function.
 
 ## Epic 1: Simulator Board & Deck Loading
 
@@ -391,7 +411,7 @@ So that I can manage my resources during combo testing.
 **When** the context menu opens
 **Then** a `mat-menu` appears with "Shuffle" option
 **And** clicking "Shuffle" calls `CommandStackService.shuffleDeck()`
-**And** `event.preventDefault()` is applied only in production (`isDevMode()` guard)
+**And** `event.preventDefault()` is applied on the entire board in **all builds** (including `isDevMode()`). Native browser context menu never shown on the board. Navbar retains native context menu.
 
 **Given** I have multiple cards in hand
 **When** I drag a card within the hand zone
@@ -432,9 +452,10 @@ So that I can simulate set/flip/position changes during combo testing.
 **When** the context menu event fires
 **Then** no context menu appears (card state toggle is board-only)
 
-**Given** `isDevMode()` returns `true`
-**When** I right-click a card on the board
-**Then** the browser default context menu remains accessible (no `event.preventDefault()`)
+**Given** the board is in any build mode (production or dev)
+**When** I right-click anywhere on the board
+**Then** `event.preventDefault()` blocks the native context menu in all builds
+**And** the navbar retains native browser context menu
 
 ### Story 3.2: Card Inspector Panel
 
@@ -453,7 +474,7 @@ So that I can read card effects without interrupting my combo flow.
 
 **Given** I hover over a face-down card
 **When** the `hoveredCard` signal updates
-**Then** the inspector shows the card back image only — no name, no stats, no effect text
+**Then** the inspector shows **full card details** (image, name, stats, effect text) — face-down is a positional state, not an information barrier in solo context
 
 **Given** `isDragging` signal is `true`
 **When** I am dragging a card
@@ -468,9 +489,9 @@ So that I can read card effects without interrupting my combo flow.
 **When** it renders
 **Then** there are no +1/-1 or add/remove buttons — simulator context only
 
-**Given** the viewport width is ≤1279px (compact desktop)
+**Given** any viewport size
 **When** the inspector renders
-**Then** it appears as a collapsible bottom drawer: 40px bar showing hovered card name by default, expanding to ~200px on click (horizontal layout: card image left, effect text right)
+**Then** it appears as a fixed side panel (no breakpoint-based drawer variant — board scales proportionally via `transform: scale()`, inspector stays as side panel at all sizes)
 
 ## Epic 4: Zone Inspection & Deck Operations
 
@@ -493,7 +514,7 @@ So that I can browse and drag cards from the graveyard, banished pile, or extra 
 
 **Given** I click on the Extra Deck zone
 **When** the overlay opens in browse mode
-**Then** face-down ED cards and face-up Pendulum monsters are displayed in separate visual groups within the overlay
+**Then** **all cards are displayed face-up** — no face-down/face-up grouping, no eye icon (solo context — ED contents known to owner)
 
 **Given** I click on the Banished zone and it contains face-down banished cards
 **When** the overlay opens in browse mode
@@ -538,7 +559,7 @@ So that I can simulate search effects, mill effects, and excavate effects during
 **And** a filter text input is available at the top (`aria-label="Search cards"`)
 **And** I can type to filter cards by name
 **And** each card is draggable to any board zone or hand
-**And** when I close the overlay, the deck is automatically shuffled
+**And** closing the overlay does NOT auto-shuffle the deck — shuffling is the player's responsibility (right-click Deck → Shuffle), consistent with real Yu-Gi-Oh! rules and the full manual control philosophy
 
 **Given** I click "Mill (N)" in the Deck context menu
 **When** a prompt asks for the number of cards to mill
@@ -674,3 +695,130 @@ So that I can quickly test another hand without navigating away.
 **Given** all keyboard shortcuts are captured
 **When** the board initializes
 **Then** shortcuts are registered via `@HostListener('document:keydown')` on `SimBoardComponent`
+
+---
+
+## Epic 6: Post-Retro UX Alignment
+
+> Addresses divergences identified in the Implementation Readiness Report (2026-02-12) between the implemented Epics 1–5 and the revised UX Design Specification. These stories bring the simulator in line with the final UX vision without breaking existing functionality.
+
+**Implementation Notes:**
+
+- Stories are ordered by dependency: layout (6.1) first, then behavioral fixes (6.2, 6.3) that depend on the new layout, then navbar (6.4) which affects scaling inputs.
+- Story 6.1 replaces the current responsive breakpoint/`fr`/`minmax()` sizing model with a fixed 16:9 proportional layout using `transform: scale()`. All subsequent stories assume this new layout.
+- Story 6.4 interacts with 6.1's scaling model: collapsing/expanding the navbar changes `availableWidth`, triggering a scale recalculation.
+
+### Story 6.1: Fixed 16:9 Board Layout with Proportional Scaling
+
+As a player,
+I want the board to always maintain a 16:9 ratio and scale proportionally to fit my viewport,
+So that the layout is consistent and predictable regardless of screen size.
+
+**Acceptance Criteria:**
+
+**Given** the simulator page loads
+**When** the board renders
+**Then** the board has a fixed internal resolution of 1280×720 (16:9) defined in CSS
+
+**Given** the fixed 16:9 board is rendered
+**When** the viewport is resized (or navbar toggled)
+**Then** a `scaleFactor` is computed: `min(availableWidth / 1280, availableHeight / 720)` where `availableWidth = window.innerWidth - navbarWidth` (if expanded) and `availableHeight = window.innerHeight`
+**And** the board is scaled via `transform: scale(scaleFactor)` with `transform-origin: top center`
+**And** the board is centered in the remaining space
+
+**Given** the board uses `transform: scale()`
+**When** the previous responsive layout code is replaced
+**Then** all `fr` units, `minmax()` sizing, and breakpoint-driven layout logic in the board grid are removed and replaced with fixed pixel dimensions inside the 1280×720 coordinate space
+
+**Given** the board is scaled via `transform: scale()`
+**When** CDK DragDrop calculates drop coordinates
+**Then** the coordinates are correctly mapped from viewport pixels to the board's local coordinate space (divide by `scaleFactor`)
+**And** a test is performed at `scaleFactor < 1` (small viewport) to verify drops land on the correct zone
+
+**Given** the board is rendered on a very small viewport (e.g., 800×450)
+**When** the scale factor drops below 1
+**Then** all zones, cards, and text remain proportionally scaled — no layout breakage
+
+**Given** the board is rendered on a large viewport (e.g., 2560×1440)
+**When** the scale factor exceeds 1
+**Then** the board scales up proportionally, capped at `scaleFactor = 1` (no upscaling beyond native resolution)
+
+### Story 6.2: Face-Down Card Behavior Fixes (Solo Context)
+
+As a player testing combos solo,
+I want face-down cards to behave correctly in all interaction contexts,
+So that I can simulate face-down sets, flips, and inspections accurately.
+
+**Acceptance Criteria:**
+
+**Given** a face-down card is on the board
+**When** I click on it to open the inspector
+**Then** the inspector shows the full card details (name, image, stats, effects) — face-down is a positional state, not an information barrier in solo context
+
+**Given** a face-down card is on the board
+**When** I drag it to another zone using CDK DragDrop
+**Then** the drag preview shows the card back (not the front)
+**And** the card lands in the destination zone still face-down
+
+**Given** cards exist in the Extra Deck zone
+**When** I open the ED overlay
+**Then** all cards are displayed face-up (full art and details visible)
+**And** cards are displayed in a flat list — no grouping by face-up/face-down status
+
+**Given** a face-down card is in a pile zone (GY, Banished)
+**When** I open the pile overlay for that zone
+**Then** the card is displayed face-up in the overlay (pile overlays always show full card info)
+
+### Story 6.3: preventDefault on Right-Click (All Builds)
+
+As a player,
+I want the native browser context menu to be suppressed on the board,
+So that right-click interactions (future card actions) are not blocked by the browser.
+
+**Acceptance Criteria:**
+
+**Given** I right-click anywhere inside the `SimBoardComponent`
+**When** the `contextmenu` event fires
+**Then** `event.preventDefault()` is called and the native context menu does not appear
+**And** this behavior applies in ALL builds (development and production) — no `isDevMode()` guard
+
+**Given** I right-click on the navbar (outside `SimBoardComponent`)
+**When** the `contextmenu` event fires
+**Then** the native browser context menu appears normally (preventDefault is scoped to the board only)
+
+### Story 6.4: Collapsible Navbar (Vertical Sidebar)
+
+As a player,
+I want to collapse the navigation sidebar to maximize board space,
+So that I can focus on the board during combo testing.
+
+**Acceptance Criteria:**
+
+**Given** the simulator page loads
+**When** the navbar renders
+**Then** the navbar is a vertical sidebar on the left side of the viewport
+**And** it displays the full navigation links (expanded state by default)
+
+**Given** the navbar is expanded
+**When** I click the collapse chevron button (←)
+**Then** the navbar collapses to a thin vertical bar (~32px width) showing only the expand chevron (→)
+**And** navigation links are hidden
+
+**Given** the navbar is collapsed
+**When** I click the expand chevron button (→)
+**Then** the navbar expands to full width showing all navigation links
+
+**Given** the navbar is toggled (expanded ↔ collapsed)
+**When** the navbar width changes
+**Then** the board `scaleFactor` is recalculated using the updated `availableWidth = window.innerWidth - navbarWidth`
+**And** the board re-scales smoothly (CSS transition on `transform`)
+
+**Given** the simulator page loads (or I navigate back to it)
+**When** the navbar initializes
+**Then** the navbar starts in **collapsed** state (default for simulator page only — expanded by default on all other pages)
+**And** this state is ephemeral (not persisted to localStorage or sessionStorage)
+
+**Given** the navbar is collapsed
+**When** I right-click on the collapsed navbar bar
+**Then** the native browser context menu appears (navbar is excluded from `preventDefault` scope)
+

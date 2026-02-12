@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, filter, map, switchMap } from 'rxjs';
@@ -6,6 +6,7 @@ import { DeckBuildService } from '../../services/deck-build.service';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { SimBoardComponent } from './board.component';
+import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 
 @Component({
   selector: 'app-sim-page',
@@ -21,6 +22,7 @@ export class SimulatorPageComponent {
   private readonly router = inject(Router);
   private readonly deckBuildService = inject(DeckBuildService);
   private readonly boardState = inject(BoardStateService);
+  private readonly navbarCollapse = inject(NavbarCollapseService);
 
   readonly deckId = toSignal(
     this.route.paramMap.pipe(map(params => Number(params.get('id')) || 0)),
@@ -28,6 +30,9 @@ export class SimulatorPageComponent {
   );
 
   constructor() {
+    this.navbarCollapse.setCollapsed(true);
+    inject(DestroyRef).onDestroy(() => this.navbarCollapse.setCollapsed(false));
+
     toObservable(this.deckId).pipe(
       filter(id => id > 0),
       switchMap(id => this.deckBuildService.getById(id).pipe(

@@ -68,12 +68,8 @@ export class SimXyzMaterialPeekComponent {
     this.boardState.isDragging.set(false);
   }
 
-  onCardHovered(card: CardInstance): void {
-    this.boardState.setHoveredCard(card);
-  }
-
-  onCardUnhovered(): void {
-    this.boardState.setHoveredCard(null);
+  onCardClicked(card: CardInstance): void {
+    this.boardState.selectCard(card);
   }
 
   @HostListener('document:keydown.escape')

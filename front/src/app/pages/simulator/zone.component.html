@@ -14,9 +14,7 @@
                   [attr.aria-label]="'Drag ' + c.card.card.name"
                   (cdkDragStarted)="onDragStarted()"
                   (cdkDragEnded)="onDragEnded()"
-                  (hovered)="onCardHovered($event)"
-                  (unhovered)="onCardUnhovered()"
-                  (materialPeekClicked)="onMaterialPeekClicked($event)" />
+                  (clicked)="onCardClicked($event)" />
   } @else {
     <span class="zone-label">{{ zoneConfig().label }}</span>
   }

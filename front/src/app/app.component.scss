@@ -5,16 +5,12 @@
   height: 100%;
   position: relative;
   display: flex;
+  flex-direction: row;
   overflow: hidden;
 
-  &-navbar {
-    width: 300px;
-    background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
-    color: $black;
-  }
-
   &-content {
-    width: calc(100% - 300px);
+    flex: 1;
+    overflow: hidden;
 
     &.full {
       width: 100%;

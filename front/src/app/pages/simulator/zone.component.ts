@@ -96,26 +96,18 @@ export class SimZoneComponent {
     this.boardState.isDragging.set(false);
   }
 
-  onCardHovered(card: CardInstance): void {
-    this.boardState.setHoveredCard(card);
+  onCardClicked(card: CardInstance): void {
+    this.boardState.selectCard(card);
+    if ((card.overlayMaterials?.length ?? 0) > 0) {
+      this.boardState.openMaterialPeek(card.instanceId, this.zoneId());
+    }
   }
 
-  onCardUnhovered(): void {
-    this.boardState.setHoveredCard(null);
-  }
-
-  onMaterialPeekClicked(card: CardInstance): void {
-    this.boardState.openMaterialPeek(card.instanceId, this.zoneId());
-  }
-
+  // preventDefault handled by board-level @HostListener('contextmenu')
   onContextMenu(event: MouseEvent): void {
     const c = this.card();
     if (!c) return;
     if (this.boardState.isDragging()) return;
-
-    if (!isDevMode()) {
-      event.preventDefault();
-    }
 
     if (this.menuAnchor) {
       const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();

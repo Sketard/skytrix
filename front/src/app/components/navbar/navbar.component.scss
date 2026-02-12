@@ -1,47 +1,109 @@
 @import '../../styles/variable';
 
-.navbar {
-  padding: 1.5rem 1rem 1.5rem 1rem;
+.navbar-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  height: 100vh;
+  background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
+  color: $black;
+  position: relative;
+  transition: width 200ms ease;
 
-  &-logo {
-    width: 100%;
-    margin-bottom: 2em;
+  &.collapsed {
+    width: 32px;
+  }
+}
+
+.navbar-inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.navbar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  min-height: 0;
+}
+
+.logo {
+  width: 100%;
+  margin-bottom: 2em;
+}
+
+.nav-link {
+  text-decoration: none !important;
+  color: $black;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  padding: 0.75em 0.5em;
+  border-radius: 10px;
+  margin-top: 0.25rem;
+  white-space: nowrap;
+
+  mat-icon {
+    margin-right: 0.5em;
   }
 
-  a {
-    text-decoration: none !important;
-    color: $black;
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    padding: 1em 0.5em;
-    border-radius: 10px;
-    margin-top: 0.5rem;
+  &:hover,
+  &.active {
+    background-color: rgba(59, 59, 59, 0.048);
+  }
+}
 
-    mat-icon {
-      margin-right: 0.5em;
-    }
+.spacer {
+  flex: 1;
+}
 
-    &:hover,
-    &.activebutton {
-      background-color: rgba(59, 59, 59, 0.048);
-    }
+.user-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.user-pseudo {
+  font-weight: bold;
+  font-style: italic;
+}
+
+.collapse-toggle {
+  position: absolute;
+  right: -16px;
+  top: 1.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgb(230, 230, 230);
+  color: $black;
+  padding: 0;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: background 150ms ease;
+
+  &:hover {
+    background: rgb(215, 215, 215);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-sidebar {
+    transition: none;
   }
 
-  &-account {
-    margin-top: 4em;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-
-    &-pseudo {
-      font-weight: bold;
-      font-style: italic;
-    }
-
-    button {
-      margin-top: 1em;
-    }
+  .collapse-toggle {
+    transition: none;
   }
 }

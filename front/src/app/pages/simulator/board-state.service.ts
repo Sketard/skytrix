@@ -1,4 +1,4 @@
-import { DestroyRef, inject, Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Deck } from '../../core/model/deck';
 import { IndexedCardDetail } from '../../core/model/card-detail';
 import { CardInstance, OverlayMode, ZoneId } from './simulator.models';
@@ -55,7 +55,7 @@ export class BoardStateService {
   readonly isExtraDeckEmpty = computed(() => this.boardState()[ZoneId.EXTRA_DECK].length === 0);
 
   // UI state signals
-  readonly hoveredCard = signal<CardInstance | null>(null);
+  readonly selectedCard = signal<CardInstance | null>(null);
   readonly isDragging = signal<boolean>(false);
   readonly forceReducedMotion = signal(false);
 
@@ -80,16 +80,6 @@ export class BoardStateService {
   });
 
   private originalDeck: Deck | null = null;
-  private _hoverTimeout: ReturnType<typeof setTimeout> | null = null;
-  private readonly destroyRef = inject(DestroyRef);
-
-  constructor() {
-    this.destroyRef.onDestroy(() => {
-      if (this._hoverTimeout !== null) {
-        clearTimeout(this._hoverTimeout);
-      }
-    });
-  }
 
   openMaterialPeek(cardInstanceId: string, zoneId: ZoneId): void {
     this.closeOverlay();
@@ -113,9 +103,7 @@ export class BoardStateService {
   }
 
   openDeckSearch(): void {
-    this.closeMaterialPeek();
-    this.activeOverlayZone.set(ZoneId.MAIN_DECK);
-    this.activeOverlayMode.set('search');
+    this.openOverlay(ZoneId.MAIN_DECK);
   }
 
   openDeckReveal(count: number): void {
@@ -129,21 +117,19 @@ export class BoardStateService {
     this.activeOverlayMode.set('reveal');
   }
 
-  setHoveredCard(card: CardInstance | null): void {
-    if (this._hoverTimeout !== null) {
-      clearTimeout(this._hoverTimeout);
-    }
-    this._hoverTimeout = setTimeout(() => {
-      this.hoveredCard.set(card);
-      this._hoverTimeout = null;
-    }, 50);
+  selectCard(card: CardInstance): void {
+    this.selectedCard.set(card);
+  }
+
+  clearSelection(): void {
+    this.selectedCard.set(null);
   }
 
   resetBoard(): void {
     if (!this.originalDeck) return;
     this.closeOverlay();
     this.closeMaterialPeek();
-    this.setHoveredCard(null);
+    this.clearSelection();
     this.isDragging.set(false);
     this.boardState.set(createEmptyBoard());
     this.initializeBoard(this.originalDeck);
@@ -179,13 +165,6 @@ export class BoardStateService {
       image: icd.card.images[0] ?? { id: 0, imageId: 0, url: '', smallUrl: '', cardId: 0 },
       faceDown: false,
       position: 'ATK' as const,
-    }));
-  }
-
-  shuffleDeckSilent(): void {
-    this.boardState.update(prev => ({
-      ...prev,
-      [ZoneId.MAIN_DECK]: this.shuffle([...prev[ZoneId.MAIN_DECK]]),
     }));
   }
 
