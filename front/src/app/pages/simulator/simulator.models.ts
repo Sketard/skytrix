@@ -1,5 +1,6 @@
 import { CardDetail } from '../../core/model/card-detail';
 import { CardImageDTO } from '../../core/model/dto/card-image-dto';
+import { SharedCardData } from '../../core/model/shared-card-data';
 
 export enum ZoneId {
   HAND = 'HAND',
@@ -36,6 +37,14 @@ export type OverlayMode = 'browse' | 'search' | 'reveal';
 export interface SimCommand {
   execute(): void;
   undo(): void;
+}
+
+export function toSharedCardData(ci: CardInstance): SharedCardData {
+  return {
+    name: ci.card.card.name ?? '',
+    imageUrl: ci.image.smallUrl,
+    imageUrlFull: ci.image.url,
+  };
 }
 
 export const ZONE_CONFIG: Record<ZoneId, { type: 'single' | 'ordered' | 'stack'; label: string; pendulum?: 'left' | 'right' }> = {

@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, HostL
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { BoardStateService } from './board-state.service';
-import { CardInstance, ZoneId, ZONE_CONFIG } from './simulator.models';
-import { SimCardComponent } from './sim-card.component';
+import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
+import { CardComponent } from '../../components/card/card.component';
 
 @Component({
   selector: 'app-sim-pile-overlay',
@@ -11,7 +11,7 @@ import { SimCardComponent } from './sim-card.component';
   styleUrl: './pile-overlay.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatIconModule, SimCardComponent],
+  imports: [DragDropModule, MatIconModule, CardComponent],
   host: {
     'role': 'dialog',
     '[attr.aria-modal]': 'isOpen()',
@@ -121,6 +121,8 @@ export class SimPileOverlayComponent {
   onFilterInput(event: Event): void {
     this.filterText.set((event.target as HTMLInputElement).value);
   }
+
+  protected readonly toSharedCardData = toSharedCardData;
 
   onDragStarted(): void {
     this.boardState.isDragging.set(true);

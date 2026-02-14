@@ -3,8 +3,8 @@ import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { createGlowEffect } from './glow-effect';
-import { CardInstance, ZoneId } from './simulator.models';
-import { SimCardComponent } from './sim-card.component';
+import { CardInstance, ZoneId, toSharedCardData } from './simulator.models';
+import { CardComponent } from '../../components/card/card.component';
 
 @Component({
   selector: 'app-sim-hand',
@@ -12,7 +12,7 @@ import { SimCardComponent } from './sim-card.component';
   styleUrl: './hand.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, SimCardComponent],
+  imports: [DragDropModule, CardComponent],
 })
 export class SimHandComponent {
   private readonly boardState = inject(BoardStateService);
@@ -73,6 +73,8 @@ export class SimHandComponent {
   onDragEnded(): void {
     this.boardState.isDragging.set(false);
   }
+
+  protected readonly toSharedCardData = toSharedCardData;
 
   onCardClicked(card: CardInstance): void {
     this.boardState.selectCard(card);

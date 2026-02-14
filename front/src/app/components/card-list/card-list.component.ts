@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, input, OnDestroy, signal } from '@angular/core';
-import { CardComponent, CardSize } from '../card/card.component';
+import { DeckBuilderCardComponent, CardSize } from '../card/deck-builder-card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { CdkDropList } from '@angular/cdk/drag-drop';
 import { SearchServiceCore } from '../../services/search-service-core.service';
@@ -10,7 +10,7 @@ import { CardDetail } from '../../core/model/card-detail';
 
 @Component({
   selector: 'card-list',
-  imports: [CommonModule, CardComponent, CdkDropList],
+  imports: [CommonModule, DeckBuilderCardComponent, CdkDropList],
   templateUrl: './card-list.component.html',
   styleUrl: './card-list.component.scss',
   standalone: true,

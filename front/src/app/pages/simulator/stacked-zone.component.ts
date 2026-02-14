@@ -6,8 +6,8 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { createGlowEffect } from './glow-effect';
-import { CardInstance, ZoneId, ZONE_CONFIG } from './simulator.models';
-import { SimCardComponent } from './sim-card.component';
+import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
+import { CardComponent } from '../../components/card/card.component';
 
 @Component({
   selector: 'app-sim-stacked-zone',
@@ -15,7 +15,7 @@ import { SimCardComponent } from './sim-card.component';
   styleUrl: './stacked-zone.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatIconModule, MatMenuModule, SimCardComponent],
+  imports: [DragDropModule, MatIconModule, MatMenuModule, CardComponent],
 })
 export class SimStackedZoneComponent {
   readonly zoneId = input.required<ZoneId>();
@@ -41,6 +41,8 @@ export class SimStackedZoneComponent {
   private shakeTimeout: ReturnType<typeof setTimeout> | undefined;
   private readonly glow = createGlowEffect();
   readonly justDropped = this.glow.justDropped;
+
+  protected readonly toSharedCardData = toSharedCardData;
 
   onDrop(event: CdkDragDrop<ZoneId, ZoneId, CardInstance>): void {
     if (event.previousContainer === event.container) return;

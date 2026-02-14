@@ -1,7 +1,7 @@
-import { Component, effect, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, signal } from '@angular/core';
 import { DeckBuildService } from '../../../../../../services/deck-build.service';
 import { IndexedCardDetail } from '../../../../../../core/model/card-detail';
-import { CardComponent } from '../../../../../../components/card/card.component';
+import { DeckBuilderCardComponent } from '../../../../../../components/card/deck-builder-card.component';
 import { NgClass, NgForOf } from '@angular/common';
 import { CardDisplayType } from '../../../../../../core/enums/card-display-type';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
@@ -12,9 +12,11 @@ import { MatSuffix } from '@angular/material/form-field';
 
 @Component({
   selector: 'app-hand-test',
-  imports: [CardComponent, NgForOf, NgClass, MatSlideToggle, FormsModule, MatButton, MatIcon, MatIconButton, MatSuffix],
+  imports: [DeckBuilderCardComponent, NgForOf, NgClass, MatSlideToggle, FormsModule, MatButton, MatIcon, MatIconButton, MatSuffix],
   templateUrl: './hand-test.component.html',
   styleUrl: './hand-test.component.scss',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HandTestComponent {
   readonly displayMode = input<CardDisplayType>(CardDisplayType.MOSAIC);

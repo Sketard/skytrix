@@ -11,14 +11,15 @@
      (contextmenu)="onContextMenu($event)"
 >
   @if (topCard(); as card) {
-    <app-sim-card [cardInstance]="card"
-                  [forceFaceDown]="showFaceDown()"
-                  cdkDrag
-                  [cdkDragData]="card"
-                  [cdkDragDisabled]="cardCount() === 0"
-                  [attr.aria-label]="'Drag top card from ' + zoneConfig().label"
-                  (cdkDragStarted)="onDragStarted()"
-                  (cdkDragEnded)="onDragEnded()" />
+    <app-card [card]="toSharedCardData(card)"
+              [faceDown]="showFaceDown() ?? card.faceDown"
+              [position]="card.position"
+              cdkDrag
+              [cdkDragData]="card"
+              [cdkDragDisabled]="cardCount() === 0"
+              [attr.aria-label]="'Drag top card from ' + zoneConfig().label"
+              (cdkDragStarted)="onDragStarted()"
+              (cdkDragEnded)="onDragEnded()" />
   }
   @if (cardCount() === 0) {
     <span class="zone-label">{{ zoneConfig().label }}</span>

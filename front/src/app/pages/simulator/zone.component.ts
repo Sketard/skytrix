@@ -5,9 +5,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { createGlowEffect } from './glow-effect';
-import { CardInstance, ZoneId, ZONE_CONFIG } from './simulator.models';
+import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
 import { CardType } from '../../core/enums/card-type.enum';
-import { SimCardComponent } from './sim-card.component';
+import { CardComponent } from '../../components/card/card.component';
 
 @Component({
   selector: 'app-sim-zone',
@@ -15,7 +15,7 @@ import { SimCardComponent } from './sim-card.component';
   styleUrl: './zone.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, SimCardComponent, MatMenuModule, MatIconModule],
+  imports: [DragDropModule, CardComponent, MatMenuModule, MatIconModule],
 })
 export class SimZoneComponent {
   readonly zoneId = input.required<ZoneId>();
@@ -33,6 +33,8 @@ export class SimZoneComponent {
   private readonly glow = createGlowEffect();
   readonly justDropped = this.glow.justDropped;
   readonly onGlowAnimationEnd = this.glow.onGlowAnimationEnd;
+
+  protected readonly toSharedCardData = toSharedCardData;
 
   readonly isMonsterZone = computed(() => {
     const config = this.zoneConfig();
