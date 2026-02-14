@@ -1,22 +1,35 @@
-@import '../../../../styles/variable';
+@use 'responsive' as *;
+@use 'variable' as *;
 
 .deckPage {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 1rem;
+
+  @include respond-above($bp-mobile) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include respond-above($bp-desktop-sm) {
+    grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  }
 
   &-deck {
     position: relative;
-    margin: 1rem;
+    display: flex;
 
     &-remove {
       position: absolute;
-      top: 0;
-      right: 2rem;
+      top: 4px;
+      right: 4px;
       background-color: $red;
       border: 1px solid $white;
-      padding: 3px;
-      z-index: 10000;
+      padding: 8px;
+      z-index: 1010;
       cursor: pointer;
+      border-radius: 50%;
+      @include touch-target-min;
     }
   }
 }

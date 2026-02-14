@@ -1,12 +1,26 @@
+@use 'responsive' as *;
+
 .parameters {
-  padding: 1em;
+  padding: 1rem;
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  @include respond-above($bp-desktop-sm) {
+    max-width: 600px;
+    margin: 0 auto;
+  }
 
   &-buttons {
     display: flex;
     flex-direction: column;
+    gap: 0.75rem;
 
     button {
-      margin-top: 1em;
+      @include touch-target-min;
+      width: 100%;
     }
   }
 }

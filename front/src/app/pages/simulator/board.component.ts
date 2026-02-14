@@ -32,6 +32,7 @@ export class SimBoardComponent {
   constructor() {
     effect(() => {
       this.navbarCollapse.navbarWidth();
+      this.navbarCollapse.isMobile();
       untracked(() => this.recalculateScale());
     });
   }
@@ -42,8 +43,9 @@ export class SimBoardComponent {
   }
 
   private recalculateScale(): void {
-    const availableWidth = window.innerWidth - this.navbarCollapse.navbarWidth();
-    const availableHeight = window.innerHeight;
+    const isMobile = this.navbarCollapse.isMobile();
+    const availableWidth = isMobile ? window.innerWidth : window.innerWidth - this.navbarCollapse.navbarWidth();
+    const availableHeight = isMobile ? window.innerHeight - NavbarCollapseService.MOBILE_HEADER_HEIGHT : window.innerHeight;
     this.scaleFactor.set(Math.min(availableWidth / 1060, availableHeight / 720, 1));
   }
 
