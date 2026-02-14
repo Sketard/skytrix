@@ -1,3 +1,5 @@
+@use 'variable' as _v;
+
 @mixin filter-section-name {
   font-size: 0.9em;
   margin-bottom: 0.5em;
@@ -37,7 +39,7 @@
   border: 2px solid rgb(255, 0, 0);
   font-weight: 800;
   font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
-  background-color: $black;
+  background-color: _v.$black;
   color: yellow;
 
   div {

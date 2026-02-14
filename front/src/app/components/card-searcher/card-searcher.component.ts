@@ -1,16 +1,15 @@
-import { ChangeDetectionStrategy, Component, effect, input, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, Signal } from '@angular/core';
 import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
-import { NgIf } from '@angular/common';
 import { SearchBarComponent } from '../search-bar/search-bar.component';
-import { CardSize } from '../card/deck-builder-card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 import { FormGroup } from '@angular/forms';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
+import { CardDetail } from '../../core/model/card-detail';
 
 @Component({
   selector: 'app-card-searcher',
@@ -20,7 +19,6 @@ import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
     MatButtonToggle,
     MatButtonToggleGroup,
     MatIcon,
-    NgIf,
     SearchBarComponent,
   ],
   templateUrl: './card-searcher.component.html',
@@ -30,11 +28,10 @@ import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
 })
 export class CardSearcherComponent {
   readonly deckBuildMode = input<boolean>(false);
-  readonly size = input(CardSize.MEDIUM);
   readonly searchService = input<SearchServiceCore | undefined>(undefined);
 
-  public defaultSize = CardSize.MEDIUM;
-  public cropped = false;
+  readonly cardClicked = output<CardDetail>();
+
   public displayMode: Signal<CardDisplayType> | undefined;
   public displayType = CardDisplayType;
 

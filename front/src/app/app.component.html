@@ -6,9 +6,4 @@
   <main class="dark-theme-content" [class.full]="!connectedUser()">
     <router-outlet></router-outlet>
   </main>
-  @if (connectedUser()) {
-    <div class="dark-theme-tooltip">
-      <card-tooltip></card-tooltip>
-    </div>
-  }
 </div>

@@ -1,13 +1,12 @@
-import { IndexedCardDetail } from '../../../../core/model/card-detail';
-import { DeckBuildService } from '../../../../services/deck-build.service';
-import { ChangeDetectionStrategy, Component, ElementRef, Input, ViewChild } from '@angular/core';
+import { CardDetail, IndexedCardDetail } from '../../../../core/model/card-detail';
+import { DeckBuildService, DeckZone } from '../../../../services/deck-build.service';
+import { ChangeDetectionStrategy, Component, ElementRef, Input, signal, ViewChild } from '@angular/core';
 import { DeckViewerComponent } from './components/deck-viewer/deck-viewer.component';
 import { Deck } from '../../../../core/model/deck';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import { DeckCardZoneComponent } from '../../../../components/deck-card-zone/deck-card-zone.component';
-import { CardSize } from '../../../../components/card/deck-builder-card.component';
 import { jsPDF } from 'jspdf';
 import { MatIconModule } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
@@ -23,9 +22,10 @@ import { ExportMode } from '../../../../core/enums/export.mode.enum';
 import { CardFiltersComponent } from '../../../../components/card-filters/card-filters.component';
 import { CardSearcherComponent } from '../../../../components/card-searcher/card-searcher.component';
 import { HandTestComponent } from './components/hand-test/hand-test.component';
-import { NgIf } from '@angular/common';
-import { TooltipService } from '../../../../services/tooltip.service';
 import { Router } from '@angular/router';
+import { CardInspectorComponent } from '../../../../components/card-inspector/card-inspector.component';
+import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
+import { ScalingContainerDirective } from '../../../../components/scaling-container/scaling-container.directive';
 
 @Component({
   selector: 'app-deck-builder',
@@ -41,7 +41,8 @@ import { Router } from '@angular/router';
     CardFiltersComponent,
     CardSearcherComponent,
     HandTestComponent,
-    NgIf,
+    CardInspectorComponent,
+    ScalingContainerDirective,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',
@@ -58,7 +59,8 @@ export class DeckBuilderComponent {
 
   @ViewChild('importInput') importInput: ElementRef | undefined;
 
-  public size: CardSize = CardSize.DECK;
+  readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
+  private selectedCardDetail: CardDetail | null = null;
 
   readonly exportButtons: Array<ActionButton> = [
     {
@@ -81,11 +83,43 @@ export class DeckBuilderComponent {
   constructor(
     public deckBuildService: DeckBuildService,
     private readonly exportService: ExportService,
-    private readonly tooltipService: TooltipService,
     private readonly router: Router
   ) {
     this.deckBuildService.resetDeck();
-    this.tooltipService.setActiveSearchService(this.deckBuildService);
+  }
+
+  onCardClicked(cd: CardDetail): void {
+    this.selectedCardDetail = cd;
+    this.selectedCardForInspector.set(toSharedCardInspectorData(cd));
+  }
+
+  dismissInspector(): void {
+    this.selectedCardForInspector.set(null);
+    this.selectedCardDetail = null;
+  }
+
+  addSelectedCardToDeck(): void {
+    if (!this.selectedCardDetail) return;
+    const cd = this.selectedCardDetail;
+    this.deckBuildService.addCard(cd, cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN);
+  }
+
+  removeSelectedCardFromDeck(): void {
+    if (!this.selectedCardDetail) return;
+    const cd = this.selectedCardDetail;
+    const deck = this.deckBuildService.deck();
+    const zones: Array<{ cards: Array<IndexedCardDetail>; zone: DeckZone }> = [
+      { cards: deck.mainDeck, zone: DeckZone.MAIN },
+      { cards: deck.extraDeck, zone: DeckZone.EXTRA },
+      { cards: deck.sideDeck, zone: DeckZone.SIDE },
+    ];
+    for (const { cards, zone } of zones) {
+      const idx = cards.findIndex(slot => slot.card.card.id === cd.card.id);
+      if (idx >= 0) {
+        this.deckBuildService.removeCard(idx, zone);
+        return;
+      }
+    }
   }
 
   public save() {

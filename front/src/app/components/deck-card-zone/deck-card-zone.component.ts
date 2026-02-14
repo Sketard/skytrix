@@ -1,10 +1,10 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, DragDropModule } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, HostListener, input } from '@angular/core';
-import { DeckBuilderCardComponent, CardSize } from '../card/deck-builder-card.component';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, HostListener, input, output } from '@angular/core';
+import { CardComponent } from '../card/card.component';
+import { NgClass } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
-import { CardDisplayType } from '../../core/enums/card-display-type';
-import { IndexedCardDetail } from '../../core/model/card-detail';
+import { CardDetail, IndexedCardDetail } from '../../core/model/card-detail';
+import { toSharedCardData } from '../../core/model/shared-card-data';
 
 enum StaticDeckZone {
   OTHER = 'OTHER',
@@ -13,7 +13,7 @@ enum StaticDeckZone {
 
 @Component({
   selector: 'deck-card-zone',
-  imports: [CdkDropList, CdkDrag, CommonModule, DeckBuilderCardComponent, DragDropModule],
+  imports: [CdkDropList, CdkDrag, NgClass, CardComponent, DragDropModule],
   templateUrl: './deck-card-zone.component.html',
   styleUrl: './deck-card-zone.component.scss',
   standalone: true,
@@ -21,12 +21,14 @@ enum StaticDeckZone {
 })
 export class DeckCardZoneComponent {
   readonly label = input<string>('');
-  readonly size = input<CardSize>(CardSize.DECK);
   readonly slotNumber = input<number>(60);
   readonly cardDetails = input<Array<IndexedCardDetail>>(new Array<IndexedCardDetail>());
   readonly deckZone = input<DeckZone>();
 
+  readonly cardClicked = output<CardDetail>();
+
   readonly staticDeckZone = StaticDeckZone;
+  readonly toSharedCardData = toSharedCardData;
 
   @HostListener('contextmenu', ['$event'])
   onRightClick(event: any, zone: DeckZone | undefined, index: number) {
@@ -39,9 +41,11 @@ export class DeckCardZoneComponent {
     this.deckBuildService.removeCard(index, zone);
   }
 
-  public displayMode: CardDisplayType = CardDisplayType.MOSAIC;
-
   public constructor(public deckBuildService: DeckBuildService) {}
+
+  onCardClick(cd: CardDetail): void {
+    this.cardClicked.emit(cd);
+  }
 
   drop(event: CdkDragDrop<any>) {
     const fromListContainer = event.previousContainer.id === 'cardList';

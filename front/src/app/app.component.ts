@@ -2,14 +2,13 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { LoaderComponent } from './components/loader/loader.component';
-import { CardTooltipComponent } from './components/card-tooltip/card-tooltip.component';
 import { AuthService } from './services/auth.service';
 import { CURRENT_USER_KEY } from './core/utilities/auth.constants';
 import { NavbarCollapseService } from './services/navbar-collapse.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, NavbarComponent, LoaderComponent, CardTooltipComponent],
+  imports: [RouterOutlet, NavbarComponent, LoaderComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true,
