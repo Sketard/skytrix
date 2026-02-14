@@ -1,8 +1,12 @@
 ---
-stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-03-success', 'step-04-journeys', 'step-05-domain-skipped', 'step-06-innovation-skipped', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-12-complete']
+stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-03-success', 'step-04-journeys', 'step-05-domain-skipped', 'step-06-innovation-skipped', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-12-complete', 'step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
 status: complete
 inputDocuments: ['project-context.md']
 workflowType: 'prd'
+lastEdited: '2026-02-12'
+editHistory:
+  - date: '2026-02-12'
+    changes: 'Applied sprint change proposal: responsive multi-device support (Technical Context, NFR9, NFR11, NFR12)'
 documentCounts:
   briefs: 0
   research: 0
@@ -28,7 +32,7 @@ classification:
 
 **Problem:** No tool exists to test deck combos from a decklist without entering a live duel. Players must rely on real games to validate turn 1 sequences, making deck optimization slow and unreliable.
 
-**Solution:** A frontend-only simulator accessible from any decklist in skytrix. The player loads a deck, draws a hand, and manually executes card actions (draw, summon, activate, mill, search) via drag & drop across all 20 Yu-Gi-Oh! game zones. No rules engine — full manual control for maximum flexibility.
+**Solution:** A frontend-only simulator accessible from any decklist in skytrix. The player loads a deck, draws a hand, and manually executes card actions (draw, summon, activate, mill, search) via drag & drop across all 18 Yu-Gi-Oh! game zones. No rules engine — full manual control for maximum flexibility.
 
 **Differentiator:** Integrated into an existing deck management workflow (build deck → test combos → iterate). Visual polish inspired by Yu-Gi-Oh! Master Duel. Undo/redo for iterative combo exploration without full resets.
 
@@ -82,7 +86,7 @@ The complete board with basic actions — enough to test simple combos.
 
 1. Load decklist (main deck, extra deck) from deck detail page
 2. Shuffle and draw initial hand
-3. All 20 game zones: hand, monster (1-5), spell/trap (1-5), Extra Monster (2), Pendulum (2), field spell, graveyard, banish, extra deck, main deck
+3. All 18 game zones: hand, monster (1-5), spell/trap (1-5 — ST1/ST5 double as Pendulum L/R per Master Rule 5), Extra Monster (2), field spell, graveyard, banish, extra deck, main deck
 4. Drag & drop card movement between any zones
 5. Manual card actions: draw, summon/set, activate, send to GY, banish, return to hand/deck
 6. Card detail on hover (reuse existing card-tooltip component)
@@ -125,10 +129,10 @@ Comfort layer for iterative combo exploration.
 ### Risk Mitigation Strategy
 
 **Technical Risks:**
-- *Drag & drop with 20 zones:* Mitigated — `cdkDropListGroup` auto-connects all zones. Proven pattern. Ensure CDK version >= 19.1.6 to avoid known performance regression.
+- *Drag & drop with 18 zones:* Mitigated — `cdkDropListGroup` auto-connects all zones. Proven pattern. Ensure CDK version >= 19.1.6 to avoid known performance regression.
 - *Command pattern complexity:* Mitigated — delta-based commands are well-established. Shuffle stores order snapshot. CompositeCommand handles batch operations. ~10 command types cover all actions.
 - *Performance with full board:* Mitigated — OnPush change detection + Angular signals + `cdkDropListSortingDisabled` on single-card zones.
-- *Board layout with 20 zones:* Mitigated — design a minimal wireframe/grid layout before coding. Plan the board grid upfront to avoid a functional but visually cluttered result.
+- *Board layout with 18 zones:* Mitigated — design a minimal wireframe/grid layout before coding. Plan the board grid upfront to avoid a functional but visually cluttered result.
 
 **Market Risks:** None — personal project for personal use.
 
@@ -185,10 +189,10 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 
 - **Architecture:** New page within existing Angular 19 SPA, added to `app.routes.ts`
 - **Route:** `/decks/:id/simulator` accessible from deck detail page
-- **Browser Support:** Modern desktop browsers only (Chrome, Firefox, Edge, Safari latest)
+- **Browser Support:** Modern browsers — desktop (Chrome, Firefox, Edge, Safari latest two versions) and mobile (Chrome Android, Safari iOS latest two versions)
 - **SEO:** Not applicable — authenticated feature
 - **Real-time:** Not needed — all state local to browser session
-- **Responsive Design:** Desktop-first — card game board requires sufficient screen real estate
+- **Responsive Design:** Responsive multi-device — deck management pages use fluid layouts with breakpoints (mobile-first CSS). The simulator board uses a fixed 16:9 aspect ratio with proportional scaling on all devices; mobile adds a tap-to-place interaction mode and landscape-locked display.
 - **Performance Targets:** Drag & drop within 16ms frame budget. OnPush + signals to avoid unnecessary re-renders
 - **Reuses:** Existing services (card data, deck data, card images), existing card-tooltip component
 - **Dependencies:** No new dependencies — Angular CDK DragDrop already installed
@@ -240,14 +244,14 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 - FR25: The player can set a card face-down (displaying card back)
 - FR26: The player can flip a face-down card face-up
 - FR27: The player can toggle a monster's battle position (ATK/DEF visual indicator)
-- FR28: The player can view card details (enlarged image and effect text) by hovering over any face-up card via the card inspector side panel. Face-down cards show card back only — no effect text revealed.
+- FR28: The player can view card details (enlarged image and effect text) by hovering over any card via the card inspector side panel. Face-down cards show full card details — face-down is a positional state, not an information barrier in solo context.
 
 ### Session Management
 
 - FR29: The player can undo the last action performed
 - FR30: The player can redo a previously undone action
 - FR31: The player can undo/redo batch operations as a single unit (e.g., mill 3 undoes all 3 card moves at once)
-- FR32: The player can perform common actions via keyboard shortcuts (draw, undo, redo, reset)
+- FR32: The player can perform common actions via keyboard shortcuts (Ctrl+Z undo, Ctrl+Y redo, Escape close overlay). No keyboard shortcut for Reset.
 - FR33: The player can reset the entire board to the initial state (re-shuffle and re-draw)
 - FR34: The simulator is accessible only to authenticated users from the deck detail page
 
@@ -269,5 +273,10 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 
 ### Compatibility
 
-- NFR9: The simulator functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions)
+- NFR9: The application functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions) and modern mobile browsers (Chrome Android, Safari iOS — latest two versions). The simulator locks to landscape orientation on mobile devices.
 - NFR10: The simulator integrates with the existing skytrix build and deployment pipeline without additional configuration
+
+### Responsiveness
+
+- NFR11: Deck management pages (deck list, deck detail, deck builder) are usable on viewports from 375px width (mobile portrait) to 2560px+ (ultrawide desktop) without horizontal scrolling
+- NFR12: All interactive elements meet minimum touch target size of 44×44px on mobile viewports

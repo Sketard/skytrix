@@ -1,0 +1,31 @@
+// =============================================
+// Canvas Scaling Infrastructure (Track A Pages)
+// =============================================
+// Used by: ScalingContainerDirective host elements and their parents
+// Pages: Simulator, Deck Builder, Card Search
+// =============================================
+
+// Parent container setup — MUST have explicit height (not auto)
+@mixin canvas-parent {
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; // Anchor content to top
+  // CRITICAL: Parent must set explicit height (e.g., height: 100vh, calc(100vh - headerHeight))
+  // ResizeObserver on auto-height parent will NOT detect viewport changes
+}
+
+// Host element (the [appScalingContainer] element) base styles
+// IMPORTANT: pass unitless numbers (e.g. 1920, 1080), NOT px values (1920px would produce "1920pxpx")
+@mixin canvas-host($ref-width, $ref-height) {
+  width: #{$ref-width}px;
+  height: #{$ref-height}px;
+  transform-origin: top center;
+  position: relative;
+}
+
+// Letterboxing — background for empty space around scaled canvas
+@mixin canvas-letterbox($bg-color: transparent) {
+  background-color: $bg-color;
+}

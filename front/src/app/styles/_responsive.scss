@@ -1,0 +1,36 @@
+// =============================================
+// Responsive Infrastructure - Two-Track Strategy
+// =============================================
+// Track A (Canvas Scaling): Simulator, Deck Builder, Card Search
+//   → Fixed internal resolution, transform: scale() to fit viewport
+//   → Use ScalingContainerDirective + _canvas-scaling.scss
+// Track B (Responsive CSS): Deck List, Settings, Login
+//   → Mobile-first CSS with breakpoints below
+//   → Use respond-above() / respond-below() mixins
+// =============================================
+
+// Breakpoint variables — single source of truth
+$navbar-breakpoint: 768px; // Matched in TS via CDK BreakpointObserver
+$bp-mobile: 576px;
+$bp-tablet: 768px;
+$bp-desktop-sm: 1024px;
+
+// Mobile-first responsive mixins
+@mixin respond-above($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+@mixin respond-below($bp) {
+  @media (max-width: ($bp - 1px)) {
+    @content;
+  }
+}
+
+// Touch target utility (NFR12: 44x44px minimum on mobile)
+// Usage: @include touch-target-min; in component SCSS
+@mixin touch-target-min {
+  min-width: 44px;
+  min-height: 44px;
+}
