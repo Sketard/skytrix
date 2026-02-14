@@ -498,3 +498,8 @@ Claude Opus 4.6
   - M4: Removed obsolete vendor prefixes for `user-select` in deck-builder SCSS
   - L1: Added click handler on OWNED mode rows for card inspection
   - L2: Added `(cardClicked)` binding on cover images deck-card-zone
+- 2026-02-14: **Code Review 2 (Sprint 7+8 cross-review)** — 4 uncommitted fixes documented:
+  - card-list.component.ts: `!.clearOffset()` → `?.clearOffset()` (null safety fix in ngOnDestroy)
+  - card-searcher.component.scss: `@import 'variable'` → `@use 'variable' as *` (deprecated SCSS syntax)
+  - deck-builder.component.ts: `selectedCardDetail` plain property → `signal<CardDetail | null>(null)` (OnPush reactivity fix)
+  - deck-viewer.component.scss: `@import '../../../../../../styles/variable'` → `@use 'variable' as *` (deprecated SCSS syntax)

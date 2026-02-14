@@ -82,7 +82,7 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: Responsive App Shell & Navbar
-  epic-7: in-progress
+  epic-7: done
   7-1-shared-scss-infrastructure-and-scalingcontainerdirective: done
   7-2-responsive-navbar-hamburger-drawer-on-mobile: done
   7-3-login-and-settings-pages-responsive: done
@@ -90,7 +90,7 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Shared Components & Responsive Card Pages
-  epic-8: in-progress
+  epic-8: done
   8-1-harmonization-analysis-and-migration-plan: done
   8-2-extract-shared-cardcomponent: done
   8-3-extract-shared-cardinspectorcomponent: done

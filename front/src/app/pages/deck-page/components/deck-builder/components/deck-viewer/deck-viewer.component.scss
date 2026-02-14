@@ -1,4 +1,4 @@
-@import '../../../../../../styles/variable';
+@use 'variable' as *;
 
 .deckViewer {
   ::ng-deep .cdk-drop-list-dragging {

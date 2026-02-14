@@ -1,0 +1,20 @@
+# Binary assets (reference images, etc.)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.webp
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+.windsurf/
+
+# BMAD agent workflows (not source code)
+_bmad/
+
+# OS
+.DS_Store
+Thumbs.db

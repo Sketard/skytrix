@@ -92,6 +92,6 @@ export class CardListComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.searchService()!.clearOffset();
+    this.searchService()?.clearOffset();
   }
 }
