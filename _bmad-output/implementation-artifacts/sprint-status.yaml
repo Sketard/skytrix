@@ -1,4 +1,4 @@
-# generated: 2026-02-12
+# generated: 2026-02-14
 # project: skytrix
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-12
+generated: 2026-02-14
 project: skytrix
 project_key: NOKEY
 tracking_system: file-system
@@ -80,3 +80,20 @@ development_status:
   6-3-preventdefault-on-right-click-all-builds: done
   6-4-collapsible-navbar-vertical-sidebar: done
   epic-6-retrospective: optional
+
+  # Epic 7: Responsive App Shell & Navbar
+  epic-7: in-progress
+  7-1-shared-scss-infrastructure-and-scalingcontainerdirective: done
+  7-2-responsive-navbar-hamburger-drawer-on-mobile: ready-for-dev
+  7-3-login-and-settings-pages-responsive: backlog
+  7-4-deck-list-page-responsive: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: Shared Components & Responsive Card Pages
+  epic-8: backlog
+  8-1-harmonization-analysis-and-migration-plan: backlog
+  8-2-extract-shared-cardcomponent: backlog
+  8-3-extract-shared-cardinspectorcomponent: backlog
+  8-4-deck-builder-canvas-scaling-and-shared-components: backlog
+  8-5-card-search-page-canvas-scaling-and-shared-components: backlog
+  epic-8-retrospective: optional

@@ -16,6 +16,7 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 |---|---|---|
 | 2026-02-12 | Sprint Retro (Epics 1-5) | **A.** Fixed 16:9 aspect ratio layout with proportional scaling (Master Duel zoom-out style), replaces flexible CSS Grid responsive model. **B.** Face-down behavior rethought for solo context: inspector shows full details for face-down cards, ED overlay displays all cards face-up (no eye icon/grouping), deck/ED zones show card-back when count > 0. **C.** `preventDefault()` on right-click for entire board in all builds (incl. devMode); right-click gesture reserved for future custom context menu. **D.** Collapsible navbar: chevron toggle at navbar border, collapses to ~32px thin bar, collapsed by default on simulator page only. |
 | 2026-02-12 | UX Review | **E.** Standardized pill drag: all stacked zones (Deck, ED, GY, Banished) support direct drag from the pill — grabs the top card with identical behavior to dragging a board card. Click still opens overlay for deeper card access. |
+| 2026-02-12 | Sprint Change Proposal | **F.** Responsive two-track strategy: Track A (fixed canvas scaling) for card manipulation pages (simulator, deck builder, card search); Track B (mobile-first responsive CSS) for content pages (deck list, settings, login). Shared components (CardComponent, CardInspectorComponent) extracted from simulator for cross-page reuse. Navbar responsive: hamburger/drawer on mobile ≤768px, collapsible sidebar on desktop. |
 
 ---
 
@@ -38,7 +39,7 @@ The core workflow is: build deck → test combos → iterate — all within a si
 1. **Visual Density Management** — 18 zones on a single screen with a fixed 16:9 aspect ratio. The board scales proportionally to fit the available viewport space (Master Duel "zoom-out" style) — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
 2. **Action Discoverability** — Without a rules engine to guide the player, all available actions (mill, search, reveal, flip, toggle position, banish, return to hand/deck) must be intuitively discoverable through the interface. No tutorial — the UI must be self-explanatory.
 3. **Drag & Drop Precision** — Targeting the correct zone among 18 while dragging a card. Visual feedback during drag (zone highlighting, capacity indicators) is critical to avoid frustrating mis-drops.
-4. **Future Mobile Readiness** — While MVP is desktop-only, the fixed 16:9 scaling model naturally adapts to any screen size. Mobile will lock to landscape orientation (like Master Duel). Touch interaction (tap-to-place) is a post-MVP design effort.
+4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). Touch interaction (tap-to-place for simulator) is a post-MVP design effort; all other pages are touch-ready via responsive layouts.
 
 ### Design Opportunities
 
@@ -56,11 +57,13 @@ The core loop is: **load deck → shuffle → draw 5 → execute combo via drag 
 
 ### Platform Strategy
 
-- **Primary Platform:** Desktop web (Angular 19 SPA) — mouse + keyboard interaction
-- **Input Model:** Mouse-driven drag & drop as primary, keyboard shortcuts as accelerators
-- **Hover Dependency:** Card tooltips on hover are integral to the experience — desktop-only capability leveraged fully
-- **Screen Requirements:** The board has a fixed 16:9 aspect ratio and scales to fit the viewport via `transform: scale()`. No scrolling, no minimum size threshold — the board always fits. Letterboxing (empty space) filled by the app's existing background. Card details remain accessible at any scale via hover/inspector.
-- **Future Mobile Consideration (Post-MVP):** The fixed 16:9 scaling model naturally adapts to any screen. Mobile will lock to landscape orientation (like Master Duel). Touch interaction requires a dedicated tap-to-place mode (post-MVP design). Pill and overlay interactions will need touch equivalents (tap, long press) in mobile version.
+- **Primary Platform:** Desktop web (Angular 19 SPA) — mouse + keyboard interaction. Responsive multi-device: all pages adapt from 375px (mobile portrait) to 2560px+ (ultrawide desktop).
+- **Input Model:** Mouse-driven drag & drop as primary on desktop, keyboard shortcuts as accelerators. Mobile touch interaction (tap-to-place for simulator) is post-MVP.
+- **Hover Dependency:** Card inspector on hover is integral to the desktop experience. On mobile, inspector becomes tap-triggered (full-screen modal).
+- **Screen Requirements — Two Tracks:**
+  - **Card manipulation pages** (simulator, deck builder, card search): Fixed canvas with proportional scaling via `transform: scale()`. No scrolling, no minimum size threshold. Letterboxing filled by app background.
+  - **Content pages** (deck list, settings, login): Mobile-first responsive CSS with fluid layouts and breakpoints (576px, 768px, 1024px). No canvas scaling.
+- **Mobile Consideration (Post-MVP for simulator, current for content pages):** Content pages are responsive now. The simulator's scaling model adapts to any viewport, but touch interaction (tap-to-place) requires dedicated post-MVP design. Pill and overlay interactions will need touch equivalents (tap, long press) in mobile version.
 - **Offline:** Not required — deck data loaded at initialization, then all processing is client-side and ephemeral
 - **No Backend Dependency:** Zero network calls during simulation — all state is local
 
@@ -471,7 +474,7 @@ The simulator's identity is captured in one interaction: picking up a card and p
 - Zone highlighting during drag provides non-color feedback (border intensification + subtle glow spread)
 - Card elevation on drag (shadow + scale) provides non-color depth cue
 - Pill buttons meet minimum 44x32px touch target for future mobile adaptation
-- Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+R) provide non-mouse interaction paths
+- Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Escape) provide non-mouse interaction paths
 
 ## Design Direction Decision
 
@@ -883,7 +886,7 @@ interface StackedZoneConfig {
 
 **Purpose:** Undo / Redo / Reset buttons positioned in the controls grid area (bottom-left).
 **Content:** Three icon buttons with tooltips. Optional action count indicators.
-**Actions:** Undo (Ctrl+Z), Redo (Ctrl+Y), Reset (Ctrl+Shift+R with confirmation dialog).
+**Actions:** Undo (Ctrl+Z), Redo (Ctrl+Y), Reset (button only — no keyboard shortcut, with confirmation dialog).
 **States:** Undo-available / Undo-disabled (stack empty), Redo-available / Redo-disabled, Reset always available.
 **Variants:** None.
 **Accessibility:** `aria-label` per button, keyboard shortcuts announced in tooltips.
@@ -1093,36 +1096,86 @@ SimBoardComponent (root grid)
 
 ### Responsive Strategy
 
-**Approach:** Fixed 16:9 aspect ratio with proportional scaling (Master Duel "zoom-out" model). The board is a fixed-size internal layout that scales via `transform: scale()` to fit the available viewport space. No breakpoint-based layout changes — the board structure is identical at every viewport size. Card details remain accessible at any scale via hover/inspector.
+**Two-Track Approach:** The application uses two responsive strategies, determined by page type:
 
-**Key Principle:** The board never scrolls, never changes grid structure, and never hides zones. The only variable is the scale factor. This eliminates breakpoint-specific CSS and responsive layout bugs entirely.
+**Track A — Fixed Canvas Scaling (Card Manipulation Pages)**
+
+Pages where cards are the primary content and spatial layout is critical:
+- Simulator (`/decks/:id/simulator`) — already implemented
+- Deck Builder (`/decks/builder`, `/decks/:id`)
+- Card Search (`/search`)
+
+Fixed internal resolution per page, `transform: scale()` to fit viewport. The canvas structure is invariant — only the scale factor changes. No breakpoint-based layout changes for the canvas area. Card details remain accessible at any scale via hover/inspector.
+
+**Key Principle:** Canvas pages never scroll, never change grid structure, and never hide content zones. The only variable is the scale factor. This eliminates breakpoint-specific CSS bugs entirely.
+
+**Hybrid layout** for deck builder and card search: responsive search/filter header above the scaled canvas. The header adapts via standard responsive CSS (Track B patterns) — search inputs, filter controls, action buttons. The canvas below contains the card grid/workspace with fixed scaling.
+
+**Track B — Responsive CSS (Content/Utility Pages)**
+
+Pages where content flows naturally and card spatial layout is not required:
+- Deck List (`/decks`)
+- Settings (`/parameters`)
+- Login (`/login`)
+
+Mobile-first CSS with breakpoints:
+
+| Breakpoint | Name | Target |
+|---|---|---|
+| ≤576px | Mobile | Phone portrait |
+| 577–768px | Tablet | Tablet portrait / phone landscape |
+| 769–1024px | Desktop-small | Laptop / small desktop |
+| >1024px | Desktop | Standard desktop |
+
+Standard responsive patterns: fluid grid, stacking columns, adjusted spacing. No canvas scaling needed.
+
+**Cross-Track Transitions:** When navigating from a Track B page (deck list) to a Track A page (deck builder), the layout paradigm shifts (fluid → fixed canvas) and the navbar may change mode (expanded → collapsed). The transition must feel natural — no jarring layout jumps or flickers.
 
 ### Scaling Model
 
-The board container has a fixed internal resolution (e.g., 1920×1080 logical pixels at 16:9). The scale factor is computed as:
+Track A pages use a shared `ScalingContainerDirective` that provides autonomous canvas scaling:
 
 ```
-availableWidth = viewport width - navbar width (if expanded)
-availableHeight = viewport height
-scaleX = availableWidth / boardInternalWidth
-scaleY = availableHeight / boardInternalHeight
+parentWidth = container width (reactive via ResizeObserver)
+parentHeight = container height
+scaleX = parentWidth / referenceWidth
+scaleY = parentHeight / (referenceWidth / aspectRatio)
 scale = min(scaleX, scaleY)
+→ transform: scale(scale), transform-origin: top center
 ```
 
-The board is centered in the available space. Empty space (letterboxing) shows the app's existing background — the board floats over it.
+The directive measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout. Each Track A page has its own `referenceWidth` calibrated to its content density (e.g., simulator: 1920, deck builder: TBD).
+
+The canvas is centered in the available space. Empty space (letterboxing) shows the app's existing background — the canvas floats over it.
 
 ### Viewport Considerations
 
-| Context | Behavior |
-|---|---|
-| **Desktop (any size)** | Board scales to fit. Card inspector as fixed side panel (overlays board edge). Full drag & drop with mouse. |
-| **Small window / laptop** | Board scales down proportionally. All zones remain visible and functional. Inspector may overlap more of the board. |
-| **Mobile (post-MVP)** | Display locked to landscape orientation. Same scaling model applies. Touch interaction (tap-to-place) designed separately post-MVP. |
+| Context | Track A (Canvas Pages) | Track B (Content Pages) |
+|---|---|---|
+| **Desktop (>1024px)** | Canvas scales to fit. Card inspector as fixed side panel. Full drag & drop with mouse. | Full layout — multi-column grids, expanded cards. |
+| **Small desktop / laptop (769–1024px)** | Canvas scales down proportionally. All zones remain visible. Inspector may overlap more. | Reduced columns, adjusted spacing. |
+| **Tablet (577–768px)** | Canvas scales further. Still functional. Navbar switches to hamburger/drawer. | Stacked layout, single or dual columns. Touch-friendly tap targets. |
+| **Mobile (≤576px)** | Simulator: landscape-locked, canvas scales to full viewport. Deck builder/search: portrait usable via scaled canvas. | Single column, full-width cards, 44×44px touch targets. |
 
-**No breakpoints for layout changes.** The board grid structure is invariant. Only the scale factor changes.
+### Navbar Responsive UX
 
-### Mobile (Post-MVP)
+| Viewport | Mode | Behavior |
+|---|---|---|
+| >768px (desktop) | Collapsible sidebar | Expanded by default (simulator: collapsed by default). Chevron toggle at navbar border. |
+| ≤768px (mobile/tablet) | Hamburger + drawer | Hidden by default. Hamburger button in a fixed top bar. Navbar content slides in as overlay drawer. |
 
+- On Track A pages (mobile): the fixed top bar with hamburger reduces available vertical space for the canvas. The canvas parent height accounts for this (e.g., `calc(100vh - mobile-header-height)`).
+- On Track B pages (mobile): the top bar provides persistent navigation access without consuming significant content space.
+- The navbar mode switch is driven by a single breakpoint: **768px**.
+
+### Mobile Interaction (Post-MVP for Simulator)
+
+**Content pages (Track B) — responsive now:**
+- All interactive elements meet 44×44px minimum touch target size
+- Standard touch gestures (tap, scroll) work natively with responsive layouts
+- No special interaction mode needed
+
+**Simulator (Track A) — post-MVP touch design:**
 - **Landscape-locked display** — like Master Duel on mobile, the simulator locks to landscape orientation
 - **Tap-to-Place Mode (Required for Mobile Card Movement):**
   - CDK DragDrop is incompatible with touch on small screens — drag triggers scroll, scroll interferes with drop detection
@@ -1130,6 +1183,11 @@ The board is centered in the available space. Empty space (letterboxing) shows t
   - This mode must be designed and implemented separately (post-MVP)
 - Card inspector becomes full-screen modal on tap
 - Context menus replaced by long-press or dedicated buttons
+
+**Deck builder / Card search (Track A) — hybrid:**
+- Canvas scaling works on mobile (same as simulator)
+- Header area (Track B) is touch-friendly with responsive CSS
+- Card interaction within the canvas may need tap-to-place for mobile (shares post-MVP design with simulator)
 
 ### Accessibility Strategy
 
@@ -1168,15 +1226,21 @@ The board is centered in the available space. Empty space (letterboxing) shows t
 
 ### Testing Strategy
 
-**MVP Testing (Pragmatic):**
+**Responsive Testing (All Pages):**
+- Chrome DevTools responsive mode for breakpoint verification at 375px, 576px, 768px, 1024px, 1440px, 1920px
+- **Visual regression tests (Playwright):** Automated screenshots at key viewport widths per track:
+  - Track A pages (simulator, deck builder, card search): 1920px, 1280px, 800px — verify canvas scaling, no overflow
+  - Track B pages (deck list, settings, login): 375px, 768px, 1024px, 1440px — verify responsive breakpoints
+- Cross-track navigation test: deck list → deck builder → simulator — verify smooth transitions, no layout glitches
+- Navbar mode switch test: resize across 768px breakpoint — verify hamburger ↔ sidebar transition
+
+**Simulator-Specific Testing:**
 - Primary user (Axel) tests on personal desktop setup
-- Chrome DevTools responsive mode for breakpoint verification
-- **Visual regression tests (Playwright):** Automated screenshots at 1280px, 1100px, and 800px viewport widths. Compared against baseline to detect CSS Grid breakage. Minimal script (~10 lines), integrated into CI.
 - Lighthouse accessibility audit for automated AA checks
 - Manual keyboard-only navigation test (tab through all zones, trigger shortcuts)
 
-**Post-MVP Testing (When Mobile Added):**
-- Real device testing on tablet (landscape)
+**Post-MVP Testing (When Mobile Touch Added):**
+- Real device testing on tablet and phone (landscape for simulator)
 - Touch interaction validation with CDK DragDrop
-- Touch target size audit (44×44px minimum)
-- Tap-to-place mode functional testing
+- Touch target size audit (44×44px minimum on all pages)
+- Tap-to-place mode functional testing (simulator)

@@ -1,7 +1,7 @@
 ---
-stepsCompleted: [1, 2, 3, 4]
-inputDocuments: ['prd.md', 'architecture.md', 'ux-design-specification.md', 'yugioh-game-rules.md', 'implementation-readiness-report-2026-02-12.md']
-context: 'Post-IR update — aligning epics with revised UX spec (2026-02-12). Correcting E1-E5 divergences, adding E6-E7 new requirements.'
+stepsCompleted: [1, 2, 3, 4, 'step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories', 'step-04-final-validation']
+inputDocuments: ['prd.md', 'architecture.md', 'ux-design-specification.md', 'yugioh-game-rules.md', 'implementation-readiness-report-2026-02-12.md', 'sprint-change-proposal-2026-02-12.md']
+context: 'Post-sprint-change-proposal — adding Epic 7 (Responsive App Shell & Navbar) and Epic 8 (Shared Components & Responsive Card Pages) per approved proposal. Epics 1-6 unchanged (all done).'
 ---
 
 # skytrix - Epic Breakdown
@@ -59,8 +59,10 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 - NFR6: Zone overlays (deck search, graveyard view) open within 300ms regardless of card count
 - NFR7: The simulator route is protected by existing authentication — unauthenticated users cannot access it
 - NFR8: No card data or simulation state is transmitted to the backend — all processing remains client-side
-- NFR9: The simulator functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions)
+- NFR9: The application functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions) and modern mobile browsers (Chrome Android, Safari iOS — latest two versions). The simulator locks to landscape orientation on mobile devices.
 - NFR10: The simulator integrates with the existing skytrix build and deployment pipeline without additional configuration
+- NFR11: Deck management pages (deck list, deck detail, deck builder) are usable on viewports from 375px width (mobile portrait) to 2560px+ (ultrawide desktop) without horizontal scrolling
+- NFR12: All interactive elements meet minimum touch target size of 44×44px on mobile viewports
 
 ### Additional Requirements
 
@@ -113,6 +115,20 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 - Overlay z-index hierarchy: drag preview > context menus > pile overlays > inspector > board
 - `cdkDropListGroup` on SimBoardComponent root — all drop lists as children
 
+**From Sprint Change Proposal (2026-02-12) — Responsive & Shared Components:**
+- Responsive two-track strategy: Track A (fixed canvas scaling) for card manipulation pages (simulator, deck builder, card search); Track B (mobile-first responsive CSS) for content pages (deck list, settings, login)
+- ScalingContainerDirective: shared autonomous directive extracted from simulator's BoardComponent scaling logic, provides canvas scaling for any Track A page. Measures parent container via ResizeObserver, applies `transform: scale()`. Parent must have explicit height.
+- Shared component extraction: CardComponent (`app-sim-card` → `app-card`) and CardInspectorComponent (`app-sim-card-inspector` → `app-card-inspector`) extracted from simulator to `components/` for cross-page reuse
+- CardInspectorComponent multi-mode: hover-triggered for simulator, click-triggered or permanently visible for deck builder — mode is an input, not hardcoded
+- Harmonization analysis required before extraction: compare existing deck builder card/inspector components with simulator versions, verify selector collision risk (`app-card`), define unified contract
+- Simulator must not regress after extraction — manual testing validates
+- Navbar responsive: CDK BreakpointObserver at 768px threshold. Desktop (>768px) = collapsible sidebar (existing). Mobile (≤768px) = hamburger icon button in fixed top bar, navbar slides in as drawer overlay
+- On Track A pages (mobile): fixed top bar reduces available vertical space — canvas parent must account for header height (`calc(100vh - var(--mobile-header-height))`)
+- Shared SCSS infrastructure: `_canvas-scaling.scss` (Track A scaling mixins), `_responsive.scss` (breakpoint variables, responsive mixins)
+- Breakpoint source of truth: `$navbar-breakpoint: 768px` in `_responsive.scss`, matched in TS via CDK BreakpointObserver
+- Login and Settings pages are simple (form-centric) — can be grouped in a single story
+- Deck list page requires fluid grid responsive layout (1→2→3-4 columns by breakpoint)
+
 ### FR Coverage Map
 
 | FR | Epic | Description |
@@ -151,6 +167,9 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 | FR31 | Epic 5 | Batch undo/redo (CompositeCommand) |
 | FR32 | Epic 5 | Keyboard shortcuts (Ctrl+Z, Ctrl+Y, Escape) |
 | FR33 | Epic 5 | Reset board with confirmation |
+| NFR9 | Epic 7 | Desktop + mobile browser support, landscape lock simulator |
+| NFR11 | Epic 7 | Deck management pages responsive 375px–2560px+ |
+| NFR12 | Epic 7 + Epic 8 | Touch targets 44×44px minimum on mobile |
 
 ## Epic List
 
@@ -237,6 +256,38 @@ The player benefits from a board with a fixed 16:9 layout that scales proportion
 - Story 6.3: Board-wide `preventDefault` in all builds — LOW impact, quick fix. Remove `isDevMode()` guard from `contextmenu` handler on board. Navbar retains native context menu.
 - Story 6.4: Collapsible navbar — MEDIUM impact. Chevron toggle at navbar border, collapsed by default on simulator page (~32px thin bar). Board recalculates scale factor on toggle. Ephemeral state.
 - Epic 6 is standalone — builds on implemented Epics 1-5, requires no future epics to function.
+
+### Epic 7: Responsive App Shell & Navbar
+
+The application adapts to all viewport sizes. Content pages (deck list, settings, login) use mobile-first responsive CSS. The navbar switches to hamburger/drawer mode on mobile. Shared SCSS infrastructure and ScalingContainerDirective are created as foundation for Track A pages.
+
+**NFRs covered:** NFR9 (updated), NFR11, NFR12 (partial)
+
+**Implementation Notes:**
+- ScalingContainerDirective created as new code extracted from BoardComponent's scaling logic — simulator NOT migrated in this epic (migration is Epic 8). Zero simulator regression risk.
+- `_responsive.scss`: breakpoint variables ($navbar-breakpoint: 768px, $bp-mobile: 576px, $bp-tablet: 768px, $bp-desktop-sm: 1024px), responsive mixins (mobile-first media queries)
+- `_canvas-scaling.scss`: mixins for Track A canvas scaling (letterboxing, transform-origin, container setup)
+- Navbar responsive: extends existing NavbarComponent with CDK BreakpointObserver at 768px threshold. Desktop = collapsible sidebar (existing). Mobile = hamburger + drawer overlay (mat-sidenav). Single component, two modes.
+- Login + Settings: simple pages, grouped in one story. Center form, full-width inputs on mobile, margin adjustments.
+- Deck list: fluid grid responsive — 1 column mobile, 2 tablet, 3-4 desktop. Separate story.
+- Touch targets 44×44px minimum on all responsive pages.
+- Epic 7 is standalone — provides foundation for Epic 8. Does not depend on Epic 8 to function.
+
+### Epic 8: Shared Components & Responsive Card Pages
+
+CardComponent and CardInspectorComponent are extracted from the simulator into shared components for cross-page reuse. The deck builder and card search pages use fixed canvas scaling with hybrid layout. The simulator is refactored to import shared components without regression.
+
+**NFRs covered:** NFR12 (completion)
+
+**Implementation Notes:**
+- Story 8.1 = harmonization analysis: compare existing deck builder card/inspector components with simulator versions, verify selector collision risk (`app-card`), define unified contract (inputs, outputs, CSS custom properties), produce migration plan. MUST run before any extraction.
+- CardComponent: `app-sim-card` → `app-card` in `components/card/`. Signal-based inputs, context-agnostic.
+- CardInspectorComponent: `app-sim-card-inspector` → `app-card-inspector` in `components/card-inspector/`. Multi-mode activation via input (hover for simulator, click/permanent for deck builder).
+- Deck builder: hybrid layout — responsive header (Track B patterns) + scaled canvas (ScalingContainerDirective from Epic 7). `referenceWidth` calibrated per page.
+- Card search: same hybrid pattern as deck builder.
+- Simulator refactor: replace `app-sim-card` and `app-sim-card-inspector` imports with shared `app-card` and `app-card-inspector`. Manual testing validates no regression.
+- Touch targets 44×44px on card manipulation pages.
+- Epic 8 depends on Epic 7 (ScalingContainerDirective, SCSS infrastructure). Standalone once Epic 7 is complete.
 
 ## Epic 1: Simulator Board & Deck Loading
 
@@ -541,6 +592,16 @@ So that I can browse and drag cards from the graveyard, banished pile, or extra 
 **When** the dismiss event fires
 **Then** the overlay closes
 
+**Given** any stacked zone (Deck, ED, GY, Banished) has cards
+**When** I drag directly on the stacked zone pill (without clicking to open the overlay first)
+**Then** the top card is grabbed — identical behavior to dragging a board card (same cursor `grab`, same lift animation, same drag preview showing the actual top card image or card back for Deck, same valid drop targets, same drop feedback)
+**And** empty pills (count = 0) disable drag: cursor `not-allowed`, reduced opacity
+
+**Given** I right-click on the Extra Deck zone
+**When** the context menu opens
+**Then** a `mat-menu` appears with a "View" option
+**And** clicking "View" opens the pile overlay in browse mode (all cards face-up, no grouping)
+
 ### Story 4.2: Deck Search, Mill & Reveal
 
 As a player,
@@ -572,6 +633,14 @@ So that I can simulate search effects, mill effects, and excavate effects during
 **Then** I enter N and the overlay opens showing only the top N cards of the deck
 **And** each card can be dragged to a destination zone
 **And** cards not moved when the overlay closes are returned to the top of the deck in their original order
+
+**Given** I enter a Mill (N) value greater than the remaining deck size
+**When** the mill executes
+**Then** only `min(N, deckSize)` cards are milled — the operation completes without error
+
+**Given** I enter a Reveal (N) value greater than the remaining deck size
+**When** the reveal executes
+**Then** only `min(N, deckSize)` cards are revealed — no error, the overlay shows all remaining deck cards
 
 **Given** I need to mill cards (send top N from deck to GY)
 **When** I drag the top card of the deck to the GY zone
@@ -769,6 +838,11 @@ So that I can simulate face-down sets, flips, and inspections accurately.
 **When** I open the pile overlay for that zone
 **Then** the card is displayed face-up in the overlay (pile overlays always show full card info)
 
+**Given** the Deck zone has cards (count > 0)
+**When** the board renders
+**Then** the Deck zone displays a card-back image (never appears visually empty)
+**And** the Extra Deck zone similarly displays a card-back image when count > 0
+
 ### Story 6.3: preventDefault on Right-Click (All Builds)
 
 As a player,
@@ -821,4 +895,435 @@ So that I can focus on the board during combo testing.
 **Given** the navbar is collapsed
 **When** I right-click on the collapsed navbar bar
 **Then** the native browser context menu appears (navbar is excluded from `preventDefault` scope)
+
+---
+
+## Epic 7: Responsive App Shell & Navbar
+
+> The application adapts to all viewport sizes. Content pages (deck list, settings, login) use mobile-first responsive CSS. The navbar switches to hamburger/drawer mode on mobile. Shared SCSS infrastructure and ScalingContainerDirective are created as foundation for Track A pages.
+
+**Implementation Notes:**
+
+- Stories are ordered by dependency: infrastructure (7.1) first, then navbar (7.2) which depends on the breakpoint variables, then pages (7.3, 7.4) which depend on both.
+- ScalingContainerDirective is NEW code — the simulator is NOT migrated to use it in this epic. Migration happens in Epic 8.
+- The navbar extends the existing NavbarComponent from Epic 6.4 (collapsible sidebar) — adding a second mode (hamburger/drawer) for mobile.
+
+### Story 7.1: Shared SCSS Infrastructure & ScalingContainerDirective
+
+As a developer,
+I want shared SCSS breakpoint variables, responsive mixins, canvas scaling mixins, and a reusable ScalingContainerDirective,
+So that all pages can implement consistent responsive behavior and canvas scaling without duplicating code.
+
+**Acceptance Criteria:**
+
+**Given** the shared SCSS infrastructure is needed
+**When** `src/app/styles/_responsive.scss` is created
+**Then** it defines breakpoint variables: `$navbar-breakpoint: 768px`, `$bp-mobile: 576px`, `$bp-tablet: 768px`, `$bp-desktop-sm: 1024px`
+**And** it provides mobile-first responsive mixins (e.g., `@mixin respond-above($bp)` wrapping `@media (min-width: $bp)`)
+**And** it provides shared responsive utilities (e.g., `.touch-target-min` ensuring 44×44px minimum)
+
+**Given** the canvas scaling infrastructure is needed
+**When** `src/app/styles/_canvas-scaling.scss` is created
+**Then** it provides mixins for Track A canvas parent setup (explicit height, overflow hidden, centering)
+**And** it provides host styles for scaled containers (transform-origin, letterboxing background)
+
+**Given** the ScalingContainerDirective is created in `src/app/components/scaling-container/`
+**When** applied to a host element via `[appScalingContainer]`
+**Then** it accepts `aspectRatio` input (default: `16/9`) and `referenceWidth` input (default: `1920`)
+**And** it observes the parent element dimensions via `ResizeObserver`
+**And** it computes `scale = min(parentWidth / referenceWidth, parentHeight / (referenceWidth / aspectRatio))`
+**And** it applies `transform: scale(scale)` and `transform-origin: top center` on the host element
+**And** it emits the computed scale factor via a `scale` output signal (for debug/UI use)
+
+**Given** the directive's parent container has `height: auto` (no explicit height)
+**When** the ResizeObserver fires
+**Then** the directive still functions but the scale may not respond correctly to viewport changes — this is a documented constraint (parent MUST have explicit height)
+
+**Given** the directive is applied and the parent resizes (viewport change, navbar toggle)
+**When** the ResizeObserver detects the dimension change
+**Then** the scale factor is recomputed and the transform updates reactively
+
+**Given** all new files are created
+**When** the build runs
+**Then** the existing application compiles and functions identically — no existing component imports these files yet
+
+### Story 7.2: Responsive Navbar (Hamburger/Drawer on Mobile)
+
+As a user,
+I want the navbar to switch to a hamburger menu with a drawer on mobile devices,
+So that I can navigate the app on small screens without the sidebar consuming permanent screen space.
+
+**Acceptance Criteria:**
+
+**Given** the viewport width is greater than 768px (desktop)
+**When** the navbar renders
+**Then** the existing collapsible sidebar behavior from Epic 6.4 is unchanged (chevron toggle, expanded/collapsed states)
+**And** no hamburger icon is visible
+
+**Given** the viewport width is 768px or less (mobile/tablet)
+**When** the navbar renders
+**Then** the sidebar is hidden
+**And** a fixed top bar appears with a hamburger icon button
+**And** the top bar has a defined height stored in CSS variable `--mobile-header-height`
+
+**Given** the navbar is in mobile mode and the hamburger is visible
+**When** I tap/click the hamburger icon
+**Then** the navbar content slides in as a drawer overlay from the left (using `mat-sidenav` or equivalent)
+**And** a semi-transparent backdrop appears behind the drawer
+
+**Given** the drawer is open on mobile
+**When** I tap the backdrop, press Escape, or navigate to a page
+**Then** the drawer closes
+
+**Given** the viewport is resized across the 768px threshold
+**When** the width crosses from above to below (or vice versa)
+**Then** the navbar mode switches seamlessly between sidebar and hamburger/drawer
+**And** no layout flash or jump occurs during the transition
+
+**Given** the navbar is in mobile mode on a Track A page (simulator, deck builder, card search)
+**When** the page renders
+**Then** the canvas parent height accounts for the fixed top bar: `height: calc(100vh - var(--mobile-header-height))`
+**And** the canvas content scales correctly within the reduced available space
+
+**Given** the navbar mode detection is implemented
+**When** the component initializes
+**Then** CDK `BreakpointObserver` is used with the `$navbar-breakpoint` value (768px) as the single source of truth — matching the SCSS variable
+
+**Given** the navbar is in mobile mode
+**When** I right-click anywhere on the top bar or drawer
+**Then** the native browser context menu appears (navbar is excluded from board `preventDefault` scope)
+
+### Story 7.3: Login & Settings Pages Responsive
+
+As a user,
+I want the login and settings pages to be usable on any device from mobile to desktop,
+So that I can access my account and configure the app regardless of screen size.
+
+**Acceptance Criteria:**
+
+**Given** I access the login page on a mobile viewport (≤576px)
+**When** the page renders
+**Then** the login form is centered and fills the available width with appropriate margins
+**And** all input fields are full-width
+**And** the submit button meets the 44×44px minimum touch target size
+**And** no horizontal scrolling occurs
+
+**Given** I access the login page on a desktop viewport (>1024px)
+**When** the page renders
+**Then** the login form is centered with a max-width constraint (not stretched to full screen)
+**And** the layout is visually balanced with the existing app aesthetic
+
+**Given** I access the settings page on a mobile viewport (≤576px)
+**When** the page renders
+**Then** settings sections stack vertically
+**And** all interactive elements (toggles, buttons, links) meet the 44×44px minimum touch target size
+**And** no horizontal scrolling occurs
+
+**Given** I access the settings page on a tablet viewport (577–768px)
+**When** the page renders
+**Then** the layout adjusts with appropriate spacing — no wasted space, no cramping
+
+**Given** both pages use the responsive SCSS infrastructure
+**When** the styles are written
+**Then** they import `_responsive.scss` and use the defined breakpoint mixins for media queries
+**And** the styles follow mobile-first convention (base styles for mobile, `respond-above` for larger viewports)
+
+### Story 7.4: Deck List Page Responsive
+
+As a user,
+I want the deck list page to display my decks in a responsive grid that adapts to my screen size,
+So that I can browse and manage my decks comfortably on any device.
+
+**Acceptance Criteria:**
+
+**Given** I access the deck list page on a mobile viewport (≤576px)
+**When** the page renders
+**Then** decks are displayed in a single-column layout
+**And** each deck card fills the available width
+**And** all interactive elements (deck name link, action buttons) meet the 44×44px minimum touch target size
+**And** no horizontal scrolling occurs
+
+**Given** I access the deck list page on a tablet viewport (577–768px)
+**When** the page renders
+**Then** decks are displayed in a 2-column grid
+**And** spacing between cards is consistent and visually balanced
+
+**Given** I access the deck list page on a desktop viewport (>1024px)
+**When** the page renders
+**Then** decks are displayed in a 3 or 4-column grid (depending on available width)
+**And** the layout matches the existing visual style of the app
+
+**Given** the deck list page is responsive
+**When** the viewport is resized across breakpoints
+**Then** the grid column count adjusts fluidly without layout jumps
+**And** deck card images scale proportionally within their grid cells
+
+**Given** the deck list uses the responsive SCSS infrastructure
+**When** the styles are written
+**Then** they import `_responsive.scss` and use the defined breakpoint mixins
+**And** the grid uses CSS Grid or Flexbox with `auto-fill`/`auto-fit` for natural column adjustment
+
+**Given** the deck list page renders on any viewport between 375px and 2560px+
+**When** I scroll through my decks
+**Then** no horizontal scrolling occurs and all content is accessible (NFR11)
+
+---
+
+## Epic 8: Shared Components & Responsive Card Pages
+
+> CardComponent and CardInspectorComponent are extracted from the simulator into shared components for cross-page reuse. The deck builder and card search pages use fixed canvas scaling with hybrid layout. The simulator is refactored to import shared components without regression.
+
+**Implementation Notes:**
+
+- Stories are ordered by dependency: harmonization analysis (8.1) must complete before any extraction. Card extraction (8.2) before inspector extraction (8.3) since the inspector references cards. Then page-level integrations (8.4, 8.5) which consume both shared components + ScalingContainerDirective from Epic 7.
+- Simulator refactoring (replacing `app-sim-card` → `app-card`, `app-sim-card-inspector` → `app-card-inspector`) is embedded in stories 8.2 and 8.3 respectively — not a separate story — to ensure regression testing happens immediately after each extraction.
+- All extraction follows the "extract, don't rewrite" principle: copy existing simulator component code, generalize inputs, update selectors.
+
+### Story 8.1: Harmonization Analysis & Migration Plan
+
+As a developer,
+I want a documented analysis comparing the existing deck builder card/inspector components with the simulator versions,
+So that I can extract shared components with a clear understanding of interface differences, naming conflicts, and migration steps.
+
+**Acceptance Criteria:**
+
+**Given** the simulator has `SimCardComponent` (`app-sim-card`) and the deck builder has its own card rendering component(s)
+**When** the harmonization analysis is performed
+**Then** a comparison document is produced listing for each component pair:
+- Input/output contracts (signal inputs, event emitters)
+- CSS class names and custom properties used
+- Template structure differences
+- Features present in one but not the other (e.g., drag handle, context menu trigger, face-down rendering)
+
+**Given** the simulator uses selector `app-sim-card` and the shared component will use `app-card`
+**When** selector collision risk is evaluated
+**Then** the analysis confirms whether any existing component in the codebase already uses the `app-card` selector
+**And** if a collision exists, a renaming strategy is documented
+
+**Given** the simulator has `SimCardInspectorComponent` (`app-sim-card-inspector`) with hover-triggered activation
+**When** the deck builder's card detail/preview component is compared
+**Then** the analysis documents the activation mode differences (hover vs. click vs. permanent panel)
+**And** proposes a unified `mode` input contract for the shared `CardInspectorComponent`
+
+**Given** the harmonization analysis is complete
+**When** the migration plan is produced
+**Then** it defines:
+- The unified input/output contract for `CardComponent` (all inputs, their types, defaults)
+- The unified input/output contract for `CardInspectorComponent` (including `mode: 'hover' | 'click' | 'permanent'`)
+- CSS custom properties for theming (allowing simulator dark theme and deck builder theme to coexist)
+- Migration steps for the simulator (replace imports, verify no regression)
+- Migration steps for the deck builder (replace existing card component with shared version)
+- A checklist of manual tests to validate zero regression
+
+**Given** the migration plan covers inspector placement on non-simulator pages
+**When** the `click` mode behavior is documented
+**Then** it specifies a floating overlay pattern (semi-transparent backdrop over canvas, card image + name/stats/effect text, dismiss on outside tap/click) inspired by Master Duel's card detail overlay
+**And** this floating overlay applies uniformly on all viewports — no breakpoint-dependent placement switch
+**And** the `position` input (`left` | `right`) is documented as relevant only to `hover` mode (simulator side panel); `click` mode uses centered overlay positioning
+
+**Given** the migration plan covers CDK drag binding migration
+**When** the document specifies how simulator-specific behaviors exit the extracted CardComponent
+**Then** the template-driven pattern is documented: parent applies `cdkDrag`, `cdkDragPreview`, and context menu trigger directly on `<app-card>` in the template
+**And** at least one code example is provided for the simulator use case (showing the parent template with CDK directives on the shared component)
+
+**Given** the migration plan defines CSS custom properties
+**When** the theming contract is documented
+**Then** it lists all CSS custom properties for `CardComponent` (e.g., `--card-border-color`, `--card-shadow`, `--card-hover-scale`, `--card-bg`) and `CardInspectorComponent` (e.g., `--inspector-bg`, `--inspector-text`, `--inspector-width`, `--inspector-backdrop`)
+**And** default values are specified for each property
+**And** the simulator and deck builder override values are documented side by side
+
+**Given** the migration plan is reviewed
+**When** the team proceeds to Story 8.2
+**Then** the plan serves as the implementation spec — no ambiguity remains about what to extract and how
+
+### Story 8.2: Extract Shared CardComponent
+
+As a developer,
+I want a shared `CardComponent` (`app-card`) extracted from the simulator's `SimCardComponent`,
+So that the simulator, deck builder, and card search pages can all use the same card rendering component.
+
+**Acceptance Criteria:**
+
+**Given** the harmonization analysis from Story 8.1 is complete
+**When** the shared `CardComponent` is created in `src/app/components/card/`
+**Then** it uses the selector `app-card`
+**And** it accepts all inputs defined in the migration plan (e.g., `card: CardInstance`, `faceDown: boolean`, `position: 'ATK' | 'DEF'`, `draggable: boolean`, `showOverlayMaterials: boolean`)
+**And** all inputs use Angular signal-based input API
+**And** it emits outputs for interactions (e.g., `cardClicked`, `cardRightClicked`, `cardHovered`)
+
+**Given** the `CardComponent` is created
+**When** it renders a card
+**Then** it displays the card image (face-up or card back based on `faceDown` input)
+**And** it applies rotation for DEF position when `position === 'DEF'`
+**And** it shows XYZ overlay material borders peeking when `showOverlayMaterials` is true and `card.overlayMaterials` is non-empty
+**And** it is context-agnostic — no simulator-specific logic (no direct dependency on BoardStateService, CommandStackService, or simulator signals)
+
+**Given** the `CardComponent` supports theming
+**When** different pages use it
+**Then** CSS custom properties (e.g., `--card-border-color`, `--card-shadow`, `--card-hover-scale`) allow each host page to style cards differently without modifying the component
+
+**Given** the shared `CardComponent` is ready
+**When** the simulator's `SimCardComponent` is refactored
+**Then** `SimCardComponent` is replaced with `CardComponent` (`app-card`) in all simulator templates
+**And** any simulator-specific behavior (CDK drag bindings, context menu triggers) is applied by the parent component via template attributes or wrapper directives — not inside `CardComponent`
+**And** the old `SimCardComponent` files are deleted
+
+**Given** the simulator uses the shared `CardComponent`
+**When** all existing simulator interactions are tested manually
+**Then** drag & drop, context menu (right-click), face-down rendering, position toggle visual, XYZ material peek, gold glow on drop, and `prefers-reduced-motion` behavior all work identically to before the refactor
+**And** no visual difference is detectable between the old and new rendering
+
+**Given** the shared `CardComponent` is available
+**When** it is imported in a non-simulator context (e.g., a test harness or the deck builder)
+**Then** it renders correctly without requiring simulator services or signals
+
+### Story 8.3: Extract Shared CardInspectorComponent
+
+As a developer,
+I want a shared `CardInspectorComponent` (`app-card-inspector`) extracted from the simulator's `SimCardInspectorComponent`,
+So that the simulator and deck builder can both display card details using the same component with different activation modes.
+
+**Acceptance Criteria:**
+
+**Given** the harmonization analysis from Story 8.1 is complete
+**When** the shared `CardInspectorComponent` is created in `src/app/components/card-inspector/`
+**Then** it uses the selector `app-card-inspector`
+**And** it accepts a `card` input (the card to display) and a `mode` input (`'hover' | 'click' | 'permanent'`)
+**And** it accepts a `position` input (`'left' | 'right'`) for panel placement
+**And** all inputs use Angular signal-based input API
+
+**Given** the `CardInspectorComponent` is in `hover` mode (simulator)
+**When** a `card` input value is provided (non-null)
+**Then** the inspector panel appears with fade transition (~100ms)
+**And** when `card` becomes null, the panel fades out
+**And** the component does NOT manage its own hover detection — the parent provides the `card` value via the existing `hoveredCard` signal
+
+**Given** the `CardInspectorComponent` is in `click` mode (deck builder, card search)
+**When** the parent sets the `card` input after a card tap/click
+**Then** the inspector appears as a floating overlay centered over the canvas with a semi-transparent backdrop (Master Duel card detail pattern)
+**And** the overlay displays: card image, card name, stats (ATK/DEF), type/attribute/level, full effect text (scrollable)
+**And** tapping/clicking outside the overlay or pressing Escape dismisses it
+**And** tapping/clicking a different card replaces the displayed card without closing and reopening
+**And** the `position` input is ignored in `click` mode — overlay is always centered
+
+**Given** the `CardInspectorComponent` is in `permanent` mode
+**When** a card is provided
+**Then** the inspector panel is always visible (no show/hide transition)
+**And** content updates when the `card` input changes
+
+**Given** the `CardInspectorComponent` renders card details
+**When** a card is displayed
+**Then** it shows: full-size card image, card name, attribute/race/level, ATK/DEF values, full effect text (scrollable)
+**And** face-down cards show full details (solo context — positional state, not information barrier)
+**And** no deck-building buttons (+1/-1, add/remove) are rendered — these are the deck builder's responsibility via separate UI outside the inspector
+
+**Given** the `CardInspectorComponent` supports theming
+**When** different pages host it
+**Then** CSS custom properties (e.g., `--inspector-bg`, `--inspector-text`, `--inspector-width`) allow each page to style the inspector differently
+
+**Given** the shared `CardInspectorComponent` is ready
+**When** the simulator's `SimCardInspectorComponent` is refactored
+**Then** `SimCardInspectorComponent` is replaced with `CardInspectorComponent` (`app-card-inspector`, `mode="hover"`) in the simulator template
+**And** the `hoveredCard` signal (with 50ms debounce) continues to drive the `card` input
+**And** `isDragging` signal continues to hide the inspector during drag
+**And** the inspector repositioning logic (move to left when pile overlay is on right) is preserved via the `position` input driven by a computed signal
+**And** the old `SimCardInspectorComponent` files are deleted
+
+**Given** the simulator uses the shared `CardInspectorComponent`
+**When** all existing simulator interactions are tested manually
+**Then** hover behavior, debounce timing, drag suppression, face-down inspection, pile overlay repositioning, and fade transitions all work identically to before the refactor
+
+### Story 8.4: Deck Builder Canvas Scaling & Shared Components
+
+As a user,
+I want the deck builder page to scale its card canvas on all viewport sizes and use the same card/inspector components as the simulator,
+So that I can build decks comfortably on any device with a familiar card interaction experience.
+
+**Acceptance Criteria:**
+
+**Given** the deck builder page has a card manipulation area (canvas)
+**When** the `ScalingContainerDirective` from Epic 7 is applied to the canvas container
+**Then** the canvas scales proportionally via `transform: scale()` with a page-specific `referenceWidth`
+**And** the parent container has explicit height (e.g., `calc(100vh - headerHeight)` or `calc(100vh - var(--mobile-header-height))` on mobile)
+
+**Given** the deck builder has a hybrid layout
+**When** the page renders
+**Then** the search/filter header area above the canvas uses Track B responsive CSS (mobile-first, breakpoint-driven)
+**And** the card canvas below uses Track A scaling (fixed reference resolution, `transform: scale()`)
+**And** the two sections are separated by a clear visual boundary
+
+**Given** the deck builder integrates the shared `CardComponent` (`app-card`)
+**When** cards are displayed in the canvas
+**Then** they render using the shared `CardComponent` with deck-builder-specific CSS custom property values (theme, sizing)
+**And** the existing deck builder card rendering behavior is preserved (deck-building interactions like add/remove are handled by the deck builder page, not the card component)
+
+**Given** the deck builder integrates the shared `CardInspectorComponent` (`app-card-inspector`)
+**When** a card is tapped/clicked in the canvas
+**Then** the inspector appears as a floating overlay centered over the canvas (`mode="click"`, Master Duel pattern)
+**And** deck-building actions (+1/-1 buttons, add to deck, remove from deck) are rendered by the deck builder page — as action buttons within or adjacent to the floating overlay, not inside the inspector component itself
+
+**Given** the deck builder renders on a mobile viewport (≤768px)
+**When** the navbar is in hamburger/drawer mode
+**Then** the canvas parent height accounts for the mobile header: `calc(100vh - var(--mobile-header-height))`
+**And** the canvas scales correctly within the reduced space
+**And** all interactive elements meet the 44×44px minimum touch target size (NFR12)
+
+**Given** the deck builder renders on a desktop viewport (>1024px)
+**When** the page loads
+**Then** the layout matches the existing visual style with the canvas at full scale (or close to it)
+**And** the sidebar navbar is in its default state (expanded or collapsed depending on user action)
+
+**Given** the deck builder uses shared components and scaling
+**When** all existing deck builder interactions are tested manually
+**Then** card browsing, deck editing, search/filter, and inspector display all work correctly
+**And** no functionality is lost compared to the pre-refactor version
+
+### Story 8.5: Card Search Page Canvas Scaling & Shared Components
+
+As a user,
+I want the card search page to scale its card results canvas on all viewport sizes and use the same card/inspector components,
+So that I can search and browse cards comfortably on any device.
+
+**Acceptance Criteria:**
+
+**Given** the card search page has a card results area (canvas)
+**When** the `ScalingContainerDirective` from Epic 7 is applied to the results container
+**Then** the results canvas scales proportionally via `transform: scale()` with a page-specific `referenceWidth`
+**And** the parent container has explicit height accounting for the search header
+
+**Given** the card search page has a hybrid layout
+**When** the page renders
+**Then** the search input and filter controls above the results use Track B responsive CSS (mobile-first, breakpoint-driven)
+**And** the card results grid below uses Track A scaling (fixed reference resolution, `transform: scale()`)
+
+**Given** the card search page integrates the shared `CardComponent` (`app-card`)
+**When** search results are displayed
+**Then** they render using the shared `CardComponent` with card-search-specific CSS custom property values
+**And** card interactions (click to view details, add to deck if applicable) are handled by the card search page, not the card component
+
+**Given** the card search page integrates the shared `CardInspectorComponent` (`app-card-inspector`)
+**When** a card is tapped/clicked in the results
+**Then** the inspector appears as a floating overlay centered over the canvas (`mode="click"`, Master Duel pattern)
+**And** the inspector uses card-search-specific theming via CSS custom properties
+
+**Given** the card search page renders on a mobile viewport (≤768px)
+**When** the navbar is in hamburger/drawer mode
+**Then** the canvas parent height accounts for the mobile header: `calc(100vh - var(--mobile-header-height))`
+**And** the search input and filters remain accessible above the scaled canvas
+**And** all interactive elements meet the 44×44px minimum touch target size (NFR12)
+
+**Given** the card search page renders on a desktop viewport (>1024px)
+**When** the page loads
+**Then** the layout is visually consistent with the deck builder's hybrid pattern (responsive header + scaled canvas)
+
+**Given** the card search page uses shared components and scaling
+**When** all existing card search interactions are tested manually
+**Then** searching, filtering, browsing results, and viewing card details all work correctly
+**And** no functionality is lost compared to the pre-refactor version
+
+**Given** Epic 8 is fully complete (stories 8.1–8.5)
+**When** all pages are tested across viewports (375px to 2560px+)
+**Then** the simulator, deck builder, and card search all use shared `CardComponent` and `CardInspectorComponent`
+**And** the simulator has zero regression from the extraction
+**And** all touch targets meet 44×44px minimum on mobile (NFR12 complete)
 

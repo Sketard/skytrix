@@ -1,6 +1,6 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
-inputDocuments: ['prd.md', 'project-context.md']
+inputDocuments: ['prd.md', 'project-context.md', 'ux-design-specification.md', 'sprint-change-proposal-2026-02-12.md']
 workflowType: 'architecture'
 project_name: 'skytrix'
 user_name: 'Axel'
@@ -8,6 +8,10 @@ date: '2026-02-08'
 lastStep: 8
 status: 'complete'
 completedAt: '2026-02-08'
+lastEdited: '2026-02-12'
+editHistory:
+  - date: '2026-02-12'
+    changes: 'Added Responsive Strategy and Shared Component Extraction sections per sprint change proposal'
 ---
 
 # Architecture Decision Document
@@ -24,10 +28,11 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 The simulator is fully manual with no rules engine — the player has complete freedom over card placement and actions. This eliminates rules engine complexity but places the burden on intuitive UX and flexible state management.
 
 **Non-Functional Requirements:**
-10 NFRs focused on three areas:
+12 NFRs focused on four areas:
 - **Performance (NFR1-6):** 16ms frame budget for drag & drop, <100ms board state updates, <1s board reset, <200ms tooltip, <300ms overlay open. These are tight constraints requiring OnPush change detection and signal-based reactivity.
 - **Security (NFR7-8):** Route protected by existing authentication. No data transmitted to backend — fully client-side.
-- **Compatibility (NFR9-10):** Modern desktop browsers only. Integrates with existing build/deploy pipeline.
+- **Compatibility (NFR9-10):** Modern desktop and mobile browsers. Integrates with existing build/deploy pipeline.
+- **Responsiveness (NFR11-12):** Deck management pages usable 375px–2560px+. Touch targets min 44×44px on mobile.
 
 **Scale & Complexity:**
 
@@ -293,6 +298,149 @@ User Action (drag drop / button / keyboard)
 - Exposing Command classes outside of CommandStackService
 - Treating `faceDown` as hidden information — in a solo simulator, the player knows all their own cards. `faceDown` is a **positional state** (gameplay choice), not an information barrier. The card inspector always shows full details regardless of face-down state. Extra Deck overlay displays all cards face-up (owner knows ED contents). Deck/ED zones display a card-back image when `count > 0` (never appear visually empty).
 
+## Responsive Strategy
+
+### Two-Track Approach
+
+The application follows a two-track responsive strategy, determined by page type:
+
+**Track A — Fixed Canvas Scaling (Card Manipulation Pages)**
+
+Pages where cards are the primary content and spatial layout is critical:
+- Simulator (`/decks/:id/simulator`) — already implemented
+- Deck Builder (`/decks/builder`, `/decks/:id`)
+- Card Search (`/search`)
+
+Fixed internal resolution per page, `transform: scale()` to fit viewport. The canvas structure is invariant — only the scale factor changes. No breakpoints, no responsive layout changes for the canvas area.
+
+**Hybrid layout pattern** for deck builder and card search: responsive search/filter header (Track B patterns) above the scaled canvas. The header uses standard responsive CSS and contains search inputs, filter controls, and action buttons. The canvas below contains the card grid/workspace and uses fixed scaling. The boundary is clear: **interactive controls that don't require spatial card layout go in the header; everything involving card arrangement goes in the canvas**.
+
+**Track B — Responsive CSS (Content/Utility Pages)**
+
+Pages where content flows naturally and card spatial layout is not required:
+- Deck List (`/decks`)
+- Settings (`/parameters`)
+- Login (`/login`)
+
+Mobile-first CSS with breakpoints:
+
+| Breakpoint | Name | Target |
+|---|---|---|
+| ≤576px | Mobile | Phone portrait |
+| 577–768px | Tablet | Tablet portrait / phone landscape |
+| 769–1024px | Desktop-small | Laptop / small desktop |
+| >1024px | Desktop | Standard desktop |
+
+Standard responsive patterns: fluid grid, stacking columns, adjusted spacing. No canvas scaling needed.
+
+**Cross-Track Navigation:** When users navigate from a Track B page (e.g., deck list) to a Track A page (e.g., deck builder), the layout paradigm shifts (fluid → fixed canvas) and the navbar may change mode (expanded → collapsed). This transition should be validated during implementation to ensure it feels natural and not jarring.
+
+### ScalingContainerDirective
+
+Shared autonomous directive extracted from the simulator's BoardComponent scaling logic. Provides canvas scaling for any Track A page.
+
+**Interface:**
+
+```ts
+@Directive({ selector: '[appScalingContainer]', standalone: true })
+export class ScalingContainerDirective {
+  aspectRatio = input<number>(16 / 9);     // internal canvas aspect ratio
+  referenceWidth = input<number>(1920);    // internal logical width
+  scale = output<number>();                // emits computed scale factor (debug/UI)
+}
+```
+
+**Behavior:**
+- Observes parent element dimensions via `ResizeObserver`
+- Computes `scale = min(parentWidth / refWidth, parentHeight / refHeight)` where `refHeight = referenceWidth / aspectRatio`
+- Applies `transform: scale(scale)` and `transform-origin: top center` on the host element
+- Reactive: recalculates on parent resize (viewport change, navbar toggle)
+- Measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout
+
+**Critical constraint:** The parent container **must have an explicit height** (e.g., `height: 100vh`, `height: calc(100vh - headerHeight)`) — not `height: auto`. A `ResizeObserver` on an auto-height parent will not detect viewport changes correctly. This applies to all Track A pages.
+
+**`referenceWidth` is per-page:** Each Track A page has its own internal logical width based on its content density. The simulator uses 1920 (full-width board). The deck builder and card search will have different values determined during implementation. This is not a "set and forget" parameter — it must be calibrated for each page's canvas layout.
+
+**Usage examples:**
+
+```html
+<!-- Simulator board -->
+<div class="canvas-parent" style="height: 100vh">
+  <div appScalingContainer [aspectRatio]="16/9" [referenceWidth]="1920">
+    <app-sim-board />
+  </div>
+</div>
+
+<!-- Deck builder: responsive header + scaled canvas -->
+<div class="deck-builder-page">
+  <header class="responsive-header"><!-- filters, search --></header>
+  <div class="canvas-parent" style="height: calc(100vh - var(--header-height))">
+    <div appScalingContainer [aspectRatio]="16/9" [referenceWidth]="1600">
+      <app-deck-canvas />
+    </div>
+  </div>
+</div>
+```
+
+**Migration:** The simulator's BoardComponent delegates its existing scaling logic to this directive. The scale computation and `ResizeObserver` setup are removed from BoardComponent and replaced by the directive on its container element. The navbar awareness (`navbarCollapsed` signal → available width) is no longer needed in BoardComponent — the parent container naturally resizes when the navbar toggles, and the directive's `ResizeObserver` picks up the change.
+
+### Navbar Responsive Behavior
+
+The existing collapsible navbar (chevron toggle, ~32px collapsed state) extends with a responsive mode switch:
+
+| Viewport | Navbar Mode | Default State |
+|---|---|---|
+| >768px (desktop) | Collapsible sidebar | Expanded (except simulator: collapsed) |
+| ≤768px (mobile/tablet) | Hamburger + drawer overlay | Hidden |
+
+**Technical mechanism:**
+- NavbarComponent uses CDK `BreakpointObserver` to detect viewport width crossing the 768px threshold
+- Desktop mode: existing sidebar behavior unchanged (chevron toggle, collapsed/expanded)
+- Mobile mode: hamburger icon button in a fixed top bar, navbar content slides in as a drawer overlay (`mat-sidenav` or equivalent)
+- On Track A pages (mobile): the fixed top bar with hamburger reduces available vertical space. The ScalingContainerDirective's parent must account for this header height (e.g., `height: calc(100vh - var(--mobile-header-height))`)
+- ScalingContainerDirective is otherwise unaffected on mobile — no sidebar present, full viewport width available to the parent container
+
+**Breakpoint source of truth:** `768px` is the single breakpoint for navbar mode switch. Defined as SCSS variable `$navbar-breakpoint` in `_responsive.scss` and matched in TypeScript via CDK `BreakpointObserver`.
+
+## Shared Component Extraction
+
+### Extraction Strategy
+
+Three components are extracted into a shared `components/` directory for reuse across simulator, deck builder, and card search pages.
+
+| Extracted Component | Source | Target Location | Selector Change |
+|---|---|---|---|
+| `CardComponent` | `SimCardComponent` | `components/card/` | `app-sim-card` → `app-card` |
+| `CardInspectorComponent` | `SimCardInspectorComponent` | `components/card-inspector/` | `app-sim-card-inspector` → `app-card-inspector` |
+| `ScalingContainerDirective` | new (logic from BoardComponent) | `components/scaling-container/` | n/a (directive) |
+
+### Extraction Principles
+
+1. **Extract, don't rewrite** — The simulator versions are the starting point. Extract with minimal changes, then harmonize with existing deck builder equivalents
+2. **Context-agnostic interface** — Extracted components work without knowledge of their consumer (simulator, deck builder, card search). No simulator-specific logic in shared components
+3. **Signal-based inputs** — All extracted components use Angular signal inputs (`input<T>()`) for consistency with the simulator architecture
+4. **Multi-mode activation** — The `CardInspectorComponent` must support multiple activation modes via configuration (hover-triggered for simulator, click-triggered or permanently visible for deck builder). The exact modes are defined in story 8.1, but the architecture mandates that the component is mode-agnostic — activation logic is an input, not hardcoded
+5. **Harmonization analysis first** — Story 8.1 performs a comparative analysis of existing interfaces before extraction. The analysis defines the exact unified contract
+6. **Simulator must not regress** — After extraction, the simulator imports shared components and works identically. Manual testing validates no regression
+
+### Harmonization Scope (Deferred to Story 8.1)
+
+The architecture intentionally does NOT define the exact unified interface for extracted components. Story 8.1 will:
+- Compare existing deck builder card/inspector components with simulator versions
+- Identify input/output divergences and visual/behavioral differences
+- **Verify selector collision risk** — an existing `app-card` component in the deck builder would conflict with the extracted shared `CardComponent`. The analysis must identify and resolve naming conflicts before extraction begins
+- Define the unified contract (inputs, outputs, CSS custom properties for theming)
+- Produce a migration plan (which files change, in which order)
+
+### Shared SCSS Infrastructure
+
+| File | Purpose |
+|---|---|
+| `src/app/styles/_canvas-scaling.scss` | Mixins and host styles for Track A canvas scaling (letterboxing, transform-origin, container setup) |
+| `src/app/styles/_responsive.scss` | Breakpoint variables (`$navbar-breakpoint`, `$bp-mobile`, `$bp-tablet`, `$bp-desktop-sm`), responsive mixins (mobile-first media queries), shared responsive utilities |
+
+These files extend the existing `src/app/styles/` directory. Consumed by both shared components and page-level SCSS.
+
 ## Project Structure & Boundaries
 
 ### Complete Simulator Directory Structure
@@ -417,6 +565,28 @@ DeckBuildService (existing) → loads deck data
           → User action → CommandStackService.moveCard() / drawCard() / etc.
             → Command.execute() → BoardStateService.boardState.update()
               → cycle continues
+```
+
+### Shared Infrastructure (Epics 7-8)
+
+_New shared files added by the responsive and component extraction work. The simulator directory structure documented above remains valid during Epics 1-6. Post-Epic 8, `sim-card.component.*` and `card-inspector.component.*` in `pages/simulator/` are replaced by shared equivalents imported from `components/`. All existing references to `app-sim-card` and `app-sim-card-inspector` selectors in this document apply to the shared `app-card` and `app-card-inspector` selectors post-extraction._
+
+```
+front/src/app/
+├── components/                               # EXTENDED — shared components
+│   ├── card/                                 # NEW — extracted from SimCardComponent
+│   │   ├── card.component.ts
+│   │   ├── card.component.html
+│   │   └── card.component.scss
+│   ├── card-inspector/                       # NEW — extracted from SimCardInspectorComponent
+│   │   ├── card-inspector.component.ts
+│   │   ├── card-inspector.component.html
+│   │   └── card-inspector.component.scss
+│   └── scaling-container/                    # NEW — ScalingContainerDirective
+│       └── scaling-container.directive.ts
+├── styles/                                   # EXTENDED — shared SCSS
+│   ├── _canvas-scaling.scss                  # NEW — Track A scaling mixins
+│   └── _responsive.scss                      # NEW — breakpoints, responsive mixins
 ```
 
 ## Architecture Validation Results
