@@ -1,0 +1,21 @@
+@use 'canvas-scaling' as cs;
+@use 'responsive' as r;
+@use 'variable' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.searchPage-canvasParent {
+  @include cs.canvas-parent;
+  flex: 1;
+  min-height: 0;
+}
+
+.favorite-toggle {
+  color: $white;
+  margin-top: 1rem;
+  @include r.touch-target-min;
+}

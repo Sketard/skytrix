@@ -1,16 +1,17 @@
-import { ChangeDetectionStrategy, Component, effect, HostListener, inject, isDevMode, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, isDevMode, signal, untracked } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ZoneId } from './simulator.models';
 import { SimZoneComponent } from './zone.component';
 import { SimStackedZoneComponent } from './stacked-zone.component';
 import { SimHandComponent } from './hand.component';
-import { SimCardInspectorComponent } from './card-inspector.component';
+import { CardInspectorComponent } from '../../components/card-inspector/card-inspector.component';
 import { SimPileOverlayComponent } from './pile-overlay.component';
 import { SimXyzMaterialPeekComponent } from './xyz-material-peek.component';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { SimControlBarComponent } from './control-bar.component';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
+import { SharedCardInspectorData } from '../../core/model/shared-card-data';
 
 @Component({
   selector: 'app-sim-board',
@@ -18,7 +19,7 @@ import { NavbarCollapseService } from '../../services/navbar-collapse.service';
   styleUrl: './board.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, SimZoneComponent, SimStackedZoneComponent, SimHandComponent, SimCardInspectorComponent, SimPileOverlayComponent, SimXyzMaterialPeekComponent, SimControlBarComponent],
+  imports: [DragDropModule, SimZoneComponent, SimStackedZoneComponent, SimHandComponent, CardInspectorComponent, SimPileOverlayComponent, SimXyzMaterialPeekComponent, SimControlBarComponent],
 })
 export class SimBoardComponent {
   protected readonly ZoneId = ZoneId;
@@ -26,6 +27,37 @@ export class SimBoardComponent {
   private readonly commandStack = inject(CommandStackService);
   private readonly navbarCollapse = inject(NavbarCollapseService);
   readonly forceReducedMotion = this.boardState.forceReducedMotion;
+
+  readonly inspectorData = computed<SharedCardInspectorData | null>(() => {
+    if (this.boardState.isDragging()) return null;
+    const ci = this.boardState.selectedCard();
+    if (!ci) return null;
+    const c = ci.card.card;
+    return {
+      name: c.name ?? '',
+      imageUrl: ci.image.smallUrl,
+      imageUrlFull: ci.image.url,
+      isMonster: c.isMonster ?? false,
+      attribute: c.attribute,
+      race: c.race,
+      level: c.level,
+      scale: c.scale,
+      linkval: c.linkval,
+      isLink: c.isLink ?? false,
+      hasDefense: c.hasDefense ?? false,
+      displayAtk: c.displayAtk,
+      displayDef: c.displayDef,
+      description: c.description ?? '',
+    };
+  });
+
+  readonly inspectorPosition = computed<'left' | 'right'>(() =>
+    this.boardState.isOverlayOpen() || this.boardState.isMaterialPeekOpen() ? 'right' : 'left'
+  );
+
+  clearSelection(): void {
+    this.boardState.clearSelection();
+  }
 
   protected readonly scaleFactor = signal(1);
 

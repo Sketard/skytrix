@@ -1,98 +1,118 @@
-@import 'variable';
-@import 'mixin';
+@use 'variable' as *;
+@use 'mixin' as *;
+@use 'canvas-scaling' as cs;
+@use 'responsive' as r;
+
+.inspector-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem;
+
+  button {
+    color: $white;
+    @include r.touch-target-min;
+  }
+}
 
 .deckBuilder {
   display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
 
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -o-user-select: none;
   user-select: none;
 
-  &-viewer {
-    padding: 1em;
-    position: relative;
+  // ─── HEADER (Track B — responsive) ───
+  &-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5em 1em;
+    gap: 0.5em;
+    background-color: $black;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
-    &-hand {
-      transition: all 0.5s ease-in-out;
-      background-color: $black;
-      position: absolute;
-      width: 90%;
-      bottom: -100%;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      border-radius: 10px;
-      border: 1px solid $blue;
-      padding: 1em;
+    &-deckName {
+      flex: 1;
+      max-width: 300px;
 
-      &.opened {
-        bottom: 1em;
+      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+        background-color: $white !important;
+      }
+
+      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+        color: $black;
+      }
+
+      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+        caret-color: $black;
+      }
+
+      ::ng-deep .mdc-text-field--filled {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-bottom-left-radius: 0;
+      }
+
+      .mat-icon {
+        color: $black;
+      }
+
+      input::placeholder {
+        color: $unselected-black;
+        opacity: 0.1;
+      }
+    }
+
+    &-buttons {
+      display: flex;
+
+      @include icon-as-button;
+
+      button, app-multiple-action-button {
+        color: $white;
+      }
+
+      &-hand {
+        filter: brightness(0) invert(1);
+      }
+    }
+
+    @include r.respond-below(r.$bp-tablet) {
+      flex-wrap: wrap;
+
+      &-deckName {
+        max-width: 100%;
+        flex-basis: 100%;
       }
     }
   }
 
-  &-side {
-    width: 100%;
-    position: relative;
-    overflow: hidden;
+  // ─── CANVAS PARENT (explicit height) ───
+  &-canvasParent {
+    @include cs.canvas-parent;
+    flex: 1;
+    min-height: 0;
+  }
 
-    &-tools {
-      margin: 2em 1em 0 1em;
+  // ─── CANVAS (Track A — scaled) ───
+  &-canvas {
+    display: flex;
 
-      &-deckName {
-        width: 100%;
+    &-viewer {
+      padding: 1em;
+    }
 
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-          background-color: $white !important;
-        }
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-          color: $black;
-        }
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-          caret-color: $black;
-        }
-
-        ::ng-deep .mdc-text-field--filled {
-          border-top-left-radius: 0;
-          border-top-right-radius: 0;
-          border-bottom-right-radius: 0;
-          border-bottom-left-radius: 0;
-        }
-
-        .mat-icon {
-          color: $black;
-        }
-
-        input::placeholder {
-          color: $unselected-black;
-          opacity: 0.1;
-        }
-      }
-
-      &-buttons {
-        display: flex;
-
-        @include icon-as-button;
-
-        &-save {
-          color: $white;
-        }
-
-        &-print {
-          color: $white;
-        }
-
-        &-hand {
-          filter: brightness(0) invert(1);
-        }
-      }
+    &-side {
+      width: 300px;
+      min-width: 300px;
+      position: relative;
+      overflow: hidden;
     }
 
     &-images {
@@ -101,7 +121,6 @@
       &-slots {
         display: flex;
         align-items: center;
-        margin: 1em 0;
         margin: auto;
         background-color: #00226b;
         position: relative;
@@ -110,7 +129,7 @@
     }
 
     &-searcher {
-      height: calc(100% - 310px);
+      height: calc(100% - 160px);
       width: 100%;
       min-width: 300px;
     }
@@ -131,6 +150,26 @@
         right: 0;
         opacity: 1;
       }
+    }
+  }
+
+  // ─── HAND TEST OVERLAY (outside canvas) ───
+  &-handOverlay {
+    transition: all 0.5s ease-in-out;
+    background-color: $black;
+    position: fixed;
+    width: 90%;
+    max-width: 900px;
+    bottom: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    border-radius: 10px;
+    border: 1px solid $blue;
+    padding: 1em;
+
+    &.opened {
+      bottom: 1em;
     }
   }
 }

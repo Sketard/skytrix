@@ -15,19 +15,15 @@
         cdkDropListOrientation="horizontal"
         [cdkDropListData]="{ item: cardDetail, index: i }"
         [id]="deckZone() || staticDeckZone.OTHER">
-        <card
+        <app-card
           cdkDrag
-          [ngClass]="displayMode"
-          [cardDetail]="cardDetail.card"
-          [displayMode]="displayMode"
-          [size]="size()"
-          [cropped]="false"
-          [searchService]="deckBuildService"
+          [card]="toSharedCardData(cardDetail.card)"
           [cdkDragData]="cardDetail"
           [cdkDragDisabled]="!cardDetail.card.card.id"
           [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
+          (click)="onCardClick(cardDetail.card)"
           (contextmenu)="onRightClick($event, deckZone(), i)">
-        </card>
+        </app-card>
       </div>
     }
   </div>

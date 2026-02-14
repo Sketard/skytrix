@@ -39,5 +39,5 @@
   <app-sim-xyz-material-peek />
 
   <!-- Inspector — inside cdkDropListGroup container, outside grid -->
-  <app-sim-card-inspector />
+  <app-card-inspector [card]="inspectorData()" mode="hover" [position]="inspectorPosition()" (dismissed)="clearSelection()" />
 </div>

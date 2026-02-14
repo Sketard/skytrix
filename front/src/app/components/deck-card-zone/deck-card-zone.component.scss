@@ -1,4 +1,4 @@
-@import '../../styles/variable';
+@use '../../styles/variable' as *;
 
 .grid {
   display: flex;
@@ -26,6 +26,12 @@
 
       &.card {
         position: relative;
+        padding: 0;
+
+        app-card {
+          --card-border-radius: 2px;
+          --card-shadow: none;
+        }
       }
 
       &.remove {
@@ -53,6 +59,10 @@
         padding: 3px;
         height: $DECK_EXTRASIDE_CARD_HEIGHT;
         width: $DECK_EXTRASIDE_CARD_WIDTH;
+
+        &.card {
+          padding: 0;
+        }
       }
     }
   }

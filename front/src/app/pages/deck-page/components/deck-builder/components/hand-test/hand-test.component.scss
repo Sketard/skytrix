@@ -11,7 +11,6 @@
       }
     }
 
-
     margin-bottom: 1em;
   }
 
@@ -20,7 +19,8 @@
     justify-content: center;
     align-items: center;
 
-    card {
+    .hand-card {
+      width: 100px;
       margin-right: 1em;
 
       &:last-child {
