@@ -60,7 +60,7 @@ export class DeckBuilderComponent {
   @ViewChild('importInput') importInput: ElementRef | undefined;
 
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
-  private selectedCardDetail: CardDetail | null = null;
+  private readonly selectedCardDetail = signal<CardDetail | null>(null);
 
   readonly exportButtons: Array<ActionButton> = [
     {
@@ -89,24 +89,24 @@ export class DeckBuilderComponent {
   }
 
   onCardClicked(cd: CardDetail): void {
-    this.selectedCardDetail = cd;
+    this.selectedCardDetail.set(cd);
     this.selectedCardForInspector.set(toSharedCardInspectorData(cd));
   }
 
   dismissInspector(): void {
     this.selectedCardForInspector.set(null);
-    this.selectedCardDetail = null;
+    this.selectedCardDetail.set(null);
   }
 
   addSelectedCardToDeck(): void {
-    if (!this.selectedCardDetail) return;
-    const cd = this.selectedCardDetail;
+    if (!this.selectedCardDetail()) return;
+    const cd = this.selectedCardDetail()!;
     this.deckBuildService.addCard(cd, cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN);
   }
 
   removeSelectedCardFromDeck(): void {
-    if (!this.selectedCardDetail) return;
-    const cd = this.selectedCardDetail;
+    if (!this.selectedCardDetail()) return;
+    const cd = this.selectedCardDetail()!;
     const deck = this.deckBuildService.deck();
     const zones: Array<{ cards: Array<IndexedCardDetail>; zone: DeckZone }> = [
       { cards: deck.mainDeck, zone: DeckZone.MAIN },
