@@ -4,7 +4,10 @@
       "Bash(npx ng build:*)",
       "Bash(powershell -Command:*)",
       "Bash(powershell.exe:*)",
-      "Bash(npx ng version)"
+      "Bash(npx ng version)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c:*)"
     ]
   }
 }

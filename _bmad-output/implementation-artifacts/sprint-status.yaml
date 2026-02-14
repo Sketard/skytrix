@@ -84,9 +84,9 @@ development_status:
   # Epic 7: Responsive App Shell & Navbar
   epic-7: in-progress
   7-1-shared-scss-infrastructure-and-scalingcontainerdirective: done
-  7-2-responsive-navbar-hamburger-drawer-on-mobile: ready-for-dev
-  7-3-login-and-settings-pages-responsive: backlog
-  7-4-deck-list-page-responsive: backlog
+  7-2-responsive-navbar-hamburger-drawer-on-mobile: done
+  7-3-login-and-settings-pages-responsive: done
+  7-4-deck-list-page-responsive: done
   epic-7-retrospective: optional
 
   # Epic 8: Shared Components & Responsive Card Pages

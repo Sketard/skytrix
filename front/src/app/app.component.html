@@ -1,4 +1,4 @@
-<div class="app mat-app-background dark-theme no-transition">
+<div class="app mat-app-background dark-theme no-transition" [class.mobile-mode]="isMobile()">
   <app-loader></app-loader>
   @if (connectedUser()) {
     <navbar></navbar>

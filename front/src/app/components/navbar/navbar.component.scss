@@ -1,4 +1,9 @@
+@use 'responsive' as *;
 @import '../../styles/variable';
+
+// =============================================
+// Desktop sidebar styles (unchanged from 6.4)
+// =============================================
 
 .navbar-sidebar {
   display: flex;
@@ -98,12 +103,135 @@
   }
 }
 
+// =============================================
+// Mobile top bar + drawer styles
+// =============================================
+
+.mobile-top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
+  color: $black;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  padding: 0 0.5rem;
+}
+
+.hamburger-btn {
+  @include touch-target-min;
+}
+
+.mobile-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-right: 44px; // Balance hamburger button width for centering
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease, visibility 0s 200ms;
+
+  &.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 200ms ease, visibility 0s 0s;
+  }
+
+  &.no-animate {
+    transition: none;
+  }
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 1100;
+  background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
+  color: $black;
+  visibility: hidden;
+  transform: translateX(-100%);
+  transition: transform 200ms ease, visibility 0s 200ms;
+  display: flex;
+  flex-direction: column;
+
+  &.open {
+    visibility: visible;
+    transform: translateX(0);
+    transition: transform 200ms ease, visibility 0s 0s;
+  }
+
+  &.no-animate {
+    transition: none;
+  }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  height: 48px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.drawer-title {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.drawer-close-btn {
+  @include touch-target-min;
+}
+
+.drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.mobile-nav-link {
+  @include touch-target-min;
+  width: 100%;
+}
+
+// =============================================
+// prefers-reduced-motion
+// =============================================
+
 @media (prefers-reduced-motion: reduce) {
   .navbar-sidebar {
     transition: none;
   }
 
   .collapse-toggle {
+    transition: none;
+  }
+
+  .mobile-drawer {
+    transition: none;
+  }
+
+  .drawer-backdrop {
     transition: none;
   }
 }

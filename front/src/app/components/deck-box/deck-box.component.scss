@@ -1,10 +1,9 @@
-@import '../../styles/variable';
-@import 'animation';
+@use 'variable' as *;
+@use 'animation' as *;
 
 .deckBox {
-  width: 200px;
-  height: 170px;
-  margin-right: 2rem;
+  width: 100%;
+  min-height: 170px;
   border: 1px solid $white;
   border-radius: 20px 0 20px 0;
   display: flex;
@@ -54,7 +53,8 @@
   }
 
   &-image {
-    width: 150px;
+    max-width: 150px;
+    width: 60%;
 
     &:hover {
       animation: wiggle 0.5s infinite;
