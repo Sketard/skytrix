@@ -1,6 +1,6 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, DragDropModule } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, HostListener, input } from '@angular/core';
-import { CardComponent, CardSize } from '../card/card.component';
+import { DeckBuilderCardComponent, CardSize } from '../card/deck-builder-card.component';
 import { CommonModule } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
 import { CardDisplayType } from '../../core/enums/card-display-type';
@@ -13,7 +13,7 @@ enum StaticDeckZone {
 
 @Component({
   selector: 'deck-card-zone',
-  imports: [CdkDropList, CdkDrag, CommonModule, CardComponent, DragDropModule],
+  imports: [CdkDropList, CdkDrag, CommonModule, DeckBuilderCardComponent, DragDropModule],
   templateUrl: './deck-card-zone.component.html',
   styleUrl: './deck-card-zone.component.scss',
   standalone: true,

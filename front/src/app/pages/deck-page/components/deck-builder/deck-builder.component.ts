@@ -7,7 +7,7 @@ import { CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import { DeckCardZoneComponent } from '../../../../components/deck-card-zone/deck-card-zone.component';
-import { CardSize } from '../../../../components/card/card.component';
+import { CardSize } from '../../../../components/card/deck-builder-card.component';
 import { jsPDF } from 'jspdf';
 import { MatIconModule } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';

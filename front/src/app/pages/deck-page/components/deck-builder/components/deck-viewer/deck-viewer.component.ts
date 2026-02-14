@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
-import { CardSize } from '../../../../../../components/card/card.component';
+import { CardSize } from '../../../../../../components/card/deck-builder-card.component';
 import { CommonModule } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../../../../../services/deck-build.service';
 import { DeckCardZoneComponent } from '../../../../../../components/deck-card-zone/deck-card-zone.component';

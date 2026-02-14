@@ -90,9 +90,9 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Shared Components & Responsive Card Pages
-  epic-8: backlog
-  8-1-harmonization-analysis-and-migration-plan: backlog
-  8-2-extract-shared-cardcomponent: backlog
+  epic-8: in-progress
+  8-1-harmonization-analysis-and-migration-plan: done
+  8-2-extract-shared-cardcomponent: done
   8-3-extract-shared-cardinspectorcomponent: backlog
   8-4-deck-builder-canvas-scaling-and-shared-components: backlog
   8-5-card-search-page-canvas-scaling-and-shared-components: backlog
