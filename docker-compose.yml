@@ -1,0 +1,48 @@
+services:
+
+  # Base de données PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: skytrix-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Spring Boot
+  back:
+    build: ./back
+    container_name: skytrix-back
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - images_data:/app/images
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Frontend Angular servi par Nginx
+  front:
+    build: ./front
+    container_name: skytrix-front
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - back
+
+volumes:
+  postgres_data:
+  images_data:

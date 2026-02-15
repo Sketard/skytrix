@@ -1,8 +1,16 @@
+# Variables d'environnement (ne jamais commiter)
+.env
+
+# IDE IntelliJ / Android Studio
+.idea/
+
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+/shelf/
+/workspace.xml
 
 ### STS ###
 .apt_generated
