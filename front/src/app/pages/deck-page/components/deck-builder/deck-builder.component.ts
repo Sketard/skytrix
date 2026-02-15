@@ -1,6 +1,6 @@
 import { CardDetail, IndexedCardDetail } from '../../../../core/model/card-detail';
 import { DeckBuildService, DeckZone } from '../../../../services/deck-build.service';
-import { ChangeDetectionStrategy, Component, ElementRef, Input, signal, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, Input, signal, ViewChild } from '@angular/core';
 import { DeckViewerComponent } from './components/deck-viewer/deck-viewer.component';
 import { Deck } from '../../../../core/model/deck';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
@@ -57,6 +57,14 @@ export class DeckBuilderComponent {
 
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
   private readonly selectedCardDetail = signal<CardDetail | null>(null);
+  readonly selectedCardCount = computed(() => {
+    const cd = this.selectedCardDetail();
+    if (!cd) return 0;
+    const deck = this.deckBuildService.deck();
+    const id = cd.card.id;
+    return [...deck.mainDeck, ...deck.extraDeck, ...deck.sideDeck]
+      .filter(slot => slot.card.card.id === id).length;
+  });
   readonly ExportMode = ExportMode;
 
   readonly filtersOpened = this.deckBuildService.openedFilters;

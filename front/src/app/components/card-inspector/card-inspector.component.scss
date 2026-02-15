@@ -77,6 +77,18 @@
   }
 }
 
+.inspector-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+
+  > .inspector-image {
+    width: var(--inspector-image-width, 120px);
+    border-radius: var(--inspector-border-radius, 8px);
+  }
+}
+
 // Click mode: backdrop + centered panel
 .inspector-backdrop {
   position: fixed;

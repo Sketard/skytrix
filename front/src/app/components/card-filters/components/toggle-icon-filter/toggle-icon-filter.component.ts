@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatButtonToggle, MatButtonToggleChange, MatButtonToggleGroup } from '@angular/material/button-toggle';
+import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { NgForOf } from '@angular/common';
 
 export type ToggleIconFilter<T> = {
@@ -22,12 +22,15 @@ export class ToggleIconFilterComponent<T> {
   readonly form = input<FormControl<T | null>>(new FormControl<T | null>(null));
   readonly inputLabel = input<string>('');
 
-  public toggleChange($event: MatButtonToggleChange): void {
-    const value = $event.value;
-    if (value === this.form().value) {
+  private previousValue: T | null = null;
+
+  public captureValue(): void {
+    this.previousValue = this.form().value;
+  }
+
+  public deselect(value: T): void {
+    if (value === this.previousValue) {
       this.form().setValue(null);
-    } else {
-      this.form().setValue(value);
     }
   }
 }

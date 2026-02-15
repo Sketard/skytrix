@@ -12,10 +12,8 @@ import { OwnedCardService } from '../../services/owned-card.service';
 import { FindOwnedCardPipe } from '../../core/pipes/find-owned-card.pipe';
 import { FindGroupedOwnedCardPipe } from '../../core/pipes/find-grouped-owned-card';
 import { AsyncPipe, NgClass } from '@angular/common';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { FormsModule } from '@angular/forms';
+import { MatIconButton } from '@angular/material/button';
 
 @Component({
   selector: 'card-list',
@@ -27,10 +25,8 @@ import { FormsModule } from '@angular/forms';
     NgClass,
     FindOwnedCardPipe,
     FindGroupedOwnedCardPipe,
-    MatFormFieldModule,
-    MatInputModule,
     MatIconModule,
-    FormsModule,
+    MatIconButton,
   ],
   templateUrl: './card-list.component.html',
   styleUrl: './card-list.component.scss',
@@ -80,10 +76,6 @@ export class CardListComponent implements OnDestroy {
   onDoubleClick(cd: CardDetail): void {
     if (!this.deckBuildMode()) return;
     this.deckBuildService.addCard(cd, cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN);
-  }
-
-  updateQuantity(event: FocusEvent, cardSetId: number): void {
-    this.ownedCardService.update(cardSetId, parseInt((event.target as HTMLInputElement).value));
   }
 
   increaseQuantity(number: number, cardSetId: number, currentNumber: number): void {

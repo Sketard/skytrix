@@ -64,7 +64,7 @@
   bottom: 0;
   font-weight: bold;
   font-size: 0.8em;
-  z-index: 1000;
+  z-index: 1;
   text-shadow: 0 0 2px #000;
   font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
 }
@@ -129,28 +129,21 @@
   }
 
   &-quantity {
-    width: 130px;
-    height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     flex-shrink: 0;
 
-    mat-icon {
-      background-color: black;
-      border-radius: 0;
-      border: 0;
-      cursor: pointer;
+    button {
+      color: $white;
       @include r.touch-target-min;
     }
 
-    ::ng-deep .mat-mdc-form-field-infix {
-      padding-top: 8px !important;
-      padding-bottom: 0 !important;
-    }
-
-    ::ng-deep .mdc-line-ripple {
-      display: none !important;
-    }
-
-    input {
+    &-count {
+      color: $white;
+      font-size: 1rem;
+      font-weight: 600;
+      min-width: 1.5rem;
       text-align: center;
     }
   }

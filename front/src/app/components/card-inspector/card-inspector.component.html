@@ -57,10 +57,13 @@
   @if (isVisible()) {
     @if (card(); as c) {
       <div class="inspector-content">
-        <img [src]="c.imageUrl"
-             [alt]="c.name"
-             class="inspector-image"
-             (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+        <div class="inspector-left">
+          <img [src]="c.imageUrl"
+               [alt]="c.name"
+               class="inspector-image"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+          <ng-content></ng-content>
+        </div>
         <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
       </div>
     }
