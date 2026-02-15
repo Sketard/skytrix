@@ -1,6 +1,12 @@
 @import 'material';
 @import 'app/styles/variable';
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   font-size: 1rem;
   font-weight: 400;
@@ -47,6 +53,12 @@ input[type='number'] {
 
 .cdk-drag-placeholder {
   opacity: 0;
+}
+
+// Simulator zones: remove incoming placeholder from flex flow
+// so it doesn't push the existing card to half-height
+.sim-zone.cdk-drop-list-receiving:not(.cdk-drop-list-dragging) .cdk-drag-placeholder {
+  display: none !important;
 }
 
 .cdk-drag-animating {

@@ -27,8 +27,6 @@ export class SimControlBarComponent {
   readonly isDevMode = isDevMode();
   readonly undoCount = computed(() => this.commandStack.undoStack().length);
   readonly redoCount = computed(() => this.commandStack.redoStack().length);
-  readonly reducedMotion = this.boardState.forceReducedMotion;
-
   onUndo(): void {
     try {
       this.commandStack.undo();
@@ -56,7 +54,4 @@ export class SimControlBarComponent {
     }
   }
 
-  onToggleReducedMotion(): void {
-    this.boardState.forceReducedMotion.update(v => !v);
-  }
 }

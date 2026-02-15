@@ -6,23 +6,24 @@
      [cdkDropListData]="zoneId()"
      [cdkDropListSortingDisabled]="true"
      (cdkDropListDropped)="onDrop($event)"
+     (cdkDropListEntered)="onDragEntered()"
+     (cdkDropListExited)="onDragExited()"
      (animationend)="onAnimationEnd($event)"
      (click)="onZoneClick()"
      (contextmenu)="onContextMenu($event)"
 >
   @if (topCard(); as card) {
-    <app-card [card]="toSharedCardData(card)"
+    <app-card [style.display]="isReceiving() ? 'none' : null"
+              [card]="toSharedCardData(card)"
               [faceDown]="showFaceDown() ?? card.faceDown"
               [position]="card.position"
               cdkDrag
               [cdkDragData]="card"
+              cdkDragPreviewContainer="global"
               [cdkDragDisabled]="cardCount() === 0"
               [attr.aria-label]="'Drag top card from ' + zoneConfig().label"
               (cdkDragStarted)="onDragStarted()"
               (cdkDragEnded)="onDragEnded()" />
-  }
-  @if (cardCount() === 0) {
-    <span class="zone-label">{{ zoneConfig().label }}</span>
   }
   @if (isDeckZone()) {
     <span #deckMenuTrigger="matMenuTrigger"

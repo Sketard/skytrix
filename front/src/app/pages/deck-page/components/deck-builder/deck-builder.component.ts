@@ -10,14 +10,11 @@ import { DeckCardZoneComponent } from '../../../../components/deck-card-zone/dec
 import { jsPDF } from 'jspdf';
 import { MatIconModule } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
+import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { ExportDTO } from '../../../../core/model/dto/export-dto';
 import { ExportService } from '../../../../services/export.service';
 import { downloadDocument } from '../../../../core/utilities/functions';
 import { DeckDTO } from '../../../../core/model/dto/deck-dto';
-import {
-  ActionButton,
-  MultipleActionButtonComponent,
-} from '../../../../components/multiple-action-button/multiple-action-button.component';
 import { ExportMode } from '../../../../core/enums/export.mode.enum';
 import { CardFiltersComponent } from '../../../../components/card-filters/card-filters.component';
 import { CardSearcherComponent } from '../../../../components/card-searcher/card-searcher.component';
@@ -25,8 +22,6 @@ import { HandTestComponent } from './components/hand-test/hand-test.component';
 import { Router } from '@angular/router';
 import { CardInspectorComponent } from '../../../../components/card-inspector/card-inspector.component';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
-import { ScalingContainerDirective } from '../../../../components/scaling-container/scaling-container.directive';
-
 @Component({
   selector: 'app-deck-builder',
   imports: [
@@ -37,12 +32,13 @@ import { ScalingContainerDirective } from '../../../../components/scaling-contai
     DeckCardZoneComponent,
     MatIconModule,
     MatIconButton,
-    MultipleActionButtonComponent,
+    MatMenu,
+    MatMenuItem,
+    MatMenuTrigger,
     CardFiltersComponent,
     CardSearcherComponent,
     HandTestComponent,
     CardInspectorComponent,
-    ScalingContainerDirective,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',
@@ -61,21 +57,7 @@ export class DeckBuilderComponent {
 
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
   private readonly selectedCardDetail = signal<CardDetail | null>(null);
-
-  readonly exportButtons: Array<ActionButton> = [
-    {
-      label: 'Export standard',
-      callback: () => {
-        this.export(ExportMode.CLASSIC);
-      },
-    },
-    {
-      label: 'Export Cardmarket',
-      callback: () => {
-        this.export(ExportMode.MARKET);
-      },
-    },
-  ];
+  readonly ExportMode = ExportMode;
 
   readonly filtersOpened = this.deckBuildService.openedFilters;
   readonly handTestOpened = this.deckBuildService.handTestOpened;

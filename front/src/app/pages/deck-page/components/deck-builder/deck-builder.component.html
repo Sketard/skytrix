@@ -1,76 +1,69 @@
 <div class="deckBuilder" cdkDropListGroup>
-  <!-- HEADER -->
-  <div class="deckBuilder-header">
-    <mat-form-field class="deckBuilder-header-deckName">
-      <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
-    </mat-form-field>
-    <div class="deckBuilder-header-cover">
-      <deck-card-zone
-        [cardDetails]="deckBuildService.deck().images"
-        [slotNumber]="3"
-        (cardClicked)="onCardClicked($event)"></deck-card-zone>
-    </div>
-    <div class="deckBuilder-header-buttons">
-      <button mat-icon-button class="mat-elevation-z0" [disabled]="deckBuildService.deckEmpty()" [title]="'Sauvegarder'" (click)="save()">
-        <mat-icon>save</mat-icon>
-      </button>
+  <!-- BODY (canvas + side panel with header) -->
+  <div class="deckBuilder-body">
+    <div class="deckBuilder-canvasParent">
       <button
         mat-icon-button
-        class="mat-elevation-z0"
-        [disabled]="deckBuildService.deckEmpty()"
-        [title]="'Générer les proxies'"
-        (click)="createProxies()">
-        <mat-icon>print</mat-icon>
-      </button>
-      <app-multiple-action-button icon="cloud_download" [buttons]="exportButtons"></app-multiple-action-button>
-      <button
-        mat-icon-button
-        class="mat-elevation-z0"
-        [title]="'Importer la decklist'"
-        (click)="openImportFile()">
-        <mat-icon>cloud_upload</mat-icon>
-      </button>
-      <input id="importDeckInput" hidden type="file" #importInput (change)="import()" />
-      <button mat-icon-button class="mat-elevation-z0" [title]="'Tester une main'" (click)="toggleTestHand()">
-        <mat-icon class="deckBuilder-header-buttons-hand">
-          <img src="assets/images/icons/hand_cards.svg" alt="" />
-        </mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        class="mat-elevation-z0"
-        [disabled]="!deckBuildService.deck().id"
-        [title]="'Tester les combos'"
-        (click)="navigateToSimulator()">
-        <mat-icon>sports_esports</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        class="mat-elevation-z0 deckBuilder-header-buttons-search"
-        [title]="'Rechercher une carte'"
+        class="deckBuilder-searchToggle"
+        aria-label="Rechercher une carte"
         (click)="toggleSearchPanel()">
         <mat-icon>search</mat-icon>
       </button>
-    </div>
-  </div>
-
-  <!-- BODY (canvas + side panel) -->
-  <div class="deckBuilder-body">
-    <div class="deckBuilder-canvasParent">
-      <div class="deckBuilder-canvas" appScalingContainer [referenceWidth]="800" [aspectRatio]="0.9">
-        <div class="deckBuilder-canvas-viewer">
-          <deck-viewer (cardClicked)="onCardClicked($event)"></deck-viewer>
-        </div>
-      </div>
+      <deck-viewer (cardClicked)="onCardClicked($event)"></deck-viewer>
     </div>
     <div class="deckBuilder-side" [class.opened]="searchPanelOpened()">
       <button
         mat-icon-button
         class="deckBuilder-side-close"
-        [title]="'Fermer la recherche'"
+        aria-label="Fermer le panneau"
         (click)="toggleSearchPanel()">
         <mat-icon>close</mat-icon>
       </button>
+      <!-- HEADER (inside side panel) -->
+      <div class="deckBuilder-side-header">
+        <mat-form-field class="deckBuilder-side-header-deckName">
+          <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
+        </mat-form-field>
+        <div class="deckBuilder-side-header-row">
+          <deck-card-zone
+            [cardDetails]="deckBuildService.deck().images"
+            [slotNumber]="3"
+            (cardClicked)="onCardClicked($event)"></deck-card-zone>
+          <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #actionsMenu="matMenu">
+            <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="save()">
+              <mat-icon>save</mat-icon>
+              <span>Sauvegarder</span>
+            </button>
+            <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">
+              <mat-icon>print</mat-icon>
+              <span>Générer les proxies</span>
+            </button>
+            <button mat-menu-item (click)="export(ExportMode.CLASSIC)">
+              <mat-icon>cloud_download</mat-icon>
+              <span>Export standard</span>
+            </button>
+            <button mat-menu-item (click)="export(ExportMode.MARKET)">
+              <mat-icon>cloud_download</mat-icon>
+              <span>Export Cardmarket</span>
+            </button>
+            <button mat-menu-item (click)="openImportFile()">
+              <mat-icon>cloud_upload</mat-icon>
+              <span>Importer</span>
+            </button>
+            <button mat-menu-item (click)="toggleTestHand()">
+              <mat-icon>back_hand</mat-icon>
+              <span>Tester une main</span>
+            </button>
+            <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToSimulator()">
+              <mat-icon>sports_esports</mat-icon>
+              <span>Simulateur</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
       <div class="deckBuilder-side-searcher">
         <app-card-searcher
           [deckBuildMode]="true"
@@ -81,6 +74,14 @@
         <app-card-filters [searchService]="deckBuildService" [filtersOpened]="filtersOpened()" (close)="closeFilters()"></app-card-filters>
       </div>
     </div>
+  </div>
+
+  <input id="importDeckInput" hidden type="file" #importInput (change)="import()" />
+
+  <!-- Portrait overlay (pure CSS media query — no TS logic) -->
+  <div class="deckBuilder-portraitOverlay">
+    <mat-icon>screen_rotation</mat-icon>
+    <p>Tournez votre appareil en paysage</p>
   </div>
 
   <!-- Hand test overlay (outside canvas — no CDK drag needed) -->

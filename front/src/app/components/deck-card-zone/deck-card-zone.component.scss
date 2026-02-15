@@ -1,4 +1,5 @@
 @use '../../styles/variable' as *;
+@use '../../styles/responsive' as r;
 
 .grid {
   display: flex;
@@ -8,12 +9,18 @@
   justify-content: flex-start;
 
   &-list {
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width: 100%;
 
+    @include r.respond-above(r.$bp-desktop-sm) {
+      grid-template-columns: repeat(10, 1fr);
+    }
+
+    // Cover image mode: keep flexbox for absolute overlay
     &.element {
+      display: flex;
+      flex-wrap: wrap;
       position: absolute;
       top: 0;
       bottom: 0;
@@ -21,9 +28,23 @@
       right: 0;
     }
 
+    // Empty deck zone placeholder (visible drop target)
+    &.empty {
+      min-height: 60px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    // Background slot grid (cover images, no deckZone) must stay flexbox
+    &:has(> .grid-list-slot.grid) {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      justify-content: flex-start;
+    }
+
     &-slot {
       box-sizing: border-box;
-      border: transparent solid 1px;
 
       &.card {
         position: relative;
@@ -33,37 +54,25 @@
           --card-border-radius: 2px;
           --card-shadow: none;
         }
+
+        // CDK drag placeholder (stays in grid — maintains cell dimensions)
+        &.cdk-drag-placeholder {
+          opacity: 0.3;
+        }
+
+        // CDK drag animating (return-to-position after drop)
+        &.cdk-drag-animating {
+          transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+        }
       }
 
-      &.remove {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background-color: red;
-        width: 15px;
-        height: 15px;
-        cursor: pointer;
-      }
-
+      // Background slot grid (cover images only): keep fixed sizes
       &.grid {
         position: relative;
         border: $white solid 1px;
         background-color: rgba(255, 255, 255, 0.3);
-      }
-
-      padding: 5px;
-      height: $DECK_CARD_HEIGHT;
-      width: $DECK_CARD_WIDTH;
-
-      &.extraDeck,
-      &.sideDeck {
-        padding: 3px;
-        height: $DECK_EXTRASIDE_CARD_HEIGHT;
-        width: $DECK_EXTRASIDE_CARD_WIDTH;
-
-        &.card {
-          padding: 2px;
-        }
+        height: $DECK_CARD_HEIGHT;
+        width: $DECK_CARD_WIDTH;
       }
     }
   }

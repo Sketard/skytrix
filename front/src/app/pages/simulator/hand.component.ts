@@ -23,18 +23,21 @@ export class SimHandComponent {
   readonly cards = computed(() => this.boardState.hand());
   readonly isEmpty = computed(() => this.cards().length === 0);
 
-  private static readonly FAN_SPACING = 36;
-  private static readonly FAN_MAX_ANGLE = 4;
-  private static readonly FAN_MAX_ARC = 12;
+  private static readonly FAN_SPACING = 52;
+  private static readonly FAN_MAX_ANGLE = 6;
+  private static readonly FAN_MAX_ARC = 16;
 
   readonly fanStyles = computed(() => {
     const n = this.cards().length;
     const { FAN_SPACING, FAN_MAX_ANGLE, FAN_MAX_ARC } = SimHandComponent;
+    // Cap effective spacing so total fan width stays within hand zone (1060px)
+    const maxHandWidth = 1060;
+    const effectiveSpacing = Math.min(FAN_SPACING, maxHandWidth / Math.max(n, 1));
     return this.cards().map((_, i) => {
       if (n <= 1) return { offsetX: 0, rotation: 0, arcY: 0, zIndex: 1 };
       const t = (2 * i) / (n - 1) - 1;
       return {
-        offsetX: (i - (n - 1) / 2) * FAN_SPACING,
+        offsetX: (i - (n - 1) / 2) * effectiveSpacing,
         rotation: t * FAN_MAX_ANGLE,
         arcY: (t * t - 1) * FAN_MAX_ARC,
         zIndex: n - Math.abs(Math.round(t * n)),

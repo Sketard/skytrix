@@ -29,12 +29,5 @@
   @if (isDevMode) {
     <div class="separator"></div>
     <span class="debug-info">U:{{ undoCount() }} R:{{ redoCount() }}</span>
-    <button mat-icon-button
-            [attr.aria-pressed]="reducedMotion()"
-            aria-label="Toggle reduced motion"
-            matTooltip="Reduced motion"
-            (click)="onToggleReducedMotion()">
-      <mat-icon>{{ reducedMotion() ? 'motion_photos_off' : 'motion_photos_on' }}</mat-icon>
-    </button>
   }
 </div>

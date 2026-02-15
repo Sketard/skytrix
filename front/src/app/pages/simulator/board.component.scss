@@ -13,6 +13,7 @@
   justify-content: center;
   align-items: flex-start;
   overflow: hidden;
+  touch-action: none;
   background: $sim-bg;
   position: relative;
 }
@@ -26,10 +27,10 @@
     'hand  hand  hand    hand   hand    hand   hand';
   // Grid 1060×720: cols 148*7+4*6=1060, rows 200*3+108+4*3=720
   grid-template-columns: repeat(7, 148px);
-  grid-template-rows: 200px 200px 200px 108px;
+  grid-template-rows: 200px 200px 200px 160px;
   gap: $sim-gap-zone-px;
   width: 1060px;
-  height: 720px;
+  height: 772px;
   flex-shrink: 0;
   transform-origin: top center;
   transition: transform 200ms ease;

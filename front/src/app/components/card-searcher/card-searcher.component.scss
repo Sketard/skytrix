@@ -17,13 +17,10 @@
   }
 
   &-searcher {
-    width: calc(100% - 300px);
+    width: 100%;
     display: grid;
     grid-template-rows: auto 1fr;
-
-    @include r.respond-below(r.$bp-tablet) {
-      width: 100%;
-    }
+    transition: none;
 
     &-bar {
       margin: 1.5rem 1rem 0.5rem 1rem;
@@ -72,14 +69,21 @@
     }
   }
 
+  &.has-filters-open {
+    .cardSearchPage-searcher {
+      width: calc(100% - 300px);
+    }
+  }
+
   &-filters {
     padding: 0 1em;
     width: 300px;
     background-color: black;
     height: 100%;
+    display: none;
 
-    @include r.respond-below(r.$bp-tablet) {
-      display: none;
+    &.filters-open {
+      display: block;
     }
   }
 }

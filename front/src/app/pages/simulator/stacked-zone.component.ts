@@ -37,6 +37,7 @@ export class SimStackedZoneComponent {
   );
   readonly zoneConfig = computed(() => ZONE_CONFIG[this.zoneId()]);
   readonly isDeckZone = computed(() => this.zoneId() === ZoneId.MAIN_DECK);
+  readonly isReceiving = signal(false);
   readonly deckShake = signal(false);
   private shakeTimeout: ReturnType<typeof setTimeout> | undefined;
   private readonly glow = createGlowEffect();
@@ -44,7 +45,16 @@ export class SimStackedZoneComponent {
 
   protected readonly toSharedCardData = toSharedCardData;
 
+  onDragEntered(): void {
+    this.isReceiving.set(true);
+  }
+
+  onDragExited(): void {
+    this.isReceiving.set(false);
+  }
+
   onDrop(event: CdkDragDrop<ZoneId, ZoneId, CardInstance>): void {
+    this.isReceiving.set(false);
     if (event.previousContainer === event.container) return;
     const cardInstanceId = event.item.data.instanceId;
     const fromZone = event.previousContainer.data;

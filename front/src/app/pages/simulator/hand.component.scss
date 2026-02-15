@@ -22,6 +22,7 @@
   position: absolute;
   bottom: 4px;
   left: 50%;
+  width: auto;
   height: $sim-hand-card-height;
   translate: calc(-50% + var(--fan-x, 0px)) var(--fan-y, 0px);
   rotate: var(--fan-rotation, 0deg);
