@@ -26,10 +26,24 @@
 
     .cardSearchPage-searcher-bar {
       margin: 1em;
+
+      @include r.landscape-split {
+        margin: 0.5em;
+
+        search-bar {
+          --mat-form-field-container-height: 40px;
+          --mat-form-field-filled-with-label-container-padding-top: 4px;
+          --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+        }
+      }
     }
 
     .cardSearchPage-searcher-result {
       padding: 0 1em;
+
+      @include r.landscape-split {
+        padding: 0 0.5em;
+      }
     }
   }
 

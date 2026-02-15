@@ -14,7 +14,7 @@ import { SharedCardInspectorData } from '../../core/model/shared-card-data';
     '[attr.aria-label]': '"Card inspector"',
     'aria-live': 'polite',
     '[class.visible]': 'isVisible()',
-    '[class.mode-hover]': "mode() === 'hover'",
+    '[class.mode-dismissable]': "mode() === 'dismissable'",
     '[class.mode-click]': "mode() === 'click'",
     '[class.mode-permanent]': "mode() === 'permanent'",
     '[class.position-right]': "position() === 'right'",
@@ -24,7 +24,7 @@ export class CardInspectorComponent {
   private readonly elementRef = inject(ElementRef);
 
   readonly card = input<SharedCardInspectorData | null>(null);
-  readonly mode = input<'hover' | 'click' | 'permanent'>('hover');
+  readonly mode = input<'dismissable' | 'click' | 'permanent'>('dismissable');
   readonly position = input<'left' | 'right'>('left');
 
   readonly dismissed = output<void>();
@@ -41,7 +41,7 @@ export class CardInspectorComponent {
   @HostListener('document:mousedown', ['$event'])
   onDocumentMousedown(event: MouseEvent): void {
     if (!this.isVisible()) return;
-    if (this.mode() !== 'hover') return;
+    if (this.mode() !== 'dismissable') return;
     if (this.elementRef.nativeElement.contains(event.target as HTMLElement)) return;
     this.dismissed.emit();
   }

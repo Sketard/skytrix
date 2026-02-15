@@ -57,6 +57,16 @@
         --mdc-filled-text-field-caret-color: #{$black};
         --mdc-filled-text-field-container-shape: 0;
       }
+
+      @include r.landscape-split {
+        margin-bottom: 0.25em;
+
+        mat-form-field {
+          --mat-form-field-container-height: 40px;
+          --mat-form-field-filled-with-label-container-padding-top: 4px;
+          --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+        }
+      }
     }
   }
 
@@ -239,6 +249,39 @@
         left: 0;
         right: 0;
         opacity: 1;
+      }
+    }
+  }
+
+  // ─── LANDSCAPE SPLIT (mobile landscape: side-by-side layout) ───
+  @include r.landscape-split {
+    &-searchToggle.mat-mdc-icon-button {
+      display: none;
+    }
+
+    &-canvasParent {
+      flex: 55;
+      padding: 0.5em;
+    }
+
+    &-side {
+      position: relative;
+      width: 45%;
+      min-width: 0;
+      z-index: auto;
+      background-color: transparent;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+
+      &, &.opened {
+        transform: none;
+      }
+
+      .deckBuilder-side-close {
+        display: none;
+      }
+
+      &-header {
+        display: none;
       }
     }
   }

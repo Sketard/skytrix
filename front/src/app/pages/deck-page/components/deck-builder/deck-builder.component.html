@@ -102,7 +102,7 @@
 
   <app-card-inspector
     [card]="selectedCardForInspector()"
-    mode="hover"
+    mode="dismissable"
     (dismissed)="dismissInspector()">
     <div class="inspector-actions" (click)="$event.stopPropagation()">
       <button mat-icon-button (click)="removeSelectedCardFromDeck()" title="Retirer du deck">

@@ -28,6 +28,13 @@ $bp-desktop-sm: 1024px;
   }
 }
 
+// Landscape split: mobile landscape where split-screen deck builder applies
+@mixin landscape-split {
+  @media (orientation: landscape) and (min-width: $bp-mobile) and (max-width: ($bp-tablet - 1px)) {
+    @content;
+  }
+}
+
 // Touch target utility (NFR12: 44x44px minimum on mobile)
 // Usage: @include touch-target-min; in component SCSS
 @mixin touch-target-min {
