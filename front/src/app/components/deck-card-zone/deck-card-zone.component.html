@@ -15,14 +15,18 @@
     cdkDropListOrientation="mixed"
     [id]="deckZone() || staticDeckZone.OTHER"
     (cdkDropListDropped)="drop($event)">
+    @if (isEmpty()) {
+      <span class="grid-list-hint">Glissez ou double-cliquez pour ajouter</span>
+    }
     @for (cardDetail of cardDetails(); track cardDetail.id + i; let i = $index) {
       <div
         class="grid-list-slot card"
         [ngClass]="deckZone()"
+        [class.just-added]="cardDetail.justAdded"
+        (animationend)="cardDetail.justAdded = false"
         cdkDrag
         [cdkDragDisabled]="!cardDetail.card.card.id"
         [cdkDragData]="cardDetail"
-        [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
         (contextmenu)="onRightClick($event, deckZone(), i)">
         @if (cardDetail.card.card.id) {
           <app-card

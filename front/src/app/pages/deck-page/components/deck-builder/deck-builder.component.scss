@@ -51,17 +51,11 @@
         flex-shrink: 0;
       }
 
-      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-        background-color: $white !important;
-      }
-
-      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-        color: $black;
-        caret-color: $black;
-      }
-
-      ::ng-deep .mdc-text-field--filled {
-        border-radius: 0;
+      mat-form-field {
+        --mdc-filled-text-field-container-color: #{$white};
+        --mdc-filled-text-field-input-text-color: #{$black};
+        --mdc-filled-text-field-caret-color: #{$black};
+        --mdc-filled-text-field-container-shape: 0;
       }
     }
   }
@@ -100,8 +94,8 @@
 
   // ─── SIDE PANEL (native size, outside canvas) ───
   &-side {
-    width: 320px;
-    min-width: 320px;
+    width: clamp(280px, 25vw, 360px);
+    min-width: 280px;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -146,7 +140,7 @@
 
     // ─── HEADER (inside side panel) ───
     &-header {
-      padding: 0.75em;
+      padding: 0.75em 0.75em 0.5em;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       flex-shrink: 0;
 
@@ -158,6 +152,7 @@
         display: flex;
         align-items: center;
         width: 100%;
+        margin-bottom: 0.5em;
 
         @include r.respond-below(r.$bp-tablet) {
           display: none;
@@ -165,24 +160,16 @@
 
         mat-form-field {
           flex: 1;
+          --mdc-filled-text-field-container-color: #{$white};
+          --mdc-filled-text-field-input-text-color: #{$black};
+          --mdc-filled-text-field-caret-color: #{$black};
+          --mdc-filled-text-field-container-shape: 0;
         }
 
         >button {
-          color: $white;
+          color: rgba(255, 255, 255, 0.6);
           flex-shrink: 0;
-        }
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-          background-color: $white !important;
-        }
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-          color: $black;
-          caret-color: $black;
-        }
-
-        ::ng-deep .mdc-text-field--filled {
-          border-radius: 0;
+          transform: scale(0.85);
         }
 
         input::placeholder {
@@ -195,20 +182,21 @@
         display: flex;
         align-items: center;
         gap: 0.5em;
-        margin-top: 0.5em;
+        padding-top: 0.5em;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
 
-        deck-card-zone {
-          margin: 0 auto;
+        &-label {
+          font-size: 0.75em;
+          color: rgba(255, 255, 255, 0.5);
+          white-space: nowrap;
         }
 
-        ::ng-deep .grid-list-slot {
-          width: 30px;
-          height: 44px;
-          padding: 1px;
-
-          &.grid {
-            border-color: rgba(255, 255, 255, 0.4);
-          }
+        deck-card-zone {
+          margin: 0;
+          --slot-width: 45px;
+          --slot-height: 66px;
+          --slot-padding: 2px;
+          --slot-border-color: rgba(255, 255, 255, 0.4);
         }
 
         button {
@@ -217,6 +205,10 @@
 
         @include r.respond-below(r.$bp-tablet) {
           margin-top: 0;
+
+          &-label {
+            display: none;
+          }
 
           deck-card-zone {
             display: none;
@@ -251,35 +243,22 @@
     }
   }
 
-  // ─── PORTRAIT OVERLAY (mobile only, pure CSS) ───
-  &-portraitOverlay {
-    display: none;
+  // ─── HAND TEST BACKDROP + OVERLAY ───
+  &-handBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
 
-    @media (orientation: portrait) and (max-width: 767px) {
-      display: flex;
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      background: rgba(0, 0, 0, 0.95);
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: $white;
-      gap: 1em;
-
-      mat-icon {
-        font-size: 64px;
-        width: 64px;
-        height: 64px;
-      }
-
-      p {
-        font-size: 1.2em;
-      }
+    &.opened {
+      opacity: 1;
+      pointer-events: auto;
     }
   }
 
-  // ─── HAND TEST OVERLAY (outside canvas) ───
   &-handOverlay {
     transition: all 0.5s ease-in-out;
     background-color: $black;
@@ -289,12 +268,11 @@
     bottom: -100%;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 20;
     border-radius: 10px;
     border: 1px solid $blue;
     padding: 1em;
 
-    &.opened {
+    .deckBuilder-handBackdrop.opened & {
       bottom: 1em;
     }
   }

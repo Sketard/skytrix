@@ -104,7 +104,7 @@ export class Deck {
     return this.sortImages();
   }
 
-  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number): Deck {
+  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false): Deck {
     const correctedZone = this.getCorrectZone(card, zone);
     const numberOfCopyReached = this._isMaxNumberOfCopyReached(card, correctedZone);
     if (numberOfCopyReached) {
@@ -124,7 +124,9 @@ export class Deck {
         c.index++;
       }
     }
-    this[correctedZone][firstAvailableSlot] = new IndexedCardDetail(card, insertAt);
+    const newCard = new IndexedCardDetail(card, insertAt);
+    newCard.justAdded = animate;
+    this[correctedZone][firstAvailableSlot] = newCard;
     return this.sortDeck();
   }
 

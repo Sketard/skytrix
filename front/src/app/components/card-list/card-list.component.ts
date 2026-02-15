@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, effect, input, OnDestroy, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, ElementRef, input, OnDestroy, output, signal } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
-import { CdkDrag, CdkDragStart, CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDragStart, CdkDropList } from '@angular/cdk/drag-drop';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -73,9 +73,72 @@ export class CardListComponent implements OnDestroy {
     this.cardClicked.emit(cd);
   }
 
-  onDoubleClick(cd: CardDetail): void {
+  onDoubleClick(cd: CardDetail, event: MouseEvent): void {
     if (!this.deckBuildMode()) return;
-    this.deckBuildService.addCard(cd, cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN);
+    const zone = cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN;
+    this.deckBuildService.addCard(cd, zone, undefined, true);
+
+    const wrapper = event.currentTarget as HTMLElement;
+    wrapper.classList.remove('added-flash');
+    void wrapper.offsetWidth;
+    wrapper.classList.add('added-flash');
+
+    this.flyCardToZone(wrapper, zone);
+  }
+
+  private flyCardToZone(wrapper: HTMLElement, zone: DeckZone): void {
+    const sourceEl = wrapper.querySelector('app-card') as HTMLElement;
+    if (!sourceEl) return;
+
+    const sourceRect = sourceEl.getBoundingClientRect();
+
+    const clone = sourceEl.cloneNode(true) as HTMLElement;
+    Object.assign(clone.style, {
+      position: 'fixed',
+      left: `${sourceRect.left}px`,
+      top: `${sourceRect.top}px`,
+      width: `${sourceRect.width}px`,
+      height: `${sourceRect.height}px`,
+      zIndex: '10000',
+      pointerEvents: 'none',
+    });
+    document.body.appendChild(clone);
+
+    // Wait for Angular to render the new card so we can read its position
+    requestAnimationFrame(() => {
+      const targetCard = document.querySelector(`#${zone} .just-added`) as HTMLElement;
+      const fallbackEl = document.getElementById(zone);
+      const targetRect = targetCard?.getBoundingClientRect() ?? fallbackEl?.getBoundingClientRect();
+
+      if (!targetRect) {
+        clone.remove();
+        return;
+      }
+
+      clone.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+      void clone.offsetWidth;
+
+      Object.assign(clone.style, {
+        left: `${targetRect.left}px`,
+        top: `${targetRect.top}px`,
+        width: `${targetRect.width}px`,
+        height: `${targetRect.height}px`,
+        opacity: '0',
+      });
+
+      clone.addEventListener('transitionend', () => clone.remove(), { once: true });
+      setTimeout(() => clone.remove(), 500);
+    });
+  }
+
+  onDrop(event: CdkDragDrop<any>): void {
+    if (event.previousContainer === event.container) return;
+    const zone = Object.values(DeckZone).find(z => z === event.previousContainer.id);
+    if (zone) {
+      this.deckBuildService.removeCard(event.previousIndex, zone);
+    } else if (event.previousContainer.id === 'OTHER') {
+      this.deckBuildService.removeImage(event.previousIndex);
+    }
   }
 
   increaseQuantity(number: number, cardSetId: number, currentNumber: number): void {

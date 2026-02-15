@@ -5,13 +5,12 @@ import { CardComponent } from '../../../../../../components/card/card.component'
 import { toSharedCardData, SharedCardData } from '../../../../../../core/model/shared-card-data';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
-import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
-import { MatSuffix } from '@angular/material/form-field';
 
 @Component({
   selector: 'app-hand-test',
-  imports: [CardComponent, MatSlideToggle, FormsModule, MatButton, MatIcon, MatIconButton, MatSuffix],
+  imports: [CardComponent, MatSlideToggle, FormsModule, MatButton, MatIcon],
   templateUrl: './hand-test.component.html',
   styleUrl: './hand-test.component.scss',
   standalone: true,
@@ -38,9 +37,5 @@ export class HandTestComponent {
 
   public retry() {
     this.count.update(value => ++value);
-  }
-
-  public close() {
-    this.deckBuildService.toggleHandTestOpened();
   }
 }

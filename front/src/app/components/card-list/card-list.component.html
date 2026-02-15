@@ -1,4 +1,4 @@
-<div class="cardsContainer" cdkDropList id="cardList">
+<div class="cardsContainer" [ngClass]="displayMode()" cdkDropList cdkDropListSortingDisabled id="cardList" (cdkDropListDropped)="onDrop($event)">
   @for (cd of cardsDetails$() | async; track cd.card.id) {
     @if (displayMode() === displayType.OWNED) {
       @for (set of cd.sets; track set.id) {
@@ -28,7 +28,7 @@
            [cdkDragDisabled]="!deckBuildMode()"
            [cdkDragData]="cd"
            (cdkDragStarted)="onDragStart($event)"
-           (dblclick)="onDoubleClick(cd)"
+           (dblclick)="onDoubleClick(cd, $event)"
            (click)="onCardClick(cd)">
         <div class="card-image-container">
           <app-card [card]="toSharedCardData(cd)" />

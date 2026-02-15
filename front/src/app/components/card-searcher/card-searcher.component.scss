@@ -10,6 +10,8 @@
   display: flex;
   width: 100%;
   height: 100%;
+  position: relative;
+  overflow: hidden;
 
   &.deckBuildMode {
     .cardSearchPage-searcher {
@@ -24,6 +26,10 @@
 
     .cardSearchPage-searcher-bar {
       margin: 1em;
+    }
+
+    .cardSearchPage-searcher-result {
+      padding: 0 1em;
     }
   }
 
@@ -60,9 +66,9 @@
           background-color: $blue;
         }
 
-        ::ng-deep .mat-button-toggle-label-content {
-          padding: 0 !important;
-          line-height: 0 !important;
+        mat-button-toggle {
+          --mat-standard-button-toggle-label-text-line-height: 0;
+          --mat-standard-button-toggle-height: 36px;
         }
 
         mat-icon {
@@ -86,6 +92,12 @@
     .cardSearchPage-searcher {
       width: calc(100% - 300px);
     }
+
+    @include r.respond-below(r.$bp-tablet) {
+      .cardSearchPage-searcher {
+        width: 100%;
+      }
+    }
   }
 
   &-filters {
@@ -106,6 +118,28 @@
       width: 300px;
       min-width: 300px;
       overflow-y: auto;
+    }
+
+    // Mobile: full-width overlay (consistent with deckBuild mode)
+    @include r.respond-below(r.$bp-tablet) {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      transition: transform 0.5s ease-out;
+      transform: translateX(100%);
+      width: 100%;
+      overflow-y: auto;
+      padding: 1em;
+
+      app-card-filters {
+        width: 100%;
+      }
+
+      &.filters-open {
+        transform: translateX(0);
+        width: 100%;
+        min-width: 0;
+      }
     }
   }
 }
