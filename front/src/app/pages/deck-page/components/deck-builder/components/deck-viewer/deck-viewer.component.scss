@@ -1,14 +1,6 @@
 @use 'variable' as *;
 
 .deckViewer {
-  ::ng-deep .cdk-drop-list-dragging {
-    filter: brightness(85%) !important;
-  }
-
-  .cdk-drag-placeholder {
-    display: none;
-  }
-
   &-part {
     margin-top: 1.5em;
     width: 100%;

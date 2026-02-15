@@ -9,12 +9,21 @@
   justify-content: flex-start;
 
   &-list {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
 
-    @include r.respond-above(r.$bp-desktop-sm) {
-      grid-template-columns: repeat(10, 1fr);
+    &.cdk-drop-list-dragging {
+      filter: brightness(85%);
+    }
+
+    // Deck zone cards: 5 per row (mobile), 10 per row (desktop)
+    .grid-list-slot.card {
+      width: 20%;
+
+      @include r.respond-above(r.$bp-desktop-sm) {
+        width: 10%;
+      }
     }
 
     // Cover image mode: keep flexbox for absolute overlay
@@ -38,6 +47,16 @@
       min-height: 60px;
       border: 1px dashed rgba(255, 255, 255, 0.2);
       border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    &-hint {
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 0.8em;
+      pointer-events: none;
+      user-select: none;
     }
 
     // Background slot grid (cover images, no deckZone) must stay flexbox
@@ -60,25 +79,62 @@
           --card-shadow: none;
         }
 
-        // CDK drag placeholder (stays in grid — maintains cell dimensions)
+        // CDK drag placeholder: invisible but keeps its grid cell
         &.cdk-drag-placeholder {
-          opacity: 0.3;
+          visibility: hidden;
         }
 
-        // CDK drag animating (return-to-position after drop)
         &.cdk-drag-animating {
-          transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+          transition: transform 0ms;
+        }
+
+        &.just-added {
+          animation: card-pop-in 0.3s ease-out;
         }
       }
 
       // Background slot grid (cover images only): keep fixed sizes
       &.grid {
         position: relative;
-        border: $white solid 1px;
+        border: var(--slot-border-color, #{$white}) solid 1px;
         background-color: rgba(255, 255, 255, 0.3);
-        height: $DECK_CARD_HEIGHT;
-        width: $DECK_CARD_WIDTH;
+        height: var(--slot-height, #{$DECK_CARD_HEIGHT});
+        width: var(--slot-width, #{$DECK_CARD_WIDTH});
+        padding: var(--slot-padding, 0);
       }
     }
+  }
+}
+
+@keyframes card-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// ::ng-deep needed because CDK inserts placeholders dynamically without Angular's
+// _ngcontent attribute, so scoped selectors never match them.
+:host ::ng-deep {
+  .grid-list > .cdk-drag-placeholder:not(.grid-list-slot) {
+    width: 20%;
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+    visibility: hidden;
+
+    @include r.respond-above(r.$bp-desktop-sm) {
+      width: 10%;
+    }
+  }
+
+  .grid-list.element > .cdk-drag-placeholder:not(.grid-list-slot) {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
   }
 }

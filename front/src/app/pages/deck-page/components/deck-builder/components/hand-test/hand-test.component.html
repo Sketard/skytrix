@@ -1,13 +1,10 @@
 <div class="handTest">
   <div class="handTest-header">
-    <div class="handTest-header-actions">
-      <button mat-flat-button (click)="retry()">Nouvelle main</button>
-      <mat-slide-toggle color="primary" [(ngModel)]="goSecond">Aller deuxième</mat-slide-toggle>
-    </div>
-
-    <button matSuffix mat-icon-button (click)="close()">
-      <mat-icon fontIcon="close"></mat-icon>
+    <button mat-flat-button (click)="retry()">
+      <mat-icon>shuffle</mat-icon>
+      Mélanger
     </button>
+    <mat-slide-toggle color="primary" [(ngModel)]="goSecond">Aller deuxième</mat-slide-toggle>
   </div>
 
   <div class="handTest-cards">

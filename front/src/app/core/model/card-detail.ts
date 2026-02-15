@@ -23,6 +23,7 @@ export class IndexedCardDetail {
   card: CardDetail;
   index: number;
   id = generateRandomId();
+  justAdded = false;
 
   constructor(cardDetail: CardDetail, index: number) {
     this.card = cardDetail;

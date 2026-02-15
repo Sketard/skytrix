@@ -7,6 +7,18 @@
   flex-wrap: wrap;
   width: 100%;
   gap: 0.5em;
+
+  &.MOSAIC,
+  &.FAVORITE {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@keyframes card-added {
+  0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.6); }
+  50% { box-shadow: 0 0 12px 4px rgba(0, 212, 255, 0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
 }
 
 // MOSAIC + INFORMATIVE wrapper
@@ -14,6 +26,11 @@
   display: flex;
   cursor: pointer;
   position: relative;
+  border-radius: 3px;
+
+  &.added-flash {
+    animation: card-added 0.4s ease-out;
+  }
 
   &.INFORMATIVE {
     align-items: center;
@@ -35,11 +52,7 @@
 
   &.MOSAIC app-card,
   &.FAVORITE app-card {
-    width: 80px;
-
-    @include r.respond-above(r.$bp-tablet) {
-      width: 100px;
-    }
+    width: 100%;
   }
 }
 
@@ -224,6 +237,13 @@
     &.UtR {
       color: rgb(172, 40, 40);
     }
+  }
+}
+
+// Hide placeholder when dragging a deck card over the search results list
+:host ::ng-deep {
+  .cardsContainer > .cdk-drag-placeholder:not(.card-wrapper) {
+    display: none;
   }
 }
 

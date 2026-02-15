@@ -34,7 +34,7 @@
     </div>
     @if (!deckBuildMode()) {
       <div class="cardSearchPage-filters" [class.filters-open]="filtersOpen()">
-        <app-card-filters [searchService]="searchService()"></app-card-filters>
+        <app-card-filters [searchService]="searchService()" [filtersOpened]="filtersOpen()" (close)="toggleFilters()"></app-card-filters>
       </div>
     }
   </div>

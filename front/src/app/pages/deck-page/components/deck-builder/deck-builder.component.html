@@ -70,6 +70,7 @@
           </mat-menu>
         </div>
         <div class="deckBuilder-side-header-row">
+          <span class="deckBuilder-side-header-row-label">Aperçu du deck</span>
           <deck-card-zone
             [cardDetails]="deckBuildService.deck().images"
             [slotNumber]="3"
@@ -90,17 +91,13 @@
 
   <input id="importDeckInput" hidden type="file" #importInput (change)="import()" />
 
-  <!-- Portrait overlay (pure CSS media query — no TS logic) -->
-  <div class="deckBuilder-portraitOverlay">
-    <mat-icon>screen_rotation</mat-icon>
-    <p>Tournez votre appareil en paysage</p>
-  </div>
-
-  <!-- Hand test overlay (outside canvas — no CDK drag needed) -->
-  <div class="deckBuilder-handOverlay" [class.opened]="handTestOpened()">
-    @if (handTestOpened()) {
-      <app-hand-test></app-hand-test>
-    }
+  <!-- Hand test overlay with backdrop -->
+  <div class="deckBuilder-handBackdrop" [class.opened]="handTestOpened()" (click)="toggleTestHand()">
+    <div class="deckBuilder-handOverlay" (click)="$event.stopPropagation()">
+      @if (handTestOpened()) {
+        <app-hand-test></app-hand-test>
+      }
+    </div>
   </div>
 
   <app-card-inspector
