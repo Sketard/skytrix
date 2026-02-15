@@ -1,12 +1,8 @@
-<div class="searchPage-canvasParent">
-  <div class="searchPage-canvas" appScalingContainer [referenceWidth]="1400" [aspectRatio]="1.5">
-    <app-card-searcher
-      [deckBuildMode]="false"
-      [searchService]="cardSearchService"
-      (cardClicked)="onCardClicked($event)">
-    </app-card-searcher>
-  </div>
-</div>
+<app-card-searcher
+  [deckBuildMode]="false"
+  [searchService]="cardSearchService"
+  (cardClicked)="onCardClicked($event)">
+</app-card-searcher>
 
 <app-card-inspector
   [card]="selectedCardForInspector()"

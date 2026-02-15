@@ -27,7 +27,7 @@
 
   user-select: none;
 
-  // ─── HEADER (Track B — responsive) ───
+  // ─── HEADER ───
   &-header {
     display: flex;
     align-items: center;
@@ -37,7 +37,7 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
     &-deckName {
-      flex: 1;
+      flex: 0 1 auto;
       max-width: 300px;
 
       ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
@@ -69,8 +69,25 @@
       }
     }
 
+    &-cover {
+      display: flex;
+      align-items: center;
+
+      ::ng-deep .grid-list-slot {
+        width: 30px;
+        height: 44px;
+        padding: 1px;
+
+        &.grid {
+          border-color: rgba(255, 255, 255, 0.4);
+        }
+      }
+    }
+
     &-buttons {
       display: flex;
+      gap: 0.25em;
+      margin-left: auto;
 
       @include icon-as-button;
 
@@ -80,6 +97,14 @@
 
       &-hand {
         filter: brightness(0) invert(1);
+      }
+
+      &-search {
+        display: none !important;
+
+        @include r.respond-below(r.$bp-tablet) {
+          display: block !important;
+        }
       }
     }
 
@@ -93,6 +118,14 @@
     }
   }
 
+  // ─── BODY (canvas + side panel) ───
+  &-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   // ─── CANVAS PARENT (explicit height) ───
   &-canvasParent {
     @include cs.canvas-parent;
@@ -100,38 +133,59 @@
     min-height: 0;
   }
 
-  // ─── CANVAS (Track A — scaled) ───
+  // ─── CANVAS (Track A — scaled, viewer only) ───
   &-canvas {
-    display: flex;
-
     &-viewer {
       padding: 1em;
     }
+  }
 
-    &-side {
-      width: 300px;
-      min-width: 300px;
-      position: relative;
-      overflow: hidden;
+  // ─── SIDE PANEL (native size, outside canvas) ───
+  &-side {
+    width: 300px;
+    min-width: 300px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+
+    &-close {
+      display: none;
     }
 
-    &-images {
-      text-align: center;
+    @include r.respond-below(r.$bp-tablet) {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      min-width: 0;
+      z-index: 1000;
+      background-color: $black;
+      border-left: none;
+      transform: translateX(100%);
+      transition: transform 0.3s ease-in-out;
 
-      &-slots {
+      &.opened {
+        transform: translateX(0);
+      }
+
+      .deckBuilder-side-close {
         display: flex;
         align-items: center;
-        margin: auto;
-        background-color: #00226b;
-        position: relative;
-        width: calc($DECK_CARD_WIDTH * 3 + 12px * 3);
+        justify-content: center;
+        align-self: flex-end;
+        color: $white;
+        flex-shrink: 0;
+        @include r.touch-target-min;
       }
     }
 
     &-searcher {
-      height: calc(100% - 160px);
-      width: 100%;
-      min-width: 300px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
     &-filters {

@@ -1,4 +1,3 @@
-@use 'canvas-scaling' as cs;
 @use 'responsive' as r;
 @use 'variable' as *;
 
@@ -6,12 +5,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.searchPage-canvasParent {
-  @include cs.canvas-parent;
-  flex: 1;
-  min-height: 0;
+  overflow: hidden;
 }
 
 .favorite-toggle {

@@ -7,12 +7,12 @@ import { CardSearcherComponent } from '../../components/card-searcher/card-searc
 import { CardSearchService } from '../../services/card-search.service';
 import { CardInspectorComponent } from '../../components/card-inspector/card-inspector.component';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../core/model/shared-card-data';
-import { ScalingContainerDirective } from '../../components/scaling-container/scaling-container.directive';
+
 import { CardDetail } from '../../core/model/card-detail';
 
 @Component({
   selector: 'card-search-page',
-  imports: [CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, ScalingContainerDirective],
+  imports: [CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon],
   templateUrl: './card-search-page.component.html',
   styleUrl: './card-search-page.component.scss',
   standalone: true,
