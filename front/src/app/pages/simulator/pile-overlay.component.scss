@@ -137,6 +137,7 @@
   background: $sim-surface-elevated;
   border-radius: $sim-radius-zone;
   z-index: 1100;
+  overflow: hidden;
 }
 
 .overlay-card-row.cdk-drag-placeholder {
