@@ -4,26 +4,25 @@
      [cdkDropListSortingDisabled]="true"
      [cdkDropListEnterPredicate]="canDrop"
      (cdkDropListDropped)="onDrop($event)"
+     (cdkDropListEntered)="onDragEntered()"
+     (cdkDropListExited)="onDragExited()"
      [class.zone--just-dropped]="justDropped()"
      (animationend)="onGlowAnimationEnd()"
      (contextmenu)="onContextMenu($event)">
   @if (card(); as c) {
-    <app-card [card]="toSharedCardData(c)"
+    <app-card [style.display]="isReceiving() ? 'none' : null"
+              [card]="toSharedCardData(c)"
               [faceDown]="c.faceDown"
               [position]="c.position"
               [showOverlayMaterials]="(c.overlayMaterials?.length ?? 0) > 0"
               [overlayMaterialCount]="c.overlayMaterials?.length ?? 0"
               cdkDrag
               [cdkDragData]="c"
+              cdkDragPreviewContainer="global"
               [attr.aria-label]="'Drag ' + (c.card.card.name ?? '')"
               (cdkDragStarted)="onDragStarted()"
               (cdkDragEnded)="onDragEnded()"
               (clicked)="onCardClicked(c)" />
-  } @else {
-    <span class="zone-label">{{ zoneConfig().label }}</span>
-  }
-  @if (isPendulum()) {
-    <span class="pendulum-label">{{ pendulumLabel() }}</span>
   }
 
   @if (card()) {

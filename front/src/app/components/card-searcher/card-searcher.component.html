@@ -1,8 +1,16 @@
 @if (form && displayMode) {
-  <div class="cardSearchPage" [class.deckBuildMode]="deckBuildMode()">
+  <div class="cardSearchPage" [class.deckBuildMode]="deckBuildMode()" [class.has-filters-open]="filtersOpen()">
     <div class="cardSearchPage-searcher">
       <div class="cardSearchPage-searcher-bar">
         <search-bar [form]="form.controls.name" [deckBuildMode]="deckBuildMode()"></search-bar>
+        @if (!deckBuildMode()) {
+          <button mat-icon-button class="cardSearchPage-searcher-bar-filterToggle"
+            (click)="toggleFilters()"
+            aria-label="Filtres"
+            [attr.aria-expanded]="filtersOpen()">
+            <mat-icon>tune</mat-icon>
+          </button>
+        }
         <div class="cardSearchPage-searcher-bar-displayMode">
           <mat-button-toggle-group
             hideSingleSelectionIndicator
@@ -33,7 +41,7 @@
       </div>
     </div>
     @if (!deckBuildMode()) {
-      <div class="cardSearchPage-filters">
+      <div class="cardSearchPage-filters" [class.filters-open]="filtersOpen()">
         <app-card-filters [searchService]="searchService()"></app-card-filters>
       </div>
     }

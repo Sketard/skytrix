@@ -61,11 +61,3 @@ button {
     transition: none;
   }
 }
-
-:host-context(.force-reduced-motion) {
-  transition: none;
-
-  button {
-    transition: none;
-  }
-}

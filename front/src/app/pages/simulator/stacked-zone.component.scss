@@ -38,8 +38,8 @@ app-card {
   user-select: none;
 }
 
-// CDK DragDrop feedback
-.sim-stacked-zone.cdk-drop-list-receiving {
+// CDK DragDrop feedback — external card hovering over this zone
+.sim-stacked-zone.cdk-drop-list-receiving:not(.cdk-drop-list-dragging) {
   background: $sim-zone-highlight;
   border-color: $sim-accent-primary;
   transition: background 100ms ease, border-color 100ms ease;

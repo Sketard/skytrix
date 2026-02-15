@@ -12,7 +12,9 @@ export class NavbarCollapseService {
   private readonly breakpointObserver = inject(BreakpointObserver);
 
   readonly isMobile = toSignal(
-    this.breakpointObserver.observe('(max-width: 768px)').pipe(map(result => result.matches)),
+    this.breakpointObserver
+      .observe(['(max-width: 767px)', '(max-width: 1023px) and (max-height: 500px)'])
+      .pipe(map(result => result.matches)),
     { initialValue: false }
   );
 

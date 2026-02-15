@@ -1,6 +1,5 @@
 @use 'variable' as *;
 @use 'mixin' as *;
-@use 'canvas-scaling' as cs;
 @use 'responsive' as r;
 
 .inspector-actions {
@@ -27,94 +26,19 @@
 
   user-select: none;
 
-  // ─── HEADER ───
-  &-header {
-    display: flex;
-    align-items: center;
-    padding: 0.5em 1em;
-    gap: 0.5em;
-    background-color: $black;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-    &-deckName {
-      flex: 0 1 auto;
-      max-width: 300px;
-
-      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-        background-color: $white !important;
-      }
-
-      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-        color: $black;
-      }
-
-      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-        caret-color: $black;
-      }
-
-      ::ng-deep .mdc-text-field--filled {
-        border-top-left-radius: 0;
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
-        border-bottom-left-radius: 0;
-      }
-
-      .mat-icon {
-        color: $black;
-      }
-
-      input::placeholder {
-        color: $unselected-black;
-        opacity: 0.1;
-      }
-    }
-
-    &-cover {
-      display: flex;
-      align-items: center;
-
-      ::ng-deep .grid-list-slot {
-        width: 30px;
-        height: 44px;
-        padding: 1px;
-
-        &.grid {
-          border-color: rgba(255, 255, 255, 0.4);
-        }
-      }
-    }
-
-    &-buttons {
-      display: flex;
-      gap: 0.25em;
-      margin-left: auto;
-
-      @include icon-as-button;
-
-      button, app-multiple-action-button {
-        color: $white;
-      }
-
-      &-hand {
-        filter: brightness(0) invert(1);
-      }
-
-      &-search {
-        display: none !important;
-
-        @include r.respond-below(r.$bp-tablet) {
-          display: block !important;
-        }
-      }
-    }
+  // ─── SEARCH TOGGLE (mobile only) ───
+  &-searchToggle.mat-mdc-icon-button {
+    display: none;
 
     @include r.respond-below(r.$bp-tablet) {
-      flex-wrap: wrap;
-
-      &-deckName {
-        max-width: 100%;
-        flex-basis: 100%;
-      }
+      display: flex;
+      position: absolute;
+      top: 0.5em;
+      right: 0.5em;
+      z-index: 10;
+      color: $white;
+      background: rgba(0, 0, 0, 0.6);
+      @include r.touch-target-min;
     }
   }
 
@@ -126,24 +50,18 @@
     overflow: hidden;
   }
 
-  // ─── CANVAS PARENT (explicit height) ───
+  // ─── DECK VIEWER PARENT (scrollable) ───
   &-canvasParent {
-    @include cs.canvas-parent;
     flex: 1;
     min-height: 0;
-  }
-
-  // ─── CANVAS (Track A — scaled, viewer only) ───
-  &-canvas {
-    &-viewer {
-      padding: 1em;
-    }
+    overflow-y: auto;
+    padding: 1em;
   }
 
   // ─── SIDE PANEL (native size, outside canvas) ───
   &-side {
-    width: 300px;
-    min-width: 300px;
+    width: 320px;
+    min-width: 320px;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -167,6 +85,10 @@
       transform: translateX(100%);
       transition: transform 0.3s ease-in-out;
 
+      @media (prefers-reduced-motion: reduce) {
+        transition: none;
+      }
+
       &.opened {
         transform: translateX(0);
       }
@@ -179,6 +101,57 @@
         color: $white;
         flex-shrink: 0;
         @include r.touch-target-min;
+      }
+    }
+
+    // ─── HEADER (inside side panel) ───
+    &-header {
+      padding: 0.75em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+
+      &-deckName {
+        width: 100%;
+
+        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+          background-color: $white !important;
+        }
+
+        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+          color: $black;
+          caret-color: $black;
+        }
+
+        ::ng-deep .mdc-text-field--filled {
+          border-radius: 0;
+        }
+
+        input::placeholder {
+          color: $unselected-black;
+          opacity: 0.1;
+        }
+      }
+
+      &-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        margin-top: 0.5em;
+
+        ::ng-deep .grid-list-slot {
+          width: 30px;
+          height: 44px;
+          padding: 1px;
+
+          &.grid {
+            border-color: rgba(255, 255, 255, 0.4);
+          }
+        }
+
+        button {
+          color: $white;
+          margin-left: auto;
+        }
       }
     }
 
@@ -203,6 +176,34 @@
         left: 0;
         right: 0;
         opacity: 1;
+      }
+    }
+  }
+
+  // ─── PORTRAIT OVERLAY (mobile only, pure CSS) ───
+  &-portraitOverlay {
+    display: none;
+
+    @media (orientation: portrait) and (max-width: 767px) {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.95);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: $white;
+      gap: 1em;
+
+      mat-icon {
+        font-size: 64px;
+        width: 64px;
+        height: 64px;
+      }
+
+      p {
+        font-size: 1.2em;
       }
     }
   }

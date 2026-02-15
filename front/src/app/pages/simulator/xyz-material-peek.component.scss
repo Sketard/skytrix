@@ -127,13 +127,3 @@
     transition: none;
   }
 }
-
-:host-context(.force-reduced-motion) {
-  .material-peek-panel {
-    animation: none;
-  }
-
-  .material-row {
-    transition: none;
-  }
-}

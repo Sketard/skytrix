@@ -26,7 +26,6 @@ export class SimBoardComponent {
   private readonly boardState = inject(BoardStateService);
   private readonly commandStack = inject(CommandStackService);
   private readonly navbarCollapse = inject(NavbarCollapseService);
-  readonly forceReducedMotion = this.boardState.forceReducedMotion;
 
   readonly inspectorData = computed<SharedCardInspectorData | null>(() => {
     if (this.boardState.isDragging()) return null;
@@ -51,9 +50,7 @@ export class SimBoardComponent {
     };
   });
 
-  readonly inspectorPosition = computed<'left' | 'right'>(() =>
-    this.boardState.isOverlayOpen() || this.boardState.isMaterialPeekOpen() ? 'right' : 'left'
-  );
+  readonly inspectorPosition = computed<'left' | 'right'>(() => 'left');
 
   clearSelection(): void {
     this.boardState.clearSelection();
@@ -78,7 +75,7 @@ export class SimBoardComponent {
     const isMobile = this.navbarCollapse.isMobile();
     const availableWidth = isMobile ? window.innerWidth : window.innerWidth - this.navbarCollapse.navbarWidth();
     const availableHeight = isMobile ? window.innerHeight - NavbarCollapseService.MOBILE_HEADER_HEIGHT : window.innerHeight;
-    this.scaleFactor.set(Math.min(availableWidth / 1060, availableHeight / 720, 1));
+    this.scaleFactor.set(Math.min(availableWidth / 1060, availableHeight / 772, 1));
   }
 
   @HostListener('contextmenu', ['$event'])

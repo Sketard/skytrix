@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, isDevMode, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, input, isDevMode, signal, ViewChild } from '@angular/core';
 import { CdkDrag, CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
@@ -34,6 +34,8 @@ export class SimZoneComponent {
   readonly justDropped = this.glow.justDropped;
   readonly onGlowAnimationEnd = this.glow.onGlowAnimationEnd;
 
+  readonly isReceiving = signal(false);
+
   protected readonly toSharedCardData = toSharedCardData;
 
   readonly isMonsterZone = computed(() => {
@@ -66,7 +68,16 @@ export class SimZoneComponent {
     return false;
   };
 
+  onDragEntered(): void {
+    this.isReceiving.set(true);
+  }
+
+  onDragExited(): void {
+    this.isReceiving.set(false);
+  }
+
   onDrop(event: CdkDragDrop<ZoneId, ZoneId, CardInstance>): void {
+    this.isReceiving.set(false);
     if (event.previousContainer === event.container) return;
     const cardInstanceId = event.item.data.instanceId;
     const fromZone = event.previousContainer.data;

@@ -1,5 +1,5 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, DragDropModule } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, HostListener, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, input, output } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 import { NgClass } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
@@ -26,6 +26,7 @@ export class DeckCardZoneComponent {
   readonly deckZone = input<DeckZone>();
 
   readonly cardClicked = output<CardDetail>();
+  readonly isEmpty = computed(() => !!this.deckZone() && this.cardDetails().every(cd => cd.index === -1));
 
   readonly staticDeckZone = StaticDeckZone;
   readonly toSharedCardData = toSharedCardData;
@@ -49,23 +50,19 @@ export class DeckCardZoneComponent {
 
   drop(event: CdkDragDrop<any>) {
     const fromListContainer = event.previousContainer.id === 'cardList';
-    const containerId = event.previousContainer.id;
+    const sameContainer = event.previousContainer === event.container;
     const deckZone = this.deckZone();
     if (!deckZone) {
       if (fromListContainer) {
         this.deckBuildService.addImage(event.item.data);
-      } else if (containerId === this.staticDeckZone.OTHER) {
-        const index = event.container.data.index;
-        const previousIndex = event.previousContainer.data.index;
-        this.deckBuildService.updateImageIndex(index, previousIndex);
+      } else if (sameContainer) {
+        this.deckBuildService.updateImageIndex(event.currentIndex, event.previousIndex);
       }
     } else {
       if (fromListContainer) {
-        this.deckBuildService.addCard(event.item.data, deckZone);
-      } else if (containerId === deckZone) {
-        const index = event.container.data.index;
-        const previousIndex = event.previousContainer.data.index;
-        this.deckBuildService.updateCardIndex(deckZone, index, previousIndex);
+        this.deckBuildService.addCard(event.item.data, deckZone, event.currentIndex);
+      } else if (sameContainer) {
+        this.deckBuildService.updateCardIndex(deckZone, event.currentIndex, event.previousIndex);
       }
     }
   }

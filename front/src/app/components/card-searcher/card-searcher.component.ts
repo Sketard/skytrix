@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal, Signal } from '@angular/core';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
+import { MatIconButton } from '@angular/material/button';
 import { SearchBarComponent } from '../search-bar/search-bar.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { SearchServiceCore } from '../../services/search-service-core.service';
@@ -19,6 +21,7 @@ import { CardDetail } from '../../core/model/card-detail';
     MatButtonToggle,
     MatButtonToggleGroup,
     MatIcon,
+    MatIconButton,
     SearchBarComponent,
   ],
   templateUrl: './card-searcher.component.html',
@@ -35,6 +38,9 @@ export class CardSearcherComponent {
   public displayMode: Signal<CardDisplayType> | undefined;
   public displayType = CardDisplayType;
 
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  readonly filtersOpen = signal(this.breakpointObserver.isMatched('(min-width: 768px)'));
+
   public form: FormGroup<TypedForm<CardFilterDTO>> | undefined = undefined;
 
   constructor() {
@@ -49,5 +55,9 @@ export class CardSearcherComponent {
 
   public setDisplayMode(mode: CardDisplayType) {
     this.searchService()!.setDisplayMode(mode);
+  }
+
+  public toggleFilters() {
+    this.filtersOpen.update(v => !v);
   }
 }

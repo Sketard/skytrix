@@ -17,7 +17,8 @@
   position: relative;
 
   &.def-position {
-    transform: rotate(90deg);
+    // scale = cardWidth/cardHeight (59/86 ≈ 0.686) — fits rotated card within zone bounds
+    transform: rotate(90deg) scale(0.69);
   }
 }
 

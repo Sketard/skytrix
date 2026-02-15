@@ -143,15 +143,9 @@
   opacity: 0.3;
 }
 
-// Reduced motion support
 @media (prefers-reduced-motion: reduce) {
   .overlay-panel {
     animation: none;
     transition: none;
   }
-}
-
-:host-context(.force-reduced-motion) .overlay-panel {
-  animation: none;
-  transition: none;
 }

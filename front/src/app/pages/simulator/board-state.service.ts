@@ -57,7 +57,6 @@ export class BoardStateService {
   // UI state signals
   readonly selectedCard = signal<CardInstance | null>(null);
   readonly isDragging = signal<boolean>(false);
-  readonly forceReducedMotion = signal(false);
 
   // Material peek state signals
   readonly activeMaterialPeek = signal<{ cardId: string; zoneId: ZoneId } | null>(null);

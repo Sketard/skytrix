@@ -43,8 +43,8 @@ export class DeckBuildService extends SearchServiceCore {
     this.deckState.set(deck.sortDeck());
   }
 
-  public addCard(card: CardDetail, zone: DeckZone) {
-    this.deckState.update(deck => deck.addCard(card, zone));
+  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number) {
+    this.deckState.update(deck => deck.addCard(card, zone, targetIndex));
   }
 
   public removeCard(index: number, deckZone: DeckZone) {
