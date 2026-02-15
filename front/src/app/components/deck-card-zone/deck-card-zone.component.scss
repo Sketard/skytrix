@@ -22,11 +22,12 @@
     }
 
     &-slot {
+      box-sizing: border-box;
       border: transparent solid 1px;
 
       &.card {
         position: relative;
-        padding: 0;
+        padding: 3px;
 
         app-card {
           --card-border-radius: 2px;
@@ -61,7 +62,7 @@
         width: $DECK_EXTRASIDE_CARD_WIDTH;
 
         &.card {
-          padding: 0;
+          padding: 2px;
         }
       }
     }

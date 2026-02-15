@@ -1,9 +1,15 @@
-<div class="deckBuilder">
-  <!-- HEADER (Track B — responsive) -->
+<div class="deckBuilder" cdkDropListGroup>
+  <!-- HEADER -->
   <div class="deckBuilder-header">
     <mat-form-field class="deckBuilder-header-deckName">
       <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
     </mat-form-field>
+    <div class="deckBuilder-header-cover">
+      <deck-card-zone
+        [cardDetails]="deckBuildService.deck().images"
+        [slotNumber]="3"
+        (cardClicked)="onCardClicked($event)"></deck-card-zone>
+    </div>
     <div class="deckBuilder-header-buttons">
       <button mat-icon-button class="mat-elevation-z0" [disabled]="deckBuildService.deckEmpty()" [title]="'Sauvegarder'" (click)="save()">
         <mat-icon>save</mat-icon>
@@ -38,35 +44,41 @@
         (click)="navigateToSimulator()">
         <mat-icon>sports_esports</mat-icon>
       </button>
+      <button
+        mat-icon-button
+        class="mat-elevation-z0 deckBuilder-header-buttons-search"
+        [title]="'Rechercher une carte'"
+        (click)="toggleSearchPanel()">
+        <mat-icon>search</mat-icon>
+      </button>
     </div>
   </div>
 
-  <!-- CANVAS PARENT (explicit height via flex) -->
-  <div class="deckBuilder-canvasParent">
-    <!-- CANVAS (Track A — scaled) -->
-    <div class="deckBuilder-canvas" cdkDropListGroup appScalingContainer [referenceWidth]="1200" [aspectRatio]="1.5">
-      <div class="deckBuilder-canvas-viewer">
-        <deck-viewer (cardClicked)="onCardClicked($event)"></deck-viewer>
+  <!-- BODY (canvas + side panel) -->
+  <div class="deckBuilder-body">
+    <div class="deckBuilder-canvasParent">
+      <div class="deckBuilder-canvas" appScalingContainer [referenceWidth]="800" [aspectRatio]="0.9">
+        <div class="deckBuilder-canvas-viewer">
+          <deck-viewer (cardClicked)="onCardClicked($event)"></deck-viewer>
+        </div>
       </div>
-      <div class="deckBuilder-canvas-side">
-        <div class="deckBuilder-canvas-images">
-          <h4>Images en cover :</h4>
-          <div class="deckBuilder-canvas-images-slots">
-            <deck-card-zone
-              [cardDetails]="deckBuildService.deck().images"
-              [slotNumber]="3"
-              (cardClicked)="onCardClicked($event)"></deck-card-zone>
-          </div>
-        </div>
-        <div class="deckBuilder-canvas-searcher">
-          <app-card-searcher
-            [deckBuildMode]="true"
-            [searchService]="deckBuildService"
-            (cardClicked)="onCardClicked($event)"></app-card-searcher>
-        </div>
-        <div class="deckBuilder-canvas-filters" [class.opened]="filtersOpened()">
-          <app-card-filters [searchService]="deckBuildService" [filtersOpened]="filtersOpened()" (close)="closeFilters()"></app-card-filters>
-        </div>
+    </div>
+    <div class="deckBuilder-side" [class.opened]="searchPanelOpened()">
+      <button
+        mat-icon-button
+        class="deckBuilder-side-close"
+        [title]="'Fermer la recherche'"
+        (click)="toggleSearchPanel()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div class="deckBuilder-side-searcher">
+        <app-card-searcher
+          [deckBuildMode]="true"
+          [searchService]="deckBuildService"
+          (cardClicked)="onCardClicked($event)"></app-card-searcher>
+      </div>
+      <div class="deckBuilder-side-filters" [class.opened]="filtersOpened()">
+        <app-card-filters [searchService]="deckBuildService" [filtersOpened]="filtersOpened()" (close)="closeFilters()"></app-card-filters>
       </div>
     </div>
   </div>

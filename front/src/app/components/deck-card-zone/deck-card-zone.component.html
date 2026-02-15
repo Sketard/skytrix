@@ -15,15 +15,16 @@
         cdkDropListOrientation="horizontal"
         [cdkDropListData]="{ item: cardDetail, index: i }"
         [id]="deckZone() || staticDeckZone.OTHER">
-        <app-card
-          cdkDrag
-          [card]="toSharedCardData(cardDetail.card)"
-          [cdkDragData]="cardDetail"
-          [cdkDragDisabled]="!cardDetail.card.card.id"
-          [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
-          (click)="onCardClick(cardDetail.card)"
-          (contextmenu)="onRightClick($event, deckZone(), i)">
-        </app-card>
+        @if (cardDetail.card.card.id) {
+          <app-card
+            cdkDrag
+            [card]="toSharedCardData(cardDetail.card)"
+            [cdkDragData]="cardDetail"
+            [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
+            (click)="onCardClick(cardDetail.card)"
+            (contextmenu)="onRightClick($event, deckZone(), i)">
+          </app-card>
+        }
       </div>
     }
   </div>

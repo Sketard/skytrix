@@ -79,6 +79,7 @@ export class DeckBuilderComponent {
 
   readonly filtersOpened = this.deckBuildService.openedFilters;
   readonly handTestOpened = this.deckBuildService.handTestOpened;
+  readonly searchPanelOpened = signal(false);
 
   constructor(
     public deckBuildService: DeckBuildService,
@@ -207,6 +208,10 @@ export class DeckBuilderComponent {
       this.deckBuildService.initDeck(new Deck(deck));
     });
     (document.getElementById('importDeckInput') as HTMLInputElement).value = '';
+  }
+
+  public toggleSearchPanel() {
+    this.searchPanelOpened.update(v => !v);
   }
 
   public closeFilters() {
