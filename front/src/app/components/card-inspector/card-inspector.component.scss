@@ -1,5 +1,5 @@
-// Hover mode: absolute positioned panel
-:host.mode-hover {
+// Dismissable mode: absolute positioned panel
+:host.mode-dismissable {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -62,7 +62,7 @@
   }
 }
 
-// Hover / Permanent: horizontal layout
+// Dismissable / Permanent: horizontal layout
 .inspector-content {
   display: flex;
   gap: 0.75rem;
@@ -152,9 +152,9 @@
   overflow-y: auto;
 }
 
-// Mobile: hover mode centered horizontally
+// Mobile: dismissable mode centered horizontally
 @media (max-width: 768px) {
-  :host.mode-hover {
+  :host.mode-dismissable {
     top: 8px;
     left: 50%;
     transform: translateX(-50%);
@@ -166,7 +166,7 @@
     }
   }
 
-  :host.mode-hover .inspector-image {
+  :host.mode-dismissable .inspector-image {
     width: 60px;
   }
 }
