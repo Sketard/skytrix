@@ -26,6 +26,11 @@
       bottom: 0;
       left: 0;
       right: 0;
+
+      .grid-list-slot.card {
+        width: var(--slot-width, #{$DECK_CARD_WIDTH});
+        height: var(--slot-height, #{$DECK_CARD_HEIGHT});
+      }
     }
 
     // Empty deck zone placeholder (visible drop target)
@@ -36,7 +41,7 @@
     }
 
     // Background slot grid (cover images, no deckZone) must stay flexbox
-    &:has(> .grid-list-slot.grid) {
+    &.background {
       display: flex;
       flex-wrap: wrap;
       align-content: flex-start;

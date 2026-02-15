@@ -4,7 +4,6 @@ import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
-import { MatIconButton } from '@angular/material/button';
 import { SearchBarComponent } from '../search-bar/search-bar.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { SearchServiceCore } from '../../services/search-service-core.service';
@@ -21,7 +20,6 @@ import { CardDetail } from '../../core/model/card-detail';
     MatButtonToggle,
     MatButtonToggleGroup,
     MatIcon,
-    MatIconButton,
     SearchBarComponent,
   ],
   templateUrl: './card-searcher.component.html',

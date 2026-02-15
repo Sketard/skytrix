@@ -4,16 +4,22 @@
 
 .inspector-actions {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  background: rgba(30, 30, 30, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 
   button {
     color: $white;
     @include r.touch-target-min;
+  }
+
+  &-count {
+    color: $white;
+    font-size: 1rem;
+    font-weight: 600;
+    min-width: 1.5rem;
+    text-align: center;
   }
 }
 
@@ -26,15 +32,49 @@
 
   user-select: none;
 
+  // ─── DECK NAME (mobile only, above decklist) ───
+  &-deckNameMobile {
+    display: none;
+
+    @include r.respond-below(r.$bp-tablet) {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 0.5em;
+
+      mat-form-field {
+        flex: 1;
+      }
+
+      button {
+        color: $white;
+        flex-shrink: 0;
+      }
+
+      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+        background-color: $white !important;
+      }
+
+      ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+        color: $black;
+        caret-color: $black;
+      }
+
+      ::ng-deep .mdc-text-field--filled {
+        border-radius: 0;
+      }
+    }
+  }
+
   // ─── SEARCH TOGGLE (mobile only) ───
   &-searchToggle.mat-mdc-icon-button {
     display: none;
 
     @include r.respond-below(r.$bp-tablet) {
       display: flex;
-      position: absolute;
-      top: 0.5em;
-      right: 0.5em;
+      position: fixed;
+      bottom: 1em;
+      right: 1em;
       z-index: 10;
       color: $white;
       background: rgba(0, 0, 0, 0.6);
@@ -110,8 +150,27 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       flex-shrink: 0;
 
+      @include r.respond-below(r.$bp-tablet) {
+        display: none;
+      }
+
       &-deckName {
+        display: flex;
+        align-items: center;
         width: 100%;
+
+        @include r.respond-below(r.$bp-tablet) {
+          display: none;
+        }
+
+        mat-form-field {
+          flex: 1;
+        }
+
+        >button {
+          color: $white;
+          flex-shrink: 0;
+        }
 
         ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
           background-color: $white !important;
@@ -138,6 +197,10 @@
         gap: 0.5em;
         margin-top: 0.5em;
 
+        deck-card-zone {
+          margin: 0 auto;
+        }
+
         ::ng-deep .grid-list-slot {
           width: 30px;
           height: 44px;
@@ -150,7 +213,14 @@
 
         button {
           color: $white;
-          margin-left: auto;
+        }
+
+        @include r.respond-below(r.$bp-tablet) {
+          margin-top: 0;
+
+          deck-card-zone {
+            display: none;
+          }
         }
       }
     }
@@ -171,6 +241,7 @@
       left: 100%;
       right: -100%;
       z-index: 999;
+      overflow-y: auto;
 
       &.opened {
         left: 0;
@@ -225,6 +296,13 @@
 
     &.opened {
       bottom: 1em;
+    }
+  }
+
+  // ─── INSPECTOR above search panel on mobile ───
+  app-card-inspector {
+    @include r.respond-below(r.$bp-tablet) {
+      --inspector-z-index: 1001;
     }
   }
 }

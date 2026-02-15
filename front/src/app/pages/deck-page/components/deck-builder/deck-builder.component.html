@@ -2,6 +2,17 @@
   <!-- BODY (canvas + side panel with header) -->
   <div class="deckBuilder-body">
     <div class="deckBuilder-canvasParent">
+      <div class="deckBuilder-deckNameMobile">
+        <mat-form-field>
+          <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
+        </mat-form-field>
+        <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
+          <mat-icon>save</mat-icon>
+        </button>
+        <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+      </div>
       <button
         mat-icon-button
         class="deckBuilder-searchToggle"
@@ -21,22 +32,17 @@
       </button>
       <!-- HEADER (inside side panel) -->
       <div class="deckBuilder-side-header">
-        <mat-form-field class="deckBuilder-side-header-deckName">
-          <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
-        </mat-form-field>
-        <div class="deckBuilder-side-header-row">
-          <deck-card-zone
-            [cardDetails]="deckBuildService.deck().images"
-            [slotNumber]="3"
-            (cardClicked)="onCardClicked($event)"></deck-card-zone>
+        <div class="deckBuilder-side-header-deckName">
+          <mat-form-field>
+            <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
+          </mat-form-field>
+          <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
+            <mat-icon>save</mat-icon>
+          </button>
           <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
             <mat-icon>more_vert</mat-icon>
           </button>
           <mat-menu #actionsMenu="matMenu">
-            <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="save()">
-              <mat-icon>save</mat-icon>
-              <span>Sauvegarder</span>
-            </button>
             <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">
               <mat-icon>print</mat-icon>
               <span>Générer les proxies</span>
@@ -62,6 +68,12 @@
               <span>Simulateur</span>
             </button>
           </mat-menu>
+        </div>
+        <div class="deckBuilder-side-header-row">
+          <deck-card-zone
+            [cardDetails]="deckBuildService.deck().images"
+            [slotNumber]="3"
+            (cardClicked)="onCardClicked($event)"></deck-card-zone>
         </div>
       </div>
       <div class="deckBuilder-side-searcher">
@@ -90,18 +102,19 @@
       <app-hand-test></app-hand-test>
     }
   </div>
-</div>
 
-<app-card-inspector
-  [card]="selectedCardForInspector()"
-  mode="click"
-  (dismissed)="dismissInspector()">
-  <div class="inspector-actions" (click)="$event.stopPropagation()">
-    <button mat-icon-button (click)="addSelectedCardToDeck()" title="Ajouter au deck">
-      <mat-icon>add</mat-icon>
-    </button>
-    <button mat-icon-button (click)="removeSelectedCardFromDeck()" title="Retirer du deck">
-      <mat-icon>remove</mat-icon>
-    </button>
-  </div>
-</app-card-inspector>
+  <app-card-inspector
+    [card]="selectedCardForInspector()"
+    mode="hover"
+    (dismissed)="dismissInspector()">
+    <div class="inspector-actions" (click)="$event.stopPropagation()">
+      <button mat-icon-button (click)="removeSelectedCardFromDeck()" title="Retirer du deck">
+        <mat-icon>remove</mat-icon>
+      </button>
+      <span class="inspector-actions-count">{{ selectedCardCount() }}</span>
+      <button mat-icon-button (click)="addSelectedCardToDeck()" title="Ajouter au deck">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+  </app-card-inspector>
+</div>

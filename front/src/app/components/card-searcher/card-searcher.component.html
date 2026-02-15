@@ -2,15 +2,7 @@
   <div class="cardSearchPage" [class.deckBuildMode]="deckBuildMode()" [class.has-filters-open]="filtersOpen()">
     <div class="cardSearchPage-searcher">
       <div class="cardSearchPage-searcher-bar">
-        <search-bar [form]="form.controls.name" [deckBuildMode]="deckBuildMode()"></search-bar>
-        @if (!deckBuildMode()) {
-          <button mat-icon-button class="cardSearchPage-searcher-bar-filterToggle"
-            (click)="toggleFilters()"
-            aria-label="Filtres"
-            [attr.aria-expanded]="filtersOpen()">
-            <mat-icon>tune</mat-icon>
-          </button>
-        }
+        <search-bar [form]="form.controls.name" [deckBuildMode]="deckBuildMode()" (filterToggled)="toggleFilters()"></search-bar>
         <div class="cardSearchPage-searcher-bar-displayMode">
           <mat-button-toggle-group
             hideSingleSelectionIndicator

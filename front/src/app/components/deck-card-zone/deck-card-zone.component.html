@@ -1,6 +1,6 @@
 <div class="grid">
   @if (!deckZone()) {
-    <div class="grid-list">
+    <div class="grid-list background">
       @for (slot of [].constructor(slotNumber()); track i; let i = $index) {
         {{ slot }}
         <div class="grid-list-slot grid" [ngClass]="deckZone()"></div>

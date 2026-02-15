@@ -4,31 +4,15 @@
       @for (set of cd.sets; track set.id) {
         @if (ownedCardService.shortOwnedCards$ | async | findOwnedCard: set.id; as ownedCard) {
           <div class="owned-row" (click)="onCardClick(cd)">
-            <mat-form-field class="owned-row-quantity">
-              <mat-icon
-                class="owned-row-quantity-minus"
-                matPrefix
-                fontIcon="exposure_neg_1"
-                (click)="increaseQuantity(-1, ownedCard.cardSetId, ownedCard.number); $event.stopPropagation()"
-                (keyup)="increaseQuantity(-1, ownedCard.cardSetId, ownedCard.number); $event.stopPropagation()">
-              </mat-icon>
-              <input
-                type="number"
-                class="form-control"
-                matInput
-                name="value"
-                [value]="ownedCard.number"
-                (blur)="updateQuantity($event, ownedCard.cardSetId)"
-                min="0"
-                oninput="validity.valid||(value=0)" />
-              <mat-icon
-                class="owned-row-quantity-plus"
-                matSuffix
-                fontIcon="exposure_plus_1"
-                (click)="increaseQuantity(1, ownedCard.cardSetId, ownedCard.number); $event.stopPropagation()"
-                (keyup)="increaseQuantity(1, ownedCard.cardSetId, ownedCard.number); $event.stopPropagation()">
-              </mat-icon>
-            </mat-form-field>
+            <div class="owned-row-quantity">
+              <button mat-icon-button (click)="increaseQuantity(-1, ownedCard.cardSetId, ownedCard.number); $event.stopPropagation()">
+                <mat-icon>remove</mat-icon>
+              </button>
+              <span class="owned-row-quantity-count">{{ ownedCard.number }}</span>
+              <button mat-icon-button (click)="increaseQuantity(1, ownedCard.cardSetId, ownedCard.number); $event.stopPropagation()">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
             <div class="owned-row-code">{{ set.code }}</div>
             <div class="owned-row-card">
               <app-card class="owned-card-image" [card]="toSharedCardData(cd)" />

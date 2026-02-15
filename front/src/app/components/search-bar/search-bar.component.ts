@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatIconButton } from '@angular/material/button';
@@ -20,6 +20,7 @@ import { countValidValues } from '../../core/utilities/functions';
 export class SearchBarComponent {
   readonly deckBuildMode = input<boolean>(false);
   readonly form = input(new FormControl<string>(''));
+  readonly filterToggled = output<void>();
 
   readonly numberOfActiveFilters$ = this.deckBuildService.filterForm.valueChanges.pipe(
     map(form => countValidValues(form, ['favorite', 'name']))
@@ -33,6 +34,9 @@ export class SearchBarComponent {
   constructor(private readonly deckBuildService: DeckBuildService) {}
 
   public openFilters() {
-    this.deckBuildService.toggleFilters();
+    if (this.deckBuildMode()) {
+      this.deckBuildService.toggleFilters();
+    }
+    this.filterToggled.emit();
   }
 }

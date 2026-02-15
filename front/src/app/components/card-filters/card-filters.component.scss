@@ -1,4 +1,6 @@
 .cardFilters {
+  padding-top: 1em;
+  padding-bottom: 1em;
 
   &-header {
     display: flex;
@@ -6,7 +8,7 @@
     align-items: center;
 
     h4 {
-      margin-top: 1em;
+      margin-top: 0;
       margin-bottom: 0.5em;
     }
   }
@@ -16,10 +18,12 @@
   }
 
   &-buttons {
+    display: flex;
+    gap: 0.5em;
     margin-top: 1.5em;
 
     button:first-child {
-      margin-right: 1em;
+      flex: 1;
     }
 
     mat-icon {
