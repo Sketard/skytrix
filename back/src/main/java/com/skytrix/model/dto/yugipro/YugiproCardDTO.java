@@ -56,4 +56,13 @@ public class YugiproCardDTO {
                 .map(date -> date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
                 .orElse(null);
     }
+
+    public Integer getGenesysPoint() {
+        return getMiscInfo()
+            .stream()
+            .map(MiscInfoDTO::getGenesysPoint)
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElse(0);
+    }
 }

@@ -1,12 +1,18 @@
 package com.skytrix.service;
 
+import com.skytrix.mapper.CardMapper;
+import com.skytrix.model.dto.yugipro.YugiproCardDTO;
+import com.skytrix.model.entity.Card;
+import com.skytrix.model.entity.CardImage;
+import com.skytrix.repository.CardImageRepository;
+import com.skytrix.repository.CardRepository;
+import com.skytrix.requester.YugiproRequester;
 import jakarta.inject.Inject;
-
-import static com.skytrix.model.enums.Language.EN;
-import static com.skytrix.model.enums.Language.FR;
-import static com.skytrix.utils.CoreUtils.findAny;
-import static com.skytrix.utils.CoreUtils.mapToList;
-import static java.lang.Thread.sleep;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,22 +26,11 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.skytrix.mapper.CardMapper;
-import com.skytrix.model.dto.yugipro.YugiproCardDTO;
-import com.skytrix.model.entity.Card;
-import com.skytrix.model.entity.CardImage;
-import com.skytrix.repository.CardImageRepository;
-import com.skytrix.repository.CardRepository;
-import com.skytrix.requester.YugiproRequester;
-
-import lombok.extern.slf4j.Slf4j;
+import static com.skytrix.model.enums.Language.EN;
+import static com.skytrix.model.enums.Language.FR;
+import static com.skytrix.utils.CoreUtils.findAny;
+import static com.skytrix.utils.CoreUtils.mapToList;
+import static java.lang.Thread.sleep;
 
 @Service
 @Slf4j
@@ -100,16 +95,22 @@ public class YugiproApiService {
     @Transactional
     public void fetchAllBanList() {
         var fetchedCardsEn = requester.fetchAll(EN);
-        var  allSavedCards = cardRepository.findAll();
+        var allSavedCards = cardRepository.findAll();
         var missingCards = new ArrayList<String>();
 
         allSavedCards.forEach(card -> {
+            YugiproCardDTO cardFetch;
             try {
-                var cardFetch = findAny(fetchedCardsEn, fetchedCard -> Objects.equals(card.getPasscode(), fetchedCard.getId()));
-                card.setBanInfo(cardFetch.getTcgBanInfo());
+                cardFetch = findAny(fetchedCardsEn, fetchedCard -> Objects.equals(card.getPasscode(), fetchedCard.getId()));
             } catch(NoSuchElementException e) {
-                missingCards.add(card.getName());
+                cardFetch = requester.fetchUnit(card.getName());
+                if (cardFetch == null) {
+                    missingCards.add(card.getName());
+                    return;
+                }
             }
+            card.setBanInfo(cardFetch.getTcgBanInfo());
+            card.setGenesysPoint(cardFetch.getGenesysPoint());
         });
 
         if (!missingCards.isEmpty()) {

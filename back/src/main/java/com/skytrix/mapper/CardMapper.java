@@ -1,15 +1,5 @@
 package com.skytrix.mapper;
 
-import jakarta.inject.Inject;
-
-import static com.skytrix.utils.CoreUtils.getNullSafe;
-import static com.skytrix.utils.CoreUtils.mapToList;
-
-import org.mapstruct.AfterMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-
 import com.skytrix.model.dto.card.CardDTO;
 import com.skytrix.model.dto.card.CardDetailedDTO;
 import com.skytrix.model.dto.card.CardImageDTO;
@@ -32,6 +22,14 @@ import com.skytrix.model.enums.Type;
 import com.skytrix.repository.CardRepository;
 import com.skytrix.security.AuthService;
 import com.skytrix.utils.RouteUtils;
+import jakarta.inject.Inject;
+import org.mapstruct.AfterMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+
+import static com.skytrix.utils.CoreUtils.getNullSafe;
+import static com.skytrix.utils.CoreUtils.mapToList;
 
 @Mapper(componentModel = "spring")
 public abstract class CardMapper {
@@ -64,6 +62,7 @@ public abstract class CardMapper {
         target.setSets(sets);
         target.addTranslation(source, cardLanguage);
         target.setBanInfo(source.getTcgBanInfo());
+        target.setGenesysPoint(source.getGenesysPoint());
         target.setFirstTcgRelease(source.getFirstTcgRelease());
         target.setTypes(mapToList(Type.getType(source.getType()), Type::name));
     }

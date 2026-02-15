@@ -1,13 +1,12 @@
 package com.skytrix.model.dto.card;
 
-import java.util.List;
-
 import com.skytrix.model.enums.Attribute;
 import com.skytrix.model.enums.Race;
 import com.skytrix.model.enums.Type;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -29,4 +28,5 @@ public class CardDTO {
     private List<String> linkmarkers;
     private boolean extraCard;
     private Short banInfo;
+    private Integer genesysPoint;
 }
