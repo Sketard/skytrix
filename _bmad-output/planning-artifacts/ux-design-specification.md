@@ -36,7 +36,7 @@ The core workflow is: build deck → test combos → iterate — all within a si
 
 ### Key Design Challenges
 
-1. **Visual Density Management** — 18 zones on a single screen with a fixed 16:9 aspect ratio. The board scales proportionally to fit the available viewport space (Master Duel "zoom-out" style) — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
+1. **Visual Density Management** — 18 zones on a single screen with a fixed aspect ratio (1060×772). The board scales proportionally to fit the available viewport space — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
 2. **Action Discoverability** — Without a rules engine to guide the player, all available actions (mill, search, reveal, flip, toggle position, banish, return to hand/deck) must be intuitively discoverable through the interface. No tutorial — the UI must be self-explanatory.
 3. **Drag & Drop Precision** — Targeting the correct zone among 18 while dragging a card. Visual feedback during drag (zone highlighting, capacity indicators) is critical to avoid frustrating mis-drops.
 4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). Touch interaction (tap-to-place for simulator) is a post-MVP design effort; all other pages are touch-ready via responsive layouts.
@@ -295,22 +295,28 @@ Zero new dependencies — Architecture decision enforced.
 
 ### Customization Strategy
 
-**Simulator Theme (SCSS Variables):**
+**Unified Global Token System (CSS Custom Properties):**
 
-A dedicated set of SCSS variables in `src/app/styles/` for the simulator page, coexisting with the existing app theme:
+All screens share a single set of CSS custom properties defined on `:root` in `_tokens.scss`. The simulator overrides only what differs via scoped `:host` properties. → See screen-implementation-guide.md §Global Decisions for the full token table and migration mapping.
 
-- **Board background:** Dark atmospheric tones (inspired by Master Duel) — deep navy/charcoal gradient
-- **Zone borders:** Subtle luminous lines — low opacity at rest, intensified during drag hover
-- **Zone highlighting:** Accent color glow on valid drop targets during drag
-- **Card shadows:** Elevation effect on drag (box-shadow + slight scale transform)
-- **Stacked zone badges:** Card count indicators with semi-transparent background
-- **Pill buttons:** Compact, semi-transparent buttons that blend with the board aesthetic
-- **Overlay backdrop:** Semi-transparent dark overlay that dims the board without hiding it
+**Global tokens** (`:root`):
+- `--surface-base: #121212`, `--surface-card: #1E1E1E`, `--surface-card-hover: #252525`, `--surface-elevated: #1E293B`, `--surface-nav: #161616`
+- `--accent-primary: #C9A84C` (gold — Millennium theme), `--accent-primary-dim: #C9A84C33`
+- `--text-primary: #EAEAEA`, `--text-secondary: #9E9E9E`
+- `--danger: #CF6679`
+
+**Simulator overrides** (`:host` on simulator page):
+- `--surface-base: #0a0e1a` (deep navy instead of #121212)
+- `--accent-primary: #00d4ff` (cyan instead of gold)
+
+**Sidebar & Toolbar Dark Theme:**
+- All navigation surfaces (desktop sidebar, mobile top bar, mobile drawer) use `--surface-nav`
+- Text color: `--text-primary`. Active nav item: 3px left border `--accent-primary` + `--accent-primary-dim` background
+- → See screen-implementation-guide.md §Sidebar & Toolbar for full specification
 
 **Theme Isolation:**
 - Simulator styles are scoped to the simulator page component (Angular ViewEncapsulation default)
-- No impact on existing app theming
-- Shared SCSS variables allow consistency with the broader skytrix palette where appropriate (accent colors, typography)
+- Shared CSS custom properties allow consistency across all pages — simulator overrides only the accent and background
 
 ## Defining Core Experience
 
@@ -397,28 +403,24 @@ The simulator's identity is captured in one interaction: picking up a card and p
 
 ### Color System
 
-**Palette Philosophy:** Dark atmospheric board inspired by Master Duel — the simulator has its own visual universe, independent from the main skytrix app theme. The board is a stage where cards are the stars.
+**Palette Philosophy:** Dark atmospheric board — the simulator has its own visual universe with a deep navy base. The board is a stage where cards are the stars.
 
-**Dual-Accent System:**
-- **Cyan `#00d4ff`** — Primary interactive accent. Used for: drag zone highlighting, active pills, focused elements, interactive borders. Cyan = "you can act here."
-- **Gold `#d4a017`** — Secondary status accent. Used for: successful card placement glow (settle animation), full zone badges, completion feedback. Gold = "something happened here."
+**Dual-Accent System (simulator):**
+- **Cyan `#00d4ff`** — Primary interactive accent on the simulator board. Used for: drag zone highlighting, active pills, focused elements, interactive borders. Cyan = "you can act here."
+- **Gold `#d4a017`** — Secondary status accent. Used **only** for: successful card placement glow (settle animation). Do NOT confuse with the global gold accent `#C9A84C`.
 
-**SCSS Token Map:**
+**Global app accent:** `--accent-primary: #C9A84C` (gold, Millennium theme). The simulator overrides this to cyan via `:host`.
+
+**Token Architecture:** All tokens are CSS custom properties on `:root`, with simulator-specific overrides via `:host`. → See §Customization Strategy for the full token table.
+
+**Simulator-Specific Derived Tokens** (computed from overridden `--accent-primary`):
 
 | Token | Value | Usage |
 |---|---|---|
-| `$sim-bg` | `#0a0e1a` | Board background base (deep navy) |
-| `$sim-surface` | `#111827` | Zone surface, overlay background |
-| `$sim-surface-elevated` | `#1e293b` | Elevated surfaces (cards, active overlays) |
-| `$sim-accent-primary` | `#00d4ff` | Interactive elements — drag highlights, pills, focus |
-| `$sim-accent-secondary` | `#d4a017` | Status/reward — placement glow, success feedback |
-| `$sim-zone-border` | `rgba(#00d4ff, 0.15)` | Zone borders at rest — subtle, luminous |
-| `$sim-zone-highlight` | `rgba(#00d4ff, 0.3)` | Valid drop zone highlight during drag |
-| `$sim-zone-glow-success` | `rgba(#d4a017, 0.4)` | Card placement settle glow |
-| `$sim-text-primary` | `#f1f5f9` | Primary text — high contrast on dark |
-| `$sim-text-secondary` | `#94a3b8` | Secondary text — labels, counts |
-| `$sim-error` | `#ef4444` | Semantic error (reserved, rarely used in solo context) |
-| `$sim-overlay-backdrop` | `rgba(#0a0e1a, 0.7)` | Overlay backdrop — dims board without hiding it |
+| `--zone-border` | `rgba(var(--accent-primary), 0.15)` | Zone borders at rest — subtle, luminous |
+| `--zone-highlight` | `rgba(var(--accent-primary), 0.3)` | Valid drop zone highlight during drag |
+| `--zone-glow-success` | `rgba(#d4a017, 0.4)` | Card placement settle glow (gold, always) |
+| `--overlay-backdrop` | `rgba(var(--surface-base), 0.7)` | Overlay backdrop — dims board without hiding it |
 
 **Color Rule:** Maximum 3 active colors on the board at any moment (cyan + gold + card art). Semantic colors (red, orange) stay in background — almost never appear in solo simulator context.
 
@@ -449,17 +451,17 @@ The simulator's identity is captured in one interaction: picking up a card and p
 
 | Token | Value | Usage |
 |---|---|---|
-| `$sim-gap-zone` | `0.5rem` | Gap between board zones (CSS Grid gap) |
-| `$sim-gap-card` | `0.25rem` | Gap between cards within a zone (hand spacing) |
-| `$sim-padding-zone` | `0.5rem` | Internal zone padding |
-| `$sim-padding-overlay` | `1rem` | Overlay internal padding |
-| `$sim-radius-zone` | `0.375rem` | Zone border radius (subtle rounding) |
-| `$sim-radius-card` | `0.25rem` | Card border radius |
+| `--gap-zone` | `0.5rem` | Gap between board zones (CSS Grid gap) |
+| `--gap-card` | `0.25rem` | Gap between cards within a zone (hand spacing) |
+| `--padding-zone` | `0.5rem` | Internal zone padding |
+| `--padding-overlay` | `1rem` | Overlay internal padding |
+| `--radius-zone` | `0.375rem` | Zone border radius (subtle rounding) |
+| `--radius-card` | `0.25rem` | Card border radius |
 
 **Layout Principles:**
-1. **Fixed 16:9 aspect ratio board** — The board is a fixed-ratio container that scales proportionally to fit the available viewport space (below the navbar area, when visible). Scaling is achieved via `transform: scale()` on the board container — a single scale factor applied to the entire board. The board floats over the app's existing background; empty space (letterboxing) uses the app background, not black bars.
+1. **Fixed 1060×772 board** — The board is a fixed-dimension container that scales proportionally to fit the available viewport space. Scaling is achieved via `transform: scale()` on the board container. `transform-origin: top center` on desktop; `transform-origin: bottom center` on mobile portrait (thumb-friendly, board anchored at bottom). Empty space (letterboxing) uses the app background.
 2. **CSS Grid with named areas** — Inside the fixed-ratio container, each of the 18 zones has a named grid area. Zone dimensions use fixed proportions (not `fr` + `minmax()`), since the container itself handles viewport adaptation via scaling.
-3. **Dynamic rescaling on navbar toggle** — The available viewport space changes when the collapsible navbar is shown/hidden. The board recalculates its scale factor dynamically to always fit within the available space, maintaining the 16:9 ratio.
+3. **Dynamic rescaling on navbar toggle** — The available viewport space changes when the collapsible navbar is shown/hidden. The board recalculates its scale factor dynamically to always fit within the available space.
 4. **Overlay positioning** — Pile overlays open to the side or bottom (never centered fullscreen) to keep the board visible as a drag target during pill-to-drag flow.
 
 ### Accessibility Considerations
@@ -765,7 +767,7 @@ flowchart TD
 
 #### SimBoardComponent (Root Container)
 
-**Purpose:** Root component that renders the fixed 16:9 aspect ratio board container and orchestrates all child zones. The container scales via `transform: scale()` to fit the available viewport space (accounting for navbar visibility). Inside, a 7x4 CSS Grid renders the 18 zones.
+**Purpose:** Root component that renders the fixed 1060×772 board container and orchestrates all child zones. The container scales via `transform: scale()` to fit the available viewport space (accounting for navbar visibility). Inside, a 7x4 CSS Grid renders the 18 zones.
 **Content:** 18 zones rendered via named grid areas. Injects `BoardStateService` for zone data. Computes scale factor reactively based on viewport dimensions and navbar state.
 **Actions:** Handles global keyboard shortcuts (Ctrl+Z, Ctrl+Y). Manages `isDragging` signal suppression for pills.
 **States:** Default (board ready), Loading (deck loading), Empty (no deck loaded).
@@ -848,16 +850,18 @@ interface StackedZoneConfig {
 **Purpose:** Fixed side panel that displays full card details on hover. Replaces the existing skytrix white tooltip with a dark-themed, simulator-integrated inspector. Allows reading card effects without interrupting gameplay flow.
 **Content:** Full-size card image, card name, attribute icon + race icon + level/rank/link, ATK/DEF values, full effect description text (scrollable). No deck-building buttons (+1/-1) — simulator context only.
 **Trigger:** Hover on any face-up `SimCardComponent` (board, hand, or overlay) updates the `hoveredCard` signal in `BoardStateService`. Inspector reacts to this signal.
-**Position:** Fixed panel on the right side of the viewport, overlaying the board edge. Not part of the CSS Grid — uses `position: fixed` with `$sim-surface` background and subtle left border. Appears/disappears with a fast fade transition (~100ms).
+**Position:** Fixed panel on the **left side** of the viewport on desktop, overlaying the board edge. On **mobile portrait**: top overlay (eye-level, no reach needed). Not part of the CSS Grid — uses `position: fixed` with `--surface-base` background. Appears/disappears with a fast fade transition (~100ms).
 **States:** Hidden (no card hovered, or `isDragging` active), Visible (card hovered — image + stats + effect text displayed).
 **Suppression:** Hidden when `isDragging` is true — reading effects during drag would obstruct the interaction. Reappears when drag ends.
-**Styling:** `$sim-surface` background, `$sim-text-primary` for card name and effect text, `$sim-text-secondary` for stat labels. Card image uses existing `CardImageDTO.url` (full resolution). Effect text rendered via `[innerHTML]` with `<br>` formatting (same as existing `CardDTO.description` preprocessing).
+**Styling:** `--surface-base` background, `--text-primary` for card name and effect text, `--text-secondary` for stat labels. Card image uses existing `CardImageDTO.url` (full resolution). Effect text rendered via `[innerHTML]` with `<br>` formatting (same as existing `CardDTO.description` preprocessing).
 **Face-down cards:** Inspector shows **full card details** (image, name, stats, effect text) even for face-down cards. In a solo simulator, the player knows all their own cards — hiding information serves no purpose. The card's face-down *positional state* on the board is a gameplay choice, not an information barrier.
 **Accessibility:** `role="complementary"`, `aria-label="Card inspector"`, `aria-live="polite"` for content updates on hover change.
 
 #### Collapsible Navbar
 
 **Purpose:** The app navbar can be collapsed to maximize board space. On the simulator page, the navbar starts **collapsed by default**. On all other pages, the navbar remains expanded by default.
+
+**Dark Theme:** The navbar uses `--surface-nav` background across all pages (dark theme). Text: `--text-primary`. Active item: 3px left border `--accent-primary` + `--accent-primary-dim` background. Hover: `--surface-card` background (150ms ease). → See screen-implementation-guide.md §Sidebar & Toolbar for full specification.
 
 **Toggle Mechanism:**
 - A **chevron button** positioned at the border between the navbar (vertical sidebar) and the main content area, acting as a visual "tab" or "handle"
@@ -874,7 +878,7 @@ interface StackedZoneConfig {
 
 **Board Interaction:**
 - When the navbar collapses/expands, the available viewport space changes
-- The board's `transform: scale()` factor recalculates dynamically to fit the new available space, maintaining the 16:9 ratio
+- The board's `transform: scale()` factor recalculates dynamically to fit the new available space
 - Transition should be smooth (~200ms) with the board rescaling in sync
 
 **Scope:**
@@ -884,11 +888,11 @@ interface StackedZoneConfig {
 
 #### SimControlBarComponent (Session Controls)
 
-**Purpose:** Undo / Redo / Reset buttons positioned in the controls grid area (bottom-left).
-**Content:** Three icon buttons with tooltips. Optional action count indicators.
+**Purpose:** Undo / Redo / Reset buttons positioned in the controls grid area (bottom-left). Frosted glass pill (backdrop-filter: blur(8px)).
+**Content:** Three icon buttons with tooltips. Keyboard shortcut hints in tooltips.
 **Actions:** Undo (Ctrl+Z), Redo (Ctrl+Y), Reset (button only — no keyboard shortcut, with confirmation dialog).
 **States:** Undo-available / Undo-disabled (stack empty), Redo-available / Redo-disabled, Reset always available.
-**Variants:** None.
+**Variants:** In landscape simulator, a back/exit button is added at the top of the pill (visually separated) for navigation back to deck builder.
 **Accessibility:** `aria-label` per button, keyboard shortcuts announced in tooltips.
 
 ### Component Implementation Strategy
@@ -951,11 +955,11 @@ SimBoardComponent (root grid)
 - Hover on any face-up card → cursor changes to `grab`
 - `hoveredCard` signal updates in `BoardStateService` with **50ms debounce** — prevents flicker during fast mouse traversal across multiple cards, and naturally suppresses hover events during drag (since drag starts before debounce fires)
 - Click and hold → card "lifts" (scale: 1.05, box-shadow increase), `isDragging` signal set to `true`
-- Board enters drag mode: valid zones illuminate with `$sim-zone-highlight`, pills/overlays/inspector suppressed
+- Board enters drag mode: valid zones illuminate with `--zone-highlight`, pills/overlays/inspector suppressed
 
 **During Drag:**
 - Card preview follows cursor via `cdkDragPreviewContainer: 'global'` — ensures correct z-index when dragging from overlays or pills that use CDK Overlay (overlay has high z-index, preview must be above it)
-- Valid target zones glow cyan (`$sim-zone-highlight`) on hover
+- Valid target zones glow cyan (`--zone-highlight`) on hover
 - Invalid zones (occupied single-card zones) show **no reaction** — silent rejection. No card replacement allowed; player must clear the zone first (drag existing card away, then place new card)
 - Hand zone supports reordering (CDK sort animation)
 
@@ -991,8 +995,8 @@ SimBoardComponent (root grid)
 - Empty stacked zone click → opens empty overlay with subtle message ("No cards in [zone name]") — confirms the zone interaction works and avoids "nothing happened" confusion
 
 **Card Inspector Panel:**
-- Fixed panel on right side of viewport, driven by `hoveredCard` signal (50ms debounced)
-- When a pile overlay is open on the right side → inspector **repositions to the left** via a computed signal (`inspectorPosition = overlay.isOpen && overlay.side === 'right' ? 'left' : 'right'`) — no OverlayPositionService needed, pure reactive computation
+- Fixed panel on **left side** of viewport (desktop), **top overlay** on mobile portrait — driven by `hoveredCard` signal (50ms debounced)
+- When a pile overlay is open on the left side → inspector **repositions to the right** via a computed signal — no OverlayPositionService needed, pure reactive computation
 - Hidden when `isDragging` is `true` — reappears when drag ends
 - Face-down cards: inspector shows **full card details** (solo context — player knows all own cards)
 
@@ -1030,12 +1034,12 @@ SimBoardComponent (root grid)
 
 **Card Placement Feedback (Gold Glow):**
 - On successful drop: target zone receives `.zone--just-dropped` CSS class
-- CSS `@keyframes` animation: gold glow (`$sim-accent-secondary`) fades from 0.4 opacity to 0 over ~400ms
+- CSS `@keyframes` animation: gold glow (`--zone-glow-success`) fades from 0.4 opacity to 0 over ~400ms
 - Class removed after animation completes (via `animationend` event listener)
 - Pure CSS approach — no Angular signal, no timer, no subscription
 
 **Drag Zone Highlighting:**
-- Valid zones: `$sim-zone-highlight` (cyan at 0.3 opacity) + border intensification
+- Valid zones: `--zone-highlight` (cyan at 0.3 opacity) + border intensification
 - Invalid/occupied zones: no visual change — silent rejection
 - Hand zone: accepts drops (return to hand) with cyan highlight
 
@@ -1047,7 +1051,7 @@ SimBoardComponent (root grid)
 
 **Stacked Zone Badges:**
 - `mat-badge` with card count, always visible when count > 0
-- Badge uses `$sim-accent-primary` (cyan) background
+- Badge uses `--accent-primary` (cyan) background
 - Count updates reactively via computed signal from board state
 
 ### Keyboard Shortcut Patterns
@@ -1078,7 +1082,7 @@ SimBoardComponent (root grid)
 - Same overlay component, just empty content state
 
 **Empty Hand:**
-- Visual: dashed border only (subtle `$sim-zone-border` with `border-style: dashed`)
+- Visual: dashed border only (subtle `--zone-border` with `border-style: dashed`)
 - No placeholder text — dashed border is sufficient visual affordance
 - Drop target remains active (cards can be returned to empty hand)
 
@@ -1141,10 +1145,10 @@ parentHeight = container height
 scaleX = parentWidth / referenceWidth
 scaleY = parentHeight / (referenceWidth / aspectRatio)
 scale = min(scaleX, scaleY)
-→ transform: scale(scale), transform-origin: top center
+→ transform: scale(scale), transform-origin: top center (desktop) | bottom center (mobile portrait)
 ```
 
-The directive measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout. Each Track A page has its own `referenceWidth` calibrated to its content density (e.g., simulator: 1920, deck builder: TBD).
+The directive measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout. Each Track A page has its own reference dimensions calibrated to its content density (e.g., simulator: 1060×772).
 
 The canvas is centered in the available space. Empty space (letterboxing) shows the app's existing background — the canvas floats over it.
 
@@ -1217,12 +1221,6 @@ The canvas is centered in the available space. Empty space (letterboxing) shows 
 - `SimCardInspectorComponent`: `role="complementary"`, `aria-live="polite"`
 - `SimPileOverlayComponent`: `role="dialog"`, `aria-modal="true"`, focus trap
 - Drag feedback: `aria-grabbed` on dragged card, `aria-dropeffect` on valid zones
-
-**Reduced Motion:**
-- Respect `prefers-reduced-motion` media query
-- When active: disable gold glow animation, card lift scale, overlay fade transitions, CDK drag placeholder transitions (`.cdk-drag-placeholder`, `.cdk-drag-animating`)
-- Functional behavior unchanged — only decorative animations suppressed
-- **Dev-only toggle:** `SimControlBarComponent` includes a reduced-motion toggle button behind `isDevMode()` guard — applies `.force-reduced-motion` class on the board root, allowing testing without changing OS settings
 
 ### Testing Strategy
 
