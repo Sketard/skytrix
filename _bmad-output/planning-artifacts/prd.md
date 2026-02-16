@@ -192,7 +192,7 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 - **Browser Support:** Modern browsers — desktop (Chrome, Firefox, Edge, Safari latest two versions) and mobile (Chrome Android, Safari iOS latest two versions)
 - **SEO:** Not applicable — authenticated feature
 - **Real-time:** Not needed — all state local to browser session
-- **Responsive Design:** Responsive multi-device — deck management pages use fluid layouts with breakpoints (mobile-first CSS). The simulator board uses a fixed 16:9 aspect ratio with proportional scaling on all devices; mobile adds a tap-to-place interaction mode and landscape-locked display.
+- **Responsive Design:** Responsive multi-device — deck management pages use fluid layouts with breakpoints (mobile-first CSS). The simulator board uses a fixed aspect ratio (1060×772) with proportional scaling on all devices; mobile adds a tap-to-place interaction mode and landscape-locked display.
 - **Performance Targets:** Drag & drop within 16ms frame budget. OnPush + signals to avoid unnecessary re-renders
 - **Reuses:** Existing services (card data, deck data, card images), existing card-tooltip component
 - **Dependencies:** No new dependencies — Angular CDK DragDrop already installed
@@ -263,7 +263,7 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 - NFR2: Board state updates (card moved, flipped, position toggled) reflect visually within 100ms
 - NFR3: Board reset completes in under 1 second including re-shuffle and re-draw
 - NFR4: The simulator remains responsive with a full board state (20+ cards across zones)
-- NFR5: Card detail tooltip appears within 200ms of hover
+- NFR5: Card inspector panel appears within 200ms of hover
 - NFR6: Zone overlays (deck search, graveyard view) open within 300ms regardless of card count
 
 ### Security

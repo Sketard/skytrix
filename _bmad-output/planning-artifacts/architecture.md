@@ -46,7 +46,7 @@ The simulator is fully manual with no rules engine — the player has complete f
 - **Drag & Drop:** Angular CDK DragDrop already installed — no new dependencies
 - **Existing services:** Card data, deck data, card images, card-tooltip component available for reuse
 - **Routing:** New route `/decks/:id/simulator` in flat `app.routes.ts` config
-- **Styling:** SCSS with shared styles from `src/app/styles/`, visual reference is Yu-Gi-Oh! Master Duel
+- **Styling:** SCSS with shared styles from `src/app/styles/`
 - **TypeScript:** Strict mode, ES2022 target
 - **No backend changes:** All state is ephemeral, client-side only
 - **Zero direct board state mutation:** All state changes must go through the command stack. This is non-negotiable for undo/redo integrity and debuggability.
@@ -59,8 +59,7 @@ The simulator is fully manual with no rules engine — the player has complete f
 - **Drag & drop orchestration:** cdkDropListGroup connects all 18 zones. Zone capacity enforcement, visual feedback during drag, and drop validation are cross-cutting across all zone components.
 - **Performance discipline:** OnPush + signals throughout. No unnecessary re-renders when only one zone changes. cdkDropListSortingDisabled on single-card zones.
 - **Card rendering consistency:** Cards appear in multiple contexts (hand, board zones, overlays, tooltips) — consistent rendering logic needed.
-- **Board scaling:** The board uses a fixed 16:9 aspect ratio container that scales via `transform: scale()` to fit the available viewport space. The scale factor must be computed reactively (viewport resize, navbar toggle) and propagated to the board component.
-- **Visual density management:** 18 zones on a single screen requires planned visual hierarchy (primary vs secondary zones), discoverable actions without a rules engine to guide the player, and overlay interaction patterns that don't obscure the board.
+- **Board scaling:** The board uses a fixed aspect ratio container that scales via `transform: scale()` to fit the available viewport space. The scale factor must be computed reactively (viewport resize, navbar toggle) and propagated to the board component. → See UX spec for visual behavior (dimensions, transform-origin, letterboxing).
 
 ## Starter Template Evaluation
 
@@ -82,7 +81,7 @@ Frontend web (Angular SPA) — brownfield project. The simulator is a new featur
 TypeScript 5.5.4 strict mode, ES2022 target, `useDefineForClassFields: false` for Angular compatibility.
 
 **Styling Solution:**
-SCSS with shared styles from `src/app/styles/`. Angular Material theming. Visual reference: Yu-Gi-Oh! Master Duel.
+SCSS with shared styles from `src/app/styles/`. Angular Material theming.
 
 **Build Tooling:**
 Angular CLI with existing build and deployment pipeline. No additional configuration needed.
@@ -150,13 +149,12 @@ SimulatorPage (page container — loads deck, orchestrates)
 - ZoneComponent is generic: adapts behavior based on ZoneId (single-card enforcement, dual-purpose Pendulum indicator)
 - CardComponent is unique and reused everywhere: handles face-up/down, ATK/DEF rotation, drag handle
 
-**Board Scaling Model: Fixed 16:9 with Proportional Scaling**
-- The board container has fixed internal dimensions (16:9 aspect ratio). Zone sizes use fixed proportions inside this container — no `fr`/`minmax()`.
-- The container scales via `transform: scale()` to fit the available viewport space (width minus navbar width if expanded × height).
+**Board Scaling Model:**
+- The board container has fixed internal dimensions (1060×772). Zone sizes use fixed proportions inside this container — no `fr`/`minmax()`.
+- The container scales via `transform: scale()` to fit the available viewport space.
 - Scale factor: `min(availableWidth / boardWidth, availableHeight / boardHeight)` — computed as a signal in `BoardComponent`, reactive to `window.resize` and navbar collapse state.
-- The board is centered in the available space; empty space (letterboxing) shows the app background.
 - No breakpoints, no responsive layout changes — the grid structure is invariant; only the scale factor changes.
-- `transform-origin: top center` to anchor scaling from the top of the available area.
+- → See UX spec for visual behavior (transform-origin, letterboxing, mobile portrait anchoring).
 
 **Command Pattern Design: Delta-Based**
 - Interface: `SimCommand { execute(): void; undo(): void; }`
@@ -242,9 +240,10 @@ User Action (drag drop / button / keyboard)
 
 **Collapsible Navbar Signal Flow:**
 - The navbar collapse state (`navbarCollapsed` signal) lives in the **NavbarComponent** (or a shared app-level service if multiple components need it). It is NOT a simulator service concern.
-- On the simulator page, the navbar starts **collapsed by default**. On all other pages, it starts expanded. This is driven by the route — `SimulatorPageComponent` sets `navbarCollapsed = true` on init.
+- The route drives the initial collapse state — `SimulatorPageComponent` sets `navbarCollapsed = true` on init.
 - `BoardComponent` reads the navbar width (or collapsed state) to compute its scale factor. This can be done via a `ResizeObserver` on the viewport area beside the board, or by reading `navbarCollapsed` and computing available width = `window.innerWidth - navbarWidth`.
 - Navbar toggle state is **ephemeral** — not persisted across navigations.
+- → See UX spec for visual behavior (widths, default states per page, dark theme).
 
 ### Component Communication Patterns
 
@@ -264,9 +263,9 @@ User Action (drag drop / button / keyboard)
 ### Context Menu Pattern
 
 - `event.preventDefault()` on `contextmenu` event on the **entire board** in all builds (including `isDevMode()`). The native browser context menu is never shown on the board. The navbar retains native context menu.
-- **Stacked zones** (Deck, ED): right-click opens `mat-menu` with zone-specific actions (Shuffle, Search for Deck; View for ED).
-- **Board cards**: right-click opens `mat-menu` with card state actions (Flip face-down/up, Change to ATK/DEF). Menu items are dynamic, computed from current card state.
-- No custom context menu component — `mat-menu` used directly. This is consistent with the "no new abstractions" principle.
+- `mat-menu` used directly for all context menus — no custom component. Consistent with the "no new abstractions" principle.
+- Menu items are dynamic, computed from current card/zone state.
+- → See UX spec for specific menu items per zone type.
 
 ### Error Handling Patterns
 
@@ -276,10 +275,8 @@ User Action (drag drop / button / keyboard)
 
 ### Debug Observability Pattern
 
-- Computed signals exposing: last command name, undoStack size, redoStack size
-- Displayed in a small debug panel in dev mode only (behind `isDevMode()`)
-- Zero cost in production — panel not rendered when `isDevMode()` is false
-- Aids manual testing by showing command flow in real-time
+- Debug counter removed per UX audit. No dev-only debug UI on the simulator board.
+- Debugging relies on browser DevTools + Angular DevTools signal inspection.
 
 ### Enforcement Guidelines
 
