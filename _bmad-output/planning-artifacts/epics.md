@@ -1327,3 +1327,374 @@ So that I can search and browse cards comfortably on any device.
 **And** the simulator has zero regression from the extraction
 **And** all touch targets meet 44×44px minimum on mobile (NFR12 complete)
 
+---
+
+## Epic 9: UI/UX Modernization (Screen Implementation Guide)
+
+> The entire application transitions from its legacy light-theme color palette to a unified dark theme built on CSS custom properties. A global design token system (`_tokens.scss`) provides the semantic palette foundation. Each screen is modernized individually — sidebar, search bar, deck cards, deck builder, and simulator — following the risk-minimized order from the Screen Implementation Guide. The simulator overrides global tokens via scoped `:host` for its distinct navy/cyan theme.
+
+**Implementation Notes:**
+
+- Stories are ordered by the risk-minimized implementation order from the Screen Implementation Guide (§Recommended Implementation Order). Dependencies flow forward: story 9-1 (global tokens) is the foundation for all others. Sidebar dark (9-2) validates the token system globally. Search bar (9-3) validates Material theming. Simulator stories (9-9 through 9-12) are grouped but ordered by dependency.
+- Migration is incremental per screen — no big-bang variable replacement. Each story migrates only the components it touches. Old SCSS variables in `variable.scss` remain until all consumers are migrated.
+- The Screen Implementation Guide (`screen-implementation-guide.md`) is the primary reference for per-screen decisions, key files, issues, and regression risks. The UX Design Specification (`ux-design-specification.md` §Customization Strategy, §Visual Design Foundation) defines the token values and design system foundations.
+- No new dependencies — all changes use existing Angular Material, CDK, and SCSS infrastructure.
+
+### Story 9.1: Global Tokens
+
+As a developer,
+I want a unified global design token system using CSS custom properties on `:root` in a new `_tokens.scss` file,
+So that all screens share a consistent dark theme foundation and each page can override tokens via scoped `:host` without duplicating values.
+
+**Acceptance Criteria:**
+
+**Given** the application needs a unified token system
+**When** `_tokens.scss` is created in `front/src/app/styles/`
+**Then** it defines CSS custom properties on `:root` with the complete semantic palette (10 tokens: `--surface-base`, `--surface-card`, `--surface-card-hover`, `--surface-elevated`, `--surface-nav`, `--accent-primary`, `--accent-primary-dim`, `--text-primary`, `--text-secondary`, `--danger`)
+
+**Given** `_tokens.scss` is created
+**When** it is imported in `styles.scss` via `@import 'app/styles/tokens'`
+**Then** the `:root` custom properties are available globally to all components
+**And** the import is placed after `material` and before `variable`
+
+**Given** the application builds
+**When** `ng build` completes
+**Then** zero compilation errors occur and the existing application functions identically — no visual regression on any page
+
+**Given** the old SCSS variables in `variable.scss` still exist
+**When** this story is complete
+**Then** `variable.scss` is NOT modified, no existing component SCSS files are modified, and `_sim-tokens.scss` is NOT modified
+
+**Given** `_tokens.scss` includes documentation
+**When** a developer reads the file
+**Then** a migration mapping comment block documents old SCSS variable → new CSS custom property relationships, variables with no direct replacement, deprecated variables, and a note that migration is incremental per screen
+
+### Story 9.2: Sidebar Dark
+
+As a user,
+I want the navigation sidebar and mobile toolbar to use the dark theme,
+So that the entire application has a cohesive dark visual identity instead of a jarring light navigation on dark content.
+
+**Acceptance Criteria:**
+
+**Given** the navbar component uses a light gradient background
+**When** the sidebar dark theme is applied
+**Then** the background is replaced with `var(--surface-nav)` on desktop sidebar, mobile top bar, and mobile drawer
+**And** text color uses `var(--text-primary)` instead of `$black`
+
+**Given** navigation items have hover and active states
+**When** they are rendered with the dark theme
+**Then** hover state uses `var(--surface-card)` background with 150ms ease transition
+**And** active item has a 3px left border in `var(--accent-primary)` + `var(--accent-primary-dim)` background
+
+**Given** the collapse toggle has a hardcoded light background (`rgb(230,230,230)`)
+**When** the dark theme is applied
+**Then** the toggle background is migrated to use tokens
+
+**Given** the sidebar dark theme is applied
+**When** all pages are tested (simulator, deck list, deck builder, card search, login, settings)
+**Then** no text is invisible (no dark-on-dark) and no visual regression occurs on page content
+
+### Story 9.3: Search Bar Dark
+
+As a user,
+I want the search bar and filter controls to use the dark theme,
+So that form inputs blend seamlessly with the dark background instead of showing harsh white fields.
+
+**Acceptance Criteria:**
+
+**Given** the search bar uses default Material form field styling (white background)
+**When** the dark theme is applied
+**Then** the background is `var(--surface-card)`, text is `var(--text-primary)`, placeholder is `var(--text-secondary)`
+**And** focus state uses `var(--accent-primary)` border/outline
+
+**Given** the search bar is a shared component used in both card search page and deck builder
+**When** the style changes are applied
+**Then** both contexts render correctly with the dark theme
+**And** clear button (X), search icon, and filter badge all use appropriate token colors
+
+**Given** the filter badge uses `$blue` (#93dafa) border
+**When** the dark theme is applied
+**Then** the badge uses `var(--accent-primary)` instead
+
+### Story 9.4: Deck Card Redesign
+
+As a user,
+I want deck cards in the deck list to have a modern dark design with subtle shadows and proper hover feedback,
+So that the deck list looks polished and consistent with the dark theme.
+
+**Acceptance Criteria:**
+
+**Given** deck cards currently have `border: 1px solid $white` and asymmetric border-radius
+**When** the redesign is applied
+**Then** borders are removed, background is `var(--surface-card)`, border-radius is `12px`, and `box-shadow: 0 2px 8px rgba(0,0,0,0.3)` is applied
+
+**Given** a user hovers over a deck card on desktop
+**When** the card has the new hover state
+**Then** elevation increases, background shifts to `var(--surface-card-hover)`, with 150ms transition
+
+**Given** the delete button is currently a red circle with no confirmation
+**When** the redesign is applied
+**Then** it becomes a subtle `mat-icon-button` (trash icon) top-right in `var(--danger)` color
+**And** clicking it triggers a confirmation dialog before deletion
+**And** `$event.stopPropagation()` prevents card navigation on delete click
+
+**Given** the create button uses `$blue` with `scale(4)` animation
+**When** the redesign is applied
+**Then** it becomes a ghost card first in the grid with `dashed 2px var(--accent-primary-dim)` border and `+` icon in `var(--accent-primary)`
+
+**Given** the deck list has no empty state for 0 decks
+**When** the empty state is implemented
+**Then** a centered message and CTA button are displayed when no decks exist
+
+### Story 9.5: Grid Minmax Conditional
+
+As a user,
+I want the card grid to use appropriate minimum column widths depending on context,
+So that cards are legible on the standalone search page while fitting in the deck builder's narrower side panel.
+
+**Acceptance Criteria:**
+
+**Given** `card-list` is a shared component used in both card search page and deck builder
+**When** the grid minmax is made conditional
+**Then** the standalone search page uses `minmax(100px, 1fr)` for better readability
+**And** the deck builder context uses `minmax(85px, 1fr)` to fit the narrower side panel
+
+**Given** the deck builder passes `deckBuildMode=true` input
+**When** this input is used as CSS class discriminant
+**Then** the correct minmax value is applied per context via CSS
+
+**Given** grid gap is currently `0.5em`
+**When** the update is applied
+**Then** gap increases to `0.75em` for breathing room
+
+**Given** the grid changes are applied
+**When** both the card search page and deck builder are tested
+**Then** card grids render correctly in both contexts at all breakpoints
+
+### Story 9.6: Deck Builder Headers & Zone Separation
+
+As a user,
+I want clear section headers (MAIN/EXTRA/SIDE) and visual separation between deck zones,
+So that I can quickly identify which section I'm viewing when scrolling through my deck.
+
+**Acceptance Criteria:**
+
+**Given** section headers currently use `rgba(0,0,0,0.3)` on dark background
+**When** the redesign is applied
+**Then** headers use opaque `var(--surface-nav)` background, uppercase bold label with count badge as pill (e.g., `MAIN [38]`)
+**And** a 3px left border in `var(--accent-primary)` marks each section
+**And** count color is `var(--danger)` when illegal (main < 40 or > 60), `var(--accent-primary)` when valid
+
+**Given** sections are stacked with minimal spacing
+**When** zone separation is added
+**Then** `margin-top: 1rem` is applied between MAIN→EXTRA and EXTRA→SIDE sections
+
+**Given** the headers are styled
+**When** the user scrolls through the deck viewer
+**Then** headers are sticky (`position: sticky`) so the current section is always visible
+**And** z-index is above cards but below modals/inspector
+
+### Story 9.7: Deck Name Collapsed
+
+As a user,
+I want the deck name input to display as collapsed text by default and expand to an editable input on tap,
+So that the header area is cleaner and less cluttered.
+
+**Acceptance Criteria:**
+
+**Given** the deck name is currently always displayed as a mat-form-field
+**When** collapsed mode is implemented
+**Then** the name displays as text only by default
+**And** tapping/clicking the text reveals the input field with focus
+**And** blur or Enter saves and returns to text display
+
+**Given** the collapsed mode applies to both mobile portrait and landscape
+**When** the user interacts with the deck name
+**Then** the behavior is consistent across breakpoints
+
+**Given** the auto-save triggers on blur
+**When** the user is still typing
+**Then** a debounce prevents premature saves
+
+### Story 9.8: Toggles Landscape
+
+As a user,
+I want the view mode toggles to be merged into the search bar row on landscape viewports,
+So that vertical space is preserved and I can see more card results.
+
+**Acceptance Criteria:**
+
+**Given** view mode toggles currently occupy a separate row (~44px) below the search bar
+**When** landscape viewport is detected
+**Then** toggles are merged into the same row as the search bar: `[search input] [toggles] [filter button]`
+**And** ~44px vertical space is saved (one extra card row visible)
+
+**Given** the toggles use individual `mat-icon` buttons
+**When** the redesign is applied
+**Then** they use `mat-button-toggle-group` compact with tooltips
+**And** active state uses `var(--accent-primary-dim)` background + `var(--accent-primary)` icon
+
+**Given** the portrait layout currently stacks search and toggles
+**When** portrait orientation is active
+**Then** the stacked layout is preserved (no regression)
+
+**Given** the merge affects both card search page and deck builder (shared card-searcher component)
+**When** both contexts are tested in landscape
+**Then** the merged layout renders correctly in both
+
+### Story 9.9: Simulator Board Bottom, Inspector Top & Zone Labels
+
+As a user,
+I want the simulator board anchored at the bottom of the viewport on mobile portrait with the card inspector at the top and labels on empty zones,
+So that the board is thumb-friendly, card details are at eye level, and I can identify zones without cards.
+
+**Acceptance Criteria:**
+
+**Given** the board is currently anchored at the top on mobile portrait
+**When** the layout is updated
+**Then** `transform-origin` changes to `bottom center` on mobile portrait, anchoring the board at the bottom
+**And** the hand zone is at the bottom edge of the viewport for thumb interaction
+
+**Given** the card inspector currently supports `position: 'left' | 'right'`
+**When** mobile portrait is detected
+**Then** a `'top'` position option is added and used, displaying the inspector as a floating overlay at the top of the viewport
+**And** the inspector does not cover Extra Monster zones
+
+**Given** zone labels were previously removed due to CDK drag bugs
+**When** labels are reimplemented on empty zones
+**Then** labels display zone names (GY, Banish, ED, Deck, Field, etc.) in `var(--text-secondary)` at ~0.65rem
+**And** labels disappear when a card is placed in the zone
+**And** `pointer-events: none` + low z-index prevent CDK drag interference
+
+**Given** the layout changes are applied
+**When** drag & drop operations are tested on mobile portrait
+**Then** all drag operations work correctly with no regression from label or layout changes
+
+### Story 9.10: Simulator XYZ Peek Mobile Positioning
+
+As a user,
+I want the XYZ material peek panel positioned above the board on mobile portrait instead of to the right,
+So that the panel doesn't clip or overflow on narrow viewports.
+
+**Acceptance Criteria:**
+
+**Given** the XYZ peek panel is positioned absolute right
+**When** mobile portrait viewport is detected
+**Then** the panel is repositioned as a top overlay (matching the inspector placement strategy)
+
+**Given** the panel uses `$sim-*` tokens directly
+**When** the token migration is applied
+**Then** tokens are migrated to reference global tokens with simulator overrides via `:host`
+
+**Given** the panel has a `@media (prefers-reduced-motion)` block
+**When** the cleanup is applied
+**Then** the block is removed from the component SCSS
+
+**Given** the repositioning is applied
+**When** CDK drag from peek panel to board zones is tested on mobile portrait
+**Then** drag operations work correctly across the repositioned boundary
+
+### Story 9.11: Simulator Hide Top Bar & Back Button
+
+As a user,
+I want the mobile top bar hidden in landscape simulator mode with a back button in the control bar,
+So that the simulator is fully immersive with maximum board space.
+
+**Acceptance Criteria:**
+
+**Given** the mobile top bar consumes 48px on the simulator in landscape
+**When** landscape simulator mode is detected
+**Then** the top bar is hidden (simulator-specific immersive mode)
+
+**Given** the top bar is hidden
+**When** a back/exit button is added to the control bar pill
+**Then** it navigates back to the deck builder (`/decks/:id`)
+**And** no quit confirmation is needed (state is ephemeral by design)
+
+**Given** the immersive mode uses a service signal
+**When** the simulator component is destroyed
+**Then** the signal is cleaned up and the top bar reappears on other pages
+
+### Story 9.12: Simulator Token Migration
+
+As a developer,
+I want the simulator's `_sim-tokens.scss` migrated to reference global tokens with simulator-specific overrides via `:host`,
+So that the dual token system is unified and the simulator inherits shared values without duplication.
+
+**Acceptance Criteria:**
+
+**Given** the simulator currently uses ~15 `$sim-*` SCSS variables in `_sim-tokens.scss`
+**When** the migration is applied
+**Then** `SimulatorPageComponent` overrides global tokens via `:host` (e.g., `--surface-base: #0a0e1a`, `--accent-primary: #00d4ff`)
+**And** shared values (`--text-primary`, `--text-secondary`, `--danger`, `--surface-elevated`) inherit from global — zero duplication
+
+**Given** the simulator uses cyan `#00d4ff` for interactive accents and gold `#d4a017` for success glow
+**When** the token mapping is applied
+**Then** cyan maps to `--accent-primary` override and gold glow remains hardcoded or as a simulator-specific token (NOT confused with global gold `#C9A84C`)
+
+**Given** the migration is applied
+**When** all simulator interactions are tested
+**Then** zone borders, drag highlights, card glow, control bar, pile overlays, and hand rendering all appear visually identical to before the migration
+
+**Given** the old `_sim-tokens.scss` file
+**When** the migration is complete
+**Then** it is either removed or reduced to only simulator-specific derived values that cannot be expressed as global token overrides
+
+### Story 9.13: Bottom Sheet
+
+As a user,
+I want the deck builder's mobile portrait search to open as a bottom sheet instead of a full overlay,
+So that the top of my deck remains visible while searching for cards.
+
+**Acceptance Criteria:**
+
+**Given** mobile portrait search currently opens as a full-width overlay
+**When** the bottom sheet is implemented
+**Then** it opens with snap points: 60% height (default), 100% on drag up, dismiss on drag down
+**And** a drag handle is visible at the top of the sheet
+**And** the top of the deck remains visible at the 60% snap point
+
+**Given** the bottom sheet is a custom component (no new dependency)
+**When** it is implemented
+**Then** it uses CDK touch/drag or vanilla pointer events for snap point tracking
+**And** velocity calculation determines whether to snap up, stay, or dismiss
+
+**Given** cards in the bottom sheet are draggable to deck zones via CDK
+**When** a card is dragged from the sheet to a deck zone
+**Then** `cdkDropListGroup` coverage allows the drag to cross the sheet boundary
+
+**Given** the virtual keyboard opens on mobile (search input focus)
+**When** the viewport resizes
+**Then** the bottom sheet handles the resize via `visualViewport` API without breaking layout
+
+**Given** the bottom sheet z-index
+**When** layered with other UI elements
+**Then** it is above the FAB search button but below the card inspector
+
+### Story 9.14: Infinite Scroll Indicator
+
+As a user,
+I want a loading indicator during infinite scroll and an end-of-results message,
+So that I know whether more cards are loading or if I've reached the end of the results.
+
+**Acceptance Criteria:**
+
+**Given** the card search page uses infinite scroll via `search-service-core`
+**When** more results are being fetched
+**Then** a spinner or skeleton row is displayed at the bottom of the card grid
+
+**Given** the API returns fewer than 60 items (page size)
+**When** the end of results is reached
+**Then** a "Fin des résultats" message is displayed instead of the spinner
+
+**Given** the loading indicator is implemented
+**When** the user scrolls through results
+**Then** the spinner appears promptly when a fetch starts and disappears when results are rendered
+
+**Given** Epic 9 is fully complete (stories 9.1–9.14)
+**When** all pages are tested across viewports (375px to 2560px+)
+**Then** the entire application uses the unified dark theme with consistent token usage
+**And** the simulator retains its distinct navy/cyan visual identity via scoped `:host` overrides
+**And** no visual regression exists on any page compared to pre-Epic-9 state (accounting for intentional redesigns)
+
