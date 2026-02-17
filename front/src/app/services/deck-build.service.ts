@@ -30,6 +30,8 @@ export class DeckBuildService extends SearchServiceCore {
   readonly sideCardNumber = computed(() => this.deck().sideCardNumber);
   private readonly handTestOpenedState = signal<boolean>(false);
   readonly handTestOpened = this.handTestOpenedState.asReadonly();
+  private readonly cardDragActiveState = signal(false);
+  readonly cardDragActive = this.cardDragActiveState.asReadonly();
 
   constructor(private readonly httpClient: HttpClient) {
     super();
@@ -104,5 +106,9 @@ export class DeckBuildService extends SearchServiceCore {
 
   public toggleHandTestOpened() {
     this.handTestOpenedState.update(value => !value);
+  }
+
+  public setCardDragActive(active: boolean) {
+    this.cardDragActiveState.set(active);
   }
 }

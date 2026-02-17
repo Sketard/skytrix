@@ -39,14 +39,7 @@
       </button>
       <deck-viewer (cardClicked)="onCardClicked($event)"></deck-viewer>
     </div>
-    <div class="deckBuilder-side" [class.opened]="searchPanelOpened()">
-      <button
-        mat-icon-button
-        class="deckBuilder-side-close"
-        aria-label="Fermer le panneau"
-        (click)="toggleSearchPanel()">
-        <mat-icon>close</mat-icon>
-      </button>
+    <div class="deckBuilder-side">
       <!-- HEADER (inside side panel) -->
       <div class="deckBuilder-side-header">
         <div class="deckBuilder-side-header-deckName">
@@ -122,6 +115,20 @@
       </div>
     </div>
   </div>
+
+  <!-- BOTTOM SHEET (mobile portrait only, hidden via CSS on desktop/landscape) -->
+  <app-bottom-sheet
+    [opened]="searchPanelOpened() && isMobilePortrait()"
+    [cardDragActive]="isCardDragActive()"
+    (closed)="searchPanelOpened.set(false)">
+    <app-card-searcher
+      [deckBuildMode]="true"
+      [searchService]="deckBuildService"
+      (cardClicked)="onCardClicked($event)"></app-card-searcher>
+    <div class="deckBuilder-side-filters" [class.opened]="filtersOpened()">
+      <app-card-filters [searchService]="deckBuildService" [filtersOpened]="filtersOpened()" (close)="closeFilters()"></app-card-filters>
+    </div>
+  </app-bottom-sheet>
 
   <input id="importDeckInput" hidden type="file" #importInput (change)="import()" />
 

@@ -4,7 +4,7 @@
   [class.deckBuildMode]="deckBuildMode()"
   cdkDropList
   cdkDropListSortingDisabled
-  id="cardList"
+  [cdkDropListData]="{ source: 'search' }"
   (cdkDropListDropped)="onDrop($event)">
   @for (cd of cardsDetails$() | async; track cd.card.id) {
     @if (displayMode() === displayType.OWNED) {
@@ -35,6 +35,7 @@
            [cdkDragDisabled]="!deckBuildMode()"
            [cdkDragData]="cd"
            (cdkDragStarted)="onDragStart($event)"
+           (cdkDragEnded)="onDragEnd()"
            (dblclick)="onDoubleClick(cd, $event)"
            (click)="onCardClick(cd)">
         <div class="card-image-container">

@@ -50,6 +50,7 @@ export abstract class SearchServiceCore implements OnDestroy {
   readonly hasMoreResults = this.hasMoreResultsState.asReadonly();
 
   private unsubscribe$ = new Subject<void>();
+  private fetchActive = false;
 
   ngOnDestroy(): void {
     this.unsubscribe$.next();
@@ -77,7 +78,9 @@ export abstract class SearchServiceCore implements OnDestroy {
     this.filterForm.controls.name.setValue(this.filterForm.controls.name.value);
   }
 
-  public fetch(httpClient: HttpClient) {
+  public fetch(httpClient: HttpClient): boolean {
+    if (this.fetchActive) return false;
+    this.fetchActive = true;
     this.unsubscribe$.next();
     this.unsubscribe$ = new Subject<void>();
     this.isLoadingState.set(false);
@@ -140,6 +143,7 @@ export abstract class SearchServiceCore implements OnDestroy {
           }
         }
       });
+    return true;
   }
 
   public clearOffset() {
@@ -148,6 +152,7 @@ export abstract class SearchServiceCore implements OnDestroy {
       content.scrollTop = 0;
     }
     this.offset = 0;
+    this.fetchActive = false;
   }
 
   public static buildSearchForm(): TypedForm<CardFilterDTO> {
