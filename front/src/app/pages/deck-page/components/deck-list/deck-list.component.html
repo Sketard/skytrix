@@ -1,11 +1,24 @@
-<div class="deckPage">
-  <deck-box class="deckPage-deck" [add]="true"></deck-box>
-  <div class="deckPage-deck" *ngFor="let deck of deckBuildService.decks$ | async">
-    <deck-box [deck]="deck"></deck-box>
-    <mat-icon
-      class="deckPage-deck-remove"
-      fontIcon="delete"
-      (click)="removeDeck(deck!.id!); $event.stopPropagation()"
-      (keyup)="removeDeck(deck!.id!); $event.stopPropagation()"></mat-icon>
-  </div>
-</div>
+@if (deckBuildService.decks$ | async; as decks) {
+  @if (decks.length > 0) {
+    <div class="deckPage">
+      <deck-box class="deckPage-deck" [add]="true"></deck-box>
+      @for (deck of decks; track deck.id) {
+        <div class="deckPage-deck">
+          <deck-box [deck]="deck"></deck-box>
+          <button
+            mat-icon-button
+            class="deckPage-deck-remove"
+            [attr.aria-label]="'Supprimer ' + deck.name"
+            (click)="confirmDelete(deck); $event.stopPropagation()">
+            <mat-icon fontIcon="delete"></mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="deckPage-empty">
+      <p class="deckPage-empty-message">Aucun deck pour le moment</p>
+      <a class="deckPage-empty-cta" routerLink="/decks/builder">Créer un deck</a>
+    </div>
+  }
+}

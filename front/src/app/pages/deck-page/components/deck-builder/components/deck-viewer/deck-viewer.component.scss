@@ -1,8 +1,6 @@
-@use 'variable' as *;
-
 .deckViewer {
   &-part {
-    margin-top: 1.5em;
+    margin-top: 1rem;
     width: 100%;
 
     &:first-child {
@@ -16,19 +14,21 @@
       padding: 0.4em 0.5em;
       font-weight: bold;
       font-size: 0.9em;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 2px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--surface-nav);
+      border-left: 3px solid var(--accent-primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+      color: var(--text-primary);
 
       &-count {
         margin-left: auto;
-        background: $green;
-        color: $white;
-        border-radius: 4px;
-        padding: 0 0.4em;
+        color: var(--accent-primary);
         font-size: 0.9em;
 
         &.illegal {
-          background: $red;
+          color: var(--danger);
         }
       }
     }

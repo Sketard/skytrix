@@ -3,9 +3,26 @@
   <div class="deckBuilder-body">
     <div class="deckBuilder-canvasParent">
       <div class="deckBuilder-deckNameMobile">
-        <mat-form-field>
-          <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
-        </mat-form-field>
+        @if (isEditingName()) {
+          <mat-form-field>
+            <input
+              #deckNameInput
+              matInput
+              placeholder="Nom du deck..."
+              [(ngModel)]="deckBuildService.deck().name"
+              (blur)="stopEditingName()"
+              (keydown)="onNameKeydown($event)" />
+          </mat-form-field>
+        } @else {
+          <span class="deckBuilder-deckNameMobile-text"
+            tabindex="0"
+            role="button"
+            (click)="startEditingName()"
+            (keydown.enter)="startEditingName()"
+            (keydown.space)="startEditingName(); $event.preventDefault()">
+            {{ deckBuildService.deck().name || 'Nom du deck...' }}
+          </span>
+        }
         <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
           <mat-icon>save</mat-icon>
         </button>
@@ -33,9 +50,26 @@
       <!-- HEADER (inside side panel) -->
       <div class="deckBuilder-side-header">
         <div class="deckBuilder-side-header-deckName">
-          <mat-form-field>
-            <input matInput placeholder="Nom du deck..." [(ngModel)]="deckBuildService.deck().name" />
-          </mat-form-field>
+          @if (isEditingName()) {
+            <mat-form-field>
+              <input
+                #deckNameInputDesktop
+                matInput
+                placeholder="Nom du deck..."
+                [(ngModel)]="deckBuildService.deck().name"
+                (blur)="stopEditingName()"
+                (keydown)="onNameKeydown($event)" />
+            </mat-form-field>
+          } @else {
+            <span class="deckBuilder-side-header-deckName-text"
+              tabindex="0"
+              role="button"
+              (click)="startEditingName()"
+              (keydown.enter)="startEditingName()"
+              (keydown.space)="startEditingName(); $event.preventDefault()">
+              {{ deckBuildService.deck().name || 'Nom du deck...' }}
+            </span>
+          }
           <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
             <mat-icon>save</mat-icon>
           </button>

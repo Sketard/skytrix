@@ -1,4 +1,3 @@
-@use 'variable' as *;
 @use 'responsive' as r;
 
 :host {
@@ -68,16 +67,9 @@
         mat-button-toggle-group {
           border-radius: 0;
           border: 0;
-        }
-
-        mat-button-toggle {
-          mat-icon {
-            transform: scale(0.8);
-          }
-        }
-
-        .mat-button-toggle-checked {
-          background-color: $blue;
+          --mat-legacy-button-toggle-text-color: var(--text-primary);
+          --mat-legacy-button-toggle-selected-state-background-color: var(--accent-primary-dim);
+          --mat-legacy-button-toggle-selected-state-text-color: var(--accent-primary);
         }
 
         mat-button-toggle {
@@ -115,7 +107,7 @@
   }
 
   &-filters {
-    background-color: black;
+    background-color: var(--surface-base);
     height: 100%;
     overflow: hidden;
     width: 0;

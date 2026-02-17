@@ -43,6 +43,12 @@ export abstract class SearchServiceCore implements OnDestroy {
   private readonly skipDebounceState = signal<boolean>(false);
   readonly skipDebounce = this.skipDebounceState.asReadonly();
 
+  private readonly isLoadingState = signal<boolean>(false);
+  readonly isLoading = this.isLoadingState.asReadonly();
+
+  private readonly hasMoreResultsState = signal<boolean>(true);
+  readonly hasMoreResults = this.hasMoreResultsState.asReadonly();
+
   private unsubscribe$ = new Subject<void>();
 
   ngOnDestroy(): void {
@@ -74,6 +80,8 @@ export abstract class SearchServiceCore implements OnDestroy {
   public fetch(httpClient: HttpClient) {
     this.unsubscribe$.next();
     this.unsubscribe$ = new Subject<void>();
+    this.isLoadingState.set(false);
+    this.hasMoreResultsState.set(true);
 
     const content = document.querySelector(this.CARDS_CONTAINER_CLASS);
     const scroll$ = fromEvent(content!, 'scroll').pipe(
@@ -106,19 +114,30 @@ export abstract class SearchServiceCore implements OnDestroy {
         let limit = content!.scrollHeight - content!.clientHeight;
         if (filterUpdate) {
           this.offset = 0;
+          this.hasMoreResultsState.set(true);
         }
-        if (scrollPos === limit || filterUpdate) {
-          this.search(httpClient, this.filters, this.quantity, this.offset)
-            .pipe(take(1))
-            .subscribe((cards: Array<CardDetail>) => {
-              if (filterUpdate) {
-                this.cardsDetails = cards;
-                filterUpdate = false;
-              } else {
-                this.cardsDetails = [...this.cardsDetails, ...cards];
-              }
-              this.offset += 1;
-            });
+        if (!this.isLoadingState() && (this.hasMoreResultsState() || filterUpdate)) {
+          if (scrollPos === limit || filterUpdate) {
+            this.isLoadingState.set(true);
+            this.search(httpClient, this.filters, this.quantity, this.offset)
+              .pipe(take(1))
+              .subscribe({
+                next: (cards: Array<CardDetail>) => {
+                  if (filterUpdate) {
+                    this.cardsDetails = cards;
+                    filterUpdate = false;
+                  } else {
+                    this.cardsDetails = [...this.cardsDetails, ...cards];
+                  }
+                  this.offset += 1;
+                  this.hasMoreResultsState.set(cards.length >= this.quantity);
+                  this.isLoadingState.set(false);
+                },
+                error: () => {
+                  this.isLoadingState.set(false);
+                },
+              });
+          }
         }
       });
   }

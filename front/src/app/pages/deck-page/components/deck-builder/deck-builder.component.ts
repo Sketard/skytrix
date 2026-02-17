@@ -1,6 +1,6 @@
 import { CardDetail, IndexedCardDetail } from '../../../../core/model/card-detail';
 import { DeckBuildService, DeckZone } from '../../../../services/deck-build.service';
-import { ChangeDetectionStrategy, Component, computed, ElementRef, Input, signal, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, Input, OnDestroy, signal, ViewChild } from '@angular/core';
 import { DeckViewerComponent } from './components/deck-viewer/deck-viewer.component';
 import { Deck } from '../../../../core/model/deck';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
@@ -45,7 +45,7 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DeckBuilderComponent {
+export class DeckBuilderComponent implements OnDestroy {
   @Input()
   set id(deckId: number | undefined) {
     if (deckId) {
@@ -54,6 +54,11 @@ export class DeckBuilderComponent {
   }
 
   @ViewChild('importInput') importInput: ElementRef | undefined;
+  @ViewChild('deckNameInput') deckNameInput: ElementRef<HTMLInputElement> | undefined;
+  @ViewChild('deckNameInputDesktop') deckNameInputDesktop: ElementRef<HTMLInputElement> | undefined;
+
+  readonly isEditingName = signal(false);
+  private nameEditTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
   private readonly selectedCardDetail = signal<CardDetail | null>(null);
@@ -77,6 +82,40 @@ export class DeckBuilderComponent {
     private readonly router: Router
   ) {
     this.deckBuildService.resetDeck();
+  }
+
+  ngOnDestroy(): void {
+    if (this.nameEditTimeout) {
+      clearTimeout(this.nameEditTimeout);
+    }
+  }
+
+  startEditingName(): void {
+    if (this.nameEditTimeout) {
+      clearTimeout(this.nameEditTimeout);
+      this.nameEditTimeout = null;
+    }
+    this.isEditingName.set(true);
+    setTimeout(() => {
+      const input = this.deckNameInput?.nativeElement ?? this.deckNameInputDesktop?.nativeElement;
+      input?.focus();
+    }, 0);
+  }
+
+  stopEditingName(): void {
+    this.isEditingName.set(false);
+    if (this.nameEditTimeout) {
+      clearTimeout(this.nameEditTimeout);
+    }
+    if (this.deckBuildService.deck().id) {
+      this.nameEditTimeout = setTimeout(() => this.save(), 500);
+    }
+  }
+
+  onNameKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      (event.target as HTMLInputElement).blur();
+    }
   }
 
   onCardClicked(cd: CardDetail): void {

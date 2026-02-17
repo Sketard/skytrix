@@ -61,6 +61,12 @@
   --text-primary: #EAEAEA;           // Primary text
   --text-secondary: #9E9E9E;         // Secondary text (metadata)
 
+  // Border tokens
+  --border-subtle: rgba(255, 255, 255, 0.3); // Subtle borders/indicators on dark surfaces
+
   // Semantic tokens
   --danger: #CF6679;                 // Destructive actions (Material dark error)
+
+  // Material component overrides
+  --mat-dialog-container-color: var(--surface-card);
 }
