@@ -101,7 +101,7 @@ development_status:
   # ── Epic 9: UI/UX Modernization (Screen Implementation Guide) ──
   epic-9: in-progress
   9-1-global-tokens: done
-  9-2-sidebar-dark: backlog
+  9-2-sidebar-dark: done
   9-3-search-bar-dark: backlog
   9-4-deck-card-redesign: backlog
   9-5-grid-minmax-conditional: backlog
