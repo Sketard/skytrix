@@ -1,8 +1,7 @@
 @use 'responsive' as *;
-@use 'variable' as *;
 
 // =============================================
-// Desktop sidebar styles (unchanged from 6.4)
+// Desktop sidebar styles
 // =============================================
 
 .navbar-sidebar {
@@ -10,8 +9,8 @@
   flex-direction: column;
   width: 260px;
   height: 100vh;
-  background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
-  color: $black;
+  background: var(--surface-nav);
+  color: var(--text-primary);
   position: relative;
   transition: width 200ms ease;
 
@@ -43,22 +42,28 @@
 
 .nav-link {
   text-decoration: none !important;
-  color: $black;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   font-weight: 600;
   padding: 0.75em 0.5em;
-  border-radius: 10px;
+  border-radius: 0 10px 10px 0;
   margin-top: 0.25rem;
   white-space: nowrap;
+  border-left: 3px solid transparent;
+  transition: background-color 150ms ease;
 
   mat-icon {
     margin-right: 0.5em;
   }
 
-  &:hover,
+  &:hover {
+    background-color: var(--surface-card);
+  }
+
   &.active {
-    background-color: rgba(59, 59, 59, 0.048);
+    background-color: var(--accent-primary-dim);
+    border-left-color: var(--accent-primary);
   }
 }
 
@@ -90,16 +95,16 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgb(230, 230, 230);
-  color: $black;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-card);
+  color: var(--text-primary);
   padding: 0;
   z-index: 10;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  transition: background 150ms ease;
+  transition: background-color 150ms ease;
 
   &:hover {
-    background: rgb(215, 215, 215);
+    background: var(--surface-card-hover);
   }
 }
 
@@ -116,9 +121,9 @@
   z-index: 1000;
   display: flex;
   align-items: center;
-  background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
-  color: $black;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
   padding: 0 0.5rem;
 }
 
@@ -163,8 +168,8 @@
   bottom: 0;
   width: 280px;
   z-index: 1100;
-  background: linear-gradient(to right bottom, rgb(240, 240, 240), rgb(220, 220, 220));
-  color: $black;
+  background: var(--surface-nav);
+  color: var(--text-primary);
   visibility: hidden;
   transform: translateX(-100%);
   transition: transform 200ms ease, visibility 0s 200ms;
@@ -188,7 +193,7 @@
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   height: 48px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .drawer-title {
@@ -212,6 +217,17 @@
 .mobile-nav-link {
   @include touch-target-min;
   width: 100%;
+  border-left: 3px solid transparent;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: var(--surface-card);
+  }
+
+  &.active {
+    background-color: var(--accent-primary-dim);
+    border-left-color: var(--accent-primary);
+  }
 }
 
 // =============================================
@@ -232,6 +248,14 @@
   }
 
   .drawer-backdrop {
+    transition: none;
+  }
+
+  .nav-link {
+    transition: none;
+  }
+
+  .mobile-nav-link {
     transition: none;
   }
 }
