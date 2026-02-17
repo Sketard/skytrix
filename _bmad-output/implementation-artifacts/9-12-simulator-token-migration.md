@@ -1,6 +1,6 @@
 # Story 9.12: Simulator Token Migration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -250,6 +250,7 @@ Angular `ViewEncapsulation.Emulated` (default) does NOT block CSS custom propert
 ## Change Log
 
 - 2026-02-17: Migrated simulator dual token system to unified CSS custom properties via `:host` overrides. Removed 12 color SCSS variables from `_sim-tokens.scss`, replaced all color `$sim-*` references across 8 SCSS files with `var(--*)` equivalents. Removed 7 `@media (prefers-reduced-motion)` blocks. `@use 'sim-tokens'` removed from `simulator-page.component.scss` and `control-bar.component.scss`. Build compiles with zero errors.
+- 2026-02-17 (Code Review): Fixed 3 MEDIUM + 1 LOW findings. Removed 3 dead CSS custom properties (`--sim-overlay-backdrop`, `--sim-glow-success`, `--danger`). Added `--sim-surface-translucent` to `:host` and replaced hardcoded `rgba(17, 24, 39, 0.85)` in control-bar. Noted UX spec divergence (L1) for future spec update.
 
 ## Dev Agent Record
 
@@ -259,31 +260,31 @@ Claude Opus 4.6
 
 ### Debug Log References
 
-- `rgba($sim-surface, 0.85)` in control-bar.component.scss hardcoded to `rgba(17, 24, 39, 0.85)` since CSS `rgba()` cannot decompose hex from `var()` — consistent with Dev Notes decision.
+- `rgba($sim-surface, 0.85)` in control-bar.component.scss initially hardcoded to `rgba(17, 24, 39, 0.85)`. Code review moved this to `--sim-surface-translucent` on `:host` for consistency with the derived-value pattern.
 - `rgba($sim-accent-primary, 0.3)` in hand.component.scss replaced with `var(--sim-zone-highlight)` since the computed value is identical (`rgba(0, 212, 255, 0.3)`).
 - During pile-overlay migration, `replace_all` for `$sim-surface` also matched `$sim-surface-elevated` (prefix collision), producing `var(--sim-surface)-elevated`. Fixed immediately by replacing the malformed string with `var(--surface-elevated)`.
 
 ### Completion Notes List
 
-- Task 1: Added `:host` block on `simulator-page.component.scss` with 5 global token overrides (`--surface-base`, `--accent-primary`, `--text-primary`, `--text-secondary`, `--danger`) and 6 simulator-specific CSS custom properties (`--sim-surface`, `--sim-zone-border`, `--sim-zone-highlight`, `--sim-zone-glow-success`, `--sim-overlay-backdrop`, `--sim-glow-success`). Verified ViewEncapsulation is default Emulated.
+- Task 1: Added `:host` block on `simulator-page.component.scss` with 4 global token overrides (`--surface-base`, `--accent-primary`, `--text-primary`, `--text-secondary`) and 5 simulator-specific CSS custom properties (`--sim-surface`, `--sim-surface-translucent`, `--sim-zone-border`, `--sim-zone-highlight`, `--sim-zone-glow-success`). Verified ViewEncapsulation is default Emulated. Code review removed 3 dead tokens (`--danger`, `--sim-overlay-backdrop`, `--sim-glow-success`) and added `--sim-surface-translucent`.
 - Task 2: Removed all 12 color SCSS variables from `_sim-tokens.scss`. Kept 12 spacing/sizing/animation variables and `@use 'sass:list'`.
 - Task 3: Migrated all 8 simulator SCSS files per replacement cheatsheet. Removed `@use 'sim-tokens'` from `simulator-page.component.scss` and `control-bar.component.scss` (no remaining SCSS vars). Kept `@use` on 6 files that still use spacing/sizing/animation SCSS vars.
 - Task 4: Removed all 7 `@media (prefers-reduced-motion: reduce)` blocks. `grep` confirms zero matches.
 - Task 5: `ng build` — zero compilation errors. Budget warnings are pre-existing. Visual verification subtasks (5.2-5.8) require manual user inspection.
 - AC #1: `:host` overrides defined, `--surface-elevated` inherits from global (no override needed — same value `#1e293b`).
-- AC #2: Cyan `#00d4ff` maps to `--accent-primary` override. Gold `#d4a017` is `--sim-glow-success` (NOT confused with global `#C9A84C`).
+- AC #2: Cyan `#00d4ff` maps to `--accent-primary` override. Gold `#d4a017` is used via pre-computed `--sim-zone-glow-success: rgba(212, 160, 23, 0.4)` (NOT confused with global `#C9A84C`).
 - AC #4: `_sim-tokens.scss` reduced to spacing/sizing/animation only.
 - AC #5: Zero `prefers-reduced-motion` matches in simulator directory.
 - AC #6: Zero orphaned color `$sim-*` references outside `_sim-tokens.scss`.
 
 ### File List
 
-- `front/src/app/pages/simulator/simulator-page.component.scss` — Modified: added `:host` overrides, replaced `$sim-bg` → `var(--surface-base)`, removed `@use 'sim-tokens'`
+- `front/src/app/pages/simulator/simulator-page.component.scss` — Modified: added `:host` overrides (4 global + 5 sim-specific), replaced `$sim-bg` → `var(--surface-base)`, removed `@use 'sim-tokens'`. Review: removed 3 dead tokens, added `--sim-surface-translucent`
 - `front/src/app/pages/simulator/_sim-tokens.scss` — Modified: removed 12 color SCSS variables, kept spacing/sizing/animation
 - `front/src/app/pages/simulator/board.component.scss` — Modified: replaced `$sim-bg` → `var(--surface-base)`, removed `prefers-reduced-motion` block
 - `front/src/app/pages/simulator/zone.component.scss` — Modified: replaced 6 color vars → CSS custom properties, removed `prefers-reduced-motion` block
 - `front/src/app/pages/simulator/stacked-zone.component.scss` — Modified: replaced 6 color vars → CSS custom properties, removed `prefers-reduced-motion` block
 - `front/src/app/pages/simulator/hand.component.scss` — Modified: replaced color vars, `rgba($sim-accent-primary, 0.3)` → `var(--sim-zone-highlight)`, removed `prefers-reduced-motion` block
-- `front/src/app/pages/simulator/control-bar.component.scss` — Modified: replaced all color vars, `rgba($sim-surface, 0.85)` → `rgba(17, 24, 39, 0.85)`, removed `@use 'sim-tokens'`, removed `prefers-reduced-motion` block
+- `front/src/app/pages/simulator/control-bar.component.scss` — Modified: replaced all color vars, `rgba($sim-surface, 0.85)` → `var(--sim-surface-translucent)`, removed `@use 'sim-tokens'`, removed `prefers-reduced-motion` block
 - `front/src/app/pages/simulator/pile-overlay.component.scss` — Modified: replaced all color vars, removed `prefers-reduced-motion` block
 - `front/src/app/pages/simulator/xyz-material-peek.component.scss` — Modified: replaced all color vars, removed `prefers-reduced-motion` block

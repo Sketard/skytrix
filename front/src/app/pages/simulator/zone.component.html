@@ -24,6 +24,9 @@
               (cdkDragEnded)="onDragEnded()"
               (clicked)="onCardClicked(c)" />
   }
+  @if (!card()) {
+    <span class="zone-label">{{ zoneConfig().shortLabel }}</span>
+  }
 
   @if (card()) {
     <span #cardMenuTrigger="matMenuTrigger"

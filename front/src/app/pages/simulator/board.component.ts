@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, isDevMode, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, HostListener, inject, input, isDevMode, signal, untracked } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ZoneId } from './simulator.models';
 import { SimZoneComponent } from './zone.component';
@@ -50,18 +50,23 @@ export class SimBoardComponent {
     };
   });
 
-  readonly inspectorPosition = computed<'left' | 'right'>(() => 'left');
+  readonly inspectorPosition = computed<'left' | 'right' | 'top'>(() =>
+    this.navbarCollapse.isMobilePortrait() ? 'top' : 'left'
+  );
 
   clearSelection(): void {
     this.boardState.clearSelection();
   }
 
+  readonly deckId = input(0);
   protected readonly scaleFactor = signal(1);
 
   constructor() {
     effect(() => {
       this.navbarCollapse.navbarWidth();
       this.navbarCollapse.isMobile();
+      this.navbarCollapse.isMobilePortrait();
+      this.navbarCollapse.shouldHideTopBar();
       untracked(() => this.recalculateScale());
     });
   }
@@ -74,7 +79,8 @@ export class SimBoardComponent {
   private recalculateScale(): void {
     const isMobile = this.navbarCollapse.isMobile();
     const availableWidth = isMobile ? window.innerWidth : window.innerWidth - this.navbarCollapse.navbarWidth();
-    const availableHeight = isMobile ? window.innerHeight - NavbarCollapseService.MOBILE_HEADER_HEIGHT : window.innerHeight;
+    const topBarVisible = isMobile && !this.navbarCollapse.shouldHideTopBar();
+    const availableHeight = topBarVisible ? window.innerHeight - NavbarCollapseService.MOBILE_HEADER_HEIGHT : window.innerHeight;
     this.scaleFactor.set(Math.min(availableWidth / 1060, availableHeight / 772, 1));
   }
 

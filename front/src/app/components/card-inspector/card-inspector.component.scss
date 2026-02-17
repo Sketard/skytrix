@@ -25,6 +25,14 @@
     left: auto;
     right: 8px;
   }
+
+  &.position-top {
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-height: 50%;
+  }
 }
 
 // Click mode: default theme for click-mode consumers
@@ -153,7 +161,7 @@
 }
 
 // Mobile: dismissable mode centered horizontally
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   :host.mode-dismissable {
     top: 8px;
     left: 50%;
@@ -164,6 +172,7 @@
       left: 50%;
       right: auto;
     }
+
   }
 
   :host.mode-dismissable .inspector-image {

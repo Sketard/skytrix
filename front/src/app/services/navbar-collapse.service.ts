@@ -18,6 +18,25 @@ export class NavbarCollapseService {
     { initialValue: false }
   );
 
+  readonly isMobilePortrait = toSignal(
+    this.breakpointObserver
+      .observe(['(max-width: 767px) and (orientation: portrait)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+
+  private readonly _immersiveMode = signal(false);
+  readonly immersiveMode = this._immersiveMode.asReadonly();
+
+  readonly isLandscape = toSignal(
+    this.breakpointObserver
+      .observe(['(orientation: landscape)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+
+  readonly shouldHideTopBar = computed(() => this.immersiveMode() && this.isLandscape());
+
   readonly collapsed = signal(false);
   readonly drawerOpen = signal(false);
   readonly navbarWidth = computed(() => (this.collapsed() ? this.COLLAPSED_WIDTH : this.EXPANDED_WIDTH));
@@ -40,5 +59,9 @@ export class NavbarCollapseService {
 
   openDrawer(): void {
     this.drawerOpen.set(true);
+  }
+
+  setImmersiveMode(value: boolean): void {
+    this._immersiveMode.set(value);
   }
 }

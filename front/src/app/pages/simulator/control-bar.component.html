@@ -1,5 +1,14 @@
 <div class="control-bar" role="toolbar" aria-label="Session controls">
   <button mat-icon-button
+          aria-label="Retour au constructeur de deck"
+          matTooltip="Retour"
+          (click)="onBack()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+
+  <div class="separator"></div>
+
+  <button mat-icon-button
           [disabled]="!canUndo()"
           [attr.aria-disabled]="!canUndo()"
           aria-label="Undo"

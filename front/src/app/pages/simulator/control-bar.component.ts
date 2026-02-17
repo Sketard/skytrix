@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, isDevMode } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, isDevMode } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 
@@ -19,6 +20,9 @@ import { CommandStackService } from './command-stack.service';
 export class SimControlBarComponent {
   private readonly boardState = inject(BoardStateService);
   private readonly commandStack = inject(CommandStackService);
+  private readonly router = inject(Router);
+
+  readonly deckId = input(0);
 
   readonly isPileOpen = this.boardState.isOverlayOpen;
   readonly canUndo = this.commandStack.canUndo;
@@ -41,6 +45,11 @@ export class SimControlBarComponent {
     } catch (e) {
       if (isDevMode()) console.warn('Redo failed:', e);
     }
+  }
+
+  onBack(): void {
+    const id = this.deckId();
+    this.router.navigate(id > 0 ? ['/decks', id] : ['/decks']);
   }
 
   onReset(): void {

@@ -8,16 +8,16 @@
             hideSingleSelectionIndicator
             class="cardSearchPage-searcher-displayMode"
             (change)="setDisplayMode($event.source.value)">
-            <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="displayMode() === displayType.INFORMATIVE">
+            <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="displayMode() === displayType.INFORMATIVE" matTooltip="Liste" aria-label="Liste">
               <mat-icon>view_headline</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.MOSAIC" [checked]="displayMode() === displayType.MOSAIC">
+            <mat-button-toggle [value]="displayType.MOSAIC" [checked]="displayMode() === displayType.MOSAIC" matTooltip="Mosaïque" aria-label="Mosaïque">
               <mat-icon>view_module</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.OWNED" [checked]="displayMode() === displayType.OWNED">
-              <mat-icon>store</mat-icon>
+            <mat-button-toggle [value]="displayType.OWNED" [checked]="displayMode() === displayType.OWNED" matTooltip="Mes cartes" aria-label="Mes cartes">
+              <mat-icon>style</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.FAVORITE" [checked]="displayMode() === displayType.FAVORITE">
+            <mat-button-toggle [value]="displayType.FAVORITE" [checked]="displayMode() === displayType.FAVORITE" matTooltip="Favoris" aria-label="Favoris">
               <mat-icon>star</mat-icon>
             </mat-button-toggle>
           </mat-button-toggle-group>
