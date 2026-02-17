@@ -1,6 +1,9 @@
 import { CardDetail, IndexedCardDetail } from '../../../../core/model/card-detail';
 import { DeckBuildService, DeckZone } from '../../../../services/deck-build.service';
-import { ChangeDetectionStrategy, Component, computed, ElementRef, Input, OnDestroy, signal, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, Input, OnDestroy, signal, ViewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { map } from 'rxjs';
 import { DeckViewerComponent } from './components/deck-viewer/deck-viewer.component';
 import { Deck } from '../../../../core/model/deck';
 import { CdkDropListGroup } from '@angular/cdk/drag-drop';
@@ -21,6 +24,7 @@ import { CardSearcherComponent } from '../../../../components/card-searcher/card
 import { HandTestComponent } from './components/hand-test/hand-test.component';
 import { Router } from '@angular/router';
 import { CardInspectorComponent } from '../../../../components/card-inspector/card-inspector.component';
+import { BottomSheetComponent } from '../../../../components/bottom-sheet/bottom-sheet.component';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
 @Component({
   selector: 'app-deck-builder',
@@ -39,6 +43,7 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../
     CardSearcherComponent,
     HandTestComponent,
     CardInspectorComponent,
+    BottomSheetComponent,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',
@@ -75,6 +80,14 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly filtersOpened = this.deckBuildService.openedFilters;
   readonly handTestOpened = this.deckBuildService.handTestOpened;
   readonly searchPanelOpened = signal(false);
+
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  readonly isMobilePortrait = toSignal(
+    this.breakpointObserver.observe(['(max-width: 767px) and (orientation: portrait)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+  readonly isCardDragActive = this.deckBuildService.cardDragActive;
 
   constructor(
     public deckBuildService: DeckBuildService,

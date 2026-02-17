@@ -1,0 +1,28 @@
+<div class="bottom-sheet-backdrop"
+  [class.visible]="sheetState() !== 'closed'"
+  (click)="onBackdropClick()"></div>
+
+<div class="bottom-sheet"
+  [class.dragging]="isDragging()"
+  [class.card-drag-active]="cardDragActive()"
+  [style.transform]="sheetTransform()"
+  [style.height.px]="viewportHeight()"
+  role="dialog"
+  aria-modal="false"
+  aria-label="Panneau de recherche de cartes">
+
+  <div class="bottom-sheet-handle"
+    role="slider"
+    aria-label="Ajuster la taille du panneau"
+    aria-orientation="vertical"
+    tabindex="0"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)">
+    <div class="bottom-sheet-handle-bar"></div>
+  </div>
+
+  <div class="bottom-sheet-content">
+    <ng-content></ng-content>
+  </div>
+</div>

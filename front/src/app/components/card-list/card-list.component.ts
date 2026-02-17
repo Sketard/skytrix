@@ -57,14 +57,24 @@ export class CardListComponent implements OnDestroy {
       const service = this.searchService();
       if (service) {
         this.cardsDetails$.set(service.cardsDetails$);
-        service.fetch(this.httpClient);
-        service.refreshResearch();
+        if (service.fetch(this.httpClient)) {
+          service.refreshResearch();
+        }
       }
     });
   }
 
   onDragStart(_event: CdkDragStart): void {
     this.dragging = true;
+    if (this.deckBuildMode()) {
+      this.deckBuildService.setCardDragActive(true);
+    }
+  }
+
+  onDragEnd(): void {
+    if (this.deckBuildMode()) {
+      this.deckBuildService.setCardDragActive(false);
+    }
   }
 
   onCardClick(cd: CardDetail): void {

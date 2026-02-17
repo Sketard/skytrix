@@ -88,11 +88,11 @@
     }
   }
 
-  // ─── SEARCH TOGGLE (mobile only) ───
+  // ─── SEARCH TOGGLE (mobile portrait only) ───
   &-searchToggle.mat-mdc-icon-button {
     display: none;
 
-    @include r.respond-below(r.$bp-tablet) {
+    @media (max-width: 767px) and (orientation: portrait) {
       display: flex;
       position: fixed;
       bottom: 1em;
@@ -130,40 +130,9 @@
     flex-direction: column;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
 
-    &-close {
+    // Mobile portrait: side panel hidden, bottom sheet takes over
+    @media (max-width: 767px) and (orientation: portrait) {
       display: none;
-    }
-
-    @include r.respond-below(r.$bp-tablet) {
-      position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: 100%;
-      min-width: 0;
-      z-index: 1000;
-      background-color: $black;
-      border-left: none;
-      transform: translateX(100%);
-      transition: transform 0.3s ease-in-out;
-
-      @media (prefers-reduced-motion: reduce) {
-        transition: none;
-      }
-
-      &.opened {
-        transform: translateX(0);
-      }
-
-      .deckBuilder-side-close {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        align-self: flex-end;
-        color: $white;
-        flex-shrink: 0;
-        @include r.touch-target-min;
-      }
     }
 
     // ─── HEADER (inside side panel) ───
@@ -275,6 +244,15 @@
     }
   }
 
+  // ─── BOTTOM SHEET (mobile portrait only) ───
+  app-bottom-sheet {
+    display: none;
+
+    @media (max-width: 767px) and (orientation: portrait) {
+      display: block;
+    }
+  }
+
   // ─── LANDSCAPE SPLIT (mobile landscape: side-by-side layout) ───
   @include r.landscape-split {
     &-searchToggle.mat-mdc-icon-button {
@@ -293,14 +271,6 @@
       z-index: auto;
       background-color: transparent;
       border-left: 1px solid rgba(255, 255, 255, 0.1);
-
-      &, &.opened {
-        transform: none;
-      }
-
-      .deckBuilder-side-close {
-        display: none;
-      }
 
       &-header {
         display: none;

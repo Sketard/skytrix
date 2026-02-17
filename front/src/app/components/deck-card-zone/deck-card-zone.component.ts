@@ -49,7 +49,7 @@ export class DeckCardZoneComponent {
   }
 
   drop(event: CdkDragDrop<any>) {
-    const fromListContainer = event.previousContainer.id === 'cardList';
+    const fromListContainer = event.previousContainer.data?.source === 'search';
     const sameContainer = event.previousContainer === event.container;
     const deckZone = this.deckZone();
     if (!deckZone) {
