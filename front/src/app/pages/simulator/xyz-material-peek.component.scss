@@ -11,8 +11,8 @@
   transform: translateY(-50%);
   width: 240px;
   max-height: 400px;
-  background: $sim-surface;
-  border: 1px solid $sim-zone-border;
+  background: var(--sim-surface);
+  border: 1px solid var(--sim-zone-border);
   border-radius: $sim-radius-zone;
   padding: $sim-padding-overlay;
   z-index: 50;
@@ -32,26 +32,26 @@
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: $sim-text-primary;
+  color: var(--text-primary);
 }
 
 .peek-close {
   background: none;
   border: none;
-  color: $sim-text-secondary;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: $sim-radius-card;
 
   &:hover {
-    color: $sim-text-primary;
-    background: $sim-surface-elevated;
+    color: var(--text-primary);
+    background: var(--surface-elevated);
   }
 }
 
 .peek-subtitle {
   font-size: 0.75rem;
-  color: $sim-text-secondary;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -73,7 +73,7 @@
   transition: background 100ms ease;
 
   &:hover {
-    background: $sim-surface-elevated;
+    background: var(--surface-elevated);
   }
 }
 
@@ -89,14 +89,14 @@
 .material-name {
   flex: 1;
   font-size: 0.8125rem;
-  color: $sim-text-primary;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .drag-handle {
-  color: $sim-text-secondary;
+  color: var(--text-secondary);
   font-size: 18px;
   width: 18px;
   height: 18px;
@@ -118,12 +118,3 @@
   to { opacity: 1; transform: translateY(-50%) translateX(0); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .material-peek-panel {
-    animation: none;
-  }
-
-  .material-row {
-    transition: none;
-  }
-}

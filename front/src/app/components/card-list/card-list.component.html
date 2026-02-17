@@ -1,4 +1,11 @@
-<div class="cardsContainer" [ngClass]="displayMode()" cdkDropList cdkDropListSortingDisabled id="cardList" (cdkDropListDropped)="onDrop($event)">
+<div
+  class="cardsContainer"
+  [ngClass]="displayMode()"
+  [class.deckBuildMode]="deckBuildMode()"
+  cdkDropList
+  cdkDropListSortingDisabled
+  id="cardList"
+  (cdkDropListDropped)="onDrop($event)">
   @for (cd of cardsDetails$() | async; track cd.card.id) {
     @if (displayMode() === displayType.OWNED) {
       @for (set of cd.sets; track set.id) {
@@ -73,5 +80,15 @@
         }
       </div>
     }
+  }
+  @let svc = searchService();
+  @if (svc?.isLoading()) {
+    <div class="scroll-indicator">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  } @else if (svc && !svc.hasMoreResults() && svc.cardsDetails.length) {
+    <div class="scroll-indicator scroll-indicator--end" role="status" aria-live="polite">
+      Fin des résultats
+    </div>
   }
 </div>

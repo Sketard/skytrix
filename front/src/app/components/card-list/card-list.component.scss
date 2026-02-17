@@ -6,11 +6,16 @@
   display: flex;
   flex-wrap: wrap;
   width: 100%;
-  gap: 0.5em;
+  gap: 0.75em;
 
   &.MOSAIC,
   &.FAVORITE {
     display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  &.MOSAIC.deckBuildMode,
+  &.FAVORITE.deckBuildMode {
     grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
   }
 }
@@ -249,4 +254,20 @@
 
 .owned-card-image {
   width: 33px;
+}
+
+.scroll-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 1.5rem 0;
+  grid-column: 1 / -1;
+
+  --mdc-circular-progress-active-indicator-color: var(--accent-primary);
+
+  &--end {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+  }
 }

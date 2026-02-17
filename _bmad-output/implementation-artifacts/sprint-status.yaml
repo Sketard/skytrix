@@ -102,16 +102,16 @@ development_status:
   epic-9: in-progress
   9-1-global-tokens: done
   9-2-sidebar-dark: done
-  9-3-search-bar-dark: backlog
-  9-4-deck-card-redesign: backlog
-  9-5-grid-minmax-conditional: backlog
-  9-6-deck-builder-headers-and-zone-separation: backlog
-  9-7-deck-name-collapsed: backlog
-  9-8-toggles-landscape: backlog
+  9-3-search-bar-dark: done
+  9-4-deck-card-redesign: done
+  9-5-grid-minmax-conditional: done
+  9-6-deck-builder-headers-and-zone-separation: done
+  9-7-deck-name-collapsed: done
+  9-8-toggles-landscape: ready-for-dev
   9-9-simulator-board-bottom-inspector-top-labels: backlog
   9-10-simulator-xyz-peek-mobile-positioning: backlog
   9-11-simulator-hide-top-bar-and-back-button: backlog
-  9-12-simulator-token-migration: backlog
+  9-12-simulator-token-migration: review
   9-13-bottom-sheet: backlog
-  9-14-infinite-scroll-indicator: backlog
+  9-14-infinite-scroll-indicator: done
   epic-9-retrospective: optional

@@ -1,23 +1,39 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { DeckBoxComponent } from '../../../../components/deck-box/deck-box.component';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { RouterLink } from '@angular/router';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../components/confirm-dialog/confirm-dialog.component';
+import { ShortDeck } from '../../../../core/model/short-deck';
 
 @Component({
   selector: 'deck-list',
-  imports: [CommonModule, DeckBoxComponent, MatIconModule],
+  imports: [CommonModule, DeckBoxComponent, MatIconModule, MatButtonModule, RouterLink],
   templateUrl: './deck-list.component.html',
   styleUrl: './deck-list.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeckListComponent {
-  constructor(public deckBuildService: DeckBuildService) {
+  readonly deckBuildService = inject(DeckBuildService);
+  private readonly dialog = inject(MatDialog);
+
+  constructor() {
     this.deckBuildService.fetchDecks();
   }
 
-  public removeDeck(id: number) {
-    this.deckBuildService.deleteById(id);
+  confirmDelete(deck: ShortDeck) {
+    const dialogRef = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
+      data: { title: 'Supprimer le deck', message: `Voulez-vous vraiment supprimer "${deck.name}" ?`, confirmLabel: 'Supprimer' },
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.deckBuildService.deleteById(deck.id!);
+      }
+    });
   }
 }

@@ -14,6 +14,7 @@ import { FindGroupedOwnedCardPipe } from '../../core/pipes/find-grouped-owned-ca
 import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'card-list',
@@ -27,6 +28,7 @@ import { MatIconButton } from '@angular/material/button';
     FindGroupedOwnedCardPipe,
     MatIconModule,
     MatIconButton,
+    MatProgressSpinner,
   ],
   templateUrl: './card-list.component.html',
   styleUrl: './card-list.component.scss',

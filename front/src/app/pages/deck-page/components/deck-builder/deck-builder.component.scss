@@ -2,6 +2,17 @@
 @use 'mixin' as *;
 @use 'responsive' as r;
 
+@mixin collapsed-name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.25em 0;
+}
+
 .inspector-actions {
   display: flex;
   align-items: center;
@@ -44,18 +55,22 @@
 
       mat-form-field {
         flex: 1;
+        --mat-form-field-container-height: 48px;
+        --mat-form-field-filled-with-label-container-padding-top: 4px;
+        --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+        --mdc-filled-text-field-container-color: var(--surface-card);
+        --mdc-filled-text-field-input-text-color: var(--text-primary);
+        --mdc-filled-text-field-caret-color: var(--text-primary);
+        --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
+        --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
+        --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
+        --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
+        --mdc-filled-text-field-container-shape: 0;
       }
 
       button {
-        color: $white;
+        color: var(--text-primary);
         flex-shrink: 0;
-      }
-
-      mat-form-field {
-        --mdc-filled-text-field-container-color: #{$white};
-        --mdc-filled-text-field-input-text-color: #{$black};
-        --mdc-filled-text-field-caret-color: #{$black};
-        --mdc-filled-text-field-container-shape: 0;
       }
 
       @include r.landscape-split {
@@ -63,10 +78,13 @@
 
         mat-form-field {
           --mat-form-field-container-height: 40px;
-          --mat-form-field-filled-with-label-container-padding-top: 4px;
-          --mat-form-field-filled-with-label-container-padding-bottom: 4px;
         }
       }
+    }
+
+    &-text {
+      @include collapsed-name-text;
+      font-size: 1rem;
     }
   }
 
@@ -170,21 +188,25 @@
 
         mat-form-field {
           flex: 1;
-          --mdc-filled-text-field-container-color: #{$white};
-          --mdc-filled-text-field-input-text-color: #{$black};
-          --mdc-filled-text-field-caret-color: #{$black};
+          --mdc-filled-text-field-container-color: var(--surface-card);
+          --mdc-filled-text-field-input-text-color: var(--text-primary);
+          --mdc-filled-text-field-caret-color: var(--text-primary);
+          --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
+          --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
+          --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
+          --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
           --mdc-filled-text-field-container-shape: 0;
         }
 
         >button {
-          color: rgba(255, 255, 255, 0.6);
+          color: var(--text-secondary);
           flex-shrink: 0;
           transform: scale(0.85);
         }
 
-        input::placeholder {
-          color: $unselected-black;
-          opacity: 0.1;
+        &-text {
+          @include collapsed-name-text;
+          font-size: 0.875rem;
         }
       }
 

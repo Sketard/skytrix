@@ -1,12 +1,13 @@
-@use 'variable' as *;
 @use 'animation' as *;
 
 .deckBox {
   width: 100%;
   height: 100%;
   min-height: 170px;
-  border: 1px solid $white;
-  border-radius: 20px 0 20px 0;
+  border: none;
+  background: var(--surface-card);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,6 +15,7 @@
   padding: 1rem;
   cursor: pointer;
   position: relative;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
 
   &-preview {
     position: absolute;
@@ -50,7 +52,8 @@
   }
 
   &:hover {
-    border-color: $blue;
+    background: var(--surface-card-hover);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
 
   &-image {
@@ -63,25 +66,19 @@
   }
 
   &-add {
-    color: $blue;
-    transform: scale(4);
+    color: var(--accent-primary);
+    font-size: 48px;
+  }
+
+  &--add {
+    background: transparent;
+    border: dashed 2px var(--accent-primary-dim);
+    box-shadow: none;
 
     &:hover {
-      animation: reduce 1s infinite;
-    }
-
-    @keyframes reduce {
-      0% {
-        transform: scale(4);
-      }
-
-      50% {
-        transform: scale(3.5);
-      }
-
-      100% {
-        transform: scale(4);
-      }
+      border-color: var(--accent-primary);
+      background: transparent;
+      box-shadow: none;
     }
   }
 
