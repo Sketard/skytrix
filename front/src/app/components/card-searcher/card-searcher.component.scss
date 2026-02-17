@@ -28,11 +28,24 @@
 
       @include r.landscape-split {
         margin: 0.5em;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
 
         search-bar {
+          flex: 1;
+          min-width: 0;
           --mat-form-field-container-height: 40px;
           --mat-form-field-filled-with-label-container-padding-top: 4px;
           --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+        }
+
+        &-displayMode {
+          margin-bottom: 0;
+
+          mat-button-toggle {
+            --mat-standard-button-toggle-height: 32px;
+          }
         }
       }
     }
@@ -61,6 +74,17 @@
         margin: 4rem 2rem 1rem 2rem;
       }
 
+      @include r.landscape-split {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+
+        search-bar {
+          flex: 1;
+          min-width: 0;
+        }
+      }
+
       &-displayMode {
         margin-bottom: 0.5em;
 
@@ -79,6 +103,14 @@
 
         mat-icon {
           transform: scale(0.8);
+        }
+
+        @include r.landscape-split {
+          margin-bottom: 0;
+
+          mat-button-toggle {
+            --mat-standard-button-toggle-height: 32px;
+          }
         }
       }
     }

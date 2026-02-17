@@ -31,16 +31,18 @@
 
 <!-- Mobile top bar + drawer mode -->
 @if (isMobile()) {
-  <header class="mobile-top-bar" aria-label="Application header">
-    <button mat-icon-button
-            class="hamburger-btn"
-            (click)="openDrawer()"
-            aria-label="Open navigation"
-            [attr.aria-expanded]="drawerOpen()">
-      <mat-icon>menu</mat-icon>
-    </button>
-    <span class="mobile-title">skytrix</span>
-  </header>
+  @if (!shouldHideTopBar()) {
+    <header class="mobile-top-bar" aria-label="Application header">
+      <button mat-icon-button
+              class="hamburger-btn"
+              (click)="openDrawer()"
+              aria-label="Open navigation"
+              [attr.aria-expanded]="drawerOpen()">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="mobile-title">skytrix</span>
+    </header>
+  }
 
   <!-- Backdrop -->
   <div class="drawer-backdrop"

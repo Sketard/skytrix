@@ -25,6 +25,9 @@
               (cdkDragStarted)="onDragStarted()"
               (cdkDragEnded)="onDragEnded()" />
   }
+  @if (!topCard()) {
+    <span class="zone-label">{{ zoneConfig().shortLabel }}</span>
+  }
   @if (isDeckZone()) {
     <span #deckMenuTrigger="matMenuTrigger"
           #menuAnchor

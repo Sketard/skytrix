@@ -53,6 +53,9 @@
   font-size: 0.75rem;
   color: var(--text-secondary);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .material-list {
@@ -116,5 +119,22 @@
 @keyframes peek-fade-in {
   from { opacity: 0; transform: translateY(-50%) translateX(8px); }
   to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .material-peek-panel {
+    top: 8px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(240px, calc(100% - 16px));
+    max-height: 50%;
+    overflow: hidden;
+  }
+
+  @keyframes peek-fade-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
 }
 

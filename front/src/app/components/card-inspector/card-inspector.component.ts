@@ -18,6 +18,7 @@ import { SharedCardInspectorData } from '../../core/model/shared-card-data';
     '[class.mode-click]': "mode() === 'click'",
     '[class.mode-permanent]': "mode() === 'permanent'",
     '[class.position-right]': "position() === 'right'",
+    '[class.position-top]': "position() === 'top'",
   },
 })
 export class CardInspectorComponent {
@@ -25,7 +26,7 @@ export class CardInspectorComponent {
 
   readonly card = input<SharedCardInspectorData | null>(null);
   readonly mode = input<'dismissable' | 'click' | 'permanent'>('dismissable');
-  readonly position = input<'left' | 'right'>('left');
+  readonly position = input<'left' | 'right' | 'top'>('left');
 
   readonly dismissed = output<void>();
 

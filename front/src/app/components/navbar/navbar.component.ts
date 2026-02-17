@@ -38,6 +38,7 @@ export class NavbarComponent {
   readonly collapsed = this.navbarCollapse.collapsed;
   readonly isMobile = this.navbarCollapse.isMobile;
   readonly drawerOpen = this.navbarCollapse.drawerOpen;
+  readonly shouldHideTopBar = this.navbarCollapse.shouldHideTopBar;
   readonly skipDrawerTransition = signal(false);
 
   constructor() {

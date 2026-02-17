@@ -4,15 +4,13 @@
   --accent-primary: #00d4ff;
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --danger: #ef4444;
 
   // Simulator-specific CSS custom properties (no global equivalent)
   --sim-surface: #111827;
+  --sim-surface-translucent: rgba(17, 24, 39, 0.85);
   --sim-zone-border: rgba(0, 212, 255, 0.15);
   --sim-zone-highlight: rgba(0, 212, 255, 0.3);
   --sim-zone-glow-success: rgba(212, 160, 23, 0.4);
-  --sim-overlay-backdrop: rgba(10, 14, 26, 0.7);
-  --sim-glow-success: #d4a017;
 }
 
 .sim-page {
