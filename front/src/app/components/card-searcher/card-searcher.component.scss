@@ -14,28 +14,16 @@
 
   &.deckBuildMode {
     .cardSearchPage-searcher-bar {
+      min-width: 0;
       margin: 1em;
 
       @include r.landscape-split {
         margin: 0.5em;
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
 
         search-bar {
-          flex: 1;
-          min-width: 0;
           --mat-form-field-container-height: 40px;
           --mat-form-field-filled-with-label-container-padding-top: 4px;
           --mat-form-field-filled-with-label-container-padding-bottom: 4px;
-        }
-
-        &-displayMode {
-          margin-bottom: 0;
-
-          mat-button-toggle {
-            --mat-standard-button-toggle-height: 32px;
-          }
         }
       }
     }
@@ -81,32 +69,9 @@
       @include r.respond-above(r.$bp-tablet) {
         padding: 0 2rem;
       }
-    }
-
-    &-bar {
-      margin: 1.5rem 1rem 0.5rem 1rem;
-
-      @include r.mobile-portrait {
-        margin: 0.75rem 0.75rem 0.25rem 0.75rem;
-      }
-
-      @include r.respond-above(r.$bp-tablet) {
-        margin: 4rem 2rem 1rem 2rem;
-      }
-
-      @include r.landscape-split {
-        display: flex;
-        align-items: center;
-        gap: 0.5em;
-
-        search-bar {
-          flex: 1;
-          min-width: 0;
-        }
-      }
 
       &-displayMode {
-        margin-bottom: 0.5em;
+        padding-top: 0.5em;
 
         mat-button-toggle-group {
           border-radius: 0;
@@ -126,21 +91,24 @@
         }
 
         @include r.mobile-portrait {
-          margin-bottom: 0.25em;
-
-          mat-button-toggle {
-            --mat-standard-button-toggle-height: 32px;
-          }
-        }
-
-        @include r.landscape-split {
-          margin-bottom: 0;
-
           mat-button-toggle {
             --mat-standard-button-toggle-height: 32px;
           }
         }
       }
+    }
+
+    &-bar {
+      margin: 1.5rem 1rem 0.5rem 1rem;
+
+      @include r.mobile-portrait {
+        margin: 0.75rem 0.75rem 0.25rem 0.75rem;
+      }
+
+      @include r.respond-above(r.$bp-tablet) {
+        margin: 4rem 2rem 1rem 2rem;
+      }
+
     }
 
     &-result {

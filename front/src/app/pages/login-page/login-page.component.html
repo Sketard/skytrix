@@ -10,11 +10,11 @@
       (ngSubmit)="connect()">
       <h2>Login</h2>
       <div class="loginPage-form-inputs">
-        <mat-form-field class="loginPage-form-inputs-field">
+        <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
           <mat-label>Pseudo</mat-label>
           <input required matInput type="text" formControlName="pseudo" />
         </mat-form-field>
-        <mat-form-field class="loginPage-form-inputs-field">
+        <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
           <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
                     (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
           <mat-label>Mot de passe</mat-label>
@@ -36,17 +36,17 @@
       (ngSubmit)="createAccount()">
       <h2>Créer un compte</h2>
       <div class="loginPage-form-inputs">
-        <mat-form-field class="loginPage-form-inputs-field">
+        <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
           <mat-label>Pseudo</mat-label>
           <input required matInput type="text" formControlName="pseudo" />
         </mat-form-field>
-        <mat-form-field class="loginPage-form-inputs-field">
+        <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
           <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
                     (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
           <mat-label>Mot de passe</mat-label>
           <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
         </mat-form-field>
-        <mat-form-field class="loginPage-form-inputs-field">
+        <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
           <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
                     (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
           <mat-label>Confirmer le mot de passe</mat-label>

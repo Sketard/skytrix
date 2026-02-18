@@ -23,7 +23,7 @@
     <div class="bottom-sheet-handle-bar"></div>
   </div>
 
-  <div class="bottom-sheet-content">
+  <div class="bottom-sheet-content" [style.max-height.px]="contentMaxHeight()">
     <ng-content></ng-content>
   </div>
 </div>

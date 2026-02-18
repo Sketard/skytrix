@@ -1,16 +1,5 @@
 @if (searchService()) {
   <div class="cardFilters">
-    <div class="cardFilters-header">
-      <h4>
-        Filtre
-      </h4>
-      @if (filtersOpened()) {
-        <button matSuffix mat-icon-button (click)="closeFilters()">
-          <mat-icon fontIcon="close"></mat-icon>
-        </button>
-      }
-    </div>
-
     <div class="cardFilters-filter">
       <app-multiselect-autocomplete-filter
         [form]="localForm.controls.types"

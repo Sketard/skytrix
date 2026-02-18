@@ -44,6 +44,11 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
 
   readonly sheetTransform = computed(() => `translateY(${this.translateY()}px)`);
 
+  private static readonly HANDLE_HEIGHT = 28; // 12px padding-top + 4px bar + 12px padding-bottom
+  readonly contentMaxHeight = computed(() =>
+    Math.max(0, this.viewportHeight() - this.translateY() - BottomSheetComponent.HANDLE_HEIGHT)
+  );
+
   private startPointerY = 0;
   private startTranslateY = 0;
   private activePointerId: number | null = null;

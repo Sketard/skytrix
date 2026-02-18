@@ -14,17 +14,52 @@
   </app-card-searcher>
 </div>
 
+<div class="cardSearchPage-mobileResults cardSearchPage-searcher-result">
+  <card-list
+    [displayMode]="cardSearchService.displayMode()"
+    [searchService]="cardSearchService"
+    [deckBuildMode]="false"
+    (cardClicked)="onCardClicked($event)">
+  </card-list>
+</div>
+
 <app-bottom-sheet
   [opened]="searchPanelOpened() && isMobilePortrait()"
   [ariaLabel]="'Panneau de recherche de cartes'"
   [requestedSnap]="filtersRequestedSnap()"
   (closed)="searchPanelOpened.set(false)">
-  <app-card-searcher
-    [deckBuildMode]="false"
-    [searchService]="cardSearchService"
-    (cardClicked)="onCardClicked($event)"
-    (filtersExpanded)="onFiltersExpanded($event)">
-  </app-card-searcher>
+  <div class="cardSearchPage-sheet">
+    <div class="cardSearchPage-sheet-bar">
+      <search-bar
+        [form]="cardSearchService.filterForm.controls.name"
+        [searchService]="cardSearchService">
+      </search-bar>
+      <div class="cardSearchPage-sheet-bar-displayMode">
+        <mat-button-toggle-group
+          hideSingleSelectionIndicator
+          (change)="setDisplayMode($event.source.value)">
+          <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="cardSearchService.displayMode() === displayType.INFORMATIVE" matTooltip="Liste" aria-label="Liste">
+            <mat-icon>view_headline</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle [value]="displayType.MOSAIC" [checked]="cardSearchService.displayMode() === displayType.MOSAIC" matTooltip="Mosaïque" aria-label="Mosaïque">
+            <mat-icon>view_module</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle [value]="displayType.OWNED" [checked]="cardSearchService.displayMode() === displayType.OWNED" matTooltip="Mes cartes" aria-label="Mes cartes">
+            <mat-icon>style</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle [value]="displayType.FAVORITE" [checked]="cardSearchService.displayMode() === displayType.FAVORITE" matTooltip="Favoris" aria-label="Favoris">
+            <mat-icon>star</mat-icon>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+    </div>
+    <div class="cardSearchPage-sheet-filters">
+      <app-card-filters
+        [searchService]="cardSearchService"
+        [filtersOpened]="false">
+      </app-card-filters>
+    </div>
+  </div>
 </app-bottom-sheet>
 
 <app-card-inspector

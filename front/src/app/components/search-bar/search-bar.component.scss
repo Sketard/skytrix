@@ -3,7 +3,7 @@
 .searchBar {
   display: flex;
   align-items: center;
-  overflow: visible;
+  overflow: hidden;
 
   @include r.mobile-portrait {
     --mat-form-field-container-height: 40px;
