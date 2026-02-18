@@ -3,10 +3,11 @@
     <div class="cardSearchPage-searcher" [class.filters-expanded]="filtersOpen()">
       <div class="cardSearchPage-searcher-bar">
         <search-bar [form]="form.controls.name" [searchService]="searchService()" (filterToggled)="toggleFilters()"></search-bar>
-        <div class="cardSearchPage-searcher-bar-displayMode">
+      </div>
+      <div class="cardSearchPage-searcher-filters">
+        <div class="cardSearchPage-searcher-filters-displayMode">
           <mat-button-toggle-group
             hideSingleSelectionIndicator
-            class="cardSearchPage-searcher-displayMode"
             (change)="setDisplayMode($event.source.value)">
             <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="displayMode() === displayType.INFORMATIVE" matTooltip="Liste" aria-label="Liste">
               <mat-icon>view_headline</mat-icon>
@@ -22,8 +23,6 @@
             </mat-button-toggle>
           </mat-button-toggle-group>
         </div>
-      </div>
-      <div class="cardSearchPage-searcher-filters">
         <app-card-filters [searchService]="searchService()" [filtersOpened]="filtersOpen()" (close)="toggleFilters()"></app-card-filters>
       </div>
       <div class="cardSearchPage-searcher-result">

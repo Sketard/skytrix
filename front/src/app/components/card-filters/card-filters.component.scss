@@ -14,24 +14,7 @@
     padding-top: 0.5em;
     padding-bottom: 0.5em;
 
-    --mat-form-field-container-height: 40px;
-    --mat-form-field-filled-with-label-container-padding-top: 4px;
-    --mat-form-field-filled-with-label-container-padding-bottom: 4px;
-  }
-
-  &-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    h4 {
-      margin-top: 0;
-      margin-bottom: 0.5em;
-
-      @include r.mobile-portrait {
-        margin-bottom: 0.25em;
-      }
-    }
+    --mat-form-field-container-height: 48px;
   }
 
   &-filter {

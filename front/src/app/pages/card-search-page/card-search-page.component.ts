@@ -3,17 +3,26 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
+import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
+import { MatTooltip } from '@angular/material/tooltip';
 import { CardSearcherComponent } from '../../components/card-searcher/card-searcher.component';
+import { SearchBarComponent } from '../../components/search-bar/search-bar.component';
+import { CardFiltersComponent } from '../../components/card-filters/card-filters.component';
+import { CardListComponent } from '../../components/card-list/card-list.component';
 import { CardSearchService } from '../../services/card-search.service';
 import { CardInspectorComponent } from '../../components/card-inspector/card-inspector.component';
 import { BottomSheetComponent } from '../../components/bottom-sheet/bottom-sheet.component';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../core/model/shared-card-data';
 import { CardDetail } from '../../core/model/card-detail';
+import { CardDisplayType } from '../../core/enums/card-display-type';
 
 @Component({
   selector: 'card-search-page',
-  imports: [CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent],
+  imports: [
+    CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
+    SearchBarComponent, CardFiltersComponent, CardListComponent, MatButtonToggle, MatButtonToggleGroup, MatTooltip,
+  ],
   templateUrl: './card-search-page.component.html',
   styleUrl: './card-search-page.component.scss',
   standalone: true,
@@ -25,6 +34,7 @@ export class CardSearchPageComponent {
 
   readonly searchPanelOpened = signal(true);
   readonly filtersRequestedSnap = signal<'full' | null>(null);
+  readonly displayType = CardDisplayType;
 
   private readonly navbarCollapseService = inject(NavbarCollapseService);
   readonly isMobilePortrait = this.navbarCollapseService.isMobilePortrait;
@@ -48,6 +58,10 @@ export class CardSearchPageComponent {
 
   onFiltersExpanded(expanded: boolean): void {
     this.filtersRequestedSnap.set(expanded ? 'full' : null);
+  }
+
+  setDisplayMode(mode: CardDisplayType): void {
+    this.cardSearchService.setDisplayMode(mode);
   }
 
   @HostListener('document:keydown.escape', ['$event'])

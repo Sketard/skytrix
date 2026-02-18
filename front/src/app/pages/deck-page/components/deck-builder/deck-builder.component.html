@@ -4,7 +4,7 @@
     <div class="deckBuilder-canvasParent">
       <div class="deckBuilder-deckNameMobile">
         @if (isEditingName()) {
-          <mat-form-field>
+          <mat-form-field appearance="outline">
             <input
               #deckNameInput
               matInput
@@ -44,7 +44,7 @@
       <div class="deckBuilder-side-header">
         <div class="deckBuilder-side-header-deckName">
           @if (isEditingName()) {
-            <mat-form-field>
+            <mat-form-field appearance="outline">
               <input
                 #deckNameInputDesktop
                 matInput
