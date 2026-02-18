@@ -12,6 +12,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 
 @Component({
   selector: 'app-bottom-sheet',
@@ -26,15 +27,19 @@ import {
 export class BottomSheetComponent implements OnInit, OnDestroy {
   readonly opened = input(false);
   readonly cardDragActive = input(false);
+  readonly ariaLabel = input('Panneau de recherche de cartes');
+  readonly requestedSnap = input<'half' | 'full' | 'collapsed' | null>(null);
   readonly closed = output<void>();
 
-  readonly sheetState = signal<'closed' | 'half' | 'full'>('closed');
+  readonly sheetState = signal<'closed' | 'collapsed' | 'half' | 'full'>('closed');
+  private readonly previousSnapState = signal<'half' | 'full' | 'collapsed' | null>(null);
   readonly translateY = signal(window.visualViewport?.height ?? window.innerHeight);
   readonly viewportHeight = signal(window.visualViewport?.height ?? window.innerHeight);
   readonly isDragging = signal(false);
 
   readonly snapHalf = computed(() => this.viewportHeight() * 0.4);
-  readonly snapFull = computed(() => 0);
+  readonly snapFull = computed(() => NavbarCollapseService.MOBILE_HEADER_HEIGHT);
+  readonly snapCollapsed = computed(() => this.viewportHeight() * 0.85);
   readonly snapClose = computed(() => this.viewportHeight());
 
   readonly sheetTransform = computed(() => `translateY(${this.translateY()}px)`);
@@ -56,7 +61,26 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
         if (isOpen) {
           this.snapTo('half');
         } else if (this.sheetState() !== 'closed') {
+          this.previousSnapState.set(null);
           this.snapTo('closed');
+        }
+      });
+    });
+
+    // requestedSnap must transition through null between different states.
+    // Direct changes (e.g., 'full' → 'collapsed') are ignored by design.
+    effect(() => {
+      const requested = this.requestedSnap();
+      untracked(() => {
+        const state = this.sheetState();
+        if (state === 'closed') return;
+        const previousSnap = this.previousSnapState();
+        if (requested && previousSnap === null) {
+          this.previousSnapState.set(state);
+          this.snapTo(requested);
+        } else if (!requested && previousSnap !== null) {
+          this.snapTo(previousSnap);
+          this.previousSnapState.set(null);
         }
       });
     });
@@ -102,7 +126,7 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
     cancelAnimationFrame(this.rafId);
     this.rafId = requestAnimationFrame(() => {
       const deltaY = this.pendingPointerY - this.startPointerY;
-      this.translateY.set(Math.max(0, this.startTranslateY + deltaY));
+      this.translateY.set(Math.max(this.snapFull(), this.startTranslateY + deltaY));
     });
   }
 
@@ -115,11 +139,16 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
 
     // Apply final position synchronously for accurate snap calculation
     const deltaY = event.clientY - this.startPointerY;
-    this.translateY.set(Math.max(0, this.startTranslateY + deltaY));
+    this.translateY.set(Math.max(this.snapFull(), this.startTranslateY + deltaY));
 
     const velocity = this.calculateVelocity();
+    const midHalfCollapsed = (this.snapHalf() + this.snapCollapsed()) / 2;
     if (velocity > BottomSheetComponent.VELOCITY_THRESHOLD) {
-      this.dismiss();
+      if (this.translateY() < midHalfCollapsed) {
+        this.snapTo('collapsed');
+      } else {
+        this.dismiss();
+      }
     } else if (velocity < -BottomSheetComponent.VELOCITY_THRESHOLD) {
       this.snapTo('full');
     } else {
@@ -140,10 +169,11 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
   private dismiss(): void {
     this.sheetState.set('closed');
     this.translateY.set(this.snapClose());
+    this.previousSnapState.set(null);
     this.closed.emit();
   }
 
-  private snapTo(state: 'half' | 'full' | 'closed'): void {
+  private snapTo(state: 'half' | 'full' | 'collapsed' | 'closed'): void {
     this.sheetState.set(state);
     switch (state) {
       case 'half':
@@ -151,6 +181,9 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
         break;
       case 'full':
         this.translateY.set(this.snapFull());
+        break;
+      case 'collapsed':
+        this.translateY.set(this.snapCollapsed());
         break;
       case 'closed':
         this.translateY.set(this.snapClose());
@@ -160,19 +193,23 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
 
   private snapToNearest(): void {
     const current = this.translateY();
-    const half = this.snapHalf();
     const full = this.snapFull();
+    const half = this.snapHalf();
+    const collapsed = this.snapCollapsed();
     const close = this.snapClose();
 
     const midFullHalf = (full + half) / 2;
-    const dismissThreshold = half + (close - half) * 0.4;
+    const midHalfCollapsed = (half + collapsed) / 2;
+    const dismissThreshold = collapsed + (close - collapsed) * 0.4;
 
     if (current > dismissThreshold) {
       this.dismiss();
-    } else if (current < midFullHalf) {
-      this.snapTo('full');
-    } else {
+    } else if (current > midHalfCollapsed) {
+      this.snapTo('collapsed');
+    } else if (current > midFullHalf) {
       this.snapTo('half');
+    } else {
+      this.snapTo('full');
     }
   }
 

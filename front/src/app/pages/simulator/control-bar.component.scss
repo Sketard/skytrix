@@ -49,3 +49,17 @@ button {
   font-family: monospace;
   white-space: nowrap;
 }
+
+// Mobile: lift above the detached hand
+// Both media queries needed to match JS isMobile() breakpoint
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  :host {
+    bottom: calc(90px + 12px); // $sim-hand-height-landscape + gap
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  :host {
+    bottom: calc(120px + 12px); // $sim-hand-height-portrait + gap
+  }
+}

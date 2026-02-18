@@ -15,8 +15,13 @@ $sim-radius-card: 0.25rem;
 // Card dimension token
 $sim-card-aspect-ratio: list.slash(59, 86);
 
-// Hand fan tokens
+// Hand fan tokens (desktop — inside scaler)
 $sim-hand-card-height: 140px;
 $sim-hand-hover-lift: -24px;
 $sim-hand-hover-scale: 1.08;
 $sim-hand-transition: 200ms ease;
+
+// Hand mobile tokens (outside scaler — native size)
+$sim-hand-height-landscape: 90px;
+$sim-hand-height-portrait: 120px;
+$sim-hand-card-height-mobile: 80px;

@@ -9,7 +9,6 @@ import { CardAttribute } from '../../core/enums/card-attribute';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatSuffix } from '@angular/material/form-field';
-import { NgIf } from '@angular/common';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 import { clearFormArray } from '../../core/utilities/functions';
 import { FormGroup } from '@angular/forms';
@@ -27,7 +26,6 @@ import { Subject } from 'rxjs';
     MatIcon,
     MatIconButton,
     MatSuffix,
-    NgIf,
     MatButton,
   ],
   templateUrl: './card-filters.component.html',

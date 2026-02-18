@@ -289,6 +289,18 @@ CardComponent and CardInspectorComponent are extracted from the simulator into s
 - Touch targets 44×44px on card manipulation pages.
 - Epic 8 depends on Epic 7 (ScalingContainerDirective, SCSS infrastructure). Standalone once Epic 7 is complete.
 
+### Epic 10: Bottom Sheet & Filter UX Unification
+
+The bottom sheet component is made generic and reusable. The card searcher filter display is unified to a vertical expand/collapse pattern across all contexts (deck builder, card search page, bottom sheet). The card search page gains a bottom sheet for mobile portrait. Auto-snap full behavior links filter expansion to bottom sheet state.
+
+**UX spec refs:** Revision 2026-02-18 points G, H, I, J
+
+**Implementation Notes:**
+- Story 10.1: Bottom sheet API extension (`ariaLabel` input, programmatic `snapTo()` method for auto-snap full) + deck builder updated to pass new input. No breaking changes.
+- Story 10.2: `card-searcher` internalizes filter display — replaces lateral slide-in overlay (deck builder), lateral panel (card search page), and overlay-inside-bottom-sheet (mobile) with unified vertical expand/collapse. `card-filters` rendered inline above `card-list`. `filtersExpanded` output signal emitted for bottom sheet integration. Removes external filter containers from deck builder and card search page.
+- Story 10.3: Card search page gains `<app-bottom-sheet>` wrapping `<app-card-searcher>` on mobile portrait. Same CSS `display` toggling pattern as deck builder. FAB search toggle button on mobile portrait. `filtersExpanded` signal wired to trigger auto-snap full on bottom sheet.
+- Epic 10 depends on Epic 9 (bottom sheet component created in 9-13). Standalone once Epic 9 is complete.
+
 ## Epic 1: Simulator Board & Deck Loading
 
 The player can navigate to the simulator from a decklist, see the complete 18-zone board rendered in CSS Grid with card count badges on stacked zones, load their deck, shuffle, and receive an initial hand of 5 cards.
@@ -1697,4 +1709,123 @@ So that I know whether more cards are loading or if I've reached the end of the 
 **Then** the entire application uses the unified dark theme with consistent token usage
 **And** the simulator retains its distinct navy/cyan visual identity via scoped `:host` overrides
 **And** no visual regression exists on any page compared to pre-Epic-9 state (accounting for intentional redesigns)
+
+## Epic 10: Bottom Sheet & Filter UX Unification
+
+> The bottom sheet component is made generic and reusable across pages. The card searcher filter display is unified to a vertical expand/collapse pattern, replacing three different filter presentation mechanisms (lateral overlay in deck builder, lateral panel in card search page, overlay-inside-bottom-sheet on mobile). The card search page gains a bottom sheet for mobile portrait. When filters expand inside a bottom sheet, it auto-snaps to full for maximum space.
+
+**Implementation Notes:**
+
+- Source: UX Design Specification revision 2026-02-18, points G, H, I, J (§Bottom Sheet Pattern, §Card Searcher Filter Pattern)
+- The bottom sheet component already exists (`components/bottom-sheet/`) from story 9-13. This epic extends it and unifies filter UX.
+- Key design rule: bottom sheet = exploration panels (search, filters). Card detail = CardInspectorComponent overlay/modal. Never nest bottom sheets.
+- No new dependencies — all changes use existing Angular 19, Angular Material, CDK infrastructure.
+
+### Story 10.1: Generic Bottom Sheet & Auto-Snap Full
+
+As a developer,
+I want the bottom sheet component to have a configurable aria-label and support programmatic snap-to-full,
+so that it can be reused on any page and respond to external events like filter expansion.
+
+**Acceptance Criteria:**
+
+**Given** the bottom sheet has a hardcoded `aria-label="Panneau de recherche de cartes"` in the template
+**When** a new `ariaLabel` input is added with a default value
+**Then** the template uses the input value for `aria-label`
+**And** the deck builder passes `"Panneau de recherche de cartes"` explicitly (no behavior change)
+
+**Given** the bottom sheet needs to snap to full programmatically (not just via user drag)
+**When** a public `snapToFull()` method or a `requestedState` input signal is added
+**Then** the sheet can be driven to the `full` snap state from the parent component
+**And** the sheet remembers the previous snap state (before the programmatic snap) for later restoration
+
+**Given** the programmatic snap was triggered (e.g., filters expanded)
+**When** the external event ends (e.g., filters collapsed)
+**Then** the sheet restores to the previous snap state (typically `half`)
+
+**Given** the bottom sheet API is extended
+**When** the deck builder is updated to use the new `ariaLabel` input
+**Then** the deck builder behavior is identical to before — no visual or functional regression
+
+### Story 10.2: Unified Expand/Collapse Filters in Card Searcher
+
+As a user,
+I want filters to expand/collapse vertically above the card list in every context,
+so that I have a consistent, non-overlapping filter experience whether I'm in the deck builder, card search page, or mobile bottom sheet.
+
+**Acceptance Criteria:**
+
+**Given** the card searcher currently delegates filter display to external containers (deck builder overlay `z-index: 999`, card search page lateral panel `width: 0→300px`)
+**When** the filter toggle button is pressed
+**Then** the `card-filters` component expands vertically **above** the `card-list` inside the `card-searcher` component, pushing the list down
+**And** the animation uses CSS `max-height` or `grid-template-rows` transition for smooth expand/collapse
+
+**Given** the `card-searcher` manages filters internally
+**When** filters are open
+**Then** the card list remains partially visible below the filters (in full-height contexts)
+**And** scrolling the card list still works normally
+
+**Given** the card searcher emits a `filtersExpanded` output signal
+**When** filters are expanded
+**Then** the signal emits `true`
+**When** filters are collapsed
+**Then** the signal emits `false`
+
+**Given** the deck builder previously had `.deckBuilder-side-filters` as an absolute-positioned overlay
+**When** the expand/collapse pattern is active
+**Then** the `.deckBuilder-side-filters` div and its styling are removed from `deck-builder.component.html` and `deck-builder.component.scss`
+**And** the `filtersOpened` signal and `closeFilters()` method in `deck-builder.component.ts` are removed (filters now managed by card-searcher)
+
+**Given** the card search page previously had `.cardSearchPage-filters` as a lateral panel
+**When** the expand/collapse pattern is active
+**Then** the `.cardSearchPage-filters` div and its responsive SCSS (width transition, mobile overlay) are removed from `card-searcher.component.html` and `card-searcher.component.scss`
+
+**Given** the `deckBuildMode` input exists on `card-searcher`
+**When** `deckBuildMode` is `true`
+**Then** the filter toggle button and expand/collapse work identically to when `deckBuildMode` is `false` — no mode-specific filter behavior
+
+**Given** the filter expand/collapse is implemented
+**When** tested on desktop (both pages) and mobile portrait (bottom sheet)
+**Then** no visual regression occurs and filters are functional in all 3 contexts
+
+### Story 10.3: Card Search Page Mobile Bottom Sheet
+
+As a user,
+I want the card search page to use a bottom sheet on mobile portrait,
+so that I have a familiar, draggable search panel experience consistent with the deck builder.
+
+**Acceptance Criteria:**
+
+**Given** the card search page has no bottom sheet on mobile
+**When** viewed on mobile portrait (≤767px width, portrait orientation)
+**Then** a `<app-bottom-sheet>` wraps the `<app-card-searcher>` component
+**And** the bottom sheet is hidden via CSS `display: none` on desktop/landscape (same pattern as deck builder)
+
+**Given** the card search page needs a trigger to open the bottom sheet on mobile portrait
+**When** a FAB search toggle button is added (same pattern as deck builder's `.deckBuilder-searchToggle`)
+**Then** tapping the FAB opens the bottom sheet in `half` snap state
+**And** the FAB is only visible on mobile portrait (hidden on desktop/landscape via CSS media query)
+
+**Given** the card searcher emits `filtersExpanded: true` inside the bottom sheet
+**When** the event is received by the card search page component
+**Then** the bottom sheet snaps to `full` via the programmatic snap API (from story 10.1)
+
+**Given** the card searcher emits `filtersExpanded: false`
+**When** the event is received
+**Then** the bottom sheet restores to its previous snap state
+
+**Given** the card search page uses `CardInspectorComponent` with `mode="click"`
+**When** a card is tapped in the bottom sheet
+**Then** the inspector opens as an overlay **above** the bottom sheet (z-index hierarchy preserved)
+**And** no nested bottom sheet is created
+
+**Given** the bottom sheet is implemented on the card search page
+**When** the `ariaLabel` input is set
+**Then** it uses `"Panneau de recherche de cartes"` (or appropriate label)
+**And** the `cardDragActive` input is NOT used (no CDK drag on card search page)
+
+**Given** the card search page bottom sheet is complete
+**When** tested on mobile portrait, mobile landscape, tablet, and desktop
+**Then** the bottom sheet is only visible/functional on mobile portrait
+**And** desktop/landscape behavior is unchanged (full-page card searcher with inline filters)
 

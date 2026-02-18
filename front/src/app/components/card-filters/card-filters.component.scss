@@ -1,6 +1,23 @@
+@use 'responsive' as r;
+
+:host {
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+}
+
 .cardFilters {
   padding-top: 1em;
   padding-bottom: 1em;
+
+  @include r.mobile-portrait {
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+
+    --mat-form-field-container-height: 40px;
+    --mat-form-field-filled-with-label-container-padding-top: 4px;
+    --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+  }
 
   &-header {
     display: flex;
@@ -10,17 +27,29 @@
     h4 {
       margin-top: 0;
       margin-bottom: 0.5em;
+
+      @include r.mobile-portrait {
+        margin-bottom: 0.25em;
+      }
     }
   }
 
   &-filter {
     margin-top: 1em;
+
+    @include r.mobile-portrait {
+      margin-top: 0.5em;
+    }
   }
 
   &-buttons {
     display: flex;
     gap: 0.5em;
     margin-top: 1.5em;
+
+    @include r.mobile-portrait {
+      margin-top: 0.75em;
+    }
 
     button:first-child {
       flex: 1;

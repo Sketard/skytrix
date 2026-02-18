@@ -19,7 +19,6 @@ import { ExportService } from '../../../../services/export.service';
 import { downloadDocument } from '../../../../core/utilities/functions';
 import { DeckDTO } from '../../../../core/model/dto/deck-dto';
 import { ExportMode } from '../../../../core/enums/export.mode.enum';
-import { CardFiltersComponent } from '../../../../components/card-filters/card-filters.component';
 import { CardSearcherComponent } from '../../../../components/card-searcher/card-searcher.component';
 import { HandTestComponent } from './components/hand-test/hand-test.component';
 import { Router } from '@angular/router';
@@ -39,7 +38,6 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../
     MatMenu,
     MatMenuItem,
     MatMenuTrigger,
-    CardFiltersComponent,
     CardSearcherComponent,
     HandTestComponent,
     CardInspectorComponent,
@@ -77,7 +75,7 @@ export class DeckBuilderComponent implements OnDestroy {
   });
   readonly ExportMode = ExportMode;
 
-  readonly filtersOpened = this.deckBuildService.openedFilters;
+  readonly filtersRequestedSnap = signal<'full' | null>(null);
   readonly handTestOpened = this.deckBuildService.handTestOpened;
   readonly searchPanelOpened = signal(false);
 
@@ -256,8 +254,8 @@ export class DeckBuilderComponent implements OnDestroy {
     this.searchPanelOpened.update(v => !v);
   }
 
-  public closeFilters() {
-    this.deckBuildService.toggleFilters();
+  public onFiltersExpanded(expanded: boolean) {
+    this.filtersRequestedSnap.set(expanded ? 'full' : null);
   }
 
   public toggleTestHand() {

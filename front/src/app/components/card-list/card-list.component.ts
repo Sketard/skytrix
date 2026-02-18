@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, effect, ElementRef, input, OnDestroy, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { CdkDrag, CdkDragDrop, CdkDragStart, CdkDropList } from '@angular/cdk/drag-drop';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { fromEvent, Observable, Subscription } from 'rxjs';
 import { CardDetail } from '../../core/model/card-detail';
 import { toSharedCardData } from '../../core/model/shared-card-data';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
@@ -48,6 +48,10 @@ export class CardListComponent implements OnDestroy {
   readonly displayType = CardDisplayType;
   private dragging = false;
 
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private scrollContainer: HTMLElement | null = null;
+  private scrollSub: Subscription | null = null;
+
   constructor(
     private readonly httpClient: HttpClient,
     public readonly ownedCardService: OwnedCardService,
@@ -60,6 +64,20 @@ export class CardListComponent implements OnDestroy {
         if (service.fetch(this.httpClient)) {
           service.refreshResearch();
         }
+        this.setupScrollListener(service);
+      }
+    });
+  }
+
+  private setupScrollListener(service: SearchServiceCore): void {
+    this.scrollSub?.unsubscribe();
+    this.scrollContainer = this.elementRef.nativeElement.closest('.cardSearchPage-searcher-result');
+    if (!this.scrollContainer) return;
+
+    const container = this.scrollContainer;
+    this.scrollSub = fromEvent(container, 'scroll').subscribe(() => {
+      if (container.scrollTop >= container.scrollHeight - container.clientHeight - 5) {
+        service.loadNextPage(this.httpClient);
       }
     });
   }
@@ -159,6 +177,10 @@ export class CardListComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.scrollSub?.unsubscribe();
+    if (this.scrollContainer) {
+      this.scrollContainer.scrollTop = 0;
+    }
     this.searchService()?.clearOffset();
   }
 }

@@ -8,6 +8,40 @@
   overflow: hidden;
 }
 
+.cardSearchPage-desktop {
+  display: contents;
+  @include r.mobile-portrait {
+    display: none;
+  }
+}
+
+app-bottom-sheet {
+  display: none;
+  @include r.mobile-portrait {
+    display: block;
+  }
+}
+
+.cardSearchPage-searchToggle.mat-mdc-icon-button {
+  display: none;
+  @include r.mobile-portrait {
+    display: flex;
+    position: fixed;
+    bottom: 1em;
+    right: 1em;
+    z-index: 10;
+    color: $white;
+    background: rgba(0, 0, 0, 0.6);
+    @include r.touch-target-min;
+  }
+}
+
+app-card-inspector {
+  @include r.mobile-portrait {
+    --inspector-z-index: 1001;
+  }
+}
+
 .favorite-toggle {
   color: $white;
   margin-top: 1rem;
