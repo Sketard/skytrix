@@ -1,14 +1,19 @@
 <div class="searchBar">
-  <mat-form-field class="searchBar-input">
-    <mat-icon matPrefix fontIcon="search"></mat-icon>
-    <input matInput [formControl]="form()" placeholder="Entrez un nom..." />
-    <button matSuffix mat-icon-button class="mat-elevation-z0" *ngIf="form().value" (click)="clearFormControl()">
-      <mat-icon fontIcon="close"></mat-icon>
-    </button>
-  </mat-form-field>
+  <div class="searchBar-field">
+    <mat-form-field class="searchBar-input">
+      <mat-icon matPrefix fontIcon="search"></mat-icon>
+      <input matInput [formControl]="form()" placeholder="Entrez un nom..." />
+    </mat-form-field>
+    @if (form().value) {
+      <button mat-icon-button class="searchBar-clear mat-elevation-z0" (click)="clearFormControl()">
+        <mat-icon fontIcon="close"></mat-icon>
+      </button>
+    }
+  </div>
   <button matSuffix mat-icon-button class="searchBar-input-filters mat-elevation-z0" (click)="openFilters()">
     <mat-icon fontIcon="filter_alt"></mat-icon>
-    <div *ngIf="deckBuildMode() && (numberOfActiveFilters$ | async) as numberOfActiveFilters" class="searchBar-input-filters-number">{{ numberOfActiveFilters }}</div>
+    @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {
+      <div class="searchBar-input-filters-number">{{ numberOfActiveFilters }}</div>
+    }
   </button>
 </div>
-

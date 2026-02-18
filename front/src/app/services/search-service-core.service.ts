@@ -1,13 +1,10 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
 import {
   BehaviorSubject,
-  combineLatest,
   debounce,
-  fromEvent,
   map,
   Observable,
   of,
-  startWith,
   Subject,
   take,
   takeUntil,
@@ -33,12 +30,8 @@ export abstract class SearchServiceCore implements OnDestroy {
   readonly filterForm = new FormGroup<TypedForm<CardFilterDTO>>(SearchServiceCore.buildSearchForm());
   private offset: number = 0;
   readonly quantity: number = 60;
-  readonly CARDS_CONTAINER_CLASS = '.cardSearchPage-searcher-result';
   private readonly displayModeState = signal<CardDisplayType>(CardDisplayType.MOSAIC);
   readonly displayMode = this.displayModeState.asReadonly();
-
-  private readonly openedFiltersState = signal<boolean>(false);
-  readonly openedFilters = this.openedFiltersState.asReadonly();
 
   private readonly skipDebounceState = signal<boolean>(false);
   readonly skipDebounce = this.skipDebounceState.asReadonly();
@@ -86,73 +79,60 @@ export abstract class SearchServiceCore implements OnDestroy {
     this.isLoadingState.set(false);
     this.hasMoreResultsState.set(true);
 
-    const content = document.querySelector(this.CARDS_CONTAINER_CLASS);
-    const scroll$ = fromEvent(content!, 'scroll').pipe(
-      map(() => {
-        return content!.scrollTop;
-      })
-    );
-
-    let filterUpdate = true;
-
-    combineLatest([
-      scroll$.pipe(startWith(0)).pipe(
-        map(t => {
-          filterUpdate = false;
-          return t;
-        })
-      ),
-      this.filterForm.valueChanges.pipe(
+    this.filterForm.valueChanges
+      .pipe(
         debounce(() => {
-          return this.openedFilters() || this.skipDebounceState() ? of({}) : timer(750);
+          return this.skipDebounceState() ? of({}) : timer(750);
         }),
         tap(() => {
           this.skipDebounceState.set(false);
-          filterUpdate = true;
-        })
-      ),
-    ])
-      .pipe(takeUntil(this.unsubscribe$))
-      .subscribe(([scrollPos, filters]) => {
-        let limit = content!.scrollHeight - content!.clientHeight;
-        if (filterUpdate) {
-          this.offset = 0;
-          this.hasMoreResultsState.set(true);
-        }
-        if (!this.isLoadingState() && (this.hasMoreResultsState() || filterUpdate)) {
-          if (scrollPos === limit || filterUpdate) {
-            this.isLoadingState.set(true);
-            this.search(httpClient, this.filters, this.quantity, this.offset)
-              .pipe(take(1))
-              .subscribe({
-                next: (cards: Array<CardDetail>) => {
-                  if (filterUpdate) {
-                    this.cardsDetails = cards;
-                    filterUpdate = false;
-                  } else {
-                    this.cardsDetails = [...this.cardsDetails, ...cards];
-                  }
-                  this.offset += 1;
-                  this.hasMoreResultsState.set(cards.length >= this.quantity);
-                  this.isLoadingState.set(false);
-                },
-                error: () => {
-                  this.isLoadingState.set(false);
-                },
-              });
-          }
-        }
+        }),
+        takeUntil(this.unsubscribe$),
+      )
+      .subscribe(() => {
+        if (this.isLoadingState()) return;
+        this.offset = 0;
+        this.hasMoreResultsState.set(true);
+        this.isLoadingState.set(true);
+        this.search(httpClient, this.filters, this.quantity, this.offset)
+          .pipe(take(1))
+          .subscribe({
+            next: (cards: Array<CardDetail>) => {
+              this.cardsDetails = cards;
+              this.offset += 1;
+              this.hasMoreResultsState.set(cards.length >= this.quantity);
+              this.isLoadingState.set(false);
+            },
+            error: () => {
+              this.isLoadingState.set(false);
+            },
+          });
       });
     return true;
   }
 
+  public loadNextPage(httpClient: HttpClient): void {
+    if (this.isLoadingState() || !this.hasMoreResultsState()) return;
+    this.isLoadingState.set(true);
+    this.search(httpClient, this.filters, this.quantity, this.offset)
+      .pipe(take(1))
+      .subscribe({
+        next: (cards: Array<CardDetail>) => {
+          this.cardsDetails = [...this.cardsDetails, ...cards];
+          this.offset += 1;
+          this.hasMoreResultsState.set(cards.length >= this.quantity);
+          this.isLoadingState.set(false);
+        },
+        error: () => {
+          this.isLoadingState.set(false);
+        },
+      });
+  }
+
   public clearOffset() {
-    const content = document.querySelector(this.CARDS_CONTAINER_CLASS);
-    if (content) {
-      content.scrollTop = 0;
-    }
     this.offset = 0;
     this.fetchActive = false;
+    this.unsubscribe$.next();
   }
 
   public static buildSearchForm(): TypedForm<CardFilterDTO> {
@@ -185,10 +165,6 @@ export abstract class SearchServiceCore implements OnDestroy {
     return httpClient
       .post<CardDetailDTOPage>(`/api/cards/search?quantity=${quantity}&offset=${offset}`, filter)
       .pipe(map((cards: CardDetailDTOPage) => cards.elements.map((card: CardDetailDTO) => new CardDetail(card))));
-  }
-
-  public toggleFilters() {
-    this.openedFiltersState.set(!this.openedFilters());
   }
 
   public setDisplayMode(mode: CardDisplayType) {

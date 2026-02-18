@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output, signal, Signal } from '@angular/core';
-import { BreakpointObserver } from '@angular/cdk/layout';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal, Signal } from '@angular/core';
 import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
@@ -34,12 +33,12 @@ export class CardSearcherComponent {
   readonly searchService = input<SearchServiceCore | undefined>(undefined);
 
   readonly cardClicked = output<CardDetail>();
+  readonly filtersExpanded = output<boolean>();
 
   public displayMode: Signal<CardDisplayType> | undefined;
   public displayType = CardDisplayType;
 
-  private readonly breakpointObserver = inject(BreakpointObserver);
-  readonly filtersOpen = signal(this.breakpointObserver.isMatched('(min-width: 768px)'));
+  readonly filtersOpen = signal(false);
 
   public form: FormGroup<TypedForm<CardFilterDTO>> | undefined = undefined;
 
@@ -59,5 +58,6 @@ export class CardSearcherComponent {
 
   public toggleFilters() {
     this.filtersOpen.update(v => !v);
+    this.filtersExpanded.emit(this.filtersOpen());
   }
 }

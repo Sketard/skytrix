@@ -13,8 +13,9 @@
   @if (!add()) {
     <img class="deckBox-image" [src]="'/assets/images/deckbox.webp'" alt="deckbox" />
   } @else {
-    <div>
-      <mat-icon class="deckBox-add">add_circle_outline</mat-icon>
+    <div class="deckBox-addContent">
+      <mat-icon class="deckBox-add">library_add</mat-icon>
+      <span class="deckBox-addLabel">Nouveau deck</span>
     </div>
   }
   <div class="deckBox-name">

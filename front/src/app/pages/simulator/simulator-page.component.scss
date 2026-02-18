@@ -1,4 +1,7 @@
 :host {
+  display: block;
+  height: 100%;
+
   // Global token overrides for simulator context
   --surface-base: #0a0e1a;
   --accent-primary: #00d4ff;
@@ -14,7 +17,7 @@
 }
 
 .sim-page {
-  height: 100vh;
+  height: 100%;
   background: var(--surface-base);
   overflow: hidden;
 }

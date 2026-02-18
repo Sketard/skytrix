@@ -143,3 +143,17 @@
 .overlay-card-row.cdk-drag-placeholder {
   opacity: 0.3;
 }
+
+// Mobile: lift above the detached hand
+// Both media queries needed to match JS isMobile() breakpoint
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  .overlay-panel {
+    bottom: calc(90px + 8px); // $sim-hand-height-landscape + gap
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .overlay-panel {
+    bottom: calc(120px + 8px); // $sim-hand-height-portrait + gap
+  }
+}

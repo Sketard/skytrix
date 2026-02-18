@@ -1,11 +1,24 @@
+@use 'responsive' as r;
+
 .searchBar {
   display: flex;
   align-items: center;
   overflow: visible;
 
-  &-input {
+  @include r.mobile-portrait {
+    --mat-form-field-container-height: 40px;
+    --mat-form-field-filled-with-label-container-padding-top: 4px;
+    --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+  }
+
+  &-field {
+    position: relative;
     flex: 1;
     min-width: 0;
+  }
+
+  &-input {
+    width: 100%;
 
     --mdc-filled-text-field-container-color: var(--surface-card);
     --mdc-filled-text-field-input-text-color: var(--text-primary);
@@ -19,35 +32,35 @@
     .mat-icon {
       color: var(--text-primary);
     }
+  }
 
-    button {
-      margin-right: 1em;
+  &-clear {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-primary);
+  }
+
+  &-input-filters {
+    position: relative;
+    color: var(--text-primary);
+
+    &-number {
       display: flex;
       justify-content: center;
       align-items: center;
-      color: var(--text-primary);
-    }
-
-    &-filters {
-      position: relative;
-      color: var(--text-primary);
-
-      &-number {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: absolute;
-        top: 0px;
-        right: 0px;
-        z-index: 10000;
-        height: 21px;
-        width: 21px;
-        border: 1px solid var(--accent-primary);
-        background-color: var(--surface-card);
-        border-radius: 100%;
-        color: var(--accent-primary);
-        font-size: 0.7em;
-      }
+      position: absolute;
+      top: 0px;
+      right: 0px;
+      z-index: 1;
+      height: 21px;
+      width: 21px;
+      border: 1px solid var(--accent-primary);
+      background-color: var(--surface-card);
+      border-radius: 100%;
+      color: var(--accent-primary);
+      font-size: 0.7em;
     }
   }
 }

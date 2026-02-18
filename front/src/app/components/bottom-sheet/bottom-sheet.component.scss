@@ -12,6 +12,10 @@
     pointer-events: auto;
   }
 
+  &.card-drag-active {
+    pointer-events: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }
@@ -35,9 +39,12 @@
     transition: none;
   }
 
-  &.card-drag-active .bottom-sheet-content {
+  &.card-drag-active {
     pointer-events: none;
-    overflow: visible;
+
+    .bottom-sheet-content {
+      overflow: visible;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

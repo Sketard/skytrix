@@ -1,8 +1,31 @@
-<app-card-searcher
-  [deckBuildMode]="false"
-  [searchService]="cardSearchService"
-  (cardClicked)="onCardClicked($event)">
-</app-card-searcher>
+<button mat-icon-button class="cardSearchPage-searchToggle"
+  aria-label="Rechercher une carte"
+  [attr.aria-expanded]="searchPanelOpened() && isMobilePortrait()"
+  (click)="toggleSearchPanel()">
+  <mat-icon>search</mat-icon>
+</button>
+
+<div class="cardSearchPage-desktop">
+  <app-card-searcher
+    [deckBuildMode]="false"
+    [searchService]="cardSearchService"
+    (cardClicked)="onCardClicked($event)"
+    (filtersExpanded)="onFiltersExpanded($event)">
+  </app-card-searcher>
+</div>
+
+<app-bottom-sheet
+  [opened]="searchPanelOpened() && isMobilePortrait()"
+  [ariaLabel]="'Panneau de recherche de cartes'"
+  [requestedSnap]="filtersRequestedSnap()"
+  (closed)="searchPanelOpened.set(false)">
+  <app-card-searcher
+    [deckBuildMode]="false"
+    [searchService]="cardSearchService"
+    (cardClicked)="onCardClicked($event)"
+    (filtersExpanded)="onFiltersExpanded($event)">
+  </app-card-searcher>
+</app-bottom-sheet>
 
 <app-card-inspector
   [card]="selectedCardForInspector()"

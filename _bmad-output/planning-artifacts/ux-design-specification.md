@@ -8,7 +8,7 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 
 **Author:** Axel
 **Date:** 2026-02-08
-**Last Revised:** 2026-02-12
+**Last Revised:** 2026-02-18
 
 ### Revision History
 
@@ -17,6 +17,9 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 | 2026-02-12 | Sprint Retro (Epics 1-5) | **A.** Fixed 16:9 aspect ratio layout with proportional scaling (Master Duel zoom-out style), replaces flexible CSS Grid responsive model. **B.** Face-down behavior rethought for solo context: inspector shows full details for face-down cards, ED overlay displays all cards face-up (no eye icon/grouping), deck/ED zones show card-back when count > 0. **C.** `preventDefault()` on right-click for entire board in all builds (incl. devMode); right-click gesture reserved for future custom context menu. **D.** Collapsible navbar: chevron toggle at navbar border, collapses to ~32px thin bar, collapsed by default on simulator page only. |
 | 2026-02-12 | UX Review | **E.** Standardized pill drag: all stacked zones (Deck, ED, GY, Banished) support direct drag from the pill — grabs the top card with identical behavior to dragging a board card. Click still opens overlay for deeper card access. |
 | 2026-02-12 | Sprint Change Proposal | **F.** Responsive two-track strategy: Track A (fixed canvas scaling) for card manipulation pages (simulator, deck builder, card search); Track B (mobile-first responsive CSS) for content pages (deck list, settings, login). Shared components (CardComponent, CardInspectorComponent) extracted from simulator for cross-page reuse. Navbar responsive: hamburger/drawer on mobile ≤768px, collapsible sidebar on desktop. |
+| 2026-02-18 | UX Review (Bottom Sheet & Filters) | **G.** Bottom sheet component made generic and reusable (`aria-label` configurable via input). Reused on Card Search Page for mobile portrait filters. **H.** Card searcher filter display unified to expand/collapse vertical pattern across all contexts (replaces lateral slide-in overlay on deck builder and lateral panel on card search page). Filters expand above the card list; `card-searcher` manages this behavior internally. **I.** Bottom sheet auto-snaps to full when filters expand inside it; returns to previous snap state when filters collapse. **J.** Card inspector confirmed as overlay/modal pattern — never a bottom sheet (avoids nested bottom sheets on deck builder). |
+| 2026-02-18 | UX Review (Mobile Simulator) | **K.** Mobile hand detachment: on mobile viewports, the hand zone renders outside the scaled board canvas at native size. Board grid reduces from 4 to 3 rows (1060×608) on mobile. A `.board-scaler` wrapper applies `transform: scale()` to both grid and hand on desktop (preserving current behavior) while the hand exits the scaler on mobile via conditional rendering. Flex column layout with clean separation — no overlap (flat 2D board cannot hide the bottom row like Master Duel's 3D perspective). CDK DragDrop compatibility maintained — hand stays inside `cdkDropListGroup` container. Desktop layout unchanged. |
+| 2026-02-18 | UX Review (Deck Builder Card Density) | **L.** Deck builder card search grid density increased to 5 columns minimum (portrait and landscape) with reduced gap, matching Master Duel's deck builder aesthetic. Mosaic/favorite mode in `deckBuildMode` uses `minmax(55px, 1fr)` with `0.25em` gap (down from `minmax(85px, 1fr)` / `0.75em`). Applies to both the side panel (desktop/landscape) and the bottom sheet (mobile portrait). Cards remain recognizable by artwork at 55px — this is the standard size in Master Duel's search panel. **M.** Deck builder landscape: filters displayed via bottom sheet anchored inside the side panel (Option A) instead of full-width overlay. The side panel bottom sheet shows filters while keeping the deck viewer (left 55%) fully visible. Same `app-bottom-sheet` component reused, scoped to the side panel container. On desktop (≥768px), filters remain as vertical expand/collapse inline (unchanged from revision H). |
 
 ---
 
@@ -39,7 +42,7 @@ The core workflow is: build deck → test combos → iterate — all within a si
 1. **Visual Density Management** — 18 zones on a single screen with a fixed aspect ratio (1060×772). The board scales proportionally to fit the available viewport space — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
 2. **Action Discoverability** — Without a rules engine to guide the player, all available actions (mill, search, reveal, flip, toggle position, banish, return to hand/deck) must be intuitively discoverable through the interface. No tutorial — the UI must be self-explanatory.
 3. **Drag & Drop Precision** — Targeting the correct zone among 18 while dragging a card. Visual feedback during drag (zone highlighting, capacity indicators) is critical to avoid frustrating mis-drops.
-4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). Touch interaction (tap-to-place for simulator) is a post-MVP design effort; all other pages are touch-ready via responsive layouts.
+4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). On mobile, the hand zone is detached from the scaled canvas and rendered at native size (consistent with Master Duel's mobile approach) — see §Spacing & Layout Foundation and §Responsive Strategy for details. Touch interaction (tap-to-place for simulator) is a post-MVP design effort; all other pages are touch-ready via responsive layouts.
 
 ### Design Opportunities
 
@@ -459,10 +462,11 @@ The simulator's identity is captured in one interaction: picking up a card and p
 | `--radius-card` | `0.25rem` | Card border radius |
 
 **Layout Principles:**
-1. **Fixed 1060×772 board** — The board is a fixed-dimension container that scales proportionally to fit the available viewport space. Scaling is achieved via `transform: scale()` on the board container. `transform-origin: top center` on desktop; `transform-origin: bottom center` on mobile portrait (thumb-friendly, board anchored at bottom). Empty space (letterboxing) uses the app background.
+1. **Fixed board canvas with proportional scaling** — The board is a fixed-dimension container that scales proportionally to fit the available viewport space. Scaling is achieved via `transform: scale()` on the board container. `transform-origin: top center` on desktop; `transform-origin: bottom center` on mobile portrait (thumb-friendly, board anchored at bottom). Empty space (letterboxing) uses the app background. On desktop, the board is **1060×772** (4 rows: 3 zone rows + hand). On mobile, the board is **1060×608** (3 zone rows only — hand is detached, see point 5).
 2. **CSS Grid with named areas** — Inside the fixed-ratio container, each of the 18 zones has a named grid area. Zone dimensions use fixed proportions (not `fr` + `minmax()`), since the container itself handles viewport adaptation via scaling.
 3. **Dynamic rescaling on navbar toggle** — The available viewport space changes when the collapsible navbar is shown/hidden. The board recalculates its scale factor dynamically to always fit within the available space.
 4. **Overlay positioning** — Pile overlays open to the side or bottom (never centered fullscreen) to keep the board visible as a drag target during pill-to-drag flow.
+5. **Mobile hand detachment** — On mobile viewports (≤767px), the hand exits the `.board-scaler` wrapper via conditional rendering and displays at **native size** inside `.board-container` (`cdkDropListGroup` host). This allows the hand cards to display at native size instead of being scaled down with the board. The board grid drops from 4 to 3 rows (removing the hand row), scaling more favorably on small screens. **Both mobile orientations:** flex column layout with clean separation — hand sits below the board, no overlap. The flat 2D board cannot hide the bottom row like Master Duel's 3D perspective board — the Deck/ED/ST row must remain fully visible and interactive. **Desktop (>767px):** a `.board-scaler` wrapper contains both the 3-row grid and the hand, applying `transform: scale()` to both together — visually identical to the previous 4-row grid behavior.
 
 ### Accessibility Considerations
 
@@ -499,28 +503,49 @@ Eight design directions were generated and evaluated via interactive HTML mockup
 
 ### Board Layout (Corrected)
 
-The board uses a **7-column x 4-row CSS Grid**, matching the official Yu-Gi-Oh! playmat layout:
+The board uses a **7-column CSS Grid**, matching the official Yu-Gi-Oh! playmat layout:
 
+**Desktop (4 rows — 1060×772):**
 ```
    .     |   .   | EMZ-L |   .   | EMZ-R |   .   | Banish
  Field   |  M-1  |  M-2  |  M-3  |  M-4  |  M-5  |   GY
    ED    | ST-1  |  ST-2 |  ST-3 |  ST-4 |  ST-5 |  Deck
-Controls |              Hand (5 cols)              |   .
+              Hand (spans all 7 cols)
+```
+
+**Mobile (3 rows — 1060×608, hand detached):**
+```
+   .     |   .   | EMZ-L |   .   | EMZ-R |   .   | Banish
+ Field   |  M-1  |  M-2  |  M-3  |  M-4  |  M-5  |   GY
+   ED    | ST-1  |  ST-2 |  ST-3 |  ST-4 |  ST-5 |  Deck
+
+═══════════ Hand (native size, outside grid) ════════════
 ```
 
 **Zone Notes:**
 - **ST-1** doubles as **Pendulum Left** zone. **ST-5** doubles as **Pendulum Right** zone (per Master Rule 5).
 - **EMZ-L** and **EMZ-R** are Extra Monster Zones, positioned above M-2 and M-4 respectively.
-- **Controls row**: Undo / Redo / Reset buttons aligned left, Hand zone spans 5 central columns.
 - **Deck** and **Extra Deck** display cards face-down by default.
+- On mobile, the hand is rendered **outside the scaled board** but inside `.board-container` (`cdkDropListGroup` host). Flex column layout with clean separation (no overlap) — hand sits below the board on both orientations.
 
-**CSS Grid Template:**
+**CSS Grid Template (Desktop):**
 ```css
 grid-template-areas:
   ".        .     emz-l   .      emz-r   .      banish"
   "field    m1    m2      m3     m4      m5     gy"
   "ed       st1   st2     st3    st4     st5    deck"
-  "controls hand  hand    hand   hand    hand   .";
+  "hand     hand  hand    hand   hand    hand   hand";
+grid-template-rows: 200px 200px 200px 160px;
+```
+
+**CSS Grid Template (Mobile — hand excluded from grid):**
+```css
+grid-template-areas:
+  ".        .     emz-l   .      emz-r   .      banish"
+  "field    m1    m2      m3     m4      m5     gy"
+  "ed       st1   st2     st3    st4     st5    deck";
+grid-template-rows: 200px 200px 200px;
+/* Board canvas: 1060×608 — hand rendered separately at native size */
 ```
 
 ### Zone Interaction Rules
@@ -767,11 +792,11 @@ flowchart TD
 
 #### SimBoardComponent (Root Container)
 
-**Purpose:** Root component that renders the fixed 1060×772 board container and orchestrates all child zones. The container scales via `transform: scale()` to fit the available viewport space (accounting for navbar visibility). Inside, a 7x4 CSS Grid renders the 18 zones.
-**Content:** 18 zones rendered via named grid areas. Injects `BoardStateService` for zone data. Computes scale factor reactively based on viewport dimensions and navbar state.
+**Purpose:** Root component that renders the board container and orchestrates all child zones. The `.board-container` hosts the `cdkDropListGroup` and contains the scaled `.sim-board` grid plus floating/sibling elements (control bar, pile overlay, inspector, and on mobile: the detached hand). The `.sim-board` scales via `transform: scale()` to fit the available viewport space.
+**Content:** 18 zones rendered via named grid areas. Injects `BoardStateService` for zone data. Computes scale factor reactively based on viewport dimensions, navbar state, and board height (772px desktop, 608px mobile).
 **Actions:** Handles global keyboard shortcuts (Ctrl+Z, Ctrl+Y). Manages `isDragging` signal suppression for pills.
 **States:** Default (board ready), Loading (deck loading), Empty (no deck loaded).
-**Variants:** None — single layout. The board scales proportionally, never changes structure.
+**Mobile layout:** On mobile (≤767px), the hand exits the `.board-scaler` wrapper via conditional rendering and displays at native size below the board. `.board-container` uses `flex-direction: column; justify-content: flex-end` (thumb-friendly). The `.board-scaler` contains only the 3-row grid (1060×608) and scales via `transform: scale()` with `transform-origin: bottom center`. No overlap — the flat 2D board requires the bottom row (ED, ST1-5, Deck) to remain fully visible. On desktop, a `.board-scaler` wrapper contains both the grid and the hand, scaling them together at `transform: scale()` — visually identical to current behavior.
 **Accessibility:** `role="application"`, `aria-label="Yu-Gi-Oh simulator board"`. Keyboard shortcut hints in control bar.
 
 #### SimZoneComponent (Single-Card Zone)
@@ -808,11 +833,12 @@ interface StackedZoneConfig {
 
 #### SimHandComponent (Hand Zone)
 
-**Purpose:** Horizontal card row with drag reordering support. Spans 5 grid columns.
-**Content:** 0-N cards rendered as `SimCardComponent` instances. Cards face-up to player.
+**Purpose:** Renders the player's hand cards with drag reordering support.
+**Content:** 0-N cards rendered as `CardComponent` instances. Cards face-up to player.
 **Actions:** Drag cards to board zones, drag to reorder within hand, receive cards from board/overlays.
-**States:** Empty (subtle placeholder), Has-cards (cards displayed with spacing), Drag-reorder (CDK sort animation active).
-**Variants:** None — single responsive layout.
+**States:** Empty (subtle dashed border placeholder), Has-cards (cards displayed with spacing), Drag-reorder (CDK sort animation active).
+**Desktop layout:** Hand is row 4 of the `.sim-board` grid (spans all 7 columns). Cards use an absolute-positioned fan layout with computed offsets (`--fan-x`, `--fan-rotation`, `--fan-y`). Scales with the board via `transform: scale()`.
+**Mobile layout (≤767px):** Hand exits the `.board-scaler` wrapper via conditional rendering and displays at **native size** in a horizontal strip (`display: flex; overflow-x: auto`). Card height: ~80px. Fan rotation and arc are disabled — cards align flat for touch ergonomics. Flex column layout with clean separation on both orientations — hand sits below the board, no overlap.
 **Accessibility:** `role="listbox"`, cards are `role="option"`. Arrow keys for card navigation.
 
 #### SimCardComponent (Individual Card)
@@ -1096,6 +1122,103 @@ SimBoardComponent (root grid)
 - Redo stack empty → Redo button disabled
 - **Undo scope: board state only** — undo does NOT re-open previously closed overlays, does NOT restore inspector state, does NOT reverse UI-only actions (opening/closing panels). Undo reverses card movements, position changes, and zone state changes exclusively
 
+### Bottom Sheet Pattern (Mobile)
+
+**Purpose:** Draggable mobile panel for secondary content (search, filters). Provides a peek → half → full interaction that users recognize from Google Maps, Spotify, and other mobile apps.
+
+**Component:** `BottomSheetComponent` — generic, reusable standalone component in `components/bottom-sheet/`.
+
+**API:**
+- `opened: InputSignal<boolean>` — controls open/close
+- `closed: OutputEmitterRef<void>` — emits on dismiss (drag-down, backdrop tap, Escape)
+- `cardDragActive: InputSignal<boolean>` (optional, default `false`) — disables pointer-events on content during CDK drag. Only used by deck builder.
+- `ariaLabel: InputSignal<string>` — configurable accessible label (replaces hardcoded French string)
+- Content projected via `<ng-content>`
+
+**Snap States:** closed → collapsed (85vh) → half (40vh) → full (navbar header height). Velocity-based snap determination (0.5 px/ms threshold). `prefers-reduced-motion` disables transitions.
+
+**Usage:**
+
+| Page | Context | Content Projected |
+|---|---|---|
+| Deck Builder | Mobile portrait (CSS `display` toggle) | `card-searcher` + `card-filters` |
+| Deck Builder | Mobile landscape — anchored inside side panel | `card-filters` only (search bar + card list remain above in the side panel) |
+| Card Search Page | Mobile portrait only | `card-searcher` (with inline filters) |
+
+**Rule:** Bottom sheet is for **exploration panels** (search, filter, browse). Card detail is handled by `CardInspectorComponent` (overlay/modal) — never by bottom sheet. This avoids nested bottom sheets on pages where the search panel is already in a bottom sheet.
+
+### Card Searcher Filter Pattern (Expand/Collapse)
+
+**Behavior:** The `card-searcher` component manages its own filter display via a vertical expand/collapse mechanism. A toggle button in the search bar expands/collapses the filter section **above** the card result list, pushing the list down.
+
+**Unified across all contexts:**
+
+| Context | Previous Behavior | New Behavior |
+|---|---|---|
+| Deck builder side panel (desktop) | Lateral slide-in overlay (`position: absolute`, `z-index: 999`) covering entire panel | Vertical expand/collapse inline above card list |
+| Card search page (desktop) | Lateral panel (`width: 0 → 300px`) shrinking result area | Vertical expand/collapse inline above card list |
+| Bottom sheet (mobile portrait) | Lateral slide-in overlay inside bottom sheet | Vertical expand/collapse inline above card list |
+
+**Benefits:**
+- `card-searcher` is context-agnostic — same filter behavior everywhere
+- No overlay-inside-overlay anti-pattern
+- Results remain partially visible when filters are open (in full-height contexts)
+
+**Auto-Snap Full (Bottom Sheet Integration):**
+When filters expand inside a bottom sheet, the sheet automatically snaps to the `full` state to maximize available space for filters + results. When filters collapse, the sheet returns to its previous snap state (typically `half`). This is coordinated via an output signal from `card-searcher` (e.g., `filtersExpanded: OutputEmitterRef<boolean>`) consumed by the bottom sheet's parent component, which updates the sheet's snap target.
+
+### Deck Builder Card Search Density
+
+**Reference:** Master Duel deck builder — card search panel displays ~5 columns of card thumbnails with minimal gap, maximizing the number of visible results.
+
+**Card grid in `deckBuildMode` (mosaic/favorite display modes):**
+
+| Property | Previous | New (deckBuildMode) |
+|---|---|---|
+| `grid-template-columns` | `repeat(auto-fill, minmax(85px, 1fr))` | `repeat(auto-fill, minmax(55px, 1fr))` |
+| `gap` | `0.75em` | `0.25em` |
+| Typical columns (side panel ~300px) | 3 | 5 |
+| Typical columns (bottom sheet ~375px) | 4 | 5–6 |
+
+**Rationale:** In deck building mode, users scan cards by artwork recognition. Smaller thumbnails (55px) are sufficient — Master Duel uses comparable sizes. The increased density reduces scrolling and provides a more catalog-like browsing experience. This change is scoped to `deckBuildMode` only; the card search page retains its current sizing (`minmax(100px, 1fr)` / `minmax(85px, 1fr)`).
+
+### Deck Builder Landscape Filter Bottom Sheet
+
+**Context:** In landscape split layout, the deck builder displays the deck viewer (55% left) and the side panel with card search (45% right). Filters were previously an absolute-positioned overlay covering the entire side panel, hiding both the search bar and results.
+
+**New behavior (landscape only):**
+
+Filters are displayed via an `app-bottom-sheet` instance **anchored inside the side panel** (not full-screen). This keeps the deck viewer fully visible while providing filter access.
+
+**Layout:**
+```
+┌──────────────────────────┬───────────────────────┐
+│                          │  [search bar] [filter] │
+│                          │  ┌──┬──┬──┬──┬──┐     │
+│     DECK VIEWER          │  │  │  │  │  │  │     │
+│     (55% left)           │  ├──┼──┼──┼──┼──┤     │
+│     always visible       │  │  │  │  │  │  │     │
+│                          │  ├──┼──┼──┼──┼──┤     │
+│                          │  │  │  │  │  │  │     │
+│                          │  └──┴──┴──┴──┴──┘     │
+│                          │ ┌─── FILTERS ────────┐ │
+│                          │ │ bottom sheet (~40%) │ │
+│                          │ └────────────────────┘ │
+└──────────────────────────┴───────────────────────┘
+```
+
+**Implementation notes:**
+- The bottom sheet's container is the `.deckBuilder-side` element (not the viewport). It uses `position: absolute` within the side panel, not `position: fixed`.
+- Snap states adapt to the side panel height (not viewport height).
+- On desktop (≥768px), filters remain as vertical expand/collapse inline above the card list (revision H behavior, unchanged).
+- On mobile portrait, filters are inside the main full-screen bottom sheet (unchanged).
+
+| Viewport | Filter mechanism |
+|---|---|
+| Desktop (≥768px) | Vertical expand/collapse inline (revision H) |
+| Mobile landscape (<768px) | Bottom sheet anchored in side panel |
+| Mobile portrait (<768px) | Inside main bottom sheet (auto-snap full, revision I) |
+
 ## Responsive Design & Accessibility
 
 ### Responsive Strategy
@@ -1111,7 +1234,7 @@ Pages where cards are the primary content and spatial layout is critical:
 
 Fixed internal resolution per page, `transform: scale()` to fit viewport. The canvas structure is invariant — only the scale factor changes. No breakpoint-based layout changes for the canvas area. Card details remain accessible at any scale via hover/inspector.
 
-**Key Principle:** Canvas pages never scroll, never change grid structure, and never hide content zones. The only variable is the scale factor. This eliminates breakpoint-specific CSS bugs entirely.
+**Key Principle:** Canvas pages never scroll and never hide content zones. The only variable is the scale factor. On desktop, the grid structure is invariant. **Exception:** On mobile, the simulator board grid changes from 4 rows to 3 rows (hand detached) — this is the only structural grid change, driven by a single media query (≤767px). This eliminates breakpoint-specific CSS bugs while allowing the hand to render at native size on small screens.
 
 **Hybrid layout** for deck builder and card search: responsive search/filter header above the scaled canvas. The header adapts via standard responsive CSS (Track B patterns) — search inputs, filter controls, action buttons. The canvas below contains the card grid/workspace with fixed scaling.
 
@@ -1148,9 +1271,20 @@ scale = min(scaleX, scaleY)
 → transform: scale(scale), transform-origin: top center (desktop) | bottom center (mobile portrait)
 ```
 
-The directive measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout. Each Track A page has its own reference dimensions calibrated to its content density (e.g., simulator: 1060×772).
+The directive measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout. Each Track A page has its own reference dimensions calibrated to its content density (e.g., simulator: 1060×772 on desktop, 1060×608 on mobile with detached hand).
 
 The canvas is centered in the available space. Empty space (letterboxing) shows the app's existing background — the canvas floats over it.
+
+**Simulator Mobile Scale Calculations (hand detached):**
+
+| Scenario | Viewport | Board canvas | Scale factor | Board rendered height | Hand |
+|---|---|---|---|---|---|
+| **Desktop** (navbar collapsed) | 1920×1080 | 1060×772 | 1.0 (capped) | 772px | In grid, scaled |
+| **Mobile landscape** (immersive) | 844×390 | 1060×608 | ~0.49 (height-constrained) | ~300px | Native ~90px, below board |
+| **Mobile portrait** (topbar visible) | 390×844 | 1060×608 | ~0.37 (width-constrained) | ~224px | Native ~120px, below board |
+| **Current (no detach)** | 390×844 | 1060×772 | ~0.37 | ~284px (hand ~59px) | Scaled, illegible |
+
+Key gains: hand cards go from ~52px (scaled, illegible) to ~100px (native, readable) on portrait; from ~71px (scaled, blurry) to ~75px (native, crisp) on landscape.
 
 ### Viewport Considerations
 
@@ -1159,7 +1293,7 @@ The canvas is centered in the available space. Empty space (letterboxing) shows 
 | **Desktop (>1024px)** | Canvas scales to fit. Card inspector as fixed side panel. Full drag & drop with mouse. | Full layout — multi-column grids, expanded cards. |
 | **Small desktop / laptop (769–1024px)** | Canvas scales down proportionally. All zones remain visible. Inspector may overlap more. | Reduced columns, adjusted spacing. |
 | **Tablet (577–768px)** | Canvas scales further. Still functional. Navbar switches to hamburger/drawer. | Stacked layout, single or dual columns. Touch-friendly tap targets. |
-| **Mobile (≤576px)** | Simulator: landscape-locked, canvas scales to full viewport. Deck builder/search: portrait usable via scaled canvas. | Single column, full-width cards, 44×44px touch targets. |
+| **Mobile (≤576px)** | Simulator: landscape-locked, canvas scales to full viewport. Hand detached from canvas at native size, below board (flex column, no overlap). Deck builder/search: portrait usable via scaled canvas. | Single column, full-width cards, 44×44px touch targets. |
 
 ### Navbar Responsive UX
 
@@ -1179,13 +1313,20 @@ The canvas is centered in the available space. Empty space (letterboxing) shows 
 - Standard touch gestures (tap, scroll) work natively with responsive layouts
 - No special interaction mode needed
 
-**Simulator (Track A) — post-MVP touch design:**
+**Simulator (Track A) — mobile layout improvements (current) + post-MVP touch design:**
+
+Mobile layout (current — implemented with hand detachment):
 - **Landscape-locked display** — like Master Duel on mobile, the simulator locks to landscape orientation
+- **Hand detached from scaled canvas** — on mobile (≤767px), the hand renders outside the `.sim-board` grid at native size, inside the `.board-container` (CDK DragDrop group preserved). Board grid drops to 3 rows (1060×608) for better scaling. See §Spacing & Layout Foundation point 5 for full specification.
+- **Landscape hand below board** — hand renders at native size below the board in flex column layout. Cards in horizontal strip at ~80px height. No overlap — flat 2D board requires the bottom row (ED, ST1-5, Deck) to remain fully visible and interactive.
+- **Portrait hand below board** — `.board-container` uses `flex-direction: column; justify-content: flex-end`. Hand sits below the board at ~100-120px height. Cards in horizontal strip with `overflow-x: auto` for scrolling when many cards in hand.
+- Card inspector becomes full-screen modal on tap
+
+Post-MVP touch interaction design:
 - **Tap-to-Place Mode (Required for Mobile Card Movement):**
   - CDK DragDrop is incompatible with touch on small screens — drag triggers scroll, scroll interferes with drop detection
   - Alternative interaction: tap card → card highlights (cyan selection) → tap target zone → card moves. Two taps replace one drag.
   - This mode must be designed and implemented separately (post-MVP)
-- Card inspector becomes full-screen modal on tap
 - Context menus replaced by long-press or dedicated buttons
 
 **Deck builder / Card search (Track A) — hybrid:**

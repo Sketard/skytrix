@@ -1,5 +1,6 @@
 <div class="bottom-sheet-backdrop"
   [class.visible]="sheetState() !== 'closed'"
+  [class.card-drag-active]="cardDragActive()"
   (click)="onBackdropClick()"></div>
 
 <div class="bottom-sheet"
@@ -9,7 +10,7 @@
   [style.height.px]="viewportHeight()"
   role="dialog"
   aria-modal="false"
-  aria-label="Panneau de recherche de cartes">
+  [attr.aria-label]="ariaLabel()">
 
   <div class="bottom-sheet-handle"
     role="slider"

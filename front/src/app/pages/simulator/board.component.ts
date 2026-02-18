@@ -60,6 +60,17 @@ export class SimBoardComponent {
 
   readonly deckId = input(0);
   protected readonly scaleFactor = signal(1);
+  readonly isMobile = this.navbarCollapse.isMobile;
+
+  private static readonly BOARD_WIDTH = 1060;
+  private static readonly BOARD_HEIGHT_3ROW = 608;  // 3 zone rows only
+  private static readonly HAND_GAP = 4;
+  private static readonly HAND_HEIGHT = 160;
+  // Desktop total: 608 + 4 + 160 = 772 (grid + gap + hand, all scaled together)
+  private static readonly BOARD_HEIGHT_DESKTOP =
+    SimBoardComponent.BOARD_HEIGHT_3ROW + SimBoardComponent.HAND_GAP + SimBoardComponent.HAND_HEIGHT;
+  private static readonly HAND_HEIGHT_LANDSCAPE = 90;
+  private static readonly HAND_HEIGHT_PORTRAIT = 120;
 
   constructor() {
     effect(() => {
@@ -80,8 +91,28 @@ export class SimBoardComponent {
     const isMobile = this.navbarCollapse.isMobile();
     const availableWidth = isMobile ? window.innerWidth : window.innerWidth - this.navbarCollapse.navbarWidth();
     const topBarVisible = isMobile && !this.navbarCollapse.shouldHideTopBar();
-    const availableHeight = topBarVisible ? window.innerHeight - NavbarCollapseService.MOBILE_HEADER_HEIGHT : window.innerHeight;
-    this.scaleFactor.set(Math.min(availableWidth / 1060, availableHeight / 772, 1));
+    const topBarHeight = topBarVisible ? NavbarCollapseService.MOBILE_HEADER_HEIGHT : 0;
+    const totalHeight = window.innerHeight - topBarHeight;
+
+    if (isMobile) {
+      // Mobile: grid only (608px) — hand is native size, subtracted from available height
+      const handHeight = this.navbarCollapse.isMobilePortrait()
+        ? SimBoardComponent.HAND_HEIGHT_PORTRAIT
+        : SimBoardComponent.HAND_HEIGHT_LANDSCAPE;
+      const boardAvailableHeight = totalHeight - handHeight;
+      this.scaleFactor.set(Math.min(
+        availableWidth / SimBoardComponent.BOARD_WIDTH,
+        boardAvailableHeight / SimBoardComponent.BOARD_HEIGHT_3ROW,
+        1,
+      ));
+    } else {
+      // Desktop: grid + gap + hand (772px) all scaled together inside .board-scaler
+      this.scaleFactor.set(Math.min(
+        availableWidth / SimBoardComponent.BOARD_WIDTH,
+        totalHeight / SimBoardComponent.BOARD_HEIGHT_DESKTOP,
+        1,
+      ));
+    }
   }
 
   @HostListener('contextmenu', ['$event'])

@@ -99,7 +99,7 @@ development_status:
   epic-8-retrospective: done
 
   # ── Epic 9: UI/UX Modernization (Screen Implementation Guide) ──
-  epic-9: in-progress
+  epic-9: done
   9-1-global-tokens: done
   9-2-sidebar-dark: done
   9-3-search-bar-dark: done
@@ -114,4 +114,11 @@ development_status:
   9-12-simulator-token-migration: done
   9-13-bottom-sheet: done
   9-14-infinite-scroll-indicator: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
+
+  # ── Epic 10: Bottom Sheet & Filter UX Unification ──
+  epic-10: done
+  10-1-generic-bottom-sheet-and-auto-snap-full: done
+  10-2-unified-expand-collapse-filters-in-card-searcher: done
+  10-3-card-search-page-mobile-bottom-sheet: done
+  epic-10-retrospective: optional

@@ -35,6 +35,14 @@ $bp-desktop-sm: 1024px;
   }
 }
 
+// Mobile portrait: bottom sheet breakpoint (Track A pages with bottom sheet)
+// Matches NavbarCollapseService.isMobilePortrait in TypeScript
+@mixin mobile-portrait {
+  @media (max-width: ($bp-tablet - 1px)) and (orientation: portrait) {
+    @content;
+  }
+}
+
 // Touch target utility (NFR12: 44x44px minimum on mobile)
 // Usage: @include touch-target-min; in component SCSS
 @mixin touch-target-min {
