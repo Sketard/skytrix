@@ -117,11 +117,10 @@
 
   <!-- LANDSCAPE FILTERS BOTTOM SHEET (full viewport overlay) -->
   <app-bottom-sheet
-    class="deckBuilder-landscapeFilters"
-    [opened]="landscapeFiltersOpened()"
+    class="deckBuilder-externalFilters"
+    [opened]="externalFiltersOpened()"
     [ariaLabel]="'Panneau de filtres'"
-    [requestedSnap]="'half'"
-    (closed)="landscapeFiltersOpened.set(false)">
+    (closed)="externalFiltersOpened.set(false)">
     <app-card-filters
       [searchService]="deckBuildService">
     </app-card-filters>

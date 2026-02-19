@@ -77,7 +77,7 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly ExportMode = ExportMode;
 
   readonly filtersRequestedSnap = signal<'full' | null>(null);
-  readonly landscapeFiltersOpened = signal(false);
+  readonly externalFiltersOpened = signal(false);
   readonly handTestOpened = this.deckBuildService.handTestOpened;
   readonly searchPanelOpened = signal(false);
 
@@ -269,7 +269,7 @@ export class DeckBuilderComponent implements OnDestroy {
 
   public onFiltersExpanded(expanded: boolean) {
     if (this.useExternalFilters()) {
-      this.landscapeFiltersOpened.set(expanded);
+      this.externalFiltersOpened.set(expanded);
     } else {
       this.filtersRequestedSnap.set(expanded ? 'full' : null);
     }

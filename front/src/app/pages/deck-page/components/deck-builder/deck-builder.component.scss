@@ -237,7 +237,7 @@
   }
 
   // ─── EXTERNAL FILTERS BOTTOM SHEET (hidden by default) ───
-  .deckBuilder-landscapeFilters {
+  .deckBuilder-externalFilters {
     display: none;
   }
 
@@ -265,14 +265,14 @@
       }
     }
 
-    .deckBuilder-landscapeFilters {
+    .deckBuilder-externalFilters {
       display: block;
     }
   }
 
   // ─── COMPACT HEIGHT (tablet/desktop with limited height) ───
   @media (min-width: 768px) and (max-height: 500px) {
-    .deckBuilder-landscapeFilters {
+    .deckBuilder-externalFilters {
       display: block;
     }
   }

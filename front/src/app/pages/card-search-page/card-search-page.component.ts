@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
@@ -38,7 +38,7 @@ export class CardSearchPageComponent {
   readonly filtersRequestedSnap = signal<'full' | null>(null);
   readonly displayType = CardDisplayType;
 
-  readonly landscapeFiltersOpened = signal(false);
+  readonly externalFiltersOpened = signal(false);
 
   private readonly navbarCollapseService = inject(NavbarCollapseService);
   private readonly breakpointObserver = inject(BreakpointObserver);
@@ -48,6 +48,12 @@ export class CardSearchPageComponent {
       .pipe(map(result => result.matches)),
     { initialValue: false }
   );
+  readonly isLandscapeSplit = toSignal(
+    this.breakpointObserver.observe(['(orientation: landscape) and (min-width: 576px) and (max-width: 767px)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+  readonly useExternalFilters = computed(() => this.isLandscapeSplit() || this.isCompactHeight());
 
   protected readonly cardSearchService = inject(CardSearchService);
   private readonly httpClient = inject(HttpClient);
@@ -67,8 +73,8 @@ export class CardSearchPageComponent {
   }
 
   onFiltersExpanded(expanded: boolean): void {
-    if (this.isCompactHeight()) {
-      this.landscapeFiltersOpened.set(expanded);
+    if (this.useExternalFilters()) {
+      this.externalFiltersOpened.set(expanded);
     } else {
       this.filtersRequestedSnap.set(expanded ? 'full' : null);
     }
