@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, input, OnDestroy, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { CdkDrag, CdkDragDrop, CdkDragStart, CdkDropList } from '@angular/cdk/drag-drop';
@@ -15,6 +15,7 @@ import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { EmptyStateComponent } from '../empty-state/empty-state.component';
 
 @Component({
   selector: 'card-list',
@@ -29,6 +30,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
     MatIconModule,
     MatIconButton,
     MatProgressSpinner,
+    EmptyStateComponent,
   ],
   templateUrl: './card-list.component.html',
   styleUrl: './card-list.component.scss',
@@ -47,6 +49,22 @@ export class CardListComponent implements OnDestroy {
   readonly toSharedCardData = toSharedCardData;
   readonly displayType = CardDisplayType;
   private dragging = false;
+
+  readonly emptyMessage = computed(() => {
+    switch (this.displayMode()) {
+      case CardDisplayType.FAVORITE:
+        return 'Pas encore de favoris — marquez vos cartes préférées avec l\'étoile';
+      case CardDisplayType.OWNED:
+        return 'Aucune carte marquée comme possédée';
+      default:
+        return 'Aucun résultat trouvé';
+    }
+  });
+
+  readonly emptyCta = computed(() => {
+    const mode = this.displayMode();
+    return (mode === CardDisplayType.INFORMATIVE || mode === CardDisplayType.MOSAIC) ? 'Effacer les filtres' : '';
+  });
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private scrollContainer: HTMLElement | null = null;
@@ -169,6 +187,10 @@ export class CardListComponent implements OnDestroy {
     } else if (event.previousContainer.id === 'OTHER') {
       this.deckBuildService.removeImage(event.previousIndex);
     }
+  }
+
+  onEmptyCta(): void {
+    this.searchService()?.clearFilters();
   }
 
   increaseQuantity(number: number, cardSetId: number, currentNumber: number): void {

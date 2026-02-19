@@ -1,0 +1,9 @@
+<div class="snackbar" [class.snackbar-success]="data.type === 'success'" [class.snackbar-error]="data.type === 'error'">
+  <mat-icon>{{ data.icon }}</mat-icon>
+  <span class="snackbar-message">{{ data.message }}</span>
+  @if (data.type === 'error') {
+    <button mat-icon-button (click)="snackBarRef.dismiss()" aria-label="Fermer">
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+</div>

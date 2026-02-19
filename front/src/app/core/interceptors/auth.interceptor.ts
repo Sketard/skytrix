@@ -9,7 +9,8 @@ import {
   TOKEN_EXPIRED,
 } from '../utilities/auth.constants';
 import { Router } from '@angular/router';
-import { ToastrService } from 'ngx-toastr';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { displayError } from '../utilities/functions';
 import { AuthService } from '../../services/auth.service';
 import { RefreshStep } from '../enums/refresh-step.enum';
 
@@ -103,7 +104,7 @@ const handleBlob401Errors = (
 };
 
 const handleBlobError = (err: HttpErrorResponse, blobSubject?: Subject<any>): Observable<any> => {
-  const toastr = inject(ToastrService);
+  const snackBar = inject(MatSnackBar);
   const reader: FileReader = new FileReader();
   const obs = new Observable((observer: any) => {
     reader.onloadend = e => {
@@ -120,9 +121,7 @@ const handleBlobError = (err: HttpErrorResponse, blobSubject?: Subject<any>): Ob
       if (blobSubject) {
         blobSubject.next(errorMessage);
       } else {
-        toastr.error(messageObject.message, 'Une erreur est survenue', {
-          timeOut: 3000,
-        });
+        displayError(snackBar, messageObject.message);
       }
       observer.complete();
     };

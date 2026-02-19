@@ -88,4 +88,11 @@
       <mat-spinner diameter="32"></mat-spinner>
     </div>
   }
+  @if (!svc?.isLoading() && (cardsDetails$() | async)?.length === 0) {
+    <app-empty-state
+      [message]="emptyMessage()"
+      [ctaLabel]="emptyCta()"
+      (ctaAction)="onEmptyCta()">
+    </app-empty-state>
+  }
 </div>

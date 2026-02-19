@@ -16,9 +16,6 @@
       }
     </div>
   } @else {
-    <div class="deckPage-empty">
-      <p class="deckPage-empty-message">Aucun deck pour le moment</p>
-      <a class="deckPage-empty-cta" routerLink="/decks/builder">Créer un deck</a>
-    </div>
+    <app-empty-state message="Aucun deck pour le moment" ctaLabel="Créer un deck" ctaLink="/decks/builder"></app-empty-state>
   }
 }

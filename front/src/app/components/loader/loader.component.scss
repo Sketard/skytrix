@@ -1,3 +1,4 @@
+@use 'z-layers' as z;
 @import 'animation';
 @import 'variable';
 
@@ -12,7 +13,7 @@
     align-items: center;
     justify-content: center;
     display: flex;
-    z-index: 100000000;
+    z-index: z.$z-loader;
     overflow: hidden;
 
     &-chase {

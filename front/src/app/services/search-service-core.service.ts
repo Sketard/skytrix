@@ -76,11 +76,16 @@ export abstract class SearchServiceCore implements OnDestroy {
 
   public clearFilters(): void {
     this.disableDebounceForOneRequest();
+    this.filterForm.controls.name.reset('', { emitEvent: false });
     this.filterForm.controls.minAtk.reset(null, { emitEvent: false });
     this.filterForm.controls.maxAtk.reset(null, { emitEvent: false });
     this.filterForm.controls.minDef.reset(null, { emitEvent: false });
     this.filterForm.controls.maxDef.reset(null, { emitEvent: false });
     this.filterForm.controls.attribute.reset(null, { emitEvent: false });
+    this.filterForm.controls.archetype.reset('', { emitEvent: false });
+    this.filterForm.controls.scale.reset(null, { emitEvent: false });
+    this.filterForm.controls.linkval.reset(null, { emitEvent: false });
+    this.filterForm.controls.cardSetFilter.reset({ cardSetName: '', cardSetCode: '', cardRarityCode: '' }, { emitEvent: false });
     clearFormArray(this.filterForm.controls.types, false);
     this.filterForm.updateValueAndValidity();
     this.filtersCleared$.next();

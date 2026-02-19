@@ -1,8 +1,10 @@
+@use 'z-layers' as z;
+
 .bottom-sheet-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.3);
-  z-index: 99;
+  z-index: z.$z-sheet-backdrop;
   opacity: 0;
   pointer-events: none;
   transition: opacity 300ms ease;
@@ -26,7 +28,7 @@
   left: 0;
   right: 0;
   top: 0;
-  z-index: 100;
+  z-index: z.$z-sheet;
   border-radius: 16px 16px 0 0;
   background: var(--surface-base);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);

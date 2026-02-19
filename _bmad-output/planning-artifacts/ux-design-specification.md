@@ -20,6 +20,7 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 | 2026-02-18 | UX Review (Bottom Sheet & Filters) | **G.** Bottom sheet component made generic and reusable (`aria-label` configurable via input). Reused on Card Search Page for mobile portrait filters. **H.** Card searcher filter display unified to expand/collapse vertical pattern across all contexts (replaces lateral slide-in overlay on deck builder and lateral panel on card search page). Filters expand above the card list; `card-searcher` manages this behavior internally. **I.** Bottom sheet auto-snaps to full when filters expand inside it; returns to previous snap state when filters collapse. **J.** Card inspector confirmed as overlay/modal pattern — never a bottom sheet (avoids nested bottom sheets on deck builder). |
 | 2026-02-18 | UX Review (Mobile Simulator) | **K.** Mobile hand detachment: on mobile viewports, the hand zone renders outside the scaled board canvas at native size. Board grid reduces from 4 to 3 rows (1060×608) on mobile. A `.board-scaler` wrapper applies `transform: scale()` to both grid and hand on desktop (preserving current behavior) while the hand exits the scaler on mobile via conditional rendering. Flex column layout with clean separation — no overlap (flat 2D board cannot hide the bottom row like Master Duel's 3D perspective). CDK DragDrop compatibility maintained — hand stays inside `cdkDropListGroup` container. Desktop layout unchanged. |
 | 2026-02-18 | UX Review (Deck Builder Card Density) | **L.** Deck builder card search grid density increased to 5 columns minimum (portrait and landscape) with reduced gap, matching Master Duel's deck builder aesthetic. Mosaic/favorite mode in `deckBuildMode` uses `minmax(55px, 1fr)` with `0.25em` gap (down from `minmax(85px, 1fr)` / `0.75em`). Applies to both the side panel (desktop/landscape) and the bottom sheet (mobile portrait). Cards remain recognizable by artwork at 55px — this is the standard size in Master Duel's search panel. **M.** Deck builder landscape: filters displayed via bottom sheet anchored inside the side panel (Option A) instead of full-width overlay. The side panel bottom sheet shows filters while keeping the deck viewer (left 55%) fully visible. Same `app-bottom-sheet` component reused, scoped to the side panel container. On desktop (≥768px), filters remain as vertical expand/collapse inline (unchanged from revision H). |
+| 2026-02-19 | UX Review (Content Pages & Patterns) | **N.** Login page redesign: hero-centered layout with `logo-icon.png` + `logo-text.png` replacing the plain `<h2>Login</h2>`. No `mat-card` — form floats on `--surface-base` background with a subtle radial gradient (cyan at 5-8% opacity) behind the logo. 400ms fadeIn on page load. `prefers-reduced-motion` disables animation. **O.** Parameters page redesign: structured into `mat-card` sections (Database, Images, Banlist) with Material icons, short descriptions, action buttons, and last-sync date display. Feedback via `MatSnackBar` during/after fetch operations. **P.** App-wide empty states: consistent text + CTA pattern across all empty contexts (search no results, empty deck, empty favorites, empty owned). Messages in `--text-secondary`, centered, with contextual CTA. **Q.** Notification system migration: `ngx-toastr` replaced by `MatSnackBar`. Position: top center (`verticalPosition: 'top'`, `horizontalPosition: 'center'`). Custom snackbar style: `--surface-card` background, 3px left border colored by type (`--accent-primary` for success, `--danger` for error), Material icon prefix. Utility functions in `functions.ts` updated to accept `MatSnackBar` instead of `ToastrService`. **R.** Deck builder save feedback: snackbar on success/error, dirty indicator (gold dot on save icon when unsaved changes), `canDeactivate` guard with confirm dialog on navigation with unsaved changes. **S.** Navbar collapsed mode: when sidebar is collapsed, navigation icons remain visible without labels (icon-only mode) instead of hiding all content. **T.** Z-index centralization: `_z-layers.scss` file with named tokens for all overlay layers. Legacy SCSS variables (`$black`, `$blue`, `$white`) progressive migration to semantic CSS custom properties (tracked per-screen, not bulk). |
 
 ---
 
@@ -320,6 +321,28 @@ All screens share a single set of CSS custom properties defined on `:root` in `_
 **Theme Isolation:**
 - Simulator styles are scoped to the simulator page component (Angular ViewEncapsulation default)
 - Shared CSS custom properties allow consistency across all pages — simulator overrides only the accent and background
+
+**Z-Index Centralization (`_z-layers.scss`):**
+
+All z-index values are defined as SCSS variables in a single file (`styles/_z-layers.scss`) to prevent overlay conflicts and make the stacking order explicit.
+
+| Token | Value | Usage |
+|---|---|---|
+| `$z-card-overlay` | 10 | Card hover elevation, drag preview base |
+| `$z-inspector` | 50 | Card inspector panel |
+| `$z-bottom-sheet` | 100 | Bottom sheet overlay |
+| `$z-bottom-sheet-backdrop` | 99 | Bottom sheet backdrop |
+| `$z-navbar-mobile` | 500 | Mobile top bar |
+| `$z-deck-remove` | 510 | Deck list delete button |
+| `$z-drawer-backdrop` | 1000 | Drawer backdrop |
+| `$z-drawer` | 1100 | Mobile drawer |
+| `$z-snackbar` | — | Managed by CDK Overlay (no custom value needed) |
+
+All components must import `@use 'z-layers' as z` and reference `z.$z-*` tokens instead of hardcoded z-index values. Migration is incremental — each screen story replaces hardcoded values as it is touched.
+
+**Legacy Variable Migration:**
+
+SCSS variables in `variable.scss` (`$black`, `$blue`, `$white`, `$red`, `$grey`, etc.) are progressively replaced by semantic CSS custom properties from `_tokens.scss`. See the migration mapping table at the top of `_tokens.scss` for the old → new correspondence. Migration is incremental per screen — do NOT bulk-replace. Each screen story handles its own migration when touched
 
 ## Defining Core Experience
 
@@ -1102,6 +1125,8 @@ SimBoardComponent (root grid)
 
 ### Loading & Empty State Patterns
 
+#### Simulator Empty States
+
 **Empty Stacked Zone:**
 - Visual: dimmed zone with zone label, no card image, badge hidden (count = 0)
 - Click: opens empty overlay with subtle message — e.g., "No cards in Graveyard" — confirms zone works, avoids "nothing happened" confusion
@@ -1121,6 +1146,24 @@ SimBoardComponent (root grid)
 - Undo stack empty → Undo button disabled (dimmed icon, `aria-disabled`)
 - Redo stack empty → Redo button disabled
 - **Undo scope: board state only** — undo does NOT re-open previously closed overlays, does NOT restore inspector state, does NOT reverse UI-only actions (opening/closing panels). Undo reverses card movements, position changes, and zone state changes exclusively
+
+#### App-Wide Empty States
+
+All content pages follow a consistent empty state pattern: centered text message in `--text-secondary` with an optional CTA (link or button) in `--accent-primary`. No icons — text + CTA only. The tone is helpful and action-oriented, never just "nothing here."
+
+| Context | Message | CTA |
+|---|---|---|
+| Deck list (no decks) | "Aucun deck pour le moment" | "Créer un deck" (link to `/decks/builder`) |
+| Card search (no results) | "Aucun résultat trouvé" | "Effacer les filtres" (button, clears active filters) |
+| Deck builder (empty deck) | "Votre deck est vide — recherchez des cartes pour commencer" | None (search panel is already visible) |
+| Favorites (no favorites) | "Pas encore de favoris — marquez vos cartes préférées avec l'étoile" | None |
+| Owned cards (none marked) | "Aucune carte marquée comme possédée" | None |
+
+**Styling:**
+- Container: `display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 1rem; gap: 1.5rem`
+- Message: `color: var(--text-secondary); font-size: 1.1rem`
+- CTA (when present): `color: var(--accent-primary); border: 1px solid var(--accent-primary); padding: 0.5rem 1.5rem; border-radius: 8px` with hover background `color-mix(in srgb, var(--accent-primary) 10%, transparent)`
+- This pattern is already implemented on the deck list page — other pages must adopt the same styling
 
 ### Bottom Sheet Pattern (Mobile)
 
@@ -1219,6 +1262,206 @@ Filters are displayed via an `app-bottom-sheet` instance **anchored inside the s
 | Mobile landscape (<768px) | Bottom sheet anchored in side panel |
 | Mobile portrait (<768px) | Inside main bottom sheet (auto-snap full, revision I) |
 
+### Notification Snackbar Pattern
+
+**Replaces:** `ngx-toastr` — removed as dependency. All notification points migrate to `MatSnackBar`.
+
+**Position:** Top center — `verticalPosition: 'top'`, `horizontalPosition: 'center'`. Top center avoids collisions with the bottom sheet (used heavily on mobile in deck builder and card search). Consistent across all pages and viewports.
+
+**Duration:** 3 seconds auto-dismiss. Dismiss button (×) available for immediate close.
+
+**Visual Design:**
+
+```
+Success:
+┃█────────────────────────────┐
+┃█  ✓  Deck sauvegardé     ✕ │
+┃█────────────────────────────┘
+ ↑ 3px border-left: var(--accent-primary) (#C9A84C)
+   background: var(--surface-card) (#1E1E1E)
+   icon + text: var(--text-primary) (#EAEAEA)
+   icon color: var(--accent-primary)
+
+Error:
+┃█────────────────────────────┐
+┃█  ✖  Erreur de connexion  ✕ │
+┃█────────────────────────────┘
+ ↑ 3px border-left: var(--danger) (#CF6679)
+   icon color: var(--danger)
+   same background and text
+```
+
+**Custom CSS classes** (applied via `panelClass` on `MatSnackBar.open()`):
+- `.snackbar-success`: left border `--accent-primary`, icon `check_circle`
+- `.snackbar-error`: left border `--danger`, icon `error`
+
+**Implementation:**
+- Custom `SnackbarComponent` used via `MatSnackBar.openFromComponent()` to include the Material icon prefix
+- Utility functions in `core/utilities/functions.ts` updated: `displaySuccess(snackBar: MatSnackBar, message: string)` and `displayError(snackBar: MatSnackBar, message: string | HttpErrorResponse)`
+- All existing call sites (login, parameters, export, auth interceptor) updated to inject `MatSnackBar` instead of `ToastrService`
+- `ngx-toastr` removed from `package.json`, `angular.json` (styles), and `app.config.ts` (providers)
+
+**Z-index:** MatSnackBar uses CDK Overlay — automatically above all app content. No custom z-index needed.
+
+### Save Feedback Pattern (Deck Builder)
+
+**Context:** The deck builder save action (`POST /api/decks`) currently provides no visual feedback. Users cannot tell if save succeeded, failed, or if they have unsaved changes.
+
+**Three feedback mechanisms:**
+
+**1. Snackbar (success/error):**
+- Success: `displaySuccess(snackBar, 'Deck sauvegardé')` — gold-bordered snackbar
+- Error: `displayError(snackBar, error)` — red-bordered snackbar with error message
+- Added to `DeckBuildService.save()` subscriber's `next` and `error` handlers
+
+**2. Dirty Indicator (unsaved changes):**
+- A small gold dot (`--accent-primary`, 8px circle) appears on the top-right corner of the save `mat-icon-button` when the deck has unsaved modifications
+- The dirty state is tracked via a signal in `DeckBuildService`: `isDirty: Signal<boolean>`
+- Dirty becomes `true` when: card added, card removed, card moved, deck name changed
+- Dirty becomes `false` when: save succeeds, deck loaded fresh from API
+- CSS: `position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary)`
+- Appears on both mobile and desktop save buttons (both header locations)
+
+**3. Navigation Guard (unsaved changes warning):**
+- Angular `canDeactivate` guard on the deck builder route
+- When `isDirty()` is `true` and the user navigates away, a `mat-dialog` confirmation appears:
+  - Title: "Modifications non sauvegardées"
+  - Message: "Voulez-vous quitter sans sauvegarder ?"
+  - Actions: "Rester" (cancel, returns to builder) / "Quitter" (confirm, navigates away)
+- Dialog uses standard `--surface-card` background, same styling as `ConfirmDialogComponent`
+- Guard does NOT trigger on save-then-navigate (dirty resets on save success)
+
+## Content Page UX Specifications
+
+### Login Page
+
+**Track:** B (Responsive CSS) — no canvas scaling needed.
+
+**Layout:** Hero-centered, no `mat-card`. The form floats directly on the page background. The logo is the visual anchor — it creates the first impression and sets the brand tone.
+
+**Visual Structure (desktop):**
+```
+┌─────────────────────────────────┐
+│                                 │
+│       ╭──────────────╮          │
+│       │  logo-icon   │  ~140px  │
+│       ╰──────────────╯          │
+│          SKYTRIX                │
+│      ··· radial halo ···        │
+│                                 │
+│      ┌───────────────┐          │
+│      │   Pseudo      │          │
+│      ├───────────────┤          │
+│      │  Mot de passe │          │
+│      └───────────────┘          │
+│                                 │
+│   Créer un compte  [LOGIN]      │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Visual Structure (mobile):**
+- Logo icon scales to ~100px
+- Form takes full width with 1rem horizontal padding
+- Same vertical stack, tighter spacing
+
+**Components:**
+- `logo-icon.png` (~140px desktop, ~100px mobile) — the crystal wing visual
+- `logo-text.png` below the icon — the "SKYTRIX" typographic logo
+- No `<h2>Login</h2>` or `<h2>Créer un compte</h2>` — the logo replaces the text heading for Login mode. Create Account mode retains a heading ("Créer un compte") since the logo is already visible above.
+
+**Background:**
+- Base: `--surface-base` (#121212)
+- Radial gradient behind logo: `radial-gradient(ellipse at center, rgba(0, 212, 255, 0.06) 0%, transparent 60%)` — subtle cyan halo referencing the logo's cyan accents. Not gold — the logo itself has cyan/purple tones, and the halo should harmonize with the logo, not the app's gold accent.
+
+**Animation:**
+- Page load: 400ms fadeIn (`opacity: 0 → 1`) on the entire `.loginPage` container
+- Mode switch (Login ↔ Create Account): existing slide animation preserved
+- `prefers-reduced-motion`: fadeIn disabled, instant display
+
+**Form Fields:**
+- Existing `mat-form-field` with outline appearance — unchanged
+- Max-width: 400px (tablet+), 100% (mobile)
+- Password visibility toggle — unchanged
+- Form validation — unchanged
+
+**Responsive Breakpoints:**
+- Mobile (≤576px): logo-icon 100px, full-width form, 1rem padding
+- Tablet+ (>576px): logo-icon 140px, max-width 400px form, 2rem padding
+
+### Parameters Page
+
+**Track:** B (Responsive CSS).
+
+**Layout:** Structured into `mat-card` sections, each grouping related actions with icon, description, last-sync date, and action button.
+
+**Visual Structure:**
+```
+┌───────────────────────────────────┐
+│  Paramètres                       │
+│                                   │
+│  Base de données                  │
+│  ╔═══════════════════════════════╗ │
+│  ║ storage  Mettre à jour       ║ │
+│  ║  les cartes                  ║ │
+│  ║  Synchronise depuis          ║ │
+│  ║  YGOProDeck                  ║ │
+│  ║  Dernière MAJ: il y a 3j    ║ │
+│  ║             [Mettre à jour]  ║ │
+│  ╚═══════════════════════════════╝ │
+│                                   │
+│  Images                          │
+│  ╔═══════════════════════════════╗ │
+│  ║ image  Images originales     ║ │
+│  ║  Télécharge les artworks     ║ │
+│  ║             [Mettre à jour]  ║ │
+│  ║                              ║ │
+│  ║ translate  Images traduites  ║ │
+│  ║  Versions TCG françaises     ║ │
+│  ║             [Mettre à jour]  ║ │
+│  ╚═══════════════════════════════╝ │
+│                                   │
+│  Règles                          │
+│  ╔═══════════════════════════════╗ │
+│  ║ gavel  Banlist               ║ │
+│  ║  Liste des cartes interdites ║ │
+│  ║  et limitées                 ║ │
+│  ║             [Mettre à jour]  ║ │
+│  ╚═══════════════════════════════╝ │
+└───────────────────────────────────┘
+```
+
+**Card Structure:**
+- Section label: `<h3>` above the card, `--text-secondary`, 500 weight
+- Card: `--surface-card` background, `--border-subtle` border, 8px radius
+- Each action row inside the card:
+  - Material icon (left) — `--text-secondary`
+  - Title (bold, `--text-primary`) + description below (`--text-secondary`, 0.875rem)
+  - Last-sync date (if available): `--text-secondary`, 0.8rem, below description
+  - Action button: `mat-flat-button` aligned right
+- Multiple actions within the same section are separated by a subtle `mat-divider`
+
+**Icons (Material):**
+- Cards database: `storage`
+- Original images: `image`
+- Translated images: `translate`
+- Banlist: `gavel`
+
+**Feedback:**
+- During fetch: button shows `mat-spinner` (inline, 20px) replacing the button text
+- Success: MatSnackBar (success style — see Notification Snackbar Pattern)
+- Error: MatSnackBar (error style)
+
+**Last Sync Date:**
+- Stored per action (localStorage or API response metadata)
+- Displayed as relative time: "il y a 3 jours", "il y a 2 heures", "jamais"
+- If no sync recorded: "Jamais synchronisé" in `--text-secondary`
+
+**Responsive:**
+- Cards take full width on all breakpoints
+- Max-width: 600px centered on desktop for readability
+- 1rem padding on mobile, 2rem on desktop
+
 ## Responsive Design & Accessibility
 
 ### Responsive Strategy
@@ -1301,6 +1544,20 @@ Key gains: hand cards go from ~52px (scaled, illegible) to ~100px (native, reada
 |---|---|---|
 | >768px (desktop) | Collapsible sidebar | Expanded by default (simulator: collapsed by default). Chevron toggle at navbar border. |
 | ≤768px (mobile/tablet) | Hamburger + drawer | Hidden by default. Hamburger button in a fixed top bar. Navbar content slides in as overlay drawer. |
+
+**Collapsed Sidebar — Icon-Only Mode:**
+When the sidebar is collapsed (via chevron toggle), navigation icons remain visible without their text labels. This allows the user to navigate without re-expanding the sidebar.
+
+| State | Width | Content |
+|---|---|---|
+| Expanded | 260px | Logo + icon + label for each nav link + user section |
+| Collapsed | ~56px | Icon only for each nav link (centered, no labels, no logo, no user section) |
+
+- Icons use the same `--text-primary` color and `--accent-primary` active highlight as expanded mode
+- Active route: icon highlighted with `--accent-primary` background (no left border in collapsed — icon background circle instead)
+- Tooltip on hover (icon only mode): shows the nav label via `matTooltip`
+- The chevron toggle button remains at the sidebar border in both states
+- Transition: 200ms width + opacity on labels, respects `prefers-reduced-motion`
 
 - On Track A pages (mobile): the fixed top bar with hamburger reduces available vertical space for the canvas. The canvas parent height accounts for this (e.g., `calc(100vh - mobile-header-height)`).
 - On Track B pages (mobile): the top bar provides persistent navigation access without consuming significant content space.
