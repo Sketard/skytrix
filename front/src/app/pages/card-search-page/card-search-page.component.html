@@ -8,7 +8,7 @@
 <div class="cardSearchPage-desktop">
   <app-card-searcher
     [deckBuildMode]="false"
-    [externalFilters]="!!isCompactHeight()"
+    [externalFilters]="!!useExternalFilters()"
     [searchService]="cardSearchService"
     (cardClicked)="onCardClicked($event)"
     (filtersExpanded)="onFiltersExpanded($event)">
@@ -63,11 +63,10 @@
 </app-bottom-sheet>
 
 <app-bottom-sheet
-  class="cardSearchPage-compactFilters"
-  [opened]="landscapeFiltersOpened()"
+  class="cardSearchPage-externalFilters"
+  [opened]="externalFiltersOpened()"
   [ariaLabel]="'Panneau de filtres'"
-  [requestedSnap]="'half'"
-  (closed)="landscapeFiltersOpened.set(false)">
+  (closed)="externalFiltersOpened.set(false)">
   <app-card-filters
     [searchService]="cardSearchService">
   </app-card-filters>
