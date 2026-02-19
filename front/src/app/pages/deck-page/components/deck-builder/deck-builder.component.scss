@@ -1,6 +1,6 @@
-@use 'variable' as *;
 @use 'mixin' as *;
 @use 'responsive' as r;
+@use 'z-layers' as z;
 
 @mixin collapsed-name-text {
   flex: 1;
@@ -22,17 +22,27 @@
   margin-top: 0.5rem;
 
   button {
-    color: $white;
+    color: var(--text-primary);
     @include r.touch-target-min;
   }
 
   &-count {
-    color: $white;
+    color: var(--text-primary);
     font-size: 1rem;
     font-weight: 600;
     min-width: 1.5rem;
     text-align: center;
   }
+}
+
+.dirty-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
 }
 
 .deckBuilder {
@@ -98,8 +108,8 @@
       position: fixed;
       bottom: 1em;
       right: 1em;
-      z-index: 10;
-      color: $white;
+      z-index: z.$z-ui-button;
+      color: var(--text-primary);
       background: rgba(0, 0, 0, 0.6);
       @include r.touch-target-min;
     }
@@ -202,7 +212,7 @@
         }
 
         button {
-          color: $white;
+          color: var(--text-primary);
         }
 
         @include r.respond-below(r.$bp-tablet) {
@@ -281,7 +291,7 @@
   &-handBackdrop {
     position: fixed;
     inset: 0;
-    z-index: 20;
+    z-index: z.$z-hand-backdrop;
     background: rgba(0, 0, 0, 0.5);
     opacity: 0;
     pointer-events: none;
@@ -295,7 +305,7 @@
 
   &-handOverlay {
     transition: all 0.5s ease-in-out;
-    background-color: $black;
+    background-color: var(--surface-nav);
     position: fixed;
     width: 90%;
     max-width: 900px;
@@ -303,7 +313,7 @@
     left: 50%;
     transform: translateX(-50%);
     border-radius: 10px;
-    border: 1px solid $blue;
+    border: 1px solid var(--accent-primary);
     padding: 1em;
 
     .deckBuilder-handBackdrop.opened & {

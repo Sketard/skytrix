@@ -25,6 +25,9 @@
         }
         <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
           <mat-icon>save</mat-icon>
+          @if (isDirty() && !deckBuildService.deckEmpty()) {
+            <span class="dirty-dot"></span>
+          }
         </button>
         <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
           <mat-icon>more_vert</mat-icon>
@@ -65,6 +68,9 @@
           }
           <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
             <mat-icon>save</mat-icon>
+            @if (isDirty() && !deckBuildService.deckEmpty()) {
+              <span class="dirty-dot"></span>
+            }
           </button>
           <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
             <mat-icon>more_vert</mat-icon>

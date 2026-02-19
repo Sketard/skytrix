@@ -133,6 +133,32 @@ a, button {
   cursor: pointer;
 }
 
+.snackbar-panel {
+  // panelClass applied on overlay pane
+  padding: 0 !important;
+  margin: 0.5rem 0 0 !important;
+
+  // combined selector — panelClass can land on the container itself
+  &.mat-mdc-snack-bar-container,
+  .mat-mdc-snack-bar-container {
+    --mdc-snackbar-container-color: transparent;
+    margin: 0.5rem 0 0 !important;
+    padding: 0 !important;
+  }
+
+  .mdc-snackbar__surface {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    min-width: 0;
+  }
+
+  .mdc-snackbar__label {
+    padding: 0 !important;
+  }
+}
+
 
 
 

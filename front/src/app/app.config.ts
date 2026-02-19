@@ -3,7 +3,6 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideToastr } from 'ngx-toastr';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { loaderInterceptor } from './core/interceptors/loader-interceptor';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
@@ -20,7 +19,6 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([loaderInterceptor, authInterceptor])),
     provideAnimationsAsync(),
     provideAnimations(),
-    provideToastr(),
     importProvidersFrom(
       TranslateModule.forRoot({
         defaultLanguage: 'fr',

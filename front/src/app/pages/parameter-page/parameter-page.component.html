@@ -1,9 +1,78 @@
 <div class="parameters">
   <h2>Paramètres</h2>
-  <div class="parameters-buttons">
-    <button mat-flat-button (click)="fetchDatabaseCards()">Mettre à jour les cartes</button>
-    <button mat-flat-button (click)="fetchDatabaseImages()">Mettre à jour les images</button>
-    <button mat-flat-button (click)="fetchDatabaseTcgImages()">Mettre à jour les images traduites</button>
-    <button mat-flat-button (click)="fetchDatabaseBanlist()">Mettre à jour la banlist</button>
-  </div>
+
+  <section>
+    <h3><mat-icon>storage</mat-icon> Base de données</h3>
+    <mat-card>
+      <div class="parameters-action">
+        <div class="parameters-action-info">
+          <span class="parameters-action-title">Mettre à jour les cartes</span>
+          <span class="parameters-action-desc">Synchronise depuis YGOProDeck</span>
+          <span class="parameters-action-date">{{ lastSync('cards') }}</span>
+        </div>
+        <button mat-flat-button (click)="fetchDatabaseCards()" [disabled]="loading().cards">
+          @if (loading().cards) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Mettre à jour
+          }
+        </button>
+      </div>
+    </mat-card>
+  </section>
+
+  <section>
+    <h3><mat-icon>image</mat-icon> Images</h3>
+    <mat-card>
+      <div class="parameters-action">
+        <div class="parameters-action-info">
+          <span class="parameters-action-title">Images originales</span>
+          <span class="parameters-action-desc">Télécharge les images des cartes</span>
+          <span class="parameters-action-date">{{ lastSync('images') }}</span>
+        </div>
+        <button mat-flat-button (click)="fetchDatabaseImages()" [disabled]="loading().images">
+          @if (loading().images) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Mettre à jour
+          }
+        </button>
+      </div>
+      <mat-divider></mat-divider>
+      <div class="parameters-action">
+        <div class="parameters-action-info">
+          <span class="parameters-action-title">Images traduites</span>
+          <span class="parameters-action-desc">Télécharge les versions TCG traduites</span>
+          <span class="parameters-action-date">{{ lastSync('tcgImages') }}</span>
+        </div>
+        <button mat-flat-button (click)="fetchDatabaseTcgImages()" [disabled]="loading().tcgImages">
+          @if (loading().tcgImages) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Mettre à jour
+          }
+        </button>
+      </div>
+    </mat-card>
+  </section>
+
+  <section>
+    <h3><mat-icon>gavel</mat-icon> Règles</h3>
+    <mat-card>
+      <div class="parameters-action">
+        <div class="parameters-action-info">
+          <span class="parameters-action-title">Mettre à jour la banlist</span>
+          <span class="parameters-action-desc">Synchronise les listes de cartes interdites/limitées</span>
+          <span class="parameters-action-date">{{ lastSync('banlist') }}</span>
+        </div>
+        <button mat-flat-button (click)="fetchDatabaseBanlist()" [disabled]="loading().banlist">
+          @if (loading().banlist) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Mettre à jour
+          }
+        </button>
+      </div>
+    </mat-card>
+  </section>
 </div>

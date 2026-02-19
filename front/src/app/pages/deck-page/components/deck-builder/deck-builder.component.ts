@@ -16,7 +16,9 @@ import { MatIconButton } from '@angular/material/button';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { ExportDTO } from '../../../../core/model/dto/export-dto';
 import { ExportService } from '../../../../services/export.service';
-import { downloadDocument } from '../../../../core/utilities/functions';
+import { downloadDocument, displaySuccess, displayError } from '../../../../core/utilities/functions';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { HttpErrorResponse } from '@angular/common/http';
 import { DeckDTO } from '../../../../core/model/dto/deck-dto';
 import { ExportMode } from '../../../../core/enums/export.mode.enum';
 import { CardFiltersComponent } from '../../../../components/card-filters/card-filters.component';
@@ -99,6 +101,8 @@ export class DeckBuilderComponent implements OnDestroy {
   );
   readonly useExternalFilters = computed(() => this.isLandscapeSplit() || this.isCompactHeight());
   readonly isCardDragActive = this.deckBuildService.cardDragActive;
+  readonly isDirty = this.deckBuildService.isDirty;
+  private readonly snackBar = inject(MatSnackBar);
 
   constructor(
     public deckBuildService: DeckBuildService,
@@ -128,6 +132,9 @@ export class DeckBuilderComponent implements OnDestroy {
 
   stopEditingName(): void {
     this.isEditingName.set(false);
+    if (!this.deckBuildService.deck().id) {
+      this.deckBuildService.markDirty();
+    }
     if (this.nameEditTimeout) {
       clearTimeout(this.nameEditTimeout);
     }
@@ -176,24 +183,38 @@ export class DeckBuilderComponent implements OnDestroy {
     }
   }
 
-  public save() {
-    this.deckBuildService.save();
+  public save(): void {
+    const isNew = !this.deckBuildService.deck().id;
+    this.deckBuildService.save(
+      () => {
+        displaySuccess(this.snackBar, 'Deck sauvegardé');
+        if (isNew) {
+          this.router.navigate(['/decks', this.deckBuildService.deck().id], { replaceUrl: true });
+        }
+      },
+      (err) => displayError(this.snackBar, err)
+    );
   }
 
   async createProxies() {
-    const urls = this.getCardsUrls();
-    const images = await Promise.all(
-      urls.map(
-        e =>
-          new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = e;
-          })
-      )
-    );
-    await this.generatePDF(images);
+    try {
+      const urls = this.getCardsUrls();
+      const images = await Promise.all(
+        urls.map(
+          e =>
+            new Promise((resolve, reject) => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.onerror = reject;
+              img.src = e;
+            })
+        )
+      );
+      await this.generatePDF(images);
+      displaySuccess(this.snackBar, 'Proxies générés');
+    } catch {
+      displayError(this.snackBar, 'Erreur lors de la génération des proxies');
+    }
   }
 
   async generatePDF(images: any) {
@@ -245,6 +266,7 @@ export class DeckBuilderComponent implements OnDestroy {
     const dto = new ExportDTO(deck, mode);
     this.exportService.exportDeckList(dto).subscribe(blob => {
       downloadDocument(blob.body, `${deck.name}.txt`, 'text/html');
+      displaySuccess(this.snackBar, 'Deck exporté');
     });
   }
 
@@ -257,8 +279,12 @@ export class DeckBuilderComponent implements OnDestroy {
     if (!file) {
       return;
     }
-    this.exportService.importDeckList(file).subscribe((deck: DeckDTO) => {
-      this.deckBuildService.initDeck(new Deck(deck));
+    this.exportService.importDeckList(file).subscribe({
+      next: (deck: DeckDTO) => {
+        this.deckBuildService.initDeck(new Deck(deck));
+        displaySuccess(this.snackBar, 'Deck importé avec succès');
+      },
+      error: (err: HttpErrorResponse) => displayError(this.snackBar, err),
     });
     (document.getElementById('importDeckInput') as HTMLInputElement).value = '';
   }

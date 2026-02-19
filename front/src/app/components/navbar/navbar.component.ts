@@ -5,6 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { A11yModule } from '@angular/cdk/a11y';
+import { MatTooltip } from '@angular/material/tooltip';
 import { filter } from 'rxjs';
 
 class Tab {
@@ -21,7 +22,7 @@ class Tab {
 
 @Component({
   selector: 'navbar',
-  imports: [MatIconModule, RouterLinkActive, RouterLink, MatButton, MatIconButton, A11yModule],
+  imports: [MatIconModule, RouterLinkActive, RouterLink, MatButton, MatIconButton, A11yModule, MatTooltip],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
   standalone: true,

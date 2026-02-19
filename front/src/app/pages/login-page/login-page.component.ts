@@ -12,14 +12,12 @@ import { UserDTO } from '../../core/model/account/user';
 import { Subject } from 'rxjs';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { ToastrService } from 'ngx-toastr';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { LoginDTO } from '../../core/model/account/login-dto';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ACCESS_TOKEN, AUTH_HEADER, BEARER_PREFIX, CURRENT_USER_KEY } from '../../core/utilities/auth.constants';
-import { displayErrorToastr, displaySuccessToastr } from '../../core/utilities/functions';
-import { MatCard } from '@angular/material/card';
-import { NgIf, NgSwitch, NgSwitchCase } from '@angular/common';
+import { displayError, displaySuccess } from '../../core/utilities/functions';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput, MatLabel } from '@angular/material/input';
@@ -39,9 +37,6 @@ enum AnimationDirection {
 @Component({
   selector: 'app-login-page',
   imports: [
-    MatCard,
-    NgSwitch,
-    NgSwitchCase,
     ReactiveFormsModule,
     MatFormField,
     MatIcon,
@@ -49,7 +44,6 @@ enum AnimationDirection {
     MatLabel,
     MatSuffix,
     MatButton,
-    NgIf,
   ],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
@@ -73,7 +67,7 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   constructor(
     private readonly router: Router,
     public authService: AuthService,
-    private readonly toastr: ToastrService
+    private readonly snackBar: MatSnackBar
   ) {
     this.loginForm = this.buildLoginForm();
     this.createAccountForm = this.buildCreateAccountForm();
@@ -91,10 +85,10 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   public createAccount(): void {
     this.authService.createAccount(this.createAccountForm.getRawValue()).subscribe({
       next: () => {
-        displaySuccessToastr(this.toastr, 'Compte créer avec succès');
+        displaySuccess(this.snackBar, 'Compte créer avec succès');
         this.mode.set(LoginMode.LOGIN);
       },
-      error: (error: HttpErrorResponse) => displayErrorToastr(this.toastr, error),
+      error: (error: HttpErrorResponse) => displayError(this.snackBar, error),
     });
   }
 
@@ -109,7 +103,7 @@ export class LoginPageComponent implements OnInit, OnDestroy {
         localStorage.setItem(ACCESS_TOKEN, accessToken);
         this.authFinished(res);
       },
-      error: (error: HttpErrorResponse) => displayErrorToastr(this.toastr, error),
+      error: (error: HttpErrorResponse) => displayError(this.snackBar, error),
     });
   }
 
@@ -118,7 +112,7 @@ export class LoginPageComponent implements OnInit, OnDestroy {
     const accessToken = res.headers.get(AUTH_HEADER)?.replace(BEARER_PREFIX, '');
     if (accessToken) {
       localStorage.setItem(ACCESS_TOKEN, accessToken);
-      this.router.navigate(['search']);
+      this.router.navigate(['decks']);
     }
   }
 

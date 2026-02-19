@@ -23,7 +23,6 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - TypeScript 5.5.4 (strict mode, target ES2022, module ES2022)
 - RxJS 7.8.0
 - ngx-translate 16.0.4 (i18n, default language: FR)
-- ngx-toastr 19.0.0
 - jspdf 2.5.1
 - SCSS (style preprocessor, includePaths: src/app/styles)
 - Prettier 3.4.2
@@ -82,7 +81,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Routing: flat route config in `app.routes.ts` — no lazy-loaded modules
 - AuthService implements `canActivate` guard directly on the service class
 - i18n: ngx-translate with JSON files in `assets/i18n/` (fr.json, en.json)
-- Toasts via ngx-toastr for user notifications
+- Notifications via MatSnackBar with custom SnackbarComponent (openFromComponent). Utility functions `displaySuccess`/`displayError` in `core/utilities/functions.ts`.
+- Z-index values centralized in `styles/_z-layers.scss` — always use `@use 'z-layers' as z` and reference `z.$z-*` tokens.
 - Component prefix: `app` (angular.json)
 - Styles: SCSS with shared styles from `src/app/styles/`
 

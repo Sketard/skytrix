@@ -2,22 +2,27 @@
 @if (!isMobile()) {
   <nav class="navbar-sidebar" [class.collapsed]="collapsed()" role="navigation" aria-label="Main navigation">
     <div class="navbar-inner">
-      @if (!collapsed()) {
-        <div class="navbar-content">
-          <img class="logo" src="/assets/images/logo.webp" alt="logo" />
-          @for (tab of tabs; track tab.path) {
-            <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link">
-              <mat-icon [fontIcon]="tab.icon"></mat-icon>
+      <div class="navbar-content">
+        @if (!collapsed()) {
+          <img class="logo" src="/assets/images/logo-full.png" alt="logo" />
+        }
+        @for (tab of tabs; track tab.path) {
+          <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link"
+             [matTooltip]="tab.name" [matTooltipDisabled]="!collapsed()">
+            <mat-icon [fontIcon]="tab.icon"></mat-icon>
+            @if (!collapsed()) {
               <span class="nav-label">{{ tab.name }}</span>
-            </a>
-          }
-          <div class="spacer"></div>
+            }
+          </a>
+        }
+        <div class="spacer"></div>
+        @if (!collapsed()) {
           <div class="user-section">
             <span class="user-pseudo">{{ user()?.pseudo }}</span>
             <button mat-flat-button (click)="logout()">Se déconnecter</button>
           </div>
-        </div>
-      }
+        }
+      </div>
     </div>
 
     <button class="collapse-toggle"
@@ -40,7 +45,7 @@
               [attr.aria-expanded]="drawerOpen()">
         <mat-icon>menu</mat-icon>
       </button>
-      <span class="mobile-title">skytrix</span>
+      <img class="mobile-title" src="/assets/images/logo-text.png" alt="skytrix" />
     </header>
   }
 
@@ -61,7 +66,10 @@
        [cdkTrapFocus]="drawerOpen()"
        cdkTrapFocusAutoCapture>
     <div class="drawer-header">
-      <span class="drawer-title">skytrix</span>
+      <div class="drawer-brand">
+        <img class="drawer-logo" src="/assets/images/logo-icon.png" alt="" />
+        <img class="drawer-text" src="/assets/images/logo-text.png" alt="skytrix" />
+      </div>
       <button mat-icon-button
               class="drawer-close-btn"
               (click)="closeDrawer()"

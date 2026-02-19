@@ -1,6 +1,7 @@
 @use 'variable' as *;
 @use 'mixin' as *;
 @use 'responsive' as r;
+@use 'z-layers' as z;
 
 .cardsContainer {
   display: flex;
@@ -83,7 +84,7 @@
   bottom: 0;
   font-weight: bold;
   font-size: 0.8em;
-  z-index: 1;
+  z-index: z.$z-card-overlay;
   text-shadow: 0 0 2px #000;
   font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
 }
@@ -255,6 +256,11 @@
 
 .owned-card-image {
   width: 33px;
+}
+
+app-empty-state {
+  width: 100%;
+  grid-column: 1 / -1;
 }
 
 .scroll-indicator {

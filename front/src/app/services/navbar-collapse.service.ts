@@ -6,7 +6,7 @@ import { map } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class NavbarCollapseService {
   private readonly EXPANDED_WIDTH = 260;
-  private readonly COLLAPSED_WIDTH = 32;
+  private readonly COLLAPSED_WIDTH = 56;
   static readonly MOBILE_HEADER_HEIGHT = 48;
 
   private readonly breakpointObserver = inject(BreakpointObserver);

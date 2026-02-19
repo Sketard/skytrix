@@ -1,0 +1,24 @@
+// =============================================================================
+// Centralized Z-Index Layer Hierarchy
+// =============================================================================
+// All z-index values for non-simulator components.
+// Usage: @use 'z-layers' as z; then z.$z-*
+// Simulator components keep hardcoded values until simulator stories migrate.
+
+$z-card-overlay: 1;
+$z-ui-button: 10;
+$z-hand-backdrop: 20;
+$z-control-bar: 40;
+$z-panel: 50;
+$z-sheet-backdrop: 99;
+$z-sheet: 100;
+$z-hand-hover: 100;
+$z-navbar-header: 1000;
+$z-drag-preview: 1000;
+$z-inspector-mobile: 1001;
+$z-drawer-backdrop: 1050;
+$z-inspector-click: 1050;
+$z-drawer: 1100;
+$z-pile-drag: 1100;
+$z-flight: 10000;
+$z-loader: 100000000;
