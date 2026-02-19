@@ -107,12 +107,25 @@
       <div class="deckBuilder-side-searcher">
         <app-card-searcher
           [deckBuildMode]="true"
+          [externalFilters]="!!useExternalFilters()"
           [searchService]="deckBuildService"
           (cardClicked)="onCardClicked($event)"
           (filtersExpanded)="onFiltersExpanded($event)"></app-card-searcher>
       </div>
     </div>
   </div>
+
+  <!-- LANDSCAPE FILTERS BOTTOM SHEET (full viewport overlay) -->
+  <app-bottom-sheet
+    class="deckBuilder-landscapeFilters"
+    [opened]="landscapeFiltersOpened()"
+    [ariaLabel]="'Panneau de filtres'"
+    [requestedSnap]="'half'"
+    (closed)="landscapeFiltersOpened.set(false)">
+    <app-card-filters
+      [searchService]="deckBuildService">
+    </app-card-filters>
+  </app-bottom-sheet>
 
   <!-- BOTTOM SHEET (mobile portrait only, hidden via CSS on desktop/landscape) -->
   <app-bottom-sheet

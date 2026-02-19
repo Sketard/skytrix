@@ -7,19 +7,21 @@
         [options$]="types | stringArrayToShortResourceArray : 'card_type.' | toObservable">
       </app-multiselect-autocomplete-filter>
     </div>
-    <div class="cardFilters-filter">
-      <app-between-filter
-        [minForm]="localForm.controls.minAtk"
-        [maxForm]="localForm.controls.maxAtk"
-        [inputLabel]="'ATK'">
-      </app-between-filter>
-    </div>
-    <div class="cardFilters-filter">
-      <app-between-filter
-        [minForm]="localForm.controls.minDef"
-        [maxForm]="localForm.controls.maxDef"
-        [inputLabel]="'DEF'">
-      </app-between-filter>
+    <div class="cardFilters-row">
+      <div class="cardFilters-filter">
+        <app-between-filter
+          [minForm]="localForm.controls.minAtk"
+          [maxForm]="localForm.controls.maxAtk"
+          [inputLabel]="'ATK'">
+        </app-between-filter>
+      </div>
+      <div class="cardFilters-filter">
+        <app-between-filter
+          [minForm]="localForm.controls.minDef"
+          [maxForm]="localForm.controls.maxDef"
+          [inputLabel]="'DEF'">
+        </app-between-filter>
+      </div>
     </div>
     <div class="cardFilters-filter">
       <app-toggle-icon-filter
@@ -27,13 +29,5 @@
         [inputLabel]="'Attribut'">
       </app-toggle-icon-filter>
     </div>
-    @if (filtersOpened()) {
-      <div class="cardFilters-buttons">
-        <button mat-flat-button (click)="search()">Rechercher</button>
-        <button mat-flat-button (click)="clearFilters()">
-          <mat-icon fontIcon="delete"></mat-icon>
-        </button>
-      </div>
-    }
   </div>
 }

@@ -30,6 +30,7 @@ import { CardDetail } from '../../core/model/card-detail';
 })
 export class CardSearcherComponent {
   readonly deckBuildMode = input<boolean>(false);
+  readonly externalFilters = input(false);
   readonly searchService = input<SearchServiceCore | undefined>(undefined);
 
   readonly cardClicked = output<CardDetail>();
@@ -57,7 +58,11 @@ export class CardSearcherComponent {
   }
 
   public toggleFilters() {
-    this.filtersOpen.update(v => !v);
-    this.filtersExpanded.emit(this.filtersOpen());
+    if (this.externalFilters()) {
+      this.filtersExpanded.emit(!this.filtersOpen());
+    } else {
+      this.filtersOpen.update(v => !v);
+      this.filtersExpanded.emit(this.filtersOpen());
+    }
   }
 }

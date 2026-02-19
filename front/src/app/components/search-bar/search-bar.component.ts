@@ -37,6 +37,10 @@ export class SearchBarComponent {
     this.form().reset();
   }
 
+  public clearFilters() {
+    this.searchService()?.clearFilters();
+  }
+
   public openFilters() {
     this.filterToggled.emit();
   }

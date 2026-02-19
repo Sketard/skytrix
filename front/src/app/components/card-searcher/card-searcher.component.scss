@@ -60,6 +60,8 @@
     &-filters {
       overflow: hidden;
       min-height: 0;
+      display: flex;
+      flex-direction: column;
       padding: 0 1rem;
 
       @include r.mobile-portrait {
@@ -121,7 +123,7 @@
       }
 
       @include r.respond-above(r.$bp-tablet) {
-        padding: 0 0 0 2rem;
+        padding: 0 2rem;
       }
     }
   }

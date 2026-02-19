@@ -9,6 +9,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-primary);
+  font-weight: 600;
   cursor: pointer;
   padding: 0.25em 0;
 }
@@ -84,7 +85,7 @@
 
     &-text {
       @include collapsed-name-text;
-      font-size: 1rem;
+      font-size: 1.125rem;
     }
   }
 
@@ -175,7 +176,7 @@
 
         &-text {
           @include collapsed-name-text;
-          font-size: 0.875rem;
+          font-size: 1rem;
         }
       }
 
@@ -235,6 +236,11 @@
     }
   }
 
+  // ─── EXTERNAL FILTERS BOTTOM SHEET (hidden by default) ───
+  .deckBuilder-landscapeFilters {
+    display: none;
+  }
+
   // ─── LANDSCAPE SPLIT (mobile landscape: side-by-side layout) ───
   @include r.landscape-split {
     &-searchToggle.mat-mdc-icon-button {
@@ -257,6 +263,17 @@
       &-header {
         display: none;
       }
+    }
+
+    .deckBuilder-landscapeFilters {
+      display: block;
+    }
+  }
+
+  // ─── COMPACT HEIGHT (tablet/desktop with limited height) ───
+  @media (min-width: 768px) and (max-height: 500px) {
+    .deckBuilder-landscapeFilters {
+      display: block;
     }
   }
 
