@@ -79,3 +79,13 @@
   flex: 1;
   min-height: 0;
 }
+
+:host.contained {
+  .bottom-sheet-backdrop {
+    position: absolute;
+  }
+
+  .bottom-sheet {
+    position: absolute;
+  }
+}

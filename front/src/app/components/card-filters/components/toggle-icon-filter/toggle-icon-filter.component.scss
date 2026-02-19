@@ -1,16 +1,6 @@
 @import '../../../../styles/mixin';
 
 .toggleIconFilter {
-  mat-button-toggle-group {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  img {
-    height: 18px;
-    width: 18px;
-  }
-
   &-name {
     @include filter-section-name;
   }

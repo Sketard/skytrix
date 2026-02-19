@@ -22,6 +22,7 @@ import { NavbarCollapseService } from '../../services/navbar-collapse.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown.escape)': 'onEscapeKey()',
+    '[class.contained]': 'contained()',
   },
 })
 export class BottomSheetComponent implements OnInit, OnDestroy {
@@ -29,6 +30,8 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
   readonly cardDragActive = input(false);
   readonly ariaLabel = input('Panneau de recherche de cartes');
   readonly requestedSnap = input<'half' | 'full' | 'collapsed' | null>(null);
+  readonly contained = input(false);
+  readonly containerHeight = input<number | null>(null);
   readonly closed = output<void>();
 
   readonly sheetState = signal<'closed' | 'collapsed' | 'half' | 'full'>('closed');
@@ -37,16 +40,23 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
   readonly viewportHeight = signal(window.visualViewport?.height ?? window.innerHeight);
   readonly isDragging = signal(false);
 
-  readonly snapHalf = computed(() => this.viewportHeight() * 0.4);
-  readonly snapFull = computed(() => NavbarCollapseService.MOBILE_HEADER_HEIGHT);
-  readonly snapCollapsed = computed(() => this.viewportHeight() * 0.85);
-  readonly snapClose = computed(() => this.viewportHeight());
+  readonly referenceHeight = computed(() => {
+    if (this.contained() && this.containerHeight() !== null) {
+      return this.containerHeight()!;
+    }
+    return this.viewportHeight();
+  });
+
+  readonly snapFull = computed(() => this.contained() ? 0 : NavbarCollapseService.MOBILE_HEADER_HEIGHT);
+  readonly snapHalf = computed(() => this.referenceHeight() * 0.4);
+  readonly snapCollapsed = computed(() => this.referenceHeight() * 0.85);
+  readonly snapClose = computed(() => this.referenceHeight());
 
   readonly sheetTransform = computed(() => `translateY(${this.translateY()}px)`);
 
   private static readonly HANDLE_HEIGHT = 28; // 12px padding-top + 4px bar + 12px padding-bottom
   readonly contentMaxHeight = computed(() =>
-    Math.max(0, this.viewportHeight() - this.translateY() - BottomSheetComponent.HANDLE_HEIGHT)
+    Math.max(0, this.referenceHeight() - this.translateY() - BottomSheetComponent.HANDLE_HEIGHT)
   );
 
   private startPointerY = 0;
@@ -68,6 +78,16 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
         } else if (this.sheetState() !== 'closed') {
           this.previousSnapState.set(null);
           this.snapTo('closed');
+        }
+      });
+    });
+
+    // Re-snap when container height changes in contained mode.
+    effect(() => {
+      const _height = this.containerHeight();
+      untracked(() => {
+        if (this.contained() && this.sheetState() !== 'closed') {
+          this.snapTo(this.sheetState());
         }
       });
     });
@@ -104,7 +124,7 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
 
   private onViewportResize = (): void => {
     this.viewportHeight.set(window.visualViewport!.height);
-    if (this.sheetState() !== 'closed') {
+    if (!this.contained() && this.sheetState() !== 'closed') {
       this.snapTo(this.sheetState());
     }
   };

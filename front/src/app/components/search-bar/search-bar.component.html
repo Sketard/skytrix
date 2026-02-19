@@ -10,6 +10,11 @@
       </button>
     }
   </div>
+  @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {
+    <button mat-icon-button class="searchBar-clearFilters mat-elevation-z0" (click)="clearFilters()">
+      <mat-icon fontIcon="close"></mat-icon>
+    </button>
+  }
   <button matSuffix mat-icon-button class="searchBar-input-filters mat-elevation-z0" (click)="openFilters()">
     <mat-icon fontIcon="filter_alt"></mat-icon>
     @if ((numberOfActiveFilters$ | async); as numberOfActiveFilters) {

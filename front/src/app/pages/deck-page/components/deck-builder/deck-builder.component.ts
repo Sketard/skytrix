@@ -19,6 +19,7 @@ import { ExportService } from '../../../../services/export.service';
 import { downloadDocument } from '../../../../core/utilities/functions';
 import { DeckDTO } from '../../../../core/model/dto/deck-dto';
 import { ExportMode } from '../../../../core/enums/export.mode.enum';
+import { CardFiltersComponent } from '../../../../components/card-filters/card-filters.component';
 import { CardSearcherComponent } from '../../../../components/card-searcher/card-searcher.component';
 import { HandTestComponent } from './components/hand-test/hand-test.component';
 import { Router } from '@angular/router';
@@ -38,6 +39,7 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../
     MatMenu,
     MatMenuItem,
     MatMenuTrigger,
+    CardFiltersComponent,
     CardSearcherComponent,
     HandTestComponent,
     CardInspectorComponent,
@@ -59,7 +61,6 @@ export class DeckBuilderComponent implements OnDestroy {
   @ViewChild('importInput') importInput: ElementRef | undefined;
   @ViewChild('deckNameInput') deckNameInput: ElementRef<HTMLInputElement> | undefined;
   @ViewChild('deckNameInputDesktop') deckNameInputDesktop: ElementRef<HTMLInputElement> | undefined;
-
   readonly isEditingName = signal(false);
   private nameEditTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -76,6 +77,7 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly ExportMode = ExportMode;
 
   readonly filtersRequestedSnap = signal<'full' | null>(null);
+  readonly landscapeFiltersOpened = signal(false);
   readonly handTestOpened = this.deckBuildService.handTestOpened;
   readonly searchPanelOpened = signal(false);
 
@@ -85,6 +87,17 @@ export class DeckBuilderComponent implements OnDestroy {
       .pipe(map(result => result.matches)),
     { initialValue: false }
   );
+  readonly isLandscapeSplit = toSignal(
+    this.breakpointObserver.observe(['(orientation: landscape) and (min-width: 576px) and (max-width: 767px)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+  readonly isCompactHeight = toSignal(
+    this.breakpointObserver.observe(['(min-width: 768px) and (max-height: 500px)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+  readonly useExternalFilters = computed(() => this.isLandscapeSplit() || this.isCompactHeight());
   readonly isCardDragActive = this.deckBuildService.cardDragActive;
 
   constructor(
@@ -255,7 +268,11 @@ export class DeckBuilderComponent implements OnDestroy {
   }
 
   public onFiltersExpanded(expanded: boolean) {
-    this.filtersRequestedSnap.set(expanded ? 'full' : null);
+    if (this.useExternalFilters()) {
+      this.landscapeFiltersOpened.set(expanded);
+    } else {
+      this.filtersRequestedSnap.set(expanded ? 'full' : null);
+    }
   }
 
   public toggleTestHand() {

@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatTooltip } from '@angular/material/tooltip';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { CardSearcherComponent } from '../../components/card-searcher/card-searcher.component';
 import { SearchBarComponent } from '../../components/search-bar/search-bar.component';
 import { CardFiltersComponent } from '../../components/card-filters/card-filters.component';
@@ -36,8 +38,16 @@ export class CardSearchPageComponent {
   readonly filtersRequestedSnap = signal<'full' | null>(null);
   readonly displayType = CardDisplayType;
 
+  readonly landscapeFiltersOpened = signal(false);
+
   private readonly navbarCollapseService = inject(NavbarCollapseService);
+  private readonly breakpointObserver = inject(BreakpointObserver);
   readonly isMobilePortrait = this.navbarCollapseService.isMobilePortrait;
+  readonly isCompactHeight = toSignal(
+    this.breakpointObserver.observe(['(min-width: 768px) and (max-height: 500px)'])
+      .pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
 
   protected readonly cardSearchService = inject(CardSearchService);
   private readonly httpClient = inject(HttpClient);
@@ -57,7 +67,11 @@ export class CardSearchPageComponent {
   }
 
   onFiltersExpanded(expanded: boolean): void {
-    this.filtersRequestedSnap.set(expanded ? 'full' : null);
+    if (this.isCompactHeight()) {
+      this.landscapeFiltersOpened.set(expanded);
+    } else {
+      this.filtersRequestedSnap.set(expanded ? 'full' : null);
+    }
   }
 
   setDisplayMode(mode: CardDisplayType): void {

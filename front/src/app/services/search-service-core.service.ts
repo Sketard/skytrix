@@ -11,6 +11,7 @@ import {
   tap,
   timer,
 } from 'rxjs';
+import { clearFormArray } from '../core/utilities/functions';
 import { CardFilterDTO, CardSetFilterDTO } from '../core/model/dto/card-filter-dto';
 import { CardDetailDTO, CardDetailDTOPage } from '../core/model/dto/card-detail-dto';
 import { CardDetail } from '../core/model/card-detail';
@@ -42,6 +43,8 @@ export abstract class SearchServiceCore implements OnDestroy {
   private readonly hasMoreResultsState = signal<boolean>(true);
   readonly hasMoreResults = this.hasMoreResultsState.asReadonly();
 
+  readonly filtersCleared$ = new Subject<void>();
+
   private unsubscribe$ = new Subject<void>();
   private fetchActive = false;
 
@@ -69,6 +72,18 @@ export abstract class SearchServiceCore implements OnDestroy {
   public refreshResearch(): void {
     this.disableDebounceForOneRequest();
     this.filterForm.controls.name.setValue(this.filterForm.controls.name.value);
+  }
+
+  public clearFilters(): void {
+    this.disableDebounceForOneRequest();
+    this.filterForm.controls.minAtk.reset(null, { emitEvent: false });
+    this.filterForm.controls.maxAtk.reset(null, { emitEvent: false });
+    this.filterForm.controls.minDef.reset(null, { emitEvent: false });
+    this.filterForm.controls.maxDef.reset(null, { emitEvent: false });
+    this.filterForm.controls.attribute.reset(null, { emitEvent: false });
+    clearFormArray(this.filterForm.controls.types, false);
+    this.filterForm.updateValueAndValidity();
+    this.filtersCleared$.next();
   }
 
   public fetch(httpClient: HttpClient): boolean {
