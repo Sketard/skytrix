@@ -71,9 +71,23 @@
       @include r.respond-above(r.$bp-tablet) {
         padding: 0 2rem;
       }
+    }
+
+    &-bar {
+      margin: 1.5rem 1rem 0.5rem 1rem;
+
+      @include r.mobile-portrait {
+        margin: 0.75rem 0.75rem 0.25rem 0.75rem;
+      }
+
+      @include r.respond-above(r.$bp-tablet) {
+        margin: 4rem 2rem 1rem 2rem;
+      }
 
       &-displayMode {
-        padding-top: 0.5em;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
 
         mat-button-toggle-group {
           border-radius: 0;
@@ -92,25 +106,20 @@
           transform: scale(0.8);
         }
 
+        .favorite-toggle {
+          color: var(--text-primary);
+
+          &.active {
+            color: gold;
+          }
+        }
+
         @include r.mobile-portrait {
           mat-button-toggle {
             --mat-standard-button-toggle-height: 32px;
           }
         }
       }
-    }
-
-    &-bar {
-      margin: 1.5rem 1rem 0.5rem 1rem;
-
-      @include r.mobile-portrait {
-        margin: 0.75rem 0.75rem 0.25rem 0.75rem;
-      }
-
-      @include r.respond-above(r.$bp-tablet) {
-        margin: 4rem 2rem 1rem 2rem;
-      }
-
     }
 
     &-result {

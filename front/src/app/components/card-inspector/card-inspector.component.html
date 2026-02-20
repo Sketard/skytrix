@@ -33,6 +33,27 @@
       </div>
     }
     <div class="card-effect" [innerHTML]="c.description"></div>
+    @if (showPersonalMetadata()) {
+      <div class="inspector-personal">
+        <div class="inspector-personal-owned">
+          <span>Possédées :</span>
+          <button mat-icon-button (click)="changeOwned(-1); $event.stopPropagation()">
+            <mat-icon>remove</mat-icon>
+          </button>
+          <span class="inspector-personal-owned-count">{{ ownedCount() }}</span>
+          <button mat-icon-button (click)="changeOwned(1); $event.stopPropagation()">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+        <button mat-icon-button
+          class="favorite-toggle"
+          [class.active]="isFavorite()"
+          (click)="toggleFavorite(); $event.stopPropagation()"
+          aria-label="Favori">
+          <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
+        </button>
+      </div>
+    }
   </div>
 </ng-template>
 

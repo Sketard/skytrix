@@ -66,11 +66,14 @@ export class SimBoardComponent {
   private static readonly BOARD_HEIGHT_3ROW = 608;  // 3 zone rows only
   private static readonly HAND_GAP = 4;
   private static readonly HAND_HEIGHT = 160;
-  // Desktop total: 608 + 4 + 160 = 772 (grid + gap + hand, all scaled together)
+  private static readonly HAND_OVERLAP = 30; // hand pulls up into S/T row (matches SCSS $sim-hand-overlap)
+  // Desktop total: 608 + 4 + 160 − 30 = 742 (grid + gap + hand − overlap, all scaled together)
   private static readonly BOARD_HEIGHT_DESKTOP =
-    SimBoardComponent.BOARD_HEIGHT_3ROW + SimBoardComponent.HAND_GAP + SimBoardComponent.HAND_HEIGHT;
+    SimBoardComponent.BOARD_HEIGHT_3ROW + SimBoardComponent.HAND_GAP + SimBoardComponent.HAND_HEIGHT - SimBoardComponent.HAND_OVERLAP;
+  private static readonly MAX_SCALE = 1.5;
   private static readonly HAND_HEIGHT_LANDSCAPE = 90;
   private static readonly HAND_HEIGHT_PORTRAIT = 120;
+  private static readonly HAND_OVERLAP_MOBILE = 15; // matches SCSS $sim-hand-overlap-mobile
 
   constructor() {
     effect(() => {
@@ -95,22 +98,22 @@ export class SimBoardComponent {
     const totalHeight = window.innerHeight - topBarHeight;
 
     if (isMobile) {
-      // Mobile: grid only (608px) — hand is native size, subtracted from available height
+      // Mobile: grid only (608px) — hand is native size (minus overlap) subtracted from available height
       const handHeight = this.navbarCollapse.isMobilePortrait()
         ? SimBoardComponent.HAND_HEIGHT_PORTRAIT
         : SimBoardComponent.HAND_HEIGHT_LANDSCAPE;
-      const boardAvailableHeight = totalHeight - handHeight;
+      const boardAvailableHeight = totalHeight - handHeight + SimBoardComponent.HAND_OVERLAP_MOBILE;
       this.scaleFactor.set(Math.min(
         availableWidth / SimBoardComponent.BOARD_WIDTH,
         boardAvailableHeight / SimBoardComponent.BOARD_HEIGHT_3ROW,
         1,
       ));
     } else {
-      // Desktop: grid + gap + hand (772px) all scaled together inside .board-scaler
+      // Desktop: grid + gap + hand − overlap (742px) all scaled together inside .board-scaler
       this.scaleFactor.set(Math.min(
         availableWidth / SimBoardComponent.BOARD_WIDTH,
         totalHeight / SimBoardComponent.BOARD_HEIGHT_DESKTOP,
-        1,
+        SimBoardComponent.MAX_SCALE,
       ));
     }
   }

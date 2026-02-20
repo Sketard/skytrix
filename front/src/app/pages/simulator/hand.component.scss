@@ -67,50 +67,13 @@
   animation: gold-glow 400ms ease-out forwards;
 }
 
-// ── Mobile: horizontal strip at native size ──
+// ── Mobile: same fan layout, smaller cards ──
 // Driven by .mobile-hand class on :host (set by board template when isMobile()),
 // NOT media queries — avoids mismatch with JS breakpoint
-:host(.mobile-hand) {
-  overflow: hidden;
-}
-
 :host(.mobile-hand) .sim-hand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 4px 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
   min-height: 0; // reset desktop defensive min-height
 }
 
-// Override absolute fan → flex items
 :host(.mobile-hand) .sim-hand > :not(.cdk-drag-placeholder) {
-  position: relative;
-  bottom: auto;
-  left: auto;
-  translate: none;
-  rotate: none;
   height: $sim-hand-card-height-mobile;
-  flex-shrink: 0;
-  transform-origin: center center;
-
-  &:hover {
-    translate: 0 -8px;
-    rotate: none;
-    scale: 1.05;
-  }
-}
-
-// Override placeholder for flex layout
-// stylelint-disable-next-line selector-pseudo-element-no-unknown
-:host(.mobile-hand) ::ng-deep .cdk-drag-placeholder {
-  position: relative !important;
-  left: auto;
-  bottom: auto;
-  translate: none;
-  width: 56px;
-  flex-shrink: 0;
 }

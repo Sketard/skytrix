@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, input, OnDestroy, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, input, OnDestroy, output, signal } from '@angular/core';
 import { CardComponent } from '../card/card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { CdkDrag, CdkDragDrop, CdkDragStart, CdkDropList } from '@angular/cdk/drag-drop';
@@ -9,11 +9,9 @@ import { CardDetail } from '../../core/model/card-detail';
 import { toSharedCardData } from '../../core/model/shared-card-data';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
 import { OwnedCardService } from '../../services/owned-card.service';
-import { FindOwnedCardPipe } from '../../core/pipes/find-owned-card.pipe';
 import { FindGroupedOwnedCardPipe } from '../../core/pipes/find-grouped-owned-card';
 import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { MatIconButton } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 
@@ -25,10 +23,8 @@ import { EmptyStateComponent } from '../empty-state/empty-state.component';
     CdkDrag,
     AsyncPipe,
     NgClass,
-    FindOwnedCardPipe,
     FindGroupedOwnedCardPipe,
     MatIconModule,
-    MatIconButton,
     MatProgressSpinner,
     EmptyStateComponent,
   ],
@@ -38,7 +34,7 @@ import { EmptyStateComponent } from '../empty-state/empty-state.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CardListComponent implements OnDestroy {
-  readonly displayMode = input<CardDisplayType>(CardDisplayType.INFORMATIVE);
+  readonly displayMode = input<CardDisplayType>(CardDisplayType.GRID);
   readonly deckBuildMode = input<boolean>(false);
   readonly searchService = input<SearchServiceCore>();
 
@@ -50,21 +46,8 @@ export class CardListComponent implements OnDestroy {
   readonly displayType = CardDisplayType;
   private dragging = false;
 
-  readonly emptyMessage = computed(() => {
-    switch (this.displayMode()) {
-      case CardDisplayType.FAVORITE:
-        return 'Pas encore de favoris — marquez vos cartes préférées avec l\'étoile';
-      case CardDisplayType.OWNED:
-        return 'Aucune carte marquée comme possédée';
-      default:
-        return 'Aucun résultat trouvé';
-    }
-  });
-
-  readonly emptyCta = computed(() => {
-    const mode = this.displayMode();
-    return (mode === CardDisplayType.INFORMATIVE || mode === CardDisplayType.MOSAIC) ? 'Effacer les filtres' : '';
-  });
+  readonly emptyMessage = 'Aucun résultat trouvé';
+  readonly emptyCta = 'Effacer les filtres';
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private scrollContainer: HTMLElement | null = null;
@@ -191,11 +174,6 @@ export class CardListComponent implements OnDestroy {
 
   onEmptyCta(): void {
     this.searchService()?.clearFilters();
-  }
-
-  increaseQuantity(number: number, cardSetId: number, currentNumber: number): void {
-    const newQuantity = Math.max(0, currentNumber + number);
-    this.ownedCardService.update(cardSetId, newQuantity);
   }
 
   ngOnDestroy(): void {

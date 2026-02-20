@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { BoardStateService } from './board-state.service';
 import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
 import { CardComponent } from '../../components/card/card.component';
+import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 
 @Component({
   selector: 'app-sim-pile-overlay',
@@ -17,11 +18,17 @@ import { CardComponent } from '../../components/card/card.component';
     '[attr.aria-modal]': 'isOpen()',
     '[attr.aria-label]': 'ariaLabel()',
     '[class.open]': 'isOpen()',
+    '[class.mobile]': 'isMobile()',
+    '[class.mobile-portrait]': 'isMobilePortrait()',
   },
 })
 export class SimPileOverlayComponent {
   private readonly boardState = inject(BoardStateService);
   private readonly elementRef = inject(ElementRef);
+  private readonly navbarCollapse = inject(NavbarCollapseService);
+
+  readonly isMobile = this.navbarCollapse.isMobile;
+  readonly isMobilePortrait = this.navbarCollapse.isMobilePortrait;
 
   readonly activeZone = this.boardState.activeOverlayZone;
   readonly isOpen = this.boardState.isOverlayOpen;

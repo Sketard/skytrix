@@ -160,6 +160,10 @@
   <app-card-inspector
     [card]="selectedCardForInspector()"
     mode="dismissable"
+    [ownedCount]="selectedCardOwnedCount()"
+    [isFavorite]="selectedCardDetail()?.favorite ?? false"
+    (ownedCountChange)="onOwnedCountChange($event)"
+    (favoriteChange)="onFavoriteChange()"
     (dismissed)="dismissInspector()">
     <div class="inspector-actions" (click)="$event.stopPropagation()">
       <button mat-icon-button (click)="removeSelectedCardFromDeck()" title="Retirer du deck">

@@ -15,6 +15,10 @@ $sim-radius-card: 0.25rem;
 // Card dimension token
 $sim-card-aspect-ratio: list.slash(59, 86);
 
+// Hand overlay overlap (hand pulls up into S/T row)
+$sim-hand-overlap: 30px;
+$sim-hand-overlap-mobile: 15px;
+
 // Hand fan tokens (desktop — inside scaler)
 $sim-hand-card-height: 140px;
 $sim-hand-hover-lift: -24px;

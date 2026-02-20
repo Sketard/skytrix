@@ -43,13 +43,14 @@
   flex-shrink: 0;
 }
 
-// Desktop hand inside scaler — visually simulates the old 4th grid row
-// Height must be explicit: previously the 160px grid row forced it,
-// now the hand is a flex child whose absolute-positioned cards don't size it.
+// Desktop hand inside scaler — overlaps the S/T row for a denser layout
+// and reduces scaler reference height → board scales larger on big screens.
 app-sim-hand:not(.mobile-hand) {
   width: 1060px;
   height: 160px;
-  margin-top: $sim-gap-zone-px;
+  margin-top: calc(#{$sim-gap-zone-px} - #{$sim-hand-overlap});
+  position: relative;
+  z-index: 2;
 }
 
 // Mobile layout: driven by isMobile() signal via .mobile-layout class,
@@ -68,6 +69,9 @@ app-sim-hand:not(.mobile-hand) {
   width: 100%;
   flex-shrink: 0;
   height: $sim-hand-height-landscape;
+  margin-top: -$sim-hand-overlap-mobile;
+  position: relative;
+  z-index: 2;
   touch-action: pan-x; // override parent touch-action: none for horizontal scroll
 }
 
