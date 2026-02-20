@@ -1,28 +1,30 @@
-@if (form && displayMode) {
+@if (form && displayMode && favoriteFilter) {
   <div class="cardSearchPage" [class.deckBuildMode]="deckBuildMode()">
     <div class="cardSearchPage-searcher" [class.filters-expanded]="filtersOpen()">
       <div class="cardSearchPage-searcher-bar">
         <search-bar [form]="form.controls.name" [searchService]="searchService()" (filterToggled)="toggleFilters()"></search-bar>
-      </div>
-      <div class="cardSearchPage-searcher-filters">
-        <div class="cardSearchPage-searcher-filters-displayMode">
+        <div class="cardSearchPage-searcher-bar-displayMode">
           <mat-button-toggle-group
             hideSingleSelectionIndicator
             (change)="setDisplayMode($event.source.value)">
-            <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="displayMode() === displayType.INFORMATIVE" matTooltip="Liste" aria-label="Liste">
-              <mat-icon>view_headline</mat-icon>
-            </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.MOSAIC" [checked]="displayMode() === displayType.MOSAIC" matTooltip="Mosaïque" aria-label="Mosaïque">
+            <mat-button-toggle [value]="displayType.GRID" [checked]="displayMode() === displayType.GRID" matTooltip="Grille" aria-label="Grille">
               <mat-icon>view_module</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.OWNED" [checked]="displayMode() === displayType.OWNED" matTooltip="Mes cartes" aria-label="Mes cartes">
-              <mat-icon>style</mat-icon>
-            </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.FAVORITE" [checked]="displayMode() === displayType.FAVORITE" matTooltip="Favoris" aria-label="Favoris">
-              <mat-icon>star</mat-icon>
+            <mat-button-toggle [value]="displayType.LIST" [checked]="displayMode() === displayType.LIST" matTooltip="Liste" aria-label="Liste">
+              <mat-icon>view_headline</mat-icon>
             </mat-button-toggle>
           </mat-button-toggle-group>
+
+          <button mat-icon-button
+            class="favorite-toggle"
+            [class.active]="favoriteFilter()"
+            (click)="toggleFavoriteFilter()"
+            matTooltip="Favoris" aria-label="Favoris">
+            <mat-icon>{{ favoriteFilter() ? 'star' : 'star_border' }}</mat-icon>
+          </button>
         </div>
+      </div>
+      <div class="cardSearchPage-searcher-filters">
         <app-card-filters [searchService]="searchService()"></app-card-filters>
       </div>
       <div class="cardSearchPage-searcher-result">

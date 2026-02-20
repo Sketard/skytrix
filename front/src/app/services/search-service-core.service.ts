@@ -31,8 +31,11 @@ export abstract class SearchServiceCore implements OnDestroy {
   readonly filterForm = new FormGroup<TypedForm<CardFilterDTO>>(SearchServiceCore.buildSearchForm());
   private offset: number = 0;
   readonly quantity: number = 60;
-  private readonly displayModeState = signal<CardDisplayType>(CardDisplayType.MOSAIC);
+  private readonly displayModeState = signal<CardDisplayType>(CardDisplayType.GRID);
   readonly displayMode = this.displayModeState.asReadonly();
+
+  private readonly favoriteFilterState = signal<boolean>(false);
+  readonly favoriteFilter = this.favoriteFilterState.asReadonly();
 
   private readonly skipDebounceState = signal<boolean>(false);
   readonly skipDebounce = this.skipDebounceState.asReadonly();
@@ -188,11 +191,13 @@ export abstract class SearchServiceCore implements OnDestroy {
   }
 
   public setDisplayMode(mode: CardDisplayType) {
-    const currentMode = this.displayModeState();
-    if ((currentMode === CardDisplayType.FAVORITE) !== (mode === CardDisplayType.FAVORITE)) {
-      this.filterForm.controls.favorite.setValue(mode === CardDisplayType.FAVORITE);
-    }
     this.displayModeState.set(mode);
+  }
+
+  public toggleFavoriteFilter(): void {
+    const next = !this.favoriteFilterState();
+    this.favoriteFilterState.set(next);
+    this.filterForm.controls.favorite.setValue(next);
   }
 
   public addFavoriteCard(httpClient: HttpClient, id: number) {

@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
+import { MatIconButton } from '@angular/material/button';
 import { SharedCardInspectorData } from '../../core/model/shared-card-data';
 
 @Component({
@@ -7,7 +9,7 @@ import { SharedCardInspectorData } from '../../core/model/shared-card-data';
   templateUrl: './card-inspector.component.html',
   styleUrl: './card-inspector.component.scss',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, MatIcon, MatIconButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     'role': 'complementary',
@@ -27,10 +29,23 @@ export class CardInspectorComponent {
   readonly card = input<SharedCardInspectorData | null>(null);
   readonly mode = input<'dismissable' | 'click' | 'permanent'>('dismissable');
   readonly position = input<'left' | 'right' | 'top'>('left');
+  readonly ownedCount = input<number | undefined>(undefined);
+  readonly isFavorite = input<boolean>(false);
 
   readonly dismissed = output<void>();
+  readonly ownedCountChange = output<number>();
+  readonly favoriteChange = output<boolean>();
 
   readonly isVisible = computed(() => this.card() !== null);
+  readonly showPersonalMetadata = computed(() => this.ownedCount() !== undefined);
+
+  changeOwned(delta: number): void {
+    this.ownedCountChange.emit(Math.max(0, (this.ownedCount() ?? 0) + delta));
+  }
+
+  toggleFavorite(): void {
+    this.favoriteChange.emit(!this.isFavorite());
+  }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {

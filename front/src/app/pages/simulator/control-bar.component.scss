@@ -10,6 +10,7 @@
   }
 }
 
+// ── Desktop: always-visible bar ──
 .control-bar {
   display: flex;
   flex-direction: column;
@@ -50,16 +51,71 @@ button {
   white-space: nowrap;
 }
 
-// Mobile: lift above the detached hand
+// ── Mobile: collapsible FAB ──
+.fab-trigger {
+  display: none;
+}
+
+.fab-actions {
+  display: none;
+}
+
 // Both media queries needed to match JS isMobile() breakpoint
 @media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
   :host {
-    bottom: calc(90px + 12px); // $sim-hand-height-landscape + gap
+    bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .fab-trigger {
+    display: flex;
+    background: var(--sim-surface-translucent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--sim-zone-border);
+    color: var(--text-primary);
+    transition: transform 200ms ease;
+
+    &.open {
+      transform: rotate(90deg);
+    }
+  }
+
+  .fab-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+
+    .fab-action {
+      opacity: 0;
+      transform: scale(0.4) translateY(10px);
+      transition: opacity 200ms ease, transform 200ms ease;
+      pointer-events: none;
+      background: var(--sim-surface-translucent);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--sim-zone-border);
+      border-radius: 50%;
+    }
+
+    &.open {
+      pointer-events: auto;
+
+      .fab-action {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        pointer-events: auto;
+      }
+
+      // Stagger: closest to FAB appears first
+      .fab-action:nth-child(4) { transition-delay: 0ms; }
+      .fab-action:nth-child(3) { transition-delay: 50ms; }
+      .fab-action:nth-child(2) { transition-delay: 100ms; }
+      .fab-action:nth-child(1) { transition-delay: 150ms; }
+    }
   }
 }
 
-@media (max-width: 767px) and (orientation: portrait) {
-  :host {
-    bottom: calc(120px + 12px); // $sim-hand-height-portrait + gap
-  }
-}

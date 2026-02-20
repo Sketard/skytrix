@@ -28,6 +28,10 @@ import { Router } from '@angular/router';
 import { CardInspectorComponent } from '../../../../components/card-inspector/card-inspector.component';
 import { BottomSheetComponent } from '../../../../components/bottom-sheet/bottom-sheet.component';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
+import { OwnedCardService } from '../../../../services/owned-card.service';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+
 @Component({
   selector: 'app-deck-builder',
   imports: [
@@ -67,7 +71,7 @@ export class DeckBuilderComponent implements OnDestroy {
   private nameEditTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
-  private readonly selectedCardDetail = signal<CardDetail | null>(null);
+  protected readonly selectedCardDetail = signal<CardDetail | null>(null);
   readonly selectedCardCount = computed(() => {
     const cd = this.selectedCardDetail();
     if (!cd) return 0;
@@ -103,6 +107,17 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly isCardDragActive = this.deckBuildService.cardDragActive;
   readonly isDirty = this.deckBuildService.isDirty;
   private readonly snackBar = inject(MatSnackBar);
+  private readonly ownedCardService = inject(OwnedCardService);
+  private readonly httpClient = inject(HttpClient);
+
+  readonly selectedCardOwnedCount = computed(() => {
+    const cd = this.selectedCardDetail();
+    if (!cd) return 0;
+    const setIds = cd.sets.map(s => s.id);
+    return this.ownedCardService.shortOwnedCards
+      .filter(o => setIds.includes(o.cardSetId))
+      .reduce((sum, o) => sum + o.number, 0);
+  });
 
   constructor(
     public deckBuildService: DeckBuildService,
@@ -157,6 +172,31 @@ export class DeckBuilderComponent implements OnDestroy {
   dismissInspector(): void {
     this.selectedCardForInspector.set(null);
     this.selectedCardDetail.set(null);
+  }
+
+  onOwnedCountChange(newCount: number): void {
+    const cd = this.selectedCardDetail();
+    if (!cd || cd.sets.length === 0) return;
+    this.ownedCardService.update(cd.sets[0].id, newCount);
+  }
+
+  async onFavoriteChange(): Promise<void> {
+    const cd = this.selectedCardDetail();
+    if (!cd) return;
+    const id = cd.card.id;
+    if (id == null) return;
+    try {
+      if (cd.favorite) {
+        await firstValueFrom(this.deckBuildService.removeFavoriteCard(this.httpClient, id));
+      } else {
+        await firstValueFrom(this.deckBuildService.addFavoriteCard(this.httpClient, id));
+      }
+      const updated = { ...cd, favorite: !cd.favorite };
+      this.selectedCardDetail.set(updated);
+      this.selectedCardForInspector.set(toSharedCardInspectorData(updated));
+    } catch {
+      // API error — state unchanged
+    }
   }
 
   addSelectedCardToDeck(): void {

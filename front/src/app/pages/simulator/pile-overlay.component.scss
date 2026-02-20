@@ -144,16 +144,12 @@
   opacity: 0.3;
 }
 
-// Mobile: lift above the detached hand
-// Both media queries needed to match JS isMobile() breakpoint
-@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
-  .overlay-panel {
-    bottom: calc(90px + 8px); // $sim-hand-height-landscape + gap
-  }
+// Mobile: full height above the hand (class-driven, matches JS isMobile())
+:host(.mobile) .overlay-panel {
+  bottom: calc(90px - 15px + 8px); // landscape hand − overlap + gap
 }
 
-@media (max-width: 767px) and (orientation: portrait) {
-  .overlay-panel {
-    bottom: calc(120px + 8px); // $sim-hand-height-portrait + gap
-  }
+:host(.mobile-portrait) .overlay-panel {
+  top: calc(48px + 8px); // mobile header height + gap
+  bottom: calc(120px - 15px + 8px); // portrait hand − overlap + gap
 }

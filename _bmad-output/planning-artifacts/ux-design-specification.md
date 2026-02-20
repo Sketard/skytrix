@@ -21,6 +21,7 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 | 2026-02-18 | UX Review (Mobile Simulator) | **K.** Mobile hand detachment: on mobile viewports, the hand zone renders outside the scaled board canvas at native size. Board grid reduces from 4 to 3 rows (1060×608) on mobile. A `.board-scaler` wrapper applies `transform: scale()` to both grid and hand on desktop (preserving current behavior) while the hand exits the scaler on mobile via conditional rendering. Flex column layout with clean separation — no overlap (flat 2D board cannot hide the bottom row like Master Duel's 3D perspective). CDK DragDrop compatibility maintained — hand stays inside `cdkDropListGroup` container. Desktop layout unchanged. |
 | 2026-02-18 | UX Review (Deck Builder Card Density) | **L.** Deck builder card search grid density increased to 5 columns minimum (portrait and landscape) with reduced gap, matching Master Duel's deck builder aesthetic. Mosaic/favorite mode in `deckBuildMode` uses `minmax(55px, 1fr)` with `0.25em` gap (down from `minmax(85px, 1fr)` / `0.75em`). Applies to both the side panel (desktop/landscape) and the bottom sheet (mobile portrait). Cards remain recognizable by artwork at 55px — this is the standard size in Master Duel's search panel. **M.** Deck builder landscape: filters displayed via bottom sheet anchored inside the side panel (Option A) instead of full-width overlay. The side panel bottom sheet shows filters while keeping the deck viewer (left 55%) fully visible. Same `app-bottom-sheet` component reused, scoped to the side panel container. On desktop (≥768px), filters remain as vertical expand/collapse inline (unchanged from revision H). |
 | 2026-02-19 | UX Review (Content Pages & Patterns) | **N.** Login page redesign: hero-centered layout with `logo-icon.png` + `logo-text.png` replacing the plain `<h2>Login</h2>`. No `mat-card` — form floats on `--surface-base` background with a subtle radial gradient (cyan at 5-8% opacity) behind the logo. 400ms fadeIn on page load. `prefers-reduced-motion` disables animation. **O.** Parameters page redesign: structured into `mat-card` sections (Database, Images, Banlist) with Material icons, short descriptions, action buttons, and last-sync date display. Feedback via `MatSnackBar` during/after fetch operations. **P.** App-wide empty states: consistent text + CTA pattern across all empty contexts (search no results, empty deck, empty favorites, empty owned). Messages in `--text-secondary`, centered, with contextual CTA. **Q.** Notification system migration: `ngx-toastr` replaced by `MatSnackBar`. Position: top center (`verticalPosition: 'top'`, `horizontalPosition: 'center'`). Custom snackbar style: `--surface-card` background, 3px left border colored by type (`--accent-primary` for success, `--danger` for error), Material icon prefix. Utility functions in `functions.ts` updated to accept `MatSnackBar` instead of `ToastrService`. **R.** Deck builder save feedback: snackbar on success/error, dirty indicator (gold dot on save icon when unsaved changes), `canDeactivate` guard with confirm dialog on navigation with unsaved changes. **S.** Navbar collapsed mode: when sidebar is collapsed, navigation icons remain visible without labels (icon-only mode) instead of hiding all content. **T.** Z-index centralization: `_z-layers.scss` file with named tokens for all overlay layers. Legacy SCSS variables (`$black`, `$blue`, `$white`) progressive migration to semantic CSS custom properties (tracked per-screen, not bulk). |
+| 2026-02-20 | UX Review (Card Display Mode Homogeneity) | **U.** Card display mode redesign: 4 modes (INFORMATIVE, MOSAIC, OWNED, FAVORITE) consolidated to 2 display modes + 1 quick filter. Display modes (radio group): **Grid** (`view_module` — responsive image grid with overlay badges) and **List** (`view_headline` — horizontal rows with image + name + stats + rarity + badges). Quick filter (independent toggle): **★ Favorites** (`star` — filters results to favorites, inherits active display mode). Visually separated from display mode toggles via spacing/divider. **V.** OWNED mode eliminated as display mode: quantity controls (+/-) become contextual — they appear automatically when context is "collection" (collection page or "my cards" filter active). Quantity controls integrate into both Grid (overlay) and List (additional column) modes. **W.** `CardDisplayType` enum reduced from 4 to 2 values: `GRID`, `LIST`. Favorite toggle managed as a separate boolean signal, independent of display mode. **X.** Normalized card sizing via CSS custom properties: `--card-size-sm` (40px), `--card-size-md` (80px), `--card-size-lg` (100px). All display modes reference these tokens instead of ad-hoc pixel values. **Y.** Uniform badge system: ban badge and owned-count badge visible in both Grid and List modes with consistent styling. Previously, badge visibility was inconsistent across modes (e.g., rarity only in OWNED, ban badge missing from OWNED). **Z.** Card inspector personal metadata: owned count (mini stepper) and favorite toggle displayed as a secondary info line at bottom of inspector, below a divider. Visually distinct from deck builder's primary deck add/remove controls (which remain as prominent `<ng-content>`-projected action block). Hierarchy: deck controls = primary action block, personal metadata = discrete inline text. Available in all inspector modes (click, dismissable, permanent) across all contexts. |
 
 ---
 
@@ -1210,11 +1211,141 @@ All content pages follow a consistent empty state pattern: centered text message
 **Auto-Snap Full (Bottom Sheet Integration):**
 When filters expand inside a bottom sheet, the sheet automatically snaps to the `full` state to maximize available space for filters + results. When filters collapse, the sheet returns to its previous snap state (typically `half`). This is coordinated via an output signal from `card-searcher` (e.g., `filtersExpanded: OutputEmitterRef<boolean>`) consumed by the bottom sheet's parent component, which updates the sheet's snap target.
 
+### Card Display Mode System
+
+**Context:** The card searcher previously offered 4 display modes via a `MatButtonToggleGroup` (`INFORMATIVE`, `MOSAIC`, `OWNED`, `FAVORITE`). Analysis revealed homogeneity issues: FAVORITE was visually identical to MOSAIC (a filter masquerading as a display mode), OWNED mixed layout with editing controls, badge visibility was inconsistent across modes, and card sizing used ad-hoc values.
+
+**New model: 2 display modes + 1 quick filter**
+
+#### Display Modes (radio group)
+
+| Mode | Icon | Layout | Content per card |
+|---|---|---|---|
+| **Grid** | `view_module` | CSS grid, `repeat(auto-fill, minmax(var(--card-size-lg), 1fr))`, gap `0.75em` | Card image + ban badge overlay + owned count overlay (in deckBuildMode) |
+| **List** | `view_headline` | Flexbox, `flex-wrap: wrap`, gap `0.75em`, full-width rows | Card image (fixed width `var(--card-size-md)`) + name + ATK/DEF + rarity badge + ban badge + owned count (in deckBuildMode) |
+
+In `deckBuildMode`, Grid uses `minmax(55px, 1fr)` with `0.25em` gap (unchanged from revision L).
+
+#### Quick Filter (independent toggle)
+
+| Filter | Icon | Behavior |
+|---|---|---|
+| **★ Favorites** | `star` | Toggle on/off. Filters search results to favorites only. Inherits the active display mode (Grid or List). Combinable with other active filters. |
+
+**Toolbar layout:**
+
+```
+┌──────────────────────────────────────────────────────┐
+│  🔍 [search input]   [filter btn]   [▦] [≡]  · [★]  │
+└──────────────────────────────────────────────────────┘
+                                       ^^^^      ^^^
+                                    display    quick
+                                    modes      filter
+```
+
+The display mode toggles and the favorites toggle are **visually separated** (gap or thin divider) to communicate that they are independent controls. Display modes are mutually exclusive (radio). Favorites is a binary toggle (on/off).
+
+#### Contextual Quantity Controls (replaces OWNED mode)
+
+Quantity controls (+/- buttons with count) are **not a display mode**. They appear **automatically** when the user is in a collection context:
+
+- **Collection page** — always visible
+- **Card searcher with "owned" filter active** — always visible
+- **Other contexts** — hidden
+
+Integration per display mode:
+
+| Display Mode | Quantity Control Placement |
+|---|---|
+| **Grid** | Overlay at bottom of card image (semi-transparent background strip with `[-] count [+]`) |
+| **List** | Additional column prepended to card row (same layout as previous OWNED mode: `[-] count [+]` group) |
+
+#### Normalized Card Sizing
+
+CSS custom properties replace ad-hoc pixel values across all card display contexts:
+
+```scss
+:root {
+  --card-size-sm: 40px;   // Owned row thumbnails, compact contexts
+  --card-size-md: 80px;   // List mode card image, card inspector thumbnail
+  --card-size-lg: 100px;  // Grid mode base size (minmax lower bound)
+}
+```
+
+All card rendering in `card-list` references these tokens. Breakpoint-specific overrides (e.g., 60px on mobile for List mode) use the same variable system.
+
+#### Uniform Badge System
+
+All badges are visible in **both** display modes:
+
+| Badge | Grid | List |
+|---|---|---|
+| Ban badge (Limited/Semi/Forbidden) | Bottom-left overlay on card image | Inline icon after card name |
+| Owned count | Top-right overlay on card image (deckBuildMode only) | Prepended column (deckBuildMode only) |
+| Rarity | Not shown (insufficient space) | Colored pill badge after card name |
+
+#### Enum Change
+
+```typescript
+// Before
+enum CardDisplayType { INFORMATIVE, MOSAIC, OWNED, FAVORITE }
+
+// After
+enum CardDisplayType { GRID, LIST }
+```
+
+Favorite state is managed as a separate `Signal<boolean>` on the search service, independent of display mode. The OWNED context is determined by page/route context or active filter, not by display mode selection.
+
+### Card Inspector Personal Metadata
+
+**Context:** With the removal of OWNED as a display mode, the card inspector becomes the universal entry point for managing personal card metadata (owned count, favorite status) from any search context. In deck build mode, the inspector already projects deck add/remove controls via `<ng-content>`. Both control sets must coexist without confusion.
+
+**Layout — visual hierarchy separation:**
+
+```
+┌─ Card Inspector ─────────────────────┐
+│  [Image]                             │
+│                                      │
+│  Dark Magician                       │
+│  ★★★★★★★  ·  Spellcaster  ·  DARK   │
+│  ATK 2500 / DEF 2100                 │
+│                                      │
+│  "The ultimate wizard in terms of    │
+│   attack and defense."               │
+│                                      │
+│  ┌─── Deck ───────────────────────┐  │  ← ng-content (deck build only)
+│  │   [−]      2      [+]         │  │     prominent action block
+│  └────────────────────────────────┘  │
+│                                      │
+│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │  ← divider
+│  Possédées: [−] 3 [+]    ★ Favori   │  ← personal metadata line
+└──────────────────────────────────────┘
+```
+
+**Design rules:**
+
+| Element | Style | Purpose |
+|---|---|---|
+| Deck controls (`<ng-content>`) | `mat-icon-button` in bordered container, prominent count | Primary action — adding/removing from deck |
+| Owned stepper | Small inline text `[−] 3 [+]` with `font-size: 0.8125rem`, `color: var(--text-secondary)` | Secondary info — collection management |
+| Favorite toggle | Star icon toggle (`☆`/`★`), same line as owned | Secondary info — personal preference |
+| Divider | `1px solid var(--inspector-border-color)` with `margin: 0.75rem 0` | Visual separation between action and info zones |
+
+**Behavior by context:**
+
+| Context | Deck controls (ng-content) | Personal metadata line |
+|---|---|---|
+| Deck builder | Visible (add/remove from deck) | Visible (owned + favorite) |
+| Card search page | Hidden (no ng-content projected) | Visible (owned + favorite) |
+| Simulator | Hidden | Hidden (not relevant during simulation) |
+
+**Implementation:** The personal metadata line is rendered directly by `CardInspectorComponent` (not projected via `<ng-content>`). It requires `ownedCount: InputSignal<number>`, `isFavorite: InputSignal<boolean>`, and corresponding output emitters `ownedCountChange` and `favoriteChange`. The line is hidden when both inputs are undefined (simulator context).
+
 ### Deck Builder Card Search Density
 
 **Reference:** Master Duel deck builder — card search panel displays ~5 columns of card thumbnails with minimal gap, maximizing the number of visible results.
 
-**Card grid in `deckBuildMode` (mosaic/favorite display modes):**
+**Card grid in `deckBuildMode` (Grid display mode):**
 
 | Property | Previous | New (deckBuildMode) |
 |---|---|---|

@@ -18,6 +18,7 @@ import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../core/model/shared-card-data';
 import { CardDetail } from '../../core/model/card-detail';
 import { CardDisplayType } from '../../core/enums/card-display-type';
+import { OwnedCardService } from '../../services/owned-card.service';
 
 @Component({
   selector: 'card-search-page',
@@ -56,7 +57,17 @@ export class CardSearchPageComponent {
   readonly useExternalFilters = computed(() => this.isLandscapeSplit() || this.isCompactHeight());
 
   protected readonly cardSearchService = inject(CardSearchService);
+  private readonly ownedCardService = inject(OwnedCardService);
   private readonly httpClient = inject(HttpClient);
+
+  readonly selectedCardOwnedCount = computed(() => {
+    const cd = this.selectedCardDetail();
+    if (!cd) return 0;
+    const setIds = cd.sets.map(s => s.id);
+    return this.ownedCardService.shortOwnedCards
+      .filter(o => setIds.includes(o.cardSetId))
+      .reduce((sum, o) => sum + o.number, 0);
+  });
 
   onCardClicked(cd: CardDetail): void {
     this.selectedCardDetail.set(cd);
@@ -84,6 +95,10 @@ export class CardSearchPageComponent {
     this.cardSearchService.setDisplayMode(mode);
   }
 
+  toggleFavoriteFilter(): void {
+    this.cardSearchService.toggleFavoriteFilter();
+  }
+
   @HostListener('document:keydown.escape', ['$event'])
   onEscapeKey(event: Event): void {
     if (this.selectedCardForInspector()) {
@@ -92,7 +107,13 @@ export class CardSearchPageComponent {
     }
   }
 
-  async toggleFavorite(): Promise<void> {
+  onOwnedCountChange(newCount: number): void {
+    const cd = this.selectedCardDetail();
+    if (!cd || cd.sets.length === 0) return;
+    this.ownedCardService.update(cd.sets[0].id, newCount);
+  }
+
+  async onFavoriteChange(): Promise<void> {
     const cd = this.selectedCardDetail();
     if (!cd) return;
     const id = cd.card.id;
