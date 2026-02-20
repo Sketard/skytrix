@@ -1,0 +1,71 @@
+<!-- Shared card details template (M1 fix: deduplicated) -->
+<ng-template #cardDetails let-c>
+  <div class="inspector-details">
+    <h3 class="card-name">{{ c.name }}</h3>
+    @if (c.isMonster) {
+      <div class="card-stats">
+        @if (c.attribute) {
+          <span class="stat">{{ c.attribute }}</span>
+        }
+        @if (c.race) {
+          <span class="stat">{{ c.race }}</span>
+        }
+        @if (c.isLink) {
+          <span class="stat">Link-{{ c.linkval }}</span>
+        } @else if (c.level) {
+          <span class="stat">Lv. {{ c.level }}</span>
+        }
+        @if (c.scale) {
+          <span class="stat">Scale {{ c.scale }}</span>
+        }
+      </div>
+      <div class="card-atk-def">
+        <span>ATK {{ c.displayAtk }}</span>
+        @if (c.hasDefense) {
+          <span>DEF {{ c.displayDef }}</span>
+        }
+      </div>
+    } @else {
+      <div class="card-stats">
+        @if (c.race) {
+          <span class="stat">{{ c.race }}</span>
+        }
+      </div>
+    }
+    <div class="card-effect" [innerHTML]="c.description"></div>
+  </div>
+</ng-template>
+
+@if (mode() === 'click') {
+  <!-- Click mode: full-screen backdrop + centered panel -->
+  @if (isVisible()) {
+    @if (card(); as c) {
+      <div class="inspector-backdrop" (click)="dismissed.emit()">
+        <div class="inspector-panel" (click)="$event.stopPropagation()">
+          <img [src]="c.imageUrlFull || c.imageUrl"
+               [alt]="c.name"
+               class="inspector-image"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+          <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
+        </div>
+        <ng-content></ng-content>
+      </div>
+    }
+  }
+} @else {
+  <!-- Dismissable + Permanent modes: inline layout -->
+  @if (isVisible()) {
+    @if (card(); as c) {
+      <div class="inspector-content">
+        <div class="inspector-left">
+          <img [src]="c.imageUrl"
+               [alt]="c.name"
+               class="inspector-image"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+          <ng-content></ng-content>
+        </div>
+        <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
+      </div>
+    }
+  }
+}

@@ -2,13 +2,14 @@
   <div class="toggleIconFilter-name">
     {{ inputLabel() }}
   </div>
-  <mat-button-toggle-group
-    [value]="form().value"
-    hideSingleSelectionIndicator
-  >
-    <mat-button-toggle *ngFor="let toggleIcon of toggleIcons()" [value]="toggleIcon.value" (change)="toggleChange($event)" [title]="toggleIcon.title">
-      <img [src]="toggleIcon.icon" [title]="toggleIcon.title" [alt]="toggleIcon.title" />
-    </mat-button-toggle>
-  </mat-button-toggle-group>
+  <mat-chip-listbox
+    [formControl]="form()"
+    hideSingleSelectionIndicator>
+    @for (toggleIcon of toggleIcons(); track toggleIcon.value) {
+      <mat-chip-option [value]="toggleIcon.value">
+        <img matChipAvatar [src]="toggleIcon.icon" [alt]="toggleIcon.title" />
+        {{ toggleIcon.title }}
+      </mat-chip-option>
+    }
+  </mat-chip-listbox>
 </div>
-

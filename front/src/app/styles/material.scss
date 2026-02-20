@@ -164,7 +164,8 @@ $mat-dark-theme: mat.m2-define-dark-theme(
 
 @include mat.all-component-themes($mat-core-theme);
 
-.dark-theme {
+.dark-theme,
+.cdk-overlay-container {
   @include mat.all-component-colors($mat-dark-theme);
 }
 

@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  height: 100%;
+
+  // Global token overrides for simulator context
+  --surface-base: #0a0e1a;
+  --accent-primary: #00d4ff;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+
+  // Simulator-specific CSS custom properties (no global equivalent)
+  --sim-surface: #111827;
+  --sim-surface-translucent: rgba(17, 24, 39, 0.85);
+  --sim-zone-border: rgba(0, 212, 255, 0.15);
+  --sim-zone-highlight: rgba(0, 212, 255, 0.3);
+  --sim-zone-glow-success: rgba(212, 160, 23, 0.4);
+}
+
+.sim-page {
+  height: 100%;
+  background: var(--surface-base);
+  overflow: hidden;
+}

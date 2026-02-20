@@ -1,38 +1,38 @@
-<div class="cardSearchPage" [class.deckBuildMode]="deckBuildMode()" *ngIf="form && displayMode">
-  <div class="cardSearchPage-searcher">
-    <div class="cardSearchPage-searcher-bar">
-      <search-bar [form]="form.controls.name" [deckBuildMode]="deckBuildMode()"></search-bar>
-      <div class="cardSearchPage-searcher-bar-displayMode">
-        <mat-button-toggle-group
-          hideSingleSelectionIndicator
-          class="cardSearchPage-searcher-displayMode"
-          (change)="setDisplayMode($event.source.value)">
-          <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="displayMode() === displayType.INFORMATIVE">
-            <mat-icon>view_headline</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle [value]="displayType.MOSAIC" [checked]="displayMode() === displayType.MOSAIC">
-            <mat-icon>view_module</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle [value]="displayType.OWNED" [checked]="displayMode() === displayType.OWNED">
-            <mat-icon>store</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle [value]="displayType.FAVORITE" [checked]="displayMode() === displayType.FAVORITE">
-            <mat-icon>star</mat-icon>
-          </mat-button-toggle>
-        </mat-button-toggle-group>
+@if (form && displayMode) {
+  <div class="cardSearchPage" [class.deckBuildMode]="deckBuildMode()">
+    <div class="cardSearchPage-searcher" [class.filters-expanded]="filtersOpen()">
+      <div class="cardSearchPage-searcher-bar">
+        <search-bar [form]="form.controls.name" [searchService]="searchService()" (filterToggled)="toggleFilters()"></search-bar>
+      </div>
+      <div class="cardSearchPage-searcher-filters">
+        <div class="cardSearchPage-searcher-filters-displayMode">
+          <mat-button-toggle-group
+            hideSingleSelectionIndicator
+            (change)="setDisplayMode($event.source.value)">
+            <mat-button-toggle [value]="displayType.INFORMATIVE" [checked]="displayMode() === displayType.INFORMATIVE" matTooltip="Liste" aria-label="Liste">
+              <mat-icon>view_headline</mat-icon>
+            </mat-button-toggle>
+            <mat-button-toggle [value]="displayType.MOSAIC" [checked]="displayMode() === displayType.MOSAIC" matTooltip="Mosaïque" aria-label="Mosaïque">
+              <mat-icon>view_module</mat-icon>
+            </mat-button-toggle>
+            <mat-button-toggle [value]="displayType.OWNED" [checked]="displayMode() === displayType.OWNED" matTooltip="Mes cartes" aria-label="Mes cartes">
+              <mat-icon>style</mat-icon>
+            </mat-button-toggle>
+            <mat-button-toggle [value]="displayType.FAVORITE" [checked]="displayMode() === displayType.FAVORITE" matTooltip="Favoris" aria-label="Favoris">
+              <mat-icon>star</mat-icon>
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+        <app-card-filters [searchService]="searchService()"></app-card-filters>
+      </div>
+      <div class="cardSearchPage-searcher-result">
+        <card-list
+          [displayMode]="displayMode()"
+          [searchService]="searchService()"
+          [deckBuildMode]="deckBuildMode()"
+          (cardClicked)="cardClicked.emit($event)">
+        </card-list>
       </div>
     </div>
-    <div class="cardSearchPage-searcher-result">
-      <card-list
-        [displayMode]="displayMode()"
-        [size]="size() || defaultSize"
-        [cropped]="cropped"
-        [searchService]="searchService()"
-        [deckBuildMode]="deckBuildMode()">
-      </card-list>
-    </div>
   </div>
-  <div class="cardSearchPage-filters" *ngIf="!deckBuildMode()">
-    <app-card-filters [searchService]="searchService()"></app-card-filters>
-  </div>
-</div>
+}

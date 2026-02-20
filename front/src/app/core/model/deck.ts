@@ -104,16 +104,29 @@ export class Deck {
     return this.sortImages();
   }
 
-  public addCard(card: CardDetail, zone: DeckZone): Deck {
+  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false): Deck {
     const correctedZone = this.getCorrectZone(card, zone);
     const numberOfCopyReached = this._isMaxNumberOfCopyReached(card, correctedZone);
     if (numberOfCopyReached) {
       return this;
     }
     const firstAvailableSlot = this[correctedZone].findIndex(e => e.index === -1);
-    if (firstAvailableSlot !== -1) {
-      this[correctedZone][firstAvailableSlot] = new IndexedCardDetail(card, firstAvailableSlot);
+    if (firstAvailableSlot === -1) {
+      return this;
     }
+    const realCardCount = this[correctedZone].filter(e => e.index !== -1).length;
+    const insertAt =
+      targetIndex !== undefined && correctedZone === zone && targetIndex < realCardCount
+        ? targetIndex
+        : realCardCount;
+    for (const c of this[correctedZone]) {
+      if (c.index !== -1 && c.index >= insertAt) {
+        c.index++;
+      }
+    }
+    const newCard = new IndexedCardDetail(card, insertAt);
+    newCard.justAdded = animate;
+    this[correctedZone][firstAvailableSlot] = newCard;
     return this.sortDeck();
   }
 

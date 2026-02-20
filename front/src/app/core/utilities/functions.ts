@@ -1,4 +1,5 @@
-import { ToastrService } from 'ngx-toastr';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { SnackbarComponent } from '../../components/snackbar/snackbar.component';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { FormArray } from '@angular/forms';
@@ -22,19 +23,28 @@ export const downloadDocument = (data: Blob | null, fileName: string, contentTyp
   window.URL.revokeObjectURL(url);
 };
 
-export const displayErrorToastr = (toastr: ToastrService, error: HttpErrorResponse) => {
-  toastr.error(error.error.error, 'Une erreur est survenue', {
-    timeOut: 3000,
+export const displayError = (snackBar: MatSnackBar, error: HttpErrorResponse | string) => {
+  const message = typeof error === 'string' ? error : (error.error?.error ?? 'Une erreur est survenue');
+  snackBar.openFromComponent(SnackbarComponent, {
+    data: { message, type: 'error', icon: 'error' },
+    duration: 4000,
+    verticalPosition: 'top',
+    horizontalPosition: 'center',
+    panelClass: 'snackbar-panel',
   });
 };
 
-export const displaySuccessToastr = (toastr: ToastrService, message: string) => {
-  toastr.success(message, '', {
-    timeOut: 2000,
+export const displaySuccess = (snackBar: MatSnackBar, message: string) => {
+  snackBar.openFromComponent(SnackbarComponent, {
+    data: { message, type: 'success', icon: 'check_circle' },
+    duration: 2000,
+    verticalPosition: 'top',
+    horizontalPosition: 'center',
+    panelClass: 'snackbar-panel',
   });
 };
 
-export const parseErrorBlob = (err: HttpErrorResponse, toastr: ToastrService) => {
+export const parseErrorBlob = (err: HttpErrorResponse, snackBar: MatSnackBar) => {
   const reader: FileReader = new FileReader();
   const obs = new Observable<HttpResponse<Blob>>((observer: any) => {
     reader.onloadend = e => {
@@ -46,7 +56,7 @@ export const parseErrorBlob = (err: HttpErrorResponse, toastr: ToastrService) =>
         message: messageObject.message,
         status: err.status,
       });
-      displayErrorToastr(toastr, err);
+      displayError(snackBar, err);
       observer.complete();
     };
   });

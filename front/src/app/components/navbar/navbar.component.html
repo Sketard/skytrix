@@ -1,14 +1,94 @@
-<div class="navbar">
-  <img class="navbar-logo" src="/assets/images/logo.webp" alt="logo" />
-  <a *ngFor="let tab of tabs" [routerLink]="tab.path" routerLinkActive="activebutton" ariaCurrentWhenActive="page">
-    <mat-icon [fontIcon]="tab.icon"></mat-icon>
-    {{ tab.name }}
-  </a>
-  <div class="navbar-account">
-    <div class="navbar-account-pseudo">
-      Bienvenue {{ user()?.pseudo }} !
+<!-- Desktop sidebar mode -->
+@if (!isMobile()) {
+  <nav class="navbar-sidebar" [class.collapsed]="collapsed()" role="navigation" aria-label="Main navigation">
+    <div class="navbar-inner">
+      <div class="navbar-content">
+        @if (!collapsed()) {
+          <img class="logo" src="/assets/images/logo-full.png" alt="logo" />
+        }
+        @for (tab of tabs; track tab.path) {
+          <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link"
+             [matTooltip]="tab.name" [matTooltipDisabled]="!collapsed()">
+            <mat-icon [fontIcon]="tab.icon"></mat-icon>
+            @if (!collapsed()) {
+              <span class="nav-label">{{ tab.name }}</span>
+            }
+          </a>
+        }
+        <div class="spacer"></div>
+        @if (!collapsed()) {
+          <div class="user-section">
+            <span class="user-pseudo">{{ user()?.pseudo }}</span>
+            <button mat-flat-button (click)="logout()">Se déconnecter</button>
+          </div>
+        }
+      </div>
     </div>
-    <button mat-flat-button (click)="logout()">Se déconnecter</button>
-  </div>
 
-</div>
+    <button class="collapse-toggle"
+            (click)="toggle()"
+            [attr.aria-label]="collapsed() ? 'Expand navigation' : 'Collapse navigation'"
+            [attr.aria-expanded]="!collapsed()">
+      <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+    </button>
+  </nav>
+}
+
+<!-- Mobile top bar + drawer mode -->
+@if (isMobile()) {
+  @if (!shouldHideTopBar()) {
+    <header class="mobile-top-bar" aria-label="Application header">
+      <button mat-icon-button
+              class="hamburger-btn"
+              (click)="openDrawer()"
+              aria-label="Open navigation"
+              [attr.aria-expanded]="drawerOpen()">
+        <mat-icon>menu</mat-icon>
+      </button>
+      <img class="mobile-title" src="/assets/images/logo-text.png" alt="skytrix" />
+    </header>
+  }
+
+  <!-- Backdrop -->
+  <div class="drawer-backdrop"
+       [class.visible]="drawerOpen()"
+       [class.no-animate]="skipDrawerTransition()"
+       (click)="closeDrawer()"
+       aria-hidden="true"></div>
+
+  <!-- Drawer -->
+  <nav class="mobile-drawer"
+       [class.open]="drawerOpen()"
+       [class.no-animate]="skipDrawerTransition()"
+       role="dialog"
+       aria-label="Navigation menu"
+       [attr.aria-modal]="drawerOpen() || null"
+       [cdkTrapFocus]="drawerOpen()"
+       cdkTrapFocusAutoCapture>
+    <div class="drawer-header">
+      <div class="drawer-brand">
+        <img class="drawer-logo" src="/assets/images/logo-icon.png" alt="" />
+        <img class="drawer-text" src="/assets/images/logo-text.png" alt="skytrix" />
+      </div>
+      <button mat-icon-button
+              class="drawer-close-btn"
+              (click)="closeDrawer()"
+              aria-label="Close navigation">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="drawer-content">
+      @for (tab of tabs; track tab.path) {
+        <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link mobile-nav-link">
+          <mat-icon [fontIcon]="tab.icon"></mat-icon>
+          <span class="nav-label">{{ tab.name }}</span>
+        </a>
+      }
+      <div class="spacer"></div>
+      <div class="user-section">
+        <span class="user-pseudo">{{ user()?.pseudo }}</span>
+        <button mat-flat-button (click)="logout()">Se déconnecter</button>
+      </div>
+    </div>
+  </nav>
+}

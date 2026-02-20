@@ -1,0 +1,114 @@
+@use 'responsive' as r;
+@use 'variable' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.cardSearchPage-desktop {
+  display: contents;
+  @include r.mobile-portrait {
+    display: none;
+  }
+}
+
+.cardSearchPage-mobileResults {
+  display: none;
+  @include r.mobile-portrait {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 0.75rem;
+  }
+}
+
+app-bottom-sheet {
+  display: none;
+  @include r.mobile-portrait {
+    display: block;
+  }
+}
+
+.cardSearchPage-externalFilters {
+  display: none;
+
+  @media (min-width: 768px) and (max-height: 500px) {
+    display: block;
+  }
+
+  @include r.landscape-split {
+    display: block;
+  }
+}
+
+.cardSearchPage-sheet {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+
+  &-bar {
+    padding: 0.75rem 0.75rem 0.25rem;
+
+    // Hide filter toggle — filters are always visible in the sheet
+    search-bar ::ng-deep .searchBar-input-filters {
+      display: none;
+    }
+
+    &-displayMode {
+      margin-bottom: 0.25em;
+
+      mat-button-toggle-group {
+        border-radius: 0;
+        border: 0;
+        --mat-legacy-button-toggle-text-color: var(--text-primary);
+        --mat-legacy-button-toggle-selected-state-background-color: var(--accent-primary-dim);
+        --mat-legacy-button-toggle-selected-state-text-color: var(--accent-primary);
+      }
+
+      mat-button-toggle {
+        --mat-standard-button-toggle-label-text-line-height: 0;
+        --mat-standard-button-toggle-height: 32px;
+      }
+
+      mat-icon {
+        transform: scale(0.8);
+      }
+    }
+  }
+
+  &-filters {
+    overflow-y: auto;
+    min-height: 0;
+    padding: 0 1rem;
+  }
+}
+
+.cardSearchPage-searchToggle.mat-mdc-icon-button {
+  display: none;
+  @include r.mobile-portrait {
+    display: flex;
+    position: fixed;
+    bottom: 1em;
+    right: 1em;
+    z-index: 10;
+    color: $white;
+    background: rgba(0, 0, 0, 0.6);
+    @include r.touch-target-min;
+  }
+}
+
+app-card-inspector {
+  @include r.mobile-portrait {
+    --inspector-z-index: 1001;
+  }
+}
+
+.favorite-toggle {
+  color: $white;
+  margin-top: 1rem;
+  @include r.touch-target-min;
+}

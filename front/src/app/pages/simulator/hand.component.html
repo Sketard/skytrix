@@ -1,0 +1,25 @@
+<div class="sim-hand"
+     [class.empty]="isEmpty()"
+     [class.zone--just-dropped]="justDropped()"
+     cdkDropList
+     [cdkDropListData]="ZoneId.HAND"
+     [cdkDropListSortingDisabled]="true"
+     cdkDropListOrientation="horizontal"
+     (cdkDropListDropped)="onDrop($event)"
+     (animationend)="onGlowAnimationEnd()">
+  @for (card of cards(); track card.instanceId; let i = $index) {
+    <app-card [card]="toSharedCardData(card)"
+              [faceDown]="card.faceDown"
+              [position]="card.position"
+              cdkDrag
+              [cdkDragData]="card"
+              [attr.aria-label]="'Drag ' + (card.card.card.name ?? '')"
+              [style.--fan-x]="fanStyles()[i].offsetX + 'px'"
+              [style.--fan-rotation]="fanStyles()[i].rotation + 'deg'"
+              [style.--fan-y]="fanStyles()[i].arcY + 'px'"
+              [style.z-index]="fanStyles()[i].zIndex"
+              (cdkDragStarted)="onDragStarted()"
+              (cdkDragEnded)="onDragEnded()"
+              (clicked)="onCardClicked(card)" />
+  }
+</div>

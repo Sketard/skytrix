@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { catchError, Observable, take } from 'rxjs';
 import { ExportDTO } from '../core/model/dto/export-dto';
 import { DeckDTO } from '../core/model/dto/deck-dto';
-import { ToastrService } from 'ngx-toastr';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { parseErrorBlob } from '../core/utilities/functions';
 
 @Injectable({
@@ -12,7 +12,7 @@ import { parseErrorBlob } from '../core/utilities/functions';
 export class ExportService {
   constructor(
     private readonly httpClient: HttpClient,
-    private readonly toastr: ToastrService
+    private readonly snackBar: MatSnackBar
   ) {}
 
   public exportDeckList(dto: ExportDTO): Observable<HttpResponse<Blob>> {
@@ -23,7 +23,7 @@ export class ExportService {
       })
       .pipe(
         take(1),
-        catchError(error => parseErrorBlob(error, this.toastr))
+        catchError(error => parseErrorBlob(error, this.snackBar))
       );
   }
 

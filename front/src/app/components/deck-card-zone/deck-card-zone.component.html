@@ -1,33 +1,39 @@
 <div class="grid">
-  <div class="grid-list">
-    @for (slot of [].constructor(slotNumber()); track i; let i = $index) {
-      {{ slot }}
-      <div class="grid-list-slot grid" [ngClass]="deckZone()"></div>
+  @if (!deckZone()) {
+    <div class="grid-list background">
+      @for (slot of [].constructor(slotNumber()); track i; let i = $index) {
+        {{ slot }}
+        <div class="grid-list-slot grid" [ngClass]="deckZone()"></div>
+      }
+    </div>
+  }
+  <div class="grid-list"
+    [class.element]="!deckZone()"
+    [class.empty]="isEmpty()"
+    [ngClass]="deckZone() + staticDeckZone.LOCK"
+    cdkDropList
+    cdkDropListOrientation="mixed"
+    [id]="deckZone() || staticDeckZone.OTHER"
+    (cdkDropListDropped)="drop($event)">
+    @if (isEmpty()) {
+      <span class="grid-list-hint">Glissez ou double-cliquez pour ajouter</span>
     }
-  </div>
-  <div class="grid-list element" [ngClass]="deckZone() + staticDeckZone.LOCK">
     @for (cardDetail of cardDetails(); track cardDetail.id + i; let i = $index) {
       <div
         class="grid-list-slot card"
         [ngClass]="deckZone()"
-        cdkDropList
-        (cdkDropListDropped)="drop($event)"
-        cdkDropListOrientation="horizontal"
-        [cdkDropListData]="{ item: cardDetail, index: i }"
-        [id]="deckZone() || staticDeckZone.OTHER">
-        <card
-          cdkDrag
-          [ngClass]="displayMode"
-          [cardDetail]="cardDetail.card"
-          [displayMode]="displayMode"
-          [size]="size()"
-          [cropped]="false"
-          [searchService]="deckBuildService"
-          [cdkDragData]="cardDetail"
-          [cdkDragDisabled]="!cardDetail.card.card.id"
-          [cdkDragBoundary]="'.' + deckZone() + staticDeckZone.LOCK"
-          (contextmenu)="onRightClick($event, deckZone(), i)">
-        </card>
+        [class.just-added]="cardDetail.justAdded"
+        (animationend)="cardDetail.justAdded = false"
+        cdkDrag
+        [cdkDragDisabled]="!cardDetail.card.card.id"
+        [cdkDragData]="cardDetail"
+        (contextmenu)="onRightClick($event, deckZone(), i)">
+        @if (cardDetail.card.card.id) {
+          <app-card
+            [card]="toSharedCardData(cardDetail.card)"
+            (click)="onCardClick(cardDetail.card)">
+          </app-card>
+        }
       </div>
     }
   </div>

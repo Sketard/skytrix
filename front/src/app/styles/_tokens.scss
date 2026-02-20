@@ -1,0 +1,72 @@
+// =============================================================================
+// Global Design Tokens — Dark Theme Foundation
+// =============================================================================
+//
+// This file defines the unified semantic token palette for the entire application.
+// All tokens are CSS custom properties on :root, available to any component via
+// var(--token-name) without requiring any SCSS @use import.
+//
+// Migration is incremental per screen (stories 9-2 through 9-14).
+// Until a screen is migrated, it continues to use the old SCSS variables from
+// variable.scss. Do NOT bulk-replace old variables — each screen story handles
+// its own migration.
+//
+// Components needing simulator-specific overrides will scope tokens via :host
+// (story 9-12).
+//
+// -----------------------------------------------------------------------------
+// Migration Mapping — Old SCSS variable → New CSS custom property
+// -----------------------------------------------------------------------------
+//
+//   Old Variable          Old Value      New Token               New Value
+//   -------------------   -----------    ----------------------  -----------
+//   $black                #303030        --text-primary          #EAEAEA
+//   $white                #fff           --surface-card          #1E1E1E
+//   $blue                 #93dafa        --accent-primary        #C9A84C
+//   $red                  #a30000        --danger                #CF6679
+//   $grey                 #a0a0a0        --text-secondary        #9E9E9E
+//   $unselected-black     #1f14142f      --accent-primary-dim    #C9A84C33
+//
+//   No direct replacement (kept in variable.scss as-is):
+//     $green   (#00b451)  — valid count indicator, no semantic token equivalent
+//     $purple  (#6d005b)  — unused in redesigned screens
+//     $orange  (#ffac4d)  — unused in redesigned screens
+//     $yellow  (#FFDF00)  — unused in redesigned screens
+//
+//   Deprecated but not yet removed (remain in variable.scss):
+//     $white              — replaced by surface/text tokens contextually
+//     $unselected-black   — replaced by --accent-primary-dim
+//     $black              — replaced by --text-primary / --surface-base contextually
+//
+//   Note: Old variables were for a light theme (dark text on light bg).
+//   New tokens are for a dark theme (light text on dark bg). This is NOT a 1:1
+//   value swap — it's a complete palette inversion. Each migration story must
+//   remap both the token reference AND the visual intent.
+//
+// =============================================================================
+
+:root {
+  // Surface tokens
+  --surface-base: #121212;           // Main background
+  --surface-card: #1E1E1E;           // Card surfaces, form field backgrounds
+  --surface-card-hover: #252525;     // Card hover state
+  --surface-elevated: #1E293B;       // Elevated panels, hover states in overlays
+  --surface-nav: #161616;            // Sidebar / toolbar
+
+  // Accent tokens
+  --accent-primary: #C9A84C;         // Gold accent (Millennium theme)
+  --accent-primary-dim: #C9A84C33;   // Accent at 20% for subtle backgrounds
+
+  // Text tokens
+  --text-primary: #EAEAEA;           // Primary text
+  --text-secondary: #9E9E9E;         // Secondary text (metadata)
+
+  // Border tokens
+  --border-subtle: rgba(255, 255, 255, 0.3); // Subtle borders/indicators on dark surfaces
+
+  // Semantic tokens
+  --danger: #CF6679;                 // Destructive actions (Material dark error)
+
+  // Material component overrides
+  --mat-dialog-container-color: var(--surface-card);
+}

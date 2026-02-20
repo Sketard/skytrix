@@ -1,27 +1,61 @@
-@import "variable";
+@use 'responsive' as *;
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .loginPage {
   height: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
+  padding: 1rem;
+  background: radial-gradient(ellipse at center top, rgba(0, 212, 255, 0.06) 0%, transparent 60%);
+  animation: fadeIn 400ms ease;
 
   h2 {
     margin-top: 0;
   }
 
+  &-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 2rem;
+
+    &-icon {
+      width: 140px;
+
+      @include respond-below($bp-mobile) {
+        width: 100px;
+      }
+    }
+
+    &-text {
+      max-width: 200px;
+      margin-top: 0.75rem;
+
+      @include respond-below($bp-mobile) {
+        max-width: 150px;
+      }
+    }
+  }
+
   &-form {
     width: 100%;
-    max-width: 400px;
     text-align: center;
-    padding: 2em;
-    position: relative;
-    top: 0;
-    overflow: hidden;
+    padding: 1.5rem;
+    overflow-y: auto;
+
+    @include respond-above($bp-tablet) {
+      max-width: 400px;
+      padding: 2rem;
+    }
 
     &-inputs {
-      margin: 1em 0;
+      margin: 1rem 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -29,19 +63,52 @@
 
       &-error {
         margin-bottom: 0;
-        color: $blue;
+        color: var(--danger);
       }
 
       &-field {
-        margin-top: 1em;
+        margin-top: 1rem;
         width: 100%;
+
+        mat-icon[matSuffix] {
+          @include touch-target-min;
+          padding: 10px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
       }
     }
 
     &-buttons {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: stretch;
+
+      @include respond-above($bp-mobile) {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      button,
+      a {
+        @include touch-target-min;
+      }
+
+      a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loginPage {
+    animation: none;
   }
 }

@@ -1,29 +1,36 @@
+@use 'responsive' as r;
+
+:host {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .cardFilters {
+  padding: 1em;
 
-  &-header {
+  @include r.mobile-portrait {
+    padding: 0.5em;
+
+    --mat-form-field-container-height: 48px;
+  }
+
+  &-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    gap: 1em;
 
-    h4 {
-      margin-top: 1em;
-      margin-bottom: 0.5em;
+    > .cardFilters-filter {
+      flex: 1;
+      min-width: 0;
     }
   }
 
   &-filter {
     margin-top: 1em;
-  }
 
-  &-buttons {
-    margin-top: 1.5em;
-
-    button:first-child {
-      margin-right: 1em;
-    }
-
-    mat-icon {
-      margin-right: 0;
+    @include r.mobile-portrait {
+      margin-top: 0.5em;
     }
   }
 }

@@ -1,69 +1,68 @@
 <div class="loginPage">
-  <mat-card
-    appearance="outlined"
-    class="loginPage-form"
-    [ngSwitch]="mode()"
-  >
-    <form
-      *ngSwitchCase="modes.LOGIN"
-      [formGroup]="loginForm"
-      (ngSubmit)="connect()">
-      <h2>Login</h2>
-      <div class="loginPage-form-inputs">
-        <mat-form-field class="loginPage-form-inputs-field">
-          <mat-label>Pseudo</mat-label>
-          <input required matInput type="text" formControlName="pseudo" />
-        </mat-form-field>
-        <mat-form-field class="loginPage-form-inputs-field">
-          <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
-                    (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
-          <mat-label>Mot de passe</mat-label>
-          <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
-        </mat-form-field>
-      </div>
-      <div class="loginPage-form-buttons">
-        <a (click)="changeMode(modes.CREATE_ACCOUNT, directions.LR)" class="loginPage-form-buttons-forgotten">
-          Créer un compte
-        </a>
-        <button mat-flat-button type="submit" [disabled]="!loginForm.valid">
-          Se connecter
-        </button>
-      </div>
-    </form>
-    <form
-      *ngSwitchCase="modes.CREATE_ACCOUNT"
-      [formGroup]="createAccountForm"
-      (ngSubmit)="createAccount()">
-      <h2>Créer un compte</h2>
-      <div class="loginPage-form-inputs">
-        <mat-form-field class="loginPage-form-inputs-field">
-          <mat-label>Pseudo</mat-label>
-          <input required matInput type="text" formControlName="pseudo" />
-        </mat-form-field>
-        <mat-form-field class="loginPage-form-inputs-field">
-          <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
-                    (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
-          <mat-label>Mot de passe</mat-label>
-          <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
-        </mat-form-field>
-        <mat-form-field class="loginPage-form-inputs-field">
-          <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
-                    (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
-          <mat-label>Confirmer le mot de passe</mat-label>
-          <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="confirmPassword" />
-        </mat-form-field>
-        <div *ngIf="createAccountForm.hasError('passwordMismatch') && createAccountForm.controls.confirmPassword.dirty">
-          <p class="loginPage-form-inputs-error">Les mots de passe ne correspondent pas.</p>
-        </div>
-      </div>
-      <div class="loginPage-form-buttons">
-        <a (click)="changeMode(modes.LOGIN, directions.RL)" class="loginPage-form-buttons-forgotten">
-          Retour
-        </a>
-        <button mat-flat-button type="submit" [disabled]="!createAccountForm.valid">
-          Créer le compte
-        </button>
-      </div>
-    </form>
-  </mat-card>
+  <div class="loginPage-logo">
+    <img class="loginPage-logo-icon" src="/assets/images/logo-icon.png" alt="skytrix" />
+    <img class="loginPage-logo-text" src="/assets/images/logo-text.png" alt="skytrix" />
+  </div>
+  <div class="loginPage-form">
+    @switch (mode()) {
+      @case (modes.LOGIN) {
+        <form [formGroup]="loginForm" (ngSubmit)="connect()">
+          <div class="loginPage-form-inputs">
+            <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
+              <mat-label>Pseudo</mat-label>
+              <input required matInput type="text" formControlName="pseudo" />
+            </mat-form-field>
+            <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
+              <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
+                        (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
+              <mat-label>Mot de passe</mat-label>
+              <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
+            </mat-form-field>
+          </div>
+          <div class="loginPage-form-buttons">
+            <a (click)="changeMode(modes.CREATE_ACCOUNT, directions.LR)" class="loginPage-form-buttons-forgotten">
+              Créer un compte
+            </a>
+            <button mat-flat-button type="submit" [disabled]="!loginForm.valid">
+              Se connecter
+            </button>
+          </div>
+        </form>
+      }
+      @case (modes.CREATE_ACCOUNT) {
+        <form [formGroup]="createAccountForm" (ngSubmit)="createAccount()">
+          <h2>Créer un compte</h2>
+          <div class="loginPage-form-inputs">
+            <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
+              <mat-label>Pseudo</mat-label>
+              <input required matInput type="text" formControlName="pseudo" />
+            </mat-form-field>
+            <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
+              <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
+                        (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
+              <mat-label>Mot de passe</mat-label>
+              <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
+            </mat-form-field>
+            <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
+              <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
+                        (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
+              <mat-label>Confirmer le mot de passe</mat-label>
+              <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="confirmPassword" />
+            </mat-form-field>
+            @if (createAccountForm.hasError('passwordMismatch') && createAccountForm.controls.confirmPassword.dirty) {
+              <p class="loginPage-form-inputs-error">Les mots de passe ne correspondent pas.</p>
+            }
+          </div>
+          <div class="loginPage-form-buttons">
+            <a (click)="changeMode(modes.LOGIN, directions.RL)" class="loginPage-form-buttons-forgotten">
+              Retour
+            </a>
+            <button mat-flat-button type="submit" [disabled]="!createAccountForm.valid">
+              Créer le compte
+            </button>
+          </div>
+        </form>
+      }
+    }
+  </div>
 </div>

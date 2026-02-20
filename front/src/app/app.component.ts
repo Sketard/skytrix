@@ -1,16 +1,14 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import { MatSidenavModule } from '@angular/material/sidenav';
 import { NavbarComponent } from './components/navbar/navbar.component';
-import { CommonModule } from '@angular/common';
 import { LoaderComponent } from './components/loader/loader.component';
-import { CardTooltipComponent } from './components/card-tooltip/card-tooltip.component';
 import { AuthService } from './services/auth.service';
 import { CURRENT_USER_KEY } from './core/utilities/auth.constants';
+import { NavbarCollapseService } from './services/navbar-collapse.service';
 
 @Component({
   selector: 'app-root',
-  imports: [MatSidenavModule, RouterOutlet, NavbarComponent, CommonModule, LoaderComponent, CardTooltipComponent],
+  imports: [RouterOutlet, NavbarComponent, LoaderComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
   standalone: true,
@@ -19,6 +17,9 @@ import { CURRENT_USER_KEY } from './core/utilities/auth.constants';
 export class AppComponent {
   title = 'skytrix';
 
+  private readonly navbarCollapse = inject(NavbarCollapseService);
+  readonly isMobile = this.navbarCollapse.isMobile;
+  readonly shouldHideTopBar = this.navbarCollapse.shouldHideTopBar;
   readonly connectedUser = this.authService.user;
 
   constructor(

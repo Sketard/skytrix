@@ -1,0 +1,42 @@
+<div class="control-bar" role="toolbar" aria-label="Session controls">
+  <button mat-icon-button
+          aria-label="Retour au constructeur de deck"
+          matTooltip="Retour"
+          (click)="onBack()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+
+  <div class="separator"></div>
+
+  <button mat-icon-button
+          [disabled]="!canUndo()"
+          [attr.aria-disabled]="!canUndo()"
+          aria-label="Undo"
+          matTooltip="Undo (Ctrl+Z)"
+          (click)="onUndo()">
+    <mat-icon>undo</mat-icon>
+  </button>
+
+  <button mat-icon-button
+          [disabled]="!canRedo()"
+          [attr.aria-disabled]="!canRedo()"
+          aria-label="Redo"
+          matTooltip="Redo (Ctrl+Y)"
+          (click)="onRedo()">
+    <mat-icon>redo</mat-icon>
+  </button>
+
+  <div class="separator"></div>
+
+  <button mat-icon-button
+          aria-label="Reset board"
+          matTooltip="Reset"
+          (click)="onReset()">
+    <mat-icon>refresh</mat-icon>
+  </button>
+
+  @if (isDevMode) {
+    <div class="separator"></div>
+    <span class="debug-info">U:{{ undoCount() }} R:{{ redoCount() }}</span>
+  }
+</div>

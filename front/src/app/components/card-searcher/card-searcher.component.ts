@@ -1,16 +1,16 @@
-import { ChangeDetectionStrategy, Component, effect, input, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal, Signal } from '@angular/core';
 import { CardFiltersComponent } from '../card-filters/card-filters.component';
 import { CardListComponent } from '../card-list/card-list.component';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
-import { NgIf } from '@angular/common';
+import { MatTooltip } from '@angular/material/tooltip';
 import { SearchBarComponent } from '../search-bar/search-bar.component';
-import { CardSize } from '../card/card.component';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 import { FormGroup } from '@angular/forms';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
+import { CardDetail } from '../../core/model/card-detail';
 
 @Component({
   selector: 'app-card-searcher',
@@ -20,7 +20,7 @@ import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
     MatButtonToggle,
     MatButtonToggleGroup,
     MatIcon,
-    NgIf,
+    MatTooltip,
     SearchBarComponent,
   ],
   templateUrl: './card-searcher.component.html',
@@ -30,13 +30,16 @@ import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
 })
 export class CardSearcherComponent {
   readonly deckBuildMode = input<boolean>(false);
-  readonly size = input(CardSize.MEDIUM);
+  readonly externalFilters = input(false);
   readonly searchService = input<SearchServiceCore | undefined>(undefined);
 
-  public defaultSize = CardSize.MEDIUM;
-  public cropped = false;
+  readonly cardClicked = output<CardDetail>();
+  readonly filtersExpanded = output<boolean>();
+
   public displayMode: Signal<CardDisplayType> | undefined;
   public displayType = CardDisplayType;
+
+  readonly filtersOpen = signal(false);
 
   public form: FormGroup<TypedForm<CardFilterDTO>> | undefined = undefined;
 
@@ -52,5 +55,14 @@ export class CardSearcherComponent {
 
   public setDisplayMode(mode: CardDisplayType) {
     this.searchService()!.setDisplayMode(mode);
+  }
+
+  public toggleFilters() {
+    if (this.externalFilters()) {
+      this.filtersExpanded.emit(!this.filtersOpen());
+    } else {
+      this.filtersOpen.update(v => !v);
+      this.filtersExpanded.emit(this.filtersOpen());
+    }
   }
 }

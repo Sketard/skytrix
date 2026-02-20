@@ -1,136 +1,330 @@
-@import 'variable';
-@import 'mixin';
+@use 'mixin' as *;
+@use 'responsive' as r;
+@use 'z-layers' as z;
+
+@mixin collapsed-name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25em 0;
+}
+
+.inspector-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  button {
+    color: var(--text-primary);
+    @include r.touch-target-min;
+  }
+
+  &-count {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    min-width: 1.5rem;
+    text-align: center;
+  }
+}
+
+.dirty-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+}
 
 .deckBuilder {
   display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
 
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -o-user-select: none;
   user-select: none;
 
-  &-viewer {
-    padding: 1em;
-    position: relative;
+  // ─── DECK NAME (mobile only, above decklist) ───
+  &-deckNameMobile {
+    display: none;
 
-    &-hand {
-      transition: all 0.5s ease-in-out;
-      background-color: $black;
-      position: absolute;
-      width: 90%;
-      bottom: -100%;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 20;
-      border-radius: 10px;
-      border: 1px solid $blue;
-      padding: 1em;
+    @include r.respond-below(r.$bp-tablet) {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 0.5em;
 
-      &.opened {
-        bottom: 1em;
+      mat-form-field {
+        flex: 1;
+        --mat-form-field-container-height: 48px;
+        --mat-form-field-filled-with-label-container-padding-top: 4px;
+        --mat-form-field-filled-with-label-container-padding-bottom: 4px;
+        --mdc-filled-text-field-container-color: var(--surface-card);
+        --mdc-filled-text-field-input-text-color: var(--text-primary);
+        --mdc-filled-text-field-caret-color: var(--text-primary);
+        --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
+        --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
+        --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
+        --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
+        --mdc-filled-text-field-container-shape: 0;
       }
+
+      button {
+        color: var(--text-primary);
+        flex-shrink: 0;
+      }
+
+      @include r.landscape-split {
+        margin-bottom: 0.25em;
+
+        mat-form-field {
+          --mat-form-field-container-height: 40px;
+        }
+      }
+    }
+
+    &-text {
+      @include collapsed-name-text;
+      font-size: 1.125rem;
     }
   }
 
+  // ─── SEARCH TOGGLE (mobile portrait only) ───
+  &-searchToggle.mat-mdc-icon-button {
+    display: none;
+
+    @media (max-width: 767px) and (orientation: portrait) {
+      display: flex;
+      position: fixed;
+      bottom: 1em;
+      right: 1em;
+      z-index: z.$z-ui-button;
+      color: var(--text-primary);
+      background: rgba(0, 0, 0, 0.6);
+      @include r.touch-target-min;
+    }
+  }
+
+  // ─── BODY (canvas + side panel) ───
+  &-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  // ─── DECK VIEWER PARENT (scrollable) ───
+  &-canvasParent {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1em;
+  }
+
+  // ─── SIDE PANEL (native size, outside canvas) ───
   &-side {
-    width: 100%;
+    width: clamp(280px, 25vw, 360px);
+    min-width: 280px;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
 
-    &-tools {
-      margin: 2em 1em 0 1em;
-
-      &-deckName {
-        width: 100%;
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-          background-color: $white !important;
-        }
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-          color: $black;
-        }
-
-        ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
-          caret-color: $black;
-        }
-
-        ::ng-deep .mdc-text-field--filled {
-          border-top-left-radius: 0;
-          border-top-right-radius: 0;
-          border-bottom-right-radius: 0;
-          border-bottom-left-radius: 0;
-        }
-
-        .mat-icon {
-          color: $black;
-        }
-
-        input::placeholder {
-          color: $unselected-black;
-          opacity: 0.1;
-        }
-      }
-
-      &-buttons {
-        display: flex;
-
-        @include icon-as-button;
-
-        &-save {
-          color: $white;
-        }
-
-        &-print {
-          color: $white;
-        }
-
-        &-hand {
-          filter: brightness(0) invert(1);
-        }
-      }
+    // Mobile portrait: side panel hidden, bottom sheet takes over
+    @media (max-width: 767px) and (orientation: portrait) {
+      display: none;
     }
 
-    &-images {
-      text-align: center;
+    // ─── HEADER (inside side panel) ───
+    &-header {
+      padding: 0.75em 0.75em 0.5em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
 
-      &-slots {
+      @include r.respond-below(r.$bp-tablet) {
+        display: none;
+      }
+
+      &-deckName {
         display: flex;
         align-items: center;
-        margin: 1em 0;
-        margin: auto;
-        background-color: #00226b;
-        position: relative;
-        width: calc($DECK_CARD_WIDTH * 3 + 12px * 3);
+        width: 100%;
+        margin-bottom: 0.5em;
+
+        @include r.respond-below(r.$bp-tablet) {
+          display: none;
+        }
+
+        mat-form-field {
+          flex: 1;
+          --mdc-filled-text-field-container-color: var(--surface-card);
+          --mdc-filled-text-field-input-text-color: var(--text-primary);
+          --mdc-filled-text-field-caret-color: var(--text-primary);
+          --mdc-filled-text-field-focus-active-indicator-color: var(--accent-primary);
+          --mdc-filled-text-field-active-indicator-color: var(--border-subtle);
+          --mdc-filled-text-field-hover-active-indicator-color: var(--text-secondary);
+          --mdc-filled-text-field-input-text-placeholder-color: var(--text-secondary);
+          --mdc-filled-text-field-container-shape: 0;
+        }
+
+        >button {
+          color: var(--text-secondary);
+          flex-shrink: 0;
+          transform: scale(0.85);
+        }
+
+        &-text {
+          @include collapsed-name-text;
+          font-size: 1rem;
+        }
+      }
+
+      &-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        padding-top: 0.5em;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+
+        &-label {
+          font-size: 0.75em;
+          color: rgba(255, 255, 255, 0.5);
+          white-space: nowrap;
+        }
+
+        deck-card-zone {
+          margin: 0;
+          --slot-width: 45px;
+          --slot-height: 66px;
+          --slot-padding: 2px;
+          --slot-border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        button {
+          color: var(--text-primary);
+        }
+
+        @include r.respond-below(r.$bp-tablet) {
+          margin-top: 0;
+
+          &-label {
+            display: none;
+          }
+
+          deck-card-zone {
+            display: none;
+          }
+        }
       }
     }
 
     &-searcher {
-      height: calc(100% - 310px);
-      width: 100%;
-      min-width: 300px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
-    &-filters {
-      transition: all 0.5s ease-out;
-      background-color: black;
-      padding: 1em;
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 100%;
-      right: -100%;
-      z-index: 999;
+  }
 
-      &.opened {
-        left: 0;
-        right: 0;
-        opacity: 1;
+  // ─── BOTTOM SHEET (mobile portrait only) ───
+  app-bottom-sheet {
+    display: none;
+
+    @media (max-width: 767px) and (orientation: portrait) {
+      display: block;
+    }
+  }
+
+  // ─── EXTERNAL FILTERS BOTTOM SHEET (hidden by default) ───
+  .deckBuilder-externalFilters {
+    display: none;
+  }
+
+  // ─── LANDSCAPE SPLIT (mobile landscape: side-by-side layout) ───
+  @include r.landscape-split {
+    &-searchToggle.mat-mdc-icon-button {
+      display: none;
+    }
+
+    &-canvasParent {
+      flex: 55;
+      padding: 0.5em;
+    }
+
+    &-side {
+      position: relative;
+      width: 45%;
+      min-width: 0;
+      z-index: auto;
+      background-color: transparent;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+
+      &-header {
+        display: none;
       }
+    }
+
+    .deckBuilder-externalFilters {
+      display: block;
+    }
+  }
+
+  // ─── COMPACT HEIGHT (tablet/desktop with limited height) ───
+  @media (min-width: 768px) and (max-height: 500px) {
+    .deckBuilder-externalFilters {
+      display: block;
+    }
+  }
+
+  // ─── HAND TEST BACKDROP + OVERLAY ───
+  &-handBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: z.$z-hand-backdrop;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+
+    &.opened {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  &-handOverlay {
+    transition: all 0.5s ease-in-out;
+    background-color: var(--surface-nav);
+    position: fixed;
+    width: 90%;
+    max-width: 900px;
+    bottom: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 10px;
+    border: 1px solid var(--accent-primary);
+    padding: 1em;
+
+    .deckBuilder-handBackdrop.opened & {
+      bottom: 1em;
+    }
+  }
+
+  // ─── INSPECTOR above search panel on mobile ───
+  app-card-inspector {
+    @include r.respond-below(r.$bp-tablet) {
+      --inspector-z-index: 1001;
     }
   }
 }

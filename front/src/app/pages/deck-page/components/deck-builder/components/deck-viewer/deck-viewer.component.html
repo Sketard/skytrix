@@ -1,40 +1,40 @@
 <div class="deckViewer">
   <div class="deckViewer-part">
-    <div class="deckViewer-part-cardNumber" [class.illegal]="deckBuildService.mainCardNumber() < 40">
-      {{ deckBuildService.mainCardNumber() }}
-    </div>
-    <div class="deckViewer-part-label">
-      <div>MAIN</div>
+    <div class="deckViewer-part-header">
+      <span>MAIN</span>
+      <span class="deckViewer-part-header-count" [class.illegal]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
+        [{{ deckBuildService.mainCardNumber() }}]
+      </span>
     </div>
     <deck-card-zone
       [cardDetails]="deckBuildService.deck().mainDeck"
-      [size]="size"
-      [deckZone]="deckZone.MAIN"></deck-card-zone>
+      [deckZone]="deckZone.MAIN"
+      (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
   </div>
   <div class="deckViewer-part extra">
-    <div class="deckViewer-part-cardNumber">
-      {{ deckBuildService.extraCardNumber() }}
-    </div>
-    <div class="deckViewer-part-label">
-      <div>EXTRA</div>
+    <div class="deckViewer-part-header">
+      <span>EXTRA</span>
+      <span class="deckViewer-part-header-count">
+        [{{ deckBuildService.extraCardNumber() }}]
+      </span>
     </div>
     <deck-card-zone
       [cardDetails]="deckBuildService.deck().extraDeck"
-      [size]="extraSize"
       [deckZone]="deckZone.EXTRA"
-      [slotNumber]="15"></deck-card-zone>
+      [slotNumber]="15"
+      (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
   </div>
   <div class="deckViewer-part side">
-    <div class="deckViewer-part-cardNumber">
-      {{ deckBuildService.sideCardNumber() }}
-    </div>
-    <div class="deckViewer-part-label">
-      <div>SIDE</div>
+    <div class="deckViewer-part-header">
+      <span>SIDE</span>
+      <span class="deckViewer-part-header-count">
+        [{{ deckBuildService.sideCardNumber() }}]
+      </span>
     </div>
     <deck-card-zone
       [cardDetails]="deckBuildService.deck().sideDeck"
-      [size]="extraSize"
       [deckZone]="deckZone.SIDE"
-      [slotNumber]="15"></deck-card-zone>
+      [slotNumber]="15"
+      (cardClicked)="cardClicked.emit($event)"></deck-card-zone>
   </div>
 </div>

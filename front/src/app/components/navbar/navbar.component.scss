@@ -1,47 +1,303 @@
-@import '../../styles/variable';
+@use 'responsive' as *;
+@use 'z-layers' as z;
 
-.navbar {
-  padding: 1.5rem 1rem 1.5rem 1rem;
+// =============================================
+// Desktop sidebar styles
+// =============================================
 
-  &-logo {
-    width: 100%;
-    margin-bottom: 2em;
+.navbar-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  height: 100vh;
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  position: relative;
+  transition: width 200ms ease;
+
+  &.collapsed {
+    width: 56px;
+
+    .navbar-content {
+      padding: 1.5rem 0.25rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      justify-content: center;
+      padding: 0.6em;
+      border-left: none;
+      border-radius: 8px;
+
+      mat-icon {
+        margin-right: 0;
+      }
+
+      &.active {
+        background: var(--accent-primary-dim);
+        border-left-color: transparent;
+      }
+    }
+  }
+}
+
+.navbar-inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.navbar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  min-height: 0;
+}
+
+.logo {
+  width: 100%;
+  margin-bottom: 2em;
+}
+
+.nav-link {
+  text-decoration: none !important;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  padding: 0.75em 0.5em;
+  border-radius: 0 10px 10px 0;
+  margin-top: 0.25rem;
+  white-space: nowrap;
+  border-left: 3px solid transparent;
+  transition: background-color 150ms ease;
+
+  mat-icon {
+    margin-right: 0.5em;
   }
 
-  a {
-    text-decoration: none !important;
-    color: $black;
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    padding: 1em 0.5em;
-    border-radius: 10px;
-    margin-top: 0.5rem;
-
-    mat-icon {
-      margin-right: 0.5em;
-    }
-
-    &:hover,
-    &.activebutton {
-      background-color: rgba(59, 59, 59, 0.048);
-    }
+  &:hover {
+    background-color: var(--surface-card);
   }
 
-  &-account {
-    margin-top: 4em;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+  &.active {
+    background-color: var(--accent-primary-dim);
+    border-left-color: var(--accent-primary);
+  }
+}
 
-    &-pseudo {
-      font-weight: bold;
-      font-style: italic;
-    }
+.nav-label {
+  transition: opacity 200ms ease;
+}
 
-    button {
-      margin-top: 1em;
-    }
+.spacer {
+  flex: 1;
+}
+
+.user-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.user-pseudo {
+  font-weight: bold;
+  font-style: italic;
+}
+
+.collapse-toggle {
+  position: absolute;
+  right: -16px;
+  top: 1.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  padding: 0;
+  z-index: z.$z-ui-button;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--surface-card-hover);
+  }
+}
+
+// =============================================
+// Mobile top bar + drawer styles
+// =============================================
+
+.mobile-top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  z-index: z.$z-navbar-header;
+  display: flex;
+  align-items: center;
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  padding: 0 0.5rem;
+}
+
+.hamburger-btn {
+  @include touch-target-min;
+}
+
+.mobile-title {
+  flex: 1;
+  display: block;
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  margin-right: 44px; // Balance hamburger button width for centering
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: z.$z-drawer-backdrop;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 200ms ease, visibility 0s 200ms;
+
+  &.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 200ms ease, visibility 0s 0s;
+  }
+
+  &.no-animate {
+    transition: none;
+  }
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: z.$z-drawer;
+  background: var(--surface-nav);
+  color: var(--text-primary);
+  visibility: hidden;
+  transform: translateX(-100%);
+  transition: transform 200ms ease, visibility 0s 200ms;
+  display: flex;
+  flex-direction: column;
+
+  &.open {
+    visibility: visible;
+    transform: translateX(0);
+    transition: transform 200ms ease, visibility 0s 0s;
+  }
+
+  &.no-animate {
+    transition: none;
+  }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  height: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drawer-logo {
+  height: 32px;
+  width: auto;
+}
+
+.drawer-text {
+  height: 20px;
+  width: auto;
+}
+
+.drawer-close-btn {
+  @include touch-target-min;
+}
+
+.drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.mobile-nav-link {
+  @include touch-target-min;
+  width: 100%;
+  border-left: 3px solid transparent;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: var(--surface-card);
+  }
+
+  &.active {
+    background-color: var(--accent-primary-dim);
+    border-left-color: var(--accent-primary);
+  }
+}
+
+// =============================================
+// prefers-reduced-motion
+// =============================================
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-sidebar {
+    transition: none;
+  }
+
+  .collapse-toggle {
+    transition: none;
+  }
+
+  .mobile-drawer {
+    transition: none;
+  }
+
+  .drawer-backdrop {
+    transition: none;
+  }
+
+  .nav-link {
+    transition: none;
+  }
+
+  .nav-label {
+    transition: none;
+  }
+
+  .mobile-nav-link {
+    transition: none;
   }
 }

@@ -1,17 +1,8 @@
 .handTest {
   &-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    width: 100%;
-
-    &-actions {
-      button {
-        margin-right: 1em;
-      }
-    }
-
-
+    gap: 1em;
     margin-bottom: 1em;
   }
 
@@ -20,7 +11,8 @@
     justify-content: center;
     align-items: center;
 
-    card {
+    .hand-card {
+      width: 100px;
       margin-right: 1em;
 
       &:last-child {

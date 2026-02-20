@@ -1,0 +1,29 @@
+<div class="bottom-sheet-backdrop"
+  [class.visible]="sheetState() !== 'closed'"
+  [class.card-drag-active]="cardDragActive()"
+  (click)="onBackdropClick()"></div>
+
+<div class="bottom-sheet"
+  [class.dragging]="isDragging()"
+  [class.card-drag-active]="cardDragActive()"
+  [style.transform]="sheetTransform()"
+  [style.height.px]="referenceHeight()"
+  role="dialog"
+  aria-modal="false"
+  [attr.aria-label]="ariaLabel()">
+
+  <div class="bottom-sheet-handle"
+    role="slider"
+    aria-label="Ajuster la taille du panneau"
+    aria-orientation="vertical"
+    tabindex="0"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)">
+    <div class="bottom-sheet-handle-bar"></div>
+  </div>
+
+  <div class="bottom-sheet-content" [style.max-height.px]="contentMaxHeight()">
+    <ng-content></ng-content>
+  </div>
+</div>

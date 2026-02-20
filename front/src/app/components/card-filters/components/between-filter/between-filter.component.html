@@ -1,12 +1,12 @@
 <div class="betweenFilter">
   <div class="betweenFilter-name">{{ inputLabel() | translate }}</div>
   <div class="betweenFilter-inputs">
-    <mat-form-field>
+    <mat-form-field appearance="outline">
       <mat-label>Min.</mat-label>
       <input matInput type="number" [formControl]="minForm()" />
     </mat-form-field>
 
-    <mat-form-field>
+    <mat-form-field appearance="outline">
       <mat-label>Max.</mat-label>
       <input matInput type="number" [formControl]="maxForm()" />
     </mat-form-field>

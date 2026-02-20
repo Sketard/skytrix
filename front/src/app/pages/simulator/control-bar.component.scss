@@ -1,0 +1,65 @@
+:host {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 40;
+  transition: right 200ms ease;
+
+  &.pile-open {
+    right: 110px; // 90px pile outer width + 8px pile right + 12px gap
+  }
+}
+
+.control-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: var(--sim-surface-translucent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--sim-zone-border);
+  border-radius: 24px;
+}
+
+.separator {
+  width: 24px;
+  height: 1px;
+  background: var(--sim-zone-border);
+  margin: 2px 0;
+}
+
+button {
+  color: var(--text-primary);
+  transition: background 100ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-elevated);
+  }
+
+  &:disabled {
+    color: var(--text-secondary);
+    opacity: 0.4;
+  }
+}
+
+.debug-info {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+// Mobile: lift above the detached hand
+// Both media queries needed to match JS isMobile() breakpoint
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+  :host {
+    bottom: calc(90px + 12px); // $sim-hand-height-landscape + gap
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  :host {
+    bottom: calc(120px + 12px); // $sim-hand-height-portrait + gap
+  }
+}

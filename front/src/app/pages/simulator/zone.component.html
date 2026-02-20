@@ -1,0 +1,59 @@
+<div class="sim-zone"
+     cdkDropList
+     [cdkDropListData]="zoneId()"
+     [cdkDropListSortingDisabled]="true"
+     [cdkDropListEnterPredicate]="canDrop"
+     (cdkDropListDropped)="onDrop($event)"
+     (cdkDropListEntered)="onDragEntered()"
+     (cdkDropListExited)="onDragExited()"
+     [class.zone--just-dropped]="justDropped()"
+     (animationend)="onGlowAnimationEnd()"
+     (contextmenu)="onContextMenu($event)">
+  @if (card(); as c) {
+    <app-card [style.display]="isReceiving() ? 'none' : null"
+              [card]="toSharedCardData(c)"
+              [faceDown]="c.faceDown"
+              [position]="c.position"
+              [showOverlayMaterials]="(c.overlayMaterials?.length ?? 0) > 0"
+              [overlayMaterialCount]="c.overlayMaterials?.length ?? 0"
+              cdkDrag
+              [cdkDragData]="c"
+              cdkDragPreviewContainer="global"
+              [attr.aria-label]="'Drag ' + (c.card.card.name ?? '')"
+              (cdkDragStarted)="onDragStarted()"
+              (cdkDragEnded)="onDragEnded()"
+              (clicked)="onCardClicked(c)" />
+  }
+  @if (!card()) {
+    <span class="zone-label">{{ zoneConfig().shortLabel }}</span>
+  }
+
+  @if (card()) {
+    <span #cardMenuTrigger="matMenuTrigger"
+          #menuAnchor
+          [matMenuTriggerFor]="cardMenu"
+          class="context-menu-anchor"></span>
+    <mat-menu #cardMenu="matMenu">
+      @if (isFaceUpAtk() || isFaceUpDef()) {
+        <button mat-menu-item (click)="onFlipFaceDown()">
+          <mat-icon>flip_to_back</mat-icon>
+          <span>Flip face-down</span>
+        </button>
+        <button mat-menu-item (click)="onTogglePosition()">
+          <mat-icon>screen_rotation</mat-icon>
+          <span>{{ isFaceUpAtk() ? 'Change to DEF' : 'Change to ATK' }}</span>
+        </button>
+      }
+      @if (isFaceDown()) {
+        <button mat-menu-item (click)="onFlipFaceUp('ATK')">
+          <mat-icon>flip_to_front</mat-icon>
+          <span>Flip face-up (ATK)</span>
+        </button>
+        <button mat-menu-item (click)="onFlipFaceUp('DEF')">
+          <mat-icon>flip_to_front</mat-icon>
+          <span>Flip face-up (DEF)</span>
+        </button>
+      }
+    </mat-menu>
+  }
+</div>

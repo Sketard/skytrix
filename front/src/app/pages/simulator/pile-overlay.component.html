@@ -1,0 +1,61 @@
+@if (isOpen()) {
+  <div class="overlay-panel"
+       #overlayPanel
+       [class.search-expanded]="isSearchActive()"
+       tabindex="-1"
+       cdkDropList
+       [cdkDropListData]="activeZone()"
+       [cdkDropListSortingDisabled]="true"
+       [cdkDropListEnterPredicate]="noDrop">
+
+    <!-- Compact header: zone icon + card count + search toggle -->
+    <div class="overlay-header">
+      <mat-icon class="zone-icon">{{ zoneIcon() }}</mat-icon>
+      <span class="card-count">{{ cards().length }}</span>
+      @if (isBrowseMode()) {
+        <button class="search-toggle"
+                [class.active]="searchExpanded()"
+                (click)="toggleSearch()"
+                aria-label="Toggle search">
+          <mat-icon>search</mat-icon>
+        </button>
+      }
+    </div>
+
+    <!-- Search input (visible when search is active) -->
+    @if (isSearchActive()) {
+      <div class="search-input-wrapper">
+        <input class="search-input"
+               type="text"
+               placeholder="Filter..."
+               aria-label="Filter cards"
+               [value]="filterText()"
+               (input)="onFilterInput($event)"
+               #searchInput />
+      </div>
+    }
+
+    <!-- Empty state -->
+    @if (isEmpty()) {
+      <div class="overlay-empty">
+        <span>{{ emptyMessage() }}</span>
+      </div>
+    } @else {
+      <!-- Card list (unified for all modes) -->
+      @for (card of displayCards(); track card.instanceId) {
+        <div class="overlay-card-row"
+             cdkDrag
+             [cdkDragData]="card"
+             cdkDragPreviewContainer="global"
+             (cdkDragStarted)="onDragStarted()"
+             (cdkDragEnded)="onDragEnded()"
+             [attr.aria-label]="card.card.card.name + ' - drag to move'">
+          <app-card [card]="toSharedCardData(card)"
+                    [faceDown]="cardForceFaceDown() ?? card.faceDown"
+                    [position]="card.position"
+                    (clicked)="onCardClicked(card)" />
+        </div>
+      }
+    }
+  </div>
+}

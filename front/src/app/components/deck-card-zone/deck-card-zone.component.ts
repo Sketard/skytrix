@@ -1,10 +1,10 @@
 import { CdkDrag, CdkDragDrop, CdkDropList, DragDropModule } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, HostListener, input } from '@angular/core';
-import { CardComponent, CardSize } from '../card/card.component';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, HostListener, input, output } from '@angular/core';
+import { CardComponent } from '../card/card.component';
+import { NgClass } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
-import { CardDisplayType } from '../../core/enums/card-display-type';
-import { IndexedCardDetail } from '../../core/model/card-detail';
+import { CardDetail, IndexedCardDetail } from '../../core/model/card-detail';
+import { toSharedCardData } from '../../core/model/shared-card-data';
 
 enum StaticDeckZone {
   OTHER = 'OTHER',
@@ -13,7 +13,7 @@ enum StaticDeckZone {
 
 @Component({
   selector: 'deck-card-zone',
-  imports: [CdkDropList, CdkDrag, CommonModule, CardComponent, DragDropModule],
+  imports: [CdkDropList, CdkDrag, NgClass, CardComponent, DragDropModule],
   templateUrl: './deck-card-zone.component.html',
   styleUrl: './deck-card-zone.component.scss',
   standalone: true,
@@ -21,12 +21,15 @@ enum StaticDeckZone {
 })
 export class DeckCardZoneComponent {
   readonly label = input<string>('');
-  readonly size = input<CardSize>(CardSize.DECK);
   readonly slotNumber = input<number>(60);
   readonly cardDetails = input<Array<IndexedCardDetail>>(new Array<IndexedCardDetail>());
   readonly deckZone = input<DeckZone>();
 
+  readonly cardClicked = output<CardDetail>();
+  readonly isEmpty = computed(() => !!this.deckZone() && this.cardDetails().every(cd => cd.index === -1));
+
   readonly staticDeckZone = StaticDeckZone;
+  readonly toSharedCardData = toSharedCardData;
 
   @HostListener('contextmenu', ['$event'])
   onRightClick(event: any, zone: DeckZone | undefined, index: number) {
@@ -39,29 +42,27 @@ export class DeckCardZoneComponent {
     this.deckBuildService.removeCard(index, zone);
   }
 
-  public displayMode: CardDisplayType = CardDisplayType.MOSAIC;
-
   public constructor(public deckBuildService: DeckBuildService) {}
 
+  onCardClick(cd: CardDetail): void {
+    this.cardClicked.emit(cd);
+  }
+
   drop(event: CdkDragDrop<any>) {
-    const fromListContainer = event.previousContainer.id === 'cardList';
-    const containerId = event.previousContainer.id;
+    const fromListContainer = event.previousContainer.data?.source === 'search';
+    const sameContainer = event.previousContainer === event.container;
     const deckZone = this.deckZone();
     if (!deckZone) {
       if (fromListContainer) {
         this.deckBuildService.addImage(event.item.data);
-      } else if (containerId === this.staticDeckZone.OTHER) {
-        const index = event.container.data.index;
-        const previousIndex = event.previousContainer.data.index;
-        this.deckBuildService.updateImageIndex(index, previousIndex);
+      } else if (sameContainer) {
+        this.deckBuildService.updateImageIndex(event.currentIndex, event.previousIndex);
       }
     } else {
       if (fromListContainer) {
-        this.deckBuildService.addCard(event.item.data, deckZone);
-      } else if (containerId === deckZone) {
-        const index = event.container.data.index;
-        const previousIndex = event.previousContainer.data.index;
-        this.deckBuildService.updateCardIndex(deckZone, index, previousIndex);
+        this.deckBuildService.addCard(event.item.data, deckZone, event.currentIndex);
+      } else if (sameContainer) {
+        this.deckBuildService.updateCardIndex(deckZone, event.currentIndex, event.previousIndex);
       }
     }
   }

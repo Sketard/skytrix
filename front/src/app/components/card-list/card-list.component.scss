@@ -1,14 +1,280 @@
+@use 'variable' as *;
+@use 'mixin' as *;
+@use 'responsive' as r;
+@use 'z-layers' as z;
+
 .cardsContainer {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
+  gap: 0.75em;
 
-  card {
-    margin-right: 0.5em;
-    margin-bottom: 0.5em;
+  &.MOSAIC,
+  &.FAVORITE {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 
-  .OWNED {
+  &.MOSAIC.deckBuildMode,
+  &.FAVORITE.deckBuildMode {
+    grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+    gap: 0.25em;
+  }
+}
+
+@keyframes card-added {
+  0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.6); }
+  50% { box-shadow: 0 0 12px 4px rgba(0, 212, 255, 0.4); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+}
+
+// MOSAIC + INFORMATIVE wrapper
+.card-wrapper {
+  display: flex;
+  cursor: pointer;
+  position: relative;
+  border-radius: 3px;
+
+  &.added-flash {
+    animation: card-added 0.4s ease-out;
+  }
+
+  &.INFORMATIVE {
+    align-items: center;
     width: 100%;
+
+    app-card {
+      width: 60px;
+      flex-shrink: 0;
+    }
+
+    @include r.respond-above(r.$bp-tablet) {
+      width: auto;
+
+      app-card {
+        width: 100px;
+      }
+    }
+  }
+
+  &.MOSAIC app-card,
+  &.FAVORITE app-card {
+    width: 100%;
+  }
+}
+
+.card-image-container {
+  position: relative;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ban-badge {
+  @include ban-info;
+}
+
+.owned-count {
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 5px;
+  display: flex;
+  justify-content: right;
+  align-items: center;
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-weight: bold;
+  font-size: 0.8em;
+  z-index: z.$z-card-overlay;
+  text-shadow: 0 0 2px #000;
+  font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+}
+
+.card-info {
+  margin-left: 0.5em;
+  font-size: 0.75em;
+  min-width: 0;
+  overflow: hidden;
+
+  @include r.respond-above(r.$bp-tablet) {
+    width: 200px;
+    font-size: 0.7em;
+  }
+
+  strong {
+    font-size: 0.9em;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &-icons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &-icon {
+      display: flex;
+      align-items: center;
+      margin-right: 5px;
+
+      img {
+        height: 16px;
+        margin-right: 3px;
+      }
+    }
+  }
+
+  div {
+    margin-top: 3px;
+  }
+}
+
+// OWNED mode rows
+.owned-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  padding: 0.5em 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  // Mobile: 2-line layout
+  @include r.respond-below(r.$bp-tablet) {
+    flex-wrap: wrap;
+  }
+
+  &-quantity {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+
+    button {
+      color: $white;
+      @include r.touch-target-min;
+    }
+
+    &-count {
+      color: $white;
+      font-size: 1rem;
+      font-weight: 600;
+      min-width: 1.5rem;
+      text-align: center;
+    }
+  }
+
+  &-code {
+    margin-left: 10px;
+    width: 15%;
+    font-size: 0.8em;
+
+    @include r.respond-below(r.$bp-tablet) {
+      width: auto;
+      order: 3;
+    }
+  }
+
+  &-card {
+    width: 50%;
+    display: flex;
+    align-items: center;
+    position: relative;
+    min-width: 0;
+
+    @include r.respond-below(r.$bp-tablet) {
+      width: calc(100% - 140px);
+      order: 1;
+    }
+
+    &-name {
+      margin-left: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  &-rarity {
+    width: 25%;
+    font-weight: bold;
+
+    @include r.respond-below(r.$bp-tablet) {
+      width: auto;
+      order: 4;
+      font-size: 0.85em;
+    }
+
+    &.C {
+      color: rgb(197, 197, 197);
+    }
+
+    &.R {
+      color: rgb(98, 132, 236);
+    }
+
+    &.SR {
+      color: rgb(255, 235, 121);
+    }
+
+    &.GUR {
+      color: rgb(201, 142, 15);
+    }
+
+    &.UR {
+      color: rgb(152, 112, 218);
+    }
+
+    &.ScR {
+      color: rgb(197, 18, 182);
+    }
+
+    &.GR {
+      color: red;
+    }
+
+    &.PScR {
+      color: rgb(25, 194, 96);
+    }
+
+    &.UtR {
+      color: rgb(172, 40, 40);
+    }
+  }
+}
+
+// Hide placeholder when dragging a deck card over the search results list
+:host ::ng-deep {
+  .cardsContainer > .cdk-drag-placeholder:not(.card-wrapper) {
+    display: none;
+  }
+}
+
+.owned-card-image {
+  width: 33px;
+}
+
+app-empty-state {
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.scroll-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 1.5rem 0;
+  grid-column: 1 / -1;
+
+  --mdc-circular-progress-active-indicator-color: var(--accent-primary);
+
+  &--end {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
   }
 }

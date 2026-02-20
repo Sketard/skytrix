@@ -1,11 +1,6 @@
 @import '../../../../styles/mixin';
 
 .toggleIconFilter {
-  img {
-    height: 18px;
-    width: 18px;
-  }
-
   &-name {
     @include filter-section-name;
   }

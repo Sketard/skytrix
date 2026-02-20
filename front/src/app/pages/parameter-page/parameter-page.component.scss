@@ -1,12 +1,83 @@
-.parameters {
-  padding: 1em;
+@use 'responsive' as *;
 
-  &-buttons {
+.parameters {
+  padding: 1rem;
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--text-primary);
+  }
+
+  @include respond-above($bp-desktop-sm) {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  section {
+    margin-bottom: 1.5rem;
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.95rem;
+      margin: 0 0 0.75rem;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    mat-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+    }
+  }
+
+  &-action {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+
+    &-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+
+    &-title {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    &-desc {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    &-date {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-style: italic;
+    }
 
     button {
-      margin-top: 1em;
+      flex-shrink: 0;
+      min-width: 120px;
+    }
+
+    mat-spinner {
+      margin: 0 auto;
     }
   }
 }

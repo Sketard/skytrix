@@ -1,0 +1,140 @@
+@use 'sim-tokens' as *;
+
+:host {
+  display: contents;
+}
+
+.material-peek-panel {
+  position: absolute;
+  top: 50%;
+  right: $sim-padding-overlay;
+  transform: translateY(-50%);
+  width: 240px;
+  max-height: 400px;
+  background: var(--sim-surface);
+  border: 1px solid var(--sim-zone-border);
+  border-radius: $sim-radius-zone;
+  padding: $sim-padding-overlay;
+  z-index: 50;
+  animation: peek-fade-in 150ms ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: $sim-gap-zone;
+}
+
+.peek-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.peek-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.peek-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: $sim-radius-card;
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--surface-elevated);
+  }
+}
+
+.peek-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.material-list {
+  display: flex;
+  flex-direction: column;
+  gap: $sim-gap-card;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.material-row {
+  display: flex;
+  align-items: center;
+  gap: $sim-gap-card;
+  padding: 4px;
+  border-radius: $sim-radius-card;
+  cursor: grab;
+  transition: background 100ms ease;
+
+  &:hover {
+    background: var(--surface-elevated);
+  }
+}
+
+.material-image {
+  width: 32px;
+  height: auto;
+  aspect-ratio: $sim-card-aspect-ratio;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.material-name {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drag-handle {
+  color: var(--text-secondary);
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.cdk-drag-preview {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border-radius: $sim-radius-card;
+  z-index: 1000;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+@keyframes peek-fade-in {
+  from { opacity: 0; transform: translateY(-50%) translateX(8px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .material-peek-panel {
+    top: 8px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(240px, calc(100% - 16px));
+    max-height: 50%;
+    overflow: hidden;
+  }
+
+  @keyframes peek-fade-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+}
+

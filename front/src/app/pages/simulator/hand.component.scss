@@ -1,0 +1,116 @@
+@use 'sim-tokens' as *;
+
+:host {
+  display: block;
+  overflow: visible;
+}
+
+.sim-hand {
+  height: 100%;
+  min-height: 160px; // defensive: ensures hand doesn't collapse if parent height rule fails
+  position: relative;
+  border: none;
+  background: transparent;
+
+  &.empty {
+    border: 1px dashed var(--sim-zone-border);
+    border-radius: $sim-radius-zone;
+  }
+}
+
+// Each card — absolute from center, positioned via CSS custom properties (desktop fan)
+.sim-hand > :not(.cdk-drag-placeholder) {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: auto;
+  height: $sim-hand-card-height;
+  translate: calc(-50% + var(--fan-x, 0px)) var(--fan-y, 0px);
+  rotate: var(--fan-rotation, 0deg);
+  transform-origin: center bottom;
+  cursor: pointer;
+  transition: translate $sim-hand-transition, rotate $sim-hand-transition, scale $sim-hand-transition;
+
+  &:hover {
+    translate: calc(-50% + var(--fan-x, 0px)) $sim-hand-hover-lift;
+    rotate: 0deg;
+    scale: $sim-hand-hover-scale;
+    z-index: 100 !important;
+    transition-duration: 150ms;
+  }
+}
+
+// CDK DragDrop feedback
+.sim-hand.cdk-drop-list-receiving {
+  box-shadow: 0 2px 12px 2px var(--sim-zone-highlight);
+  transition: box-shadow 100ms ease;
+}
+
+// Pierce encapsulation: CDK clones from other components lack _ngcontent-hand attribute
+// stylelint-disable-next-line selector-pseudo-element-no-unknown
+:host ::ng-deep .cdk-drag-placeholder {
+  opacity: 0 !important;
+  position: absolute !important;
+  left: 50%;
+  bottom: 4px;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+// Gold glow on successful drop
+@keyframes gold-glow {
+  0% { box-shadow: 0 -4px 16px 4px var(--sim-zone-glow-success); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.zone--just-dropped {
+  animation: gold-glow 400ms ease-out forwards;
+}
+
+// ── Mobile: horizontal strip at native size ──
+// Driven by .mobile-hand class on :host (set by board template when isMobile()),
+// NOT media queries — avoids mismatch with JS breakpoint
+:host(.mobile-hand) {
+  overflow: hidden;
+}
+
+:host(.mobile-hand) .sim-hand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0; // reset desktop defensive min-height
+}
+
+// Override absolute fan → flex items
+:host(.mobile-hand) .sim-hand > :not(.cdk-drag-placeholder) {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  translate: none;
+  rotate: none;
+  height: $sim-hand-card-height-mobile;
+  flex-shrink: 0;
+  transform-origin: center center;
+
+  &:hover {
+    translate: 0 -8px;
+    rotate: none;
+    scale: 1.05;
+  }
+}
+
+// Override placeholder for flex layout
+// stylelint-disable-next-line selector-pseudo-element-no-unknown
+:host(.mobile-hand) ::ng-deep .cdk-drag-placeholder {
+  position: relative !important;
+  left: auto;
+  bottom: auto;
+  translate: none;
+  width: 56px;
+  flex-shrink: 0;
+}
