@@ -92,8 +92,8 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
       });
     });
 
-    // requestedSnap must transition through null between different states.
-    // Direct changes (e.g., 'full' → 'collapsed') are ignored by design.
+    // requestedSnap: snap to requested state, restore previous when cleared.
+    // Direct transitions (e.g., 'full' → 'collapsed') snap without changing previousSnapState.
     effect(() => {
       const requested = this.requestedSnap();
       untracked(() => {
@@ -102,6 +102,8 @@ export class BottomSheetComponent implements OnInit, OnDestroy {
         const previousSnap = this.previousSnapState();
         if (requested && previousSnap === null) {
           this.previousSnapState.set(state);
+          this.snapTo(requested);
+        } else if (requested && previousSnap !== null) {
           this.snapTo(requested);
         } else if (!requested && previousSnap !== null) {
           this.snapTo(previousSnap);

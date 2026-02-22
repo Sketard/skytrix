@@ -5,6 +5,7 @@ import { BoardStateService } from './board-state.service';
 import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
 import { CardComponent } from '../../components/card/card.component';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
+import { BottomSheetComponent } from '../../components/bottom-sheet/bottom-sheet.component';
 
 @Component({
   selector: 'app-sim-pile-overlay',
@@ -12,14 +13,12 @@ import { NavbarCollapseService } from '../../services/navbar-collapse.service';
   styleUrl: './pile-overlay.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatIconModule, CardComponent],
+  imports: [DragDropModule, MatIconModule, CardComponent, BottomSheetComponent],
   host: {
     'role': 'dialog',
     '[attr.aria-modal]': 'isOpen()',
     '[attr.aria-label]': 'ariaLabel()',
     '[class.open]': 'isOpen()',
-    '[class.mobile]': 'isMobile()',
-    '[class.mobile-portrait]': 'isMobilePortrait()',
   },
 })
 export class SimPileOverlayComponent {
@@ -91,6 +90,12 @@ export class SimPileOverlayComponent {
   });
 
   readonly noDrop = (): boolean => false;
+
+  readonly sheetSnap = computed<'full' | 'collapsed' | null>(() => {
+    if (this.isDragging()) return 'collapsed';
+    if (this.isSearchActive()) return 'full';
+    return null;
+  });
 
   private readonly searchInputRef = viewChild<ElementRef>('searchInput');
 

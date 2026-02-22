@@ -96,11 +96,12 @@
   &:hover {
     background: var(--surface-elevated);
   }
+}
 
-  app-card {
-    width: 40px;
-    flex-shrink: 0;
-  }
+// Desktop panel: narrow single-column card width
+.overlay-panel .overlay-card-row app-card {
+  width: 40px;
+  flex-shrink: 0;
 }
 
 .search-input-wrapper {
@@ -132,24 +133,41 @@
 }
 
 // CDK drag styling for overlay cards
+// Override CDK inline sizing so the preview keeps proper card proportions
 .overlay-card-row.cdk-drag-preview {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   background: var(--surface-elevated);
   border-radius: $sim-radius-zone;
   z-index: 1100;
   overflow: hidden;
+  width: auto !important;
+  height: auto !important;
+
+  app-card {
+    width: 60px;
+  }
 }
 
 .overlay-card-row.cdk-drag-placeholder {
   opacity: 0.3;
 }
 
-// Mobile: full height above the hand (class-driven, matches JS isMobile())
-:host(.mobile) .overlay-panel {
-  bottom: calc(90px - 15px + 8px); // landscape hand − overlap + gap
-}
+// Mobile: Bottom Sheet card grid
+.overlay-drop-zone {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+  gap: 4px;
+  padding: 8px 12px;
 
-:host(.mobile-portrait) .overlay-panel {
-  top: calc(48px + 8px); // mobile header height + gap
-  bottom: calc(120px - 15px + 8px); // portrait hand − overlap + gap
+  .overlay-header,
+  .search-input-wrapper,
+  .overlay-empty {
+    grid-column: 1 / -1;
+  }
+
+  .overlay-card-row {
+    app-card {
+      width: 100%;
+    }
+  }
 }
