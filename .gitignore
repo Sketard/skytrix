@@ -39,14 +39,9 @@ build/
 
 ### VS Code ###
 .vscode/
-images/
-# Binary assets (reference images, etc.)
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.webp
+/images/
+# Card images downloaded by backend (large binaries)
+back/images/
 
 # IDE
 .cursor/
