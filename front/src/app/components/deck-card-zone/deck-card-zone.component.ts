@@ -5,6 +5,7 @@ import { NgClass } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
 import { CardDetail, IndexedCardDetail } from '../../core/model/card-detail';
 import { toSharedCardData } from '../../core/model/shared-card-data';
+import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
 
 enum StaticDeckZone {
   OTHER = 'OTHER',
@@ -13,7 +14,7 @@ enum StaticDeckZone {
 
 @Component({
   selector: 'deck-card-zone',
-  imports: [CdkDropList, CdkDrag, NgClass, CardComponent, DragDropModule],
+  imports: [CdkDropList, CdkDrag, NgClass, CardComponent, DragDropModule, LongPressDragDirective],
   templateUrl: './deck-card-zone.component.html',
   styleUrl: './deck-card-zone.component.scss',
   standalone: true,

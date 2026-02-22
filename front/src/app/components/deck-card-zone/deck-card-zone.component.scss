@@ -1,5 +1,6 @@
 @use '../../styles/variable' as *;
 @use '../../styles/responsive' as r;
+@use '../../styles/mixin' as *;
 
 .grid {
   display: flex;
@@ -110,6 +111,10 @@
       }
     }
   }
+}
+
+.ban-badge {
+  @include ban-info;
 }
 
 @keyframes card-pop-in {

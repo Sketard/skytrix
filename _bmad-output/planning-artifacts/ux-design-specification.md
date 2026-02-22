@@ -8,7 +8,7 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 
 **Author:** Axel
 **Date:** 2026-02-08
-**Last Revised:** 2026-02-18
+**Last Revised:** 2026-02-21
 
 ### Revision History
 
@@ -22,6 +22,8 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 | 2026-02-18 | UX Review (Deck Builder Card Density) | **L.** Deck builder card search grid density increased to 5 columns minimum (portrait and landscape) with reduced gap, matching Master Duel's deck builder aesthetic. Mosaic/favorite mode in `deckBuildMode` uses `minmax(55px, 1fr)` with `0.25em` gap (down from `minmax(85px, 1fr)` / `0.75em`). Applies to both the side panel (desktop/landscape) and the bottom sheet (mobile portrait). Cards remain recognizable by artwork at 55px — this is the standard size in Master Duel's search panel. **M.** Deck builder landscape: filters displayed via bottom sheet anchored inside the side panel (Option A) instead of full-width overlay. The side panel bottom sheet shows filters while keeping the deck viewer (left 55%) fully visible. Same `app-bottom-sheet` component reused, scoped to the side panel container. On desktop (≥768px), filters remain as vertical expand/collapse inline (unchanged from revision H). |
 | 2026-02-19 | UX Review (Content Pages & Patterns) | **N.** Login page redesign: hero-centered layout with `logo-icon.png` + `logo-text.png` replacing the plain `<h2>Login</h2>`. No `mat-card` — form floats on `--surface-base` background with a subtle radial gradient (cyan at 5-8% opacity) behind the logo. 400ms fadeIn on page load. `prefers-reduced-motion` disables animation. **O.** Parameters page redesign: structured into `mat-card` sections (Database, Images, Banlist) with Material icons, short descriptions, action buttons, and last-sync date display. Feedback via `MatSnackBar` during/after fetch operations. **P.** App-wide empty states: consistent text + CTA pattern across all empty contexts (search no results, empty deck, empty favorites, empty owned). Messages in `--text-secondary`, centered, with contextual CTA. **Q.** Notification system migration: `ngx-toastr` replaced by `MatSnackBar`. Position: top center (`verticalPosition: 'top'`, `horizontalPosition: 'center'`). Custom snackbar style: `--surface-card` background, 3px left border colored by type (`--accent-primary` for success, `--danger` for error), Material icon prefix. Utility functions in `functions.ts` updated to accept `MatSnackBar` instead of `ToastrService`. **R.** Deck builder save feedback: snackbar on success/error, dirty indicator (gold dot on save icon when unsaved changes), `canDeactivate` guard with confirm dialog on navigation with unsaved changes. **S.** Navbar collapsed mode: when sidebar is collapsed, navigation icons remain visible without labels (icon-only mode) instead of hiding all content. **T.** Z-index centralization: `_z-layers.scss` file with named tokens for all overlay layers. Legacy SCSS variables (`$black`, `$blue`, `$white`) progressive migration to semantic CSS custom properties (tracked per-screen, not bulk). |
 | 2026-02-20 | UX Review (Card Display Mode Homogeneity) | **U.** Card display mode redesign: 4 modes (INFORMATIVE, MOSAIC, OWNED, FAVORITE) consolidated to 2 display modes + 1 quick filter. Display modes (radio group): **Grid** (`view_module` — responsive image grid with overlay badges) and **List** (`view_headline` — horizontal rows with image + name + stats + rarity + badges). Quick filter (independent toggle): **★ Favorites** (`star` — filters results to favorites, inherits active display mode). Visually separated from display mode toggles via spacing/divider. **V.** OWNED mode eliminated as display mode: quantity controls (+/-) become contextual — they appear automatically when context is "collection" (collection page or "my cards" filter active). Quantity controls integrate into both Grid (overlay) and List (additional column) modes. **W.** `CardDisplayType` enum reduced from 4 to 2 values: `GRID`, `LIST`. Favorite toggle managed as a separate boolean signal, independent of display mode. **X.** Normalized card sizing via CSS custom properties: `--card-size-sm` (40px), `--card-size-md` (80px), `--card-size-lg` (100px). All display modes reference these tokens instead of ad-hoc pixel values. **Y.** Uniform badge system: ban badge and owned-count badge visible in both Grid and List modes with consistent styling. Previously, badge visibility was inconsistent across modes (e.g., rarity only in OWNED, ban badge missing from OWNED). **Z.** Card inspector personal metadata: owned count (mini stepper) and favorite toggle displayed as a secondary info line at bottom of inspector, below a divider. Visually distinct from deck builder's primary deck add/remove controls (which remain as prominent `<ng-content>`-projected action block). Hierarchy: deck controls = primary action block, personal metadata = discrete inline text. Available in all inspector modes (click, dismissable, permanent) across all contexts. |
+| 2026-02-21 | UX Review (Deck Viewer Ban Badge) | **AD.** Ban badge extended to deck viewer: `deck-card-zone` component displays the ban badge (Limited/Semi/Forbidden) on each card in the Main, Extra, and Side deck sections. Same bottom-left overlay style as Grid mode in card search. Uniform Badge System table updated to include Deck Viewer column. |
+| 2026-02-21 | UX Review (Mobile Touch Gesture Model) | **AA.** Mobile gesture model redesigned — replaces previous "tap-to-place" two-tap mode with native touch gestures: **Tap** = open card inspector (immediate, zero latency), **Long press** = initiate drag (standard mobile pattern), **Swipe/scroll** = native scroll (no conflict with drag). Add/remove deck actions accessed via inspector button (no double-tap — avoids 300ms tap-disambiguation delay). **AB.** Long-press drag affordance: donut loader micro-animation on card during long press (~400-500ms). Semi-transparent circular progress overlay centered on the card fills during hold duration. Confirms to user that drag mode is activating. On completion: subtle scale-up + haptic feedback (vibration) signals drag is active. If finger lifts before completion: donut disappears, tap action fires (inspector opens). Creates a smooth continuum between tap and long-press gestures. `prefers-reduced-motion` disables the donut animation (drag still activates after delay, but without visual progress indicator). **AC.** Desktop interaction unchanged: click = inspector, click+hold+move = drag (instant, browser-native distinction — no long-press delay needed). Scroll = mouse wheel. |
 
 ---
 
@@ -44,7 +46,7 @@ The core workflow is: build deck → test combos → iterate — all within a si
 1. **Visual Density Management** — 18 zones on a single screen with a fixed aspect ratio (1060×772). The board scales proportionally to fit the available viewport space — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
 2. **Action Discoverability** — Without a rules engine to guide the player, all available actions (mill, search, reveal, flip, toggle position, banish, return to hand/deck) must be intuitively discoverable through the interface. No tutorial — the UI must be self-explanatory.
 3. **Drag & Drop Precision** — Targeting the correct zone among 18 while dragging a card. Visual feedback during drag (zone highlighting, capacity indicators) is critical to avoid frustrating mis-drops.
-4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). On mobile, the hand zone is detached from the scaled canvas and rendered at native size (consistent with Master Duel's mobile approach) — see §Spacing & Layout Foundation and §Responsive Strategy for details. Touch interaction (tap-to-place for simulator) is a post-MVP design effort; all other pages are touch-ready via responsive layouts.
+4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). On mobile, the hand zone is detached from the scaled canvas and rendered at native size (consistent with Master Duel's mobile approach) — see §Spacing & Layout Foundation and §Responsive Strategy for details. Mobile touch interaction uses a native gesture model (tap = inspector, long press = drag with donut loader affordance, swipe = scroll) — see §Mobile Interaction for full specification.
 
 ### Design Opportunities
 
@@ -63,12 +65,12 @@ The core loop is: **load deck → shuffle → draw 5 → execute combo via drag 
 ### Platform Strategy
 
 - **Primary Platform:** Desktop web (Angular 19 SPA) — mouse + keyboard interaction. Responsive multi-device: all pages adapt from 375px (mobile portrait) to 2560px+ (ultrawide desktop).
-- **Input Model:** Mouse-driven drag & drop as primary on desktop, keyboard shortcuts as accelerators. Mobile touch interaction (tap-to-place for simulator) is post-MVP.
+- **Input Model:** Mouse-driven drag & drop as primary on desktop, keyboard shortcuts as accelerators. Mobile touch interaction uses native gesture model: tap (inspector), long press (drag), swipe (scroll). See §Mobile Interaction for full specification.
 - **Hover Dependency:** Card inspector on hover is integral to the desktop experience. On mobile, inspector becomes tap-triggered (full-screen modal).
 - **Screen Requirements — Two Tracks:**
   - **Card manipulation pages** (simulator, deck builder, card search): Fixed canvas with proportional scaling via `transform: scale()`. No scrolling, no minimum size threshold. Letterboxing filled by app background.
   - **Content pages** (deck list, settings, login): Mobile-first responsive CSS with fluid layouts and breakpoints (576px, 768px, 1024px). No canvas scaling.
-- **Mobile Consideration (Post-MVP for simulator, current for content pages):** Content pages are responsive now. The simulator's scaling model adapts to any viewport, but touch interaction (tap-to-place) requires dedicated post-MVP design. Pill and overlay interactions will need touch equivalents (tap, long press) in mobile version.
+- **Mobile Consideration (Post-MVP for simulator, current for content pages):** Content pages are responsive now. The simulator's scaling model adapts to any viewport. Mobile touch interaction uses a native gesture model (tap = inspector, long press = drag, swipe = scroll) with a donut loader affordance during long press. See §Mobile Interaction for full specification.
 - **Offline:** Not required — deck data loaded at initialization, then all processing is client-side and ephemeral
 - **No Backend Dependency:** Zero network calls during simulation — all state is local
 
@@ -1035,6 +1037,15 @@ SimBoardComponent (root grid)
 - Overlay closes automatically **after the last drop** if user clicks outside or interacts elsewhere
 - Other overlays remain suppressed during drag (only source overlay stays)
 
+**Mobile Touch Drag:**
+- Long press (~400-500ms) on any card or pill initiates drag — replaces desktop's instant click+hold+move
+- **Donut loader affordance:** semi-transparent circular progress overlay (`--accent-primary`, 3px stroke, `opacity: 0.7`) fills during hold duration, centered on the card/pill. Provides real-time feedback that drag mode is activating
+- On donut completion: scale-up (1.05) + haptic vibration (`navigator.vibrate(50)`) → card enters drag mode, valid zones illuminate
+- On early release (before donut completes): drag cancelled, tap action fires instead (inspector opens) — smooth continuum between tap and long-press
+- Once drag is active, touch-move drives the card position (same as desktop mousemove). Valid zones highlight on touch-over
+- Touch-end = drop on current zone (same CDK DragDrop behavior)
+- `prefers-reduced-motion`: donut animation disabled, drag still activates after same delay. Haptic feedback remains
+
 ### Overlay & Panel Patterns
 
 **Pile Overlay Lifecycle:**
@@ -1276,13 +1287,15 @@ All card rendering in `card-list` references these tokens. Breakpoint-specific o
 
 #### Uniform Badge System
 
-All badges are visible in **both** display modes:
+All badges are visible in **both** display modes and in the **deck viewer**:
 
-| Badge | Grid | List |
-|---|---|---|
-| Ban badge (Limited/Semi/Forbidden) | Bottom-left overlay on card image | Inline icon after card name |
-| Owned count | Top-right overlay on card image (deckBuildMode only) | Prepended column (deckBuildMode only) |
-| Rarity | Not shown (insufficient space) | Colored pill badge after card name |
+| Badge | Grid | List | Deck Viewer |
+|---|---|---|---|
+| Ban badge (Limited/Semi/Forbidden) | Bottom-left overlay on card image | Inline icon after card name | Bottom-left overlay on card image (same style as Grid) |
+| Owned count | Top-right overlay on card image (deckBuildMode only) | Prepended column (deckBuildMode only) | N/A (implicit — card is in deck) |
+| Rarity | Not shown (insufficient space) | Colored pill badge after card name | Not shown (insufficient space) |
+
+**Deck Viewer context:** The `deck-card-zone` component (used inside the deck builder's deck viewer for Main, Extra, and Side sections) displays the ban badge on each card. This gives the player immediate visual feedback on banlist status while reviewing their decklist — critical for spotting illegal deck configurations (e.g., 2 copies of a Limited card) without opening the card inspector.
 
 #### Enum Change
 
@@ -1710,17 +1723,42 @@ Mobile layout (current — implemented with hand detachment):
 - **Portrait hand below board** — `.board-container` uses `flex-direction: column; justify-content: flex-end`. Hand sits below the board at ~100-120px height. Cards in horizontal strip with `overflow-x: auto` for scrolling when many cards in hand.
 - Card inspector becomes full-screen modal on tap
 
-Post-MVP touch interaction design:
-- **Tap-to-Place Mode (Required for Mobile Card Movement):**
-  - CDK DragDrop is incompatible with touch on small screens — drag triggers scroll, scroll interferes with drop detection
-  - Alternative interaction: tap card → card highlights (cyan selection) → tap target zone → card moves. Two taps replace one drag.
-  - This mode must be designed and implemented separately (post-MVP)
-- Context menus replaced by long-press or dedicated buttons
+Mobile touch gesture model:
+
+**Gesture Map:**
+
+| Gesture | Action | Details |
+|---|---|---|
+| **Tap** | Open card inspector | Immediate response, zero disambiguation delay. Inspector opens as full-screen modal on mobile. |
+| **Long press** (~400-500ms) | Initiate drag | Standard mobile pattern (iOS reorder, Spotify playlists). After activation, finger movement drags the card to target zone. |
+| **Swipe / scroll** | Native scroll | No conflict with drag — scroll is immediate finger movement, drag requires long-press hold first. |
+
+**Long-Press Drag Affordance — Donut Loader:**
+- On touch-start over a card, a **semi-transparent circular progress indicator** (donut) appears centered on the card
+- The donut fills over the long-press duration (~400-500ms), giving real-time feedback that drag mode is activating
+- **On completion:** subtle scale-up (1.05) + haptic feedback (`navigator.vibrate(50)`) confirms drag is active. Card enters drag mode, valid zones illuminate
+- **On early release** (finger lifts before donut completes): donut disappears, tap action fires (inspector opens). This creates a **smooth continuum** — the user sees the donut start and can choose to commit (hold → drag) or abort (release → inspector)
+- **Styling:** donut uses `--accent-primary` (cyan) stroke, ~3px width, `opacity: 0.7`, centered overlay on card. Does not obscure card artwork
+- **`prefers-reduced-motion`:** donut animation disabled. Drag still activates after the same delay, but without visual progress indicator. Haptic feedback remains
+
+**Pill Interaction on Mobile:**
+- **Tap on pill** → opens pile overlay (same as desktop click)
+- **Long press on pill** → drags top card (same as desktop pill drag). Donut loader appears on the pill during hold
+- Empty pill (count = 0): long press disabled, tap still opens empty overlay
+
+**Add/Remove Deck Actions (Deck Builder on Mobile):**
+- No double-tap gesture — avoids 300ms tap-disambiguation delay that would make tap (inspector) feel sluggish
+- Add/remove actions accessed via **button in the card inspector** (one extra tap, but zero ambiguity)
+- Inspector opens immediately on tap → user taps add/remove button inside
+
+**Desktop Interaction (Unchanged):**
+- Click = inspector, click+hold+move = drag (instant, browser-native mousedown/mousemove distinction — no long-press delay needed), scroll = mouse wheel
+- No donut loader on desktop — drag feedback is immediate via cursor change (`grab` → `grabbing`) and card lift animation
 
 **Deck builder / Card search (Track A) — hybrid:**
 - Canvas scaling works on mobile (same as simulator)
 - Header area (Track B) is touch-friendly with responsive CSS
-- Card interaction within the canvas may need tap-to-place for mobile (shares post-MVP design with simulator)
+- Card interaction within the canvas uses the same mobile gesture model (tap = inspector, long press = drag)
 
 ### Accessibility Strategy
 
@@ -1766,8 +1804,12 @@ Post-MVP touch interaction design:
 - Lighthouse accessibility audit for automated AA checks
 - Manual keyboard-only navigation test (tab through all zones, trigger shortcuts)
 
-**Post-MVP Testing (When Mobile Touch Added):**
+**Mobile Touch Testing (When Mobile Gesture Model Implemented):**
 - Real device testing on tablet and phone (landscape for simulator)
-- Touch interaction validation with CDK DragDrop
+- Touch gesture validation: tap (inspector), long press (drag with donut loader), swipe (scroll) — verify no gesture conflicts
+- Long-press timing calibration: test 400ms and 500ms thresholds on real devices for optimal feel
+- Donut loader visual test: verify affordance visibility over various card artworks (light/dark)
+- Haptic feedback test: verify `navigator.vibrate(50)` fires on drag activation (Android; graceful no-op on iOS)
 - Touch target size audit (44×44px minimum on all pages)
-- Tap-to-place mode functional testing (simulator)
+- CDK DragDrop touch compatibility: verify drag from cards, pills, and overlay cards
+- `prefers-reduced-motion` test: verify donut animation disabled, drag still functional

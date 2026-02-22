@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, input, model, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
@@ -29,18 +29,17 @@ export class CardInspectorComponent {
   readonly card = input<SharedCardInspectorData | null>(null);
   readonly mode = input<'dismissable' | 'click' | 'permanent'>('dismissable');
   readonly position = input<'left' | 'right' | 'top'>('left');
-  readonly ownedCount = input<number | undefined>(undefined);
+  readonly ownedCount = model<number | undefined>(undefined);
   readonly isFavorite = input<boolean>(false);
 
   readonly dismissed = output<void>();
-  readonly ownedCountChange = output<number>();
   readonly favoriteChange = output<boolean>();
 
   readonly isVisible = computed(() => this.card() !== null);
   readonly showPersonalMetadata = computed(() => this.ownedCount() !== undefined);
 
   changeOwned(delta: number): void {
-    this.ownedCountChange.emit(Math.max(0, (this.ownedCount() ?? 0) + delta));
+    this.ownedCount.set(Math.max(0, (this.ownedCount() ?? 0) + delta));
   }
 
   toggleFavorite(): void {

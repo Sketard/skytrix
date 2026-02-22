@@ -14,6 +14,7 @@ import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
+import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
 
 @Component({
   selector: 'card-list',
@@ -27,6 +28,7 @@ import { EmptyStateComponent } from '../empty-state/empty-state.component';
     MatIconModule,
     MatProgressSpinner,
     EmptyStateComponent,
+    LongPressDragDirective,
   ],
   templateUrl: './card-list.component.html',
   styleUrl: './card-list.component.scss',

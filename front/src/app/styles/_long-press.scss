@@ -1,0 +1,20 @@
+@use 'z-layers' as z;
+
+:root {
+  --z-donut-overlay: #{z.$z-donut-overlay};
+}
+
+.long-press-active {
+  scale: 1.05;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: scale 150ms ease-out, box-shadow 150ms ease-out;
+  touch-action: none;
+}
+
+@keyframes donut-fill {
+  to { stroke-dashoffset: 0; }
+}
+
+.donut-fill-circle {
+  animation: donut-fill linear forwards;
+}

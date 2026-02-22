@@ -94,7 +94,7 @@ public abstract class CardMapper {
         target.setSets(mapToList(source.getSets(), this::toCardSetDTO));
         target.setImages(mapToList(source.getImages(), this::toCardImageDTO));
         target.setCard(toCardDTO(source));
-        target.setFavorite(cardRepository.existsByFavoritedById(authService.getConnectedUserId()));
+        target.setFavorite(cardRepository.existsByIdAndFavoritedById(source.getId(), authService.getConnectedUserId()));
         return target;
     }
 

@@ -9,6 +9,8 @@
   @for (cd of cardsDetails$() | async; track cd.card.id) {
     <div class="card-wrapper" [ngClass]="displayMode()"
          cdkDrag
+         appLongPressDrag
+         [longPressDragDisabled]="!deckBuildMode()"
          [cdkDragDisabled]="!deckBuildMode()"
          [cdkDragData]="cd"
          (cdkDragStarted)="onDragStart($event)"

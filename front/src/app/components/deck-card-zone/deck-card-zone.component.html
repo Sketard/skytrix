@@ -25,6 +25,8 @@
         [class.just-added]="cardDetail.justAdded"
         (animationend)="cardDetail.justAdded = false"
         cdkDrag
+        appLongPressDrag
+        [longPressDragDisabled]="!cardDetail.card.card.id"
         [cdkDragDisabled]="!cardDetail.card.card.id"
         [cdkDragData]="cardDetail"
         (contextmenu)="onRightClick($event, deckZone(), i)">
@@ -33,6 +35,11 @@
             [card]="toSharedCardData(cardDetail.card)"
             (click)="onCardClick(cardDetail.card)">
           </app-card>
+          @if (cardDetail.card.card.banInfo < 3) {
+            <div class="ban-badge">
+              <div>{{ cardDetail.card.card.banInfo }}</div>
+            </div>
+          }
         }
       </div>
     }
