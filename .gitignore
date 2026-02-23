@@ -50,6 +50,10 @@ back/images/
 # BMAD agent workflows (not source code)
 _bmad/
 
+# Duel server external data (downloaded at setup, ~100 MB)
+duel-server/data/
+duel-server/node_modules/
+
 # OS
 .DS_Store
 Thumbs.db

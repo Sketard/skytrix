@@ -1059,6 +1059,87 @@ Bien qu'ecartee pour la production, `@n1xx1/ocgcore-wasm` reste utile pour :
 - **Prototypage UI** : Developper les composants de selection/reponse en local
 - **Reference de types** : Les types TypeScript du package (`OcgMessage`, `OcgResponse`, enums) sont reutilisables cote client meme avec un serveur backend
 
+### 10.6 Resultats du PoC (Phase 1 validee)
+
+Un PoC fonctionnel a ete developpe dans `duel-server/` pour valider la Phase 1 de la section 10.4.
+
+#### 10.6.1 Stack technique du PoC
+
+| Composant | Version | Role |
+|---|---|---|
+| Node.js | 22+ | Runtime |
+| TypeScript | 5.9 | Langage |
+| `@n1xx1/ocgcore-wasm` | 0.1.1 (JSR) | Moteur OCGCore en WASM |
+| `better-sqlite3` | 12.6 | Lecture de cards.cdb |
+| `tsx` | 4.21 | Execution directe TypeScript |
+| `patch-package` | 8.0 | Correctif ESM (voir 10.6.3) |
+
+#### 10.6.2 Resultats de validation
+
+**Test 1 : Chargement du core** — `src/test-core.ts`
+- OCGCore v11.0 charge avec succes dans Node.js via WASM
+- Creation et destruction de duel fonctionnels
+- Callbacks `cardReader`, `scriptReader`, `errorHandler` correctement appeles
+
+**Test 2 : Duel complet** — `src/poc-duel.ts`
+- 2 decks identiques de 34 cartes (monstres normaux Niveau 4 + spells/traps)
+- 19/20 scripts Lua utilitaires charges au demarrage (`proc_toon.lua` manquant — non bloquant)
+- Duel Master Rule 5, 8000 LP par joueur
+- Auto-player repondant a tous les types de `SELECT_*` avec la premiere option valide
+
+**Resultats obtenus :**
+
+```
+Turn 1: Player 0 — Normal Summon Luster Dragon #2 (ATK 1900)
+Turn 2: Player 1 — Normal Summon Luster Dragon #2, attaque (meme ATK, destruction mutuelle)
+Turn 3: Player 0 — Normal Summon Mechanicalchaser, attaque directe → Player 1 -1200 LP
+Turn 4: Player 1 — Normal Summon Mechanicalchaser, attaque (meme ATK)
+Turn 5: Player 0 — Normal Summon
+...
+Etat final: Player 0 = 8000 LP, Player 1 = 6800 LP
+```
+
+**Tous les points valides :**
+- ✅ `createDuel()` — creation de duel avec callbacks
+- ✅ `loadScript()` — chargement manuel des scripts utilitaires
+- ✅ `duelNewCard()` — ajout de cartes au deck
+- ✅ `startDuel()` — demarrage du duel
+- ✅ `duelProcess()` + `duelGetMessage()` + `duelSetResponse()` — boucle de jeu complete
+- ✅ `duelQueryField()` — requete d'etat final (LP, deck_size, hand_size, grave_size, banish_size)
+- ✅ Messages informationnels : `NEW_TURN`, `DRAW`, `SUMMONING`, `ATTACK`, `DAMAGE`, `LPUPDATE`
+- ✅ Reponses joueur : `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CHAIN`, `SELECT_PLACE`, `SELECT_POSITION`
+
+#### 10.6.3 Problemes rencontres et solutions
+
+| Probleme | Cause | Solution |
+|---|---|---|
+| `does not provide export named 'default'` | Le wrapper JSR-to-npm utilise `export * from "./dist/index.js"` qui ne re-exporte pas les `export default` (spec ESM) | Patch via `patch-package` : ajout de `export { default } from "./dist/index.js"` dans `mod.js` |
+| `GetID not found` dans les scripts Lua | Les scripts utilitaires (`utility.lua`, `constant.lua`, `proc_*.lua`) ne sont pas charges automatiquement par le core | Chargement manuel de 20 scripts via `core.loadScript()` apres `createDuel()` mais avant `duelNewCard()` |
+| Pas de combat dans le duel | Deck initial avec des monstres Niveau 7+ (non invocables sans tribut) | Remplacement par des monstres Niveau 4 normaux (Alexandrite Dragon, Gene-Warped Warwolf, etc.) |
+| `initial_effect` error sur certaines cartes | Scripts individuels manquants pour certains monstres normaux (pas dans le repo CardScripts) | Non bloquant — les monstres normaux fonctionnent sans script individuel |
+
+#### 10.6.4 Fichiers du PoC
+
+```
+duel-server/
+├── package.json                    # type: "module", scripts: poc, postinstall
+├── tsconfig.json                   # ES2022, ESNext, bundler resolution
+├── patches/
+│   └── @n1xx1+ocgcore-wasm+0.1.1.patch  # Fix ESM default export
+├── src/
+│   ├── test-core.ts                # Test minimal : chargement WASM + creation duel
+│   └── poc-duel.ts                 # PoC complet : 2 decks, boucle de jeu, auto-player
+└── data/
+    ├── cards.cdb                   # Base SQLite (7.2 MB, ProjectIgnis/BabelCDB)
+    └── scripts_full/               # 13,227 scripts Lua (ProjectIgnis/CardScripts)
+        ├── constant.lua, utility.lua, proc_*.lua  (20 utilitaires)
+        └── official/c*.lua          (scripts de cartes individuels)
+```
+
+#### 10.6.5 Conclusion du PoC
+
+Le PoC confirme que **Node.js + `@n1xx1/ocgcore-wasm`** est viable pour le duel server Skytrix. L'API TypeScript est complete, le moteur OCGCore execute correctement les regles du jeu (invocations, combat, dommages, phases), et le pattern `duelProcess/getMessage/setResponse` est simple a implementer. Les prochaines etapes (Phase 2-3) concernent l'exposition WebSocket et l'integration frontend.
+
 ---
 
 ## 11. Sources et references
