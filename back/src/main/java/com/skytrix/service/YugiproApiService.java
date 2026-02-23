@@ -131,8 +131,21 @@ public class YugiproApiService {
 
     @Transactional
     public void updateTcgImages() {
+        log.info("Starting fetching images TCG");
         var cards = cardImageRepository.findAllByTcgUpdatedAndCardFirstTcgReleaseIsNotNull(false);
         fetchAllAndSave(cards, true);
+        log.info("Ending fetching images TCG");
+    }
+
+    @Transactional
+    public void refreshCardImages(Long cardId) {
+        log.info("Refreshing images for card ID: {}", cardId);
+        var card = cardRepository.findById(cardId).orElseThrow(() -> new NoSuchElementException("Card not found with ID: " + cardId));
+        var cardImages = card.getImages();
+        for (CardImage cardImage : cardImages) {
+            fetchAndSaveImages(cardImage, true);
+        }
+        log.info("Finished refreshing images for card ID: {}", cardId);
     }
 
     private void fetchAllAndSave(List<CardImage> cardImages, boolean forceUpdate) {

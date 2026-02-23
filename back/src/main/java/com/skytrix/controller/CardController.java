@@ -44,4 +44,10 @@ public class CardController {
         return cardService.removeFavorite(cardId);
     }
 
+    @PutMapping("/possessed/{cardId}")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void updatePossessedNumber(@PathVariable("cardId") Long cardId, @RequestParam("number") Integer number) {
+        cardService.updatePossessedNumber(cardId, number);
+    }
+
 }

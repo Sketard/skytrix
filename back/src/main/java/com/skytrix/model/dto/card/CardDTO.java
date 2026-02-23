@@ -29,4 +29,5 @@ public class CardDTO {
     private boolean extraCard;
     private Short banInfo;
     private Integer genesysPoint;
+    private Integer possessedNumber;
 }

@@ -59,4 +59,10 @@ public class CardService {
         card.getFavoritedBy().removeIf(cardUser -> Objects.equals(user.getId(), cardUser.getId()));
         return mapToList(user.getFavoriteCards(), cardMapper::toCardDetailedDTO);
     }
+
+    @Transactional
+    public void updatePossessedNumber(Long cardId, Integer number) {
+        var card = cardRepository.findById(cardId).orElseThrow();
+        card.setPossessedNumber(number);
+    }
 }

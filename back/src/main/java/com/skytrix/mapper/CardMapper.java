@@ -3,9 +3,7 @@ package com.skytrix.mapper;
 import com.skytrix.model.dto.card.CardDTO;
 import com.skytrix.model.dto.card.CardDetailedDTO;
 import com.skytrix.model.dto.card.CardImageDTO;
-import com.skytrix.model.dto.card.CardPossessedDTO;
 import com.skytrix.model.dto.card.CardSetDTO;
-import com.skytrix.model.dto.card.ShortCardPossessedDTO;
 import com.skytrix.model.dto.deck.IndexedCardDetailDTO;
 import com.skytrix.model.dto.deck.IndexedCardImageDTO;
 import com.skytrix.model.dto.yugipro.YugiproCardDTO;
@@ -14,7 +12,6 @@ import com.skytrix.model.dto.yugipro.YugiproSetDTO;
 import com.skytrix.model.entity.Card;
 import com.skytrix.model.entity.CardDeckIndex;
 import com.skytrix.model.entity.CardImage;
-import com.skytrix.model.entity.CardPossessed;
 import com.skytrix.model.entity.CardSet;
 import com.skytrix.model.entity.ImageIndex;
 import com.skytrix.model.enums.Language;
@@ -41,7 +38,6 @@ public abstract class CardMapper {
 
     @Mapping(target = "id", ignore = true)
     public abstract CardSet toCardSet(YugiproSetDTO source);
-
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "imageId", source = "id")
@@ -72,6 +68,7 @@ public abstract class CardMapper {
 
     @Mapping(target = "cardId", source = "source.card.id")
     @Mapping(target = "url", ignore = true)
+    @Mapping(target = "smallUrl", ignore = true)
     public abstract CardImageDTO toCardImageDTO(CardImage source);
 
     @AfterMapping
@@ -85,45 +82,12 @@ public abstract class CardMapper {
     @Mapping(target = "description", source = "source.description")
     public abstract CardDTO toCardDTO(Card source);
 
-    @Mapping(source = "cardSet.id", target = "cardSetId")
-    public abstract ShortCardPossessedDTO toShortCardPossessedDTO(CardPossessed cardPossessed);
-
-
     public CardDetailedDTO toCardDetailedDTO(Card source) {
         var target = new CardDetailedDTO();
         target.setSets(mapToList(source.getSets(), this::toCardSetDTO));
         target.setImages(mapToList(source.getImages(), this::toCardImageDTO));
         target.setCard(toCardDTO(source));
         target.setFavorite(cardRepository.existsByIdAndFavoritedById(source.getId(), authService.getConnectedUserId()));
-        return target;
-    }
-
-    public CardPossessedDTO toCardPossessedDTO(CardPossessed source) {
-        var target = new CardPossessedDTO();
-        var cardSet = source.getCardSet();
-        var card = cardSet.getCard();
-        target.setCard(toCardDTO(card));
-        target.setCardSet(toCardSetDTO(cardSet));
-        target.setCardImage(toCardImageDTO(card.getImages().stream()
-                .findAny()
-                .orElse(
-                        CardImage.builder()
-                                .url(RouteUtils.getSampleImageRoute())
-                                .smallUrl(RouteUtils.getSampleImageRoute())
-                                .card(card)
-                                .build()
-                ))
-        );
-        target.setNumber(source.getNumber());
-        return target;
-    }
-
-
-    public CardPossessed toCardPossessed(CardSet set, int number) {
-        var target = new CardPossessed();
-        target.setCardSet(set);
-        target.setNumber(number);
-        target.setUser(authService.getConnectedUser());
         return target;
     }
 
