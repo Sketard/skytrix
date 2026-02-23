@@ -3,8 +3,9 @@ type: technical-research
 project: skytrix
 author: Claude (AI Research Agent)
 date: 2026-02-23
-subject: Project Ignis (EDOPro/YGOPro) Duel Engine & Lua Scripting System
+subject: Project Ignis (EDOPro/YGOPro) Duel Engine, WASM Integration & Web Ecosystem
 status: complete
+last_updated: 2026-02-23
 ---
 
 # Recherche Technique : Moteur de Duel YGOPro / Project Ignis
@@ -18,9 +19,10 @@ status: complete
 5. [Base de donnees de cartes (cards.cdb)](#5-base-de-donnees-de-cartes-cardscdb)
 6. [Dependances et composants cles](#6-dependances-et-composants-cles)
 7. [API C headless pour simulation automatisee](#7-api-c-headless-pour-simulation-automatisee)
-8. [Analyse de faisabilite pour Skytrix](#8-analyse-de-faisabilite-pour-skytrix)
-9. [Recommandations](#9-recommandations)
-10. [Sources et references](#10-sources-et-references)
+8. [Ecosysteme web et implementations existantes](#8-ecosysteme-web-et-implementations-existantes)
+9. [Analyse de faisabilite pour Skytrix](#9-analyse-de-faisabilite-pour-skytrix)
+10. [Recommandations](#10-recommandations)
+11. [Sources et references](#11-sources-et-references)
 
 ---
 
@@ -549,35 +551,307 @@ typedef struct {
 
 ---
 
-## 8. Analyse de faisabilite pour Skytrix
+## 8. Ecosysteme web et implementations existantes
 
-### 8.1 Etat actuel de Skytrix
+### 8.1 Decouverte cle : @n1xx1/ocgcore-wasm
+
+Le package [`@n1xx1/ocgcore-wasm`](https://github.com/n1xx1/ocgcore-wasm) est une compilation d'OCGCore (fork EDOPro) en **WebAssembly via Emscripten**, publiee sur [JSR](https://jsr.io/@n1xx1/ocgcore-wasm) avec des typages TypeScript complets.
+
+| Aspect | Detail |
+|---|---|
+| **Licence** | MIT (le wrapper) — le core reste AGPL-3.0 |
+| **Compatibilite** | Navigateur, Node.js, Deno |
+| **Dependances** | Zero |
+| **Maturite** | 102 commits, 15 releases, derniere v0.1.1 (~mai 2025) |
+| **Core upstream** | edo9300/ygopro-core commit `2d72976` (mai 2025, ocgcore v11.0) + Lua 5.4 |
+| **Stars** | ~5 (projet de niche mais fonctionnel, 1 mainteneur) |
+
+**Impact :** Ce package elimine le principal obstacle de l'Option A (compilation Emscripten). L'API C complete d'OCGCore est directement accessible depuis TypeScript sans travail de compilation personnalise.
+
+#### 8.1.1 Taille du binaire WASM
+
+| Fichier | Taille |
+|---|---|
+| `ocgcore.sync.wasm` | **885 KB** |
+| Glue JS Emscripten | ~1.2 MB |
+| Wrapper TS | 45 KB |
+| Types (.d.ts) | 81 KB |
+| **Total runtime (1 mode)** | **~2.1 MB** |
+
+Le WASM est compile avec `-Os` (optimize size), `emmalloc`, `--closure 1`. La taille de 885 KB est tres raisonnable pour une application web.
+
+#### 8.1.2 Deux modes d'execution
+
+| Mode | Callbacks | Compatibilite navigateur | Use case |
+|---|---|---|---|
+| **Sync** (`sync: true`) | Synchrones uniquement | **Tous les navigateurs** | Donnees pre-chargees en memoire |
+| **Async/JSPI** (`sync: false`) | Peuvent retourner des Promises | Chrome 124+ avec flag experimental | Chargement a la demande |
+
+> **⚠️ Pour une app en production, seul le mode sync est viable aujourd'hui.** JSPI (JS Promise Integration) est encore experimental. Cela impose de **pre-charger** tous les scripts Lua et donnees de cartes avant de demarrer un duel.
+
+#### 8.1.3 API TypeScript complete (13 methodes)
+
+```typescript
+interface OcgCore {
+  getVersion(): readonly [number, number];
+  createDuel(options: OcgDuelOptions): OcgDuelHandle | null;
+  destroyDuel(handle: OcgDuelHandle): void;
+  duelNewCard(handle: OcgDuelHandle, cardInfo: OcgNewCardInfo): void;
+  startDuel(handle: OcgDuelHandle): void;
+  duelProcess(handle: OcgDuelHandle): OcgProcessResult;  // END | WAITING | CONTINUE
+  duelGetMessage(handle: OcgDuelHandle): OcgMessage[];    // Discriminated union typee
+  duelSetResponse(handle: OcgDuelHandle, response: OcgResponse): void;
+  loadScript(handle: OcgDuelHandle, name: string, content: string): boolean;
+  duelQueryCount(handle: OcgDuelHandle, team: number, location: OcgLocation): number;
+  duelQuery(handle: OcgDuelHandle, query: OcgQuery): Partial<OcgCardQueryInfo> | null;
+  duelQueryLocation(handle: OcgDuelHandle, query: OcgQueryLocation): (Partial<OcgCardQueryInfo> | null)[];
+  duelQueryField(handle: OcgDuelHandle): OcgFieldState;
+}
+```
+
+**Callbacks requis a la creation du duel :**
+
+```typescript
+interface OcgDuelOptions {
+  flags: OcgDuelMode;                    // ex: MODE_MR5
+  seed: [bigint, bigint, bigint, bigint]; // PRNG Xoshiro256**
+  team1: { startingLP: number; startingDrawCount: number; drawCountPerTurn: number; };
+  team2: { startingLP: number; startingDrawCount: number; drawCountPerTurn: number; };
+  cardReader: (card: number) => OcgCardData | null;       // Donnees depuis cards.cdb
+  scriptReader: (name: string) => string | null;           // Scripts Lua
+  errorHandler?: (type: OcgLogType, text: string) => void;
+}
+```
+
+#### 8.1.4 Parseur de messages et serialiseur de reponses inclus
+
+**Le package inclut deja un parseur TypeScript complet** pour les ~78 types de messages et un serialiseur pour les 21 types de reponses. Pas besoin d'ecrire un parseur custom.
+
+- `duelGetMessage()` retourne directement des objets TypeScript types (`OcgMessage[]`)
+- `duelSetResponse()` accepte des objets TypeScript types (`OcgResponse`)
+- Discriminated union sur le champ `type` — compatible avec le pattern matching TypeScript
+
+#### 8.1.5 Systeme de requetes (query)
+
+Le package expose un systeme de requetes pour interroger l'etat de n'importe quelle carte :
+
+```typescript
+// Interroger une carte specifique
+const info = lib.duelQuery(handle, {
+  flags: OcgQueryFlags.CODE | OcgQueryFlags.ATTACK | OcgQueryFlags.POSITION,
+  controller: 0, location: OcgLocation.MZONE, sequence: 0, overlaySequence: 0
+});
+// -> { code: 46986414, attack: 2500, position: POS_FACEUP_ATTACK }
+
+// Etat global du terrain
+const field = lib.duelQueryField(handle);
+// -> { flags, players: [{ monsters, spells, deck_size, hand_size, ... } x2], chain }
+```
+
+#### 8.1.6 Limitations identifiees
+
+| Limitation | Impact pour Skytrix |
+|---|---|
+| **Pas de save/restore** | Impossible de sauvegarder et reprendre un duel en cours |
+| **Pas d'undo** | Le moteur est forward-only. Undo = rejouer depuis le debut avec les reponses sauvegardees |
+| **Pas de clonage d'etat** | Impossible d'explorer des branches alternatives ("what-if") |
+| **Mode sync bloque le thread** | Des chaines complexes peuvent bloquer le thread JS. Mitigation : Web Worker |
+| **Pre-1.0, mainteneur unique** | Risque de bus factor. Mais le core upstream (edo9300) est actif |
+| **`bigint` pour flags/seed** | Necessite attention lors de la serialisation JSON |
+
+#### 8.1.7 Consommateur connu
+
+Un seul projet utilise ce package : [`n1xx1/r3f-ygo-sim`](https://github.com/n1xx1/r3f-ygo-sim) — un simulateur Yu-Gi-Oh! en Next.js + React Three Fiber par le meme auteur. Demo live sur Vercel.
+
+### 8.2 Simulateurs web automatises
+
+| Plateforme | Moteur | Open Source | Stack | Statut |
+|---|---|---|---|---|
+| **Dueling Nexus** | Propre (utilise scripts Lua YGOPro) | Non | Proprietaire | Actif — seul simulateur web automatise populaire |
+| **NEOS** ([DarkNeos/neos-ts](https://github.com/DarkNeos/neos-ts)) | OCGCore (serveur) | Oui (GPL-3.0) | React + TypeScript | Actif, en production |
+| **SRVPro** ([mycard/srvpro](https://github.com/mycard/srvpro)) | OCGCore (subprocess) | Oui (AGPL-3.0) | Node.js / CoffeeScript | Actif, 202 stars |
+
+**NEOS** est particulierement pertinent : c'est la preuve qu'un client web TypeScript + OCGCore fonctionne en production.
+
+### 8.3 Reimplementations JS/TS (toutes echouees)
+
+| Projet | Stars | Couverture regles | Statut |
+|---|---|---|---|
+| **yugioh_web** ([rickypeng99](https://github.com/rickypeng99/yugioh_web)) | 112 | ~5% (invocation basique + combat) | Semi-actif |
+| **duel-engine** ([donaldnevermore](https://github.com/donaldnevermore/duel-engine)) | 1 | ~1% (squelette) | Mort |
+
+**Conclusion :** Aucune reimplementation JS/TS n'a jamais depasse ~5% des regles. Le volume (50k+ lignes C++, 13k scripts Lua) rend cette approche irealiste. Confirme que l'Option C est un dead-end.
+
+### 8.4 Simulateurs manuels web (sans moteur de regles)
+
+| Plateforme | Stack | Statut |
+|---|---|---|
+| **Duelingbook** | Proprietaire | Actif, dominant — ~99% manuel |
+| **YGOSiM** | Node.js | Archive |
+
+Ces plateformes correspondent au modele actuel de Skytrix (manipulation manuelle + undo/redo).
+
+### 8.5 Simulateurs desktop (non-web)
+
+| Plateforme | Moteur | Stack |
+|---|---|---|
+| **EDOPro** (Project Ignis) | OCGCore natif | C++ / Irrlicht |
+| **YGO Omega** | OCGCore | Unity |
+| **Master Duel** (Konami) | Proprietaire | Unity |
+| **Duel Links** (Konami) | Proprietaire | Unity |
+
+Aucun n'a de version web. Pas de moteur Rust connu dans l'ecosysteme.
+
+### 8.6 Synthese de l'ecosysteme
+
+```
+Moteurs de duel automatises
+├── OCGCore (C++) ← standard de facto open-source
+│   ├── Natif : EDOPro, YGO Omega
+│   ├── Serveur : SRVPro (Node.js), NEOS (React client)
+│   └── WASM : @n1xx1/ocgcore-wasm ← NOUVEAU
+├── Proprietaires
+│   ├── Konami : Master Duel, Duel Links
+│   └── Dueling Nexus
+└── Reimplementations JS/TS ← toutes echouees (<5% regles)
+
+Simulateurs manuels (pas de moteur)
+├── Duelingbook
+├── Skytrix (actuel)
+└── Divers projets abandonnes
+```
+
+### 8.7 Protocole de messages binaires OCGCore
+
+Le protocole de communication entre l'hote et le moteur repose sur des **messages binaires** echanges via `duelGetMessage()` et `duelSetResponse()`.
+
+#### 8.7.1 Format fil
+
+```
+Buffer retourne par OCG_DuelGetMessage:
++------------------------------------------------------------------+
+| [uint32 size_1][uint8 MSG_TYPE_1][...payload_1]                  |
+| [uint32 size_2][uint8 MSG_TYPE_2][...payload_2]                  |
+| ...                                                              |
++------------------------------------------------------------------+
+
+- Chaque message : [taille (4 octets LE)][type (1 octet)][payload variable]
+- La taille inclut l'octet de type
+- Tous les entiers multi-octets sont en little-endian
+- Les emplacements de cartes : [controller:u8][location:u8][sequence:u32][position:u32]
+```
+
+> **Note :** Avec le package `@n1xx1/ocgcore-wasm`, ce format binaire est abstrait. `duelGetMessage()` retourne directement des objets TypeScript types.
+
+#### 8.7.2 Classification des ~78 types de messages
+
+**Messages necessitant une reponse joueur (20) :**
+
+| Message | Description | Reponse attendue |
+|---|---|---|
+| `SELECT_IDLECMD` | Actions Main Phase (invoquer, poser, activer, BP, EP) | Index + type de commande |
+| `SELECT_BATTLECMD` | Actions Battle Phase (attaquer, activer, M2, EP) | Index + type de commande |
+| `SELECT_CARD` | Selectionner carte(s) dans une liste (min/max) | Tableau d'indices |
+| `SELECT_CHAIN` | Opportunite d'activation de chaine | Index chaine ou -1 (passer) |
+| `SELECT_PLACE` / `SELECT_DISFIELD` | Selection de zone sur le terrain | Masque de zone |
+| `SELECT_POSITION` | Position du monstre (ATK/DEF/face-up/down) | Masque de position |
+| `SELECT_TRIBUTE` | Selection de tributs pour invocation | Tableau d'indices |
+| `SELECT_EFFECTYN` | Oui/Non pour un effet specifique | 0 ou 1 |
+| `SELECT_YESNO` | Oui/Non generique | 0 ou 1 |
+| `SELECT_OPTION` | Choix parmi options numerotees | Index option |
+| `SELECT_COUNTER` | Distribution de compteurs | Tableau de compteurs |
+| `SELECT_SUM` | Selectionner cartes jusqu'a atteindre une somme | Tableau d'indices |
+| `SELECT_UNSELECT_CARD` | Toggle selection de carte | Index |
+| `SORT_CARD` / `SORT_CHAIN` | Ordonner des cartes/chaines | Tableau d'indices ordonnes |
+| `ANNOUNCE_RACE` | Declarer un type de monstre | Bitmask race |
+| `ANNOUNCE_ATTRIB` | Declarer un attribut | Bitmask attribut |
+| `ANNOUNCE_CARD` | Declarer un nom de carte | Passcode |
+| `ANNOUNCE_NUMBER` | Declarer un nombre | Nombre choisi |
+| `ROCK_PAPER_SCISSORS` | Pierre-feuille-ciseaux (1er tour) | 1/2/3 |
+
+**Messages informationnels / mise a jour d'etat (~58) :**
+
+| Categorie | Messages | Role |
+|---|---|---|
+| **Deplacement** | `MOVE`, `SET`, `SWAP`, `POS_CHANGE` | Carte change de zone/position |
+| **Invocation** | `SUMMONING`/`SUMMONED`, `SPSUMMONING`/`SPSUMMONED`, `FLIPSUMMONING`/`FLIPSUMMONED` | Animations d'invocation |
+| **Chaines** | `CHAINING`, `CHAINED`, `CHAIN_SOLVING`, `CHAIN_SOLVED`, `CHAIN_END`, `CHAIN_NEGATED`, `CHAIN_DISABLED` | Cycle de vie des chaines d'effets |
+| **Combat** | `ATTACK`, `BATTLE`, `DAMAGE`, `DAMAGE_STEP_START`/`END` | Deroulement du combat |
+| **Points de vie** | `LPUPDATE`, `PAY_LPCOST`, `RECOVER` | Changements de LP |
+| **Pioche/Melange** | `DRAW`, `SHUFFLE_HAND`, `SHUFFLE_DECK`, `SHUFFLE_SET_CARD` | Actions sur les piles |
+| **Compteurs** | `ADD_COUNTER`, `REMOVE_COUNTER` | Compteurs de sort |
+| **Tour/Phase** | `NEW_TURN`, `NEW_PHASE` | Progression du duel |
+| **Lifecycle** | `START`, `WIN`, `REQUEST_DECK` | Debut/fin de duel |
+| **Affichage** | `HINT`, `CONFIRM_CARDS`, `CARD_HINT`, `EQUIP`, `CARD_TARGET` | Informations UI |
+| **Aleatoire** | `TOSS_COIN`, `TOSS_DICE` | Resultats de lancers |
+
+#### 8.7.3 Parseurs TypeScript existants
+
+| Projet | Approche | Completude |
+|---|---|---|
+| **@n1xx1/ocgcore-wasm** | Parseur integre, discriminated union | **Complet** (~78 types) — recommande |
+| **DarkNeos/neos-ts** | 43 fichiers parseur individuels + protobuf | Complet, mais couple a NEOS |
+| **ygocore-interface** (npm) | Fonction `parseMessage()` standalone | Partiel, ancien |
+
+> **Pour Skytrix, le parseur inclus dans `@n1xx1/ocgcore-wasm` suffit.** Aucun travail de parsing n'est necessaire.
+
+#### 8.7.4 Mapping vers l'architecture Skytrix
+
+| Concept OCGCore | Equivalent Skytrix |
+|---|---|
+| `controller` (0/1) | Joueur actif / adversaire |
+| `location` (MZONE, SZONE, HAND...) | `ZoneId` |
+| `sequence` (0-7) | Index dans la zone |
+| `position` (FACEUP_ATK...) | Etat face-up/face-down de `CardInstance` |
+| `OcgMessage[]` | Flux d'evenements pour mettre a jour `BoardStateService` |
+| `OcgResponse` | Actions du joueur transmises au moteur |
+
+---
+
+## 9. Analyse de faisabilite pour Skytrix
+
+### 9.1 Etat actuel de Skytrix (MVP implemente)
 
 **Stack technique :**
 - **Frontend** : Angular 19 (standalone components, signals, OnPush) + Angular Material + CDK
 - **Backend** : Java 21 / Spring Boot 3.4.2 + PostgreSQL + Flyway
 - **Architecture** : SPA classique, API REST, JWT auth
 
-**Simulateur existant :**
-- Simulateur **manuel** (sans moteur de regles) — le joueur a le controle total
-- Frontend-only, command pattern pour undo/redo
-- 18 zones de jeu, drag & drop via CDK
-- Pas de simulation IA, pas de resolution de chaines automatique
+**Simulateur solo (100% fonctionnel) :**
+- Simulateur **manuel** (sans moteur de regles) — le joueur a le controle total, 100% frontend
+- Command pattern (6 types + CompositeCommand) pour undo/redo complet
+- 18 zones de jeu (Master Rule 5 : ST1/ST5 = Pendulum L/R), drag & drop via CDK
+- XYZ materials (attach/detach/transfer via overlay), pile overlays (browse/search/reveal)
+- Hand fan layout avec reorder, card inspector, mill N, shuffle, reveal N
+- Responsive mobile/desktop, keyboard shortcuts (Ctrl+Z/Y)
+- ~107 fichiers TS, BoardStateService + CommandStackService scopes au SimulatorPageComponent
 
-### 8.2 Options d'integration
+**Deckbuilder (100% fonctionnel) :**
+- Add/remove cards avec limites de copies, validation deck (40+ main, 0-15 extra/side)
+- Export/import YDK, generation PDF proxies, hand test (5 cartes)
+- Filtres avances, favoris, suivi de collection (owned cards)
+- Sauvegarde API, guard unsaved changes
+
+**Autres fonctionnalites implementees :**
+- Recherche de cartes (filtres par type, niveau, attribut, archetype, pagination)
+- Auth (login/signup, JWT, route guards)
+- Pas de tests automatises (approche "big bang" — tests prevus apres MVP)
+
+### 9.2 Options d'integration
 
 #### Option A : Integration directe du core C++ via WebAssembly (WASM)
 
-**Approche :** Compiler ygopro-core en WASM, l'executer cote frontend dans le navigateur.
+**Approche :** Utiliser le package [`@n1xx1/ocgcore-wasm`](https://github.com/n1xx1/ocgcore-wasm) qui compile deja ygopro-core en WASM via Emscripten, avec typages TypeScript complets.
 
 | Aspect | Evaluation |
 |---|---|
-| Faisabilite technique | **Elevee** — C++17 se compile bien en WASM via Emscripten. Lua compile aussi en WASM. |
-| Complexite | **Haute** — Necessite un wrapper JS/TS autour de l'API C, gestion memoire manuelle, integration avec Angular |
+| Faisabilite technique | **Tres elevee** — Le package WASM existe deja sur JSR, avec API TypeScript complete. Zero compilation necessaire. |
+| Complexite | **Moyenne** ~~Haute~~ — Le wrapper TS est fourni. Reste l'integration Angular, le chargement des scripts Lua, et le parsing des messages binaires. |
 | Performance | **Excellente** — Execution native dans le navigateur, pas de latence reseau |
 | Taille bundle | **Moderee** — ~2-5 MB pour le core + Lua VM compiles en WASM |
-| Maintenance | **Difficile** — Chaque mise a jour du core necessite recompilation WASM, suivi des changements API |
-| Scripts de cartes | Necessaire de bundler ~13,000+ fichiers Lua ou les charger a la demande |
+| Maintenance | **Moderee** ~~Difficile~~ — Le package suit les releases EDOPro. Pas de recompilation manuelle. |
+| Scripts de cartes | Necessaire de charger ~13,000+ fichiers Lua a la demande (lazy loading depuis CDN ou serveur) |
+| Infrastructure | **Zero** — Tout tourne dans le navigateur. Pas de serveur de duel necessaire. |
 
 #### Option B : Core C++ cote serveur (microservice natif)
 
@@ -618,18 +892,20 @@ typedef struct {
 | Scripts de cartes | Stockes sur le filesystem du serveur |
 | Risque | JNI peut causer des crashes du JVM si mal gere |
 
-### 8.3 Matrice de decision
+### 9.3 Matrice de decision
 
 | Critere (poids) | A: WASM | B: Microservice | C: Reimpl TS | D: JNI |
 |---|---|---|---|---|
-| Complexite d'integration (30%) | 3/5 | 4/5 | 1/5 | 3/5 |
+| Complexite d'integration (30%) | ~~3~~ **4/5** | 4/5 | 1/5 | 3/5 |
 | Completude des regles (25%) | 5/5 | 5/5 | 2/5 | 5/5 |
-| Maintenance long terme (20%) | 2/5 | 4/5 | 1/5 | 3/5 |
+| Maintenance long terme (20%) | ~~2~~ **4/5** | 4/5 | 1/5 | 3/5 |
 | Performance (15%) | 5/5 | 3/5 | 4/5 | 5/5 |
-| Coherence avec le stack (10%) | 3/5 | 3/5 | 5/5 | 4/5 |
-| **Score pondere** | **3.45** | **4.00** | **2.20** | **3.70** |
+| Coherence avec le stack (10%) | ~~3~~ **4/5** | 3/5 | 5/5 | 4/5 |
+| **Score pondere** | ~~3.45~~ **4.35** | **4.00** | **2.20** | **3.70** |
 
-### 8.4 Considerations AGPL-3.0
+> **Mise a jour (fev. 2026) :** La decouverte du package `@n1xx1/ocgcore-wasm` ameliore les scores de l'Option A. Cependant, la decision produit (simulateur complet = PvP en ligne) impose l'anti-triche cote serveur, ce qui **ecarte l'Option A pour la production** et confirme **l'Option B comme choix final**. Voir section 10 pour la justification complete.
+
+### 9.4 Considerations AGPL-3.0
 
 Le core ygopro-core (fork edo9300) est sous **AGPL-3.0-or-later**. Implications :
 
@@ -639,71 +915,153 @@ Le core ygopro-core (fork edo9300) est sous **AGPL-3.0-or-later**. Implications 
 
 ---
 
-## 9. Recommandations
+## 10. Recommandations
 
-### 9.1 Recommandation principale : Option B (Microservice natif)
+### 10.1 Contexte decisif : un frontend, deux modes de simulation
 
-**Pour un simulateur automatique de duels dans Skytrix, l'option B (microservice) est recommandee :**
+Le frontend Angular existant sera **adapte pour gerer deux modes** au sein de la meme application :
 
-1. **Separtion propre** : Le core tourne dans son propre process, isole du stack Java/Angular
-2. **Reutilisation maximale** : 100% des regles et scripts de cartes fonctionnent sans modification
-3. **Mise a jour facile** : Recompiler le core quand ProjectIgnis publie une MAJ, sans toucher au reste
-4. **Precedent** : C'est exactement l'approche utilisee par YGOCore, ygosharp, et les serveurs de duel en production
-5. **Isolation AGPL** : Le core tourne dans un process separe
+| Mode | Statut | Description | Moteur de regles | Serveur |
+|---|---|---|---|---|
+| **Mode solo** | **Implemente** | Free mode complet — combo testing manuel, undo/redo, manipulation libre du board, aucune restriction | **Aucun** — le joueur a le controle total | **Aucun** — 100% frontend |
+| **Mode PvP** | **A implementer** | Duel complet automatise entre deux joueurs en ligne | **OCGCore** — resolution de regles et chaines | **Obligatoire** — anti-triche |
+
+**Le mode solo reste tel quel** — aucune utilisation du serveur de duel, pas de moteur de regles, pas de restriction. C'est un outil de pratique libre.
+
+**Le mode PvP** reutilise les memes composants de board (zones, cartes, inspecteur) mais avec une source de donnees differente : au lieu du `BoardStateService` local avec `CommandStackService`, l'etat du board vient du serveur de duel via WebSocket. Le joueur ne peut pas manipuler le board librement — il repond aux questions du moteur (selectionner une carte, choisir une zone, confirmer un effet, etc.).
+
+Le PvP impose une contrainte non-negociable : **le moteur doit tourner cote serveur**. Un client WASM serait trivialement exploitable (inspection memoire, modification de reponses, acces aux cartes cachees). C'est redhibitoire pour du PvP en ligne.
+
+### 10.2 Recommandation finale : Option B (Microservice Node.js + ocgcore-wasm)
+
+**L'Option B est le seul choix viable pour un simulateur PvP.**
+
+**Choix technologique : Node.js + `@n1xx1/ocgcore-wasm` (WASM cote serveur)**
+
+Le microservice utilisera le package `@n1xx1/ocgcore-wasm` execute dans un runtime **Node.js** (et non dans un navigateur). Ce choix combine les avantages du WASM (zero compilation C++, API TypeScript) avec ceux du serveur (anti-triche, autorite unique).
+
+| Critere | Justification |
+|---|---|
+| **TypeScript end-to-end** | Meme langage frontend (Angular) et serveur de duel. Types partages (`OcgMessage`, `OcgResponse`, enums). |
+| **Zero compilation C++** | Pas de toolchain C++17, pas de Premake5, pas de shared library. `npm install` suffit. |
+| **Docker trivial** | Image Node.js alpine + package WASM. Pas de compilation native dans le container. |
+| **Parseur inclus** | Le package inclut deja parseur de messages et serialiseur de reponses. Aucun travail de parsing. |
+| **API identique** | Meme API TypeScript que decrite en section 8.1.3. Le code du PoC est reutilisable tel quel. |
+| **Precedent** | SRVPro (202 stars) utilise deja Node.js pour wrapper OCGCore cote serveur. |
+
+**Pourquoi pas C++ natif ou JNI ?**
+- **C++ natif** : Necessite toolchain C++17, Premake5, compilation platform-specific. Complexite de build elevee sans gain de performance significatif (le WASM tourne a ~90-95% de la vitesse native, et un duel YGO ne necessite pas de performance extreme).
+- **JNI** : Risque de crash JVM, complexite des bindings, pas de reutilisation des types TypeScript. Le stack Java (Spring Boot) reste dedie a l'auth, au matchmaking et a la gestion de decks.
+
+**Avantages du choix :**
+
+1. **Anti-triche garanti** : Le serveur est l'autorite unique. Il ne transmet au client que les informations que le joueur a le droit de voir (ses propres cartes en main, les cartes face-up). Les reponses sont validees par le moteur.
+2. **Separation propre** : Le duel server tourne dans son propre process Node.js, isole du stack Java/Angular
+3. **Precedent solide** : C'est le modele de SRVPro (Node.js, 202 stars) et NEOS (React + serveur OCGCore), tous deux en production
+4. **Reutilisation maximale** : 100% des regles et scripts de cartes fonctionnent sans modification
+5. **Isolation AGPL** : Le core tourne dans un process separe, communication par protocole reseau
+6. **Scripts Lua** : Stockes cote serveur, charges par le callback `scriptReader` via `fs.readFileSync()`
+7. **Maintenance minimale** : Mise a jour du core = `npm update @n1xx1/ocgcore-wasm`. Pas de recompilation.
+
+> **L'Option A (WASM cote client) est ecartee pour la production.** Le WASM dans le navigateur est incompatible avec l'anti-triche PvP. Il reste utile comme outil de dev/test local (voir section 10.5).
 
 **Architecture cible :**
 
 ```
-+------------------+     WebSocket     +-------------------+
-|  Angular 19 SPA  | <===============> | Duel Server       |
-|  (frontend)      |                   | (C++ ou Rust)     |
-|                  |                   |                   |
-|  - Board UI      |                   | - ocgcore.so      |
-|  - Actions       |                   | - card scripts/   |
-|  - Animations    |                   | - cards.cdb       |
-+------------------+                   +-------------------+
-         |                                      |
-         | REST API                              | File I/O
-         v                                      v
-+------------------+                   +-------------------+
-| Spring Boot API  |                   | Lua scripts       |
-| (backend existant)|                  | (13,000+ fichiers)|
-+------------------+                   +-------------------+
++------------------+     WebSocket      +----------------------------+
+|  Angular 19 SPA  | =================> | Duel Server (Node.js)      |
+|  (frontend)      |  (duel en cours)   | @n1xx1/ocgcore-wasm        |
+|                  | <================= |                            |
+|  - Board UI      |   messages JSON    | - ocgcore WASM (885 KB)   |
+|  - Actions       |   (infos visibles  | - cards.cdb (SQLite)      |
+|  - Animations    |    uniquement)     |                            |
++------------------+                    +----------------------------+
+         |                                       ^
+         | REST API                              | HTTP interne
+         v                                      | (creer duel + decklist)
++------------------+                             |
+| Spring Boot API  | ============================/
+| (backend existant)|
+| - Auth / JWT     |   1. POST /matchmaking
+| - Matchmaking    |   2. Spring Boot envoie les decklists au Duel Server
+| - Deck validation|   3. Duel Server retourne room_id + ws_url
+| - Decklists (DB) |   4. Spring Boot renvoie ws_url + token au frontend
++------------------+   5. Frontend se connecte en WebSocket au Duel Server
+         |
+         v
++------------------+                    +----------------------------+
+|   PostgreSQL     |                    | ProjectIgnis/CardScripts   |
+| - users, decks   |                    | (13,000+ fichiers Lua)    |
++------------------+                    +----------------------------+
 ```
 
-### 9.2 Etapes d'implementation suggerees
+**Flux de lancement d'un duel :**
 
-**Phase 1 : Prototype (PoC)**
-1. Compiler ygopro-core (edo9300 fork) en shared library sur Linux
-2. Ecrire un wrapper minimaliste en C/C++ ou Rust qui expose l'API via WebSocket
-3. Charger un duel simple (2 decks predefinis) et echanger des messages
-4. Valider que la boucle CreateDuel -> Process -> GetMessage -> SetResponse fonctionne
+```
+Frontend                Spring Boot              Duel Server (Node.js)
+   |                        |                           |
+   |-- POST /matchmaking -->|                           |
+   |                        |-- HTTP: create duel ----->|
+   |                        |   (decklist J1 + J2)      |
+   |                        |<-- room_id + ws_url ------|
+   |<-- ws_url + token -----|                           |
+   |                        |                           |
+   |=========== WebSocket (duel messages) =============>|
+   |<=========== WebSocket (game state) ================|
+   |                        |                           |
+```
 
-**Phase 2 : Integration minimale**
-1. Connecter le frontend Angular au serveur de duel via WebSocket
-2. Adapter le simulateur existant pour afficher l'etat reel du duel (read-only)
-3. Traduire les messages binaires OCGCore en DTOs TypeScript
-4. Implementer les reponses joueur (selection de cartes, confirmation d'effets)
+> **Le frontend ne transmet jamais la decklist au Duel Server.** C'est Spring Boot qui l'envoie directement (server-to-server). Cela empeche un client modifie d'envoyer un deck truque.
 
-**Phase 3 : IA et automatisation**
-1. Implementer un joueur IA basique (reponses aleatoires ou heuristiques)
-2. Permettre au joueur humain de jouer contre l'IA
-3. Explorer les options d'IA plus avancees (tree search, ML)
+### 10.3 Modele de securite anti-triche
 
-### 9.3 Alternative legere : Enrichir le simulateur manuel existant
+| Principe | Implementation |
+|---|---|
+| **Serveur autorite** | Le moteur OCGCore tourne exclusivement cote serveur. Le client n'a jamais acces a l'etat complet du duel. |
+| **Filtrage des messages** | Le serveur filtre les messages OCGCore avant envoi : les cartes face-down de l'adversaire, son deck, son extra deck ne sont jamais transmis. |
+| **Validation des reponses** | OCGCore valide nativement les reponses (impossible d'invoquer une carte qu'on n'a pas, de selectionner un index invalide). Les reponses illegales sont rejetees. |
+| **Pas d'etat client** | Le client est un pur afficheur + collecteur d'inputs. Aucune logique de regles cote frontend. |
+| **Auth par partie** | Chaque connexion WebSocket est authentifiee via le JWT existant. Un joueur ne peut interagir qu'avec son propre duel. |
 
-Si l'objectif est **d'ajouter des regles partielles** au simulateur manuel (sans aller jusqu'a un duel automatique complet), une approche hybride est envisageable :
+### 10.4 Etapes d'implementation suggerees (Option B — Microservice Node.js)
 
-- Garder le simulateur frontend-only
-- Ajouter des **validations TypeScript** pour les regles simples (limites d'invocations normales, phases de jeu)
-- Integrer un **moteur de resolution de chaines simplifie** en TypeScript
-- Ne **pas** essayer de reproduire le systeme Lua complet
+**Phase 1 : Prototype serveur (PoC)**
+1. Initialiser un projet Node.js/TypeScript pour le duel server
+2. Installer le package : `npx jsr add @n1xx1/ocgcore-wasm`
+3. Implementer les callbacks `cardReader` (lecture depuis cards.cdb via `better-sqlite3`) et `scriptReader` (lecture Lua via `fs.readFileSync()`)
+4. Exposer une API HTTP interne pour la creation de duel (recoit les decklists depuis Spring Boot)
+5. Charger un duel simple (2 decks predefinis) et valider la boucle `createDuel -> duelProcess -> duelGetMessage -> duelSetResponse`
+6. Exposer l'API joueur via WebSocket (ex: `ws` ou `socket.io`)
+7. Implementer le filtrage de messages : ne transmettre au client que les infos visibles par le joueur concerne
+8. Containeriser : Dockerfile basique `FROM node:22-alpine` + copie des scripts Lua et cards.cdb
 
-Cette approche est moins ambitieuse mais ne necessite aucune infrastructure additionnelle.
+**Phase 2 : Integration UI PvP**
+1. Creer un service Angular `DuelWebSocketService` qui gere la connexion WebSocket au duel server
+2. Reutiliser les types TypeScript de `@n1xx1/ocgcore-wasm` cote client (`OcgMessage`, `OcgResponse`, enums) pour typer le protocole WebSocket
+3. Adapter les composants du simulateur pour afficher l'etat reel du duel
+4. Implementer les reponses joueur pour les 20 types de `SELECT_*` (UI de selection de cartes, confirmation d'effets, choix de zone, etc.)
+
+**Phase 3 : Infrastructure PvP**
+1. Integrer le matchmaking dans le backend Spring Boot existant (file d'attente, creation de parties)
+2. Implementer le flux de creation de duel : Spring Boot envoie les decklists au Duel Server via HTTP interne, recoit `room_id` + `ws_url`, transmet au frontend
+3. Le frontend ne transmet jamais la decklist au Duel Server (anti-triche : seul Spring Boot, apres validation, communique les decks)
+4. Gerer le cycle de vie des duels cote serveur (timeout, deconnexion, reconnexion)
+5. Ajouter la validation de deck cote Spring Boot avant le lancement du duel (banlist, format, taille)
+
+**Phase 4 : Joueur IA (optionnel)**
+1. Implementer un joueur IA basique cote serveur (reponses aleatoires ou heuristiques)
+2. Permettre au joueur humain de jouer contre l'IA via le meme pipeline PvP
+
+### 10.5 Option A (WASM) comme outil de dev
+
+Bien qu'ecartee pour la production, `@n1xx1/ocgcore-wasm` reste utile pour :
+- **Tests locaux** : Valider rapidement l'integration sans demarrer le serveur de duel
+- **Prototypage UI** : Developper les composants de selection/reponse en local
+- **Reference de types** : Les types TypeScript du package (`OcgMessage`, `OcgResponse`, enums) sont reutilisables cote client meme avec un serveur backend
 
 ---
 
-## 10. Sources et references
+## 11. Sources et references
 
 ### Documentation et wikis
 - [YGOPRO Scripting Wiki (Miraheze)](https://ygoproscripting.miraheze.org/wiki/Main_Page) — Reference principale pour le scripting Lua
@@ -723,6 +1081,13 @@ Cette approche est moins ambitieuse mais ne necessite aucune infrastructure addi
 - [SalvationDevelopment/YGOCore](https://github.com/SalvationDevelopment/YGOCore) — Serveur C# avec API standard streams
 - [IceYGO/ygosharp](https://github.com/IceYGO/ygosharp) — Serveur C# utilisant ocgcore
 - [garymabin/YGOCore](https://github.com/garymabin/YGOCore) — Fork du serveur YGOCore
+- [mycard/srvpro](https://github.com/mycard/srvpro) — Serveur Node.js/CoffeeScript wrappant OCGCore (AGPL-3.0, 202 stars)
+
+### Package WASM et clients web
+- [@n1xx1/ocgcore-wasm](https://github.com/n1xx1/ocgcore-wasm) — OCGCore compile en WebAssembly via Emscripten (MIT, TypeScript)
+- [JSR: @n1xx1/ocgcore-wasm](https://jsr.io/@n1xx1/ocgcore-wasm) — Package publie sur JSR
+- [DarkNeos/neos-ts](https://github.com/DarkNeos/neos-ts) — Client web React+TypeScript pour OCGCore (GPL-3.0, en production)
+- [rickypeng99/yugioh_web](https://github.com/rickypeng99/yugioh_web) — Tentative de reimplementation JS (~5% regles, 112 stars)
 
 ### Documentation de creation de cartes
 - [Ygopro-Card-Creation](https://github.com/KittyTrouble/Ygopro-Card-Creation) — Documentation du schema cards.cdb
