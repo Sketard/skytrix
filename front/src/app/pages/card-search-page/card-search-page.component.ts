@@ -19,7 +19,6 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../core/m
 import { CardDetail } from '../../core/model/card-detail';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { OwnedCardService } from '../../services/owned-card.service';
-import { ShortOwnedCardDTO } from '../../core/model/dto/short-owned-card-dto';
 
 @Component({
   selector: 'card-search-page',
@@ -60,15 +59,11 @@ export class CardSearchPageComponent {
   protected readonly cardSearchService = inject(CardSearchService);
   private readonly ownedCardService = inject(OwnedCardService);
   private readonly httpClient = inject(HttpClient);
-  private readonly shortOwnedCards = toSignal(this.ownedCardService.shortOwnedCards$, { initialValue: [] as ShortOwnedCardDTO[] });
 
   readonly selectedCardOwnedCount = computed(() => {
     const cd = this.selectedCardDetail();
-    if (!cd || cd.sets.length === 0) return undefined;
-    const setIds = cd.sets.map(s => s.id);
-    return this.shortOwnedCards()
-      .filter(o => setIds.includes(o.cardSetId))
-      .reduce((sum, o) => sum + o.number, 0);
+    if (!cd || cd.card.id == null) return undefined;
+    return this.ownedCardService.ownedMap().get(cd.card.id) ?? 0;
   });
 
   onCardClicked(cd: CardDetail): void {
@@ -112,8 +107,8 @@ export class CardSearchPageComponent {
   onOwnedCountChange(newCount: number | undefined): void {
     if (newCount == null) return;
     const cd = this.selectedCardDetail();
-    if (!cd || cd.sets.length === 0) return;
-    this.ownedCardService.update(cd.sets[0].id, newCount);
+    if (!cd || cd.card.id == null) return;
+    this.ownedCardService.updateOwned(cd.card.id!, newCount);
   }
 
   async onFavoriteChange(): Promise<void> {

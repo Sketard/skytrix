@@ -3,6 +3,7 @@ package com.skytrix.controller;
 import com.skytrix.service.YugiproApiService;
 import jakarta.inject.Inject;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +38,12 @@ public class YugiproApiController {
     @ResponseStatus(code = HttpStatus.NO_CONTENT)
     public void updateTcgImages() {
         yugiproApiService.updateTcgImages();
+    }
+
+    @PutMapping("/refresh/image/{cardId}")
+    @ResponseStatus(code = HttpStatus.NO_CONTENT)
+    public void refreshCardImages(@PathVariable("cardId") Long cardId) {
+        yugiproApiService.refreshCardImages(cardId);
     }
 
 }

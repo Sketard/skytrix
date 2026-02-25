@@ -23,6 +23,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatInput, MatLabel } from '@angular/material/input';
 import { MatButton } from '@angular/material/button';
 import { CreateUserDTO } from '../../core/model/account/create-user-dto';
+import { OwnedCardService } from '../../services/owned-card.service';
 
 enum LoginMode {
   LOGIN = 'LOGIN',
@@ -67,7 +68,8 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   constructor(
     private readonly router: Router,
     public authService: AuthService,
-    private readonly snackBar: MatSnackBar
+    private readonly snackBar: MatSnackBar,
+    private readonly ownedCardService: OwnedCardService
   ) {
     this.loginForm = this.buildLoginForm();
     this.createAccountForm = this.buildCreateAccountForm();
@@ -75,6 +77,7 @@ export class LoginPageComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.authService.resetLogin();
+    this.ownedCardService.resetMap();
   }
 
   ngOnDestroy(): void {
@@ -101,6 +104,7 @@ export class LoginPageComponent implements OnInit, OnDestroy {
         console.log(this.authService.user());
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(res.body));
         localStorage.setItem(ACCESS_TOKEN, accessToken);
+        this.ownedCardService.loadAll();
         this.authFinished(res);
       },
       error: (error: HttpErrorResponse) => displayError(this.snackBar, error),

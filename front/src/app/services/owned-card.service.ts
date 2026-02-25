@@ -1,49 +1,38 @@
-import { ShortOwnedCardDTO } from './../core/model/dto/short-owned-card-dto';
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, take } from 'rxjs';
+import { Injectable, signal } from '@angular/core';
+import { take } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
 })
 export class OwnedCardService {
-  private shortOwnedCardsSubject = new BehaviorSubject<Array<ShortOwnedCardDTO>>(new Array());
-  readonly shortOwnedCards$ = this.shortOwnedCardsSubject.asObservable();
+  private readonly _ownedMap = signal<Map<number, number>>(new Map());
+  readonly ownedMap = this._ownedMap.asReadonly();
 
-  get shortOwnedCards(): Array<ShortOwnedCardDTO> {
-    return this.shortOwnedCardsSubject.value;
-  }
+  constructor(private readonly httpClient: HttpClient) {}
 
-  set shortOwnedCards(ownedCards: Array<ShortOwnedCardDTO>) {
-    this.shortOwnedCardsSubject.next(ownedCards);
-  }
-
-  constructor(private readonly httpClient: HttpClient) {
-    this.getAllShort().subscribe(
-      (shortOwnedCards: Array<ShortOwnedCardDTO>) => (this.shortOwnedCards = shortOwnedCards)
-    );
-  }
-
-  private getAllShort(): Observable<Array<ShortOwnedCardDTO>> {
-    return this.httpClient.get<Array<ShortOwnedCardDTO>>(`/api/possessed/short`).pipe(take(1));
-  }
-
-  public findOwnedCardBySetId(setId: number): ShortOwnedCardDTO | undefined {
-    return this.shortOwnedCards.find((shortOwnedCards: ShortOwnedCardDTO) => shortOwnedCards.cardSetId === setId);
-  }
-
-  public update(setId: number, newQuantity: number): void {
-    if (this.findOwnedCardBySetId(setId)) {
-      this.shortOwnedCards = this.shortOwnedCards.map((shortOwnedCard: ShortOwnedCardDTO) =>
-        shortOwnedCard.cardSetId === setId ? { ...shortOwnedCard, number: newQuantity || 0 } : shortOwnedCard
-      );
-    } else {
-      this.shortOwnedCards = [...this.shortOwnedCards, new ShortOwnedCardDTO(setId, newQuantity)];
-    }
-
-    this.httpClient
-      .put<Array<ShortOwnedCardDTO>>(`/api/possessed`, { cards: this.shortOwnedCards })
+  loadAll(): void {
+    this.httpClient.get<Record<string, number>>('/api/cards/possessed')
       .pipe(take(1))
-      .subscribe((shortOwnedCards: Array<ShortOwnedCardDTO>) => {});
+      .subscribe(res => {
+        this._ownedMap.set(new Map(Object.entries(res).map(([k, v]) => [+k, v])));
+      });
+  }
+
+  resetMap(): void {
+    this._ownedMap.set(new Map());
+  }
+
+  updateOwned(cardId: number, newCount: number): void {
+    const current = new Map(this._ownedMap());
+    if (newCount === 0) {
+      current.delete(cardId);
+    } else {
+      current.set(cardId, newCount);
+    }
+    this._ownedMap.set(current); // optimistic update
+    this.httpClient.put(`/api/cards/possessed/${cardId}`, null, { params: { number: newCount } })
+      .pipe(take(1))
+      .subscribe();
   }
 }

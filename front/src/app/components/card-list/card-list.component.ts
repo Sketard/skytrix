@@ -9,7 +9,6 @@ import { CardDetail } from '../../core/model/card-detail';
 import { toSharedCardData } from '../../core/model/shared-card-data';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
 import { OwnedCardService } from '../../services/owned-card.service';
-import { FindGroupedOwnedCardPipe } from '../../core/pipes/find-grouped-owned-card';
 import { AsyncPipe, NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
@@ -24,7 +23,6 @@ import { LongPressDragDirective } from '../../core/directives/long-press-drag.di
     CdkDrag,
     AsyncPipe,
     NgClass,
-    FindGroupedOwnedCardPipe,
     MatIconModule,
     MatProgressSpinner,
     EmptyStateComponent,

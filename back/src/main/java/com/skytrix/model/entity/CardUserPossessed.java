@@ -1,27 +1,35 @@
 package com.skytrix.model.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "card_user_possessed")
 @NoArgsConstructor
-@AllArgsConstructor
 @Getter
 @Setter
-public class CardPossessed {
+public class CardUserPossessed {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @ManyToOne
-    private CardSet cardSet;
+    @JoinColumn(name = "card_id", nullable = false)
+    private Card card;
+
     @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    private Integer number;
+
+    @Column(name = "possessed_number", nullable = false)
+    private int possessedNumber;
 }
