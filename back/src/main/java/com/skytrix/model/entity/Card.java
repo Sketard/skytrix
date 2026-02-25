@@ -56,7 +56,6 @@ public class Card {
     private List<String> linkmarkers;
     private Short banInfo;
     private Integer genesysPoint;
-    private Integer possessedNumber;
 
     @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<CardSet> sets = new ArrayList<>();

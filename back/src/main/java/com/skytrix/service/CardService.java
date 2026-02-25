@@ -6,15 +6,21 @@ import jakarta.transaction.Transactional;
 import static com.skytrix.utils.CoreUtils.mapToList;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.skytrix.mapper.CardMapper;
 import com.skytrix.model.dto.card.CardDetailedDTO;
 import com.skytrix.model.dto.card.CardFilterDTO;
+import com.skytrix.model.entity.CardUserPossessed;
 import com.skytrix.repository.CardRepository;
+import com.skytrix.repository.CardUserPossessedRepository;
 import com.skytrix.repository.UserRepository;
 import com.skytrix.security.AuthService;
 import com.skytrix.utils.CustomPageable;
@@ -23,6 +29,9 @@ import com.skytrix.utils.CustomPageable;
 public class CardService {
     @Inject
     private CardRepository cardRepository;
+
+    @Inject
+    private CardUserPossessedRepository cardUserPossessedRepository;
 
     @Inject
     private UserRepository userRepository;
@@ -61,8 +70,30 @@ public class CardService {
     }
 
     @Transactional
-    public void updatePossessedNumber(Long cardId, Integer number) {
-        var card = cardRepository.findById(cardId).orElseThrow();
-        card.setPossessedNumber(number);
+    public void updatePossessedNumber(Long cardId, Long userId, Integer number) {
+        var card = cardRepository.findById(cardId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        var existing = cardUserPossessedRepository.findByCardIdAndUserId(cardId, userId);
+        if (existing.isPresent()) {
+            if (number > 0) {
+                existing.get().setPossessedNumber(number);
+                cardUserPossessedRepository.save(existing.get());
+            } else {
+                cardUserPossessedRepository.delete(existing.get());
+            }
+        } else if (number > 0) {
+            var user = authService.getConnectedUser();
+            var entry = new CardUserPossessed();
+            entry.setCard(card);
+            entry.setUser(user);
+            entry.setPossessedNumber(number);
+            cardUserPossessedRepository.save(entry);
+        }
+    }
+
+    public Map<Long, Integer> getPossessedMap(Long userId) {
+        return cardUserPossessedRepository.findAllByUserId(userId)
+            .stream()
+            .collect(Collectors.toMap(e -> e.getCard().getId(), CardUserPossessed::getPossessedNumber));
     }
 }

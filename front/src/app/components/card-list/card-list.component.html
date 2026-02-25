@@ -25,7 +25,7 @@
           </div>
         }
         @if (deckBuildMode()) {
-          @if (ownedCardService.shortOwnedCards$ | async | findGroupedOwnedCard: cd; as count) {
+          @if (ownedCardService.ownedMap().get(cd.card.id!); as count) {
             @if (count > 0) {
               <div class="owned-count">{{ count }}</div>
             }

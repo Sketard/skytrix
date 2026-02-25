@@ -29,7 +29,6 @@ import { CardInspectorComponent } from '../../../../components/card-inspector/ca
 import { BottomSheetComponent } from '../../../../components/bottom-sheet/bottom-sheet.component';
 import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
 import { OwnedCardService } from '../../../../services/owned-card.service';
-import { ShortOwnedCardDTO } from '../../../../core/model/dto/short-owned-card-dto';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
@@ -110,15 +109,11 @@ export class DeckBuilderComponent implements OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly ownedCardService = inject(OwnedCardService);
   private readonly httpClient = inject(HttpClient);
-  private readonly shortOwnedCards = toSignal(this.ownedCardService.shortOwnedCards$, { initialValue: [] as ShortOwnedCardDTO[] });
 
   readonly selectedCardOwnedCount = computed(() => {
     const cd = this.selectedCardDetail();
-    if (!cd || cd.sets.length === 0) return undefined;
-    const setIds = cd.sets.map(s => s.id);
-    return this.shortOwnedCards()
-      .filter(o => setIds.includes(o.cardSetId))
-      .reduce((sum, o) => sum + o.number, 0);
+    if (!cd || cd.card.id == null) return undefined;
+    return this.ownedCardService.ownedMap().get(cd.card.id) ?? 0;
   });
 
   constructor(
@@ -179,8 +174,8 @@ export class DeckBuilderComponent implements OnDestroy {
   onOwnedCountChange(newCount: number | undefined): void {
     if (newCount == null) return;
     const cd = this.selectedCardDetail();
-    if (!cd || cd.sets.length === 0) return;
-    this.ownedCardService.update(cd.sets[0].id, newCount);
+    if (!cd || cd.card.id == null) return;
+    this.ownedCardService.updateOwned(cd.card.id!, newCount);
   }
 
   async onFavoriteChange(): Promise<void> {
