@@ -3,10 +3,12 @@ stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-03-success', 'step-0
 status: complete
 inputDocuments: ['project-context.md']
 workflowType: 'prd'
-lastEdited: '2026-02-12'
+lastEdited: '2026-02-24'
 editHistory:
   - date: '2026-02-12'
     changes: 'Applied sprint change proposal: responsive multi-device support (Technical Context, NFR9, NFR11, NFR12)'
+  - date: '2026-02-24'
+    changes: 'Extracted all PvP content into dedicated prd-pvp.md. This PRD now covers solo simulator only. Removed FR35-FR58, NFR13-NFR20, Journeys 4-5, Phase 2 (PvP), PvP sections from Executive Summary, Success Criteria, Technical Context, and Risk Mitigation.'
 documentCounts:
   briefs: 0
   research: 0
@@ -15,30 +17,31 @@ documentCounts:
 classification:
   projectType: web_app
   domain: general
-  complexity: low-medium
+  complexity: medium
   projectContext: brownfield
 ---
 
-# Product Requirements Document - skytrix Simulator
+# Product Requirements Document - skytrix Solo Simulator
 
 **Author:** Axel
 **Date:** 2026-02-07
+**Related:** [prd-pvp.md](prd-pvp.md) (PvP Online Duels PRD)
 
 *Convention: User Journeys are written in French (author's working language). All other sections are in English.*
 
 ## Executive Summary
 
-**Product:** Solo card game simulator for Yu-Gi-Oh! combo testing, integrated into the existing skytrix deck management application.
+**Product:** Yu-Gi-Oh! deck management application with integrated solo combo testing simulator, built on the existing skytrix platform.
 
-**Problem:** No tool exists to test deck combos from a decklist without entering a live duel. Players must rely on real games to validate turn 1 sequences, making deck optimization slow and unreliable.
+**Problem:** No tool exists to test deck combos from a decklist without entering a live duel — players rely on real games to validate turn 1 sequences, making deck optimization slow.
 
-**Solution:** A frontend-only simulator accessible from any decklist in skytrix. The player loads a deck, draws a hand, and manually executes card actions (draw, summon, activate, mill, search) via drag & drop across all 18 Yu-Gi-Oh! game zones. No rules engine — full manual control for maximum flexibility.
+**Solution:** A manual free-form simulator accessible from any decklist in skytrix. The player draws, summons, activates, mills, searches via drag & drop across all 18 game zones. No rules engine, full manual control, undo/redo. Ideal for rapid combo testing.
 
-**Differentiator:** Integrated into an existing deck management workflow (build deck → test combos → iterate). Visual polish inspired by Yu-Gi-Oh! Master Duel. Undo/redo for iterative combo exploration without full resets.
+**Differentiator:** Single integrated workflow: build deck > test combos. No context switching between applications. Visual polish inspired by Yu-Gi-Oh! Master Duel.
 
 **Target User:** Axel (solo developer, personal use) — competitive Yu-Gi-Oh! player who builds and optimizes decks in skytrix.
 
-**Technical Context:** Brownfield project. Angular 19 SPA, Angular CDK DragDrop already installed. Frontend-only — no backend changes required.
+**Technical Context:** Brownfield project. Angular 19 SPA with Java/Spring Boot backend. Solo mode is frontend-only — no backend changes required.
 
 ## Success Criteria
 
@@ -61,7 +64,7 @@ classification:
 
 ### Technical Success
 
-- Frontend-only: no backend changes required
+- Frontend-only for solo mode: no backend changes required
 - No lag when moving cards between zones, even with full board states
 - Reuses existing card data model and images
 - Client-side randomization for representative test hands
@@ -113,18 +116,15 @@ Comfort layer for iterative combo exploration.
 
 18. Undo/redo actions (Command pattern — delta-based commands with CompositeCommand for batch operations)
 
-### Phase 2: Growth
+### Phase 2: Growth & Polish
+
+Solo enhancements for a more complete experience.
 
 - Token creation on the field
 - Life point counter
 - Phase tracking (Draw, Standby, Main 1, Battle, Main 2, End)
-
-### Phase 3: Vision
-
 - Save/load board states mid-combo
-- Record and replay combo sequences
-- Share combos with other users
-- Opponent-side simulation (two-player board)
+- Record and share combo sequences
 
 ### Risk Mitigation Strategy
 
@@ -136,39 +136,39 @@ Comfort layer for iterative combo exploration.
 
 **Market Risks:** None — personal project for personal use.
 
-**Resource Risks:** The 3 internal MVP milestones (A/B/C) provide natural stopping points — each sub-phase delivers a usable product, reducing the risk of an incomplete feature tunnel.
+**Resource Risks:** The 3 internal MVP milestones (A/B/C) provide natural stopping points — each sub-phase delivers a usable product.
 
 ## User Journeys
 
 ### Journey 1: The Combo Builder — Happy Path
 
-Axel vient de finir la construction d'un nouveau deck Tearlaments dans skytrix. Il a ajouté les dernières cartes, peaufiné le ratio. Maintenant, la question qui le travaille : "est-ce que mon combo turn 1 passe ?"
+Axel vient de finir la construction d'un nouveau deck Tearlaments dans skytrix. Il a ajoute les dernieres cartes, peaufine le ratio. Maintenant, la question qui le travaille : "est-ce que mon combo turn 1 passe ?"
 
-Actuellement, il n'a aucun moyen de le savoir sans aller en duel réel. Il doit espérer tomber sur la bonne main.
+Actuellement, il n'a aucun moyen de le savoir sans aller en duel reel. Il doit esperer tomber sur la bonne main.
 
-Avec le simulateur : depuis la page de son deck, il clique **"Tester"**. Le simulateur charge son deck, shuffle, et lui distribue 5 cartes. Il regarde sa main — parfait, il a ses starters. Il commence à dérouler : normal summon, effet, mill 3 depuis le deck, une Tearlaments tombe au cimetière, il l'active depuis le GY, fusion... En 8 actions fluides via drag & drop, son board final est posé. Son combo passe. Il clique **Reset**, reteste 4-5 mains différentes, identifie que 3 fois sur 5 il a une main jouable. Confiance acquise — il sait que son deck tient la route.
+Avec le simulateur : depuis la page de son deck, il clique **"Tester"**. Le simulateur charge son deck, shuffle, et lui distribue 5 cartes. Il regarde sa main — parfait, il a ses starters. Il commence a derouler : normal summon, effet, mill 3 depuis le deck, une Tearlaments tombe au cimetiere, il l'active depuis le GY, fusion... En 8 actions fluides via drag & drop, son board final est pose. Son combo passe. Il clique **Reset**, reteste 4-5 mains differentes, identifie que 3 fois sur 5 il a une main jouable. Confiance acquise — il sait que son deck tient la route.
 
 **Capabilities revealed:** deck loading, shuffle, draw, drag & drop, mill, graveyard interaction, pick from zone, reset, card tooltip for effect reference
 
 ### Journey 2: The Optimizer — Iteration & Edge Cases
 
-Axel teste son deck et tombe sur une main briquée — aucun starter, que des extenders. Il veut comprendre pourquoi. Il utilise **search deck** pour regarder les cartes restantes et réalise que ses 3 starters étaient en bas du deck. Il note qu'il devrait peut-être ajouter un 4ème starter.
+Axel teste son deck et tombe sur une main briquee — aucun starter, que des extenders. Il veut comprendre pourquoi. Il utilise **search deck** pour regarder les cartes restantes et realise que ses 3 starters etaient en bas du deck. Il note qu'il devrait peut-etre ajouter un 4eme starter.
 
-Il modifie son deck (retour à la page deck builder), revient au simulateur, reteste. Cette fois, il déroule un combo mais se trompe à l'étape 5 — il envoie la mauvaise carte au cimetière. Au lieu de tout recommencer, il fait **undo** deux fois, reprend au bon moment, et continue son combo.
+Il modifie son deck (retour a la page deck builder), revient au simulateur, reteste. Cette fois, il deroule un combo mais se trompe a l'etape 5 — il envoie la mauvaise carte au cimetiere. Au lieu de tout recommencer, il fait **undo** deux fois, reprend au bon moment, et continue son combo.
 
-Après 10 tests, il a une bonne vision des forces et faiblesses de son deck. Il identifie qu'un ratio est à ajuster.
+Apres 10 tests, il a une bonne vision des forces et faiblesses de son deck. Il identifie qu'un ratio est a ajuster.
 
 **Capabilities revealed:** search deck, undo/redo, iterative deck editing + retesting workflow, view stacked zones
 
 ### Journey 3: The Explorer — Learning a New Archetype
 
-Axel découvre un nouvel archétype et veut comprendre comment les cartes interagissent. Il crée un deck basique, lance le simulateur, et utilise **card detail on hover** intensivement pour relire les effets pendant qu'il teste. Il pose une carte face cachée, simule un tour adverse imaginaire, puis flip sa carte pour activer son effet. Il explore les différentes lignes de jeu possibles, utilisant le reveal pour voir ce qu'il aurait pioché, testant différentes séquences d'activation.
+Axel decouvre un nouvel archetype et veut comprendre comment les cartes interagissent. Il cree un deck basique, lance le simulateur, et utilise **card detail on hover** intensivement pour relire les effets pendant qu'il teste. Il pose une carte face cachee, simule un tour adverse imaginaire, puis flip sa carte pour activer son effet. Il explore les differentes lignes de jeu possibles, utilisant le reveal pour voir ce qu'il aurait pioche, testant differentes sequences d'activation.
 
 **Capabilities revealed:** card detail on hover, face-down/flip, reveal/excavate, exploratory play without constraints
 
 ### Journey Requirements Summary
 
-| Capability | Journey 1 | Journey 2 | Journey 3 |
+| Capability | J1 | J2 | J3 |
 |---|---|---|---|
 | Deck loading from decklist | x | x | x |
 | Shuffle & draw | x | x | x |
@@ -183,20 +183,19 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 | Reveal/excavate | | | x |
 | ATK/DEF toggle | x | x | x |
 
-*FR10 (drop zone highlighting), FR21 (empty deck prevention), FR24 (card count on stacked zones), and FR32 (keyboard shortcuts) are cross-cutting system capabilities that enhance all journeys.*
+*FR10 (drop zone highlighting), FR21 (empty deck prevention), FR24 (card count on stacked zones), and FR32 (keyboard shortcuts) are cross-cutting capabilities.*
 
 ## Web App Technical Context
 
-- **Architecture:** New page within existing Angular 19 SPA, added to `app.routes.ts`
-- **Route:** `/decks/:id/simulator` accessible from deck detail page
+- **Architecture:** Angular 19 SPA (frontend) + Spring Boot API (backend, existing). Solo mode is 100% frontend — no backend changes required.
+- **Routes:** `/decks/:id/simulator` (solo mode, existing)
 - **Browser Support:** Modern browsers — desktop (Chrome, Firefox, Edge, Safari latest two versions) and mobile (Chrome Android, Safari iOS latest two versions)
-- **SEO:** Not applicable — authenticated feature
+- **SEO:** Not applicable — authenticated features
 - **Real-time:** Not needed — all state local to browser session
-- **Responsive Design:** Responsive multi-device — deck management pages use fluid layouts with breakpoints (mobile-first CSS). The simulator board uses a fixed aspect ratio (1060×772) with proportional scaling on all devices; mobile adds a tap-to-place interaction mode and landscape-locked display.
-- **Performance Targets:** Drag & drop within 16ms frame budget. OnPush + signals to avoid unnecessary re-renders
+- **Responsive Design:** Responsive multi-device — deck management pages use fluid layouts with breakpoints (mobile-first CSS). The simulator board uses a fixed aspect ratio (1060x772) with proportional scaling on all devices; mobile adds a tap-to-place interaction mode and landscape-locked display.
+- **Performance Targets:** Drag & drop within 16ms frame budget
 - **Reuses:** Existing services (card data, deck data, card images), existing card-tooltip component
-- **Dependencies:** No new dependencies — Angular CDK DragDrop already installed
-- **Visual Reference:** Yu-Gi-Oh! Master Duel board layout and aesthetics
+- **Dependencies:** Angular CDK DragDrop (already installed)
 
 ## Functional Requirements
 
@@ -268,15 +267,16 @@ Axel découvre un nouvel archétype et veut comprendre comment les cartes intera
 
 ### Security
 
-- NFR7: The simulator route is protected by existing authentication — unauthenticated users cannot access it
-- NFR8: No card data or simulation state is transmitted to the backend — all processing remains client-side
+- NFR7: The simulator route is protected by existing authentication — unauthenticated users cannot access it. Verified by: unauthenticated access attempt returns 401/redirect to login
+- NFR8: No card data or solo simulation state is transmitted to the backend — all solo processing remains client-side. Verified by: network inspector shows zero API calls during solo simulation session
 
 ### Compatibility
 
 - NFR9: The application functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions) and modern mobile browsers (Chrome Android, Safari iOS — latest two versions). The simulator locks to landscape orientation on mobile devices.
-- NFR10: The simulator integrates with the existing skytrix build and deployment pipeline without additional configuration
+- NFR10: The simulator integrates with the existing skytrix build and deployment pipeline without additional configuration. Verified by: `ng build` succeeds with zero additional flags or environment variables
 
 ### Responsiveness
 
 - NFR11: Deck management pages (deck list, deck detail, deck builder) are usable on viewports from 375px width (mobile portrait) to 2560px+ (ultrawide desktop) without horizontal scrolling
-- NFR12: All interactive elements meet minimum touch target size of 44×44px on mobile viewports
+- NFR12: All interactive elements meet minimum touch target size of 44x44px on mobile viewports
+- NFR12b: Deck management pages target WCAG 2.1 AA compliance (color contrast, keyboard navigation, screen reader labels). The simulator board is exempt due to its specialized visual interaction model
