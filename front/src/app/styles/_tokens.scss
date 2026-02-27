@@ -69,4 +69,93 @@
 
   // Material component overrides
   --mat-dialog-container-color: var(--surface-card);
+
+  // =========================================================================
+  // === PvP Tokens ===
+  // =========================================================================
+
+  // --- Perspective ---
+  --pvp-perspective-depth: 800px;
+  --pvp-rotate-x-angle: 15deg;
+  --pvp-perspective-enabled: 1;
+  --pvp-field-gap: 0.25rem;
+
+  // --- Layout ---
+  --pvp-hand-card-height: clamp(48px, 12dvh, 72px);
+  --pvp-hand-overlap: -16px;
+  --pvp-card-min-tap-target: 44px;
+  --pvp-min-touch-target-primary: 48px;
+
+  // --- Colors ---
+  --pvp-accent: #C9A84C;
+  --pvp-highlight-selectable: rgba(0, 200, 255, 0.4);
+  --pvp-highlight-selected: rgba(255, 215, 0, 0.6);
+  --pvp-lp-own: #4CAF50;
+  --pvp-lp-opponent: #F44336;
+  --pvp-disabled-opacity: 0.4;
+
+  // --- Timer colors ---
+  --pvp-timer-green: #4CAF50;
+  --pvp-timer-yellow: #FFC107;
+  --pvp-timer-red: #F44336;
+
+  // --- Typography ---
+  --pvp-lp-font-size: clamp(1rem, 4dvh, 1.5rem);
+  --pvp-timer-font-size: clamp(0.875rem, 3dvh, 1.125rem);
+  --pvp-phase-badge-font-size: clamp(0.75rem, 2.5dvh, 1rem);
+
+  // --- Animation ---
+  --pvp-transition-highlight-flash: 200ms ease-in-out;
+  --pvp-transition-card-move: 300ms ease-out;
+  --pvp-transition-lp-counter: 500ms ease-out;
+  --pvp-animation-duration: 300ms;
+
+  // --- Prompt Sheet ---
+  --pvp-prompt-sheet-compact: clamp(60px, 20dvh, 100px);
+  --pvp-prompt-sheet-max-height: 55dvh;
+  --pvp-prompt-sheet-radius: 1rem 1rem 0 0;
+  --pvp-prompt-sheet-bg: rgba(20, 20, 40, 0.95);
+
+  // --- Prompt Interaction ---
+  --pvp-selection-glow: 0 0 8px 2px rgba(201, 168, 76, 0.6);
+  --pvp-card-grid-row-threshold: 12;
+  --pvp-prompt-transition-speed: 300ms;
+
+  // --- Actionable Glow ---
+  --pvp-actionable-glow: 0 0 6px 2px var(--pvp-accent);
+
+  // --- Action Menu ---
+  --pvp-action-menu-bg: rgba(20, 20, 40, 0.95);
+  --pvp-action-menu-radius: 8px;
+
+  // --- Zone Browser ---
+  --pvp-zone-browser-bg: rgba(20, 20, 40, 0.95);
+}
+
+@keyframes pvp-actionable-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+// === PvP: Reduced Motion ===
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --pvp-transition-highlight-flash: 0ms;
+    --pvp-transition-card-move: 0ms;
+    --pvp-transition-lp-counter: 0ms;
+    --pvp-animation-duration: 0ms;
+    --pvp-prompt-transition-speed: 0ms;
+    --pvp-actionable-pulse-animation: none;
+  }
+}
+
+// === PvP: Forced Colors (High Contrast) ===
+@media (forced-colors: active) {
+  :root {
+    --pvp-accent: Highlight;
+    --pvp-highlight-selectable: Highlight;
+    --pvp-highlight-selected: Highlight;
+    --pvp-lp-own: ButtonText;
+    --pvp-lp-opponent: ButtonText;
+  }
 }

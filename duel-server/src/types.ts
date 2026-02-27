@@ -1,0 +1,97 @@
+import type { ServerMessage, PlayerResponseMsg, SelectPromptType } from './ws-protocol.js';
+import type Database from 'better-sqlite3';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+export const MAX_PAYLOAD_SIZE = 4096;
+export const RECONNECT_GRACE_MS = 60_000;
+export const WATCHDOG_TIMEOUT_MS = 30_000;
+export const RPS_TIMEOUT_MS = 30_000;
+export const INACTIVITY_TIMEOUT_MS = 100_000;
+
+// =============================================================================
+// Data Layer Types
+// =============================================================================
+
+export interface CardDB {
+  db: Database.Database;
+  stmt: Database.Statement;
+}
+
+export interface ScriptDB {
+  startupScripts: Map<string, string>;
+  basePath: string;
+}
+
+// =============================================================================
+// Main -> Worker Thread Messages
+// =============================================================================
+
+export interface Deck {
+  main: number[];
+  extra: number[];
+}
+
+export interface InitDuelMessage {
+  type: 'INIT_DUEL';
+  duelId: string;
+  decks: [Deck, Deck];
+}
+
+export interface PlayerResponseMessage {
+  type: 'PLAYER_RESPONSE';
+  playerIndex: 0 | 1;
+  promptType: SelectPromptType;
+  data: PlayerResponseMsg['data'];
+}
+
+export type MainToWorkerMessage = InitDuelMessage | PlayerResponseMessage;
+
+// =============================================================================
+// Worker -> Main Thread Messages
+// =============================================================================
+
+export interface WorkerDuelCreated {
+  type: 'WORKER_DUEL_CREATED';
+  duelId: string;
+}
+
+export interface WorkerMessage {
+  type: 'WORKER_MESSAGE';
+  duelId: string;
+  message: ServerMessage;
+}
+
+export interface WorkerError {
+  type: 'WORKER_ERROR';
+  duelId: string;
+  error: string;
+}
+
+export type WorkerToMainMessage =
+  | WorkerDuelCreated
+  | WorkerMessage
+  | WorkerError;
+
+// =============================================================================
+// Session State
+// =============================================================================
+
+export interface PlayerSession {
+  playerId: string;
+  playerIndex: 0 | 1;
+  ws: import('ws').WebSocket | null;
+  connected: boolean;
+  disconnectedAt: number | null;
+  reconnectToken: string | null;
+}
+
+export interface DuelSession {
+  duelId: string;
+  players: [PlayerSession, PlayerSession];
+  createdAt: number;
+  startedAt: number | null;
+  endedAt: number | null;
+}

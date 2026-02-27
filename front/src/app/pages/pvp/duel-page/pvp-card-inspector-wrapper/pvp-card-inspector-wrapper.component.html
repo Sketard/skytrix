@@ -1,0 +1,22 @@
+@if (card(); as cardData) {
+  @if (shouldShowCompact()) {
+    <div class="inspector-compact"
+         [class.inspector-compact--above-prompt]="promptActive()"
+         (click)="onCompactTap()">
+      <img [src]="cardData.imageUrl"
+           [alt]="cardData.name"
+           class="inspector-compact__art"
+           (error)="$any($event.target).src='assets/images/card_back.jpg'">
+      <div class="inspector-compact__info">
+        <span class="inspector-compact__name">{{ cardData.name }}</span>
+        @if (cardData.isMonster) {
+          <span class="inspector-compact__stats">{{ cardData.displayAtk }} / {{ cardData.displayDef }}</span>
+        }
+      </div>
+    </div>
+  } @else {
+    <app-card-inspector [card]="cardData"
+                        mode="dismissable"
+                        (dismissed)="onDismissed()" />
+  }
+}

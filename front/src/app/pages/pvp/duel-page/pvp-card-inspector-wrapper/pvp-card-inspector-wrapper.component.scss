@@ -1,0 +1,54 @@
+:host {
+  display: block;
+  position: absolute;
+  z-index: 2;
+}
+
+.inspector-compact {
+  position: absolute;
+  bottom: calc(var(--pvp-hand-card-height) + 8px);
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(20, 20, 40, 0.9);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  max-width: 220px;
+  transition: bottom var(--pvp-animation-duration);
+
+  &--above-prompt {
+    bottom: calc(var(--pvp-prompt-sheet-max-height) + 8px);
+  }
+
+  &__art {
+    width: 60px;
+    height: 87px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #eee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__stats {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+}

@@ -1,0 +1,21 @@
+<div class="phase-badge-container" role="toolbar" aria-label="Phase actions">
+  <div class="phase-badge"
+       [class.phase-badge--own-turn]="isOwnTurn()"
+       [class.phase-badge--opp-turn]="!isOwnTurn()"
+       [class.phase-badge--has-actions]="availableTransitions().length > 0"
+       (click)="toggleMenu()">
+    {{ abbreviation() }}
+  </div>
+
+  @if (menuExpanded() && actionablePrompt() && availableTransitions().length > 0) {
+    <div class="phase-menu" (keydown)="onMenuKeydown($event)">
+      @for (transition of availableTransitions(); track transition.actionCode) {
+        <button class="phase-menu__item"
+                type="button"
+                (click)="selectTransition(transition)">
+          {{ transition.label }}
+        </button>
+      }
+    </div>
+  }
+</div>

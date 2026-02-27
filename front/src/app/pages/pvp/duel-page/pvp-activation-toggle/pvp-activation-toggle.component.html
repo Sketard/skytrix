@@ -1,0 +1,11 @@
+<button class="activation-toggle"
+        [class.activation-toggle--auto]="mode() === 'auto'"
+        [class.activation-toggle--on]="mode() === 'on'"
+        [class.activation-toggle--off]="mode() === 'off'"
+        type="button"
+        [attr.aria-label]="'Activation toggle: ' + label"
+        (click)="cycle()"
+        (keydown)="onKeydown($event)">
+  <span class="activation-toggle__icon">{{ icon }}</span>
+  <span class="activation-toggle__label">{{ label }}</span>
+</button>

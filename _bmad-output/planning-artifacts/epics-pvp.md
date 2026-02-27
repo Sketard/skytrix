@@ -1,6 +1,6 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
-inputDocuments: ['prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-pvp.md']
+inputDocuments: ['prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-pvp.md', 'ocgcore-technical-reference.md']
 ---
 
 # skytrix PvP - Epic Breakdown
@@ -209,7 +209,7 @@ So that server and client development can proceed in parallel against a frozen p
 **Given** the duel-server/ project does not exist
 **When** the scaffold is created
 **Then** `duel-server/` contains: `package.json` (dependencies: `@n1xx1/ocgcore-wasm`, `ws`, `better-sqlite3`, `patch-package`), `tsconfig.json` (strict, ESM, outDir: dist/), `patches/` directory with `@n1xx1+ocgcore-wasm` ESM fix
-**And** `src/ws-protocol.ts` defines all WebSocket DTO types as union discriminated types (`SCREAMING_SNAKE_CASE` message types, `camelCase` fields, explicit `null` for absent values, zero internal imports). Message categories: **Server→Client game**: `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SWAP`, `MSG_ATTACK`, `MSG_BATTLE`, `MSG_WIN`. **Server→Client prompts**: `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TP`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. **Server→Client system**: `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `REMATCH_CANCELLED`, `WORKER_ERROR`, `STATE_SYNC`. **Client→Server**: `PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`
+**And** `src/ws-protocol.ts` defines all WebSocket DTO types as union discriminated types (`SCREAMING_SNAKE_CASE` message types, `camelCase` fields, explicit `null` for absent values, zero internal imports). Message categories: **Server→Client game**: `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SWAP`, `MSG_ATTACK`, `MSG_BATTLE`, `MSG_WIN`. **Server→Client prompts**: `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_COUNTER`, `SORT_CARD`, `SORT_CHAIN`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. **Server→Client system**: `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `REMATCH_CANCELLED`, `WORKER_ERROR`, `STATE_SYNC`. **Client→Server**: `PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`
 **And** `src/types.ts` defines internal types (worker message types, session state interfaces, constants)
 **And** `src/server.ts` creates a `ws.WebSocketServer({ maxPayload: 4096 })` + `node:http` server responding to `GET /health` → 200 and `GET /status` → JSON
 **And** `duel-server/LICENSE` contains AGPL-3.0 text
@@ -376,7 +376,7 @@ So that I understand every decision the engine asks me to make and can respond q
 **And** CDK `FocusTrap` is active when sheet is `open`, disabled during `collapsed` state
 **And** keyboard shortcut `C` toggles collapse handle (collapse/expand)
 **And** keyboard shortcut `Space` confirms the active selection (equivalent to tapping confirm button)
-**And** prompt type → sub-component mapping: `SELECT_YESNO | SELECT_EFFECTYN → PromptYesNo`, `SELECT_CARD | SELECT_CHAIN | SELECT_TRIBUTE | SELECT_SUM | SELECT_UNSELECT_CARD → PromptCardGrid`, `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlight`, `SELECT_POSITION | SELECT_OPTION | SELECT_TP → PromptOptionList`, `SELECT_NUMBER | SELECT_COUNTER | ANNOUNCE_RACE | ANNOUNCE_ATTRIB | ANNOUNCE_CARD | ANNOUNCE_NUMBER → PromptNumericInput`, `RPS_CHOICE → PromptRps`
+**And** prompt type → sub-component mapping: `SELECT_YESNO | SELECT_EFFECTYN → PromptYesNo`, `SELECT_CARD | SELECT_CHAIN | SELECT_TRIBUTE | SELECT_SUM | SELECT_UNSELECT_CARD → PromptCardGrid`, `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlight`, `SELECT_POSITION | SELECT_OPTION → PromptOptionList`, `ANNOUNCE_NUMBER | SELECT_COUNTER | ANNOUNCE_RACE | ANNOUNCE_ATTRIB | ANNOUNCE_CARD → PromptNumericInput`, `RPS_CHOICE → PromptRps`
 
 **Given** the prompt sheet exists
 **When** `PromptYesNoComponent` (Pattern C — compact sheet) is implemented
@@ -406,13 +406,13 @@ So that I understand every decision the engine asks me to make and can respond q
 
 **Given** the prompt sheet exists
 **When** `PromptOptionListComponent` (Pattern B — variable height) is implemented
-**Then** it handles `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TP`
+**Then** it handles `SELECT_POSITION`, `SELECT_OPTION`
 **And** it displays a vertical list of `mat-button` options with optional icons
 **And** `preferredHeight` is `N × 48px` (falls back to `full` if N > 5)
 
 **Given** the prompt sheet exists
 **When** `PromptNumericInputComponent` (Pattern B — compact) is implemented
-**Then** it handles `SELECT_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`
+**Then** it handles `ANNOUNCE_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`
 **And** mode `declare`: free input with validation; mode `counter`: stepper (−/+)
 **And** min/max constraints from server message are enforced
 
@@ -559,7 +559,7 @@ So that we can fairly determine who plays first.
 **Given** both RPS selections are received
 **When** `server.ts` resolves RPS
 **Then** server sends `RPS_RESULT` to both clients (both choices + winner ID) for simultaneous reveal animation
-**And** the winner receives a `SELECT_TP` prompt: "Go First" / "Go Second" (`PromptOptionListComponent`)
+**And** the winner receives a turn order prompt via `HAND_RES`: "Go First" / "Go Second" (`PromptOptionListComponent`)
 **And** if draw: RPS repeats (new `RPS_CHOICE` sent)
 
 **Given** turn order is decided

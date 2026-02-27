@@ -1,0 +1,29 @@
+import { Type } from '@angular/core';
+import { PROMPT_COMPONENT_MAP, PromptSubComponent } from './prompt.types';
+import { PromptYesNoComponent } from './prompt-yes-no/prompt-yes-no.component';
+import { PromptCardGridComponent } from './prompt-card-grid/prompt-card-grid.component';
+import { PromptOptionListComponent } from './prompt-option-list/prompt-option-list.component';
+import { PromptNumericInputComponent } from './prompt-numeric-input/prompt-numeric-input.component';
+import { PromptRpsComponent } from './prompt-rps/prompt-rps.component';
+// PromptZoneHighlightComponent uses Pattern A (no sheet) — not registered in map
+
+const REGISTRY: [string, Type<PromptSubComponent>][] = [
+  ['SELECT_YESNO', PromptYesNoComponent],
+  ['SELECT_EFFECTYN', PromptYesNoComponent],
+  ['SELECT_CARD', PromptCardGridComponent],
+  ['SELECT_CHAIN', PromptCardGridComponent],
+  ['SELECT_TRIBUTE', PromptCardGridComponent],
+  ['SELECT_SUM', PromptCardGridComponent],
+  ['SELECT_UNSELECT_CARD', PromptCardGridComponent],
+  ['SELECT_POSITION', PromptOptionListComponent],
+  ['SELECT_OPTION', PromptOptionListComponent],
+  ['ANNOUNCE_RACE', PromptOptionListComponent],
+  ['ANNOUNCE_ATTRIB', PromptOptionListComponent],
+  ['ANNOUNCE_NUMBER', PromptNumericInputComponent],
+  ['SELECT_COUNTER', PromptNumericInputComponent],
+  ['RPS_CHOICE', PromptRpsComponent],
+];
+
+for (const [type, component] of REGISTRY) {
+  PROMPT_COMPONENT_MAP[type] = component;
+}

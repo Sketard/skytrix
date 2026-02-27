@@ -1,0 +1,35 @@
+<div class="numeric-container">
+  <label class="label" id="numeric-label">{{ label }}</label>
+
+  <div class="input-group">
+    @if (isCounterMode) {
+      <button class="stepper-btn"
+              (click)="decrement()"
+              [disabled]="value() <= min || answered"
+              aria-label="Decrease"
+              type="button">&#x2212;</button>
+      <span class="stepper-value" aria-live="polite" aria-labelledby="numeric-label">{{ value() }}</span>
+      <button class="stepper-btn"
+              (click)="increment()"
+              [disabled]="value() >= max || answered"
+              aria-label="Increase"
+              type="button">+</button>
+    } @else {
+      <input class="number-input"
+             type="number"
+             [min]="min"
+             [max]="max"
+             [value]="value()"
+             (input)="onInputChange($any($event.target).value)"
+             [disabled]="answered"
+             aria-labelledby="numeric-label" />
+    }
+  </div>
+
+  <button class="btn btn--primary prompt-confirm-btn"
+          (click)="confirm()"
+          [disabled]="!isValid || answered"
+          type="button">
+    Confirm
+  </button>
+</div>

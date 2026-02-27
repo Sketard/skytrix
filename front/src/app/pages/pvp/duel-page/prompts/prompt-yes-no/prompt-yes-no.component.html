@@ -1,0 +1,20 @@
+<div class="yes-no-container">
+  @if (cardImageUrl) {
+    <img class="card-thumbnail" [src]="cardImageUrl" alt="Card art" />
+  }
+
+  <div class="buttons">
+    <button class="btn btn--secondary"
+            (click)="selectSecondary()"
+            [disabled]="answered"
+            type="button">
+      {{ secondaryLabel }}
+    </button>
+    <button class="btn btn--primary prompt-confirm-btn"
+            (click)="selectPrimary()"
+            [disabled]="answered"
+            type="button">
+      {{ primaryLabel }}
+    </button>
+  </div>
+</div>

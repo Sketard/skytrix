@@ -21,5 +21,17 @@ $z-drawer-backdrop: 1050;
 $z-inspector-click: 1050;
 $z-drawer: 1100;
 $z-pile-drag: 1100;
+$z-overlay: 2000;
 $z-flight: 10000;
+
+// PvP Board Layers
+$z-pvp-board: 1;
+$z-pvp-hand: 50;
+$z-pvp-mini-toolbar: 55;
+$z-pvp-floating-instruction: 60;
+$z-pvp-zone-browser: 65;
+$z-pvp-card-action-menu: 70;
+$z-pvp-prompt-sheet: 80;
+$z-pvp-orientation-lock: 9000;
+
 $z-loader: 100000000;

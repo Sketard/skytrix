@@ -1,0 +1,6 @@
+<div [class]="'timer-badge ' + colorClass()"
+     [class.timer--active]="isActive()"
+     [class.timer--inactive]="!isActive()"
+     aria-live="polite">
+  {{ display() }}
+</div>

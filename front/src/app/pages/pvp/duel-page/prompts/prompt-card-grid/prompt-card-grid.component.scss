@@ -1,0 +1,148 @@
+@use '../prompt-btn' as btn;
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  color: var(--text-secondary, #9e9e9e);
+  font-size: 0.875rem;
+}
+
+.card-grid {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+// <= 4 cards: large centered
+.layout-large {
+  justify-content: center;
+
+  .card-slot {
+    width: calc(25% - 8px);
+    max-width: 96px;
+  }
+}
+
+// 5-9 cards: standard side-by-side
+.layout-standard {
+  flex-wrap: wrap;
+  justify-content: center;
+
+  .card-slot {
+    width: calc(20% - 8px);
+    max-width: 72px;
+  }
+}
+
+// 10-12 cards: horizontal scroll
+.layout-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+
+  .card-slot {
+    flex-shrink: 0;
+    width: 64px;
+  }
+}
+
+// >12 cards: 2-row layout
+.layout-two-row {
+  flex-wrap: wrap;
+  overflow-y: auto;
+  max-height: 40dvh;
+
+  .card-slot {
+    width: calc(16.666% - 8px);
+    max-width: 56px;
+  }
+}
+
+.card-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform var(--pvp-animation-duration) ease-out,
+    box-shadow var(--pvp-animation-duration) ease-out,
+    border-color var(--pvp-animation-duration) ease-out;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+  }
+
+  &--selected {
+    border-color: var(--pvp-accent, #c9a84c);
+    box-shadow: var(--pvp-selection-glow);
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    opacity: var(--pvp-disabled-opacity, 0.4);
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--pvp-accent, #c9a84c);
+    outline-offset: 2px;
+  }
+}
+
+.card-img {
+  display: block;
+  width: 100%;
+  height: clamp(3rem, 12dvh, 5rem);
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.card-label {
+  display: block;
+  font-size: 0.625rem;
+  color: var(--text-secondary, #9e9e9e);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  padding-top: 2px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.selection-count {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #9e9e9e);
+}
+
+.btn {
+  &--primary {
+    @include btn.prompt-btn-primary;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-slot {
+    transition: none;
+
+    &:hover:not(:disabled),
+    &--selected {
+      transform: none;
+    }
+  }
+}

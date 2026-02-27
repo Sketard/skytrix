@@ -1,0 +1,291 @@
+@use 'z-layers' as z;
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.board-wrapper {
+  width: 100%;
+  max-width: 1280px;
+  max-height: 720px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  perspective: var(--pvp-perspective-depth);
+  -webkit-perspective: var(--pvp-perspective-depth);
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  z-index: z.$z-pvp-board;
+}
+
+// === Field Section (shared grid base) ===
+.field-section {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding: 2px;
+  flex: 1;
+  min-height: 0;
+}
+
+// Player field: MZ row top, ST row middle, ED/LP/Deck/Banish row bottom
+.player-field {
+  grid-template-areas:
+    'mz1   mz2   mz3   mz4   mz5   gy'
+    'st1   st2   st3   st4   st5   field'
+    'extra lp    .     .     deck  banished';
+  grid-template-rows: 2fr 2fr 1fr;
+}
+
+// Opponent field: reversed row order with rotateX
+.opponent-field {
+  grid-template-areas:
+    'extra lp    .     .     deck  banished'
+    'st1   st2   st3   st4   st5   field'
+    'mz1   mz2   mz3   mz4   mz5   gy';
+  grid-template-rows: 1fr 2fr 2fr;
+  transform: rotateX(var(--pvp-rotate-x-angle));
+  -webkit-transform: rotateX(var(--pvp-rotate-x-angle));
+  transform-origin: bottom center;
+}
+
+// === Central Strip ===
+.central-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pvp-field-gap);
+  padding: var(--pvp-field-gap) 4px;
+  min-height: 8dvh;
+  flex-shrink: 0;
+}
+
+.emz {
+  width: clamp(36px, 8dvw, 60px);
+  aspect-ratio: 59 / 86;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.central-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+// === Zone Cell ===
+.zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: visible;
+  min-width: 0;
+  min-height: 0;
+}
+
+// Grid area assignments
+.zone--mz1 { grid-area: mz1; }
+.zone--mz2 { grid-area: mz2; }
+.zone--mz3 { grid-area: mz3; }
+.zone--mz4 { grid-area: mz4; }
+.zone--mz5 { grid-area: mz5; }
+.zone--st1 { grid-area: st1; }
+.zone--st2 { grid-area: st2; }
+.zone--st3 { grid-area: st3; }
+.zone--st4 { grid-area: st4; }
+.zone--st5 { grid-area: st5; }
+.zone--field { grid-area: field; }
+.zone--gy { grid-area: gy; }
+.zone--banished { grid-area: banished; }
+.zone--extra { grid-area: extra; }
+.zone--deck { grid-area: deck; }
+
+// === Zone Card Rendering ===
+.zone-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  &.def-position {
+    // scale = 59/86 ≈ 0.686 — keeps rotated card within zone bounds (card aspect ratio inverse)
+    transform: rotate(90deg) scale(0.69);
+  }
+}
+
+.card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 2px;
+  aspect-ratio: 59 / 86;
+}
+
+// === Zone Empty State ===
+.zone-empty {
+  width: 100%;
+  height: 100%;
+}
+
+// === Zone Pill (GY, Banished, ED, Deck) ===
+.zone-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background var(--pvp-transition-highlight-flash);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &--deck {
+    cursor: default;
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+  }
+}
+
+.zone-label {
+  font-size: clamp(0.5rem, 1.5dvh, 0.75rem);
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.zone-count {
+  font-size: clamp(1rem, 3dvh, 1.25rem);
+  font-weight: 700;
+  color: #eee;
+  min-width: 16px;
+  text-align: center;
+}
+
+// === XYZ Overlay Indicator ===
+.xyz-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: clamp(14px, 2dvh, 20px);
+  height: clamp(14px, 2dvh, 20px);
+  border-radius: 50%;
+  background: rgba(0, 150, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.5rem, 1.2dvh, 0.7rem);
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
+}
+
+// === Actionable Glow (Story 1.7 — IDLECMD / BATTLECMD) ===
+.zone-card--actionable {
+  box-shadow: var(--pvp-actionable-glow);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.zone-pill--actionable {
+  box-shadow: var(--pvp-actionable-glow);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+}
+
+// === Zone Highlight (Story 1.6 — SELECT_PLACE / SELECT_DISFIELD) ===
+.zone--highlighted {
+  border-color: var(--pvp-accent, #c9a84c);
+  box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4);
+}
+
+.zone-highlight-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: clamp(24px, 4dvh, 36px);
+  height: clamp(24px, 4dvh, 36px);
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--pvp-accent, #c9a84c);
+  background: rgba(201, 168, 76, 0.85);
+  color: #121212;
+  font-size: clamp(0.75rem, 2dvh, 1rem);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 150ms ease-out;
+  animation: badge-pulse 1.5s ease-in-out infinite;
+
+  &:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+
+  // Brighter badge on opponent's field to compensate for perspective foreshortening
+  &--opponent {
+    border-width: 3px;
+    background: rgba(201, 168, 76, 0.95);
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.6);
+  }
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(201, 168, 76, 0.3); }
+  50% { box-shadow: 0 0 10px rgba(201, 168, 76, 0.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zone-highlight-badge,
+  .zone-card--actionable,
+  .zone-pill--actionable {
+    animation: none;
+  }
+}
+
+// === Forced Colors ===
+@media (forced-colors: active) {
+  .zone {
+    border: 2px solid ButtonText;
+  }
+
+  .zone-card {
+    border: 1px solid ButtonText;
+  }
+
+  .zone-empty {
+    border: 1px dashed ButtonText;
+  }
+
+  .card-art {
+    forced-color-adjust: none;
+  }
+
+  .zone-pill {
+    border: 1px solid ButtonText;
+  }
+}

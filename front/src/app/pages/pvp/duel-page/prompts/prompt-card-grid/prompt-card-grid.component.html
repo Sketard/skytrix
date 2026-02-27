@@ -1,0 +1,36 @@
+@if (cards.length === 0) {
+  <div class="empty-state">No valid targets</div>
+} @else {
+  <div class="card-grid" [class]="layoutClass">
+    @for (card of cards; track $index; let i = $index) {
+      <button class="card-slot"
+              [class.card-slot--selected]="isSelected(i)"
+              (click)="toggleCard(i)"
+              (touchstart)="onCardTouchStart(card.cardCode)"
+              (touchend)="onCardTouchEnd()"
+              (touchcancel)="onCardTouchEnd()"
+              [disabled]="answered"
+              type="button"
+              [attr.aria-label]="'Card ' + card.cardCode"
+              [attr.aria-pressed]="isSelected(i)">
+        <img class="card-img"
+             [src]="getCardImageUrl(card.cardCode)"
+             alt=""
+             loading="lazy" />
+        <span class="card-label">{{ card.cardCode }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="actions">
+    @if (isMultiSelect || isToggleMode) {
+      <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
+    }
+    <button class="btn btn--primary prompt-confirm-btn"
+            (click)="confirm()"
+            [disabled]="!isConfirmEnabled || answered"
+            type="button">
+      Confirm
+    </button>
+  </div>
+}

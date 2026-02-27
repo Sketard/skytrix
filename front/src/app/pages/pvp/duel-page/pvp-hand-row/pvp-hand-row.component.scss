@@ -1,0 +1,60 @@
+:host {
+  display: block;
+}
+
+.hand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--pvp-hand-card-height);
+
+  &--opponent {
+    pointer-events: none;
+  }
+}
+
+.hand-card {
+  height: var(--pvp-hand-card-height);
+  aspect-ratio: 59 / 86;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  transition: transform var(--pvp-transition-card-move);
+
+  .hand-row--player & {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-4px);
+    }
+  }
+}
+
+.hand-card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+// === Actionable Glow (Story 1.7) ===
+.hand-card--actionable {
+  box-shadow: var(--pvp-actionable-glow);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand-card--actionable {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .hand-card {
+    border: 1px solid ButtonText;
+  }
+
+  .hand-card-art {
+    forced-color-adjust: none;
+  }
+}

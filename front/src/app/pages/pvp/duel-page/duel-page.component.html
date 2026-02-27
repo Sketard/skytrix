@@ -1,0 +1,116 @@
+<div class="duel-container">
+  <!-- Orientation lock overlay (portrait blocking) -->
+  @if (isPortrait()) {
+    <div class="orientation-overlay" role="alertdialog" aria-modal="true" aria-label="Rotate your device to landscape">
+      <div class="orientation-content">
+        <svg class="rotate-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+          <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.38zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+        </svg>
+        <p>Rotate your device to landscape</p>
+      </div>
+    </div>
+  }
+
+  <!-- Opponent Hand (top, face-down, outside perspective) -->
+  <app-pvp-hand-row class="hand-opponent"
+                     side="opponent"
+                     [cards]="opponentHand()" />
+
+  <!-- Board with CSS 3D perspective -->
+  <app-pvp-board-container [duelState]="duelState()"
+                           [timerState]="timerState()"
+                           [highlightedZones]="highlightedZones()"
+                           [actionablePrompt]="actionablePrompt()"
+                           (zoneSelected)="onZoneSelected($event)"
+                           (actionResponse)="onBoardActionResponse($event)"
+                           (menuRequest)="onBoardMenuRequest($event)"
+                           (zonePillRequest)="onZonePillRequest($event)" />
+
+  <!-- Player Hand (bottom, face-up, outside perspective) -->
+  <app-pvp-hand-row class="hand-player"
+                     side="player"
+                     [cards]="playerHand()"
+                     [actionableCardIndices]="playerActionableHandIndices()"
+                     (handCardAction)="onPlayerHandAction($event)" />
+
+  <!-- Connection status overlays -->
+  @if (isReconnecting()) {
+    <div class="connection-overlay">
+      <div class="overlay-content">
+        <p>Reconnecting...</p>
+      </div>
+    </div>
+  }
+
+  @if (isLost()) {
+    <div class="connection-overlay">
+      <div class="overlay-content">
+        <p>Connection failed</p>
+        @if (canRetry()) {
+          <button class="retry-btn" (click)="retry()">Retry</button>
+        }
+        <button class="lobby-btn" (click)="backToLobby()">Back to lobby</button>
+      </div>
+    </div>
+  }
+
+  <!-- Card Action Menu (Story 1.7 — outside perspective container) -->
+  @if (actionablePrompt() && menuState(); as menu) {
+    <div class="card-action-menu"
+         role="menu"
+         aria-label="Card actions"
+         [style.top.px]="menu.top"
+         [style.left.px]="menu.left"
+         (keydown)="onMenuKeydown($event)">
+      @for (action of menu.actions; track $index) {
+        <button class="card-action-menu__item"
+                role="menuitem"
+                type="button"
+                (click)="onMenuAction(action)">
+          {{ action.label }}
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Zone Browser Overlay (Story 1.7) -->
+  @if (zoneBrowserState(); as zb) {
+    <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
+                                   [cards]="zb.cards"
+                                   [playerIndex]="zb.playerIndex"
+                                   [actionableCardCodes]="zoneBrowserActionableCodes()"
+                                   [mode]="zb.mode"
+                                   (inspectCard)="inspectCardByCode($event)"
+                                   (actionSelected)="onZoneBrowserAction($event)"
+                                   (closed)="closeZoneBrowser()" />
+  }
+
+  <!-- Card Inspector (Story 1.7) -->
+  @if (inspectedCard(); as card) {
+    <app-pvp-card-inspector-wrapper [card]="card"
+                                     [promptActive]="hasActivePrompt()"
+                                     (dismissed)="closeInspector()" />
+  }
+
+  <!-- Mini-Toolbar (Story 1.7 — bottom-right, thumb zone) -->
+  <div class="mini-toolbar"
+       [class.mini-toolbar--dimmed]="hasActivePrompt()">
+    <button mat-icon-button
+            disabled
+            aria-label="Surrender"
+            class="mini-toolbar__btn">
+      <mat-icon>flag</mat-icon>
+    </button>
+    @if (isOwnTurn()) {
+      <app-pvp-activation-toggle (modeChange)="onActivationModeChange($event)" />
+    }
+  </div>
+
+  <!-- Prompt sheet (Story 1.6) -->
+  <app-pvp-prompt-sheet />
+
+  <!-- Zone highlight floating instruction (Pattern A) -->
+  @if (isZoneHighlightActive()) {
+    <app-prompt-zone-highlight [instruction]="zoneInstruction()" />
+  }
+</div>

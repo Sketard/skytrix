@@ -1,0 +1,36 @@
+@if (visible()) {
+  <div class="zone-browser"
+       [class.zone-browser--closing]="isClosing()"
+       role="dialog"
+       [attr.aria-label]="zoneId() + ' browser'"
+       (keydown)="onKeydown($event)">
+    <div class="zone-browser__header">
+      <span class="zone-browser__title">{{ zoneId() }}</span>
+      <button class="zone-browser__close" type="button" (click)="close()" aria-label="Close">✕</button>
+    </div>
+
+    @if (isOpponentExtra()) {
+      <div class="zone-browser__facedown-count">
+        {{ cards().length }} cards
+      </div>
+    } @else {
+      <div class="zone-browser__list">
+        @for (card of cards(); track $index) {
+          <button class="zone-browser__card"
+                  [class.zone-browser__card--actionable]="isCardActionable(card)"
+                  type="button"
+                  (click)="onCardClick(card, $event)">
+            <img [src]="getCardImageUrlByCode(card.cardCode ?? 0)"
+                 alt=""
+                 class="zone-browser__card-art"
+                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
+            <span class="zone-browser__card-name">Card #{{ card.cardCode ?? '?' }}</span>
+          </button>
+        }
+        @if (cards().length === 0) {
+          <div class="zone-browser__empty">Empty</div>
+        }
+      </div>
+    }
+  </div>
+}

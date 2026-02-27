@@ -1,0 +1,149 @@
+<div class="board-wrapper">
+  <!-- Opponent Field (rotateX applied) -->
+  <section class="field-section opponent-field">
+    <app-pvp-lp-badge [lp]="opponentLp()" side="opponent" />
+
+    @for (zone of opponentZones(); track zone.zoneId) {
+      <div [class]="'zone zone--' + zone.gridArea"
+           [class.zone--highlighted]="isHighlighted(zone.zoneId)"
+           [style.grid-area]="zone.gridArea">
+        @if (zone.isDeck) {
+          <div class="zone-pill zone-pill--deck">
+            <span class="zone-count">{{ opponentDeckCount() }}</span>
+          </div>
+        } @else if (zone.isPill) {
+          <div class="zone-pill" (click)="onZonePillClick(zone.zoneId, 1)">
+            <span class="zone-label">{{ zone.zoneId }}</span>
+            <span class="zone-count">{{ zone.cardCount }}</span>
+          </div>
+        } @else if (zone.card) {
+          <div class="zone-card"
+               [class.def-position]="isDefense(zone.card.position)">
+            @if (isFaceUp(zone.card.position)) {
+              <img [src]="getCardImageUrl(zone.card)"
+                   [alt]="'Card ' + zone.card.cardCode"
+                   class="card-art"
+                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+            } @else {
+              <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+            }
+            @if (zone.card.overlayMaterials.length > 0) {
+              <div class="xyz-indicator">
+                <span>{{ zone.card.overlayMaterials.length }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="zone-empty"></div>
+        }
+        @if (isHighlighted(zone.zoneId)) {
+          <button class="zone-highlight-badge zone-highlight-badge--opponent"
+                  (click)="onHighlightedZoneClick(zone.zoneId)"
+                  [attr.aria-label]="'Zone ' + zone.zoneId"
+                  type="button">
+            {{ highlightBadgeNumber(zone.zoneId) }}
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Central Strip -->
+  <section class="central-strip">
+    <div class="emz emz--left">
+      @if (emzL(); as card) {
+        <div class="zone-card">
+          @if (isFaceUp(card.position)) {
+            <img [src]="getCardImageUrl(card)"
+                 [alt]="'EMZ-L Card'"
+                 class="card-art"
+                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
+          } @else {
+            <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+          }
+        </div>
+      } @else {
+        <div class="zone-empty"></div>
+      }
+    </div>
+
+    <div class="central-badges">
+      <app-pvp-timer-badge [timerState]="timerState()" [turnPlayer]="turnPlayer()" />
+      <app-pvp-phase-badge [phase]="phase()"
+                           [turnPlayer]="turnPlayer()"
+                           [isOwnTurn]="turnPlayer() === 0"
+                           [actionablePrompt]="actionablePrompt()"
+                           (phaseAction)="actionResponse.emit($event)" />
+    </div>
+
+    <div class="emz emz--right">
+      @if (emzR(); as card) {
+        <div class="zone-card">
+          @if (isFaceUp(card.position)) {
+            <img [src]="getCardImageUrl(card)"
+                 [alt]="'EMZ-R Card'"
+                 class="card-art"
+                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
+          } @else {
+            <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+          }
+        </div>
+      } @else {
+        <div class="zone-empty"></div>
+      }
+    </div>
+  </section>
+
+  <!-- Player Field (no rotation) -->
+  <section class="field-section player-field">
+    @for (zone of playerZones(); track zone.zoneId) {
+      <div [class]="'zone zone--' + zone.gridArea"
+           [class.zone--highlighted]="isHighlighted(zone.zoneId)"
+           [style.grid-area]="zone.gridArea">
+        @if (zone.isDeck) {
+          <div class="zone-pill zone-pill--deck">
+            <span class="zone-count">{{ playerDeckCount() }}</span>
+          </div>
+        } @else if (zone.isPill) {
+          <div class="zone-pill"
+               [class.zone-pill--actionable]="actionableZoneIds().has(zone.zoneId)"
+               (click)="onZonePillClick(zone.zoneId, 0)">
+            <span class="zone-label">{{ zone.zoneId }}</span>
+            <span class="zone-count">{{ zone.cardCount }}</span>
+          </div>
+        } @else if (zone.card) {
+          <div class="zone-card"
+               [class.def-position]="isDefense(zone.card.position)"
+               [class.zone-card--actionable]="actionableZoneIds().has(zone.zoneId)"
+               (click)="onZoneCardClick($event, zone)">
+            @if (isFaceUp(zone.card.position)) {
+              <img [src]="getCardImageUrl(zone.card)"
+                   [alt]="'Card ' + zone.card.cardCode"
+                   class="card-art"
+                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+            } @else {
+              <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+            }
+            @if (zone.card.overlayMaterials.length > 0) {
+              <div class="xyz-indicator">
+                <span>{{ zone.card.overlayMaterials.length }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="zone-empty"></div>
+        }
+        @if (isHighlighted(zone.zoneId)) {
+          <button class="zone-highlight-badge"
+                  (click)="onHighlightedZoneClick(zone.zoneId)"
+                  [attr.aria-label]="'Zone ' + zone.zoneId"
+                  type="button">
+            {{ highlightBadgeNumber(zone.zoneId) }}
+          </button>
+        }
+      </div>
+    }
+
+    <app-pvp-lp-badge [lp]="playerLp()" side="player" />
+  </section>
+</div>

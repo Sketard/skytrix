@@ -1,0 +1,33 @@
+@use '../prompt-btn' as btn;
+
+.yes-no-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-thumbnail {
+  width: 48px;
+  aspect-ratio: 59 / 86;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.buttons {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.btn {
+  flex: 1;
+
+  &--primary {
+    @include btn.prompt-btn-primary;
+  }
+
+  &--secondary {
+    @include btn.prompt-btn-secondary;
+  }
+}

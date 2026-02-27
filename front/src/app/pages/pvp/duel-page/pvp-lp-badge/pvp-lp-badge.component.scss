@@ -1,0 +1,41 @@
+:host {
+  display: block;
+  grid-area: lp;
+}
+
+.lp-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.lp-value {
+  font-size: var(--pvp-lp-font-size);
+  font-weight: 700;
+  color: #eee;
+  line-height: 1;
+}
+
+.lp-badge--player .lp-value {
+  color: var(--pvp-lp-own);
+}
+
+.lp-badge--opponent .lp-value {
+  color: var(--pvp-lp-opponent);
+}
+
+@media (forced-colors: active) {
+  .lp-badge {
+    border: 1px solid ButtonText;
+    background: Canvas;
+  }
+
+  .lp-value {
+    color: CanvasText;
+  }
+}

@@ -21,6 +21,7 @@
 #   - in-progress: Developer actively working on implementation
 #   - review: Ready for code review (via Dev's code-review workflow)
 #   - done: Story completed
+#   - skipped: Story removed during create-story analysis (architectural decision)
 #
 # Retrospective Status:
 #   - optional: Can be completed but not required
@@ -40,18 +41,18 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: backlog
-  1-1-player-field-component-extraction: backlog
-  1-2-duel-server-scaffold-protocol-definition: backlog
-  1-3-ocgcore-duel-engine-anti-cheat-filter: backlog
-  1-4-spring-boot-deck-relay-angular-websocket-connection: backlog
-  1-5-pvp-board-display-css-3d-perspective: backlog
-  1-6-prompt-system-bottom-sheet-6-sub-components: backlog
-  1-7-turn-actions-phase-controls-information-display: backlog
-  epic-1-retrospective: optional
+  epic-1: done
+  1-1-player-field-component-extraction: skipped # FMA revealed solo grid (7-col, EMZ in grid, drag-drop) incompatible with PvP grid (6-col, EMZ external, click-based). PlayerFieldComponent provides zero reuse value — PvP will build PvpBoardContainerComponent with own layout. Shared components (CardComponent, CardInspectorComponent) already in components/.
+  1-2-duel-server-scaffold-protocol-definition: done
+  1-3-ocgcore-duel-engine-anti-cheat-filter: done
+  1-4-spring-boot-deck-relay-angular-websocket-connection: done
+  1-5-pvp-board-display-css-3d-perspective: done
+  1-6-prompt-system-bottom-sheet-6-sub-components: done
+  1-7-turn-actions-phase-controls-information-display: done
+  epic-1-retrospective: done
 
-  epic-2: backlog
-  2-1-room-creation-from-decklist: backlog
+  epic-2: in-progress
+  2-1-room-creation-from-decklist: ready-for-dev
   2-2-room-browsing-joining: backlog
   2-3-waiting-room-duel-start-rps: backlog
   2-4-deep-links-sharing-duel-loading-screen: backlog

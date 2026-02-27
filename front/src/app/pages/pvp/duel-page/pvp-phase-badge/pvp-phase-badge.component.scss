@@ -1,0 +1,92 @@
+:host {
+  display: block;
+}
+
+.phase-badge-container {
+  position: relative;
+}
+
+.phase-badge {
+  width: clamp(28px, 5dvh, 40px);
+  height: clamp(28px, 5dvh, 40px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pvp-phase-badge-font-size);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #eee;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: border-color var(--pvp-transition-highlight-flash), opacity var(--pvp-transition-highlight-flash);
+
+  &--own-turn {
+    border-color: var(--pvp-accent);
+    opacity: 1;
+  }
+
+  &--opp-turn {
+    border-color: rgba(255, 255, 255, 0.3);
+    opacity: 0.6;
+  }
+
+  &--has-actions {
+    cursor: pointer;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+}
+
+.phase-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  background: var(--pvp-action-menu-bg);
+  border-radius: var(--pvp-action-menu-radius);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px 0;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+
+  &__item {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: #eee;
+    font-size: 0.8rem;
+    text-align: center;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover,
+    &:focus {
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--pvp-accent);
+      outline-offset: -2px;
+    }
+  }
+}
+
+@media (forced-colors: active) {
+  .phase-badge {
+    border: 2px solid ButtonText;
+
+    &--own-turn {
+      border-color: Highlight;
+    }
+  }
+}

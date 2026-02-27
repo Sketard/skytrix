@@ -1217,12 +1217,14 @@ Sheet in `compact` mode. MSG_HINT context + 2 buttons. Lightest sheet variant.
 | `SELECT_SUM` | PromptCardGridComponent | **B — Bottom Sheet** (`full`) | Level/rank sum selection |
 | `SELECT_POSITION` | PromptOptionListComponent | **B — Bottom Sheet** (`compact`) | ATK/DEF/Set options with icons |
 | `SELECT_OPTION` | PromptOptionListComponent | **B — Bottom Sheet** (variable) | Generic option selection |
-| `SELECT_TP` | PromptOptionListComponent | **B — Bottom Sheet** (`compact`) | "Go First" / "Go Second" after RPS |
-| `SELECT_NUMBER` / `SELECT_COUNTER` | PromptNumericInputComponent | **B — Bottom Sheet** (`compact`) | Number input with mode declare/counter |
+| `ANNOUNCE_NUMBER` / `SELECT_COUNTER` | PromptNumericInputComponent | **B — Bottom Sheet** (`compact`) | Number input with mode declare/counter |
 | `MSG_SELECT_YESNO` (RPS) | PromptRpsComponent | **B — Bottom Sheet** (`full`) | Rock/Paper/Scissors with reveal animation |
 | `SELECT_YESNO` | PromptYesNoComponent | **C — Yes/No** | Includes card art thumbnail in context area |
 | `SELECT_EFFECTYN` | PromptYesNoComponent | **C — Yes/No** | Optional trigger confirmation |
 | Rematch invitation | PromptYesNoComponent | **C — Yes/No** | "Opponent wants a rematch" |
+| `SORT_CARD` / `SORT_CHAIN` | **Auto-select fallback** | N/A | PvP-A0 scope: auto-respond with default order (`null`). Uncommon prompts (Sylvan excavation, simultaneous optional triggers). Full ordering UI deferred to post-MVP |
+| `ANNOUNCE_RACE` / `ANNOUNCE_ATTRIB` | PromptOptionListComponent | **B — Bottom Sheet** (`compact`) | PvP-A0 scope: present engine-provided options as a list. The engine constrains valid choices |
+| `ANNOUNCE_CARD` | **Auto-select fallback** | N/A | PvP-A0 scope: auto-select first valid option. Full card name search/autocomplete UI deferred to post-MVP. Extremely rare prompt (e.g., Prohibition, Psi-Blocker) |
 | `SELECT_BATTLECMD` / `SELECT_IDLECMD` | **Distributed UI** | N/A | Phase transitions → PvpPhaseBadgeComponent. Card actions → `--pvp-actionable-glow` on field/hand cards, PvpZoneBrowserOverlayComponent Action Mode (GY/Banished/ED). Tap card with 1 action → direct. Tap card with 2+ actions → Card Action Menu (absolute div). No sheet |
 
 #### 1. PromptYesNoComponent — preferredHeight: `compact`
@@ -1265,7 +1267,7 @@ Sheet in `compact` mode. MSG_HINT context + 2 buttons. Lightest sheet variant.
 
 #### 4. PromptOptionListComponent — preferredHeight: variable
 
-**Purpose:** Generic list of options. Handles position selection (ATK/DEF with icons), SELECT_TP (Go First/Second), SELECT_OPTION (generic), and any list-based prompt.
+**Purpose:** Generic list of options. Handles position selection (ATK/DEF with icons), SELECT_OPTION (generic), and any list-based prompt.
 **Content:** Vertical list of options, each as a `mat-button` with optional icon.
 **Height:** `N × 48px` where N = number of options. Falls back to `full` if N > 5 (scrollable).
 
@@ -1281,7 +1283,7 @@ Sheet in `compact` mode. MSG_HINT context + 2 buttons. Lightest sheet variant.
 #### 6. PromptRpsComponent — preferredHeight: `full`
 
 **Purpose:** Rock/Paper/Scissors selection with reveal animation.
-**Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to SELECT_TP.
+**Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to turn order selection (HAND_RES).
 **Accessibility:** Three buttons with `aria-label`. Keyboard: 1/2/3 shortcuts.
 **Timeout:** 30s. If no selection → random choice.
 
@@ -1586,7 +1588,7 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 
 **Duel Loading Screen:** Transition screen between RPS result and board display. Content: player names + LP (8000 vs 8000) + "Preparing duel..." + `mat-progress-spinner` (indeterminate, 64px). Displayed until the first board state arrives from the server AND a minimum set of card thumbnails are pre-cached. Not a skeleton — a dedicated transition screen.
 
-**Card Image Pre-Fetch:** During the loading screen, the server sends `MSG_DECK_LIST` (card IDs only — no names, no cheating risk) for the opponent's deck. The client pre-fetches thumbnails for all cards in both decks. The loading screen holds until the board state + critical thumbnails are ready. If a card image fails to load or arrives late during gameplay, the card back is used as a fallback placeholder.
+**Card Image Pre-Fetch:** During the loading screen, the client pre-fetches thumbnails for its **own deck only** (card IDs already known from the submitted decklist). Opponent card thumbnails are fetched **on-demand** as cards become visible (drawn, summoned, revealed by effects) — the client receives card codes in state update messages (`MSG_DRAW`, `MSG_MOVE`, `MSG_SUMMONING`, etc.) and fetches thumbnails lazily. This preserves NFR6 (no opponent decklist leakage). The loading screen holds until the first board state arrives from the server AND the player's own deck thumbnails are pre-cached. If a card image fails to load or arrives late during gameplay, the card back is used as a fallback placeholder.
 
 **Loading Convention:** Use `mat-progress-spinner` (indeterminate) for server-dependent waits. Never use determinate progress bars (server response time is unknown). Spinner size: 40px for inline, 64px for full-screen.
 
