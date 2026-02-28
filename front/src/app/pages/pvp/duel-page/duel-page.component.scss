@@ -18,6 +18,98 @@
   flex-direction: column;
 }
 
+// === Waiting Room (Story 2.1) ===
+.waiting-room {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+
+  &__title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin: 0;
+  }
+
+  &__deck-name {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+  }
+
+  &__code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    margin: 8px 0;
+    user-select: all;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  &__btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  &__status {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+  }
+
+  &__timer {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin: 0;
+
+    &--green {
+      color: #4caf50;
+    }
+
+    &--yellow {
+      color: #ffeb3b;
+    }
+
+    &--red {
+      color: #f44336;
+    }
+  }
+
+  &__leave {
+    min-height: 44px;
+    min-width: 44px;
+    margin-top: 8px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  &__error-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #f44336;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting-room ::ng-deep .mdc-circular-progress__indeterminate-container,
+  .waiting-room ::ng-deep .mdc-circular-progress__spinner-layer,
+  .duel-loading ::ng-deep .mdc-circular-progress__indeterminate-container,
+  .duel-loading ::ng-deep .mdc-circular-progress__spinner-layer {
+    animation: none !important;
+  }
+}
+
 // === Hand Rows (outside perspective) ===
 .hand-opponent {
   position: absolute;
@@ -42,6 +134,82 @@ app-pvp-board-container {
   flex: 1;
   min-height: 0;
   z-index: z.$z-pvp-board;
+}
+
+// === Connecting Fallback (Story 2.3) ===
+.connecting-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+
+  p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+  }
+}
+
+// === Duel Loading Screen (Story 2.4) ===
+.duel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 24px;
+  padding: 24px;
+  text-align: center;
+
+  &__title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin: 0;
+  }
+
+  &__players {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  &__player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__name {
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+
+  &__lp {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  &__vs {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &__timeout {
+    font-size: 1rem;
+    color: #ffeb3b;
+    margin: 0;
+  }
+
+  &__lobby-btn {
+    min-height: 44px;
+    min-width: 44px;
+    color: rgba(255, 255, 255, 0.8);
+  }
 }
 
 // === Connection Overlays ===
@@ -154,6 +322,233 @@ app-pvp-board-container {
     min-width: 44px;
     min-height: 44px;
     color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+// === RPS Result Overlay (Story 2.3) ===
+.rps-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: z.$z-pvp-rps-overlay;
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+  }
+
+  &__title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+  }
+
+  &__choices {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+
+  &__choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__emoji {
+    font-size: 4rem;
+    animation: rps-scale-in 200ms ease-out both;
+  }
+
+  &__label {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  &__vs {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  &__result {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+    animation: rps-fade-in 300ms ease-out 500ms both;
+
+    &--win {
+      color: #4caf50;
+    }
+
+    &--lose {
+      color: #f44336;
+    }
+
+    &--draw {
+      color: #ffeb3b;
+    }
+  }
+}
+
+@keyframes rps-scale-in {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes rps-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-toolbar {
+    transition: none;
+  }
+
+  .rps-overlay__emoji {
+    animation: none;
+  }
+
+  .rps-overlay__result {
+    animation: none;
+  }
+}
+
+// === Rematch Starting Overlay (Story 3.4) ===
+.rematch-starting-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: z.$z-pvp-result-overlay;
+
+  p {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+  }
+}
+
+// === Duel Result Overlay (Story 3.4) ===
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: z.$z-pvp-result-overlay;
+  animation: result-overlay-enter var(--pvp-animation-duration, 300ms) ease both;
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+
+  &__title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    margin: 0;
+
+    &--victory {
+      color: #4caf50;
+    }
+
+    &--defeat {
+      color: #f44336;
+    }
+
+    &--draw {
+      color: #ffeb3b;
+    }
+  }
+
+  &__reason {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  &__rematch {
+    background: var(--pvp-accent, #c9a84c);
+    color: #000;
+    min-height: 48px;
+    min-width: 180px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+
+    &--invited {
+      background: var(--pvp-accent, #c9a84c);
+      box-shadow: 0 0 8px var(--pvp-accent, #c9a84c);
+    }
+
+    &:disabled {
+      opacity: var(--pvp-disabled-opacity, 0.6);
+      pointer-events: none;
+    }
+  }
+
+  &__leave {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.8);
+    min-height: 44px;
+    min-width: 180px;
+  }
+
+  &__deck-link {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: underline;
+    font-size: 0.875rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    min-height: 44px;
+  }
+}
+
+@keyframes result-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-overlay {
+    animation: none;
+  }
+
+  .rematch-starting-overlay ::ng-deep .mdc-circular-progress__indeterminate-container,
+  .rematch-starting-overlay ::ng-deep .mdc-circular-progress__spinner-layer {
+    animation: none !important;
   }
 }
 

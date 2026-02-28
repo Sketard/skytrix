@@ -36,10 +36,10 @@ public class RoomController {
         return roomService.createRoom(dto);
     }
 
-    @PostMapping("/{id}/join")
+    @PostMapping("/{roomCode}/join")
     @ResponseStatus(code = HttpStatus.OK)
-    public RoomDTO joinRoom(@PathVariable("id") Long id, @RequestBody @Valid JoinRoomDTO dto) {
-        return roomService.joinRoom(id, dto);
+    public RoomDTO joinRoom(@PathVariable("roomCode") String roomCode, @RequestBody @Valid JoinRoomDTO dto) {
+        return roomService.joinRoom(roomCode, dto);
     }
 
     @GetMapping

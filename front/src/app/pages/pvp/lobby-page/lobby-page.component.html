@@ -1,4 +1,64 @@
 <div class="lobby-container">
-  <h1>PvP Lobby</h1>
-  <p>Coming Soon</p>
+  <div class="lobby-header">
+    <h1>PvP Lobby</h1>
+    <div class="lobby-actions">
+      <button mat-icon-button
+              aria-label="Refresh room list"
+              (click)="fetchRooms()"
+              [disabled]="loading()">
+        <mat-icon>refresh</mat-icon>
+      </button>
+      <button mat-raised-button
+              color="primary"
+              class="lobby-create-btn"
+              aria-label="Create a room by selecting a deck"
+              (click)="goToDecks()">
+        <mat-icon>add</mat-icon>
+        Create Room
+      </button>
+    </div>
+  </div>
+
+  @if (loading() && rooms().length === 0) {
+    <div class="lobby-loading">
+      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    </div>
+  } @else if (error()) {
+    <div class="lobby-empty">
+      <mat-icon class="lobby-empty-icon">error_outline</mat-icon>
+      <p>{{ error() }}</p>
+      <button mat-raised-button color="primary" (click)="fetchRooms()">Retry</button>
+    </div>
+  } @else if (rooms().length === 0) {
+    <div class="lobby-empty">
+      <mat-icon class="lobby-empty-icon">sports_kabaddi</mat-icon>
+      <p>No rooms available. Create one!</p>
+      <button mat-raised-button color="primary" (click)="goToDecks()">
+        <mat-icon>add</mat-icon>
+        Create Room
+      </button>
+    </div>
+  } @else {
+    <div class="room-list">
+      @for (room of rooms(); track room.roomCode) {
+        <div class="room-card">
+          <div class="room-info">
+            <span class="room-creator">{{ room.player1.username }}</span>
+            <span class="room-time">{{ getRelativeTime(room.createdAt) }}</span>
+          </div>
+          <button mat-raised-button
+                  color="accent"
+                  class="room-join-btn"
+                  [disabled]="joiningRoomCode() !== null"
+                  (click)="joinRoom(room)">
+            @if (joiningRoomCode() === room.roomCode) {
+              <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
+            } @else {
+              Join
+            }
+          </button>
+        </div>
+      }
+    </div>
+  }
 </div>

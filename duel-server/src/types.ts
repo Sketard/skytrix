@@ -1,4 +1,4 @@
-import type { ServerMessage, PlayerResponseMsg, SelectPromptType } from './ws-protocol.js';
+import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player } from './ws-protocol.js';
 import type Database from 'better-sqlite3';
 
 // =============================================================================
@@ -9,7 +9,10 @@ export const MAX_PAYLOAD_SIZE = 4096;
 export const RECONNECT_GRACE_MS = 60_000;
 export const WATCHDOG_TIMEOUT_MS = 30_000;
 export const RPS_TIMEOUT_MS = 30_000;
+export const TURN_TIME_POOL_MS = 300_000;
+export const TURN_TIME_INCREMENT_MS = 40_000;
 export const INACTIVITY_TIMEOUT_MS = 100_000;
+export const INACTIVITY_RACE_WINDOW_MS = 500;
 
 // =============================================================================
 // Data Layer Types
@@ -86,6 +89,15 @@ export interface PlayerSession {
   connected: boolean;
   disconnectedAt: number | null;
   reconnectToken: string | null;
+}
+
+export interface TimerContext {
+  pools: [number, number];
+  running: boolean;
+  activePlayer: Player;
+  intervalRef: ReturnType<typeof setInterval> | null;
+  lastTickMs: number;
+  turnCount: number;
 }
 
 export interface DuelSession {

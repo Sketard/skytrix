@@ -31,6 +31,8 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../
 import { OwnedCardService } from '../../../../services/owned-card.service';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { RoomApiService } from '../../../pvp/room-api.service';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-deck-builder',
@@ -50,6 +52,7 @@ import { firstValueFrom } from 'rxjs';
     HandTestComponent,
     CardInspectorComponent,
     BottomSheetComponent,
+    MatProgressSpinner,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',
@@ -108,6 +111,8 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly isDirty = this.deckBuildService.isDirty;
   private readonly snackBar = inject(MatSnackBar);
   private readonly ownedCardService = inject(OwnedCardService);
+  private readonly roomApiService = inject(RoomApiService);
+  readonly pvpLoading = signal(false);
   private readonly httpClient = inject(HttpClient);
 
   readonly selectedCardOwnedCount = computed(() => {
@@ -347,5 +352,39 @@ export class DeckBuilderComponent implements OnDestroy {
     const deckId = this.deckBuildService.deck().id;
     if (!deckId) return;
     this.router.navigate(['/decks', deckId, 'simulator']);
+  }
+
+  public navigateToPvp() {
+    const deck = this.deckBuildService.deck();
+    if (!deck.id) return;
+
+    const mainCount = deck.mainDeck.filter(s => s.index !== -1).length;
+    const extraCount = deck.extraDeck.filter(s => s.index !== -1).length;
+    const sideCount = deck.sideDeck.filter(s => s.index !== -1).length;
+
+    if (mainCount < 40 || mainCount > 60) {
+      displayError(this.snackBar, `Main Deck invalide : ${mainCount} cartes (40–60 requises)`);
+      return;
+    }
+    if (extraCount > 15) {
+      displayError(this.snackBar, `Extra Deck invalide : ${extraCount} cartes (0–15 max)`);
+      return;
+    }
+    if (sideCount > 15) {
+      displayError(this.snackBar, `Side Deck invalide : ${sideCount} cartes (0–15 max)`);
+      return;
+    }
+
+    this.pvpLoading.set(true);
+    this.roomApiService.createRoom(deck.id).subscribe({
+      next: room => {
+        this.pvpLoading.set(false);
+        this.router.navigate(['/pvp/duel', room.roomCode], { state: { deckName: deck.name } });
+      },
+      error: (err: HttpErrorResponse) => {
+        this.pvpLoading.set(false);
+        displayError(this.snackBar, err);
+      },
+    });
   }
 }

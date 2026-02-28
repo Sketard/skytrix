@@ -68,23 +68,44 @@ public class RoomService {
         return roomMapper.toRoomDTO(room, user.getId());
     }
 
+    // TODO [H3 review]: pessimistic lock held during duelServerClient.createDuel() external HTTP call.
+    // Post-MVP: split into claim (short tx) → external call → activate/rollback (short tx)
+    // to avoid holding DB connection/lock during external IO.
     @Transactional
-    public RoomDTO joinRoom(Long roomId, JoinRoomDTO dto) {
+    public RoomDTO joinRoom(String roomCode, JoinRoomDTO dto) {
         var user = authService.getConnectedUser();
-        var room = roomRepository.findByIdForUpdate(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+        var room = roomRepository.findByRoomCodeForUpdate(roomCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
 
         if (room.getStatus() != RoomStatus.WAITING) {
-            throw new IllegalStateException("Room is not in WAITING status");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Room is full");
         }
         if (room.getPlayer1().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("Cannot join your own room");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot join your own room");
         }
 
         var deck = deckRepository.findById(dto.getDecklistId())
-                .orElseThrow(() -> new IllegalArgumentException("Deck not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Deck not found"));
         if (!deck.getUser().getId().equals(user.getId())) {
-            throw new IllegalArgumentException("Deck does not belong to user");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Deck does not belong to user");
+        }
+
+        var deckCards = cardDeckIndexRepository.findByDeckId(dto.getDecklistId());
+        long mainCount = deckCards.stream().filter(c -> c.getType() == DeckKeyword.MAIN).count();
+        long extraCount = deckCards.stream().filter(c -> c.getType() == DeckKeyword.EXTRA).count();
+        long sideCount = deckCards.stream().filter(c -> c.getType() == DeckKeyword.SIDE).count();
+
+        if (mainCount < 40 || mainCount > 60) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Main Deck must have 40-60 cards (has " + mainCount + ")");
+        }
+        if (extraCount > 15) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Extra Deck must have 0-15 cards (has " + extraCount + ")");
+        }
+        if (sideCount > 15) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Side Deck must have 0-15 cards (has " + sideCount + ")");
         }
 
         room.setPlayer2(user);
@@ -130,7 +151,7 @@ public class RoomService {
 
     public List<RoomDTO> listOpenRooms() {
         var userId = authService.getConnectedUserId();
-        return roomRepository.findByStatusOrderByCreatedAtDesc(RoomStatus.WAITING).stream()
+        return roomRepository.findTop10ByStatusOrderByCreatedAtDesc(RoomStatus.WAITING).stream()
                 .map(room -> roomMapper.toRoomDTO(room, userId))
                 .toList();
     }

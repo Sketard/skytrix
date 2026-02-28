@@ -327,4 +327,23 @@
       --inspector-z-index: 1001;
     }
   }
+
+  // ─── PVP ROOM CREATION LOADING OVERLAY ───
+  &-pvpLoading {
+    position: fixed;
+    inset: 0;
+    z-index: z.$z-hand-backdrop;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: #eee;
+
+    p {
+      margin: 0;
+      font-size: 1rem;
+    }
+  }
 }

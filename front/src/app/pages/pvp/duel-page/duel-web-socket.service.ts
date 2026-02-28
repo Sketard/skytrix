@@ -2,7 +2,7 @@ import { inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus } from '../types';
-import { AnnounceCardMsg, DuelEndMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, DuelEndMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 
 export type ResponseData = Record<string, unknown>;
 
@@ -15,6 +15,7 @@ export class DuelWebSocketService implements OnDestroy {
   private _animationQueue = signal<GameEvent[]>([]);
   private _timerState = signal<TimerStateMsg | null>(null);
   private _connectionStatus = signal<ConnectionStatus>('connected');
+  private _opponentDisconnected = signal(false);
 
   readonly duelState = this._duelState.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
@@ -22,17 +23,26 @@ export class DuelWebSocketService implements OnDestroy {
   readonly animationQueue = this._animationQueue.asReadonly();
   readonly timerState = this._timerState.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
+  readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
 
   private ws: WebSocket | null = null;
   private retryCount = 0;
-  private readonly MAX_RETRIES = 3;
+  private readonly MAX_RETRIES = 6;
   private wsToken: string | null = null;
   private reconnectToken: string | null = null;
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   private _duelResult = signal<DuelEndMsg | null>(null);
+  private _rpsResult = signal<RpsResultMsg | null>(null);
+  private _rpsInProgress = signal(false);
+  private _rematchState = signal<'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired'>('idle');
+  private _rematchStarting = signal(false);
 
   readonly duelResult = this._duelResult.asReadonly();
+  readonly rpsResult = this._rpsResult.asReadonly();
+  readonly rpsInProgress = this._rpsInProgress.asReadonly();
+  readonly rematchState = this._rematchState.asReadonly();
+  readonly rematchStarting = this._rematchStarting.asReadonly();
 
   get canRetry(): boolean {
     return this.retryCount < this.MAX_RETRIES;
@@ -49,8 +59,17 @@ export class DuelWebSocketService implements OnDestroy {
     this._pendingPrompt.set(null);
   }
 
+  clearRpsResult(): void {
+    this._rpsResult.set(null);
+  }
+
   sendSurrender(): void {
     this.ws?.send(JSON.stringify({ type: 'SURRENDER' }));
+  }
+
+  sendRematchRequest(): void {
+    this.ws?.send(JSON.stringify({ type: 'REMATCH_REQUEST' }));
+    this._rematchState.set('requested');
   }
 
   ngOnDestroy(): void {
@@ -84,6 +103,13 @@ export class DuelWebSocketService implements OnDestroy {
       }
       this._connectionStatus.set('connected');
       this.retryCount = 0;
+      this._opponentDisconnected.set(false);
+      this._rematchStarting.set(false);
+      // Only reset rematchState on initial connection (not reconnection) to avoid
+      // desyncing with server-side rematchRequested state during rematch negotiation
+      if (!this.reconnectToken) {
+        this._rematchState.set('idle');
+      }
       // Clear initial token after first successful connection — reconnect token takes over
       this.wsToken = null;
     };
@@ -112,6 +138,7 @@ export class DuelWebSocketService implements OnDestroy {
     switch (message.type) {
       case 'BOARD_STATE':
       case 'STATE_SYNC':
+        this._rematchStarting.set(false);
         this._duelState.set(message.data);
         break;
 
@@ -146,7 +173,14 @@ export class DuelWebSocketService implements OnDestroy {
 
       // RPS (pre-duel Rock/Paper/Scissors)
       case 'RPS_CHOICE':
+        this._rpsResult.set(null);
+        this._rpsInProgress.set(true);
         this._pendingPrompt.set(message);
+        break;
+
+      case 'RPS_RESULT':
+        this._rpsInProgress.set(false);
+        this._rpsResult.set(message as RpsResultMsg);
         break;
 
       case 'MSG_HINT':
@@ -160,6 +194,32 @@ export class DuelWebSocketService implements OnDestroy {
       case 'DUEL_END':
         this._pendingPrompt.set(null);
         this._duelResult.set(message);
+        this._opponentDisconnected.set(false);
+        break;
+
+      case 'REMATCH_INVITATION':
+        this._rematchState.set('invited');
+        break;
+
+      case 'REMATCH_CANCELLED':
+        this._rematchState.set(message.reason === 'opponent_left' ? 'opponent-left' : 'expired');
+        break;
+
+      case 'REMATCH_STARTING':
+        this._rematchStarting.set(true);
+        this._duelResult.set(null);
+        this._duelState.set(EMPTY_DUEL_STATE);
+        this._pendingPrompt.set(null);
+        this._opponentDisconnected.set(false);
+        this._rematchState.set('idle');
+        break;
+
+      case 'OPPONENT_DISCONNECTED':
+        this._opponentDisconnected.set(true);
+        break;
+
+      case 'OPPONENT_RECONNECTED':
+        this._opponentDisconnected.set(false);
         break;
 
       case 'SESSION_TOKEN':
@@ -208,7 +268,7 @@ export class DuelWebSocketService implements OnDestroy {
     }
 
     this._connectionStatus.set('reconnecting');
-    const delay = Math.pow(2, this.retryCount + 1) * 1000; // 2s, 4s, 8s
+    const delay = Math.min(Math.pow(2, this.retryCount) * 1000, 30_000); // 1s, 2s, 4s, 8s, 16s, 30s cap
     this.retryCount++;
 
     this.retryTimeout = setTimeout(() => {

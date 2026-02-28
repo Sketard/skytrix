@@ -1,6 +1,16 @@
-<div [class]="'timer-badge ' + colorClass()"
+<div class="timer-badge"
+     [class.timer--green]="colorClass() === 'timer--green'"
+     [class.timer--yellow]="colorClass() === 'timer--yellow'"
+     [class.timer--red]="colorClass() === 'timer--red'"
      [class.timer--active]="isActive()"
      [class.timer--inactive]="!isActive()"
      aria-live="polite">
-  {{ display() }}
+  @if (disconnectDisplay(); as text) {
+    <span class="timer-disconnect">
+      <mat-progress-spinner mode="indeterminate" [diameter]="20"></mat-progress-spinner>
+      {{ text }}
+    </span>
+  } @else {
+    {{ display() }}
+  }
 </div>

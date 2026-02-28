@@ -4,7 +4,7 @@
     <app-pvp-lp-badge [lp]="opponentLp()" side="opponent" />
 
     @for (zone of opponentZones(); track zone.zoneId) {
-      <div [class]="'zone zone--' + zone.gridArea"
+      <div class="zone"
            [class.zone--highlighted]="isHighlighted(zone.zoneId)"
            [style.grid-area]="zone.gridArea">
         @if (zone.isDeck) {
@@ -68,7 +68,9 @@
     </div>
 
     <div class="central-badges">
-      <app-pvp-timer-badge [timerState]="timerState()" [turnPlayer]="turnPlayer()" />
+      <app-pvp-timer-badge [timerState]="timerState()"
+                           [turnPlayer]="absoluteTurnPlayer()"
+                           [opponentDisconnected]="opponentDisconnected()" />
       <app-pvp-phase-badge [phase]="phase()"
                            [turnPlayer]="turnPlayer()"
                            [isOwnTurn]="turnPlayer() === 0"
@@ -97,7 +99,7 @@
   <!-- Player Field (no rotation) -->
   <section class="field-section player-field">
     @for (zone of playerZones(); track zone.zoneId) {
-      <div [class]="'zone zone--' + zone.gridArea"
+      <div class="zone"
            [class.zone--highlighted]="isHighlighted(zone.zoneId)"
            [style.grid-area]="zone.gridArea">
         @if (zone.isDeck) {

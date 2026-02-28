@@ -7,6 +7,7 @@ import {
   HostListener,
   inject,
   OnDestroy,
+  output,
   signal,
   Type,
   untracked,
@@ -51,6 +52,9 @@ export class PvpPromptSheetComponent implements OnDestroy {
     return s === 'open' || s === 'opening' || s === 'transitioning';
   });
 
+  // [H1 fix] Expose sheet expanded state for parent (mini-toolbar interaction)
+  readonly sheetExpanded = output<boolean>();
+
   private beatTimeout: ReturnType<typeof setTimeout> | null = null;
   private closingTimeout: ReturnType<typeof setTimeout> | null = null;
   private responseSubscription: { unsubscribe(): void } | null = null;
@@ -59,6 +63,13 @@ export class PvpPromptSheetComponent implements OnDestroy {
     effect(() => {
       const prompt = this.wsService.pendingPrompt();
       untracked(() => this.onPromptChange(prompt));
+    });
+
+    // [H1 fix] Emit sheet expanded state for mini-toolbar interaction
+    effect(() => {
+      const s = this.sheetState();
+      const expanded = s === 'open' || s === 'opening' || s === 'transitioning';
+      untracked(() => this.sheetExpanded.emit(expanded));
     });
   }
 

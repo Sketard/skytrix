@@ -391,13 +391,15 @@ export interface AnnounceNumberMsg {
 }
 
 // =============================================================================
-// Server -> Client: System Messages (7)
+// Server -> Client: System Messages (10)
 // =============================================================================
+
+export type DuelEndReason = 'surrender' | 'disconnect' | 'timeout' | 'inactivity' | (string & {});
 
 export interface DuelEndMsg {
   type: 'DUEL_END';
   winner: Player | null;
-  reason: string;
+  reason: DuelEndReason;
 }
 
 export interface TimerStateMsg {
@@ -418,8 +420,17 @@ export interface RpsResultMsg {
   winner: Player | null;
 }
 
+export interface RematchInvitationMsg {
+  type: 'REMATCH_INVITATION';
+}
+
+export interface RematchStartingMsg {
+  type: 'REMATCH_STARTING';
+}
+
 export interface RematchCancelledMsg {
   type: 'REMATCH_CANCELLED';
+  reason: 'opponent_left' | 'timeout';
 }
 
 export interface WorkerErrorMsg {
@@ -435,6 +446,14 @@ export interface StateSyncMsg {
 export interface SessionTokenMsg {
   type: 'SESSION_TOKEN';
   token: string;
+}
+
+export interface OpponentDisconnectedMsg {
+  type: 'OPPONENT_DISCONNECTED';
+}
+
+export interface OpponentReconnectedMsg {
+  type: 'OPPONENT_RECONNECTED';
 }
 
 // =============================================================================
@@ -607,15 +626,19 @@ export type ServerMessage =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  // System messages (7)
+  // System messages (10)
   | DuelEndMsg
   | TimerStateMsg
   | RpsChoiceMsg
   | RpsResultMsg
+  | RematchInvitationMsg
+  | RematchStartingMsg
   | RematchCancelledMsg
   | WorkerErrorMsg
   | StateSyncMsg
-  | SessionTokenMsg;
+  | SessionTokenMsg
+  | OpponentDisconnectedMsg
+  | OpponentReconnectedMsg;
 
 export type ClientMessage =
   | PlayerResponseMsg

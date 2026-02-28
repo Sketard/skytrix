@@ -36,3 +36,12 @@
 .timer--inactive {
   opacity: 0.5;
 }
+
+.timer-disconnect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pvp-timer-yellow);
+  font-size: 0.75em;
+  white-space: nowrap;
+}

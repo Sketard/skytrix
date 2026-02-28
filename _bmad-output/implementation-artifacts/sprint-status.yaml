@@ -51,18 +51,18 @@ development_status:
   1-7-turn-actions-phase-controls-information-display: done
   epic-1-retrospective: done
 
-  epic-2: in-progress
-  2-1-room-creation-from-decklist: ready-for-dev
-  2-2-room-browsing-joining: backlog
-  2-3-waiting-room-duel-start-rps: backlog
-  2-4-deep-links-sharing-duel-loading-screen: backlog
-  epic-2-retrospective: optional
+  epic-2: done
+  2-1-room-creation-from-decklist: done
+  2-2-room-browsing-joining: done
+  2-3-waiting-room-duel-start-rps: done
+  2-4-deep-links-sharing-duel-loading-screen: done
+  epic-2-retrospective: done
 
-  epic-3: backlog
-  3-1-surrender: backlog
-  3-2-turn-timer-inactivity-timeout: backlog
-  3-3-disconnection-handling-reconnection: backlog
-  3-4-duel-result-screen-rematch: backlog
+  epic-3: in-progress
+  3-1-surrender: done
+  3-2-turn-timer-inactivity-timeout: done
+  3-3-disconnection-handling-reconnection: done
+  3-4-duel-result-screen-rematch: done
   epic-3-retrospective: optional
 
   epic-4: backlog

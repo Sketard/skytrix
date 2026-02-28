@@ -1,6 +1,6 @@
 # Story 2.1: Room Creation from Decklist
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -40,47 +40,47 @@ So that I can invite a friend to duel with my prepared deck.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Add "Duel PvP" entry in deck builder `mat-menu` (AC: #1-3)
-  - [ ] 1.1 In `DeckBuilderComponent` (`front/src/app/pages/deck-page/components/deck-builder/`): add a `mat-menu-item` "Duel PvP" right after the existing "Simulateur" entry (line 99-102 of `deck-builder.component.html`)
-  - [ ] 1.2 Use icon `swords` (or `sports_kabaddi`), same `[disabled]="!deckBuildService.deck().id"` guard as Simulateur
-  - [ ] 1.3 Wire click to `navigateToPvp()` method that runs validation + room creation
-- [ ] Task 2 — Create `RoomApiService` and `RoomDTO` type (AC: #1-5)
-  - [ ] 2.1 Create `front/src/app/pages/pvp/room.types.ts` — define `RoomDTO` interface matching backend shape (see Dev Notes)
-  - [ ] 2.2 Create `front/src/app/pages/pvp/room-api.service.ts` — `providedIn: 'root'` service
-  - [ ] 2.3 Implement `createRoom(decklistId: number): Observable<RoomDTO>` — POST /api/rooms
-  - [ ] 2.4 Implement `getRoom(roomCode: string): Observable<RoomDTO>` — GET /api/rooms/:roomCode (for polling)
-- [ ] Task 3 — Implement deck validation + room creation flow (AC: #1-3)
-  - [ ] 3.1 Client pre-check: validate deck size (40–60 main, 0–15 extra, 0–15 side) using `DeckBuildService.deck()` data (already loaded in deck builder)
-  - [ ] 3.2 On pre-check fail → `mat-snackbar` with size error (user is already in deckbuilder, no navigation needed)
-  - [ ] 3.3 On pre-check pass → show loading overlay/spinner, call `roomApiService.createRoom(decklistId)`
-  - [ ] 3.4 On server 4xx → dismiss loading, `mat-snackbar` with server error reason (user is already in deckbuilder)
-  - [ ] 3.5 On server 201 → `router.navigate(['/pvp/duel', response.roomCode])`
-- [ ] Task 4 — Implement waiting room state in `DuelPageComponent` (AC: #4-5)
-  - [ ] 4.1 Add `roomState` signal: `'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'active' | 'error'`
-  - [ ] 4.2 Split existing `fetchRoomAndConnect()` into `fetchRoom()` (GET room) + `connectWhenReady()` (WebSocket)
-  - [ ] 4.3 If room status is `WAITING` and current user is player1 → set `roomState('waiting')`, start polling
-  - [ ] 4.4 If room status is `CREATING_DUEL` → set `roomState('creating-duel')`, show "Preparing duel...", continue polling
-  - [ ] 4.5 If room status is `ACTIVE` → set `roomState('connecting')`, proceed to `connectWhenReady()` (existing WS flow)
-  - [ ] 4.6 If room not found (404) or `ENDED` → redirect to `/pvp` with snackbar "Room not found or already ended"
-- [ ] Task 5 — Implement waiting room UI (AC: #4-5)
-  - [ ] 5.1 Create waiting room template section in duel-page (conditionally shown via `@if (roomState() === 'waiting')`)
-  - [ ] 5.2 Display room code prominently (large monospace font, centered)
-  - [ ] 5.3 Display player's deck name (from room fetch response or route state)
-  - [ ] 5.4 Add "Copy Link" button using `Clipboard` from `@angular/cdk/clipboard` → `mat-snackbar` "Link copied!" (3s)
-  - [ ] 5.5 Add "Share" button (visible only when `navigator.share` available): share text = `SHARE_TEXT_TEMPLATE` constant with room URL interpolated
-  - [ ] 5.6 Add `mat-progress-spinner` (indeterminate) + "Waiting for opponent..." text
-  - [ ] 5.7 Add countdown timer: compute remaining time from `room.createdAt` + 30min; display mm:ss; color: green (>60s), yellow (≤60s), red (≤30s)
-  - [ ] 5.8 Add "Leave Room" button (secondary style) → `router.navigate(['/pvp'])` — no API call, orphaned room cleanup handles it
-  - [ ] 5.9 When `roomState() === 'creating-duel'` → replace spinner text with "Preparing duel..."
-- [ ] Task 6 — Implement opponent polling (AC: #5)
-  - [ ] 6.1 Start polling `roomApiService.getRoom(roomCode)` every 3s when `roomState()` is `'waiting'` or `'creating-duel'`
-  - [ ] 6.2 Use `interval(3000).pipe(switchMap(...), takeUntilDestroyed())` — cancel on destroy
-  - [ ] 6.3 On each poll response: update `roomState` based on `response.status` (WAITING → waiting, CREATING_DUEL → creating-duel, ACTIVE → connecting)
-  - [ ] 6.4 When `ACTIVE` detected → stop polling, call `connectWhenReady()` with wsToken from response
-  - [ ] 6.5 Handle polling errors: retry silently up to 3 consecutive failures, then show error state
-- [ ] Task 7 — Update lobby page with minimal navigation (AC: #1)
-  - [ ] 7.1 Replace stub "Coming Soon" with basic layout: title "PvP Lobby" + "Create Room" button → `router.navigate(['/decks'])` to select a deck
-  - [ ] 7.2 Ensure back navigation from duel page waiting room returns to `/pvp` lobby
+- [x] Task 1 — Add "Duel PvP" entry in deck builder `mat-menu` (AC: #1-3)
+  - [x] 1.1 In `DeckBuilderComponent` (`front/src/app/pages/deck-page/components/deck-builder/`): add a `mat-menu-item` "Duel PvP" right after the existing "Simulateur" entry (line 99-102 of `deck-builder.component.html`)
+  - [x] 1.2 Use icon `swords` (or `sports_kabaddi`), same `[disabled]="!deckBuildService.deck().id"` guard as Simulateur
+  - [x] 1.3 Wire click to `navigateToPvp()` method that runs validation + room creation
+- [x] Task 2 — Create `RoomApiService` and `RoomDTO` type (AC: #1-5)
+  - [x] 2.1 Create `front/src/app/pages/pvp/room.types.ts` — define `RoomDTO` interface matching backend shape (see Dev Notes)
+  - [x] 2.2 Create `front/src/app/pages/pvp/room-api.service.ts` — `providedIn: 'root'` service
+  - [x] 2.3 Implement `createRoom(decklistId: number): Observable<RoomDTO>` — POST /api/rooms
+  - [x] 2.4 Implement `getRoom(roomCode: string): Observable<RoomDTO>` — GET /api/rooms/:roomCode (for polling)
+- [x] Task 3 — Implement deck validation + room creation flow (AC: #1-3)
+  - [x] 3.1 Client pre-check: validate deck size (40–60 main, 0–15 extra, 0–15 side) using `DeckBuildService.deck()` data (already loaded in deck builder)
+  - [x] 3.2 On pre-check fail → `mat-snackbar` with size error (user is already in deckbuilder, no navigation needed)
+  - [x] 3.3 On pre-check pass → show loading overlay/spinner, call `roomApiService.createRoom(decklistId)`
+  - [x] 3.4 On server 4xx → dismiss loading, `mat-snackbar` with server error reason (user is already in deckbuilder)
+  - [x] 3.5 On server 201 → `router.navigate(['/pvp/duel', response.roomCode])`
+- [x] Task 4 — Implement waiting room state in `DuelPageComponent` (AC: #4-5)
+  - [x] 4.1 Add `roomState` signal: `'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'active' | 'error'`
+  - [x] 4.2 Split existing `fetchRoomAndConnect()` into `fetchRoom()` (GET room) + `connectWhenReady()` (WebSocket)
+  - [x] 4.3 If room status is `WAITING` and current user is player1 → set `roomState('waiting')`, start polling
+  - [x] 4.4 If room status is `CREATING_DUEL` → set `roomState('creating-duel')`, show "Preparing duel...", continue polling
+  - [x] 4.5 If room status is `ACTIVE` → set `roomState('connecting')`, proceed to `connectWhenReady()` (existing WS flow)
+  - [x] 4.6 If room not found (404) or `ENDED` → redirect to `/pvp` with snackbar "Room not found or already ended"
+- [x] Task 5 — Implement waiting room UI (AC: #4-5)
+  - [x] 5.1 Create waiting room template section in duel-page (conditionally shown via `@if (roomState() === 'waiting')`)
+  - [x] 5.2 Display room code prominently (large monospace font, centered)
+  - [x] 5.3 Display player's deck name (from room fetch response or route state)
+  - [x] 5.4 Add "Copy Link" button using `Clipboard` from `@angular/cdk/clipboard` → `mat-snackbar` "Link copied!" (3s)
+  - [x] 5.5 Add "Share" button (visible only when `navigator.share` available): share text = `SHARE_TEXT_TEMPLATE` constant with room URL interpolated
+  - [x] 5.6 Add `mat-progress-spinner` (indeterminate) + "Waiting for opponent..." text
+  - [x] 5.7 Add countdown timer: compute remaining time from `room.createdAt` + 30min; display mm:ss; color: green (>60s), yellow (≤60s), red (≤30s)
+  - [x] 5.8 Add "Leave Room" button (secondary style) → `router.navigate(['/pvp'])` — no API call, orphaned room cleanup handles it
+  - [x] 5.9 When `roomState() === 'creating-duel'` → replace spinner text with "Preparing duel..."
+- [x] Task 6 — Implement opponent polling (AC: #5)
+  - [x] 6.1 Start polling `roomApiService.getRoom(roomCode)` every 3s when `roomState()` is `'waiting'` or `'creating-duel'`
+  - [x] 6.2 Use `interval(3000).pipe(switchMap(...), takeUntilDestroyed())` — cancel on destroy
+  - [x] 6.3 On each poll response: update `roomState` based on `response.status` (WAITING → waiting, CREATING_DUEL → creating-duel, ACTIVE → connecting)
+  - [x] 6.4 When `ACTIVE` detected → stop polling, call `connectWhenReady()` with wsToken from response
+  - [x] 6.5 Handle polling errors: retry silently up to 3 consecutive failures, then show error state
+- [x] Task 7 — Update lobby page with minimal navigation (AC: #1)
+  - [x] 7.1 Replace stub "Coming Soon" with basic layout: title "PvP Lobby" + "Create Room" button → `router.navigate(['/decks'])` to select a deck
+  - [x] 7.2 Ensure back navigation from duel page waiting room returns to `/pvp` lobby
 
 ## Dev Notes
 
@@ -304,10 +304,59 @@ front/src/app/pages/pvp/duel-page/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- No blocking issues encountered. Build passed on first attempt after all tasks completed.
+
 ### Completion Notes List
 
+- **Task 1**: Added "Duel PvP" `mat-menu-item` with `sports_kabaddi` icon in deck builder, same disabled guard as Simulateur
+- **Task 2**: Created `RoomDTO` interface (mirrors Java DTO), `PlayerInfo` interface, `SHARE_TEXT_TEMPLATE` constant, and `RoomApiService` (providedIn root) with `createRoom()` and `getRoom()` methods
+- **Task 3**: Implemented `navigateToPvp()` in DeckBuilderComponent with client-side pre-check (40-60 main, 0-15 extra, 0-15 side), loading signal, server error handling via snackbar, and navigation to `/pvp/duel/:roomCode` on success
+- **Task 4**: Refactored DuelPageComponent — replaced `fetchRoomAndConnect()` with `fetchRoom()` + `handleRoomStatus()` + `connectWhenReady()`. Added `roomState` signal with 6 states. Room status WAITING/CREATING_DUEL starts polling, ACTIVE connects WS, ENDED/404 redirects with snackbar
+- **Task 5**: Waiting room UI with room code (large monospace), Copy Link (CDK Clipboard), Share (Web Share API with fallback), mat-progress-spinner, countdown timer (mm:ss with green/yellow/red color transitions), Leave Room button. Creating-duel transitional state shows "Preparing duel..." text. Loading and error states included. All duel UI gated behind `@if (roomState() === 'active' || roomState() === 'connecting')`
+- **Task 6**: Polling via `interval(3000).pipe(takeUntil(stopPolling$), takeUntilDestroyed(), switchMap(...))`. Updates roomState on each poll. Stops polling on ACTIVE (triggers WS connect) or ENDED. 3 consecutive errors trigger error state. Countdown effect auto-expires room after 30 minutes
+- **Task 7**: Replaced lobby stub with "Create Room" button navigating to `/decks`. Leave Room navigates back to `/pvp`
+
 ### File List
+
+**New files:**
+- `front/src/app/pages/pvp/room.types.ts`
+- `front/src/app/pages/pvp/room-api.service.ts`
+
+**Modified files:**
+- `front/src/app/pages/deck-page/components/deck-builder/deck-builder.component.html`
+- `front/src/app/pages/deck-page/components/deck-builder/deck-builder.component.ts`
+- `front/src/app/pages/deck-page/components/deck-builder/deck-builder.component.scss`
+- `front/src/app/pages/pvp/duel-page/duel-page.component.ts`
+- `front/src/app/pages/pvp/duel-page/duel-page.component.html`
+- `front/src/app/pages/pvp/duel-page/duel-page.component.scss`
+- `front/src/app/pages/pvp/lobby-page/lobby-page.component.ts`
+- `front/src/app/pages/pvp/lobby-page/lobby-page.component.html`
+- `front/src/app/pages/pvp/lobby-page/lobby-page.component.scss`
+- `front/src/app/core/utilities/functions.ts`
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.6 | **Date:** 2026-02-27 | **Outcome:** Approved (all issues fixed)
+
+**9 findings identified and fixed:**
+
+| # | Severity | Finding | Fix |
+|---|----------|---------|-----|
+| C1 | CRITICAL | Polling `switchMap` error kills interval subscription — first HTTP error permanently stops polling | Moved error handling inside `switchMap` with `catchError(() => EMPTY)` |
+| H1 | HIGH | `pvpLoading` signal exists but no loading overlay in deck builder template | Added `MatProgressSpinner` overlay in deck-builder template + SCSS |
+| H2 | HIGH | "Your Deck" displays `player1.username` instead of deck name | Pass `deckName` via route state from `navigateToPvp()`, display with fallback |
+| H3 | HIGH | `connectWhenReady()` silently redirects when `wsToken` is null | Added `displayError` snackbar before redirect |
+| M1 | MEDIUM | Fullscreen + landscape lock triggered during waiting room | Deferred `requestFullscreenAndLock()` to effect on `roomState === 'active'` |
+| M2 | MEDIUM | `prefers-reduced-motion` CSS rule doesn't reach spinner internals | Target `::ng-deep .mdc-circular-progress__*` classes |
+| L1 | LOW | `fetchRoom` catch-all shows "Room not found" for all HTTP errors | Distinguish 404 from other errors via `err.status` |
+| L2 | LOW | "Link copied!" snackbar duration 2000ms vs spec 3000ms | Added optional `duration` param to `displaySuccess`, pass 3000 |
+| L3 | LOW | No creator vs visitor role check in `handleRoomStatus` | Check `authService.user().id === room.player1.id` before showing waiting room |
+
+## Change Log
+
+- **2026-02-27**: Story 2.1 implementation — Room creation from decklist. Added PvP entry point in deck builder, room API service, deck validation, waiting room with polling/countdown/sharing, and lobby page update. All 7 tasks completed.
+- **2026-02-27**: Code review — 9 findings (1C, 3H, 2M, 3L) all fixed. Critical polling bug, missing loading overlay, deck name display, error messages, fullscreen timing, reduced-motion, role check.

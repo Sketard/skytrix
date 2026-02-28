@@ -10,7 +10,7 @@ import {
 } from '@angular/forms';
 import { UserDTO } from '../../core/model/account/user';
 import { Subject } from 'rxjs';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TypedForm } from '../../core/model/commons/typed-form';
@@ -65,19 +65,26 @@ export class LoginPageComponent implements OnInit, OnDestroy {
 
   private readonly unsubscribe$ = new Subject<void>();
 
+  private readonly returnUrl: string | null;
+
   constructor(
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
     public authService: AuthService,
     private readonly snackBar: MatSnackBar,
     private readonly ownedCardService: OwnedCardService
   ) {
+    const url = this.route.snapshot.queryParams['returnUrl'];
+    this.returnUrl = typeof url === 'string' && url.startsWith('/') ? url : null;
     this.loginForm = this.buildLoginForm();
     this.createAccountForm = this.buildCreateAccountForm();
   }
 
   ngOnInit(): void {
-    this.authService.resetLogin();
-    this.ownedCardService.resetMap();
+    if (!this.returnUrl) {
+      this.authService.resetLogin();
+      this.ownedCardService.resetMap();
+    }
   }
 
   ngOnDestroy(): void {
@@ -101,7 +108,6 @@ export class LoginPageComponent implements OnInit, OnDestroy {
         res.headers.keys();
         const accessToken = res.headers.get(AUTH_HEADER)?.replace(BEARER_PREFIX, '')!;
         this.authService.setUser(res.body!);
-        console.log(this.authService.user());
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(res.body));
         localStorage.setItem(ACCESS_TOKEN, accessToken);
         this.ownedCardService.loadAll();
@@ -116,7 +122,11 @@ export class LoginPageComponent implements OnInit, OnDestroy {
     const accessToken = res.headers.get(AUTH_HEADER)?.replace(BEARER_PREFIX, '');
     if (accessToken) {
       localStorage.setItem(ACCESS_TOKEN, accessToken);
-      this.router.navigate(['decks']);
+      if (this.returnUrl) {
+        this.router.navigateByUrl(this.returnUrl);
+      } else {
+        this.router.navigate(['decks']);
+      }
     }
   }
 

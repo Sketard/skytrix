@@ -1,116 +1,321 @@
 <div class="duel-container">
-  <!-- Orientation lock overlay (portrait blocking) -->
-  @if (isPortrait()) {
-    <div class="orientation-overlay" role="alertdialog" aria-modal="true" aria-label="Rotate your device to landscape">
-      <div class="orientation-content">
-        <svg class="rotate-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
-          <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.38zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
-        </svg>
-        <p>Rotate your device to landscape</p>
-      </div>
-    </div>
-  }
+  <!-- Story 2.1 — Waiting Room State -->
+  @if (roomState() === 'waiting') {
+    <div class="waiting-room" role="region" aria-label="Waiting for opponent">
+      <h1 class="waiting-room__title">WAITING FOR OPPONENT</h1>
 
-  <!-- Opponent Hand (top, face-down, outside perspective) -->
-  <app-pvp-hand-row class="hand-opponent"
-                     side="opponent"
-                     [cards]="opponentHand()" />
+      @if (room(); as r) {
+        <p class="waiting-room__deck-name">Your Deck: {{ deckName() || r.player1.username }}</p>
+        <p class="waiting-room__code" aria-label="Room code">{{ r.roomCode }}</p>
+      }
 
-  <!-- Board with CSS 3D perspective -->
-  <app-pvp-board-container [duelState]="duelState()"
-                           [timerState]="timerState()"
-                           [highlightedZones]="highlightedZones()"
-                           [actionablePrompt]="actionablePrompt()"
-                           (zoneSelected)="onZoneSelected($event)"
-                           (actionResponse)="onBoardActionResponse($event)"
-                           (menuRequest)="onBoardMenuRequest($event)"
-                           (zonePillRequest)="onZonePillRequest($event)" />
-
-  <!-- Player Hand (bottom, face-up, outside perspective) -->
-  <app-pvp-hand-row class="hand-player"
-                     side="player"
-                     [cards]="playerHand()"
-                     [actionableCardIndices]="playerActionableHandIndices()"
-                     (handCardAction)="onPlayerHandAction($event)" />
-
-  <!-- Connection status overlays -->
-  @if (isReconnecting()) {
-    <div class="connection-overlay">
-      <div class="overlay-content">
-        <p>Reconnecting...</p>
-      </div>
-    </div>
-  }
-
-  @if (isLost()) {
-    <div class="connection-overlay">
-      <div class="overlay-content">
-        <p>Connection failed</p>
-        @if (canRetry()) {
-          <button class="retry-btn" (click)="retry()">Retry</button>
+      <div class="waiting-room__actions">
+        @if (canShare) {
+          <button mat-button
+                  class="waiting-room__btn"
+                  aria-label="Share room code"
+                  (click)="shareRoom()">
+            <mat-icon>share</mat-icon>
+            Share
+          </button>
         }
-        <button class="lobby-btn" (click)="backToLobby()">Back to lobby</button>
+        <button mat-button
+                class="waiting-room__btn"
+                aria-label="Copy room link to clipboard"
+                (click)="copyRoomLink()">
+          <mat-icon>content_copy</mat-icon>
+          Copy Link
+        </button>
       </div>
+
+      <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Waiting for opponent"></mat-progress-spinner>
+      <p class="waiting-room__status">Waiting for opponent...</p>
+
+      @if (countdown(); as cd) {
+        <p class="waiting-room__timer"
+           [class.waiting-room__timer--green]="cd.color === 'green'"
+           [class.waiting-room__timer--yellow]="cd.color === 'yellow'"
+           [class.waiting-room__timer--red]="cd.color === 'red'"
+           aria-live="polite">
+          {{ cd.display }}
+        </p>
+      }
+
+      <button mat-button
+              class="waiting-room__leave"
+              aria-label="Leave room"
+              (click)="leaveRoom()">
+        Leave Room
+      </button>
     </div>
   }
 
-  <!-- Card Action Menu (Story 1.7 — outside perspective container) -->
-  @if (actionablePrompt() && menuState(); as menu) {
-    <div class="card-action-menu"
-         role="menu"
-         aria-label="Card actions"
-         [style.top.px]="menu.top"
-         [style.left.px]="menu.left"
-         (keydown)="onMenuKeydown($event)">
-      @for (action of menu.actions; track $index) {
-        <button class="card-action-menu__item"
-                role="menuitem"
-                type="button"
-                (click)="onMenuAction(action)">
-          {{ action.label }}
-        </button>
+  <!-- Story 2.1 — Creating Duel Transitional State -->
+  @if (roomState() === 'creating-duel') {
+    <div class="waiting-room" role="region" aria-label="Preparing duel">
+      <h1 class="waiting-room__title">PREPARING DUEL...</h1>
+      <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Preparing duel"></mat-progress-spinner>
+      <p class="waiting-room__status">Opponent joined! Setting up duel...</p>
+    </div>
+  }
+
+  <!-- Story 2.1 — Loading State -->
+  @if (roomState() === 'loading') {
+    <div class="waiting-room" role="region" aria-label="Loading room">
+      <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Loading"></mat-progress-spinner>
+      <p class="waiting-room__status">Loading room...</p>
+    </div>
+  }
+
+  <!-- Story 2.1 — Error State -->
+  @if (roomState() === 'error') {
+    <div class="waiting-room" role="region" aria-label="Connection error">
+      <mat-icon class="waiting-room__error-icon">error_outline</mat-icon>
+      <p class="waiting-room__status">Connection lost. Unable to reach server.</p>
+      <button mat-button
+              class="waiting-room__leave"
+              aria-label="Back to lobby"
+              (click)="leaveRoom()">
+        Back to Lobby
+      </button>
+    </div>
+  }
+
+  <!-- Story 2.4 — Duel Loading Screen -->
+  @if (roomState() === 'duel-loading') {
+    <div class="duel-loading" role="region" aria-label="Preparing duel">
+      <h1 class="duel-loading__title">PREPARING DUEL...</h1>
+      @if (room(); as r) {
+        <div class="duel-loading__players">
+          <div class="duel-loading__player">
+            <span class="duel-loading__name">{{ r.player1.username }}</span>
+            <span class="duel-loading__lp">8000 LP</span>
+          </div>
+          <span class="duel-loading__vs">VS</span>
+          <div class="duel-loading__player">
+            <span class="duel-loading__name">{{ r.player2?.username }}</span>
+            <span class="duel-loading__lp">8000 LP</span>
+          </div>
+        </div>
+      }
+      <mat-progress-spinner mode="indeterminate" [diameter]="64" aria-label="Loading duel"></mat-progress-spinner>
+      @if (loadingTimeout()) {
+        <p class="duel-loading__timeout">Taking longer than expected...</p>
+        <button mat-button class="duel-loading__lobby-btn" (click)="backToLobby()">Return to Lobby</button>
       }
     </div>
   }
 
-  <!-- Zone Browser Overlay (Story 1.7) -->
-  @if (zoneBrowserState(); as zb) {
-    <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
-                                   [cards]="zb.cards"
-                                   [playerIndex]="zb.playerIndex"
-                                   [actionableCardCodes]="zoneBrowserActionableCodes()"
-                                   [mode]="zb.mode"
-                                   (inspectCard)="inspectCardByCode($event)"
-                                   (actionSelected)="onZoneBrowserAction($event)"
-                                   (closed)="closeZoneBrowser()" />
-  }
-
-  <!-- Card Inspector (Story 1.7) -->
-  @if (inspectedCard(); as card) {
-    <app-pvp-card-inspector-wrapper [card]="card"
-                                     [promptActive]="hasActivePrompt()"
-                                     (dismissed)="closeInspector()" />
-  }
-
-  <!-- Mini-Toolbar (Story 1.7 — bottom-right, thumb zone) -->
-  <div class="mini-toolbar"
-       [class.mini-toolbar--dimmed]="hasActivePrompt()">
-    <button mat-icon-button
-            disabled
-            aria-label="Surrender"
-            class="mini-toolbar__btn">
-      <mat-icon>flag</mat-icon>
-    </button>
-    @if (isOwnTurn()) {
-      <app-pvp-activation-toggle (modeChange)="onActivationModeChange($event)" />
+  <!-- Duel UI (only when active/connecting) -->
+  @if (roomState() === 'active' || roomState() === 'connecting') {
+    <!-- Orientation lock overlay (portrait blocking) -->
+    @if (isPortrait()) {
+      <div class="orientation-overlay" role="alertdialog" aria-modal="true" aria-label="Rotate your device to landscape">
+        <div class="orientation-content">
+          <svg class="rotate-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+            <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.38zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
+          </svg>
+          <p>Rotate your device to landscape</p>
+        </div>
+      </div>
     }
-  </div>
 
-  <!-- Prompt sheet (Story 1.6) -->
-  <app-pvp-prompt-sheet />
+    <!-- Story 2.3 — "Connecting to duel..." fallback (before RPS_CHOICE arrives) -->
+    @if (roomState() === 'connecting' && !wsService.pendingPrompt() && !wsService.rpsResult() && !wsService.rpsInProgress()) {
+      <div class="connecting-fallback" role="region" aria-label="Connecting to duel" aria-live="polite">
+        <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Connecting"></mat-progress-spinner>
+        <p>Connecting to duel...</p>
+      </div>
+    }
 
-  <!-- Zone highlight floating instruction (Pattern A) -->
-  @if (isZoneHighlightActive()) {
-    <app-prompt-zone-highlight [instruction]="zoneInstruction()" />
+    <!-- Board + hands + toolbar — only visible when duel is active (not during RPS) -->
+    @if (roomState() === 'active') {
+      <!-- Opponent Hand (top, face-down, outside perspective) -->
+      <app-pvp-hand-row class="hand-opponent"
+                         side="opponent"
+                         [cards]="opponentHand()" />
+
+      <!-- Board with CSS 3D perspective -->
+      <app-pvp-board-container [duelState]="duelState()"
+                               [timerState]="timerState()"
+                               [ownPlayerIndex]="ownPlayerIndex()"
+                               [highlightedZones]="highlightedZones()"
+                               [actionablePrompt]="actionablePrompt()"
+                               [opponentDisconnected]="wsService.opponentDisconnected()"
+                               (zoneSelected)="onZoneSelected($event)"
+                               (actionResponse)="onBoardActionResponse($event)"
+                               (menuRequest)="onBoardMenuRequest($event)"
+                               (zonePillRequest)="onZonePillRequest($event)" />
+
+      <!-- Player Hand (bottom, face-up, outside perspective) -->
+      <app-pvp-hand-row class="hand-player"
+                         side="player"
+                         [cards]="playerHand()"
+                         [actionableCardIndices]="playerActionableHandIndices()"
+                         (handCardAction)="onPlayerHandAction($event)" />
+
+      <!-- Card Action Menu (Story 1.7 — outside perspective container) -->
+      @if (actionablePrompt() && menuState(); as menu) {
+        <div class="card-action-menu"
+             role="menu"
+             aria-label="Card actions"
+             [style.top.px]="menu.top"
+             [style.left.px]="menu.left"
+             (keydown)="onMenuKeydown($event)">
+          @for (action of menu.actions; track $index) {
+            <button class="card-action-menu__item"
+                    role="menuitem"
+                    type="button"
+                    (click)="onMenuAction(action)">
+              {{ action.label }}
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Zone Browser Overlay (Story 1.7) -->
+      @if (zoneBrowserState(); as zb) {
+        <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
+                                       [cards]="zb.cards"
+                                       [playerIndex]="zb.playerIndex"
+                                       [actionableCardCodes]="zoneBrowserActionableCodes()"
+                                       [mode]="zb.mode"
+                                       (inspectCard)="inspectCardByCode($event)"
+                                       (actionSelected)="onZoneBrowserAction($event)"
+                                       (closed)="closeZoneBrowser()" />
+      }
+
+      <!-- Card Inspector (Story 1.7) -->
+      @if (inspectedCard(); as card) {
+        <app-pvp-card-inspector-wrapper [card]="card"
+                                         [promptActive]="hasActivePrompt()"
+                                         (dismissed)="closeInspector()" />
+      }
+
+      <!-- Mini-Toolbar (Story 1.7 — bottom-right, thumb zone) -->
+      <div class="mini-toolbar"
+           [class.mini-toolbar--dimmed]="hasActivePrompt() && promptSheetExpanded()">
+        <button mat-icon-button
+                aria-label="Surrender"
+                class="mini-toolbar__btn"
+                (click)="onSurrenderClick()">
+          <mat-icon>flag</mat-icon>
+        </button>
+        @if (isOwnTurn()) {
+          <app-pvp-activation-toggle (modeChange)="onActivationModeChange($event)" />
+        }
+      </div>
+
+      <!-- Zone highlight floating instruction (Pattern A) -->
+      @if (isZoneHighlightActive()) {
+        <app-prompt-zone-highlight [instruction]="zoneInstruction()" />
+      }
+    }
+
+    <!-- Story 2.3 — RPS Result Overlay -->
+    @if (wsService.rpsResult(); as rps) {
+      <div class="rps-overlay" role="status" aria-live="polite">
+        <div class="rps-overlay__content">
+          <h2 class="rps-overlay__title">ROCK PAPER SCISSORS</h2>
+          <div class="rps-overlay__choices">
+            <div class="rps-overlay__choice">
+              <span class="rps-overlay__emoji">{{ rpsEmoji(rps.player1Choice) }}</span>
+              <span class="rps-overlay__label">You</span>
+            </div>
+            <span class="rps-overlay__vs">VS</span>
+            <div class="rps-overlay__choice">
+              <span class="rps-overlay__emoji">{{ rpsEmoji(rps.player2Choice) }}</span>
+              <span class="rps-overlay__label">Opponent</span>
+            </div>
+          </div>
+          @if (rps.winner === 0) {
+            <p class="rps-overlay__result rps-overlay__result--win">You go first!</p>
+          } @else if (rps.winner === 1) {
+            <p class="rps-overlay__result rps-overlay__result--lose">Opponent goes first!</p>
+          } @else {
+            <p class="rps-overlay__result rps-overlay__result--draw">Draw — playing again...</p>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Connection status overlays -->
+    @if (isReconnecting()) {
+      <div class="connection-overlay">
+        <div class="overlay-content">
+          <p>Reconnecting...</p>
+        </div>
+      </div>
+    }
+
+    @if (isLost()) {
+      <div class="connection-overlay">
+        <div class="overlay-content">
+          <p>Connection failed</p>
+          @if (canRetry()) {
+            <button class="retry-btn" (click)="retry()">Retry</button>
+          }
+          <button class="lobby-btn" (click)="backToLobby()">Back to lobby</button>
+        </div>
+      </div>
+    }
+
+    <!-- Story 3.4 — Rematch Starting Overlay -->
+    @if (wsService.rematchStarting()) {
+      <div class="rematch-starting-overlay" role="status" aria-live="polite">
+        <mat-progress-spinner mode="indeterminate" [diameter]="48" aria-label="Starting new duel"></mat-progress-spinner>
+        <p>Starting new duel...</p>
+      </div>
+    }
+
+    <!-- Story 3.4 — Duel Result Overlay -->
+    @if (resultOutcome(); as result) {
+      <div class="result-overlay" role="status" aria-live="assertive">
+        <div class="result-overlay__content">
+          <h1 class="result-overlay__title"
+              [class.result-overlay__title--victory]="result.outcome === 'victory'"
+              [class.result-overlay__title--defeat]="result.outcome === 'defeat'"
+              [class.result-overlay__title--draw]="result.outcome === 'draw'">
+            @switch (result.outcome) {
+              @case ('victory') { VICTORY }
+              @case ('defeat') { DEFEAT }
+              @case ('draw') { DRAW }
+            }
+          </h1>
+          <p class="result-overlay__reason">{{ result.reason }}</p>
+
+          <div class="result-overlay__actions">
+            <button class="result-overlay__rematch"
+                    [class.result-overlay__rematch--invited]="wsService.rematchState() === 'invited'"
+                    [disabled]="rematchDisabled()"
+                    (click)="onRematchClick()">
+              {{ rematchButtonLabel() }}
+            </button>
+            <button mat-stroked-button
+                    class="result-overlay__leave"
+                    (click)="backToLobby()">
+              Leave Room
+            </button>
+            <button class="result-overlay__deck-link"
+                    (click)="backToDeck()">
+              Back to Deck
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Prompt sheet (Story 1.6) -->
+    <app-pvp-prompt-sheet (sheetExpanded)="promptSheetExpanded.set($event)" />
   }
+
+  <!-- Story 3.1 — Surrender Confirmation Dialog Template -->
+  <ng-template #surrenderDialog>
+    <h2 mat-dialog-title>Abandon the duel?</h2>
+    <mat-dialog-content>This will count as a loss.</mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button [mat-dialog-close]="false">Cancel</button>
+      <button mat-button color="warn" [mat-dialog-close]="true">Surrender</button>
+    </mat-dialog-actions>
+  </ng-template>
 </div>

@@ -22,12 +22,18 @@ public interface RoomRepository extends CrudRepository<Room, Long> {
     @Query("SELECT r FROM Room r WHERE r.id = :id")
     Optional<Room> findByIdForUpdate(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Room r WHERE r.roomCode = :roomCode")
+    Optional<Room> findByRoomCodeForUpdate(@Param("roomCode") String roomCode);
+
     @Query("SELECT r FROM Room r WHERE r.status = :status AND (r.player1.id = :userId OR r.player2.id = :userId)")
     List<Room> findByStatusAndPlayerId(@Param("status") RoomStatus status, @Param("userId") Long userId);
 
     List<Room> findByStatus(RoomStatus status);
 
     List<Room> findByStatusOrderByCreatedAtDesc(RoomStatus status);
+
+    List<Room> findTop10ByStatusOrderByCreatedAtDesc(RoomStatus status);
 
     List<Room> findByStatusAndCreatedAtBefore(RoomStatus status, Instant before);
 }

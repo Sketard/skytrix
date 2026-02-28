@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { Player, TimerStateMsg } from '../../duel-ws.types';
 
 @Component({
@@ -7,10 +8,12 @@ import { Player, TimerStateMsg } from '../../duel-ws.types';
   styleUrl: './pvp-timer-badge.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatProgressSpinner],
 })
 export class PvpTimerBadgeComponent {
   readonly timerState = input<TimerStateMsg | null>(null);
   readonly turnPlayer = input<Player>(0);
+  readonly opponentDisconnected = input(false);
 
   readonly display = computed(() => {
     const state = this.timerState();
@@ -34,4 +37,8 @@ export class PvpTimerBadgeComponent {
     const state = this.timerState();
     return state?.player === this.turnPlayer();
   });
+
+  readonly disconnectDisplay = computed(() =>
+    this.opponentDisconnected() ? 'Opponent connecting...' : null
+  );
 }

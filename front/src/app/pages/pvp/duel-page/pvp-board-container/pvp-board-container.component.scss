@@ -96,22 +96,7 @@
   min-height: 0;
 }
 
-// Grid area assignments
-.zone--mz1 { grid-area: mz1; }
-.zone--mz2 { grid-area: mz2; }
-.zone--mz3 { grid-area: mz3; }
-.zone--mz4 { grid-area: mz4; }
-.zone--mz5 { grid-area: mz5; }
-.zone--st1 { grid-area: st1; }
-.zone--st2 { grid-area: st2; }
-.zone--st3 { grid-area: st3; }
-.zone--st4 { grid-area: st4; }
-.zone--st5 { grid-area: st5; }
-.zone--field { grid-area: field; }
-.zone--gy { grid-area: gy; }
-.zone--banished { grid-area: banished; }
-.zone--extra { grid-area: extra; }
-.zone--deck { grid-area: deck; }
+// Grid area assignments handled by [style.grid-area] in template
 
 // === Zone Card Rendering ===
 .zone-card {

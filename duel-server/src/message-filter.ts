@@ -81,6 +81,18 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
       if (forPlayer !== message.player) return null;
       return message;
 
+    // --- RPS_RESULT: perspective-corrected (swap choices + winner for player 1) ---
+
+    case 'RPS_RESULT': {
+      if (forPlayer === 0) return message;
+      return {
+        type: 'RPS_RESULT' as const,
+        player1Choice: message.player2Choice,
+        player2Choice: message.player1Choice,
+        winner: message.winner === null ? null : (message.winner === 0 ? 1 : 0) as Player,
+      };
+    }
+
     // --- BOARD_STATE / STATE_SYNC: deep copy with opponent info sanitized ---
 
     case 'BOARD_STATE':
@@ -106,10 +118,16 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'MSG_WIN':
     case 'DUEL_END':
     case 'TIMER_STATE':
-    case 'RPS_RESULT':
+    // NB: REMATCH_INVITATION, REMATCH_STARTING, REMATCH_CANCELLED are sent via
+    // sendToPlayer() directly (not broadcastMessage), so these entries are defensive
+    // passthrough — kept to prevent silent drops if routing changes in the future.
+    case 'REMATCH_INVITATION':
+    case 'REMATCH_STARTING':
     case 'REMATCH_CANCELLED':
     case 'WORKER_ERROR':
     case 'SESSION_TOKEN':
+    case 'OPPONENT_DISCONNECTED':
+    case 'OPPONENT_RECONNECTED':
       return message;
 
     // --- Default: DROP unknown types (fail-safe: prefer missing display over info leak) ---

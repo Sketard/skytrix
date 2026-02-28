@@ -1,7 +1,7 @@
 // === Import : NPM
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { ACCESS_TOKEN, AUTH_HEADER, AUTH_HEADER_PREFIX, CURRENT_USER_KEY } from '../core/utilities/auth.constants';
@@ -37,16 +37,17 @@ export class AuthService {
     this.refreshSubject.next(value);
   }
 
-  canActivate(): boolean {
+  canActivate(route?: ActivatedRouteSnapshot, state?: RouterStateSnapshot): boolean {
     const currentUser = localStorage.getItem(CURRENT_USER_KEY);
     if (currentUser) {
       const isTokenPresent = !!localStorage.getItem(ACCESS_TOKEN);
 
       if (!isTokenPresent) {
-        this.router.navigate(['/login']);
+        this.router.navigate(['/login'], { queryParams: { returnUrl: state?.url } });
       }
       return isTokenPresent;
     }
+    this.router.navigate(['/login'], { queryParams: { returnUrl: state?.url } });
     return false;
   }
 

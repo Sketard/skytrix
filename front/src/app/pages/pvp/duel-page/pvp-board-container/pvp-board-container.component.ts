@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { DuelState } from '../../types';
-import { BoardZone, CardOnField, LOCATION, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
+import { BoardZone, CardOnField, LOCATION, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction } from '../idle-action-codes';
 import { PvpLpBadgeComponent } from '../pvp-lp-badge/pvp-lp-badge.component';
@@ -40,8 +40,10 @@ interface ZoneRenderData {
 export class PvpBoardContainerComponent {
   readonly duelState = input.required<DuelState>();
   readonly timerState = input<TimerStateMsg | null>(null);
+  readonly ownPlayerIndex = input<Player>(0);
   readonly highlightedZones = input<Set<ZoneId>>(new Set());
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
+  readonly opponentDisconnected = input(false);
   readonly zoneSelected = output<ZoneId>();
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
@@ -78,6 +80,13 @@ export class PvpBoardContainerComponent {
 
   readonly phase = computed(() => this.duelState().phase);
   readonly turnPlayer = computed(() => this.duelState().turnPlayer);
+  // Absolute turn player for PvpTimerBadgeComponent (timerState.player is absolute from server)
+  readonly absoluteTurnPlayer = computed((): Player => {
+    const relativeTurn = this.duelState().turnPlayer;
+    const own = this.ownPlayerIndex();
+    // relative 0 = "my turn" → absolute = own; relative 1 = "opponent" → absolute = 1 - own
+    return (relativeTurn === 0 ? own : (own === 0 ? 1 : 0)) as Player;
+  });
 
   readonly playerDeckCount = computed(() => this.duelState().players[0]?.deckCount ?? 0);
   readonly opponentDeckCount = computed(() => this.duelState().players[1]?.deckCount ?? 0);

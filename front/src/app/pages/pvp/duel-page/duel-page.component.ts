@@ -1,11 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnInit, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
-import { MatIconButton } from '@angular/material/button';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, filter, interval, map, Observable, of, Subject, switchMap, take, takeUntil, timeout } from 'rxjs';
+import { MatIconButton, MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { displaySuccess, displayError } from '../../../core/utilities/functions';
+import { RoomDTO, SHARE_TEXT_TEMPLATE } from '../room.types';
+import { RoomApiService } from '../room-api.service';
+import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
+import type { ConnectionStatus } from '../types';
 import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION } from './idle-action-codes';
 import { SharedCardInspectorData } from '../../../core/model/shared-card-data';
@@ -17,15 +27,10 @@ import { PromptZoneHighlightComponent } from './prompts/prompt-zone-highlight/pr
 import { PvpZoneBrowserOverlayComponent } from './pvp-zone-browser-overlay/pvp-zone-browser-overlay.component';
 import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { ActivationMode, PvpActivationToggleComponent } from './pvp-activation-toggle/pvp-activation-toggle.component';
+import { DeckPickerDialogComponent } from '../lobby-page/deck-picker-dialog.component';
 import './prompts/prompt-registry';
 
-interface RoomResponse {
-  id: number;
-  roomCode: string;
-  status: string;
-  duelId: string | null;
-  wsToken: string | null;
-}
+type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-loading' | 'active' | 'error';
 
 @Component({
   selector: 'app-duel-page',
@@ -37,7 +42,8 @@ interface RoomResponse {
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptSheetComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
-    MatIconButton, MatIcon,
+    MatIconButton, MatButton, MatIcon, MatProgressSpinner,
+    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
   ],
 })
 export class DuelPageComponent implements OnInit {
@@ -46,10 +52,40 @@ export class DuelPageComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   readonly wsService = inject(DuelWebSocketService);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly clipboard = inject(Clipboard);
+  private readonly roomApiService = inject(RoomApiService);
+  private readonly authService = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
 
   readonly roomCode = toSignal(this.route.paramMap.pipe(map(params => params.get('roomCode') ?? '')), {
     initialValue: '',
   });
+
+  // Story 2.1 — Room state management
+  readonly roomState = signal<RoomState>('loading');
+  readonly room = signal<RoomDTO | null>(null);
+  readonly deckName = signal('');
+  private readonly stopPolling$ = new Subject<void>();
+  readonly countdownTick = signal(Date.now());
+  private countdownInterval: ReturnType<typeof setInterval> | null = null;
+
+  readonly countdown = computed(() => {
+    this.countdownTick();
+    const r = this.room();
+    if (!r) return null;
+    const expiresAt = new Date(r.createdAt).getTime() + 30 * 60 * 1000;
+    const remaining = Math.max(0, expiresAt - Date.now());
+    const totalSeconds = Math.floor(remaining / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const color = totalSeconds > 60 ? 'green' : totalSeconds > 30 ? 'yellow' : 'red';
+    return { display, color, expired: totalSeconds === 0 };
+  });
+
+  readonly canShare = typeof navigator !== 'undefined' && !!navigator.share;
 
   readonly connectionStatus = this.wsService.connectionStatus;
   readonly isLost = computed(() => this.connectionStatus() === 'lost');
@@ -57,6 +93,15 @@ export class DuelPageComponent implements OnInit {
 
   private readonly retryCount = signal(0);
   readonly canRetry = computed(() => this.retryCount() < 3 && this.wsService.canRetry);
+
+  // Story 2.3 — Board ready when first BOARD_STATE arrives (both players populated with LP)
+  readonly boardReady = computed(() => this.duelState().players.length === 2 && this.duelState().players[0].lp > 0);
+
+  // Story 2.4 — Duel loading: thumbnails pre-cached (or all settled with fallback)
+  readonly thumbnailsReady = signal(false);
+  readonly duelLoadingReady = computed(() => this.boardReady() && this.thumbnailsReady());
+  readonly loadingTimeout = signal(false);
+  private loadingTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
   readonly isPortrait = signal(false);
 
@@ -130,6 +175,48 @@ export class DuelPageComponent implements OnInit {
 
   // Room ID for POST /rooms/:id/end on duel end
   private roomId: number | null = null;
+  private decklistId: number | null = null;
+  private rpsAutoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Story 3.1 — Own player index (0 = player1, 1 = player2)
+  readonly ownPlayerIndex = computed(() => {
+    const r = this.room();
+    const userId = this.authService.user()?.id;
+    if (!r || !userId) return 0;
+    return userId === r.player1.id ? 0 : 1;
+  });
+
+  // Story 3.4 — Duel result display with reason mapping
+  readonly resultOutcome = computed(() => {
+    const result = this.wsService.duelResult();
+    if (!result) return null;
+    if (result.winner === null) {
+      return { outcome: 'draw' as const, reason: result.reason || 'Draw' };
+    }
+    const isWinner = result.winner === this.ownPlayerIndex();
+    const outcome = isWinner ? 'victory' as const : 'defeat' as const;
+    const reason = this.mapDuelEndReason(result.reason, isWinner);
+    return { outcome, reason };
+  });
+
+  // Story 3.4 — Rematch UI state
+  readonly rematchButtonLabel = computed(() => {
+    switch (this.wsService.rematchState()) {
+      case 'idle': return 'Rematch';
+      case 'requested': return 'Waiting for opponent...';
+      case 'invited': return 'Accept Rematch';
+      case 'opponent-left': return 'Opponent left';
+      case 'expired': return 'Room expired';
+    }
+  });
+
+  readonly rematchDisabled = computed(() => {
+    const state = this.wsService.rematchState();
+    return state === 'requested' || state === 'opponent-left' || state === 'expired';
+  });
+
+  // [H1 fix] Track prompt sheet expanded state for mini-toolbar interaction
+  readonly promptSheetExpanded = signal(false);
 
   // Story 1.7 — Card inspector state
   readonly inspectedCard = signal<SharedCardInspectorData | null>(null);
@@ -166,14 +253,59 @@ export class DuelPageComponent implements OnInit {
     return new Set(allCards.filter(c => c.location === targetLocation).map(c => c.cardCode));
   });
 
+  // Story 3.1 — Surrender dialog template ref
+  @ViewChild('surrenderDialog') surrenderDialogTpl!: TemplateRef<void>;
+
+  // Story 3.1 — duelResult as observable (created in injection context for toObservable)
+  private readonly duelResult$ = toObservable(this.wsService.duelResult);
+
   private menuClickListener: ((e: MouseEvent) => void) | null = null;
+
+  // Story 3.3 — Connection snackbar tracking
+  private previousConnectionStatus: ConnectionStatus | null = null;
+  private previousOpponentDisconnected: boolean | null = null;
+
+  // Story 3.2 — Timer announcement tracking
+  private announcedThresholds = new Set<number>();
+  private lastAnnouncedTurnPlayer: number | null = null;
 
   constructor() {
     const code = this.route.snapshot.paramMap.get('roomCode');
     if (code) {
-      this.fetchRoomAndConnect(code);
+      this.deckName.set(history.state?.deckName ?? '');
+      this.fetchRoom(code);
     }
-    this.destroyRef.onDestroy(() => this.removeMenuClickListener());
+    this.destroyRef.onDestroy(() => {
+      this.removeMenuClickListener();
+      this.stopPolling$.next();
+      this.stopCountdown();
+      if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
+      if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
+    });
+
+    // Story 2.1 — Countdown timer tick + expiration
+    effect(() => {
+      const state = this.roomState();
+      untracked(() => {
+        if (state === 'waiting' || state === 'creating-duel') {
+          this.startCountdown();
+        } else {
+          this.stopCountdown();
+        }
+      });
+    });
+
+    effect(() => {
+      const cd = this.countdown();
+      if (cd?.expired) {
+        untracked(() => {
+          this.stopPolling$.next();
+          this.stopCountdown();
+          displayError(this.snackBar, 'Room expired');
+          this.router.navigate(['/pvp']);
+        });
+      }
+    });
 
     // [H4 fix] Activation toggle auto-respond effect (off + auto modes)
     effect(() => {
@@ -206,37 +338,308 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
-    // H1 fix — notify Spring Boot that the duel ended
+    // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE (guarded: wait for RPS overlay to dismiss)
     effect(() => {
-      const result = this.wsService.duelResult();
+      const ready = this.boardReady();
+      const rpsVisible = this.wsService.rpsResult();
+      if (ready && !rpsVisible && this.roomState() === 'connecting') {
+        untracked(() => this.roomState.set('duel-loading'));
+      }
+    });
+
+    // Story 2.4 — When entering 'duel-loading', start thumbnail pre-fetch + 15s timeout
+    effect(() => {
+      const state = this.roomState();
+      if (state === 'duel-loading') {
+        untracked(() => {
+          this.preFetchOwnDeckThumbnails();
+          this.loadingTimeoutRef = setTimeout(() => {
+            if (this.roomState() === 'duel-loading') {
+              this.loadingTimeout.set(true);
+            }
+          }, 15000);
+        });
+      }
+    });
+
+    // Story 2.4 — Transition 'duel-loading' → 'active' when loading ready
+    effect(() => {
+      const ready = this.duelLoadingReady();
+      if (ready && this.roomState() === 'duel-loading') {
+        untracked(() => {
+          if (this.loadingTimeoutRef) {
+            clearTimeout(this.loadingTimeoutRef);
+            this.loadingTimeoutRef = null;
+          }
+          this.roomState.set('active');
+        });
+      }
+    });
+
+    // [Review M1 fix] Defer fullscreen + landscape lock until duel is active
+    effect(() => {
+      if (this.roomState() === 'active') {
+        untracked(() => this.requestFullscreenAndLock());
+      }
+    });
+
+    // Story 2.3 — RPS result auto-dismiss (3s winner, 2s draw)
+    effect(() => {
+      const rps = this.wsService.rpsResult();
+      if (!rps) return;
+      untracked(() => {
+        if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
+        const duration = rps.winner !== null ? 3000 : 2000;
+        this.rpsAutoDismissTimeout = setTimeout(() => this.wsService.clearRpsResult(), duration);
+      });
+    });
+
+    // Story 3.4 — LiveAnnouncer announces duel result
+    effect(() => {
+      const result = this.resultOutcome();
       if (!result) return;
       untracked(() => {
-        if (this.roomId) {
-          this.http.post(`/api/rooms/${this.roomId}/end`, {}).subscribe();
+        const outcomeText = result.outcome === 'victory' ? 'Victory' : result.outcome === 'defeat' ? 'Defeat' : 'Draw';
+        this.liveAnnouncer.announce(`${outcomeText} — ${result.reason}`);
+      });
+    });
+
+    // Story 3.2 — LiveAnnouncer timer warnings at 60s, 30s, 10s (own timer only)
+    effect(() => {
+      const ts = this.timerState();
+      if (!ts) return;
+      untracked(() => {
+        // Only announce for own player's timer
+        if (ts.player !== this.ownPlayerIndex()) return;
+
+        const totalSec = Math.floor(ts.remainingMs / 1000);
+        const thresholds = [60, 30, 10];
+        // Pre-seed already-passed thresholds (e.g., after reconnection) to avoid misleading announcements
+        for (const t of thresholds) {
+          if (totalSec < t && !this.announcedThresholds.has(t)) {
+            this.announcedThresholds.add(t);
+          }
         }
+        for (const t of thresholds) {
+          if (totalSec <= t && !this.announcedThresholds.has(t)) {
+            this.announcedThresholds.add(t);
+            this.liveAnnouncer.announce(`${t} seconds remaining`);
+            break;
+          }
+        }
+      });
+    });
+
+    // Story 3.2 — Announce turn changes
+    effect(() => {
+      const turnPlayer = this.duelState().turnPlayer;
+      untracked(() => {
+        if (this.lastAnnouncedTurnPlayer === null) {
+          this.lastAnnouncedTurnPlayer = turnPlayer;
+          return;
+        }
+        if (turnPlayer !== this.lastAnnouncedTurnPlayer) {
+          this.lastAnnouncedTurnPlayer = turnPlayer;
+          // Reset announced thresholds on turn change (new countdown)
+          this.announcedThresholds.clear();
+          const msg = turnPlayer === 0 ? 'Your turn' : "Opponent's turn";
+          this.liveAnnouncer.announce(msg);
+        }
+      });
+    });
+
+    // Story 3.3 — "Connection restored" snackbar on reconnection
+    effect(() => {
+      const current = this.wsService.connectionStatus();
+      const prev = this.previousConnectionStatus;
+      untracked(() => {
+        if (prev === 'reconnecting' && current === 'connected') {
+          displaySuccess(this.snackBar, 'Connection restored');
+        }
+        this.previousConnectionStatus = current;
+      });
+    });
+
+    // Story 3.3 — "Opponent reconnected" snackbar
+    effect(() => {
+      const current = this.wsService.opponentDisconnected();
+      const prev = this.previousOpponentDisconnected;
+      untracked(() => {
+        if (prev === true && current === false && !this.wsService.duelResult()) {
+          displaySuccess(this.snackBar, 'Opponent reconnected');
+        }
+        this.previousOpponentDisconnected = current;
       });
     });
   }
 
   ngOnInit(): void {
     this.initOrientationLock();
-    this.requestFullscreenAndLock();
   }
 
-  private fetchRoomAndConnect(roomCode: string): void {
-    this.http.get<RoomResponse>(`/api/rooms/${roomCode}`).subscribe({
+  private fetchRoom(roomCode: string): void {
+    this.roomState.set('loading');
+    this.roomApiService.getRoom(roomCode).subscribe({
       next: room => {
         this.roomId = room.id;
-        if (room.wsToken) {
-          this.wsService.connect(room.wsToken);
-        } else {
-          this.router.navigate(['/pvp']);
-        }
+        this.room.set(room);
+        this.handleRoomStatus(room);
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
+        const message = err.status === 404
+          ? 'Room not found or already ended'
+          : 'Unable to reach server';
+        displayError(this.snackBar, message);
         this.router.navigate(['/pvp']);
       },
     });
+  }
+
+  private handleRoomStatus(room: RoomDTO): void {
+    const currentUserId = this.authService.user()?.id;
+    const isParticipant = currentUserId === room.player1.id || (room.player2 !== null && currentUserId === room.player2.id);
+
+    switch (room.status) {
+      case 'WAITING':
+        if (isParticipant) {
+          this.roomState.set('waiting');
+          this.startPolling(room.roomCode);
+        } else {
+          this.openDeckPickerForJoin(room.roomCode);
+        }
+        break;
+      case 'CREATING_DUEL':
+        this.roomState.set('creating-duel');
+        this.startPolling(room.roomCode);
+        break;
+      case 'ACTIVE':
+        this.connectWhenReady(room);
+        break;
+      case 'ENDED':
+        displayError(this.snackBar, 'Room not found or already ended');
+        this.router.navigate(['/pvp']);
+        break;
+    }
+  }
+
+  private openDeckPickerForJoin(roomCode: string, attempt = 0): void {
+    if (attempt >= 3) {
+      displayError(this.snackBar, 'Too many failed attempts');
+      this.router.navigate(['/pvp']);
+      return;
+    }
+    const dialogRef = this.dialog.open(DeckPickerDialogComponent);
+    dialogRef.afterClosed().pipe(
+      switchMap(decklistId => {
+        if (decklistId === undefined || decklistId === null) {
+          this.router.navigate(['/pvp']);
+          return EMPTY;
+        }
+        this.decklistId = decklistId;
+        return this.roomApiService.joinRoom(roomCode, decklistId);
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: room => {
+        this.room.set(room);
+        this.roomId = room.id;
+        this.handleRoomStatus(room);
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 409) {
+          displayError(this.snackBar, 'Room is full');
+          this.router.navigate(['/pvp']);
+        } else if (err.status === 422) {
+          displayError(this.snackBar, 'Invalid deck, please select another');
+          this.openDeckPickerForJoin(roomCode, attempt + 1);
+        } else {
+          displayError(this.snackBar, 'Failed to join room');
+          this.router.navigate(['/pvp']);
+        }
+      },
+    });
+  }
+
+  private connectWhenReady(room: RoomDTO): void {
+    this.roomState.set('connecting');
+    if (room.wsToken) {
+      this.wsService.connect(room.wsToken);
+    } else {
+      displayError(this.snackBar, 'Unable to connect to duel');
+      this.router.navigate(['/pvp']);
+    }
+  }
+
+  private startPolling(roomCode: string): void {
+    this.stopPolling$.next();
+    let consecutiveErrors = 0;
+
+    interval(3000).pipe(
+      takeUntil(this.stopPolling$),
+      takeUntilDestroyed(this.destroyRef),
+      switchMap(() => this.roomApiService.getRoom(roomCode).pipe(
+        catchError(() => {
+          consecutiveErrors++;
+          if (consecutiveErrors >= 3) {
+            this.stopPolling$.next();
+            this.roomState.set('error');
+          }
+          return EMPTY;
+        }),
+      )),
+    ).subscribe(room => {
+      consecutiveErrors = 0;
+      this.room.set(room);
+      if (room.status === 'WAITING') {
+        this.roomState.set('waiting');
+      } else if (room.status === 'CREATING_DUEL') {
+        this.roomState.set('creating-duel');
+      } else if (room.status === 'ACTIVE') {
+        this.stopPolling$.next();
+        this.connectWhenReady(room);
+      } else if (room.status === 'ENDED') {
+        this.stopPolling$.next();
+        displayError(this.snackBar, 'Room not found or already ended');
+        this.router.navigate(['/pvp']);
+      }
+    });
+  }
+
+  // Story 2.1 — Waiting room actions
+  copyRoomLink(): void {
+    const code = this.room()?.roomCode;
+    if (!code) return;
+    const url = `${window.location.origin}/pvp/duel/${code}`;
+    this.clipboard.copy(url);
+    displaySuccess(this.snackBar, 'Link copied!', 3000);
+  }
+
+  shareRoom(): void {
+    const code = this.room()?.roomCode;
+    if (!code) return;
+    const baseUrl = window.location.origin;
+    navigator.share({
+      title: 'skytrix PvP Duel',
+      text: SHARE_TEXT_TEMPLATE(code, baseUrl),
+    }).catch(() => this.copyRoomLink());
+  }
+
+  leaveRoom(): void {
+    this.stopPolling$.next();
+    this.stopCountdown();
+    this.router.navigate(['/pvp']);
+  }
+
+  private startCountdown(): void {
+    if (this.countdownInterval) return;
+    this.countdownInterval = setInterval(() => this.countdownTick.set(Date.now()), 1000);
+  }
+
+  private stopCountdown(): void {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
   }
 
   retry(): void {
@@ -245,7 +648,25 @@ export class DuelPageComponent implements OnInit {
   }
 
   backToLobby(): void {
+    if (this.roomId) {
+      this.http.post(`/api/rooms/${this.roomId}/end`, {}).subscribe();
+    }
     this.router.navigate(['/pvp']);
+  }
+
+  backToDeck(): void {
+    if (this.roomId) {
+      this.http.post(`/api/rooms/${this.roomId}/end`, {}).subscribe();
+    }
+    if (this.decklistId) {
+      this.router.navigate(['/decks', this.decklistId]);
+    } else {
+      this.router.navigate(['/decks']);
+    }
+  }
+
+  onRematchClick(): void {
+    this.wsService.sendRematchRequest();
   }
 
   // Card Action Menu methods
@@ -408,6 +829,39 @@ export class DuelPageComponent implements OnInit {
     this.activationMode.set(mode);
   }
 
+  // Story 3.1 — Surrender
+  private surrenderDialogOpen = false;
+
+  onSurrenderClick(): void {
+    if (this.surrenderDialogOpen) return;
+    this.confirmSurrender().subscribe();
+  }
+
+  confirmSurrender(): Observable<boolean> {
+    if (this.surrenderDialogOpen) return of(false);
+    this.surrenderDialogOpen = true;
+    const dialogRef = this.dialog.open(this.surrenderDialogTpl, {
+      role: 'alertdialog',
+      ariaLabel: 'Surrender confirmation',
+      width: '320px',
+      disableClose: false,
+    });
+    return dialogRef.afterClosed().pipe(
+      switchMap(confirmed => {
+        this.surrenderDialogOpen = false;
+        if (!confirmed) return of(false);
+        this.wsService.sendSurrender();
+        return this.duelResult$.pipe(
+          filter(r => !!r),
+          take(1),
+          map(() => true),
+          timeout(5000),
+          catchError(() => of(true)),
+        );
+      }),
+    );
+  }
+
   onZoneSelected(zoneId: ZoneId): void {
     const p = this.wsService.pendingPrompt();
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return;
@@ -473,6 +927,35 @@ export class DuelPageComponent implements OnInit {
     return handZone?.cards ?? [];
   }
 
+  // Story 2.4 — Pre-fetch own hand card thumbnails from first BOARD_STATE
+  private preFetchOwnDeckThumbnails(): void {
+    const player = this.duelState().players[0];
+    if (!player) {
+      this.thumbnailsReady.set(true);
+      return;
+    }
+    const handZone = player.zones.find((z: BoardZone) => z.zoneId === 'HAND');
+    const handCards = handZone?.cards ?? [];
+    const cardCodes = handCards.map(c => c.cardCode).filter((code): code is number => !!code);
+
+    if (cardCodes.length === 0) {
+      this.thumbnailsReady.set(true);
+      return;
+    }
+
+    const promises = cardCodes.map(code => {
+      const url = getCardImageUrlByCode(code);
+      return new Promise<void>(resolve => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve(); // Fallback to card back — still settle
+        img.src = url;
+      });
+    });
+
+    Promise.all(promises).then(() => this.thumbnailsReady.set(true));
+  }
+
   private initOrientationLock(): void {
     const mql = window.matchMedia('(orientation: portrait)');
     this.isPortrait.set(mql.matches);
@@ -489,8 +972,27 @@ export class DuelPageComponent implements OnInit {
     }
   }
 
+  // Story 2.3 — Map RPS choice value to emoji
+  readonly RPS_EMOJIS = ['\u270A', '\u270B', '\u270C\uFE0F'] as const;
+
+  rpsEmoji(choice: number): string {
+    return this.RPS_EMOJIS[choice] ?? '\u2753';
+  }
+
   private requestFullscreenAndLock(): void {
     document.documentElement.requestFullscreen?.().catch(() => {});
     (screen.orientation as any).lock?.('landscape-primary')?.catch(() => {});
+  }
+
+  private mapDuelEndReason(reason: string, isWinner: boolean): string {
+    const subject = isWinner ? 'Opponent' : 'You';
+    switch (reason) {
+      case 'win': return isWinner ? 'Opponent LP reduced to 0' : 'Your LP reduced to 0';
+      case 'surrender': return `${subject} surrendered`;
+      case 'timeout': return `${subject} timed out`;
+      case 'inactivity': return isWinner ? 'Opponent inactive' : 'You were inactive';
+      case 'disconnect': return `${subject} disconnected`;
+      default: return reason;
+    }
   }
 }
