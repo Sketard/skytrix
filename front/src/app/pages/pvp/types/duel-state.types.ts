@@ -2,6 +2,14 @@ import { BoardStatePayload } from '../duel-ws.types';
 
 export type DuelState = BoardStatePayload;
 
+export interface ChainLinkState {
+  chainIndex: number;
+  cardCode: number;
+  player: number;
+  zoneId: string | null;
+  resolving: boolean;
+}
+
 export const EMPTY_DUEL_STATE: DuelState = {
   turnPlayer: 0,
   turnCount: 0,

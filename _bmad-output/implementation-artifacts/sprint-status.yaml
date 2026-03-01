@@ -58,14 +58,21 @@ development_status:
   2-4-deep-links-sharing-duel-loading-screen: done
   epic-2-retrospective: done
 
-  epic-3: in-progress
+  epic-3: done
   3-1-surrender: done
   3-2-turn-timer-inactivity-timeout: done
   3-3-disconnection-handling-reconnection: done
   3-4-duel-result-screen-rematch: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
-  epic-4: backlog
-  4-1-chain-link-visualization: backlog
-  4-2-game-event-visual-feedback-animation-queue: backlog
-  epic-4-retrospective: optional
+  epic-4: done
+  4-1-chain-link-visualization: done
+  4-2-game-event-visual-feedback-animation-queue: done
+  epic-4-retrospective: done
+
+  epic-5: backlog
+  5-1-card-inspector-pvp-placeholder: backlog
+  5-2-reconnection-edge-cases: backlog
+  5-3-room-management-fixes: backlog
+  5-4-infrastructure-optimization: backlog
+  epic-5-retrospective: optional

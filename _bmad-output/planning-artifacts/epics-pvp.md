@@ -174,6 +174,10 @@ The PvP experience handles real-world conditions — surrender, disconnection/re
 The PvP experience reaches Master Duel visual quality with animations per game event, chain link visualization, and animation choreography. Includes chain link badges (numbered), visual feedback per game event (card movement, highlight, LP counter animation), FIFO animation queue (never-blocking), auto-resolve acceleration.
 **FRs covered:** FR17, FR22
 
+### Epic 5: Tech Debt Cleanup
+Technical debt accumulated across Epics 1–4 is resolved: card inspector PvP placeholder, reconnection edge cases (3-3b), room management fixes (RoomDTO deck ID, orphaned room cleanup), infrastructure improvements (Docker integration test, thumbnail pre-fetch).
+**FRs covered:** Debt resolution — no new FRs
+
 ## Epic 1: Core Online Duel
 
 Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore.
@@ -845,3 +849,90 @@ So that the duel feels dynamic and I can follow what's happening on the board.
 **When** any game event animation would play
 **Then** all animations are skipped (0ms duration), board state updates are applied immediately
 **And** `LiveAnnouncer` still announces key events (summon, destroy, LP change) for accessibility
+
+## Epic 5: Tech Debt Cleanup
+
+Technical debt accumulated across Epics 1–4 is resolved. All items were documented in retrospectives and confirmed for resolution by the Project Lead.
+
+### Story 5.1: Card Inspector PvP Placeholder
+
+As a player,
+I want to long-press or click a card on the PvP board to open a card inspector overlay,
+So that I can read card effects and check stats during a duel.
+
+**Acceptance Criteria:**
+
+**Given** a card is displayed on the PvP board (any zone: monster, spell/trap, field, GY, banished, extra, hand)
+**When** the player taps/clicks the card
+**Then** a `CardInspectorComponent` overlay opens showing the full card image, name, description, ATK/DEF, and card type
+**And** the overlay uses the existing `CardInspectorComponent` from `components/` (solo simulator)
+**And** the overlay does not block game prompts (closes automatically when a prompt appears)
+**And** the overlay can be dismissed by tapping outside or pressing Escape
+
+**Technical debt source:** Epic 1 Story 1-7 — placeholder TODO in `prompt-card-grid.component.ts:146`
+
+### Story 5.2: Reconnection Edge Cases (Story 3-3b)
+
+As a player,
+I want robust reconnection handling for edge cases (multi-tab, background tab, simultaneous disconnection),
+So that duels survive unusual but realistic network and browser scenarios.
+
+**Acceptance Criteria:**
+
+**Given** the player has the duel open in multiple browser tabs (BroadcastChannel scenario)
+**When** both tabs attempt to reconnect simultaneously
+**Then** only one tab successfully reconnects, the other receives a clear "session active in another tab" message
+**And** the duel continues normally in the active tab
+
+**Given** the player's browser tab goes to background (visibilitychange)
+**When** the tab becomes visible again after a brief background period (< 60s)
+**Then** the WebSocket connection is verified and reconnected if needed
+**And** the board state is re-synced via BOARD_STATE message
+
+**Given** both players disconnect simultaneously
+**When** both players reconnect within the 60-second grace period
+**Then** the duel resumes normally for both players
+**And** if neither reconnects within 60s, the duel is ended as a draw
+
+**Technical debt source:** Epic 3 Story 3-3 — scope reduction to 3-3a (basic reconnection only)
+
+### Story 5.3: Room Management Fixes
+
+As a player,
+I want correct navigation back to my deck after a duel, and I want stale rooms cleaned up automatically,
+So that the lobby stays clean and deck navigation works properly.
+
+**Acceptance Criteria:**
+
+**Given** a duel has ended and the player clicks "Back to Deck"
+**When** the RoomDTO includes the deck ID used to join the room
+**Then** the player navigates to `/deck/:id` (specific deck) instead of `/deck` (deck list)
+**And** `RoomDTO` is extended with `deckId: number` field on both Spring Boot and Angular sides
+
+**Given** a duel room was created but the duel-server ended the duel (5-min timeout, disconnect, etc.)
+**When** the Spring Boot backend checks for stale rooms (scheduled task, e.g., every 5 minutes)
+**Then** rooms whose duel-server session is expired are marked as CLOSED in the database
+**And** CLOSED rooms do not appear in the lobby room list
+
+**Technical debt source:** Epic 3 Story 3-4 — RoomDTO lacks deck ID fields + orphaned room cleanup
+
+### Story 5.4: Infrastructure & Optimization
+
+As a developer,
+I want Docker container integration tests and optimized thumbnail loading,
+So that deployment confidence is higher and duel loading is faster.
+
+**Acceptance Criteria:**
+
+**Given** the duel-server Docker container is built
+**When** an integration test suite runs against the container
+**Then** the test verifies: `GET /health` returns 200, `GET /status` returns valid JSON, WebSocket connection can be established, a minimal duel can be started and completed
+**And** the test runs in CI or locally via `npm run test:integration`
+
+**Given** a duel is loading (loading screen phase)
+**When** the client prepares card thumbnails for display
+**Then** thumbnails for ALL cards in both players' decks (main + extra) are pre-fetched, not just hand cards
+**And** pre-fetch uses `<link rel="prefetch">` or equivalent lazy loading strategy
+**And** duel board rendering shows card images without visible loading delay
+
+**Technical debt source:** Epic 1 Story 1-2 (Docker test) + Epic 2 Story 2-4 (thumbnail pre-fetch)

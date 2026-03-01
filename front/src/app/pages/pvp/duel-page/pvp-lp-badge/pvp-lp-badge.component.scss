@@ -29,6 +29,34 @@
   color: var(--pvp-lp-opponent);
 }
 
+// === LP Animation Flash (Story 4.2) ===
+// [Review M2/M3/M4 fix] Flash targets text color + text-shadow (not background),
+// uses design tokens for colors, --pvp-transition-highlight-flash for duration (200ms)
+.lp-flash-damage .lp-value {
+  animation: lp-damage-flash var(--pvp-transition-highlight-flash);
+}
+
+.lp-flash-recover .lp-value {
+  animation: lp-recover-flash var(--pvp-transition-highlight-flash);
+}
+
+@keyframes lp-damage-flash {
+  0%, 100% { color: inherit; text-shadow: none; }
+  50% { color: var(--pvp-lp-opponent); text-shadow: 0 0 8px var(--pvp-lp-opponent); }
+}
+
+@keyframes lp-recover-flash {
+  0%, 100% { color: inherit; text-shadow: none; }
+  50% { color: var(--pvp-lp-own); text-shadow: 0 0 8px var(--pvp-lp-own); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-flash-damage .lp-value,
+  .lp-flash-recover .lp-value {
+    animation: none;
+  }
+}
+
 @media (forced-colors: active) {
   .lp-badge {
     border: 1px solid ButtonText;

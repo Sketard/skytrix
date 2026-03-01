@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import type { ChainLinkState } from '../../types';
 import { DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction } from '../idle-action-codes';
-import { PvpLpBadgeComponent } from '../pvp-lp-badge/pvp-lp-badge.component';
+import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
 import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
 
@@ -43,7 +44,10 @@ export class PvpBoardContainerComponent {
   readonly ownPlayerIndex = input<Player>(0);
   readonly highlightedZones = input<Set<ZoneId>>(new Set());
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
+  readonly activeChainLinks = input<ChainLinkState[]>([]);
   readonly opponentDisconnected = input(false);
+  readonly animatingZone = input<{ zoneId: string; animationType: 'summon' | 'destroy' | 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
+  readonly animatingLp = input<LpAnimData | null>(null);
   readonly zoneSelected = output<ZoneId>();
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
@@ -74,6 +78,21 @@ export class PvpBoardContainerComponent {
 
   readonly playerLp = computed(() => this.duelState().players[0]?.lp ?? 8000);
   readonly opponentLp = computed(() => this.duelState().players[1]?.lp ?? 8000);
+
+  // Story 4.2 — LP animation routing: map absolute player index to relative side
+  readonly playerLpAnim = computed(() => {
+    const anim = this.animatingLp();
+    if (!anim) return null;
+    const ownIdx = this.ownPlayerIndex();
+    return anim.player === ownIdx ? anim : null;
+  });
+
+  readonly opponentLpAnim = computed(() => {
+    const anim = this.animatingLp();
+    if (!anim) return null;
+    const ownIdx = this.ownPlayerIndex();
+    return anim.player !== ownIdx ? anim : null;
+  });
 
   readonly emzL = computed(() => this.findZoneCard(0, 'EMZ_L') ?? this.findZoneCard(1, 'EMZ_L'));
   readonly emzR = computed(() => this.findZoneCard(0, 'EMZ_R') ?? this.findZoneCard(1, 'EMZ_R'));
@@ -198,6 +217,32 @@ export class PvpBoardContainerComponent {
         gridArea: ZONE_GRID_AREA[zoneId] ?? zoneId.toLowerCase(),
       };
     });
+  }
+
+  getChainBadges(zoneId: string, relativePlayerIndex: number): ChainLinkState[] {
+    const ownIdx = this.ownPlayerIndex();
+    const absolutePlayerIndex = relativePlayerIndex === 0 ? ownIdx : (ownIdx === 0 ? 1 : 0);
+    return this.activeChainLinks().filter(l => l.zoneId === zoneId && l.player === absolutePlayerIndex);
+  }
+
+  /** CardOnField doesn't include card name — fallback to code identifier */
+  resolveCardName(cardCode: number): string {
+    return 'Card ' + cardCode;
+  }
+
+  isZoneAnimating(zoneId: string, relativePlayerIndex: number, type: 'summon' | 'destroy' | 'flip' | 'activate'): boolean {
+    const az = this.animatingZone();
+    return az !== null && az.zoneId === zoneId && az.relativePlayerIndex === relativePlayerIndex && az.animationType === type;
+  }
+
+  /** EMZ zones are in the central strip — match only by zoneId + type (no player context needed) */
+  isEmzAnimating(zoneId: 'EMZ_L' | 'EMZ_R', type: 'summon' | 'destroy' | 'flip' | 'activate'): boolean {
+    const az = this.animatingZone();
+    return az !== null && az.zoneId === zoneId && az.animationType === type;
+  }
+
+  getEmzChainBadges(zoneId: 'EMZ_L' | 'EMZ_R'): ChainLinkState[] {
+    return this.activeChainLinks().filter(l => l.zoneId === zoneId);
   }
 
   private findZoneCard(playerIndex: number, zoneId: ZoneId): CardOnField | null {

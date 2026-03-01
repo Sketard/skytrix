@@ -139,9 +139,12 @@
       <app-pvp-board-container [duelState]="duelState()"
                                [timerState]="timerState()"
                                [ownPlayerIndex]="ownPlayerIndex()"
+                               [activeChainLinks]="wsService.activeChainLinks()"
                                [highlightedZones]="highlightedZones()"
                                [actionablePrompt]="actionablePrompt()"
                                [opponentDisconnected]="wsService.opponentDisconnected()"
+                               [animatingZone]="animatingZone()"
+                               [animatingLp]="animatingLpPlayer()"
                                (zoneSelected)="onZoneSelected($event)"
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
@@ -305,8 +308,8 @@
       </div>
     }
 
-    <!-- Prompt sheet (Story 1.6) -->
-    <app-pvp-prompt-sheet (sheetExpanded)="promptSheetExpanded.set($event)" />
+    <!-- Prompt sheet (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
+    <app-pvp-prompt-sheet [prompt]="visiblePrompt()" (sheetExpanded)="promptSheetExpanded.set($event)" />
   }
 
   <!-- Story 3.1 — Surrender Confirmation Dialog Template -->

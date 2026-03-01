@@ -1,8 +1,9 @@
 import { inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
-import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus } from '../types';
-import { AnnounceCardMsg, DuelEndMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
+import type { ChainingMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, DuelEndMsg, LOCATION, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 
 export type ResponseData = Record<string, unknown>;
 
@@ -16,6 +17,7 @@ export class DuelWebSocketService implements OnDestroy {
   private _timerState = signal<TimerStateMsg | null>(null);
   private _connectionStatus = signal<ConnectionStatus>('connected');
   private _opponentDisconnected = signal(false);
+  private _activeChainLinks = signal<ChainLinkState[]>([]);
 
   readonly duelState = this._duelState.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
@@ -24,6 +26,7 @@ export class DuelWebSocketService implements OnDestroy {
   readonly timerState = this._timerState.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
+  readonly activeChainLinks = this._activeChainLinks.asReadonly();
 
   private ws: WebSocket | null = null;
   private retryCount = 0;
@@ -70,6 +73,18 @@ export class DuelWebSocketService implements OnDestroy {
   sendRematchRequest(): void {
     this.ws?.send(JSON.stringify({ type: 'REMATCH_REQUEST' }));
     this._rematchState.set('requested');
+  }
+
+  dequeueAnimation(): GameEvent | null {
+    const q = this._animationQueue();
+    if (q.length === 0) return null;
+    const first = q[0];
+    this._animationQueue.update(queue => queue.slice(1));
+    return first;
+  }
+
+  clearAnimationQueue(): void {
+    this._animationQueue.set([]);
   }
 
   ngOnDestroy(): void {
@@ -137,9 +152,16 @@ export class DuelWebSocketService implements OnDestroy {
   private handleMessage(message: ServerMessage): void {
     switch (message.type) {
       case 'BOARD_STATE':
+        this._rematchStarting.set(false);
+        this._duelState.set(message.data);
+        this._activeChainLinks.set([]);
+        break;
+
       case 'STATE_SYNC':
         this._rematchStarting.set(false);
         this._duelState.set(message.data);
+        this._activeChainLinks.set([]);
+        this._animationQueue.set([]);
         break;
 
       case 'SELECT_IDLECMD':
@@ -195,6 +217,8 @@ export class DuelWebSocketService implements OnDestroy {
         this._pendingPrompt.set(null);
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
+        this._activeChainLinks.set([]);
+        this._animationQueue.set([]);
         break;
 
       case 'REMATCH_INVITATION':
@@ -212,6 +236,8 @@ export class DuelWebSocketService implements OnDestroy {
         this._pendingPrompt.set(null);
         this._opponentDisconnected.set(false);
         this._rematchState.set('idle');
+        this._activeChainLinks.set([]);
+        this._animationQueue.set([]);
         break;
 
       case 'OPPONENT_DISCONNECTED':
@@ -226,22 +252,46 @@ export class DuelWebSocketService implements OnDestroy {
         this.reconnectToken = (message as SessionTokenMsg).token;
         break;
 
+      case 'MSG_CHAINING': {
+        const msg = message as ChainingMsg;
+        this._activeChainLinks.update(links => [...links, {
+          chainIndex: msg.chainIndex,
+          cardCode: msg.cardCode,
+          player: msg.player,
+          zoneId: this.mapChainLocationToZoneId(msg.location, msg.sequence),
+          resolving: false,
+        }]);
+        this._animationQueue.update(q => [...q, message]);
+        break;
+      }
+
+      case 'MSG_CHAIN_SOLVING':
+        this._activeChainLinks.update(links =>
+          links.map(l => l.chainIndex === message.chainIndex ? { ...l, resolving: true } : l),
+        );
+        break;
+
+      case 'MSG_CHAIN_SOLVED':
+        this._activeChainLinks.update(links =>
+          links.filter(l => l.chainIndex !== message.chainIndex),
+        );
+        break;
+
+      case 'MSG_CHAIN_END':
+        this._activeChainLinks.set([]);
+        break;
+
       case 'MSG_MOVE':
       case 'MSG_DRAW':
       case 'MSG_DAMAGE':
       case 'MSG_RECOVER':
       case 'MSG_PAY_LPCOST':
-      case 'MSG_CHAINING':
-      case 'MSG_CHAIN_SOLVING':
-      case 'MSG_CHAIN_SOLVED':
-      case 'MSG_CHAIN_END':
       case 'MSG_FLIP_SUMMONING':
       case 'MSG_CHANGE_POS':
       case 'MSG_SWAP':
       case 'MSG_ATTACK':
       case 'MSG_BATTLE':
-        // TODO: Story 4.2 — re-enable when animation consumer exists
-        // this._animationQueue.update(q => [...q, message]);
+        this._animationQueue.update(q => [...q, message]);
         break;
 
       default:
@@ -294,5 +344,15 @@ export class DuelWebSocketService implements OnDestroy {
       this.ws.close();
       this.ws = null;
     }
+  }
+
+  private mapChainLocationToZoneId(location: number, sequence: number): string | null {
+    if (location === LOCATION.MZONE && sequence <= 4) return `M${sequence + 1}`;
+    if (location === LOCATION.MZONE && sequence === 5) return 'EMZ_L';
+    if (location === LOCATION.MZONE && sequence === 6) return 'EMZ_R';
+    if (location === LOCATION.SZONE && sequence <= 4) return `S${sequence + 1}`;
+    if (location === LOCATION.SZONE && sequence === 5) return 'FIELD';
+    // Non-field zones (HAND, GRAVE, BANISHED, EXTRA) — no badge on board (DRY KISS)
+    return null;
   }
 }

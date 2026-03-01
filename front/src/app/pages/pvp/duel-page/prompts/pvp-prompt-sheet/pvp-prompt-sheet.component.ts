@@ -6,6 +6,7 @@ import {
   ElementRef,
   HostListener,
   inject,
+  input,
   OnDestroy,
   output,
   signal,
@@ -40,6 +41,9 @@ export class PvpPromptSheetComponent implements OnDestroy {
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
+  // Story 4.2 — Parent passes animation-drained prompt (visiblePrompt) instead of raw pendingPrompt
+  readonly prompt = input<Prompt | null>(null);
+
   readonly sheetState = signal<SheetState>('closed');
   readonly hintText = signal<string | null>(null);
   readonly isBeat1 = signal(false);
@@ -61,7 +65,7 @@ export class PvpPromptSheetComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
-      const prompt = this.wsService.pendingPrompt();
+      const prompt = this.prompt();
       untracked(() => this.onPromptChange(prompt));
     });
 

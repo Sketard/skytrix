@@ -15,8 +15,10 @@ import { RoomDTO, SHARE_TEXT_TEMPLATE } from '../room.types';
 import { RoomApiService } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
-import type { ConnectionStatus } from '../types';
-import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
+import type { ConnectionStatus, GameEvent } from '../types';
+import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
+import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, POSITION, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
+import type { MoveMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION } from './idle-action-codes';
 import { SharedCardInspectorData } from '../../../core/model/shared-card-data';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
@@ -112,13 +114,14 @@ export class DuelPageComponent implements OnInit {
   readonly opponentHand = computed(() => this.getHandCards(1));
 
   // Zone highlight (Pattern A — SELECT_PLACE / SELECT_DISFIELD)
+  // Story 4.2 — All prompt-dependent computeds use visiblePrompt (drain coordination)
   readonly isZoneHighlightActive = computed(() => {
-    const p = this.wsService.pendingPrompt();
+    const p = this.visiblePrompt();
     return p?.type === 'SELECT_PLACE' || p?.type === 'SELECT_DISFIELD';
   });
 
   readonly highlightedZones = computed(() => {
-    const p = this.wsService.pendingPrompt();
+    const p = this.visiblePrompt();
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return new Set<ZoneId>();
     const places = (p as SelectPlaceMsg | SelectDisfieldMsg).places;
     const zoneIds = places.map(pl => this.placeOptionToZoneId(pl)).filter((z): z is ZoneId => z !== null);
@@ -126,7 +129,7 @@ export class DuelPageComponent implements OnInit {
   });
 
   readonly zoneInstruction = computed(() => {
-    const p = this.wsService.pendingPrompt();
+    const p = this.visiblePrompt();
     if (p?.type === 'SELECT_PLACE') return 'Select a zone to place your card';
     if (p?.type === 'SELECT_DISFIELD') return 'Select a zone to destroy';
     return '';
@@ -134,7 +137,7 @@ export class DuelPageComponent implements OnInit {
 
   // Story 1.7 — Actionable prompt (IDLECMD/BATTLECMD distributed UI)
   readonly actionablePrompt = computed((): SelectIdleCmdMsg | SelectBattleCmdMsg | null => {
-    const p = this.wsService.pendingPrompt();
+    const p = this.visiblePrompt();
     if (p?.type === 'SELECT_IDLECMD' || p?.type === 'SELECT_BATTLECMD') return p;
     return null;
   });
@@ -168,8 +171,9 @@ export class DuelPageComponent implements OnInit {
   });
 
   // [C2 fix] Has active blocking prompt — excludes IDLECMD/BATTLECMD (distributed UI, not blocking)
+  // Story 4.2 — uses visiblePrompt for drain coordination
   readonly hasActivePrompt = computed(() => {
-    const p = this.wsService.pendingPrompt();
+    const p = this.visiblePrompt();
     return p !== null && p.type !== 'SELECT_IDLECMD' && p.type !== 'SELECT_BATTLECMD';
   });
 
@@ -269,6 +273,26 @@ export class DuelPageComponent implements OnInit {
   private announcedThresholds = new Set<number>();
   private lastAnnouncedTurnPlayer: number | null = null;
 
+  // Story 4.1 — Chain resolved announcement tracking
+  private previousChainLinksCount = 0;
+
+  // Story 4.2 — Animation orchestration
+  private _isAnimating = signal(false);
+  readonly isAnimating = this._isAnimating.asReadonly();
+  readonly animatingZone = signal<{ zoneId: string; animationType: 'summon' | 'destroy' | 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
+  readonly animatingLpPlayer = signal<LpAnimData | null>(null);
+  private animationTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private trackedLp: [number, number] = [8000, 8000];
+  // [Review C1 fix] Read LP counter duration from CSS token (0ms under prefers-reduced-motion)
+  private readonly baseLpDuration = (() => {
+    const style = getComputedStyle(document.documentElement);
+    const raw = style.getPropertyValue('--pvp-transition-lp-counter').trim();
+    return parseFloat(raw) || 0;
+  })();
+
+  // Story 4.2 — Prompt drain: gate prompt display behind animation queue drain
+  readonly visiblePrompt = computed(() => this.isAnimating() ? null : this.wsService.pendingPrompt());
+
   constructor() {
     const code = this.route.snapshot.paramMap.get('roomCode');
     if (code) {
@@ -281,6 +305,8 @@ export class DuelPageComponent implements OnInit {
       this.stopCountdown();
       if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
       if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
+      this.animationTimeouts.forEach(t => clearTimeout(t));
+      this.animationTimeouts = [];
     });
 
     // Story 2.1 — Countdown timer tick + expiration
@@ -471,10 +497,230 @@ export class DuelPageComponent implements OnInit {
         this.previousOpponentDisconnected = current;
       });
     });
+
+    // Story 4.1 — LiveAnnouncer: "Chain resolved" when chain links go from non-empty → empty
+    effect(() => {
+      const links = this.wsService.activeChainLinks();
+      untracked(() => {
+        if (links.length === 0 && this.previousChainLinksCount > 0) {
+          this.liveAnnouncer.announce('Chain resolved');
+        }
+        this.previousChainLinksCount = links.length;
+      });
+    });
+
+    // Story 4.2 — Animation queue watcher: start processing when queue goes from empty → non-empty
+    effect(() => {
+      const queue = this.wsService.animationQueue();
+      untracked(() => {
+        if (queue.length > 0 && !this._isAnimating()) {
+          this._isAnimating.set(true);
+          this.processAnimationQueue();
+        }
+      });
+    });
+
+    // Story 4.2 — Reset tracked LP when BOARD_STATE arrives (authoritative sync)
+    // [Review H1 fix] Guard behind !isAnimating to prevent race condition where
+    // BOARD_STATE resets trackedLp before pending MSG_DAMAGE events are processed,
+    // causing double-subtraction and LP bounce artifacts.
+    effect(() => {
+      const state = this.duelState();
+      untracked(() => {
+        if (state.players.length === 2 && !this._isAnimating()) {
+          this.trackedLp = [state.players[0].lp, state.players[1].lp];
+        }
+      });
+    });
   }
 
   ngOnInit(): void {
     this.initOrientationLock();
+  }
+
+  // Story 4.2 — Animation orchestration
+  private processAnimationQueue(): void {
+    const queue = this.wsService.animationQueue();
+
+    // Queue collapse (AC7): if queue > 5, instantly process all but last 3
+    if (queue.length > 5) {
+      const collapseCount = queue.length - 3;
+      for (let i = 0; i < collapseCount; i++) {
+        const event = this.wsService.dequeueAnimation();
+        if (event) this.applyInstantAnimation(event);
+      }
+    }
+
+    const event = this.wsService.dequeueAnimation();
+    if (!event) {
+      this._isAnimating.set(false);
+      this.animatingZone.set(null);
+      this.animatingLpPlayer.set(null);
+      // [Review H1 fix] Sync trackedLp to authoritative board state after all animations processed
+      const state = this.duelState();
+      if (state.players.length === 2) {
+        this.trackedLp = [state.players[0].lp, state.players[1].lp];
+      }
+      return;
+    }
+
+    const duration = this.processEvent(event);
+
+    // AC8: 2x speed when activation toggle is Off
+    const speedMultiplier = this.activationMode() === 'off' ? 0.5 : 1;
+    const adjustedDuration = Math.round(duration * speedMultiplier);
+
+    const timeout = setTimeout(() => {
+      this.animatingZone.set(null);
+      this.animatingLpPlayer.set(null);
+      const idx = this.animationTimeouts.indexOf(timeout);
+      if (idx !== -1) this.animationTimeouts.splice(idx, 1);
+      this.processAnimationQueue();
+    }, adjustedDuration);
+    this.animationTimeouts.push(timeout);
+  }
+
+  private processEvent(event: GameEvent): number {
+    switch (event.type) {
+      case 'MSG_MOVE': {
+        const msg = event as MoveMsg;
+        return this.processMoveEvent(msg);
+      }
+      case 'MSG_DAMAGE': {
+        const msg = event as DamageMsg;
+        return this.processLpEvent(msg.player, msg.amount, 'damage');
+      }
+      case 'MSG_RECOVER': {
+        const msg = event as RecoverMsg;
+        return this.processLpEvent(msg.player, msg.amount, 'recover');
+      }
+      case 'MSG_PAY_LPCOST': {
+        const msg = event as PayLpCostMsg;
+        return this.processLpEvent(msg.player, msg.amount, 'damage');
+      }
+      case 'MSG_FLIP_SUMMONING': {
+        const msg = event as FlipSummoningMsg;
+        const zoneId = this.mapAnimationZoneId(msg.location, msg.sequence);
+        if (zoneId) {
+          this.setAnimatingZone(zoneId, 'flip', msg.player);
+          this.announceEvent('Card flip summoned', msg.player);
+        }
+        return 300;
+      }
+      case 'MSG_CHANGE_POS': {
+        const msg = event as ChangePosMsg;
+        const wasFaceDown = (msg.previousPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
+        const nowFaceUp = (msg.currentPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
+        if (wasFaceDown && nowFaceUp) {
+          const zoneId = this.mapAnimationZoneId(msg.location, msg.sequence);
+          if (zoneId) this.setAnimatingZone(zoneId, 'flip', msg.player);
+          return 300;
+        }
+        return 0;
+      }
+      case 'MSG_CHAINING': {
+        const msg = event as ChainingMsg;
+        const zoneId = this.mapAnimationZoneId(msg.location, msg.sequence);
+        if (zoneId) this.setAnimatingZone(zoneId, 'activate', msg.player);
+        return 300;
+      }
+      // No-op events: dequeue immediately
+      case 'MSG_DRAW':
+      case 'MSG_SWAP':
+      case 'MSG_ATTACK':
+      case 'MSG_BATTLE':
+      case 'MSG_CHAIN_SOLVING':
+      case 'MSG_CHAIN_SOLVED':
+      case 'MSG_CHAIN_END':
+        return 0;
+      default:
+        return 0;
+    }
+  }
+
+  private processMoveEvent(msg: MoveMsg): number {
+    const from = msg.fromLocation;
+    const to = msg.toLocation;
+
+    // Summon: HAND/EXTRA/DECK → MZONE, or HAND → SZONE (set)
+    if ((to === LOCATION.MZONE && (from === LOCATION.HAND || from === LOCATION.EXTRA || from === LOCATION.DECK))
+      || (to === LOCATION.SZONE && from === LOCATION.HAND)) {
+      const zoneId = this.mapAnimationZoneId(to, msg.toSequence);
+      if (zoneId) {
+        this.setAnimatingZone(zoneId, 'summon', msg.player);
+        this.announceEvent('Card summoned', msg.player);
+      }
+      return 300;
+    }
+
+    // Destroy: MZONE/SZONE → GRAVE/BANISHED/HAND/DECK (card disappears from field)
+    // [Review L2 fix] return 300 to match CSS --pvp-animation-duration (was 400, causing 100ms dead time)
+    if ((from === LOCATION.MZONE || from === LOCATION.SZONE)
+      && (to === LOCATION.GRAVE || to === LOCATION.BANISHED || to === LOCATION.HAND || to === LOCATION.DECK)) {
+      const zoneId = this.mapAnimationZoneId(from, msg.fromSequence);
+      if (zoneId) {
+        this.setAnimatingZone(zoneId, 'destroy', msg.player);
+        if (to === LOCATION.GRAVE || to === LOCATION.BANISHED) {
+          this.announceEvent('Card destroyed', msg.player);
+        }
+      }
+      return 300;
+    }
+
+    return 0;
+  }
+
+  private processLpEvent(player: number, amount: number, type: 'damage' | 'recover'): number {
+    const fromLp = this.trackedLp[player] ?? 8000;
+    const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
+    this.trackedLp[player] = toLp;
+
+    // [Review C1/M5 fix] Token-driven LP duration, speed-adjusted. 0ms under prefers-reduced-motion
+    const speedMultiplier = this.activationMode() === 'off' ? 0.5 : 1;
+    const durationMs = Math.round(this.baseLpDuration * speedMultiplier);
+    this.animatingLpPlayer.set({ player, fromLp, toLp, type, durationMs });
+
+    // LiveAnnouncer: announce LP change
+    const isOwn = player === this.ownPlayerIndex();
+    const label = isOwn ? 'Your' : 'Opponent';
+    untracked(() => this.liveAnnouncer.announce(`${label} LP: ${toLp}`));
+
+    return this.baseLpDuration;
+  }
+
+  private applyInstantAnimation(event: GameEvent): void {
+    // For collapsed events: apply LP tracking without visual animation
+    if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST') {
+      const msg = event as DamageMsg | PayLpCostMsg;
+      this.trackedLp[msg.player] = Math.max(0, (this.trackedLp[msg.player] ?? 8000) - msg.amount);
+    } else if (event.type === 'MSG_RECOVER') {
+      const msg = event as RecoverMsg;
+      this.trackedLp[msg.player] = (this.trackedLp[msg.player] ?? 8000) + msg.amount;
+    }
+  }
+
+  private setAnimatingZone(zoneId: string, animationType: 'summon' | 'destroy' | 'flip' | 'activate', absolutePlayer: number): void {
+    const relativePlayerIndex = absolutePlayer === this.ownPlayerIndex() ? 0 : 1;
+    this.animatingZone.set({ zoneId, animationType, relativePlayerIndex });
+  }
+
+  private mapAnimationZoneId(location: number, sequence: number): string | null {
+    if (location === LOCATION.MZONE) {
+      if (sequence <= 4) return `M${sequence + 1}`;
+      if (sequence === 5) return 'EMZ_L';
+      if (sequence === 6) return 'EMZ_R';
+    }
+    if (location === LOCATION.SZONE) {
+      if (sequence <= 4) return `S${sequence + 1}`;
+      if (sequence === 5) return 'FIELD';
+    }
+    return null;
+  }
+
+  private announceEvent(text: string, player: number): void {
+    const isOwn = player === this.ownPlayerIndex();
+    const prefix = isOwn ? '' : 'Opponent: ';
+    untracked(() => this.liveAnnouncer.announce(`${prefix}${text}`));
   }
 
   private fetchRoom(roomCode: string): void {
