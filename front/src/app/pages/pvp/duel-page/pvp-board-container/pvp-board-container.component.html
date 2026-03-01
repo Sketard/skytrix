@@ -22,7 +22,8 @@
                [class.pvp-anim-summon]="isZoneAnimating(zone.zoneId, 1, 'summon')"
                [class.pvp-anim-destroy]="isZoneAnimating(zone.zoneId, 1, 'destroy')"
                [class.pvp-anim-flip]="isZoneAnimating(zone.zoneId, 1, 'flip')"
-               [class.pvp-anim-activate]="isZoneAnimating(zone.zoneId, 1, 'activate')">
+               [class.pvp-anim-activate]="isZoneAnimating(zone.zoneId, 1, 'activate')"
+               (click)="onCardInspect(zone.card)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
                    [alt]="'Card ' + zone.card.cardCode"
@@ -80,7 +81,8 @@
              [class.pvp-anim-summon]="isEmzAnimating('EMZ_L', 'summon')"
              [class.pvp-anim-destroy]="isEmzAnimating('EMZ_L', 'destroy')"
              [class.pvp-anim-flip]="isEmzAnimating('EMZ_L', 'flip')"
-             [class.pvp-anim-activate]="isEmzAnimating('EMZ_L', 'activate')">
+             [class.pvp-anim-activate]="isEmzAnimating('EMZ_L', 'activate')"
+             (click)="onCardInspect(card)">
           @if (isFaceUp(card.position)) {
             <img [src]="getCardImageUrl(card)"
                  [alt]="'EMZ-L Card'"
@@ -132,7 +134,8 @@
              [class.pvp-anim-summon]="isEmzAnimating('EMZ_R', 'summon')"
              [class.pvp-anim-destroy]="isEmzAnimating('EMZ_R', 'destroy')"
              [class.pvp-anim-flip]="isEmzAnimating('EMZ_R', 'flip')"
-             [class.pvp-anim-activate]="isEmzAnimating('EMZ_R', 'activate')">
+             [class.pvp-anim-activate]="isEmzAnimating('EMZ_R', 'activate')"
+             (click)="onCardInspect(card)">
           @if (isFaceUp(card.position)) {
             <img [src]="getCardImageUrl(card)"
                  [alt]="'EMZ-R Card'"

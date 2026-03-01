@@ -38,6 +38,12 @@ public class CardController {
         return cardService.search(filter, offset, quantity);
     }
 
+    @GetMapping("/code/{cardCode}")
+    @ResponseStatus(code = HttpStatus.OK)
+    public CardDetailedDTO getCardByCode(@PathVariable("cardCode") long cardCode) {
+        return cardService.getCardByCode(cardCode);
+    }
+
     @PutMapping("/favorites/add/{cardId}")
     @ResponseStatus(code = HttpStatus.NO_CONTENT)
     public void addFavorite(@PathVariable("cardId") Long cardId) {

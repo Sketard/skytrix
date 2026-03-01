@@ -13,6 +13,8 @@ export const TURN_TIME_POOL_MS = 300_000;
 export const TURN_TIME_INCREMENT_MS = 40_000;
 export const INACTIVITY_TIMEOUT_MS = 100_000;
 export const INACTIVITY_RACE_WINDOW_MS = 500;
+export const BOTH_DISCONNECTED_CLEANUP_MS = 4 * 60 * 60 * 1000; // 4 hours
+export const STATE_SYNC_RATE_LIMIT_MS = 5_000;
 
 // =============================================================================
 // Data Layer Types

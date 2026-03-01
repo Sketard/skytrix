@@ -3,7 +3,7 @@ import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join } from 'node:path';
-import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_RACE_WINDOW_MS } from './types.js';
+import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS } from './types.js';
 import type { WorkerToMainMessage, DuelSession, PlayerSession, Deck, TimerContext } from './types.js';
 import type { ServerMessage, ClientMessage, Player, SelectPromptType } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
@@ -33,6 +33,12 @@ interface ActiveDuelSession extends DuelSession {
   decks: [Deck, Deck];
   rematchRequested: [boolean, boolean];
   rematchTimeout: ReturnType<typeof setTimeout> | null;
+  // Story 5.2 — Both-disconnect handling
+  preservationTimer: ReturnType<typeof setTimeout> | null;
+  bothDisconnected: boolean;
+  combinedGraceTimer: ReturnType<typeof setTimeout> | null;
+  storedDuelResult: ServerMessage | null;
+  lastStateSyncAt: [number, number];
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
@@ -125,6 +131,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
+  // GET /api/duels/active — List active duel IDs (internal, used by Spring Boot scheduler)
+  if (method === 'GET' && pathname === '/api/duels/active') {
+    json(res, 200, { duelIds: [...activeDuels.keys()] });
+    return;
+  }
+
   // POST /api/duels — Create a new duel
   // NOTE: /api/duels/:id/join removed — see Story 1.3 variance #1. Story 1.4 uses token-based WS association.
   if (method === 'POST' && pathname === '/api/duels') {
@@ -185,6 +197,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       decks: [parsed.player1.deck, parsed.player2.deck],
       rematchRequested: [false, false],
       rematchTimeout: null,
+      preservationTimer: null,
+      bothDisconnected: false,
+      combinedGraceTimer: null,
+      storedDuelResult: null,
+      lastStateSyncAt: [0, 0],
     };
 
     // Spawn worker
@@ -270,6 +287,9 @@ function startRematch(session: ActiveDuelSession): void {
   session.rematchRequested = [false, false];
   session.endedAt = null;
   session.startedAt = Date.now();
+  session.bothDisconnected = false;
+  session.storedDuelResult = null;
+  session.lastStateSyncAt = [0, 0];
 
   clearAllDuelTimers(session.duelId);
 
@@ -603,6 +623,18 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
     session.rematchTimeout = null;
   }
 
+  // Story 5.2 — Clear both-disconnect timers
+  if (session.combinedGraceTimer) {
+    clearTimeout(session.combinedGraceTimer);
+    session.combinedGraceTimer = null;
+  }
+  if (session.preservationTimer) {
+    clearTimeout(session.preservationTimer);
+    session.preservationTimer = null;
+  }
+  session.bothDisconnected = false;
+  session.storedDuelResult = null;
+
   // Clear all timer state (turn timer, inactivity, race windows)
   clearAllDuelTimers(session.duelId);
 
@@ -748,24 +780,48 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   (ws as AliveWebSocket).isAlive = true;
   ws.on('pong', () => { (ws as AliveWebSocket).isAlive = true; });
 
-  // Send last BOARD_STATE as STATE_SYNC to newly connected player
-  if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
-    const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
-    const filtered = filterMessage(stateSync, playerIndex);
-    if (filtered) sendToPlayer(session, playerIndex, filtered);
-  }
+  // Story 5.2 — Check if reconnecting during preservation period (duel already ended)
+  if (reconnect && session.storedDuelResult) {
+    sendToPlayer(session, playerIndex, session.storedDuelResult);
+    // [Review M3 fix] Only cleanup if both players have received the result
+    const otherIdx: Player = playerIndex === 0 ? 1 : 0;
+    if (session.players[otherIdx].connected) {
+      if (session.preservationTimer) {
+        clearTimeout(session.preservationTimer);
+        session.preservationTimer = null;
+      }
+      cleanupDuelSession(session);
+      session.worker.terminate();
+    }
+    // Otherwise keep session alive — other player may still reconnect
+  } else {
+    // Story 5.2 — Handle reconnection during combined grace period
+    if (reconnect && session.bothDisconnected) {
+      // First player reconnecting during combined grace — cancel combined timer
+      if (session.combinedGraceTimer) {
+        clearTimeout(session.combinedGraceTimer);
+        session.combinedGraceTimer = null;
+      }
+      session.bothDisconnected = false;
+      // Start individual grace timer for the still-disconnected player
+      const otherIndex: Player = playerIndex === 0 ? 1 : 0;
+      if (!session.players[otherIndex].connected) {
+        startGracePeriod(session, otherIndex);
+      }
+    }
 
-  // Send current TIMER_STATE to connecting/reconnecting player
-  sendTimerStateToPlayer(session, playerIndex);
+    // Send state snapshot (DRY — used by both reconnection and REQUEST_STATE_SYNC)
+    sendStateSnapshot(session, playerIndex);
 
-  // Story 3.3 — Reconnection: notify opponent + re-send pending prompt
-  if (reconnect) {
-    const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
-    sendToPlayer(session, opponentIndex, { type: 'OPPONENT_RECONNECTED' });
+    // Story 3.3 — Reconnection: notify opponent + re-send pending prompt
+    if (reconnect) {
+      const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
+      sendToPlayer(session, opponentIndex, { type: 'OPPONENT_RECONNECTED' });
 
-    // Re-send cached prompt if player had a pending selection
-    if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
-      sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
+      // Re-send cached prompt if player had a pending selection
+      if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
+        sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
+      }
     }
   }
 
@@ -815,14 +871,57 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   });
 });
 
+// Story 5.2 — DRY: reusable state snapshot for reconnection + REQUEST_STATE_SYNC
+function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void {
+  if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
+    const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
+    const filtered = filterMessage(stateSync, playerIndex);
+    if (filtered) sendToPlayer(session, playerIndex, filtered);
+  }
+  sendTimerStateToPlayer(session, playerIndex);
+}
+
 function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void {
+  // Story 5.2 — Check if both players are now disconnected
+  const otherIndex: Player = playerIndex === 0 ? 1 : 0;
+  if (!session.players[otherIndex].connected) {
+    // Both disconnected — cancel individual grace timer for the other player
+    const otherKey = `${session.duelId}-${otherIndex}`;
+    const otherTimer = gracePeriodTimers.get(otherKey);
+    if (otherTimer) {
+      clearTimeout(otherTimer);
+      gracePeriodTimers.delete(otherKey);
+    }
+
+    session.bothDisconnected = true;
+
+    // Start combined grace timer (60s from the later disconnect)
+    if (!session.combinedGraceTimer) {
+      session.combinedGraceTimer = setTimeout(() => {
+        session.combinedGraceTimer = null;
+        // Neither player reconnected — end as draw
+        if (!session.players[0].connected && !session.players[1].connected && !session.endedAt) {
+          const endMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'draw_both_disconnect' };
+          session.storedDuelResult = endMsg;
+          handleDuelEnd(session);
+          // Don't terminate worker — preserve for 4h
+          session.preservationTimer = setTimeout(() => {
+            session.preservationTimer = null;
+            cleanupDuelSession(session);
+            session.worker.terminate();
+          }, BOTH_DISCONNECTED_CLEANUP_MS);
+        }
+      }, RECONNECT_GRACE_MS);
+    }
+    return;
+  }
+
+  // Single player disconnect — existing per-player grace logic
   const timerKey = `${session.duelId}-${playerIndex}`;
-  // Don't start a new timer if one already exists
   if (gracePeriodTimers.has(timerKey)) return;
 
   const timer = setTimeout(() => {
     gracePeriodTimers.delete(timerKey);
-    // If still disconnected after grace period, forfeit
     if (!session.players[playerIndex].connected && !session.endedAt) {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'disconnect' };
@@ -840,7 +939,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
 // Client Message Handling
 // =============================================================================
 
-const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST']);
+const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC']);
 
 function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg: ClientMessage): void {
   // Validate message type
@@ -891,6 +990,20 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         startRematch(session);
       } else {
         sendToPlayer(session, opponentIdx, { type: 'REMATCH_INVITATION' });
+      }
+      break;
+    }
+
+    case 'REQUEST_STATE_SYNC': {
+      // Story 5.2 — Rate-limit: max 1 per 5s per player
+      const now = Date.now();
+      if (now - session.lastStateSyncAt[playerIndex] < STATE_SYNC_RATE_LIMIT_MS) break;
+      session.lastStateSyncAt[playerIndex] = now;
+
+      sendStateSnapshot(session, playerIndex);
+      // Re-send pending prompt if player has one
+      if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
+        sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
       }
       break;
     }

@@ -45,6 +45,14 @@ public class CardService {
     @Inject
     private CardMapper cardMapper;
 
+    public CardDetailedDTO getCardByCode(long cardCode) {
+        var card = cardRepository.findByPasscode(cardCode);
+        if (card == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return cardMapper.toCardDetailedDTO(card);
+    }
+
     public CustomPageable<CardDetailedDTO> search(CardFilterDTO filter, int offset, int quantity) {
         return new CustomPageable<>(
             () -> cardRepository.findAll(filterService.cardSpecification(filter), PageRequest.of(offset, quantity)),

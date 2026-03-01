@@ -1,6 +1,7 @@
 package com.skytrix.service;
 
 import java.time.Duration;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -11,7 +12,10 @@ import org.springframework.web.client.RestClient;
 import com.skytrix.model.dto.room.DuelCreationResponse;
 import com.skytrix.model.dto.room.DuelDeckDTO;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class DuelServerClient {
 
     private final RestClient restClient;
@@ -50,6 +54,20 @@ public class DuelServerClient {
         }
     }
 
+    public List<String> getActiveDuelIds() {
+        try {
+            var response = restClient.get()
+                    .uri("/api/duels/active")
+                    .retrieve()
+                    .body(ActiveDuelsResponse.class);
+            return response != null && response.duelIds() != null ? response.duelIds() : List.of();
+        } catch (Exception e) {
+            log.warn("Failed to fetch active duel IDs from duel server: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2) {}
     private record DuelPlayer(String id, DuelDeckDTO deck) {}
+    private record ActiveDuelsResponse(List<String> duelIds) {}
 }

@@ -15,6 +15,7 @@ export class PvpCardInspectorWrapperComponent {
 
   readonly card = input<SharedCardInspectorData | null>(null);
   readonly promptActive = input(false);
+  readonly initialForceExpanded = input(false);
 
   readonly dismissed = output<void>();
 
@@ -35,6 +36,14 @@ export class PvpCardInspectorWrapperComponent {
     effect(() => {
       this.promptActive();
       untracked(() => this.forceExpanded.set(false));
+    });
+
+    // H3 fix: Propagate initialForceExpanded from parent (long-press inspect opens full)
+    effect(() => {
+      const force = this.initialForceExpanded();
+      if (force) {
+        untracked(() => this.forceExpanded.set(true));
+      }
     });
   }
 

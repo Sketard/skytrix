@@ -52,6 +52,7 @@ export class PvpBoardContainerComponent {
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number }>();
+  readonly cardInspectRequest = output<{ cardCode: number }>();
 
   readonly playerZones = computed(() => this.buildFieldZones(0));
   readonly opponentZones = computed(() => this.buildFieldZones(1));
@@ -134,7 +135,12 @@ export class PvpBoardContainerComponent {
 
   onZoneCardClick(event: MouseEvent, zone: ZoneRenderData): void {
     const actions = this.getActionsForZone(zone.zoneId);
-    if (actions.length === 0) return;
+    if (actions.length === 0) {
+      if (zone.card?.cardCode) {
+        this.cardInspectRequest.emit({ cardCode: zone.card.cardCode });
+      }
+      return;
+    }
     if (actions.length === 1) {
       this.actionResponse.emit({ action: actions[0].actionCode, index: actions[0].index });
     } else {
@@ -223,6 +229,12 @@ export class PvpBoardContainerComponent {
     const ownIdx = this.ownPlayerIndex();
     const absolutePlayerIndex = relativePlayerIndex === 0 ? ownIdx : (ownIdx === 0 ? 1 : 0);
     return this.activeChainLinks().filter(l => l.zoneId === zoneId && l.player === absolutePlayerIndex);
+  }
+
+  onCardInspect(card: CardOnField): void {
+    if (card.cardCode) {
+      this.cardInspectRequest.emit({ cardCode: card.cardCode });
+    }
   }
 
   /** CardOnField doesn't include card name — fallback to code identifier */

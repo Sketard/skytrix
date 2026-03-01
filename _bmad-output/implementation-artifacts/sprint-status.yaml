@@ -70,9 +70,9 @@ development_status:
   4-2-game-event-visual-feedback-animation-queue: done
   epic-4-retrospective: done
 
-  epic-5: backlog
-  5-1-card-inspector-pvp-placeholder: backlog
-  5-2-reconnection-edge-cases: backlog
-  5-3-room-management-fixes: backlog
-  5-4-infrastructure-optimization: backlog
+  epic-5: done
+  5-1-card-inspector-pvp-placeholder: done
+  5-2-reconnection-edge-cases: done
+  5-3-room-management-fixes: done
+  5-4-infrastructure-optimization: done
   epic-5-retrospective: optional

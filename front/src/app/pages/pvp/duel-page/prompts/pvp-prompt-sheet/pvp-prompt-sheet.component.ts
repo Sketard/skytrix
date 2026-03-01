@@ -43,6 +43,8 @@ export class PvpPromptSheetComponent implements OnDestroy {
 
   // Story 4.2 — Parent passes animation-drained prompt (visiblePrompt) instead of raw pendingPrompt
   readonly prompt = input<Prompt | null>(null);
+  // Story 5.2 — Skip Beat 1 delay when returning from background tab
+  readonly skipBeat1 = input(false);
 
   readonly sheetState = signal<SheetState>('closed');
   readonly hintText = signal<string | null>(null);
@@ -58,10 +60,12 @@ export class PvpPromptSheetComponent implements OnDestroy {
 
   // [H1 fix] Expose sheet expanded state for parent (mini-toolbar interaction)
   readonly sheetExpanded = output<boolean>();
+  readonly longPressInspect = output<{ cardCode: number }>();
 
   private beatTimeout: ReturnType<typeof setTimeout> | null = null;
   private closingTimeout: ReturnType<typeof setTimeout> | null = null;
   private responseSubscription: { unsubscribe(): void } | null = null;
+  private longPressSubscription: { unsubscribe(): void } | null = null;
 
   constructor() {
     effect(() => {
@@ -147,14 +151,15 @@ export class PvpPromptSheetComponent implements OnDestroy {
         if (this.sheetState() === 'transitioning') this.sheetState.set('open');
       }, 200);
     } else {
-      // Opening: two-beat rendering
+      // Opening: two-beat rendering (skip Beat 1 when returning from background)
       this.sheetState.set('opening');
-      this.isBeat1.set(hasHint);
+      const skipHintDelay = this.skipBeat1();
+      this.isBeat1.set(hasHint && !skipHintDelay);
       this.beatTimeout = setTimeout(() => {
         this.attachComponent(prompt, componentType);
         this.isBeat1.set(false);
         this.sheetState.set('open');
-      }, hasHint ? 50 : 0);
+      }, (hasHint && !skipHintDelay) ? 50 : 0);
     }
   }
 
@@ -184,11 +189,20 @@ export class PvpPromptSheetComponent implements OnDestroy {
       this.wsService.sendResponse(prompt.type, data as ResponseData);
       this.isSending.set(true);
     });
+
+    // Relay long-press inspect from card grid sub-components
+    const instance = ref.instance as unknown as Record<string, unknown>;
+    if ('longPressInspect' in instance && instance['longPressInspect']) {
+      this.longPressSubscription = (instance['longPressInspect'] as { subscribe: (fn: (e: { cardCode: number }) => void) => { unsubscribe(): void } })
+        .subscribe((e: { cardCode: number }) => this.longPressInspect.emit(e));
+    }
   }
 
   private detachComponent(): void {
     this.responseSubscription?.unsubscribe();
     this.responseSubscription = null;
+    this.longPressSubscription?.unsubscribe();
+    this.longPressSubscription = null;
     if (this.portalOutlet?.hasAttached()) {
       this.portalOutlet.detach();
     }

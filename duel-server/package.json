@@ -7,6 +7,7 @@
     "poc": "tsx src/test-core.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test:integration": "tsx test/integration.ts",
     "postinstall": "patch-package"
   },
   "keywords": [],

@@ -6,11 +6,12 @@ export interface PlayerInfo {
 export interface RoomDTO {
   id: number;
   roomCode: string;
-  status: 'WAITING' | 'CREATING_DUEL' | 'ACTIVE' | 'ENDED';
+  status: 'WAITING' | 'CREATING_DUEL' | 'ACTIVE' | 'ENDED' | 'CLOSED';
   player1: PlayerInfo;
   player2: PlayerInfo | null;
   duelId: string | null;
   wsToken: string | null;
+  decklistId: number | null;
   createdAt: string;
 }
 

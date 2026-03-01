@@ -24,11 +24,14 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
   promptData: Prompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  longPressInspect = new EventEmitter<{ cardCode: number }>();
 
   readonly selectedIndices = signal<Set<number>>(new Set());
   answered = false;
   private autoRespondTimeout: ReturnType<typeof setTimeout> | null = null;
   private longPressTimeout: ReturnType<typeof setTimeout> | null = null;
+  private longPressStartPos: { x: number; y: number } | null = null;
+  private longPressFired = false;
 
   ngOnInit(): void {
     if (this.cards.length === 0) {
@@ -108,6 +111,11 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
 
   toggleCard(index: number): void {
     if (this.answered) return;
+    // H1 fix: Skip selection if long-press just fired (click event follows touchend)
+    if (this.longPressFired) {
+      this.longPressFired = false;
+      return;
+    }
 
     this.selectedIndices.update(set => {
       const next = new Set(set);
@@ -139,17 +147,35 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
     }
   }
 
-  // Long-press card inspection (500ms hold → inspect card)
-  onCardTouchStart(cardCode: number): void {
+  // L2 fix: Consistent pointer event model (pointerdown instead of touchstart)
+  onCardPointerDown(cardCode: number, event: PointerEvent): void {
     this.cancelLongPress();
+    this.longPressFired = false;
+    this.longPressStartPos = { x: event.clientX, y: event.clientY };
     this.longPressTimeout = setTimeout(() => {
-      // TODO: Open CardInspectorComponent overlay (Story 1.7 integration)
-      console.debug('[PromptCardGrid] Long-press inspect:', cardCode);
+      if (cardCode) {
+        this.longPressFired = true;
+        this.longPressInspect.emit({ cardCode });
+      }
     }, 500);
   }
 
-  onCardTouchEnd(): void {
+  onCardPointerUp(): void {
     this.cancelLongPress();
+  }
+
+  onCardPointerMove(event: PointerEvent): void {
+    if (!this.longPressStartPos || !this.longPressTimeout) return;
+    const dx = event.clientX - this.longPressStartPos.x;
+    const dy = event.clientY - this.longPressStartPos.y;
+    if (dx * dx + dy * dy > 100) { // 10px threshold squared
+      this.cancelLongPress();
+    }
+  }
+
+  onContextMenu(event: Event): void {
+    this.cancelLongPress();
+    event.preventDefault();
   }
 
   private cancelLongPress(): void {
@@ -157,6 +183,7 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
       clearTimeout(this.longPressTimeout);
       this.longPressTimeout = null;
     }
+    this.longPressStartPos = null;
   }
 
   @HostListener('keydown', ['$event'])

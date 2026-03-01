@@ -26,8 +26,10 @@ public abstract class RoomMapper {
         if (requestingUserId != null) {
             if (room.getPlayer1() != null && requestingUserId.equals(room.getPlayer1().getId())) {
                 dto.setWsToken(room.getWsToken1());
+                dto.setDecklistId(room.getPlayer1DecklistId());
             } else if (room.getPlayer2() != null && requestingUserId.equals(room.getPlayer2().getId())) {
                 dto.setWsToken(room.getWsToken2());
+                dto.setDecklistId(room.getPlayer2DecklistId());
             }
         }
 

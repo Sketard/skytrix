@@ -552,6 +552,52 @@ app-pvp-board-container {
   }
 }
 
+// === Blocked Tab Overlay (Story 5.2) ===
+.blocked-tab-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: z.$z-pvp-blocked-tab-overlay;
+  animation: blocked-tab-fade-in var(--pvp-animation-duration, 300ms) ease both;
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+  }
+
+  &__text {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+  }
+
+  &__btn {
+    min-height: 48px;
+    min-width: 180px;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+}
+
+@keyframes blocked-tab-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blocked-tab-overlay {
+    animation: none;
+  }
+}
+
 // === Card Action Menu (Story 1.7) ===
 .card-action-menu {
   position: absolute;

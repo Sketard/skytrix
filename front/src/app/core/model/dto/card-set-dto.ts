@@ -8,7 +8,7 @@ export class CardSetDTO {
   cardId?: number;
 
   constructor(
-    id: number,
+    id?: number,
     name?: string,
     code?: string,
     rarity?: string,
@@ -16,7 +16,7 @@ export class CardSetDTO {
     price?: number,
     cardId?: number
   ) {
-    this.id = id;
+    this.id = id ?? 0;
     this.name = name;
     this.code = code;
     this.rarity = rarity;

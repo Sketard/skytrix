@@ -2,6 +2,8 @@ package com.skytrix.scheduler;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 import jakarta.inject.Inject;
 
@@ -9,6 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.skytrix.model.entity.Room;
 import com.skytrix.model.enums.RoomStatus;
 import com.skytrix.repository.RoomRepository;
 import com.skytrix.service.DuelServerClient;
@@ -32,33 +35,41 @@ public class RoomCleanupScheduler {
         var orphanedRooms = roomRepository.findByStatusAndCreatedAtBefore(RoomStatus.WAITING, threshold);
 
         for (var room : orphanedRooms) {
-            room.setStatus(RoomStatus.ENDED);
-            roomRepository.save(room);
+            room.setStatus(RoomStatus.CLOSED);
             log.info("Cleaned up orphaned waiting room: {} (code: {})", room.getId(), room.getRoomCode());
         }
 
         if (!orphanedRooms.isEmpty()) {
+            roomRepository.saveAll(orphanedRooms);
             log.info("Cleaned up {} orphaned waiting rooms", orphanedRooms.size());
         }
     }
 
-    // AC5: periodic health-check for ACTIVE rooms (every 60s)
-    // NOTE: No per-duel endpoint on the duel server — can only check overall server health.
-    // Normal cleanup: Angular receives DUEL_END → calls POST /rooms/:id/end.
-    // This handles the fallback: duel server crashed → bulk-end all ACTIVE rooms.
-    @Scheduled(fixedRate = 60_000)
+    @Scheduled(fixedRate = 300_000)
     @Transactional
     public void cleanupOrphanedActiveRooms() {
         var activeRooms = roomRepository.findByStatus(RoomStatus.ACTIVE);
         if (activeRooms.isEmpty()) return;
 
-        if (!duelServerClient.isServerHealthy()) {
-            for (var room : activeRooms) {
-                room.setStatus(RoomStatus.ENDED);
-                roomRepository.save(room);
-                log.warn("Ended active room due to unhealthy duel server: {} (code: {})", room.getId(), room.getRoomCode());
+        var activeDuelIds = duelServerClient.getActiveDuelIds();
+        if (activeDuelIds == null) {
+            log.warn("Duel server unreachable — skipping orphaned room cleanup");
+            return;
+        }
+
+        var activeDuelIdSet = new HashSet<>(activeDuelIds);
+        var toClose = new ArrayList<Room>();
+        for (var room : activeRooms) {
+            if (room.getDuelServerId() == null || !activeDuelIdSet.contains(room.getDuelServerId())) {
+                room.setStatus(RoomStatus.CLOSED);
+                toClose.add(room);
+                log.info("Closed orphaned active room: {} (code: {}, duelId: {})",
+                        room.getId(), room.getRoomCode(), room.getDuelServerId());
             }
-            log.warn("Ended {} active rooms — duel server unhealthy", activeRooms.size());
+        }
+        if (!toClose.isEmpty()) {
+            roomRepository.saveAll(toClose);
+            log.info("Closed {} orphaned active rooms", toClose.size());
         }
     }
 }

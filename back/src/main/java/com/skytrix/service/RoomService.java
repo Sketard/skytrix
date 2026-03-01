@@ -165,6 +165,9 @@ public class RoomService {
                 && (room.getPlayer2() == null || !userId.equals(room.getPlayer2().getId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not a participant of this room");
         }
+        if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CLOSED) {
+            return;
+        }
         room.setStatus(RoomStatus.ENDED);
         roomRepository.save(room);
     }

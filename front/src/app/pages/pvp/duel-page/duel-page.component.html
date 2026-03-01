@@ -133,7 +133,8 @@
       <!-- Opponent Hand (top, face-down, outside perspective) -->
       <app-pvp-hand-row class="hand-opponent"
                          side="opponent"
-                         [cards]="opponentHand()" />
+                         [cards]="opponentHand()"
+                         (cardInspectRequest)="onOpponentHandInspect($event)" />
 
       <!-- Board with CSS 3D perspective -->
       <app-pvp-board-container [duelState]="duelState()"
@@ -148,14 +149,16 @@
                                (zoneSelected)="onZoneSelected($event)"
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
-                               (zonePillRequest)="onZonePillRequest($event)" />
+                               (zonePillRequest)="onZonePillRequest($event)"
+                               (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Player Hand (bottom, face-up, outside perspective) -->
       <app-pvp-hand-row class="hand-player"
                          side="player"
                          [cards]="playerHand()"
                          [actionableCardIndices]="playerActionableHandIndices()"
-                         (handCardAction)="onPlayerHandAction($event)" />
+                         (handCardAction)="onPlayerHandAction($event)"
+                         (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Card Action Menu (Story 1.7 — outside perspective container) -->
       @if (actionablePrompt() && menuState(); as menu) {
@@ -192,6 +195,7 @@
       @if (inspectedCard(); as card) {
         <app-pvp-card-inspector-wrapper [card]="card"
                                          [promptActive]="hasActivePrompt()"
+                                         [initialForceExpanded]="inspectorForceExpanded()"
                                          (dismissed)="closeInspector()" />
       }
 
@@ -238,6 +242,20 @@
           } @else {
             <p class="rps-overlay__result rps-overlay__result--draw">Draw — playing again...</p>
           }
+        </div>
+      </div>
+    }
+
+    <!-- Story 5.2 — Blocked tab overlay (single-tab enforcement) -->
+    @if (tabGuard.isBlocked()) {
+      <div class="blocked-tab-overlay" role="alertdialog" aria-modal="true" aria-label="Duel active in another tab">
+        <div class="blocked-tab-overlay__content">
+          <p class="blocked-tab-overlay__text">Duel active in another tab</p>
+          <button mat-raised-button
+                  class="blocked-tab-overlay__btn"
+                  (click)="tabGuard.takeControl()">
+            Take control here
+          </button>
         </div>
       </div>
     }
@@ -309,7 +327,10 @@
     }
 
     <!-- Prompt sheet (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
-    <app-pvp-prompt-sheet [prompt]="visiblePrompt()" (sheetExpanded)="promptSheetExpanded.set($event)" />
+    <app-pvp-prompt-sheet [prompt]="visiblePrompt()"
+                           [skipBeat1]="returningFromBackground()"
+                           (sheetExpanded)="promptSheetExpanded.set($event)"
+                           (longPressInspect)="onLongPressInspect($event)" />
   }
 
   <!-- Story 3.1 — Surrender Confirmation Dialog Template -->

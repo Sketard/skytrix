@@ -14,8 +14,8 @@ export class PvpHandRowComponent {
   readonly cards = input<CardOnField[]>([]);
   readonly actionableCardIndices = input<Set<number>>(new Set());
 
-  readonly cardTapped = output<number>();
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
+  readonly cardInspectRequest = output<{ cardCode: number }>();
 
   readonly needsOverlap = computed(() => this.cards().length >= 6);
 
@@ -33,11 +33,16 @@ export class PvpHandRowComponent {
   }
 
   onCardTap(index: number, event: MouseEvent): void {
-    if (this.side() !== 'player') return;
-    if (this.actionableCardIndices().has(index)) {
-      this.handCardAction.emit({ index, element: event.currentTarget as HTMLElement });
+    const card = this.cards()[index];
+    if (this.side() === 'player') {
+      if (this.actionableCardIndices().has(index)) {
+        this.handCardAction.emit({ index, element: event.currentTarget as HTMLElement });
+      } else if (card?.cardCode) {
+        this.cardInspectRequest.emit({ cardCode: card.cardCode });
+      }
     } else {
-      this.cardTapped.emit(index);
+      // Opponent hand: emit inspect (cardCode 0 → card back placeholder)
+      this.cardInspectRequest.emit({ cardCode: card?.cardCode ?? 0 });
     }
   }
 }

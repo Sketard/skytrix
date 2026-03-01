@@ -70,6 +70,10 @@ export class DuelWebSocketService implements OnDestroy {
     this.ws?.send(JSON.stringify({ type: 'SURRENDER' }));
   }
 
+  sendRequestStateSync(): void {
+    this.ws?.send(JSON.stringify({ type: 'REQUEST_STATE_SYNC' }));
+  }
+
   sendRematchRequest(): void {
     this.ws?.send(JSON.stringify({ type: 'REMATCH_REQUEST' }));
     this._rematchState.set('requested');

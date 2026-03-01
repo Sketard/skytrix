@@ -394,7 +394,7 @@ export interface AnnounceNumberMsg {
 // Server -> Client: System Messages (10)
 // =============================================================================
 
-export type DuelEndReason = 'surrender' | 'disconnect' | 'timeout' | 'inactivity' | (string & {});
+export type DuelEndReason = 'surrender' | 'disconnect' | 'timeout' | 'inactivity' | 'draw_both_disconnect' | (string & {});
 
 export interface DuelEndMsg {
   type: 'DUEL_END';
@@ -580,6 +580,10 @@ export interface RematchRequestMsg {
   type: 'REMATCH_REQUEST';
 }
 
+export interface RequestStateSyncMsg {
+  type: 'REQUEST_STATE_SYNC';
+}
+
 // =============================================================================
 // Union Type Exports
 // =============================================================================
@@ -643,4 +647,5 @@ export type ServerMessage =
 export type ClientMessage =
   | PlayerResponseMsg
   | SurrenderMsg
-  | RematchRequestMsg;
+  | RematchRequestMsg
+  | RequestStateSyncMsg;

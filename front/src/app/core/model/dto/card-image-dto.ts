@@ -5,12 +5,12 @@ export class CardImageDTO {
   smallUrl: string;
   cardId: number;
 
-  constructor(cardImageDTO: CardImageDTO) {
-    this.id = cardImageDTO.id;
-    this.imageId = cardImageDTO.imageId;
-    this.url = cardImageDTO.url;
-    this.smallUrl = cardImageDTO.smallUrl;
-    this.cardId = cardImageDTO.cardId;
+  constructor(cardImageDTO?: CardImageDTO) {
+    this.id = cardImageDTO?.id ?? 0;
+    this.imageId = cardImageDTO?.imageId ?? 0;
+    this.url = cardImageDTO?.url ?? '';
+    this.smallUrl = cardImageDTO?.smallUrl ?? '';
+    this.cardId = cardImageDTO?.cardId ?? 0;
   }
 }
 

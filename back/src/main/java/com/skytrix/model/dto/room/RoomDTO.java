@@ -19,5 +19,6 @@ public class RoomDTO {
     private ShortUserDTO player2;
     private String duelId;
     private String wsToken;
+    private Long decklistId;
     private Instant createdAt;
 }
