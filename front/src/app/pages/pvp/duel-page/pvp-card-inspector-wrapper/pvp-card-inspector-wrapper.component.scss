@@ -1,7 +1,9 @@
+@use 'z-layers' as z;
+
 :host {
   display: block;
   position: absolute;
-  z-index: 2;
+  z-index: z.$z-pvp-animation-overlay;
 }
 
 .inspector-compact {
@@ -12,8 +14,8 @@
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: rgba(20, 20, 40, 0.9);
-  border-radius: 8px;
+  background: var(--pvp-prompt-sheet-bg);
+  border-radius: var(--pvp-radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.15);
   cursor: pointer;
   max-width: 220px;
@@ -24,10 +26,10 @@
   }
 
   &__art {
-    width: 60px;
-    height: 87px;
+    width: var(--pvp-inspector-card-width);
+    height: var(--pvp-inspector-card-height);
     object-fit: cover;
-    border-radius: 3px;
+    border-radius: var(--pvp-radius-md);
     flex-shrink: 0;
   }
 
@@ -41,7 +43,7 @@
   &__name {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #eee;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

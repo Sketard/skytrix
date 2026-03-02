@@ -27,6 +27,7 @@ let dataReady = false;
 
 interface ActiveDuelSession extends DuelSession {
   worker: Worker;
+  workerTerminated: boolean;
   awaitingResponse: [boolean, boolean];
   lastBoardState: ServerMessage | null;
   lastSentPrompt: [ServerMessage | null, ServerMessage | null];
@@ -39,15 +40,15 @@ interface ActiveDuelSession extends DuelSession {
   combinedGraceTimer: ReturnType<typeof setTimeout> | null;
   storedDuelResult: ServerMessage | null;
   lastStateSyncAt: [number, number];
+  // M1 consolidation — turn timer context (formerly standalone Map)
+  timerContext: TimerContext | null;
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
 const pendingTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
 const reconnectTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
-const gracePeriodTimers = new Map<string, ReturnType<typeof setTimeout>>(); // key: `${duelId}-${playerIndex}`
-const timerContexts = new Map<string, TimerContext>();
-const inactivityTimers = new Map<string, ReturnType<typeof setTimeout>>(); // key: `${duelId}-${playerIndex}`
-const raceWindowTimers = new Map<string, ReturnType<typeof setTimeout>>(); // key: `${duelId}-${playerIndex}`
+// M1: gracePeriodTimers, timerContexts, inactivityTimers, raceWindowTimers
+// consolidated into ActiveDuelSession.timerContext and PlayerSession per-player timers.
 
 // Track WebSocket liveness for heartbeat
 interface AliveWebSocket extends WebSocket {
@@ -78,6 +79,16 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(payload);
 }
 
+function validateInternalAuth(req: IncomingMessage, res: ServerResponse): boolean {
+  const expected = process.env['INTERNAL_API_KEY'] || 'dev-internal-key';
+  const received = req.headers['x-internal-key'];
+  if (received !== expected) {
+    json(res, 401, { error: 'Unauthorized' });
+    return false;
+  }
+  return true;
+}
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const contentLength = parseInt(req.headers['content-length'] ?? '0', 10);
@@ -85,19 +96,32 @@ function readBody(req: IncomingMessage): Promise<string> {
       reject(new Error('PAYLOAD_TOO_LARGE'));
       return;
     }
+
+    const timeout = setTimeout(() => {
+      req.destroy();
+      reject(new Error('Request body read timeout'));
+    }, 10_000);
+
     const chunks: Buffer[] = [];
     let size = 0;
     req.on('data', (chunk: Buffer) => {
       size += chunk.length;
       if (size > MAX_PAYLOAD_SIZE) {
+        clearTimeout(timeout);
         reject(new Error('PAYLOAD_TOO_LARGE'));
         req.destroy();
         return;
       }
       chunks.push(chunk);
     });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString()));
-    req.on('error', reject);
+    req.on('end', () => {
+      clearTimeout(timeout);
+      resolve(Buffer.concat(chunks).toString());
+    });
+    req.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
   });
 }
 
@@ -140,6 +164,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // POST /api/duels — Create a new duel
   // NOTE: /api/duels/:id/join removed — see Story 1.3 variance #1. Story 1.4 uses token-based WS association.
   if (method === 'POST' && pathname === '/api/duels') {
+    if (!validateInternalAuth(req, res)) return;
     if (!dataReady) {
       json(res, 503, { error: 'Server not ready — data validation failed' });
       return;
@@ -176,6 +201,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
+    // Deep deck validation (M3: ensure all entries are positive integers)
+    for (const deck of [parsed.player1.deck, parsed.player2.deck]) {
+      if (!deck.main.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0) ||
+          !deck.extra.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0)) {
+        json(res, 400, { error: 'Deck arrays must contain positive integers' });
+        return;
+      }
+    }
+
     const duelId = randomUUID();
     const token0 = randomUUID();
     const token1 = randomUUID();
@@ -184,13 +218,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const session: ActiveDuelSession = {
       duelId,
       players: [
-        { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null },
-        { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null },
+        { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, raceWindowTimer: null },
+        { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, raceWindowTimer: null },
       ],
       createdAt: Date.now(),
       startedAt: null,
       endedAt: null,
       worker: null!,
+      workerTerminated: false,
       awaitingResponse: [false, false],
       lastBoardState: null,
       lastSentPrompt: [null, null],
@@ -202,6 +237,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       combinedGraceTimer: null,
       storedDuelResult: null,
       lastStateSyncAt: [0, 0],
+      timerContext: null,
     };
 
     // Spawn worker
@@ -224,12 +260,53 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       decks: [parsed.player1.deck, parsed.player2.deck],
     });
 
+    // H17 — Connection timeout: if no players connect within 60s, clean up
+    const CONNECTION_TIMEOUT_MS = 60_000;
+    setTimeout(() => {
+      const s = activeDuels.get(duelId);
+      if (s && s.players.every(p => !p.connected)) {
+        console.log(`[${duelId}] Connection timeout — no players connected, cleaning up`);
+        safeTerminateWorker(s);
+        cleanupDuelSession(s);
+      }
+    }, CONNECTION_TIMEOUT_MS);
+
     json(res, 201, { duelId, tokens: [token0, token1] });
+    return;
+  }
+
+  // DELETE /api/duels/:duelId — terminate a duel (called by Spring Boot on room end)
+  const parts = pathname.replace(/^\//, '').split('/');
+  if (method === 'DELETE' && parts.length === 3 && parts[0] === 'api' && parts[1] === 'duels') {
+    if (!validateInternalAuth(req, res)) return;
+    const deleteDuelId = parts[2];
+    const session = activeDuels.get(deleteDuelId);
+    if (!session) {
+      json(res, 404, { error: 'Duel not found' });
+      return;
+    }
+    console.log(`[${deleteDuelId}] Duel terminated via API`);
+    safeTerminateWorker(session);
+    cleanupDuelSession(session);
+    json(res, 200, { success: true });
     return;
   }
 
   // 404
   json(res, 404, { error: 'Not Found' });
+}
+
+// =============================================================================
+// Safe Worker Termination (M4: prevent double-terminate)
+// =============================================================================
+
+function safeTerminateWorker(session: ActiveDuelSession): void {
+  if (!session.workerTerminated) {
+    session.workerTerminated = true;
+    totalDuelsServed++;
+    session.worker.removeAllListeners();
+    session.worker.terminate();
+  }
 }
 
 // =============================================================================
@@ -242,7 +319,11 @@ function attachWorkerHandlers(session: ActiveDuelSession): void {
   });
   session.worker.on('exit', (code) => {
     console.log(`[Duel ${session.duelId}] Worker exited (code: ${code})`);
-    totalDuelsServed++;
+    // Only count if not already counted by safeTerminateWorker
+    if (!session.workerTerminated) {
+      session.workerTerminated = true;
+      totalDuelsServed++;
+    }
     // If duel ended normally (endedAt set), keep session alive for rematch
     if (session.endedAt !== null) return;
     // Unexpected worker exit — full cleanup
@@ -255,7 +336,7 @@ function attachWorkerHandlers(session: ActiveDuelSession): void {
 
 function handleDuelEnd(session: ActiveDuelSession): void {
   session.endedAt = Date.now();
-  clearAllDuelTimers(session.duelId);
+  clearAllDuelTimers(session);
   session.rematchTimeout = setTimeout(() => rematchExpired(session), 5 * 60 * 1000);
 }
 
@@ -273,14 +354,14 @@ function startRematch(session: ActiveDuelSession): void {
   sendToPlayer(session, 1, { type: 'REMATCH_STARTING' });
 
   // Remove old worker handlers to prevent cleanupDuelSession on exit
-  session.worker.removeAllListeners();
-  session.worker.terminate();
+  safeTerminateWorker(session);
 
   const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
     workerData: { dataDir: DATA_DIR },
   });
 
   session.worker = worker;
+  session.workerTerminated = false;
   session.awaitingResponse = [false, false];
   session.lastBoardState = null;
   session.lastSentPrompt = [null, null];
@@ -291,7 +372,7 @@ function startRematch(session: ActiveDuelSession): void {
   session.storedDuelResult = null;
   session.lastStateSyncAt = [0, 0];
 
-  clearAllDuelTimers(session.duelId);
+  clearAllDuelTimers(session);
 
   attachWorkerHandlers(session);
 
@@ -319,14 +400,14 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       console.log(`[Duel ${wmsg.duelId}] Duel created in worker`);
       session.startedAt = Date.now();
       // Initialize turn timer context
-      timerContexts.set(session.duelId, {
+      session.timerContext = {
         pools: [TURN_TIME_POOL_MS, TURN_TIME_POOL_MS],
         running: false,
         activePlayer: 0,
         intervalRef: null,
         lastTickMs: 0,
         turnCount: 0,
-      });
+      };
       // Send initial TIMER_STATE for both players (clients display 5:00 from start)
       // Note: no-ops if players haven't connected yet — sendTimerStateToPlayer covers on connection
       sendTimerStateToAll(session);
@@ -342,7 +423,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       sendToPlayer(session, 0, errorMsg);
       sendToPlayer(session, 1, errorMsg);
       handleDuelEnd(session);
-      session.worker.terminate();
+      safeTerminateWorker(session);
       break;
     }
   }
@@ -420,7 +501,7 @@ function isSelectMessage(message: ServerMessage): boolean {
 // This is intentional: both players see both timers, and the server is the sole source of truth.
 
 function sendTimerStateToAll(session: ActiveDuelSession): void {
-  const ctx = timerContexts.get(session.duelId);
+  const ctx = session.timerContext;
   if (!ctx) return;
   const timer0: ServerMessage = { type: 'TIMER_STATE', player: 0, remainingMs: Math.max(0, ctx.pools[0]) };
   const timer1: ServerMessage = { type: 'TIMER_STATE', player: 1, remainingMs: Math.max(0, ctx.pools[1]) };
@@ -431,7 +512,7 @@ function sendTimerStateToAll(session: ActiveDuelSession): void {
 }
 
 function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer: 0 | 1): void {
-  const ctx = timerContexts.get(session.duelId);
+  const ctx = session.timerContext;
   if (!ctx) return;
   for (const p of [0, 1] as const) {
     sendToPlayer(session, targetPlayer, { type: 'TIMER_STATE', player: p, remainingMs: Math.max(0, ctx.pools[p]) });
@@ -439,7 +520,7 @@ function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer: 0 | 1)
 }
 
 function startTurnTimer(session: ActiveDuelSession): void {
-  const ctx = timerContexts.get(session.duelId);
+  const ctx = session.timerContext;
   if (!ctx || ctx.running) return;
 
   ctx.running = true;
@@ -470,13 +551,13 @@ function startTurnTimer(session: ActiveDuelSession): void {
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      session.worker.terminate();
+      safeTerminateWorker(session);
     }
   }, 1000);
 }
 
 function pauseTurnTimer(session: ActiveDuelSession): void {
-  const ctx = timerContexts.get(session.duelId);
+  const ctx = session.timerContext;
   if (!ctx || !ctx.running) return;
 
   // Account for time elapsed since last tick
@@ -506,7 +587,7 @@ function resumeTurnTimer(session: ActiveDuelSession): void {
 }
 
 function addTurnIncrement(session: ActiveDuelSession, player: Player, newTurnCount: number): void {
-  const ctx = timerContexts.get(session.duelId);
+  const ctx = session.timerContext;
   if (!ctx) return;
 
   ctx.turnCount = newTurnCount;
@@ -518,7 +599,7 @@ function addTurnIncrement(session: ActiveDuelSession, player: Player, newTurnCou
 }
 
 function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, newTurnCount: number): void {
-  const ctx = timerContexts.get(session.duelId);
+  const ctx = session.timerContext;
   if (!ctx || newTurnCount <= ctx.turnCount) return;
 
   // New turn detected — pause current timer, add increment, switch active player
@@ -538,16 +619,15 @@ function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, new
 function startInactivityTimer(session: ActiveDuelSession, player: Player): void {
   clearInactivityTimer(session, player);
 
-  const timerKey = `${session.duelId}-${player}`;
-  const timer = setTimeout(() => {
-    inactivityTimers.delete(timerKey);
+  const ps = session.players[player];
+  ps.inactivityTimer = setTimeout(() => {
+    ps.inactivityTimer = null;
 
     if (session.endedAt) return;
 
     // Enter 500ms race condition window (AC4)
-    const raceKey = `${session.duelId}-${player}`;
-    const raceTimer = setTimeout(() => {
-      raceWindowTimers.delete(raceKey);
+    ps.raceWindowTimer = setTimeout(() => {
+      ps.raceWindowTimer = null;
       if (session.endedAt) return;
 
       // No response within grace window — forfeit for inactivity
@@ -557,55 +637,36 @@ function startInactivityTimer(session: ActiveDuelSession, player: Player): void 
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      session.worker.terminate();
+      safeTerminateWorker(session);
     }, INACTIVITY_RACE_WINDOW_MS);
-
-    raceWindowTimers.set(raceKey, raceTimer);
   }, INACTIVITY_TIMEOUT_MS);
-
-  inactivityTimers.set(timerKey, timer);
 }
 
 function clearInactivityTimer(session: ActiveDuelSession, player: Player): void {
-  const timerKey = `${session.duelId}-${player}`;
-  const timer = inactivityTimers.get(timerKey);
-  if (timer) {
-    clearTimeout(timer);
-    inactivityTimers.delete(timerKey);
+  const ps = session.players[player];
+  if (ps.inactivityTimer) {
+    clearTimeout(ps.inactivityTimer);
+    ps.inactivityTimer = null;
   }
-
-  // Also clear race window if open
-  const raceKey = `${session.duelId}-${player}`;
-  const raceTimer = raceWindowTimers.get(raceKey);
-  if (raceTimer) {
-    clearTimeout(raceTimer);
-    raceWindowTimers.delete(raceKey);
+  if (ps.raceWindowTimer) {
+    clearTimeout(ps.raceWindowTimer);
+    ps.raceWindowTimer = null;
   }
 }
 
-function clearAllDuelTimers(duelId: string): void {
+function clearAllDuelTimers(session: ActiveDuelSession): void {
   // Clear turn timer
-  const ctx = timerContexts.get(duelId);
+  const ctx = session.timerContext;
   if (ctx?.intervalRef) {
     clearInterval(ctx.intervalRef);
     ctx.intervalRef = null;
     ctx.running = false;
   }
-  timerContexts.delete(duelId);
+  session.timerContext = null;
 
   // Clear inactivity + race window timers for both players
-  for (const p of [0, 1]) {
-    const key = `${duelId}-${p}`;
-    const inactTimer = inactivityTimers.get(key);
-    if (inactTimer) {
-      clearTimeout(inactTimer);
-      inactivityTimers.delete(key);
-    }
-    const raceTimer = raceWindowTimers.get(key);
-    if (raceTimer) {
-      clearTimeout(raceTimer);
-      raceWindowTimers.delete(key);
-    }
+  for (const p of [0, 1] as const) {
+    clearInactivityTimer(session, p);
   }
 }
 
@@ -636,7 +697,7 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
   session.storedDuelResult = null;
 
   // Clear all timer state (turn timer, inactivity, race windows)
-  clearAllDuelTimers(session.duelId);
+  clearAllDuelTimers(session);
 
   // Close WebSocket connections and clean up reconnect tokens
   for (const player of session.players) {
@@ -653,11 +714,9 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
     }
 
     // Clean up grace period timer
-    const timerKey = `${session.duelId}-${player.playerIndex}`;
-    const timer = gracePeriodTimers.get(timerKey);
-    if (timer) {
-      clearTimeout(timer);
-      gracePeriodTimers.delete(timerKey);
+    if (player.gracePeriodTimer) {
+      clearTimeout(player.gracePeriodTimer);
+      player.gracePeriodTimer = null;
     }
   }
 
@@ -722,11 +781,10 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     reconnectTokens.delete(reconnect);
 
     // Cancel grace period timer
-    const timerKey = `${session.duelId}-${playerIndex}`;
-    const timer = gracePeriodTimers.get(timerKey);
-    if (timer) {
-      clearTimeout(timer);
-      gracePeriodTimers.delete(timerKey);
+    const reconPs = session.players[playerIndex];
+    if (reconPs.gracePeriodTimer) {
+      clearTimeout(reconPs.gracePeriodTimer);
+      reconPs.gracePeriodTimer = null;
     }
 
     console.log(`[Duel ${session.duelId}] Player ${playerIndex} reconnected`);
@@ -791,7 +849,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         session.preservationTimer = null;
       }
       cleanupDuelSession(session);
-      session.worker.terminate();
+      safeTerminateWorker(session);
     }
     // Otherwise keep session alive — other player may still reconnect
   } else {
@@ -886,11 +944,10 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
   const otherIndex: Player = playerIndex === 0 ? 1 : 0;
   if (!session.players[otherIndex].connected) {
     // Both disconnected — cancel individual grace timer for the other player
-    const otherKey = `${session.duelId}-${otherIndex}`;
-    const otherTimer = gracePeriodTimers.get(otherKey);
-    if (otherTimer) {
-      clearTimeout(otherTimer);
-      gracePeriodTimers.delete(otherKey);
+    const otherPs = session.players[otherIndex];
+    if (otherPs.gracePeriodTimer) {
+      clearTimeout(otherPs.gracePeriodTimer);
+      otherPs.gracePeriodTimer = null;
     }
 
     session.bothDisconnected = true;
@@ -908,7 +965,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
           session.preservationTimer = setTimeout(() => {
             session.preservationTimer = null;
             cleanupDuelSession(session);
-            session.worker.terminate();
+            safeTerminateWorker(session);
           }, BOTH_DISCONNECTED_CLEANUP_MS);
         }
       }, RECONNECT_GRACE_MS);
@@ -917,22 +974,20 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
   }
 
   // Single player disconnect — existing per-player grace logic
-  const timerKey = `${session.duelId}-${playerIndex}`;
-  if (gracePeriodTimers.has(timerKey)) return;
+  const ps = session.players[playerIndex];
+  if (ps.gracePeriodTimer) return;
 
-  const timer = setTimeout(() => {
-    gracePeriodTimers.delete(timerKey);
+  ps.gracePeriodTimer = setTimeout(() => {
+    ps.gracePeriodTimer = null;
     if (!session.players[playerIndex].connected && !session.endedAt) {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'disconnect' };
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      session.worker.terminate();
+      safeTerminateWorker(session);
     }
   }, RECONNECT_GRACE_MS);
-
-  gracePeriodTimers.set(timerKey, timer);
 }
 
 // =============================================================================
@@ -955,6 +1010,17 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         console.error(`[Duel ${session.duelId}] Unexpected PLAYER_RESPONSE from player ${playerIndex}`);
         return;
       }
+
+      // M28 — Validate promptType matches the expected prompt
+      const expectedPrompt = session.lastSentPrompt[playerIndex];
+      if (expectedPrompt && msg.promptType !== expectedPrompt.type) {
+        const ws = session.players[playerIndex].ws;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ERROR', message: `Expected prompt type ${expectedPrompt.type}, got ${msg.promptType}` }));
+        }
+        return;
+      }
+
       session.awaitingResponse[playerIndex] = false;
       session.lastSentPrompt[playerIndex] = null;
 
@@ -978,7 +1044,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      session.worker.terminate();
+      safeTerminateWorker(session);
       break;
     }
 
@@ -1037,7 +1103,7 @@ function shutdown(): void {
 
   // Terminate all active workers
   for (const session of activeDuels.values()) {
-    session.worker.terminate();
+    safeTerminateWorker(session);
   }
 
   wss.clients.forEach(client => {

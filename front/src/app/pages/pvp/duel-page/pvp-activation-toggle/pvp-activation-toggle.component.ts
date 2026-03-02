@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, model } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 
 export type ActivationMode = 'auto' | 'on' | 'off';
@@ -27,8 +27,7 @@ const MODE_ICONS: Record<ActivationMode, string> = {
 export class PvpActivationToggleComponent {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
-  readonly mode = signal<ActivationMode>('auto');
-  readonly modeChange = output<ActivationMode>();
+  readonly mode = model<ActivationMode>('auto');
 
   get label(): string {
     return MODE_LABELS[this.mode()];
@@ -43,7 +42,6 @@ export class PvpActivationToggleComponent {
     const idx = MODE_CYCLE.indexOf(current);
     const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
     this.mode.set(next);
-    this.modeChange.emit(next);
     this.liveAnnouncer.announce(`Activation toggle: ${MODE_LABELS[next]}`);
   }
 

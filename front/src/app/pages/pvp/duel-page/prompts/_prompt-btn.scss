@@ -1,9 +1,12 @@
-// Shared button styles for prompt sub-components
+// Shared button styles for prompt sub-components.
+// Each prompt component includes `.btn { &--primary { @include prompt-btn-primary; } }`
+// via @use. This duplication is intentional — Angular's ViewEncapsulation requires
+// each component to emit its own styles. The mixin keeps the source-of-truth here.
 @mixin prompt-btn {
   min-height: var(--pvp-min-touch-target-primary, 48px);
   padding: 0 24px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--pvp-radius-lg);
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
@@ -23,7 +26,7 @@
 @mixin prompt-btn-primary {
   @include prompt-btn;
   background: var(--pvp-accent, #c9a84c);
-  color: #121212;
+  color: var(--surface-base);
 
   &:hover:not(:disabled) {
     background: color-mix(in srgb, var(--pvp-accent, #c9a84c) 85%, white);

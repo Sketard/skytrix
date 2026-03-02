@@ -3,7 +3,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
 import type { ChainingMsg } from '../duel-ws.types';
-import { AnnounceCardMsg, DuelEndMsg, LOCATION, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, DuelEndMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
 
@@ -58,8 +59,9 @@ export class DuelWebSocketService implements OnDestroy {
   }
 
   sendResponse(promptType: string, data: ResponseData): void {
-    this.ws?.send(JSON.stringify({ type: 'PLAYER_RESPONSE', promptType, data }));
-    this._pendingPrompt.set(null);
+    if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
+      this._pendingPrompt.set(null);
+    }
   }
 
   clearRpsResult(): void {
@@ -67,16 +69,17 @@ export class DuelWebSocketService implements OnDestroy {
   }
 
   sendSurrender(): void {
-    this.ws?.send(JSON.stringify({ type: 'SURRENDER' }));
+    this.safeSend({ type: 'SURRENDER' });
   }
 
   sendRequestStateSync(): void {
-    this.ws?.send(JSON.stringify({ type: 'REQUEST_STATE_SYNC' }));
+    this.safeSend({ type: 'REQUEST_STATE_SYNC' });
   }
 
   sendRematchRequest(): void {
-    this.ws?.send(JSON.stringify({ type: 'REMATCH_REQUEST' }));
-    this._rematchState.set('requested');
+    if (this.safeSend({ type: 'REMATCH_REQUEST' })) {
+      this._rematchState.set('requested');
+    }
   }
 
   dequeueAnimation(): GameEvent | null {
@@ -134,8 +137,12 @@ export class DuelWebSocketService implements OnDestroy {
     };
 
     this.ws.onmessage = event => {
-      const message: ServerMessage = JSON.parse(event.data);
-      this.handleMessage(message);
+      try {
+        const message: ServerMessage = JSON.parse(event.data);
+        this.handleMessage(message);
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e);
+      }
     };
 
     this.ws.onclose = () => {
@@ -336,6 +343,15 @@ export class DuelWebSocketService implements OnDestroy {
     this.openConnection();
   }
 
+  private safeSend(data: object): boolean {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
+      return true;
+    }
+    console.warn('WebSocket not open, message dropped:', data);
+    return false;
+  }
+
   private cleanup(): void {
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
@@ -351,12 +367,6 @@ export class DuelWebSocketService implements OnDestroy {
   }
 
   private mapChainLocationToZoneId(location: number, sequence: number): string | null {
-    if (location === LOCATION.MZONE && sequence <= 4) return `M${sequence + 1}`;
-    if (location === LOCATION.MZONE && sequence === 5) return 'EMZ_L';
-    if (location === LOCATION.MZONE && sequence === 6) return 'EMZ_R';
-    if (location === LOCATION.SZONE && sequence <= 4) return `S${sequence + 1}`;
-    if (location === LOCATION.SZONE && sequence === 5) return 'FIELD';
-    // Non-field zones (HAND, GRAVE, BANISHED, EXTRA) — no badge on board (DRY KISS)
-    return null;
+    return locationToZoneId(location, sequence);
   }
 }

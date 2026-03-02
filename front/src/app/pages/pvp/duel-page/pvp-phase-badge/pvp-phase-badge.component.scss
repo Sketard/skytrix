@@ -1,3 +1,5 @@
+@use 'z-layers' as z;
+
 :host {
   display: block;
 }
@@ -16,7 +18,7 @@
   font-size: var(--pvp-phase-badge-font-size);
   font-weight: 700;
   text-transform: uppercase;
-  color: #eee;
+  color: var(--text-primary);
   border: 2px solid rgba(255, 255, 255, 0.2);
   transition: border-color var(--pvp-transition-highlight-flash), opacity var(--pvp-transition-highlight-flash);
 
@@ -26,7 +28,7 @@
   }
 
   &--opp-turn {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--border-subtle);
     opacity: 0.6;
   }
 
@@ -52,13 +54,13 @@
   padding: 4px 0;
   min-width: 120px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  z-index: 2;
+  z-index: z.$z-pvp-card-action-menu;
 
   &__item {
     padding: 8px 16px;
     border: none;
     background: transparent;
-    color: #eee;
+    color: var(--text-primary);
     font-size: 0.8rem;
     text-align: center;
     cursor: pointer;

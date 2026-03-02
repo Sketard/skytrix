@@ -1,7 +1,5 @@
 package com.skytrix.security;
 
-import jakarta.inject.Inject;
-
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -34,24 +32,30 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableWebSecurity
 @EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true)
 public class SecurityConfig {
-	@Inject
-	private AuthFailureHandler authFailureHandler;
 
-	@Inject
-	private JWTAuthenticationProvider accessTokenAuthenticationProvider;
+	private final AuthFailureHandler authFailureHandler;
+	private final JWTAuthenticationProvider accessTokenAuthenticationProvider;
+	private final DatabaseProvider databaseProvider;
+	private final AuthEntryPoint authEntryPoint;
+	private final JWTService jwtService;
+	private final String apiUrlPrefix;
+	private final String corsAllowedOrigins;
 
-	@Inject
-	private DatabaseProvider databaseProvider;
-
-	@Inject
-	private AuthEntryPoint authEntryPoint;
-
-	@Inject
-	private JWTService jwtService;
-
-	@Value("${server.servlet.context-path}")
-	private String apiUrlPrefix;
-
+	public SecurityConfig(AuthFailureHandler authFailureHandler,
+						  JWTAuthenticationProvider accessTokenAuthenticationProvider,
+						  DatabaseProvider databaseProvider,
+						  AuthEntryPoint authEntryPoint,
+						  JWTService jwtService,
+						  @Value("${server.servlet.context-path}") String apiUrlPrefix,
+						  @Value("${CORS_ALLOWED_ORIGINS:http://localhost:4200}") String corsAllowedOrigins) {
+		this.authFailureHandler = authFailureHandler;
+		this.accessTokenAuthenticationProvider = accessTokenAuthenticationProvider;
+		this.databaseProvider = databaseProvider;
+		this.authEntryPoint = authEntryPoint;
+		this.jwtService = jwtService;
+		this.apiUrlPrefix = apiUrlPrefix;
+		this.corsAllowedOrigins = corsAllowedOrigins;
+	}
 
 	@Bean
 	public AuthenticationManager authenticationManager() {
@@ -98,7 +102,7 @@ public class SecurityConfig {
 	@Bean
 	CorsConfigurationSource corsConfigurationSource() {
 		var config = new CorsConfiguration();
-		config.setAllowedOrigins(List.of("*"));
+		config.setAllowedOrigins(List.of(corsAllowedOrigins.split(",")));
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
 		var source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);

@@ -30,7 +30,7 @@
   min-height: 100px;
   padding: 16px 12px;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  border-radius: var(--pvp-radius-xl);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary, #eaeaea);
   cursor: pointer;

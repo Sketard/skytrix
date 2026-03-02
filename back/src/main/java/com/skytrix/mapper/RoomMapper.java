@@ -1,17 +1,17 @@
 package com.skytrix.mapper;
 
-import jakarta.inject.Inject;
-
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
 import com.skytrix.model.dto.room.RoomDTO;
 import com.skytrix.model.entity.Room;
 
-@Mapper(componentModel = "spring")
-public abstract class RoomMapper {
+import lombok.RequiredArgsConstructor;
 
-    @Inject
-    private UserMapper userMapper;
+@Component
+@RequiredArgsConstructor
+public class RoomMapper {
+
+    private final UserMapper userMapper;
 
     public RoomDTO toRoomDTO(Room room, Long requestingUserId) {
         var dto = new RoomDTO();
@@ -20,7 +20,7 @@ public abstract class RoomMapper {
         dto.setStatus(room.getStatus());
         dto.setPlayer1(userMapper.toShortUserDTO(room.getPlayer1()));
         dto.setPlayer2(room.getPlayer2() != null ? userMapper.toShortUserDTO(room.getPlayer2()) : null);
-        dto.setDuelId(room.getDuelServerId());
+        dto.setDuelServerId(room.getDuelServerId());
         dto.setCreatedAt(room.getCreatedAt());
 
         if (requestingUserId != null) {

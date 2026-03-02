@@ -1,4 +1,4 @@
-import { CardOnField, POSITION } from './duel-ws.types';
+import { POSITION } from './duel-ws.types';
 
 /** Check if card is face-up (FACEUP_ATTACK or FACEUP_DEFENSE) */
 export function isFaceUp(pos: number): boolean {
@@ -11,15 +11,12 @@ export function isDefense(pos: number): boolean {
 }
 
 /** Get card image URL — card back for hidden/null codes */
-export function getCardImageUrl(card: CardOnField): string {
-  if (!card.cardCode || card.cardCode === 0) {
-    return 'assets/images/card_back.jpg';
-  }
-  return `/api/images/small/${card.cardCode}.jpg`;
+export function getCardImageUrl(card: { cardCode: number | null }): string {
+  return getCardImageUrlByCode(card.cardCode);
 }
 
-/** Get card image URL by code number — card back for 0/falsy codes */
-export function getCardImageUrlByCode(cardCode: number): string {
+/** Get card image URL by code number — card back for 0/null/falsy codes */
+export function getCardImageUrlByCode(cardCode: number | null): string {
   if (!cardCode) {
     return 'assets/images/card_back.jpg';
   }

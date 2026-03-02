@@ -91,6 +91,10 @@ export interface PlayerSession {
   connected: boolean;
   disconnectedAt: number | null;
   reconnectToken: string | null;
+  // Per-player timers (M1 consolidation — formerly standalone Maps)
+  gracePeriodTimer: ReturnType<typeof setTimeout> | null;
+  inactivityTimer: ReturnType<typeof setTimeout> | null;
+  raceWindowTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export interface TimerContext {

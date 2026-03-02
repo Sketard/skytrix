@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input, output, signal } from '@angular/core';
 import { CardOnField, ZoneId } from '../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../pvp-card.utils';
+import { setupClickOutsideListener } from '../click-outside.utils';
 
 @Component({
   selector: 'app-pvp-zone-browser-overlay',
@@ -28,18 +29,14 @@ export class PvpZoneBrowserOverlayComponent {
 
   readonly getCardImageUrlByCode = getCardImageUrlByCode;
 
-  private outsideClickListener: ((e: MouseEvent) => void) | null = null;
+  private readonly removeOutsideListener: () => void;
+  private closeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.removeOutsideListener());
-    setTimeout(() => {
-      this.outsideClickListener = (event: MouseEvent) => {
-        if (!this.el.nativeElement.contains(event.target as Node)) {
-          this.close();
-        }
-      };
-      document.addEventListener('click', this.outsideClickListener);
+    this.destroyRef.onDestroy(() => {
+      if (this.closeTimeout) clearTimeout(this.closeTimeout);
     });
+    this.removeOutsideListener = setupClickOutsideListener(this.el, this.destroyRef, () => this.close());
   }
 
   isOpponentExtra(): boolean {
@@ -65,7 +62,7 @@ export class PvpZoneBrowserOverlayComponent {
     if (this.isClosing()) return;
     this.isClosing.set(true);
     this.removeOutsideListener();
-    setTimeout(() => {
+    this.closeTimeout = setTimeout(() => {
       this.visible.set(false);
       this.closed.emit();
     }, 150);
@@ -75,13 +72,6 @@ export class PvpZoneBrowserOverlayComponent {
     if (event.key === 'Escape') {
       this.close();
       event.preventDefault();
-    }
-  }
-
-  private removeOutsideListener(): void {
-    if (this.outsideClickListener) {
-      document.removeEventListener('click', this.outsideClickListener);
-      this.outsideClickListener = null;
     }
   }
 }

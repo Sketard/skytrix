@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -19,21 +20,13 @@ public interface RoomRepository extends CrudRepository<Room, Long> {
     Optional<Room> findByRoomCode(String roomCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT r FROM Room r WHERE r.id = :id")
-    Optional<Room> findByIdForUpdate(@Param("id") Long id);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Room r WHERE r.roomCode = :roomCode")
     Optional<Room> findByRoomCodeForUpdate(@Param("roomCode") String roomCode);
 
-    @Query("SELECT r FROM Room r WHERE r.status = :status AND (r.player1.id = :userId OR r.player2.id = :userId)")
-    List<Room> findByStatusAndPlayerId(@Param("status") RoomStatus status, @Param("userId") Long userId);
-
     List<Room> findByStatus(RoomStatus status);
 
-    List<Room> findByStatusOrderByCreatedAtDesc(RoomStatus status);
-
-    List<Room> findTop10ByStatusOrderByCreatedAtDesc(RoomStatus status);
+    @Query("SELECT r FROM Room r JOIN FETCH r.player1 LEFT JOIN FETCH r.player2 WHERE r.status = ?1 ORDER BY r.createdAt DESC")
+    List<Room> findTop10ByStatusWithPlayers(RoomStatus status, Pageable pageable);
 
     List<Room> findByStatusAndCreatedAtBefore(RoomStatus status, Instant before);
 }

@@ -67,7 +67,7 @@
   align-items: center;
   background: none;
   border: 2px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--pvp-radius-md);
   padding: 0;
   cursor: pointer;
   transition:
@@ -102,7 +102,7 @@
   height: clamp(3rem, 12dvh, 5rem);
   aspect-ratio: 59 / 86;
   object-fit: cover;
-  border-radius: 2px;
+  border-radius: var(--pvp-radius-sm);
 }
 
 .card-label {

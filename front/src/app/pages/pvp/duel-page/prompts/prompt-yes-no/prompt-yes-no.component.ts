@@ -5,8 +5,11 @@ import {
   HostListener,
 } from '@angular/core';
 import { PromptSubComponent, PreferredHeight } from '../prompt.types';
-import { Prompt, HintContext } from '../../../types';
+import { HintContext } from '../../../types';
+import { SelectYesNoMsg, SelectEffectYnMsg } from '../../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+
+type YesNoPrompt = SelectYesNoMsg | SelectEffectYnMsg;
 
 @Component({
   selector: 'app-prompt-yes-no',
@@ -15,9 +18,9 @@ import { getCardImageUrlByCode } from '../../../pvp-card.utils';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PromptYesNoComponent implements PromptSubComponent {
+export class PromptYesNoComponent implements PromptSubComponent<YesNoPrompt> {
   preferredHeight: PreferredHeight = 'compact';
-  promptData: Prompt | null = null;
+  promptData: YesNoPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
 

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, Eleme
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg } from '../../duel-ws.types';
 import { BATTLE_ACTION, IDLE_ACTION } from '../idle-action-codes';
+import { setupClickOutsideListener } from '../click-outside.utils';
 
 interface PhaseTransition {
   label: string;
@@ -58,17 +59,14 @@ export class PvpPhaseBadgeComponent {
     return transitions;
   });
 
-  private outsideClickListener: ((e: MouseEvent) => void) | null = null;
+  private removeOutsideListener: (() => void) | null = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.removeOutsideListener());
-
     // [M5 fix] Close menu when actionablePrompt changes (new prompt arrival)
     effect(() => {
       this.actionablePrompt();
       untracked(() => {
-        this.menuExpanded.set(false);
-        this.removeOutsideListener();
+        this.closeMenu();
       });
     });
   }
@@ -79,33 +77,23 @@ export class PvpPhaseBadgeComponent {
     this.menuExpanded.set(expanded);
 
     if (expanded) {
-      this.removeOutsideListener();
-      setTimeout(() => {
-        this.outsideClickListener = (event: MouseEvent) => {
-          if (!this.el.nativeElement.contains(event.target as Node)) {
-            this.menuExpanded.set(false);
-            this.removeOutsideListener();
-          }
-        };
-        document.addEventListener('click', this.outsideClickListener);
-      });
+      this.teardownOutsideListener();
+      this.removeOutsideListener = setupClickOutsideListener(this.el, this.destroyRef, () => this.closeMenu());
     } else {
-      this.removeOutsideListener();
+      this.teardownOutsideListener();
     }
   }
 
   selectTransition(transition: PhaseTransition): void {
     this.phaseAction.emit({ action: transition.actionCode, index: null });
-    this.menuExpanded.set(false);
-    this.removeOutsideListener();
+    this.closeMenu();
     this.liveAnnouncer.announce(`Phase: ${transition.label}`);
   }
 
   onMenuKeydown(event: KeyboardEvent): void {
     switch (event.key) {
       case 'Escape':
-        this.menuExpanded.set(false);
-        this.removeOutsideListener();
+        this.closeMenu();
         event.preventDefault();
         break;
       case 'ArrowDown':
@@ -123,10 +111,15 @@ export class PvpPhaseBadgeComponent {
     }
   }
 
-  private removeOutsideListener(): void {
-    if (this.outsideClickListener) {
-      document.removeEventListener('click', this.outsideClickListener);
-      this.outsideClickListener = null;
+  private closeMenu(): void {
+    this.menuExpanded.set(false);
+    this.teardownOutsideListener();
+  }
+
+  private teardownOutsideListener(): void {
+    if (this.removeOutsideListener) {
+      this.removeOutsideListener();
+      this.removeOutsideListener = null;
     }
   }
 }

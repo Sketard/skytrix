@@ -74,13 +74,22 @@
   // === PvP Tokens ===
   // =========================================================================
 
+  // --- Border Radius ---
+  --pvp-radius-sm: 2px;
+  --pvp-radius-md: 4px;
+  --pvp-radius-lg: 8px;
+  --pvp-radius-xl: 12px;
+
   // --- Perspective ---
+  --pvp-opponent-field-scale: 0.69;
   --pvp-perspective-depth: 800px;
   --pvp-rotate-x-angle: 15deg;
   --pvp-perspective-enabled: 1;
   --pvp-field-gap: 0.25rem;
 
   // --- Layout ---
+  --pvp-inspector-card-width: 60px;
+  --pvp-inspector-card-height: 87px;
   --pvp-hand-card-height: clamp(48px, 12dvh, 72px);
   --pvp-hand-overlap: -16px;
   --pvp-card-min-tap-target: 44px;
@@ -126,7 +135,7 @@
 
   // --- Action Menu ---
   --pvp-action-menu-bg: rgba(20, 20, 40, 0.95);
-  --pvp-action-menu-radius: 8px;
+  --pvp-action-menu-radius: var(--pvp-radius-lg);
 
   // --- Zone Browser ---
   --pvp-zone-browser-bg: rgba(20, 20, 40, 0.95);

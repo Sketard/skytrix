@@ -1,30 +1,25 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, filter, firstValueFrom, interval, map, Observable, of, Subject, switchMap, take, takeUntil, timeout } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, filter, firstValueFrom, map, Observable, of, switchMap, take, timeout } from 'rxjs';
 import { MatIconButton, MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
-import { Clipboard } from '@angular/cdk/clipboard';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { displaySuccess, displayError } from '../../../core/utilities/functions';
-import { RoomDTO, SHARE_TEXT_TEMPLATE } from '../room.types';
-import { RoomApiService } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
-import type { ConnectionStatus, GameEvent } from '../types';
-import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
-import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, POSITION, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
-import type { MoveMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg } from '../duel-ws.types';
+import type { ConnectionStatus } from '../types';
+import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION } from './idle-action-codes';
-import type { SharedCardInspectorData } from '../../../core/model/shared-card-data';
 import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
-import { CardDataCacheService, CARD_BACK_PLACEHOLDER, UNKNOWN_CARD_PLACEHOLDER } from './card-data-cache.service';
+import { locationToZoneId } from '../pvp-zone.utils';
+import { CardDataCacheService } from './card-data-cache.service';
 import { PvpBoardContainerComponent } from './pvp-board-container/pvp-board-container.component';
 import { PvpHandRowComponent } from './pvp-hand-row/pvp-hand-row.component';
 import { PvpPromptSheetComponent } from './prompts/pvp-prompt-sheet/pvp-prompt-sheet.component';
@@ -32,10 +27,11 @@ import { PromptZoneHighlightComponent } from './prompts/prompt-zone-highlight/pr
 import { PvpZoneBrowserOverlayComponent } from './pvp-zone-browser-overlay/pvp-zone-browser-overlay.component';
 import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { ActivationMode, PvpActivationToggleComponent } from './pvp-activation-toggle/pvp-activation-toggle.component';
-import { DeckPickerDialogComponent } from '../lobby-page/deck-picker-dialog.component';
+import { setupClickOutsideListener } from './click-outside.utils';
+import { AnimationOrchestratorService } from './animation-orchestrator.service';
+import { RoomStateMachineService } from './room-state-machine.service';
+import { CardInspectionService } from './card-inspection.service';
 import './prompts/prompt-registry';
-
-type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-loading' | 'active' | 'error';
 
 @Component({
   selector: 'app-duel-page',
@@ -43,7 +39,10 @@ type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-
   styleUrl: './duel-page.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [DuelWebSocketService, CardDataCacheService, DuelTabGuardService],
+  providers: [
+    DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
+    AnimationOrchestratorService, RoomStateMachineService, CardInspectionService,
+  ],
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptSheetComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
@@ -52,47 +51,37 @@ type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-
   ],
 })
 export class DuelPageComponent implements OnInit {
+  private static readonly MENU_WIDTH = 160;
+  private static readonly MENU_HEIGHT = 200;
+  private static readonly MENU_WIDTH_WITH_PADDING = 164;
+  private static readonly MENU_HEIGHT_WITH_PADDING = 204;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   readonly wsService = inject(DuelWebSocketService);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly clipboard = inject(Clipboard);
-  private readonly roomApiService = inject(RoomApiService);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly authService = inject(AuthService);
   private readonly dialog = inject(MatDialog);
-  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
+
+  // --- Extracted services ---
+  readonly animationService = inject(AnimationOrchestratorService);
+  readonly roomService = inject(RoomStateMachineService);
+  readonly cardInspection = inject(CardInspectionService);
 
   readonly roomCode = toSignal(this.route.paramMap.pipe(map(params => params.get('roomCode') ?? '')), {
     initialValue: '',
   });
 
-  // Story 2.1 — Room state management
-  readonly roomState = signal<RoomState>('loading');
-  readonly room = signal<RoomDTO | null>(null);
-  readonly deckName = signal('');
-  private readonly stopPolling$ = new Subject<void>();
-  readonly countdownTick = signal(Date.now());
-  private countdownInterval: ReturnType<typeof setInterval> | null = null;
-
-  readonly countdown = computed(() => {
-    this.countdownTick();
-    const r = this.room();
-    if (!r) return null;
-    const expiresAt = new Date(r.createdAt).getTime() + 30 * 60 * 1000;
-    const remaining = Math.max(0, expiresAt - Date.now());
-    const totalSeconds = Math.floor(remaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    const color = totalSeconds > 60 ? 'green' : totalSeconds > 30 ? 'yellow' : 'red';
-    return { display, color, expired: totalSeconds === 0 };
-  });
-
-  readonly canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  // Delegate room signals to service
+  readonly roomState = this.roomService.roomState;
+  readonly room = this.roomService.room;
+  readonly countdown = this.roomService.countdown;
+  readonly canShare = this.roomService.canShare;
 
   readonly connectionStatus = this.wsService.connectionStatus;
   readonly isLost = computed(() => this.connectionStatus() === 'lost');
@@ -117,6 +106,15 @@ export class DuelPageComponent implements OnInit {
 
   readonly playerHand = computed(() => this.getHandCards(0));
   readonly opponentHand = computed(() => this.getHandCards(1));
+
+  // Delegate animation signals to service
+  readonly isAnimating = this.animationService.isAnimating;
+  readonly animatingZone = this.animationService.animatingZone;
+  readonly animatingLpPlayer = this.animationService.animatingLpPlayer;
+
+  // Delegate card inspection signals to service
+  readonly inspectedCard = this.cardInspection.inspectedCard;
+  readonly inspectorForceExpanded = this.cardInspection.inspectorForceExpanded;
 
   // Zone highlight (Pattern A — SELECT_PLACE / SELECT_DISFIELD)
   // Story 4.2 — All prompt-dependent computeds use visiblePrompt (drain coordination)
@@ -162,11 +160,11 @@ export class DuelPageComponent implements OnInit {
   readonly playerActionableHandIndices = computed((): Set<number> => {
     const prompt = this.actionablePrompt();
     if (!prompt) return new Set();
-    const map = prompt.type === 'SELECT_IDLECMD'
+    const actionMap = prompt.type === 'SELECT_IDLECMD'
       ? buildActionableCardsFromIdle(prompt)
       : buildActionableCardsFromBattle(prompt);
     const indices = new Set<number>();
-    for (const key of map.keys()) {
+    for (const key of actionMap.keys()) {
       const parts = key.split('-');
       if (parseInt(parts[0], 10) === LOCATION.HAND) {
         indices.add(parseInt(parts[1], 10));
@@ -182,9 +180,6 @@ export class DuelPageComponent implements OnInit {
     return p !== null && p.type !== 'SELECT_IDLECMD' && p.type !== 'SELECT_BATTLECMD';
   });
 
-  // Room ID for POST /rooms/:id/end on duel end
-  private roomId: number | null = null;
-  private decklistId: number | null = null;
   private rpsAutoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
   private prefetchStarted = false;
 
@@ -228,13 +223,6 @@ export class DuelPageComponent implements OnInit {
   // [H1 fix] Track prompt sheet expanded state for mini-toolbar interaction
   readonly promptSheetExpanded = signal(false);
 
-  // Story 1.7 — Card inspector state
-  readonly inspectedCard = signal<SharedCardInspectorData | null>(null);
-  // H3 fix: Force full mode when opening from long-press inspect
-  readonly inspectorForceExpanded = signal(false);
-  // L3 fix: Generation counter to prevent race conditions on rapid inspection
-  private inspectGeneration = 0;
-
   // Story 1.7 — Activation toggle mode
   readonly activationMode = signal<ActivationMode>('auto');
 
@@ -273,7 +261,7 @@ export class DuelPageComponent implements OnInit {
   // Story 3.1 — duelResult as observable (created in injection context for toObservable)
   private readonly duelResult$ = toObservable(this.wsService.duelResult);
 
-  private menuClickListener: ((e: MouseEvent) => void) | null = null;
+  private teardownMenuListener: () => void = () => {};
 
   // Story 3.3 — Connection snackbar tracking
   private previousConnectionStatus: ConnectionStatus | null = null;
@@ -291,37 +279,33 @@ export class DuelPageComponent implements OnInit {
   // Story 4.1 — Chain resolved announcement tracking
   private previousChainLinksCount = 0;
 
-  // Story 4.2 — Animation orchestration
-  private _isAnimating = signal(false);
-  readonly isAnimating = this._isAnimating.asReadonly();
-  readonly animatingZone = signal<{ zoneId: string; animationType: 'summon' | 'destroy' | 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
-  readonly animatingLpPlayer = signal<LpAnimData | null>(null);
-  private animationTimeouts: ReturnType<typeof setTimeout>[] = [];
-  private trackedLp: [number, number] = [8000, 8000];
-  // [Review C1 fix] Read LP counter duration from CSS token (0ms under prefers-reduced-motion)
-  private readonly baseLpDuration = (() => {
-    const style = getComputedStyle(document.documentElement);
-    const raw = style.getPropertyValue('--pvp-transition-lp-counter').trim();
-    return parseFloat(raw) || 0;
-  })();
-
   // Story 4.2 — Prompt drain: gate prompt display behind animation queue drain
   readonly visiblePrompt = computed(() => this.isAnimating() ? null : this.wsService.pendingPrompt());
 
   constructor() {
+    // --- Initialize extracted services ---
+    this.roomService.init({ wsService: this.wsService, tabGuard: this.tabGuard });
+    this.animationService.init({
+      wsService: this.wsService,
+      liveAnnouncer: this.liveAnnouncer,
+      ownPlayerIndex: () => this.ownPlayerIndex(),
+      speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
+    });
+    this.cardInspection.init(this.cardDataCache);
+
+    // --- Bootstrap room ---
     const code = this.route.snapshot.paramMap.get('roomCode');
     if (code) {
-      this.deckName.set(history.state?.deckName ?? '');
-      this.fetchRoom(code);
+      this.roomService.deckName.set(history.state?.deckName ?? '');
+      this.roomService.fetchRoom(code);
     }
+
     this.destroyRef.onDestroy(() => {
-      this.removeMenuClickListener();
-      this.stopPolling$.next();
-      this.stopCountdown();
+      this.teardownMenuListener();
+      this.roomService.destroy();
+      this.animationService.destroy();
       if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
       if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
-      this.animationTimeouts.forEach(t => clearTimeout(t));
-      this.animationTimeouts = [];
       this.cardDataCache.clearCache();
     });
 
@@ -339,15 +323,12 @@ export class DuelPageComponent implements OnInit {
           this.awaitingStateSyncAfterBackground = true;
           this.wsService.sendRequestStateSync();
         }
-        // If disconnected, existing reconnect logic handles it
       }
     };
     document.addEventListener('visibilitychange', visibilityHandler);
     this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', visibilityHandler));
 
     // Story 5.2 — STATE_SYNC auto-resolved snackbar + "Board state refreshed" announcer
-    // [Review C1 fix] Only fire when awaitingStateSyncAfterBackground is set (not on every turn change)
-    // [Review H2 fix] Merged "Board state refreshed" here (was a separate effect with broken tracking)
     effect(() => {
       const state = this.duelState();
       untracked(() => {
@@ -372,7 +353,6 @@ export class DuelPageComponent implements OnInit {
       if (blocked) {
         untracked(() => {
           this.liveAnnouncer.announce('Duel active in another tab');
-          // Auto-focus the "Take control here" button after render
           setTimeout(() => {
             const btn = document.querySelector<HTMLButtonElement>('.blocked-tab-overlay__btn');
             btn?.focus();
@@ -389,14 +369,14 @@ export class DuelPageComponent implements OnInit {
       }
     });
 
-    // Story 2.1 — Countdown timer tick + expiration
+    // Story 2.1 — Countdown timer tick + expiration (delegates to roomService)
     effect(() => {
       const state = this.roomState();
       untracked(() => {
         if (state === 'waiting' || state === 'creating-duel') {
-          this.startCountdown();
+          this.roomService.startCountdown();
         } else {
-          this.stopCountdown();
+          this.roomService.stopCountdown();
         }
       });
     });
@@ -405,10 +385,8 @@ export class DuelPageComponent implements OnInit {
       const cd = this.countdown();
       if (cd?.expired) {
         untracked(() => {
-          this.stopPolling$.next();
-          this.stopCountdown();
           displayError(this.snackBar, 'Room expired');
-          this.router.navigate(['/pvp']);
+          this.roomService.leaveRoom();
         });
       }
     });
@@ -429,7 +407,6 @@ export class DuelPageComponent implements OnInit {
         if (mode === 'off') {
           shouldAutoRespond = true;
         } else if (mode === 'auto') {
-          // Auto mode: decline when no MSG_HINT context preceded the prompt
           const hint = this.wsService.hintContext();
           shouldAutoRespond = hint.hintType === 0;
         }
@@ -444,7 +421,7 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
-    // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE (guarded: wait for RPS overlay to dismiss)
+    // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE
     effect(() => {
       const ready = this.boardReady();
       const rpsVisible = this.wsService.rpsResult();
@@ -469,7 +446,7 @@ export class DuelPageComponent implements OnInit {
       }
     });
 
-    // Story 2.4 — Transition 'duel-loading' → 'active' when loading ready
+    // Story 2.4 — Transition 'duel-loading' -> 'active' when loading ready
     effect(() => {
       const ready = this.duelLoadingReady();
       if (ready && this.roomState() === 'duel-loading') {
@@ -516,12 +493,10 @@ export class DuelPageComponent implements OnInit {
       const ts = this.timerState();
       if (!ts) return;
       untracked(() => {
-        // Only announce for own player's timer
         if (ts.player !== this.ownPlayerIndex()) return;
 
         const totalSec = Math.floor(ts.remainingMs / 1000);
         const thresholds = [60, 30, 10];
-        // Pre-seed already-passed thresholds (e.g., after reconnection) to avoid misleading announcements
         for (const t of thresholds) {
           if (totalSec < t && !this.announcedThresholds.has(t)) {
             this.announcedThresholds.add(t);
@@ -547,7 +522,6 @@ export class DuelPageComponent implements OnInit {
         }
         if (turnPlayer !== this.lastAnnouncedTurnPlayer) {
           this.lastAnnouncedTurnPlayer = turnPlayer;
-          // Reset announced thresholds on turn change (new countdown)
           this.announcedThresholds.clear();
           const msg = turnPlayer === 0 ? 'Your turn' : "Opponent's turn";
           this.liveAnnouncer.announce(msg);
@@ -580,7 +554,7 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
-    // Story 4.1 — LiveAnnouncer: "Chain resolved" when chain links go from non-empty → empty
+    // Story 4.1 — LiveAnnouncer: "Chain resolved" when chain links go from non-empty -> empty
     effect(() => {
       const links = this.wsService.activeChainLinks();
       untracked(() => {
@@ -591,26 +565,22 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
-    // Story 4.2 — Animation queue watcher: start processing when queue goes from empty → non-empty
+    // Story 4.2 — Animation queue watcher: delegate to animation service
     effect(() => {
       const queue = this.wsService.animationQueue();
       untracked(() => {
-        if (queue.length > 0 && !this._isAnimating()) {
-          this._isAnimating.set(true);
-          this.processAnimationQueue();
+        if (queue.length > 0) {
+          this.animationService.startProcessingIfIdle();
         }
       });
     });
 
     // Story 4.2 — Reset tracked LP when BOARD_STATE arrives (authoritative sync)
-    // [Review H1 fix] Guard behind !isAnimating to prevent race condition where
-    // BOARD_STATE resets trackedLp before pending MSG_DAMAGE events are processed,
-    // causing double-subtraction and LP bounce artifacts.
     effect(() => {
       const state = this.duelState();
       untracked(() => {
-        if (state.players.length === 2 && !this._isAnimating()) {
-          this.trackedLp = [state.players[0].lp, state.players[1].lp];
+        if (state.players.length === 2 && !this.isAnimating()) {
+          this.animationService.syncTrackedLp(state.players[0].lp, state.players[1].lp);
         }
       });
     });
@@ -620,362 +590,22 @@ export class DuelPageComponent implements OnInit {
     this.initOrientationLock();
   }
 
-  // Story 4.2 — Animation orchestration
-  private processAnimationQueue(): void {
-    const queue = this.wsService.animationQueue();
+  // --- Template-facing delegations to roomService ---
 
-    // Queue collapse (AC7): if queue > 5, instantly process all but last 3
-    if (queue.length > 5) {
-      const collapseCount = queue.length - 3;
-      for (let i = 0; i < collapseCount; i++) {
-        const event = this.wsService.dequeueAnimation();
-        if (event) this.applyInstantAnimation(event);
-      }
-    }
-
-    const event = this.wsService.dequeueAnimation();
-    if (!event) {
-      this._isAnimating.set(false);
-      this.animatingZone.set(null);
-      this.animatingLpPlayer.set(null);
-      // [Review H1 fix] Sync trackedLp to authoritative board state after all animations processed
-      const state = this.duelState();
-      if (state.players.length === 2) {
-        this.trackedLp = [state.players[0].lp, state.players[1].lp];
-      }
-      return;
-    }
-
-    const duration = this.processEvent(event);
-
-    // AC8: 2x speed when activation toggle is Off
-    const speedMultiplier = this.activationMode() === 'off' ? 0.5 : 1;
-    const adjustedDuration = Math.round(duration * speedMultiplier);
-
-    const timeout = setTimeout(() => {
-      this.animatingZone.set(null);
-      this.animatingLpPlayer.set(null);
-      const idx = this.animationTimeouts.indexOf(timeout);
-      if (idx !== -1) this.animationTimeouts.splice(idx, 1);
-      this.processAnimationQueue();
-    }, adjustedDuration);
-    this.animationTimeouts.push(timeout);
+  deckName(): string {
+    return this.roomService.deckName();
   }
 
-  private processEvent(event: GameEvent): number {
-    switch (event.type) {
-      case 'MSG_MOVE': {
-        const msg = event as MoveMsg;
-        return this.processMoveEvent(msg);
-      }
-      case 'MSG_DAMAGE': {
-        const msg = event as DamageMsg;
-        return this.processLpEvent(msg.player, msg.amount, 'damage');
-      }
-      case 'MSG_RECOVER': {
-        const msg = event as RecoverMsg;
-        return this.processLpEvent(msg.player, msg.amount, 'recover');
-      }
-      case 'MSG_PAY_LPCOST': {
-        const msg = event as PayLpCostMsg;
-        return this.processLpEvent(msg.player, msg.amount, 'damage');
-      }
-      case 'MSG_FLIP_SUMMONING': {
-        const msg = event as FlipSummoningMsg;
-        const zoneId = this.mapAnimationZoneId(msg.location, msg.sequence);
-        if (zoneId) {
-          this.setAnimatingZone(zoneId, 'flip', msg.player);
-          this.announceEvent('Card flip summoned', msg.player);
-        }
-        return 300;
-      }
-      case 'MSG_CHANGE_POS': {
-        const msg = event as ChangePosMsg;
-        const wasFaceDown = (msg.previousPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
-        const nowFaceUp = (msg.currentPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
-        if (wasFaceDown && nowFaceUp) {
-          const zoneId = this.mapAnimationZoneId(msg.location, msg.sequence);
-          if (zoneId) this.setAnimatingZone(zoneId, 'flip', msg.player);
-          return 300;
-        }
-        return 0;
-      }
-      case 'MSG_CHAINING': {
-        const msg = event as ChainingMsg;
-        const zoneId = this.mapAnimationZoneId(msg.location, msg.sequence);
-        if (zoneId) this.setAnimatingZone(zoneId, 'activate', msg.player);
-        return 300;
-      }
-      // No-op events: dequeue immediately
-      case 'MSG_DRAW':
-      case 'MSG_SWAP':
-      case 'MSG_ATTACK':
-      case 'MSG_BATTLE':
-      case 'MSG_CHAIN_SOLVING':
-      case 'MSG_CHAIN_SOLVED':
-      case 'MSG_CHAIN_END':
-        return 0;
-      default:
-        return 0;
-    }
-  }
-
-  private processMoveEvent(msg: MoveMsg): number {
-    const from = msg.fromLocation;
-    const to = msg.toLocation;
-
-    // Summon: HAND/EXTRA/DECK → MZONE, or HAND → SZONE (set)
-    if ((to === LOCATION.MZONE && (from === LOCATION.HAND || from === LOCATION.EXTRA || from === LOCATION.DECK))
-      || (to === LOCATION.SZONE && from === LOCATION.HAND)) {
-      const zoneId = this.mapAnimationZoneId(to, msg.toSequence);
-      if (zoneId) {
-        this.setAnimatingZone(zoneId, 'summon', msg.player);
-        this.announceEvent('Card summoned', msg.player);
-      }
-      return 300;
-    }
-
-    // Destroy: MZONE/SZONE → GRAVE/BANISHED/HAND/DECK (card disappears from field)
-    // [Review L2 fix] return 300 to match CSS --pvp-animation-duration (was 400, causing 100ms dead time)
-    if ((from === LOCATION.MZONE || from === LOCATION.SZONE)
-      && (to === LOCATION.GRAVE || to === LOCATION.BANISHED || to === LOCATION.HAND || to === LOCATION.DECK)) {
-      const zoneId = this.mapAnimationZoneId(from, msg.fromSequence);
-      if (zoneId) {
-        this.setAnimatingZone(zoneId, 'destroy', msg.player);
-        if (to === LOCATION.GRAVE || to === LOCATION.BANISHED) {
-          this.announceEvent('Card destroyed', msg.player);
-        }
-      }
-      return 300;
-    }
-
-    return 0;
-  }
-
-  private processLpEvent(player: number, amount: number, type: 'damage' | 'recover'): number {
-    const fromLp = this.trackedLp[player] ?? 8000;
-    const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
-    this.trackedLp[player] = toLp;
-
-    // [Review C1/M5 fix] Token-driven LP duration, speed-adjusted. 0ms under prefers-reduced-motion
-    const speedMultiplier = this.activationMode() === 'off' ? 0.5 : 1;
-    const durationMs = Math.round(this.baseLpDuration * speedMultiplier);
-    this.animatingLpPlayer.set({ player, fromLp, toLp, type, durationMs });
-
-    // LiveAnnouncer: announce LP change
-    const isOwn = player === this.ownPlayerIndex();
-    const label = isOwn ? 'Your' : 'Opponent';
-    untracked(() => this.liveAnnouncer.announce(`${label} LP: ${toLp}`));
-
-    return this.baseLpDuration;
-  }
-
-  private applyInstantAnimation(event: GameEvent): void {
-    // For collapsed events: apply LP tracking without visual animation
-    if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST') {
-      const msg = event as DamageMsg | PayLpCostMsg;
-      this.trackedLp[msg.player] = Math.max(0, (this.trackedLp[msg.player] ?? 8000) - msg.amount);
-    } else if (event.type === 'MSG_RECOVER') {
-      const msg = event as RecoverMsg;
-      this.trackedLp[msg.player] = (this.trackedLp[msg.player] ?? 8000) + msg.amount;
-    }
-  }
-
-  private setAnimatingZone(zoneId: string, animationType: 'summon' | 'destroy' | 'flip' | 'activate', absolutePlayer: number): void {
-    const relativePlayerIndex = absolutePlayer === this.ownPlayerIndex() ? 0 : 1;
-    this.animatingZone.set({ zoneId, animationType, relativePlayerIndex });
-  }
-
-  private mapAnimationZoneId(location: number, sequence: number): string | null {
-    if (location === LOCATION.MZONE) {
-      if (sequence <= 4) return `M${sequence + 1}`;
-      if (sequence === 5) return 'EMZ_L';
-      if (sequence === 6) return 'EMZ_R';
-    }
-    if (location === LOCATION.SZONE) {
-      if (sequence <= 4) return `S${sequence + 1}`;
-      if (sequence === 5) return 'FIELD';
-    }
-    return null;
-  }
-
-  private announceEvent(text: string, player: number): void {
-    const isOwn = player === this.ownPlayerIndex();
-    const prefix = isOwn ? '' : 'Opponent: ';
-    untracked(() => this.liveAnnouncer.announce(`${prefix}${text}`));
-  }
-
-  private fetchRoom(roomCode: string): void {
-    this.roomState.set('loading');
-    this.roomApiService.getRoom(roomCode).subscribe({
-      next: room => {
-        this.roomId = room.id;
-        this.decklistId = room.decklistId;
-        this.room.set(room);
-        this.handleRoomStatus(room);
-      },
-      error: (err: HttpErrorResponse) => {
-        const message = err.status === 404
-          ? 'Room not found or already ended'
-          : 'Unable to reach server';
-        displayError(this.snackBar, message);
-        this.router.navigate(['/pvp']);
-      },
-    });
-  }
-
-  private handleRoomStatus(room: RoomDTO): void {
-    const currentUserId = this.authService.user()?.id;
-    const isParticipant = currentUserId === room.player1.id || (room.player2 !== null && currentUserId === room.player2.id);
-
-    switch (room.status) {
-      case 'WAITING':
-        if (isParticipant) {
-          this.roomState.set('waiting');
-          this.startPolling(room.roomCode);
-        } else {
-          this.openDeckPickerForJoin(room.roomCode);
-        }
-        break;
-      case 'CREATING_DUEL':
-        this.roomState.set('creating-duel');
-        this.startPolling(room.roomCode);
-        break;
-      case 'ACTIVE':
-        this.connectWhenReady(room);
-        break;
-      case 'ENDED':
-        displayError(this.snackBar, 'Room not found or already ended');
-        this.router.navigate(['/pvp']);
-        break;
-      case 'CLOSED':
-        displayError(this.snackBar, 'This room has been closed');
-        this.router.navigate(['/pvp']);
-        break;
-    }
-  }
-
-  private openDeckPickerForJoin(roomCode: string, attempt = 0): void {
-    if (attempt >= 3) {
-      displayError(this.snackBar, 'Too many failed attempts');
-      this.router.navigate(['/pvp']);
-      return;
-    }
-    const dialogRef = this.dialog.open(DeckPickerDialogComponent);
-    dialogRef.afterClosed().pipe(
-      switchMap(decklistId => {
-        if (decklistId === undefined || decklistId === null) {
-          this.router.navigate(['/pvp']);
-          return EMPTY;
-        }
-        this.decklistId = decklistId;
-        return this.roomApiService.joinRoom(roomCode, decklistId);
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
-      next: room => {
-        this.room.set(room);
-        this.roomId = room.id;
-        this.handleRoomStatus(room);
-      },
-      error: (err: HttpErrorResponse) => {
-        if (err.status === 409) {
-          displayError(this.snackBar, 'Room is full');
-          this.router.navigate(['/pvp']);
-        } else if (err.status === 422) {
-          displayError(this.snackBar, 'Invalid deck, please select another');
-          this.openDeckPickerForJoin(roomCode, attempt + 1);
-        } else {
-          displayError(this.snackBar, 'Failed to join room');
-          this.router.navigate(['/pvp']);
-        }
-      },
-    });
-  }
-
-  private connectWhenReady(room: RoomDTO): void {
-    this.roomState.set('connecting');
-    if (room.wsToken) {
-      // Story 5.2 — Init tab guard with room code for single-tab enforcement
-      this.tabGuard.init(room.roomCode);
-      this.tabGuard.broadcast();
-      this.wsService.connect(room.wsToken);
-    } else {
-      displayError(this.snackBar, 'Unable to connect to duel');
-      this.router.navigate(['/pvp']);
-    }
-  }
-
-  private startPolling(roomCode: string): void {
-    this.stopPolling$.next();
-    let consecutiveErrors = 0;
-
-    interval(3000).pipe(
-      takeUntil(this.stopPolling$),
-      takeUntilDestroyed(this.destroyRef),
-      switchMap(() => this.roomApiService.getRoom(roomCode).pipe(
-        catchError(() => {
-          consecutiveErrors++;
-          if (consecutiveErrors >= 3) {
-            this.stopPolling$.next();
-            this.roomState.set('error');
-          }
-          return EMPTY;
-        }),
-      )),
-    ).subscribe(room => {
-      consecutiveErrors = 0;
-      this.room.set(room);
-      if (room.status === 'WAITING') {
-        this.roomState.set('waiting');
-      } else if (room.status === 'CREATING_DUEL') {
-        this.roomState.set('creating-duel');
-      } else if (room.status === 'ACTIVE') {
-        this.stopPolling$.next();
-        this.connectWhenReady(room);
-      } else if (room.status === 'ENDED') {
-        this.stopPolling$.next();
-        displayError(this.snackBar, 'Room not found or already ended');
-        this.router.navigate(['/pvp']);
-      }
-    });
-  }
-
-  // Story 2.1 — Waiting room actions
   copyRoomLink(): void {
-    const code = this.room()?.roomCode;
-    if (!code) return;
-    const url = `${window.location.origin}/pvp/duel/${code}`;
-    this.clipboard.copy(url);
-    displaySuccess(this.snackBar, 'Link copied!', 3000);
+    this.roomService.copyRoomLink();
   }
 
   shareRoom(): void {
-    const code = this.room()?.roomCode;
-    if (!code) return;
-    const baseUrl = window.location.origin;
-    navigator.share({
-      title: 'skytrix PvP Duel',
-      text: SHARE_TEXT_TEMPLATE(code, baseUrl),
-    }).catch(() => this.copyRoomLink());
+    this.roomService.shareRoom();
   }
 
   leaveRoom(): void {
-    this.stopPolling$.next();
-    this.stopCountdown();
-    this.router.navigate(['/pvp']);
-  }
-
-  private startCountdown(): void {
-    if (this.countdownInterval) return;
-    this.countdownInterval = setInterval(() => this.countdownTick.set(Date.now()), 1000);
-  }
-
-  private stopCountdown(): void {
-    if (this.countdownInterval) {
-      clearInterval(this.countdownInterval);
-      this.countdownInterval = null;
-    }
+    this.roomService.leaveRoom();
   }
 
   retry(): void {
@@ -983,18 +613,20 @@ export class DuelPageComponent implements OnInit {
     this.wsService.retryConnection();
   }
 
-  backToLobby(): void {
-    if (this.roomId) {
-      this.http.post(`/api/rooms/${this.roomId}/end`, {}).subscribe();
+  private endRoomIfNeeded(): void {
+    if (this.roomService.roomId) {
+      this.http.post(`/api/rooms/${this.roomService.roomId}/end`, {}).subscribe();
     }
+  }
+
+  backToLobby(): void {
+    this.endRoomIfNeeded();
     this.router.navigate(['/pvp']);
   }
 
   backToDeck(): void {
-    if (this.roomId) {
-      this.http.post(`/api/rooms/${this.roomId}/end`, {}).subscribe();
-    }
-    const deckId = this.room()?.decklistId ?? this.decklistId;
+    this.endRoomIfNeeded();
+    const deckId = this.room()?.decklistId ?? this.roomService.decklistId;
     if (deckId) {
       this.router.navigate(['/decks', deckId]);
     } else {
@@ -1006,7 +638,8 @@ export class DuelPageComponent implements OnInit {
     this.wsService.sendRematchRequest();
   }
 
-  // Card Action Menu methods
+  // --- Card Action Menu methods ---
+
   // [L3 fix] Use visualViewport for mobile-safe bounds checking
   openCardActionMenu(element: HTMLElement, actions: CardAction[], promptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD'): void {
     const rect = element.getBoundingClientRect();
@@ -1015,32 +648,34 @@ export class DuelPageComponent implements OnInit {
     let left = rect.right + 4;
     let top = rect.top;
 
-    if (left + 160 > vpWidth) {
-      left = rect.left - 164;
+    if (left + DuelPageComponent.MENU_WIDTH > vpWidth) {
+      left = rect.left - DuelPageComponent.MENU_WIDTH_WITH_PADDING;
     }
-    if (top + 200 > vpHeight) {
-      top = Math.max(4, vpHeight - 204);
+    if (top + DuelPageComponent.MENU_HEIGHT > vpHeight) {
+      top = Math.max(4, vpHeight - DuelPageComponent.MENU_HEIGHT_WITH_PADDING);
     }
 
     this.menuState.set({ top, left, actions, promptType });
 
-    this.removeMenuClickListener();
+    this.teardownMenuListener();
+    // After the menu renders (next tick), attach click-outside listener to the menu element
     setTimeout(() => {
-      this.menuClickListener = (event: MouseEvent) => {
-        if (!(event.target as HTMLElement).closest('.card-action-menu')) {
-          this.closeCardActionMenu();
-        }
-      };
-      document.addEventListener('click', this.menuClickListener);
+      const menuEl = document.querySelector('.card-action-menu') as HTMLElement | null;
+      if (menuEl) {
+        this.teardownMenuListener = setupClickOutsideListener(
+          { nativeElement: menuEl } as ElementRef,
+          this.destroyRef,
+          () => this.closeCardActionMenu(),
+        );
+      }
     });
   }
 
   closeCardActionMenu(): void {
     this.menuState.set(null);
-    this.removeMenuClickListener();
+    this.teardownMenuListener();
   }
 
-  // [L2 fix] Remove unnecessary double casts — ResponseData = Record<string, unknown> accepts any object
   onMenuAction(action: CardAction): void {
     const menu = this.menuState();
     if (!menu || !this.actionablePrompt()) return;
@@ -1072,7 +707,8 @@ export class DuelPageComponent implements OnInit {
     }
   }
 
-  // Story 1.7 — Board container handlers
+  // --- Board container handlers ---
+
   onBoardActionResponse(event: { action: number; index: number | null }): void {
     const prompt = this.actionablePrompt();
     if (!prompt) return;
@@ -1118,52 +754,30 @@ export class DuelPageComponent implements OnInit {
     }
   }
 
-  async inspectCardByCode(cardCode: number, forceExpanded = false): Promise<void> {
-    this.inspectorForceExpanded.set(forceExpanded);
-    const gen = ++this.inspectGeneration;
+  // --- Card inspection delegations ---
 
-    if (!cardCode) {
-      this.inspectedCard.set(CARD_BACK_PLACEHOLDER);
-      return;
-    }
-    // Show image immediately while loading text details
-    this.inspectedCard.set({
-      name: '',
-      imageUrl: getCardImageUrlByCode(cardCode),
-      isMonster: false,
-      isLink: false,
-      hasDefense: false,
-      displayAtk: '',
-      displayDef: '',
-      description: '',
-    });
-    const data = await this.cardDataCache.getCardData(cardCode);
-    // L3 fix: Discard stale response if a newer inspection was triggered
-    if (this.inspectGeneration === gen) {
-      this.inspectedCard.set(data);
-    }
+  async inspectCardByCode(cardCode: number, forceExpanded = false): Promise<void> {
+    await this.cardInspection.inspectByCode(cardCode, forceExpanded);
   }
 
   async onCardInspectRequest(event: { cardCode: number }): Promise<void> {
-    await this.inspectCardByCode(event.cardCode);
+    await this.cardInspection.inspectByCode(event.cardCode);
   }
 
-  // H3 fix: Long-press inspect opens inspector in full mode despite active prompt
   async onLongPressInspect(event: { cardCode: number }): Promise<void> {
-    await this.inspectCardByCode(event.cardCode, true);
+    await this.cardInspection.inspectByCode(event.cardCode, true);
   }
 
   async onOpponentHandInspect(event: { cardCode: number }): Promise<void> {
     if (!event.cardCode) {
-      this.inspectorForceExpanded.set(false);
-      this.inspectedCard.set(UNKNOWN_CARD_PLACEHOLDER);
+      this.cardInspection.showUnknownCard();
     } else {
-      await this.inspectCardByCode(event.cardCode);
+      await this.cardInspection.inspectByCode(event.cardCode);
     }
   }
 
   closeInspector(): void {
-    this.inspectedCard.set(null);
+    this.cardInspection.close();
   }
 
   // Story 1.7 — Zone browser methods
@@ -1189,11 +803,6 @@ export class DuelPageComponent implements OnInit {
       this.closeZoneBrowser();
       this.openCardActionMenu(event.element, actions, prompt.type);
     }
-  }
-
-  // Story 1.7 — Activation toggle
-  onActivationModeChange(mode: ActivationMode): void {
-    this.activationMode.set(mode);
   }
 
   // Story 3.1 — Surrender
@@ -1239,6 +848,17 @@ export class DuelPageComponent implements OnInit {
     }
   }
 
+  // Story 2.3 — Map RPS choice value to emoji
+  readonly RPS_EMOJIS = ['\u270A', '\u270B', '\u270C\uFE0F'] as const;
+
+  rpsEmoji(choice: number): string {
+    return this.RPS_EMOJIS[choice] ?? '\u2753';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
   private collectActionsForCardCode(
     cardCode: number, targetLocation: number,
     prompt: SelectIdleCmdMsg | SelectBattleCmdMsg,
@@ -1275,16 +895,7 @@ export class DuelPageComponent implements OnInit {
   }
 
   private placeOptionToZoneId(place: PlaceOption): ZoneId | null {
-    if (place.location === LOCATION.MZONE) {
-      if (place.sequence <= 4) return `M${place.sequence + 1}` as ZoneId;
-      if (place.sequence === 5) return 'EMZ_L';
-      if (place.sequence === 6) return 'EMZ_R';
-    }
-    if (place.location === LOCATION.SZONE) {
-      if (place.sequence <= 4) return `S${place.sequence + 1}` as ZoneId;
-      if (place.sequence === 5) return 'FIELD';
-    }
-    return null;
+    return locationToZoneId(place.location, place.sequence);
   }
 
   private getHandCards(playerIndex: number): CardOnField[] {
@@ -1292,6 +903,17 @@ export class DuelPageComponent implements OnInit {
     if (!player) return [];
     const handZone = player.zones.find((z: BoardZone) => z.zoneId === 'HAND');
     return handZone?.cards ?? [];
+  }
+
+  /** Pre-load a list of card images into the browser cache. Resolves when all are attempted. */
+  private preloadImages(codes: number[]): Promise<void> {
+    const promises = codes.map(code => new Promise<void>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = getCardImageUrlByCode(code);
+    }));
+    return Promise.allSettled(promises).then(() => {});
   }
 
   // Story 5.4 — Pre-fetch ALL own deck card thumbnails (main + extra) via deck API
@@ -1309,16 +931,7 @@ export class DuelPageComponent implements OnInit {
         ...deck.extraDeck.map(entry => entry.card.card.passcode),
       ].filter((code): code is number => !!code && code > 0))];
 
-      const promises = allCodes.map(code =>
-        new Promise<void>(resolve => {
-          const img = new Image();
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-          img.src = getCardImageUrlByCode(code);
-        }),
-      );
-
-      await Promise.allSettled(promises);
+      await this.preloadImages(allCodes);
     } catch {
       // API failure — proceed without full pre-fetch
     }
@@ -1342,16 +955,7 @@ export class DuelPageComponent implements OnInit {
       return;
     }
 
-    const promises = cardCodes.map(code =>
-      new Promise<void>(resolve => {
-        const img = new Image();
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-        img.src = getCardImageUrlByCode(code);
-      }),
-    );
-
-    Promise.allSettled(promises).then(() => this.thumbnailsReady.set(true));
+    this.preloadImages(cardCodes).then(() => this.thumbnailsReady.set(true));
   }
 
   private initOrientationLock(): void {
@@ -1363,23 +967,10 @@ export class DuelPageComponent implements OnInit {
     this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
   }
 
-  private removeMenuClickListener(): void {
-    if (this.menuClickListener) {
-      document.removeEventListener('click', this.menuClickListener);
-      this.menuClickListener = null;
-    }
-  }
-
-  // Story 2.3 — Map RPS choice value to emoji
-  readonly RPS_EMOJIS = ['\u270A', '\u270B', '\u270C\uFE0F'] as const;
-
-  rpsEmoji(choice: number): string {
-    return this.RPS_EMOJIS[choice] ?? '\u2753';
-  }
-
   private requestFullscreenAndLock(): void {
     document.documentElement.requestFullscreen?.().catch(() => {});
-    (screen.orientation as any).lock?.('landscape-primary')?.catch(() => {});
+    // @ts-expect-error — screen.orientation.lock is non-standard but supported on mobile
+    screen.orientation.lock?.('landscape-primary')?.catch(() => {});
   }
 
   private mapDuelEndReason(reason: string, isWinner: boolean): string {

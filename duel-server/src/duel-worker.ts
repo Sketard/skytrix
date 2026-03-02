@@ -54,6 +54,7 @@ let turnPlayer: Player = 0;
 let turnCount = 0;
 let phase: Phase = 'DRAW';
 let lp: [number, number] = [8000, 8000];
+let cardDb: import('./types.js').CardDB | null = null;
 
 // =============================================================================
 // Constants & Helpers
@@ -68,11 +69,7 @@ const PHASE_MAP: Record<number, Phase> = {
 const MZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
-function toCardInfo(c: OcgCardLoc): CardInfo {
-  return { cardCode: c.code, player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
-}
-
-function toCardInfoFromPos(c: OcgCardLocPos): CardInfo {
+function toCardInfo(c: OcgCardLoc | OcgCardLocPos): CardInfo {
   return { cardCode: c.code, player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
 }
 
@@ -222,7 +219,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SWAP:
-      return { type: 'MSG_SWAP', card1: toCardInfoFromPos(msg.card1), card2: toCardInfoFromPos(msg.card2) };
+      return { type: 'MSG_SWAP', card1: toCardInfo(msg.card1), card2: toCardInfo(msg.card2) };
 
     case OcgMessageType.ATTACK:
       return {
@@ -275,14 +272,14 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return {
         type: 'SELECT_CARD', player: msg.player as Player,
         min: msg.min, max: msg.max,
-        cards: msg.selects.map(toCardInfoFromPos),
+        cards: msg.selects.map(toCardInfo),
         cancelable: msg.can_cancel,
       };
 
     case OcgMessageType.SELECT_CHAIN:
       return {
         type: 'SELECT_CHAIN', player: msg.player as Player,
-        cards: msg.selects.map(c => toCardInfoFromPos(c)),
+        cards: msg.selects.map(c => toCardInfo(c)),
         forced: msg.forced,
       };
 
@@ -335,7 +332,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SELECT_UNSELECT_CARD:
       return {
         type: 'SELECT_UNSELECT_CARD', player: msg.player as Player,
-        cards: [...msg.select_cards, ...msg.unselect_cards].map(toCardInfoFromPos),
+        cards: [...msg.select_cards, ...msg.unselect_cards].map(toCardInfo),
         canFinish: msg.can_finish,
       };
 
@@ -646,6 +643,7 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
 
   // 2. Load data
   const db = loadDatabase(dbPath);
+  cardDb = db;
   const scripts = loadScripts(scriptsDir);
   const cardReader = createCardReader(db);
   const scriptReader = createScriptReader(scripts);
@@ -714,6 +712,10 @@ function cleanup(): void {
   if (core && duel) {
     try { core.destroyDuel(duel); } catch { /* ignore */ }
     duel = null;
+  }
+  if (cardDb) {
+    try { cardDb.db.close(); } catch { /* ignore */ }
+    cardDb = null;
   }
 }
 

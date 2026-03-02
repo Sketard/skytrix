@@ -62,7 +62,7 @@
   height: var(--pvp-min-touch-target-primary, 48px);
   padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  border-radius: var(--pvp-radius-lg);
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary, #eaeaea);
   font-size: 1.25rem;

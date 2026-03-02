@@ -9,7 +9,7 @@
 .card-thumbnail {
   width: 48px;
   aspect-ratio: 59 / 86;
-  border-radius: 4px;
+  border-radius: var(--pvp-radius-md);
   object-fit: cover;
   flex-shrink: 0;
 }

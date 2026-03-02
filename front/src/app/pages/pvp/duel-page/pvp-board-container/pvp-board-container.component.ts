@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import type { ChainLinkState } from '../../types';
 import { DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
@@ -36,7 +37,7 @@ interface ZoneRenderData {
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent],
+  imports: [NgTemplateOutlet, PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent],
 })
 export class PvpBoardContainerComponent {
   readonly duelState = input.required<DuelState>();
@@ -98,6 +99,12 @@ export class PvpBoardContainerComponent {
   readonly emzL = computed(() => this.findZoneCard(0, 'EMZ_L') ?? this.findZoneCard(1, 'EMZ_L'));
   readonly emzR = computed(() => this.findZoneCard(0, 'EMZ_R') ?? this.findZoneCard(1, 'EMZ_R'));
 
+  /** H2 refactor: unified EMZ config array for @for loop deduplication */
+  protected readonly emzConfigs = computed(() => [
+    { zoneId: 'EMZ_L' as ZoneId, zone: this.emzL(), chainBadges: this.emzLChainBadges(), cssClass: 'emz--left' },
+    { zoneId: 'EMZ_R' as ZoneId, zone: this.emzR(), chainBadges: this.emzRChainBadges(), cssClass: 'emz--right' },
+  ]);
+
   readonly phase = computed(() => this.duelState().phase);
   readonly turnPlayer = computed(() => this.duelState().turnPlayer);
   // Absolute turn player for PvpTimerBadgeComponent (timerState.player is absolute from server)
@@ -119,9 +126,14 @@ export class PvpBoardContainerComponent {
     return this.highlightedZones().has(zoneId);
   }
 
-  highlightBadgeNumber(zoneId: ZoneId): number {
-    return Array.from(this.highlightedZones()).indexOf(zoneId) + 1;
-  }
+  protected readonly highlightBadgeMap = computed(() => {
+    const map = new Map<ZoneId, number>();
+    let i = 1;
+    for (const zoneId of this.highlightedZones()) {
+      map.set(zoneId, i++);
+    }
+    return map;
+  });
 
   onHighlightedZoneClick(zoneId: ZoneId): void {
     if (this.isHighlighted(zoneId)) {
@@ -225,11 +237,44 @@ export class PvpBoardContainerComponent {
     });
   }
 
-  getChainBadges(zoneId: string, relativePlayerIndex: number): ChainLinkState[] {
+  /** Pre-computed chain badges grouped by "zoneId-relativePlayerIndex" key */
+  protected readonly chainBadgesByZone = computed(() => {
+    const map = new Map<string, ChainLinkState[]>();
     const ownIdx = this.ownPlayerIndex();
-    const absolutePlayerIndex = relativePlayerIndex === 0 ? ownIdx : (ownIdx === 0 ? 1 : 0);
-    return this.activeChainLinks().filter(l => l.zoneId === zoneId && l.player === absolutePlayerIndex);
-  }
+    for (const link of this.activeChainLinks()) {
+      const relPlayer = link.player === ownIdx ? 0 : 1;
+      const key = `${link.zoneId}-${relPlayer}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(link);
+    }
+    return map;
+  });
+
+  /** Pre-computed animation state: Set of "zoneId-relativePlayer-type" keys for O(1) template lookup */
+  protected readonly animatingZoneKeys = computed(() => {
+    const az = this.animatingZone();
+    if (!az) return new Set<string>();
+    return new Set([`${az.zoneId}-${az.relativePlayerIndex}-${az.animationType}`]);
+  });
+
+  /** Pre-computed EMZ animation: Set of "zoneId-type" keys (no player context for EMZ) */
+  protected readonly animatingEmzKeys = computed(() => {
+    const az = this.animatingZone();
+    if (!az) return new Set<string>();
+    if (az.zoneId === 'EMZ_L' || az.zoneId === 'EMZ_R') {
+      return new Set([`${az.zoneId}-${az.animationType}`]);
+    }
+    return new Set<string>();
+  });
+
+  /** Pre-computed EMZ chain badges */
+  protected readonly emzLChainBadges = computed(() =>
+    this.activeChainLinks().filter(l => l.zoneId === 'EMZ_L'),
+  );
+
+  protected readonly emzRChainBadges = computed(() =>
+    this.activeChainLinks().filter(l => l.zoneId === 'EMZ_R'),
+  );
 
   onCardInspect(card: CardOnField): void {
     if (card.cardCode) {
@@ -240,21 +285,6 @@ export class PvpBoardContainerComponent {
   /** CardOnField doesn't include card name — fallback to code identifier */
   resolveCardName(cardCode: number): string {
     return 'Card ' + cardCode;
-  }
-
-  isZoneAnimating(zoneId: string, relativePlayerIndex: number, type: 'summon' | 'destroy' | 'flip' | 'activate'): boolean {
-    const az = this.animatingZone();
-    return az !== null && az.zoneId === zoneId && az.relativePlayerIndex === relativePlayerIndex && az.animationType === type;
-  }
-
-  /** EMZ zones are in the central strip — match only by zoneId + type (no player context needed) */
-  isEmzAnimating(zoneId: 'EMZ_L' | 'EMZ_R', type: 'summon' | 'destroy' | 'flip' | 'activate'): boolean {
-    const az = this.animatingZone();
-    return az !== null && az.zoneId === zoneId && az.animationType === type;
-  }
-
-  getEmzChainBadges(zoneId: 'EMZ_L' | 'EMZ_R'): ChainLinkState[] {
-    return this.activeChainLinks().filter(l => l.zoneId === zoneId);
   }
 
   private findZoneCard(playerIndex: number, zoneId: ZoneId): CardOnField | null {

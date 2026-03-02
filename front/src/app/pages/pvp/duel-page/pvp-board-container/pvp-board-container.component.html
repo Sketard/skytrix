@@ -19,10 +19,10 @@
         } @else if (zone.card) {
           <div class="zone-card"
                [class.def-position]="isDefense(zone.card.position)"
-               [class.pvp-anim-summon]="isZoneAnimating(zone.zoneId, 1, 'summon')"
-               [class.pvp-anim-destroy]="isZoneAnimating(zone.zoneId, 1, 'destroy')"
-               [class.pvp-anim-flip]="isZoneAnimating(zone.zoneId, 1, 'flip')"
-               [class.pvp-anim-activate]="isZoneAnimating(zone.zoneId, 1, 'activate')"
+               [class.pvp-anim-summon]="animatingZoneKeys().has(zone.zoneId + '-1-summon')"
+               [class.pvp-anim-destroy]="animatingZoneKeys().has(zone.zoneId + '-1-destroy')"
+               [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-1-flip')"
+               [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-1-activate')"
                (click)="onCardInspect(zone.card)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
@@ -37,26 +37,7 @@
                 <span>{{ zone.card.overlayMaterials.length }}</span>
               </div>
             }
-            @let oppBadges = getChainBadges(zone.zoneId, 1);
-            @for (chainLink of oppBadges; track chainLink.chainIndex; let i = $index) {
-              @if (i < 3) {
-                <span class="pvp-chain-badge"
-                      [class.pvp-chain-badge--resolving]="chainLink.resolving"
-                      [style.right.px]="2 + i * 4"
-                      [style.z-index]="10 + i"
-                      [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + resolveCardName(chainLink.cardCode)">
-                  {{ chainLink.chainIndex + 1 }}
-                </span>
-              }
-            }
-            @if (oppBadges.length > 3) {
-              <span class="pvp-chain-badge pvp-chain-badge--overflow"
-                    [style.right.px]="2 + 3 * 4"
-                    [style.z-index]="13"
-                    [attr.aria-label]="(oppBadges.length - 3) + ' more chain links'">
-                +{{ oppBadges.length - 3 }}
-              </span>
-            }
+            <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: chainBadgesByZone().get(zone.zoneId + '-1') ?? [] }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -66,109 +47,53 @@
                   (click)="onHighlightedZoneClick(zone.zoneId)"
                   [attr.aria-label]="'Zone ' + zone.zoneId"
                   type="button">
-            {{ highlightBadgeNumber(zone.zoneId) }}
+            {{ highlightBadgeMap().get(zone.zoneId) }}
           </button>
         }
       </div>
     }
   </section>
 
-  <!-- Central Strip -->
+  <!-- Central Strip (H2 refactor: unified EMZ loop) -->
   <section class="central-strip">
-    <div class="emz emz--left">
-      @if (emzL(); as card) {
-        <div class="zone-card"
-             [class.pvp-anim-summon]="isEmzAnimating('EMZ_L', 'summon')"
-             [class.pvp-anim-destroy]="isEmzAnimating('EMZ_L', 'destroy')"
-             [class.pvp-anim-flip]="isEmzAnimating('EMZ_L', 'flip')"
-             [class.pvp-anim-activate]="isEmzAnimating('EMZ_L', 'activate')"
-             (click)="onCardInspect(card)">
-          @if (isFaceUp(card.position)) {
-            <img [src]="getCardImageUrl(card)"
-                 [alt]="'EMZ-L Card'"
-                 class="card-art"
-                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
-          } @else {
-            <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
-          }
-          @let emzLBadges = getEmzChainBadges('EMZ_L');
-          @for (chainLink of emzLBadges; track chainLink.chainIndex; let i = $index) {
-            @if (i < 3) {
-              <span class="pvp-chain-badge"
-                    [class.pvp-chain-badge--resolving]="chainLink.resolving"
-                    [style.right.px]="2 + i * 4"
-                    [style.z-index]="10 + i"
-                    [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + resolveCardName(chainLink.cardCode)">
-                {{ chainLink.chainIndex + 1 }}
-              </span>
+    @for (emz of emzConfigs(); track emz.zoneId; let first = $first) {
+      <div class="emz" [class]="emz.cssClass">
+        @if (emz.zone; as card) {
+          <div class="zone-card"
+               [class.pvp-anim-summon]="animatingEmzKeys().has(emz.zoneId + '-summon')"
+               [class.pvp-anim-destroy]="animatingEmzKeys().has(emz.zoneId + '-destroy')"
+               [class.pvp-anim-flip]="animatingEmzKeys().has(emz.zoneId + '-flip')"
+               [class.pvp-anim-activate]="animatingEmzKeys().has(emz.zoneId + '-activate')"
+               (click)="onCardInspect(card)">
+            @if (isFaceUp(card.position)) {
+              <img [src]="getCardImageUrl(card)"
+                   [alt]="emz.zoneId + ' Card'"
+                   class="card-art"
+                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+            } @else {
+              <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
             }
-          }
-          @if (emzLBadges.length > 3) {
-            <span class="pvp-chain-badge pvp-chain-badge--overflow"
-                  [style.right.px]="2 + 3 * 4"
-                  [style.z-index]="13"
-                  [attr.aria-label]="(emzLBadges.length - 3) + ' more chain links'">
-              +{{ emzLBadges.length - 3 }}
-            </span>
-          }
-        </div>
-      } @else {
-        <div class="zone-empty"></div>
-      }
-    </div>
+            <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: emz.chainBadges }"></ng-container>
+          </div>
+        } @else {
+          <div class="zone-empty"></div>
+        }
+      </div>
 
-    <div class="central-badges">
-      <app-pvp-timer-badge [timerState]="timerState()"
-                           [turnPlayer]="absoluteTurnPlayer()"
-                           [opponentDisconnected]="opponentDisconnected()" />
-      <app-pvp-phase-badge [phase]="phase()"
-                           [turnPlayer]="turnPlayer()"
-                           [isOwnTurn]="turnPlayer() === 0"
-                           [actionablePrompt]="actionablePrompt()"
-                           (phaseAction)="actionResponse.emit($event)" />
-    </div>
-
-    <div class="emz emz--right">
-      @if (emzR(); as card) {
-        <div class="zone-card"
-             [class.pvp-anim-summon]="isEmzAnimating('EMZ_R', 'summon')"
-             [class.pvp-anim-destroy]="isEmzAnimating('EMZ_R', 'destroy')"
-             [class.pvp-anim-flip]="isEmzAnimating('EMZ_R', 'flip')"
-             [class.pvp-anim-activate]="isEmzAnimating('EMZ_R', 'activate')"
-             (click)="onCardInspect(card)">
-          @if (isFaceUp(card.position)) {
-            <img [src]="getCardImageUrl(card)"
-                 [alt]="'EMZ-R Card'"
-                 class="card-art"
-                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
-          } @else {
-            <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
-          }
-          @let emzRBadges = getEmzChainBadges('EMZ_R');
-          @for (chainLink of emzRBadges; track chainLink.chainIndex; let i = $index) {
-            @if (i < 3) {
-              <span class="pvp-chain-badge"
-                    [class.pvp-chain-badge--resolving]="chainLink.resolving"
-                    [style.right.px]="2 + i * 4"
-                    [style.z-index]="10 + i"
-                    [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + resolveCardName(chainLink.cardCode)">
-                {{ chainLink.chainIndex + 1 }}
-              </span>
-            }
-          }
-          @if (emzRBadges.length > 3) {
-            <span class="pvp-chain-badge pvp-chain-badge--overflow"
-                  [style.right.px]="2 + 3 * 4"
-                  [style.z-index]="13"
-                  [attr.aria-label]="(emzRBadges.length - 3) + ' more chain links'">
-              +{{ emzRBadges.length - 3 }}
-            </span>
-          }
+      <!-- Central badges inserted between EMZ_L and EMZ_R -->
+      @if (first) {
+        <div class="central-badges">
+          <app-pvp-timer-badge [timerState]="timerState()"
+                               [turnPlayer]="absoluteTurnPlayer()"
+                               [opponentDisconnected]="opponentDisconnected()" />
+          <app-pvp-phase-badge [phase]="phase()"
+                               [turnPlayer]="turnPlayer()"
+                               [isOwnTurn]="turnPlayer() === 0"
+                               [actionablePrompt]="actionablePrompt()"
+                               (phaseAction)="actionResponse.emit($event)" />
         </div>
-      } @else {
-        <div class="zone-empty"></div>
       }
-    </div>
+    }
   </section>
 
   <!-- Player Field (no rotation) -->
@@ -192,10 +117,10 @@
           <div class="zone-card"
                [class.def-position]="isDefense(zone.card.position)"
                [class.zone-card--actionable]="actionableZoneIds().has(zone.zoneId)"
-               [class.pvp-anim-summon]="isZoneAnimating(zone.zoneId, 0, 'summon')"
-               [class.pvp-anim-destroy]="isZoneAnimating(zone.zoneId, 0, 'destroy')"
-               [class.pvp-anim-flip]="isZoneAnimating(zone.zoneId, 0, 'flip')"
-               [class.pvp-anim-activate]="isZoneAnimating(zone.zoneId, 0, 'activate')"
+               [class.pvp-anim-summon]="animatingZoneKeys().has(zone.zoneId + '-0-summon')"
+               [class.pvp-anim-destroy]="animatingZoneKeys().has(zone.zoneId + '-0-destroy')"
+               [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-0-flip')"
+               [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-0-activate')"
                (click)="onZoneCardClick($event, zone)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
@@ -210,26 +135,7 @@
                 <span>{{ zone.card.overlayMaterials.length }}</span>
               </div>
             }
-            @let ownBadges = getChainBadges(zone.zoneId, 0);
-            @for (chainLink of ownBadges; track chainLink.chainIndex; let i = $index) {
-              @if (i < 3) {
-                <span class="pvp-chain-badge"
-                      [class.pvp-chain-badge--resolving]="chainLink.resolving"
-                      [style.right.px]="2 + i * 4"
-                      [style.z-index]="10 + i"
-                      [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + resolveCardName(chainLink.cardCode)">
-                  {{ chainLink.chainIndex + 1 }}
-                </span>
-              }
-            }
-            @if (ownBadges.length > 3) {
-              <span class="pvp-chain-badge pvp-chain-badge--overflow"
-                    [style.right.px]="2 + 3 * 4"
-                    [style.z-index]="13"
-                    [attr.aria-label]="(ownBadges.length - 3) + ' more chain links'">
-                +{{ ownBadges.length - 3 }}
-              </span>
-            }
+            <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: chainBadgesByZone().get(zone.zoneId + '-0') ?? [] }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -239,7 +145,7 @@
                   (click)="onHighlightedZoneClick(zone.zoneId)"
                   [attr.aria-label]="'Zone ' + zone.zoneId"
                   type="button">
-            {{ highlightBadgeNumber(zone.zoneId) }}
+            {{ highlightBadgeMap().get(zone.zoneId) }}
           </button>
         }
       </div>
@@ -248,3 +154,26 @@
     <app-pvp-lp-badge [lp]="playerLp()" side="player" [animatingLp]="playerLpAnim()" />
   </section>
 </div>
+
+<!-- H10 refactor: shared chain badge rendering template -->
+<ng-template #chainBadgeTpl let-badges="badges">
+  @for (chainLink of badges; track chainLink.chainIndex; let i = $index) {
+    @if (i < 3) {
+      <span class="pvp-chain-badge"
+            [class.pvp-chain-badge--resolving]="chainLink.resolving"
+            [style.right.px]="2 + i * 4"
+            [style.z-index]="10 + i"
+            [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + resolveCardName(chainLink.cardCode)">
+        {{ chainLink.chainIndex + 1 }}
+      </span>
+    }
+  }
+  @if (badges.length > 3) {
+    <span class="pvp-chain-badge pvp-chain-badge--overflow"
+          [style.right.px]="2 + 3 * 4"
+          [style.z-index]="13"
+          [attr.aria-label]="(badges.length - 3) + ' more chain links'">
+      +{{ badges.length - 3 }}
+    </span>
+  }
+</ng-template>

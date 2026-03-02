@@ -4,9 +4,17 @@ import { HintContext } from '../../types/hint-context.types';
 
 export type PreferredHeight = 'compact' | 'full' | number;
 
-export interface PromptSubComponent {
+/**
+ * Contract for prompt sub-components instantiated via ComponentPortal.
+ *
+ * `response` uses Angular's EventEmitter (not rxjs Subject) because the host
+ * subscribes to it as an Output-like property on the dynamically created
+ * component instance. This is the standard Angular pattern for portal-based
+ * dynamic component communication.
+ */
+export interface PromptSubComponent<T extends Prompt = Prompt> {
   preferredHeight: PreferredHeight;
-  promptData: Prompt | null;
+  promptData: T | null;
   hintContext: HintContext | null;
   response: EventEmitter<unknown>;
 }

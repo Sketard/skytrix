@@ -7,10 +7,10 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--pvp-radius-lg);
   text-align: center;
   min-width: 48px;
-  color: #eee;
+  color: var(--text-primary);
   transition: opacity var(--pvp-transition-highlight-flash), background var(--pvp-transition-highlight-flash);
 }
 
@@ -30,7 +30,8 @@
 }
 
 .timer--active {
-  background: rgba(201, 168, 76, 0.2);
+  // Color-specific backgrounds (.timer--green/yellow/red) take precedence.
+  // No background override here — active state is indicated by full opacity.
 }
 
 .timer--inactive {

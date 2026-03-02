@@ -15,7 +15,7 @@
   width: 100%;
   min-height: var(--pvp-min-touch-target-primary, 48px);
   text-align: left;
-  border-radius: 6px;
+  border-radius: var(--pvp-radius-lg);
   transition: background var(--pvp-animation-duration) ease-out;
 
   &--selected {

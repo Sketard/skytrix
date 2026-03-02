@@ -2,31 +2,26 @@ package com.skytrix.scheduler;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.HashSet;
-
-import jakarta.inject.Inject;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.skytrix.model.entity.Room;
 import com.skytrix.model.enums.RoomStatus;
 import com.skytrix.repository.RoomRepository;
 import com.skytrix.service.DuelServerClient;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class RoomCleanupScheduler {
 
-    @Inject
-    private RoomRepository roomRepository;
-
-    @Inject
-    private DuelServerClient duelServerClient;
+    private final RoomRepository roomRepository;
+    private final DuelServerClient duelServerClient;
 
     @Scheduled(fixedRate = 300_000)
     @Transactional
@@ -40,7 +35,6 @@ public class RoomCleanupScheduler {
         }
 
         if (!orphanedRooms.isEmpty()) {
-            roomRepository.saveAll(orphanedRooms);
             log.info("Cleaned up {} orphaned waiting rooms", orphanedRooms.size());
         }
     }
@@ -52,24 +46,34 @@ public class RoomCleanupScheduler {
         if (activeRooms.isEmpty()) return;
 
         var activeDuelIds = duelServerClient.getActiveDuelIds();
-        if (activeDuelIds == null) {
-            log.warn("Duel server unreachable — skipping orphaned room cleanup");
+        if (activeDuelIds.isEmpty()) {
+            log.warn("Duel server returned no active duels or is unreachable — skipping orphaned room cleanup");
             return;
         }
 
         var activeDuelIdSet = new HashSet<>(activeDuelIds);
-        var toClose = new ArrayList<Room>();
         for (var room : activeRooms) {
             if (room.getDuelServerId() == null || !activeDuelIdSet.contains(room.getDuelServerId())) {
                 room.setStatus(RoomStatus.CLOSED);
-                toClose.add(room);
                 log.info("Closed orphaned active room: {} (code: {}, duelId: {})",
                         room.getId(), room.getRoomCode(), room.getDuelServerId());
             }
         }
-        if (!toClose.isEmpty()) {
-            roomRepository.saveAll(toClose);
-            log.info("Closed {} orphaned active rooms", toClose.size());
+    }
+
+    @Scheduled(fixedRate = 120_000)
+    @Transactional
+    public void cleanupStuckCreatingDuelRooms() {
+        var threshold = Instant.now().minus(2, ChronoUnit.MINUTES);
+        var stuckRooms = roomRepository.findByStatusAndCreatedAtBefore(RoomStatus.CREATING_DUEL, threshold);
+
+        for (var room : stuckRooms) {
+            room.setStatus(RoomStatus.CLOSED);
+            log.info("Cleaned up stuck CREATING_DUEL room: {} (code: {})", room.getId(), room.getRoomCode());
+        }
+
+        if (!stuckRooms.isEmpty()) {
+            log.info("Cleaned up {} stuck CREATING_DUEL rooms", stuckRooms.size());
         }
     }
 }

@@ -209,7 +209,7 @@
           <mat-icon>flag</mat-icon>
         </button>
         @if (isOwnTurn()) {
-          <app-pvp-activation-toggle (modeChange)="onActivationModeChange($event)" />
+          <app-pvp-activation-toggle [(mode)]="activationMode" />
         }
       </div>
 

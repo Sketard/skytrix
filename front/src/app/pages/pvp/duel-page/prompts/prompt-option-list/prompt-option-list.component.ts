@@ -7,14 +7,16 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { PromptSubComponent, PreferredHeight } from '../prompt.types';
-import { Prompt, HintContext } from '../../../types';
-import { POSITION } from '../../../duel-ws.types';
+import { HintContext } from '../../../types';
+import { POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
 
 interface OptionItem {
   index: number;
   label: string;
   icon: string | null;
 }
+
+type OptionListPrompt = SelectPositionMsg | SelectOptionMsg | AnnounceRaceMsg | AnnounceAttribMsg;
 
 @Component({
   selector: 'app-prompt-option-list',
@@ -24,8 +26,8 @@ interface OptionItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule],
 })
-export class PromptOptionListComponent implements PromptSubComponent {
-  promptData: Prompt | null = null;
+export class PromptOptionListComponent implements PromptSubComponent<OptionListPrompt> {
+  promptData: OptionListPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
 

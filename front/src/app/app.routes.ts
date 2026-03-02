@@ -26,7 +26,7 @@ export const routes: Routes = [
     path: 'pvp/duel/:roomCode',
     loadComponent: () => import('./pages/pvp/duel-page/duel-page.component').then(m => m.DuelPageComponent),
     canActivate: [AuthService],
-    canDeactivate: [(component: any) => {
+    canDeactivate: [(component: import('./pages/pvp/duel-page/duel-page.component').DuelPageComponent) => {
       if (component.roomState() !== 'active') return true;
       if (component.wsService.duelResult()) return true;
       return component.confirmSurrender();

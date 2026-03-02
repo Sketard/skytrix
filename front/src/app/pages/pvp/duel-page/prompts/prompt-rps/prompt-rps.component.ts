@@ -8,7 +8,8 @@ import {
   signal,
 } from '@angular/core';
 import { PromptSubComponent, PreferredHeight } from '../prompt.types';
-import { Prompt, HintContext } from '../../../types';
+import { HintContext } from '../../../types';
+import { RpsChoiceMsg } from '../../../duel-ws.types';
 
 const RPS_CHOICES = [
   { value: 0, label: 'Rock', icon: '✊', key: '1' },
@@ -23,9 +24,9 @@ const RPS_CHOICES = [
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PromptRpsComponent implements PromptSubComponent, OnInit, OnDestroy {
+export class PromptRpsComponent implements PromptSubComponent<RpsChoiceMsg>, OnInit, OnDestroy {
   preferredHeight: PreferredHeight = 'full';
-  promptData: Prompt | null = null;
+  promptData: RpsChoiceMsg | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
 
@@ -37,7 +38,7 @@ export class PromptRpsComponent implements PromptSubComponent, OnInit, OnDestroy
 
   ngOnInit(): void {
     this.timerInterval = setInterval(() => {
-      this.secondsLeft.update(s => s - 1);
+      this.secondsLeft.update(s => Math.max(0, s - 1));
       if (this.secondsLeft() <= 0) {
         this.selectRandom();
       }

@@ -2,10 +2,11 @@ package com.skytrix.controller;
 
 import java.util.List;
 
-import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,15 +21,16 @@ import com.skytrix.model.dto.room.RoomDTO;
 import com.skytrix.security.AuthService;
 import com.skytrix.service.RoomService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/rooms")
+@Validated
+@RequiredArgsConstructor
 public class RoomController {
 
-    @Inject
-    private RoomService roomService;
-
-    @Inject
-    private AuthService authService;
+    private final RoomService roomService;
+    private final AuthService authService;
 
     @PostMapping
     @ResponseStatus(code = HttpStatus.CREATED)
@@ -38,7 +40,9 @@ public class RoomController {
 
     @PostMapping("/{roomCode}/join")
     @ResponseStatus(code = HttpStatus.OK)
-    public RoomDTO joinRoom(@PathVariable("roomCode") String roomCode, @RequestBody @Valid JoinRoomDTO dto) {
+    public RoomDTO joinRoom(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode,
+            @RequestBody @Valid JoinRoomDTO dto) {
         return roomService.joinRoom(roomCode, dto);
     }
 
@@ -50,14 +54,16 @@ public class RoomController {
 
     @GetMapping("/{roomCode}")
     @ResponseStatus(code = HttpStatus.OK)
-    public RoomDTO getRoom(@PathVariable("roomCode") String roomCode) {
+    public RoomDTO getRoom(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
         var userId = authService.getConnectedUserId();
         return roomService.getRoom(roomCode, userId);
     }
 
-    @PostMapping("/{id}/end")
+    @PostMapping("/{roomCode}/end")
     @ResponseStatus(code = HttpStatus.OK)
-    public void endRoom(@PathVariable("id") Long id) {
-        roomService.endRoom(id);
+    public void endRoom(
+            @PathVariable("roomCode") @Pattern(regexp = "[A-Z2-9]{6}") String roomCode) {
+        roomService.endRoom(roomCode);
     }
 }

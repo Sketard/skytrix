@@ -19,8 +19,11 @@ import lombok.extern.slf4j.Slf4j;
 public class DuelServerClient {
 
     private final RestClient restClient;
+    private final String internalKey;
 
-    public DuelServerClient(@Value("${duel-server.url}") String duelServerUrl) {
+    public DuelServerClient(@Value("${duel-server.url}") String duelServerUrl,
+                            @Value("${DUEL_SERVER_INTERNAL_KEY:}") String internalKey) {
+        this.internalKey = internalKey;
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setReadTimeout(Duration.ofSeconds(5));
@@ -50,6 +53,7 @@ public class DuelServerClient {
                     .toBodilessEntity();
             return true;
         } catch (Exception e) {
+            log.debug("Health check failed", e);
             return false;
         }
     }
@@ -63,7 +67,19 @@ public class DuelServerClient {
             return response != null && response.duelIds() != null ? response.duelIds() : List.of();
         } catch (Exception e) {
             log.warn("Failed to fetch active duel IDs from duel server: {}", e.getMessage());
-            return null;
+            return List.of();
+        }
+    }
+
+    public void terminateDuel(String duelServerId) {
+        try {
+            restClient.delete()
+                    .uri("/api/duels/{duelServerId}", duelServerId)
+                    .header("X-Internal-Key", internalKey)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.warn("Failed to terminate duel {} on duel server: {}", duelServerId, e.getMessage());
         }
     }
 

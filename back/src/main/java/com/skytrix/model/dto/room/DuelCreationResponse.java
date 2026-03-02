@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 public class DuelCreationResponse {
 
     private String duelId;
-    private String[] tokens;
+    private String[] wsTokens;
 }

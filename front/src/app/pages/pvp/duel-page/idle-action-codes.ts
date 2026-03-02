@@ -26,34 +26,33 @@ export interface CardAction {
 
 export type ActionableCardsMap = Map<string, CardAction[]>;
 
+function addToActionMap(
+  map: ActionableCardsMap,
+  cards: CardInfo[],
+  label: string,
+  actionCode: number,
+): void {
+  cards.forEach((card, idx) => {
+    const key = `${card.location}-${card.sequence}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push({ label, actionCode, index: idx });
+  });
+}
+
 export function buildActionableCardsFromIdle(msg: SelectIdleCmdMsg): ActionableCardsMap {
   const map = new Map<string, CardAction[]>();
-  const add = (cards: CardInfo[], label: string, actionCode: number) => {
-    cards.forEach((card, idx) => {
-      const key = `${card.location}-${card.sequence}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push({ label, actionCode, index: idx });
-    });
-  };
-  add(msg.summons, 'Normal Summon', IDLE_ACTION.SUMMON);
-  add(msg.specialSummons, 'Special Summon', IDLE_ACTION.SPECIAL_SUMMON);
-  add(msg.repositions, 'Change Position', IDLE_ACTION.REPOSITION);
-  add(msg.setMonsters, 'Set', IDLE_ACTION.SET_MONSTER);
-  add(msg.activations, 'Activate Effect', IDLE_ACTION.ACTIVATE);
-  add(msg.setSpellTraps, 'Set', IDLE_ACTION.SET_SPELLTP);
+  addToActionMap(map, msg.summons, 'Normal Summon', IDLE_ACTION.SUMMON);
+  addToActionMap(map, msg.specialSummons, 'Special Summon', IDLE_ACTION.SPECIAL_SUMMON);
+  addToActionMap(map, msg.repositions, 'Change Position', IDLE_ACTION.REPOSITION);
+  addToActionMap(map, msg.setMonsters, 'Set', IDLE_ACTION.SET_MONSTER);
+  addToActionMap(map, msg.activations, 'Activate Effect', IDLE_ACTION.ACTIVATE);
+  addToActionMap(map, msg.setSpellTraps, 'Set', IDLE_ACTION.SET_SPELLTP);
   return map;
 }
 
 export function buildActionableCardsFromBattle(msg: SelectBattleCmdMsg): ActionableCardsMap {
   const map = new Map<string, CardAction[]>();
-  const add = (cards: CardInfo[], label: string, actionCode: number) => {
-    cards.forEach((card, idx) => {
-      const key = `${card.location}-${card.sequence}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push({ label, actionCode, index: idx });
-    });
-  };
-  add(msg.attacks, 'Attack', BATTLE_ACTION.ATTACK);
-  add(msg.activations, 'Activate Effect', BATTLE_ACTION.ACTIVATE);
+  addToActionMap(map, msg.attacks, 'Attack', BATTLE_ACTION.ATTACK);
+  addToActionMap(map, msg.activations, 'Activate Effect', BATTLE_ACTION.ACTIVATE);
   return map;
 }

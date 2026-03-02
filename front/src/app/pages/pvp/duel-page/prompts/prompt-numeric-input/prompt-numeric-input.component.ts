@@ -7,8 +7,10 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PromptSubComponent, PreferredHeight } from '../prompt.types';
-import { Prompt, HintContext } from '../../../types';
+import { HintContext } from '../../../types';
 import { AnnounceNumberMsg, SelectCounterMsg } from '../../../duel-ws.types';
+
+type NumericPrompt = AnnounceNumberMsg | SelectCounterMsg;
 
 @Component({
   selector: 'app-prompt-numeric-input',
@@ -18,9 +20,9 @@ import { AnnounceNumberMsg, SelectCounterMsg } from '../../../duel-ws.types';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule],
 })
-export class PromptNumericInputComponent implements PromptSubComponent {
+export class PromptNumericInputComponent implements PromptSubComponent<NumericPrompt> {
   preferredHeight: PreferredHeight = 'compact';
-  promptData: Prompt | null = null;
+  promptData: NumericPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
 
@@ -38,7 +40,7 @@ export class PromptNumericInputComponent implements PromptSubComponent {
   get min(): number {
     if (this.promptData?.type === 'SELECT_COUNTER') return 0;
     if (this.promptData?.type === 'ANNOUNCE_NUMBER') {
-      const opts = (this.promptData as AnnounceNumberMsg).options;
+      const opts = this.promptData.options;
       return opts.length > 0 ? Math.min(...opts) : 0;
     }
     return 0;
@@ -46,10 +48,10 @@ export class PromptNumericInputComponent implements PromptSubComponent {
 
   get max(): number {
     if (this.promptData?.type === 'SELECT_COUNTER') {
-      return (this.promptData as SelectCounterMsg).count;
+      return this.promptData.count;
     }
     if (this.promptData?.type === 'ANNOUNCE_NUMBER') {
-      const opts = (this.promptData as AnnounceNumberMsg).options;
+      const opts = this.promptData.options;
       return opts.length > 0 ? Math.max(...opts) : 99;
     }
     return 99;
@@ -91,6 +93,8 @@ export class PromptNumericInputComponent implements PromptSubComponent {
     if (this.isCounterMode && this.promptData?.type === 'SELECT_COUNTER') {
       // SELECT_COUNTER: distribute the selected count across all cards
       // For single-counter prompts, server expects one value per card
+      // TODO: Currently assigns all counters to card[0]. For multi-card counter distribution,
+      // a dedicated UI is needed (e.g., stepper per card). Single-card is the common case.
       const cardCount = this.promptData.cards.length;
       const counts = new Array<number>(cardCount).fill(0);
       counts[0] = this.value();

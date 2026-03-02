@@ -8,9 +8,11 @@ import {
   signal,
 } from '@angular/core';
 import { PromptSubComponent, PreferredHeight } from '../prompt.types';
-import { Prompt, HintContext } from '../../../types';
-import { CardInfo, SelectUnselectCardMsg } from '../../../duel-ws.types';
+import { HintContext } from '../../../types';
+import { CardInfo, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+
+type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
 
 @Component({
   selector: 'app-prompt-card-grid',
@@ -19,9 +21,9 @@ import { getCardImageUrlByCode } from '../../../pvp-card.utils';
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDestroy {
+export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnInit, OnDestroy {
   preferredHeight: PreferredHeight = 'full';
-  promptData: Prompt | null = null;
+  promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
   longPressInspect = new EventEmitter<{ cardCode: number }>();
@@ -52,10 +54,7 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
 
   get cards(): CardInfo[] {
     if (!this.promptData) return [];
-    if ('cards' in this.promptData) {
-      return (this.promptData as { cards: CardInfo[] }).cards ?? [];
-    }
-    return [];
+    return this.promptData.cards ?? [];
   }
 
   get isMultiSelect(): boolean {
@@ -66,14 +65,14 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
   get minSelect(): number {
     const p = this.promptData;
     if (!p) return 1;
-    if ('min' in p) return (p as { min: number }).min;
+    if ('min' in p) return p.min;
     return 1;
   }
 
   get maxSelect(): number {
     const p = this.promptData;
     if (!p) return 1;
-    if ('max' in p) return (p as { max: number }).max;
+    if ('max' in p) return p.max;
     return 1;
   }
 
@@ -83,7 +82,7 @@ export class PromptCardGridComponent implements PromptSubComponent, OnInit, OnDe
 
   get canFinish(): boolean {
     if (this.promptData?.type === 'SELECT_UNSELECT_CARD') {
-      return (this.promptData as SelectUnselectCardMsg).canFinish;
+      return this.promptData.canFinish;
     }
     return false;
   }

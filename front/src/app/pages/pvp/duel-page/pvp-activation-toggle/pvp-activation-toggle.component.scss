@@ -12,9 +12,9 @@
   gap: 2px;
   padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  background: rgba(20, 20, 40, 0.8);
-  color: #eee;
+  border-radius: var(--pvp-radius-lg);
+  background: var(--pvp-prompt-sheet-bg);
+  color: var(--text-primary);
   cursor: pointer;
   transition: border-color var(--pvp-transition-highlight-flash);
 
@@ -28,7 +28,7 @@
   }
 
   &--auto {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: var(--border-subtle);
   }
 
   &--on {
