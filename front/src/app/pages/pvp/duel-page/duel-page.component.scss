@@ -598,6 +598,33 @@ app-pvp-board-container {
   }
 }
 
+// === Debug FAB ===
+.debug-fab {
+  position: absolute;
+  bottom: calc(var(--pvp-hand-card-height) + 8px);
+  left: max(8px, env(safe-area-inset-left, 8px));
+  z-index: z.$z-pvp-mini-toolbar;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+  }
+}
+
 // === Card Action Menu (Story 1.7) ===
 .card-action-menu {
   position: absolute;

@@ -5,12 +5,14 @@ import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, Connection
 import type { ChainingMsg } from '../duel-ws.types';
 import { AnnounceCardMsg, DuelEndMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
+import { DebugLogService } from './debug-log.service';
 
 export type ResponseData = Record<string, unknown>;
 
 @Injectable()
 export class DuelWebSocketService implements OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
+  private readonly debugLog = inject(DebugLogService);
   private _duelState = signal<DuelState>(EMPTY_DUEL_STATE);
   private _pendingPrompt = signal<Prompt | null>(null);
   private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0 });
@@ -60,6 +62,7 @@ export class DuelWebSocketService implements OnDestroy {
 
   sendResponse(promptType: string, data: ResponseData): void {
     if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
+      this.debugLog.logPlayerResponse(promptType, data);
       this._pendingPrompt.set(null);
     }
   }
@@ -161,6 +164,7 @@ export class DuelWebSocketService implements OnDestroy {
   }
 
   private handleMessage(message: ServerMessage): void {
+    this.debugLog.logServerMessage(message);
     switch (message.type) {
       case 'BOARD_STATE':
         this._rematchStarting.set(false);

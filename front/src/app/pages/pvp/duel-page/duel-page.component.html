@@ -331,6 +331,22 @@
                            [skipBeat1]="returningFromBackground()"
                            (sheetExpanded)="promptSheetExpanded.set($event)"
                            (longPressInspect)="onLongPressInspect($event)" />
+
+    <!-- Debug Log Panel (dev only) -->
+    @if (!isProduction) {
+      <button type="button"
+              class="debug-fab"
+              aria-label="Toggle debug logs"
+              [attr.aria-expanded]="debugLog.panelOpen()"
+              aria-controls="debug-log-panel"
+              (click)="debugLog.panelOpen.set(!debugLog.panelOpen())">
+        <mat-icon>bug_report</mat-icon>
+      </button>
+      <app-debug-log-panel [entries]="debugLog.entries()"
+                            [open]="debugLog.panelOpen()"
+                            (closed)="debugLog.panelOpen.set(false)"
+                            (clearRequested)="debugLog.clearLogs()" />
+    }
   }
 
   <!-- Story 3.1 — Surrender Confirmation Dialog Template -->

@@ -31,6 +31,9 @@ import { setupClickOutsideListener } from './click-outside.utils';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
+import { DebugLogService } from './debug-log.service';
+import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
+import { environment } from '../../../../environments/environment';
 import './prompts/prompt-registry';
 
 @Component({
@@ -42,12 +45,14 @@ import './prompts/prompt-registry';
   providers: [
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     AnimationOrchestratorService, RoomStateMachineService, CardInspectionService,
+    DebugLogService,
   ],
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptSheetComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
     MatIconButton, MatButton, MatIcon, MatProgressSpinner,
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
+    DebugLogPanelComponent,
   ],
 })
 export class DuelPageComponent implements OnInit {
@@ -67,6 +72,8 @@ export class DuelPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
+  readonly debugLog = inject(DebugLogService);
+  readonly isProduction = environment.production;
 
   // --- Extracted services ---
   readonly animationService = inject(AnimationOrchestratorService);
@@ -365,7 +372,10 @@ export class DuelPageComponent implements OnInit {
     effect(() => {
       const starting = this.wsService.rematchStarting();
       if (starting) {
-        untracked(() => this.cardDataCache.clearCache());
+        untracked(() => {
+          this.cardDataCache.clearCache();
+          this.debugLog.clearLogs();
+        });
       }
     });
 
