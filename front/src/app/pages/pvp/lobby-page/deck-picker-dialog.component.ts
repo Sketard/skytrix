@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
-import { MatDialogActions, MatDialogClose, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogActions, MatDialogClose, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
+import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { DeckBuildService } from '../../../services/deck-build.service';
@@ -10,10 +11,23 @@ import { ShortDeck } from '../../../core/model/short-deck';
   selector: 'app-deck-picker-dialog',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton, MatProgressSpinner, RouterLink],
+  imports: [
+    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton,
+    MatProgressSpinner, RouterLink, MatButtonToggle, MatButtonToggleGroup,
+  ],
   template: `
     <h2 mat-dialog-title>Select a Deck</h2>
     <mat-dialog-content>
+      @if (quickDuel()) {
+        <mat-button-toggle-group [value]="activeSlot()" (change)="onSlotChange($event.value)"
+                                 class="slot-toggle">
+          <mat-button-toggle value="p1">P1 Deck</mat-button-toggle>
+          <mat-button-toggle value="p2">P2 Deck</mat-button-toggle>
+        </mat-button-toggle-group>
+        @if (activeSlot() === 'p2' && selectedId2() === null) {
+          <p class="mirror-hint">(Miroir de P1)</p>
+        }
+      }
       @if (loading()) {
         <div class="picker-loading">
           <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
@@ -29,8 +43,8 @@ import { ShortDeck } from '../../../core/model/short-deck';
           @for (deck of decks(); track deck.id) {
             <button mat-button
                     class="deck-item"
-                    [class.selected]="selectedId() === deck.id"
-                    (click)="selectedId.set(deck.id)">
+                    [class.selected]="activeSelectedId() === deck.id"
+                    (click)="selectDeck(deck.id)">
               {{ deck.name }}
             </button>
           }
@@ -71,16 +85,35 @@ import { ShortDeck } from '../../../core/model/short-deck';
     .deck-item.selected {
       background: rgba(255, 255, 255, 0.1);
     }
+    .slot-toggle {
+      display: flex;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    .mirror-hint {
+      text-align: center;
+      opacity: 0.5;
+      font-size: 12px;
+      margin: 0 0 8px;
+    }
   `],
 })
 export class DeckPickerDialogComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<DeckPickerDialogComponent>);
   private readonly deckBuildService = inject(DeckBuildService);
+  private readonly data: { quickDuel: boolean } | null = inject(MAT_DIALOG_DATA, { optional: true });
 
   readonly decks = signal<ShortDeck[]>([]);
   readonly loading = signal(true);
   readonly fetchError = signal(false);
   readonly selectedId = signal<number | null>(null);
+  readonly selectedId2 = signal<number | null>(null);
+  readonly activeSlot = signal<'p1' | 'p2'>('p1');
+  readonly quickDuel = computed(() => this.data?.quickDuel ?? false);
+
+  readonly activeSelectedId = computed(() =>
+    this.activeSlot() === 'p1' ? this.selectedId() : this.selectedId2()
+  );
 
   ngOnInit(): void {
     this.loadDecks();
@@ -101,10 +134,30 @@ export class DeckPickerDialogComponent implements OnInit {
     });
   }
 
+  onSlotChange(value: string): void {
+    this.activeSlot.set(value as 'p1' | 'p2');
+  }
+
+  selectDeck(id: number): void {
+    if (this.activeSlot() === 'p1') {
+      this.selectedId.set(id);
+    } else {
+      this.selectedId2.set(id);
+    }
+  }
+
   confirm(): void {
     const id = this.selectedId();
-    if (id !== null) {
-      this.dialogRef.close(id);
+    if (id === null) return;
+
+    if (this.quickDuel()) {
+      this.dialogRef.close({
+        decklistId1: id,
+        decklistId2: this.selectedId2() ?? id,
+      });
+    } else {
+      const name = this.decks().find(d => d.id === id)?.name ?? '';
+      this.dialogRef.close({ id, name });
     }
   }
 }

@@ -43,6 +43,7 @@ export interface InitDuelMessage {
   type: 'INIT_DUEL';
   duelId: string;
   decks: [Deck, Deck];
+  skipRps?: boolean;
 }
 
 export interface PlayerResponseMessage {

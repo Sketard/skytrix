@@ -76,6 +76,10 @@ export class RoomStateMachineService {
     this.tabGuard = config.tabGuard;
   }
 
+  forceState(state: RoomState): void {
+    this.roomState.set(state);
+  }
+
   /** Clean up polling and countdown on destroy. */
   destroy(): void {
     this.stopPolling$.next();

@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, filter, firstValueFrom, map, Observable, of, switchMap, take, timeout } from 'rxjs';
 import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -33,6 +34,7 @@ import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
 import { DebugLogService } from './debug-log.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
+import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { environment } from '../../../../environments/environment';
 import './prompts/prompt-registry';
 
@@ -45,12 +47,13 @@ import './prompts/prompt-registry';
   providers: [
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     AnimationOrchestratorService, RoomStateMachineService, CardInspectionService,
-    DebugLogService,
+    DebugLogService, SoloDuelOrchestratorService,
   ],
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptSheetComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
     MatIconButton, MatButton, MatIcon, MatProgressSpinner,
+    MatButtonToggle, MatButtonToggleGroup,
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
     DebugLogPanelComponent,
   ],
@@ -73,7 +76,9 @@ export class DuelPageComponent implements OnInit {
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
+  readonly orchestrator = inject(SoloDuelOrchestratorService);
   readonly isProduction = environment.production;
+  readonly isSoloMode = signal(false);
 
   // --- Extracted services ---
   readonly animationService = inject(AnimationOrchestratorService);
@@ -95,7 +100,7 @@ export class DuelPageComponent implements OnInit {
   readonly isReconnecting = computed(() => this.connectionStatus() === 'reconnecting');
 
   private readonly retryCount = signal(0);
-  readonly canRetry = computed(() => this.retryCount() < 3 && this.wsService.canRetry);
+  readonly canRetry = computed(() => this.retryCount() < 3 && this.wsService.canRetry());
 
   // Story 2.3 — Board ready when first BOARD_STATE arrives (both players populated with LP)
   readonly boardReady = computed(() => this.duelState().players.length === 2 && this.duelState().players[0].lp > 0);
@@ -278,6 +283,10 @@ export class DuelPageComponent implements OnInit {
   private announcedThresholds = new Set<number>();
   private lastAnnouncedTurnPlayer: number | null = null;
 
+  // Task 16 — Board flip transition for solo player switch
+  readonly switching = signal(false);
+  private switchTimer: ReturnType<typeof setTimeout> | null = null;
+
   // Story 5.2 — Background tab recovery
   readonly returningFromBackground = signal(false);
   private lastKnownTurnCount = 0;
@@ -302,7 +311,44 @@ export class DuelPageComponent implements OnInit {
 
     // --- Bootstrap room ---
     const code = this.route.snapshot.paramMap.get('roomCode');
-    if (code) {
+    const isSolo = this.route.snapshot.queryParamMap.get('solo') === 'true';
+
+    if (isSolo && code) {
+      this.isSoloMode.set(true);
+      const wsToken1 = history.state?.wsToken1 as string | undefined;
+      const wsToken2 = history.state?.wsToken2 as string | undefined;
+
+      if (!wsToken1 || !wsToken2) {
+        displayError(this.snackBar, 'Solo duel session expired');
+        this.router.navigate(['/pvp']);
+      } else {
+        this.orchestrator.init(wsToken1, wsToken2);
+        this.roomService.forceState('active');
+        this.thumbnailsReady.set(true);
+
+        // Watch for connection loss in solo mode
+        effect(() => {
+          if (this.orchestrator.connectionLost()) {
+            untracked(() => {
+              displayError(this.snackBar, 'Connection lost — returning to lobby');
+              this.router.navigate(['/pvp']);
+            });
+          }
+        });
+
+        // Handle rematch reset in solo mode — re-set roomState and thumbnailsReady
+        // Uses orchestrator.rematchReset counter to avoid race with Effect 2's signal reset
+        effect(() => {
+          const count = this.orchestrator.rematchReset();
+          if (count > 0) {
+            untracked(() => {
+              this.roomService.forceState('active');
+              this.thumbnailsReady.set(true);
+            });
+          }
+        });
+      }
+    } else if (code) {
       this.roomService.deckName.set(history.state?.deckName ?? '');
       this.roomService.fetchRoom(code);
     }
@@ -313,6 +359,7 @@ export class DuelPageComponent implements OnInit {
       this.animationService.destroy();
       if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
       if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
+      if (this.switchTimer) clearTimeout(this.switchTimer);
       this.cardDataCache.clearCache();
     });
 
@@ -646,6 +693,17 @@ export class DuelPageComponent implements OnInit {
 
   onRematchClick(): void {
     this.wsService.sendRematchRequest();
+  }
+
+  onFirstPlayerToggle(value: string): void {
+    this.orchestrator.firstPlayer.set(value === 'p1' ? 0 : 1);
+  }
+
+  switchPlayerWithTransition(): void {
+    if (this.switching()) return;
+    this.switching.set(true);
+    this.orchestrator.switchPlayer();
+    this.switchTimer = setTimeout(() => this.switching.set(false), 200);
   }
 
   // --- Card Action Menu methods ---

@@ -55,6 +55,7 @@ let turnCount = 0;
 let phase: Phase = 'DRAW';
 let lp: [number, number] = [8000, 8000];
 let cardDb: import('./types.js').CardDB | null = null;
+let skipRpsFlag = false;
 
 // =============================================================================
 // Constants & Helpers
@@ -369,9 +370,11 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
 
     // --- RPS ---
     case OcgMessageType.ROCK_PAPER_SCISSORS:
+      if (skipRpsFlag) return null;
       return { type: 'RPS_CHOICE', player: msg.player as Player };
 
     case OcgMessageType.HAND_RES:
+      if (skipRpsFlag) return null;
       return {
         type: 'RPS_RESULT',
         player1Choice: (msg as unknown as { res1: number }).res1,
@@ -581,6 +584,8 @@ function runDuelLoop(): void {
   if (!core || !duel) return;
 
   while (true) {
+    let skipRpsAutoResponded = false;
+
     // Watchdog timer
     const watchdog = setTimeout(() => {
       port.postMessage({ type: 'WORKER_ERROR', duelId, error: 'Watchdog timeout (30s)' });
@@ -606,6 +611,14 @@ function runDuelLoop(): void {
       // Track state for BOARD_STATE construction
       updateState(msg);
 
+      // skipRps auto-respond: when OCGCore asks for RPS, respond immediately
+      if (skipRpsFlag && msg.type === OcgMessageType.ROCK_PAPER_SCISSORS) {
+        const playerIndex = msg.player as number;
+        core.duelSetResponse(duel, { type: 20, value: playerIndex === 0 ? 1 : 3 } as never);
+        skipRpsAutoResponded = true;
+        continue;
+      }
+
       // Transform and forward
       const dto = transformMessage(msg);
       if (dto) {
@@ -619,6 +632,10 @@ function runDuelLoop(): void {
     }
 
     if (status === OcgProcessResult.WAITING) {
+      if (skipRpsAutoResponded) {
+        // RPS auto-responded — do NOT emit intermediate BOARD_STATE, continue processing
+        continue;
+      }
       // Player prompt — send BOARD_STATE snapshot then wait
       port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
       return;
@@ -633,6 +650,7 @@ function runDuelLoop(): void {
 
 async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promise<void> {
   duelId = msg.duelId;
+  skipRpsFlag = msg.skipRps === true;
   const [deck0, deck1] = msg.decks;
 
   const dbPath = join(dataDir, 'cards.cdb');

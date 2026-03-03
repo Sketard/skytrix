@@ -8,11 +8,21 @@
               [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
       </button>
+      @if (!isProduction) {
+        <button mat-stroked-button
+                aria-label="Quick Duel — solo debug mode"
+                [disabled]="creatingRoom()"
+                (click)="quickDuel()">
+          <mat-icon>bolt</mat-icon>
+          Quick Duel
+        </button>
+      }
       <button mat-raised-button
               color="primary"
               class="lobby-create-btn"
               aria-label="Create a room by selecting a deck"
-              (click)="goToDecks()">
+              [disabled]="creatingRoom()"
+              (click)="createRoom()">
         <mat-icon>add</mat-icon>
         Create Room
       </button>
@@ -33,7 +43,7 @@
     <div class="lobby-empty">
       <mat-icon class="lobby-empty-icon">sports_kabaddi</mat-icon>
       <p>No rooms available. Create one!</p>
-      <button mat-raised-button color="primary" (click)="goToDecks()">
+      <button mat-raised-button color="primary" [disabled]="creatingRoom()" (click)="createRoom()">
         <mat-icon>add</mat-icon>
         Create Room
       </button>

@@ -134,6 +134,11 @@ app-pvp-board-container {
   flex: 1;
   min-height: 0;
   z-index: z.$z-pvp-board;
+  transition: opacity 200ms ease;
+
+  &.switching {
+    opacity: 0.3;
+  }
 }
 
 // === Connecting Fallback (Story 2.3) ===
@@ -323,6 +328,15 @@ app-pvp-board-container {
     min-height: 44px;
     color: rgba(255, 255, 255, 0.5);
   }
+
+  &__player-toggle,
+  &__first-toggle {
+    ::ng-deep .mat-button-toggle {
+      min-width: 36px;
+      min-height: 32px;
+      font-size: 0.75rem;
+    }
+  }
 }
 
 // === RPS Result Overlay (Story 2.3) ===
@@ -411,6 +425,10 @@ app-pvp-board-container {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  app-pvp-board-container {
+    transition: none;
+  }
+
   .mini-toolbar {
     transition: none;
   }

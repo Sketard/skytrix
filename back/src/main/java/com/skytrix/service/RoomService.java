@@ -15,6 +15,8 @@ import com.skytrix.mapper.RoomMapper;
 import com.skytrix.model.dto.room.CreateRoomDTO;
 import com.skytrix.model.dto.room.DuelDeckDTO;
 import com.skytrix.model.dto.room.JoinRoomDTO;
+import com.skytrix.model.dto.room.QuickDuelDTO;
+import com.skytrix.model.dto.room.QuickDuelResponseDTO;
 import com.skytrix.model.dto.room.RoomDTO;
 import com.skytrix.model.entity.CardDeckIndex;
 import com.skytrix.model.entity.Room;
@@ -110,6 +112,54 @@ public class RoomService {
             room.setStatus(RoomStatus.WAITING);
             room.setPlayer2(null);
             room.setPlayer2DecklistId(null);
+            roomRepository.save(room);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server unavailable", e);
+        }
+    }
+
+    @Transactional
+    public QuickDuelResponseDTO quickDuel(QuickDuelDTO dto) {
+        var user = authService.getConnectedUser();
+        var deckCards1 = validateDeck(dto.getDecklistId1(), user.getId());
+        var deckCards2 = validateDeck(dto.getDecklistId2(), user.getId());
+
+        var room = new Room();
+        room.setRoomCode(generateUniqueRoomCode());
+        room.setPlayer1(user);
+        room.setPlayer1DecklistId(dto.getDecklistId1());
+        room.setPlayer2(user);
+        room.setPlayer2DecklistId(dto.getDecklistId2());
+        room.setStatus(RoomStatus.CREATING_DUEL);
+        roomRepository.save(room);
+
+        try {
+            var deck1 = extractDeck(deckCards1);
+            var deck2 = extractDeck(deckCards2);
+            var response = duelServerClient.createDuel(
+                    user.getId().toString(),
+                    deck1,
+                    user.getId().toString(),
+                    deck2,
+                    true
+            );
+
+            if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {
+                throw new RestClientException("Invalid duel server response");
+            }
+
+            room.setDuelServerId(response.getDuelId());
+            room.setWsToken1(response.getWsTokens()[0]);
+            room.setWsToken2(response.getWsTokens()[1]);
+            room.setStatus(RoomStatus.ACTIVE);
+            roomRepository.save(room);
+
+            var result = new QuickDuelResponseDTO();
+            result.setRoomCode(room.getRoomCode());
+            result.setWsToken1(response.getWsTokens()[0]);
+            result.setWsToken2(response.getWsTokens()[1]);
+            return result;
+        } catch (RestClientException e) {
+            room.setStatus(RoomStatus.ENDED);
             roomRepository.save(room);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server unavailable", e);
         }

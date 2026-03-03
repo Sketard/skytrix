@@ -9,6 +9,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { displayError, relativeTime } from '../../../core/utilities/functions';
+import { environment } from '../../../../environments/environment';
 import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
 import { DeckPickerDialogComponent } from './deck-picker-dialog.component';
@@ -32,6 +33,8 @@ export class LobbyPageComponent implements OnInit {
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
   readonly joiningRoomCode = signal<string | null>(null);
+  readonly creatingRoom = signal(false);
+  readonly isProduction = environment.production;
 
   ngOnInit(): void {
     this.fetchRooms();
@@ -69,8 +72,62 @@ export class LobbyPageComponent implements OnInit {
     });
   }
 
-  goToDecks(): void {
-    this.router.navigate(['/decks']);
+  createRoom(): void {
+    const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
+      width: '340px',
+    });
+
+    dialogRef.afterClosed().subscribe((result: { id: number; name: string } | undefined) => {
+      if (!result) return;
+      this.creatingRoom.set(true);
+      this.roomApi.createRoom(result.id).subscribe({
+        next: room => {
+          this.creatingRoom.set(false);
+          this.router.navigate(['/pvp/duel', room.roomCode], {
+            state: { deckName: result.name },
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.creatingRoom.set(false);
+          if (err.status === 422) {
+            const reason = err.error?.message ?? err.error?.error ?? 'Deck validation failed';
+            displayError(this.snackBar, reason);
+          } else {
+            displayError(this.snackBar, 'Failed to create room');
+          }
+        },
+      });
+    });
+  }
+
+  quickDuel(): void {
+    const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
+      width: '340px',
+      data: { quickDuel: true },
+    });
+
+    dialogRef.afterClosed().subscribe((result: { decklistId1: number; decklistId2: number } | undefined) => {
+      if (!result) return;
+      this.creatingRoom.set(true);
+      this.roomApi.quickDuel(result.decklistId1, result.decklistId2).subscribe({
+        next: response => {
+          this.creatingRoom.set(false);
+          this.router.navigate(['/pvp/duel', response.roomCode], {
+            state: { wsToken1: response.wsToken1, wsToken2: response.wsToken2 },
+            queryParams: { solo: 'true' },
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.creatingRoom.set(false);
+          if (err.status === 422) {
+            const reason = err.error?.message ?? err.error?.error ?? 'Deck validation failed';
+            displayError(this.snackBar, reason);
+          } else {
+            displayError(this.snackBar, 'Failed to start quick duel');
+          }
+        },
+      });
+    });
   }
 
   getRelativeTime(date: string): string {
@@ -82,12 +139,14 @@ export class LobbyPageComponent implements OnInit {
       width: '340px',
     });
 
-    dialogRef.afterClosed().subscribe((decklistId: number | undefined) => {
-      if (decklistId === undefined) return;
+    dialogRef.afterClosed().subscribe((result: { id: number; name: string } | undefined) => {
+      if (!result) return;
       this.joiningRoomCode.set(room.roomCode);
-      this.roomApi.joinRoom(room.roomCode, decklistId).subscribe({
+      this.roomApi.joinRoom(room.roomCode, result.id).subscribe({
         next: () => {
-          this.router.navigate(['/pvp/duel', room.roomCode]);
+          this.router.navigate(['/pvp/duel', room.roomCode], {
+            state: { deckName: result.name },
+          });
         },
         error: (err: HttpErrorResponse) => {
           this.joiningRoomCode.set(null);

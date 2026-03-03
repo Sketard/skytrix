@@ -42,6 +42,7 @@ interface ActiveDuelSession extends DuelSession {
   lastStateSyncAt: [number, number];
   // M1 consolidation — turn timer context (formerly standalone Map)
   timerContext: TimerContext | null;
+  skipRps: boolean;
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
@@ -181,7 +182,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       throw err;
     }
 
-    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck } };
+    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck }; skipRps?: boolean };
     try {
       parsed = JSON.parse(body);
     } catch {
@@ -193,6 +194,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       json(res, 400, { error: 'Missing required fields: player1, player2 with id and deck' });
       return;
     }
+
+    const skipRps = parsed.skipRps === true;
 
     // Validate deck arrays (M2: prevent worker crash on malformed input)
     if (!Array.isArray(parsed.player1.deck?.main) || !Array.isArray(parsed.player1.deck?.extra) ||
@@ -238,6 +241,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       storedDuelResult: null,
       lastStateSyncAt: [0, 0],
       timerContext: null,
+      skipRps,
     };
 
     // Spawn worker
@@ -258,6 +262,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       type: 'INIT_DUEL',
       duelId,
       decks: [parsed.player1.deck, parsed.player2.deck],
+      skipRps,
     });
 
     // H17 — Connection timeout: if no players connect within 60s, clean up
@@ -380,6 +385,7 @@ function startRematch(session: ActiveDuelSession): void {
     type: 'INIT_DUEL',
     duelId: session.duelId,
     decks: session.decks,
+    skipRps: session.skipRps,
   });
 }
 

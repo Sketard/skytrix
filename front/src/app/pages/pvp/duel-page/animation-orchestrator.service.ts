@@ -93,6 +93,15 @@ export class AnimationOrchestratorService {
     this.animationTimeouts = [];
   }
 
+  /** Reset animation state for solo mode player switch. */
+  resetForSwitch(): void {
+    this.animationTimeouts.forEach(t => clearTimeout(t));
+    this.animationTimeouts = [];
+    this._isAnimating.set(false);
+    this.animatingZone.set(null);
+    this.animatingLpPlayer.set(null);
+  }
+
   // ---------------------------------------------------------------------------
   // Queue processing
   // ---------------------------------------------------------------------------
@@ -220,9 +229,12 @@ export class AnimationOrchestratorService {
   }
 
   private processLpEvent(player: number, amount: number, type: 'damage' | 'recover'): number {
-    const fromLp = this.trackedLp[player] ?? 8000;
+    // Convert absolute OCGCore player index to relative (0=self, 1=opponent)
+    // because trackedLp is indexed by relative position (synced from sanitized board state).
+    const relativeIdx = player === this.ownPlayerIndexFn() ? 0 : 1;
+    const fromLp = this.trackedLp[relativeIdx] ?? 8000;
     const toLp = type === 'damage' ? Math.max(0, fromLp - amount) : fromLp + amount;
-    this.trackedLp[player] = toLp;
+    this.trackedLp[relativeIdx] = toLp;
 
     const speedMultiplier = this.speedMultiplierFn();
     const durationMs = Math.round(this.baseLpDuration * speedMultiplier);
@@ -237,13 +249,16 @@ export class AnimationOrchestratorService {
   }
 
   private applyInstantAnimation(event: GameEvent): void {
-    // For collapsed events: apply LP tracking without visual animation
+    // For collapsed events: apply LP tracking without visual animation.
+    // Convert absolute OCGCore player index to relative (0=self, 1=opponent).
     if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST') {
       const msg = event as DamageMsg | PayLpCostMsg;
-      this.trackedLp[msg.player] = Math.max(0, (this.trackedLp[msg.player] ?? 8000) - msg.amount);
+      const idx = msg.player === this.ownPlayerIndexFn() ? 0 : 1;
+      this.trackedLp[idx] = Math.max(0, (this.trackedLp[idx] ?? 8000) - msg.amount);
     } else if (event.type === 'MSG_RECOVER') {
       const msg = event as RecoverMsg;
-      this.trackedLp[msg.player] = (this.trackedLp[msg.player] ?? 8000) + msg.amount;
+      const idx = msg.player === this.ownPlayerIndexFn() ? 0 : 1;
+      this.trackedLp[idx] = (this.trackedLp[idx] ?? 8000) + msg.amount;
     }
   }
 

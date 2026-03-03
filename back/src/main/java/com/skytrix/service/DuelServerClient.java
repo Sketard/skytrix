@@ -34,12 +34,18 @@ public class DuelServerClient {
     }
 
     public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2) {
+        return createDuel(player1Id, deck1, player2Id, deck2, false);
+    }
+
+    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean skipRps) {
         return restClient.post()
                 .uri("/api/duels")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Internal-Key", internalKey)
                 .body(new CreateDuelRequest(
                         new DuelPlayer(player1Id, deck1),
-                        new DuelPlayer(player2Id, deck2)
+                        new DuelPlayer(player2Id, deck2),
+                        skipRps
                 ))
                 .retrieve()
                 .body(DuelCreationResponse.class);
@@ -83,7 +89,7 @@ public class DuelServerClient {
         }
     }
 
-    private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2) {}
+    private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2, boolean skipRps) {}
     private record DuelPlayer(String id, DuelDeckDTO deck) {}
     private record ActiveDuelsResponse(List<String> duelIds) {}
 }

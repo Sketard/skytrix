@@ -3,6 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RoomDTO } from './room.types';
 
+export interface QuickDuelResponse {
+  roomCode: string;
+  wsToken1: string;
+  wsToken2: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RoomApiService {
   private readonly http = inject(HttpClient);
@@ -21,5 +27,9 @@ export class RoomApiService {
 
   joinRoom(roomCode: string, decklistId: number): Observable<RoomDTO> {
     return this.http.post<RoomDTO>(`/api/rooms/${roomCode}/join`, { decklistId });
+  }
+
+  quickDuel(decklistId1: number, decklistId2: number): Observable<QuickDuelResponse> {
+    return this.http.post<QuickDuelResponse>('/api/rooms/quick-duel', { decklistId1, decklistId2 });
   }
 }
