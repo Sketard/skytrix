@@ -29,6 +29,7 @@ export const routes: Routes = [
     canDeactivate: [(component: import('./pages/pvp/duel-page/duel-page.component').DuelPageComponent) => {
       if (component.roomState() !== 'active') return true;
       if (component.wsService.duelResult()) return true;
+      if (component.connectionStatus() === 'lost') return true;
       return component.confirmSurrender();
     }],
   },

@@ -6,6 +6,7 @@
          [class.hand-card--actionable]="actionableCardIndices().has($index)"
          [style.margin-left.px]="$index > 0 && needsOverlap() ? overlapMargin() : 0"
          [style.z-index]="$index"
+         [style.transform]="fanTransform($index)"
          (click)="onCardTap($index, $event)">
       @if (isPlayerSide() && card.cardCode && card.cardCode !== 0) {
         <img [src]="getCardImageUrl(card)"

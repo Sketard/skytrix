@@ -90,8 +90,8 @@
   // --- Layout ---
   --pvp-inspector-card-width: 60px;
   --pvp-inspector-card-height: 87px;
-  --pvp-hand-card-height: clamp(48px, 12dvh, 72px);
-  --pvp-hand-overlap: -16px;
+  --pvp-hand-card-height: 18dvh;
+  --pvp-hand-overlap: -20px;
   --pvp-card-min-tap-target: 44px;
   --pvp-min-touch-target-primary: 48px;
 
@@ -100,7 +100,8 @@
   --pvp-highlight-selectable: rgba(0, 200, 255, 0.4);
   --pvp-highlight-selected: rgba(255, 215, 0, 0.6);
   --pvp-lp-own: #4CAF50;
-  --pvp-lp-opponent: #F44336;
+  --pvp-lp-opponent: #90CAF9;
+  --pvp-lp-danger: #F44336;
   --pvp-disabled-opacity: 0.4;
 
   // --- Timer colors ---
@@ -111,7 +112,7 @@
   // --- Typography ---
   --pvp-lp-font-size: clamp(1rem, 4dvh, 1.5rem);
   --pvp-timer-font-size: clamp(0.875rem, 3dvh, 1.125rem);
-  --pvp-phase-badge-font-size: clamp(0.75rem, 2.5dvh, 1rem);
+  --pvp-phase-badge-font-size: clamp(0.875rem, 3dvh, 1.25rem);
 
   // --- Animation ---
   --pvp-transition-highlight-flash: 200ms ease-in-out;
@@ -145,6 +146,9 @@
   --pvp-chain-badge-color: #fff;
   --pvp-chain-badge-size: 24px;
   --pvp-chain-resolve-pulse: 200ms;
+
+  // --- Pile Stack ---
+  --pvp-pile-stack-offset: 2px;
 
   // --- Game Event Animations (Story 4.2) ---
   --pvp-summon-highlight: rgba(76, 175, 80, 0.6);

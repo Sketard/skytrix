@@ -584,6 +584,15 @@ export interface RequestStateSyncMsg {
   type: 'REQUEST_STATE_SYNC';
 }
 
+export interface ActivityPingMsg {
+  type: 'ACTIVITY_PING';
+}
+
+export interface InactivityWarningMsg {
+  type: 'INACTIVITY_WARNING';
+  remainingSec: number;
+}
+
 // =============================================================================
 // Union Type Exports
 // =============================================================================
@@ -630,7 +639,7 @@ export type ServerMessage =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  // System messages (10)
+  // System messages (11)
   | DuelEndMsg
   | TimerStateMsg
   | RpsChoiceMsg
@@ -642,10 +651,12 @@ export type ServerMessage =
   | StateSyncMsg
   | SessionTokenMsg
   | OpponentDisconnectedMsg
-  | OpponentReconnectedMsg;
+  | OpponentReconnectedMsg
+  | InactivityWarningMsg;
 
 export type ClientMessage =
   | PlayerResponseMsg
   | SurrenderMsg
   | RematchRequestMsg
-  | RequestStateSyncMsg;
+  | RequestStateSyncMsg
+  | ActivityPingMsg;

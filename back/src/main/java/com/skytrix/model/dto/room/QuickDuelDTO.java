@@ -13,4 +13,6 @@ public class QuickDuelDTO {
 
     @NotNull
     private Long decklistId2;
+
+    private Integer firstPlayer;
 }

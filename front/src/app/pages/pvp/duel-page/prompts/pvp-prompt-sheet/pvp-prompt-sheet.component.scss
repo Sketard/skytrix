@@ -23,8 +23,14 @@
   padding-inline-start: env(safe-area-inset-left, 0px);
   padding-inline-end: env(safe-area-inset-right, 0px);
 
+  &:not(&--visible) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   &--visible {
     transform: translateY(0);
+    visibility: visible;
   }
 
   &--collapsed {

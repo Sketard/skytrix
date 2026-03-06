@@ -1,6 +1,20 @@
 :host {
   display: block;
-  grid-area: lp;
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+// Player LP: bottom-left (near Extra Deck)
+:host-context(.player-field) {
+  bottom: 4px;
+  left: 4px;
+}
+
+// Opponent LP: top-left (near their Deck, from player's view)
+:host-context(.opponent-field) {
+  top: 4px;
+  left: 4px;
 }
 
 .lp-badge {
@@ -29,6 +43,11 @@
   color: var(--pvp-lp-opponent);
 }
 
+// Danger overrides both player and opponent colors
+.lp-badge--danger .lp-value {
+  color: var(--pvp-lp-danger);
+}
+
 // === LP Animation Flash (Story 4.2) ===
 // [Review M2/M3/M4 fix] Flash targets text color + text-shadow (not background),
 // uses design tokens for colors, --pvp-transition-highlight-flash for duration (200ms)
@@ -42,7 +61,7 @@
 
 @keyframes lp-damage-flash {
   0%, 100% { color: inherit; text-shadow: none; }
-  50% { color: var(--pvp-lp-opponent); text-shadow: 0 0 8px var(--pvp-lp-opponent); }
+  50% { color: var(--pvp-lp-danger); text-shadow: 0 0 8px var(--pvp-lp-danger); }
 }
 
 @keyframes lp-recover-flash {

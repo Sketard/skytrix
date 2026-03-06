@@ -216,12 +216,6 @@
             <mat-button-toggle value="p1">P1</mat-button-toggle>
             <mat-button-toggle value="p2">P2</mat-button-toggle>
           </mat-button-toggle-group>
-          <mat-button-toggle-group class="mini-toolbar__first-toggle"
-                                   [value]="orchestrator.firstPlayer() === 0 ? 'p1' : 'p2'"
-                                   (change)="onFirstPlayerToggle($event.value)">
-            <mat-button-toggle value="p1">P1 1st</mat-button-toggle>
-            <mat-button-toggle value="p2">P2 1st</mat-button-toggle>
-          </mat-button-toggle-group>
         }
         @if (isOwnTurn()) {
           <app-pvp-activation-toggle [(mode)]="activationMode" />

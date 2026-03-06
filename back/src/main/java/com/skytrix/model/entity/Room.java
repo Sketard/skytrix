@@ -39,7 +39,10 @@ public class Room {
     @ManyToOne
     private User player2;
 
+    @Column(name = "player1_decklist_id")
     private Long player1DecklistId;
+
+    @Column(name = "player2_decklist_id")
     private Long player2DecklistId;
 
     @Enumerated(EnumType.STRING)

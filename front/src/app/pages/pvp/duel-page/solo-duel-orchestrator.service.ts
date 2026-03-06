@@ -19,7 +19,6 @@ export class SoloDuelOrchestratorService {
   private _connections = signal<[DuelConnection, DuelConnection] | null>(null);
   readonly connections = this._connections.asReadonly();
   readonly activePlayerIndex = signal<0 | 1>(0);
-  readonly firstPlayer = signal<0 | 1>(0);
   private _rematchReset = signal(0);
   readonly rematchReset = this._rematchReset.asReadonly();
 
@@ -96,19 +95,7 @@ export class SoloDuelOrchestratorService {
         }
       }, { allowSignalWrites: true });
 
-      // Effect 2: auto-respond RPS — determine who goes first
-      effect(() => {
-        const rps0 = conns[0].rpsInProgress();
-        const rps1 = conns[1].rpsInProgress();
-        if (rps0 && rps1) {
-          const first = this.firstPlayer();
-          const second: 0 | 1 = first === 0 ? 1 : 0;
-          conns[first].sendResponse('RPS_CHOICE', { choice: 0 }); // Rock
-          conns[second].sendResponse('RPS_CHOICE', { choice: 2 }); // Scissors
-        }
-      }, { allowSignalWrites: true });
-
-      // Effect 3: handle rematch reset when both connections receive REMATCH_STARTING
+      // Effect 2: handle rematch reset when both connections receive REMATCH_STARTING
       effect(() => {
         const starting0 = conns[0].rematchStarting();
         const starting1 = conns[1].rematchStarting();

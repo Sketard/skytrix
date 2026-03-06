@@ -3,7 +3,7 @@ import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join } from 'node:path';
-import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS } from './types.js';
+import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_WARNING_BEFORE_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS } from './types.js';
 import type { WorkerToMainMessage, DuelSession, PlayerSession, Deck, TimerContext } from './types.js';
 import type { ServerMessage, ClientMessage, Player, SelectPromptType } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
@@ -221,8 +221,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const session: ActiveDuelSession = {
       duelId,
       players: [
-        { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, raceWindowTimer: null },
-        { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, raceWindowTimer: null },
+        { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
+        { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
       ],
       createdAt: Date.now(),
       startedAt: null,
@@ -276,7 +276,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       }
     }, CONNECTION_TIMEOUT_MS);
 
-    json(res, 201, { duelId, tokens: [token0, token1] });
+    json(res, 201, { duelId, wsTokens: [token0, token1] });
     return;
   }
 
@@ -461,6 +461,7 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
   // Track awaitingResponse for SELECT_* messages + start timers
   if (isSelectMessage(message)) {
     const targetPlayer = (message as { player: Player }).player;
+    console.log(`[TIMER] SELECT ${message.type} for player=${targetPlayer}, timerRunning=${session.timerContext?.running}`);
     session.awaitingResponse[targetPlayer] = true;
     startTurnTimer(session);
     startInactivityTimer(session, targetPlayer);
@@ -527,8 +528,12 @@ function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer: 0 | 1)
 
 function startTurnTimer(session: ActiveDuelSession): void {
   const ctx = session.timerContext;
-  if (!ctx || ctx.running) return;
+  if (!ctx || ctx.running) {
+    console.log(`[TIMER] startTurnTimer SKIPPED — ctx=${!!ctx}, running=${ctx?.running}`);
+    return;
+  }
 
+  console.log(`[TIMER] startTurnTimer START — activePlayer=${ctx.activePlayer}, pool=${ctx.pools[ctx.activePlayer]}`);
   ctx.running = true;
   ctx.lastTickMs = Date.now();
 
@@ -559,12 +564,17 @@ function startTurnTimer(session: ActiveDuelSession): void {
       handleDuelEnd(session);
       safeTerminateWorker(session);
     }
-  }, 1000);
+  }, 250);
 }
 
 function pauseTurnTimer(session: ActiveDuelSession): void {
   const ctx = session.timerContext;
-  if (!ctx || !ctx.running) return;
+  if (!ctx || !ctx.running) {
+    console.log(`[TIMER] pauseTurnTimer SKIPPED — ctx=${!!ctx}, running=${ctx?.running}`);
+    return;
+  }
+  console.log(`[TIMER] pauseTurnTimer PAUSE — activePlayer=${ctx.activePlayer}, pool=${ctx.pools[ctx.activePlayer]}`);
+
 
   // Account for time elapsed since last tick
   const now = Date.now();
@@ -608,7 +618,9 @@ function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, new
   const ctx = session.timerContext;
   if (!ctx || newTurnCount <= ctx.turnCount) return;
 
+  console.log(`[TIMER] handleTurnChange — turn ${ctx.turnCount} → ${newTurnCount}, activePlayer → ${newTurnPlayer}`);
   // New turn detected — pause current timer, add increment, switch active player
+  const wasRunning = ctx.running;
   pauseTurnTimer(session);
   addTurnIncrement(session, newTurnPlayer, newTurnCount);
 
@@ -620,36 +632,57 @@ function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, new
   };
   sendToPlayer(session, 0, timerMsg);
   sendToPlayer(session, 1, timerMsg);
+
+  // Worker may send SELECT before BOARD_STATE — resume timer if it was running
+  if (wasRunning) {
+    startTurnTimer(session);
+  }
 }
 
 function startInactivityTimer(session: ActiveDuelSession, player: Player): void {
   clearInactivityTimer(session, player);
 
   const ps = session.players[player];
-  ps.inactivityTimer = setTimeout(() => {
-    ps.inactivityTimer = null;
+  const warningDelay = INACTIVITY_TIMEOUT_MS - INACTIVITY_WARNING_BEFORE_MS;
 
+  // Stage 1: send warning N seconds before forfeit
+  ps.warningTimer = setTimeout(() => {
+    ps.warningTimer = null;
     if (session.endedAt) return;
 
-    // Enter 500ms race condition window (AC4)
-    ps.raceWindowTimer = setTimeout(() => {
-      ps.raceWindowTimer = null;
+    const remainingSec = Math.round(INACTIVITY_WARNING_BEFORE_MS / 1000);
+    const warningMsg: ServerMessage = { type: 'INACTIVITY_WARNING', remainingSec };
+    sendToPlayer(session, player, warningMsg);
+
+    // Stage 2: forfeit after remaining time
+    ps.inactivityTimer = setTimeout(() => {
+      ps.inactivityTimer = null;
       if (session.endedAt) return;
 
-      // No response within grace window — forfeit for inactivity
-      const winner: Player = player === 0 ? 1 : 0;
-      session.awaitingResponse[player] = false;
-      const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
-      sendToPlayer(session, 0, endMsg);
-      sendToPlayer(session, 1, endMsg);
-      handleDuelEnd(session);
-      safeTerminateWorker(session);
-    }, INACTIVITY_RACE_WINDOW_MS);
-  }, INACTIVITY_TIMEOUT_MS);
+      // Enter 500ms race condition window (AC4)
+      ps.raceWindowTimer = setTimeout(() => {
+        ps.raceWindowTimer = null;
+        if (session.endedAt) return;
+
+        // No response within grace window — forfeit for inactivity
+        const winner: Player = player === 0 ? 1 : 0;
+        session.awaitingResponse[player] = false;
+        const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
+        sendToPlayer(session, 0, endMsg);
+        sendToPlayer(session, 1, endMsg);
+        handleDuelEnd(session);
+        safeTerminateWorker(session);
+      }, INACTIVITY_RACE_WINDOW_MS);
+    }, INACTIVITY_WARNING_BEFORE_MS);
+  }, warningDelay);
 }
 
 function clearInactivityTimer(session: ActiveDuelSession, player: Player): void {
   const ps = session.players[player];
+  if (ps.warningTimer) {
+    clearTimeout(ps.warningTimer);
+    ps.warningTimer = null;
+  }
   if (ps.inactivityTimer) {
     clearTimeout(ps.inactivityTimer);
     ps.inactivityTimer = null;
@@ -1000,7 +1033,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
 // Client Message Handling
 // =============================================================================
 
-const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC']);
+const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC', 'ACTIVITY_PING']);
 
 function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg: ClientMessage): void {
   // Validate message type
@@ -1027,6 +1060,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         return;
       }
 
+      console.log(`[TIMER] PLAYER_RESPONSE from player=${playerIndex}, promptType=${msg.promptType}`);
       session.awaitingResponse[playerIndex] = false;
       session.lastSentPrompt[playerIndex] = null;
 
@@ -1062,6 +1096,15 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         startRematch(session);
       } else {
         sendToPlayer(session, opponentIdx, { type: 'REMATCH_INVITATION' });
+      }
+      break;
+    }
+
+    case 'ACTIVITY_PING': {
+      // Reset inactivity timer if player is being prompted
+      if (session.awaitingResponse[playerIndex]) {
+        clearInactivityTimer(session, playerIndex as Player);
+        startInactivityTimer(session, playerIndex as Player);
       }
       break;
     }

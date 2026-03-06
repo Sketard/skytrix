@@ -20,6 +20,7 @@ export class AppComponent {
   private readonly navbarCollapse = inject(NavbarCollapseService);
   readonly isMobile = this.navbarCollapse.isMobile;
   readonly shouldHideTopBar = this.navbarCollapse.shouldHideTopBar;
+  readonly navbarHidden = this.navbarCollapse.navbarHidden;
   readonly connectedUser = this.authService.user;
 
   constructor(

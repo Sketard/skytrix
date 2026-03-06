@@ -47,6 +47,7 @@ export class DuelWebSocketService implements OnDestroy {
   readonly rpsInProgress = computed(() => this._activeConnection().rpsInProgress());
   readonly rematchState = computed(() => this._activeConnection().rematchState());
   readonly rematchStarting = computed(() => this._activeConnection().rematchStarting());
+  readonly inactivityWarning = computed(() => this._activeConnection().inactivityWarning());
 
   readonly canRetry = computed(() => this._activeConnection().canRetry());
 
@@ -74,6 +75,10 @@ export class DuelWebSocketService implements OnDestroy {
 
   sendRematchRequest(): void {
     this._activeConnection().sendRematchRequest();
+  }
+
+  sendActivityPing(): void {
+    this._activeConnection().sendActivityPing();
   }
 
   dequeueAnimation(): import('../types').GameEvent | null {

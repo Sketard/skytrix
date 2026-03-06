@@ -23,10 +23,11 @@
 
   .hand-row--player & {
     cursor: pointer;
+    transform-origin: center bottom;
+  }
 
-    &:hover {
-      transform: translateY(-4px);
-    }
+  .hand-row--opponent & {
+    transform-origin: center top;
   }
 }
 

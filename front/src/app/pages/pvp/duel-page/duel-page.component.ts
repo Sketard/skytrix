@@ -12,6 +12,7 @@ import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialo
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { displaySuccess, displayError } from '../../../core/utilities/functions';
 import { AuthService } from '../../../services/auth.service';
+import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import type { ConnectionStatus } from '../types';
@@ -35,6 +36,7 @@ import { CardInspectionService } from './card-inspection.service';
 import { DebugLogService } from './debug-log.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
+import { InactivityWarningDialogComponent } from './inactivity-warning-dialog.component';
 import { environment } from '../../../../environments/environment';
 import './prompts/prompt-registry';
 
@@ -72,6 +74,7 @@ export class DuelPageComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly authService = inject(AuthService);
+  private readonly navbarCollapse = inject(NavbarCollapseService);
   private readonly dialog = inject(MatDialog);
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
@@ -283,6 +286,9 @@ export class DuelPageComponent implements OnInit {
   private announcedThresholds = new Set<number>();
   private lastAnnouncedTurnPlayer: number | null = null;
 
+  // Inactivity warning dialog tracking
+  private inactivityDialogRef: import('@angular/material/dialog').MatDialogRef<unknown> | null = null;
+
   // Task 16 — Board flip transition for solo player switch
   readonly switching = signal(false);
   private switchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -353,7 +359,10 @@ export class DuelPageComponent implements OnInit {
       this.roomService.fetchRoom(code);
     }
 
+    this.navbarCollapse.setNavbarHidden(true);
+
     this.destroyRef.onDestroy(() => {
+      this.navbarCollapse.setNavbarHidden(false);
       this.teardownMenuListener();
       this.roomService.destroy();
       this.animationService.destroy();
@@ -586,6 +595,25 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
+    // Inactivity warning — open/close dialog on INACTIVITY_WARNING signal
+    effect(() => {
+      const warning = this.wsService.inactivityWarning();
+      untracked(() => {
+        if (warning && !this.inactivityDialogRef) {
+          this.inactivityDialogRef = this.dialog.open(InactivityWarningDialogComponent, { disableClose: true });
+          this.inactivityDialogRef.afterClosed().subscribe(() => {
+            if (this.inactivityDialogRef) {
+              this.inactivityDialogRef = null;
+              this.wsService.sendActivityPing();
+            }
+          });
+        } else if (!warning && this.inactivityDialogRef) {
+          this.inactivityDialogRef.close();
+          this.inactivityDialogRef = null;
+        }
+      });
+    });
+
     // Story 3.3 — "Connection restored" snackbar on reconnection
     effect(() => {
       const current = this.wsService.connectionStatus();
@@ -678,11 +706,13 @@ export class DuelPageComponent implements OnInit {
 
   backToLobby(): void {
     this.endRoomIfNeeded();
+    try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
     this.router.navigate(['/pvp']);
   }
 
   backToDeck(): void {
     this.endRoomIfNeeded();
+    try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
     const deckId = this.room()?.decklistId ?? this.roomService.decklistId;
     if (deckId) {
       this.router.navigate(['/decks', deckId]);
@@ -693,10 +723,6 @@ export class DuelPageComponent implements OnInit {
 
   onRematchClick(): void {
     this.wsService.sendRematchRequest();
-  }
-
-  onFirstPlayerToggle(value: string): void {
-    this.orchestrator.firstPlayer.set(value === 'p1' ? 0 : 1);
   }
 
   switchPlayerWithTransition(): void {

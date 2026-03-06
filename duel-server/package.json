@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "poc": "tsx src/test-core.ts",
-    "prebuild": "bash ../scripts/check-ws-protocol-sync.sh",
+    "prebuild": "node ../scripts/check-ws-protocol-sync.mjs",
     "build": "tsc",
     "start": "node dist/server.js",
     "test:integration": "tsx test/integration.ts",

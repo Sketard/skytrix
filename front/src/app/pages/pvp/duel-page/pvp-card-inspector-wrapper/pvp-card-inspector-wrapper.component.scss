@@ -3,10 +3,13 @@
 :host {
   display: block;
   position: absolute;
+  inset: 0;
+  pointer-events: none;
   z-index: z.$z-pvp-animation-overlay;
 }
 
 .inspector-compact {
+  pointer-events: auto;
   position: absolute;
   bottom: calc(var(--pvp-hand-card-height) + 8px);
   left: 8px;

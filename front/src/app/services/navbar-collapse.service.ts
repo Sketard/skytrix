@@ -37,6 +37,9 @@ export class NavbarCollapseService {
 
   readonly shouldHideTopBar = computed(() => this.immersiveMode() && this.isLandscape());
 
+  private readonly _navbarHidden = signal(false);
+  readonly navbarHidden = this._navbarHidden.asReadonly();
+
   readonly collapsed = signal(false);
   readonly drawerOpen = signal(false);
   readonly navbarWidth = computed(() => (this.collapsed() ? this.COLLAPSED_WIDTH : this.EXPANDED_WIDTH));
@@ -63,5 +66,9 @@ export class NavbarCollapseService {
 
   setImmersiveMode(value: boolean): void {
     this._immersiveMode.set(value);
+  }
+
+  setNavbarHidden(value: boolean): void {
+    this._navbarHidden.set(value);
   }
 }

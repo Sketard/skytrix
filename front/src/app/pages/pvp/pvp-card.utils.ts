@@ -20,5 +20,5 @@ export function getCardImageUrlByCode(cardCode: number | null): string {
   if (!cardCode) {
     return 'assets/images/card_back.jpg';
   }
-  return `/api/images/small/${cardCode}.jpg`;
+  return `/api/documents/small/code/${cardCode}`;
 }

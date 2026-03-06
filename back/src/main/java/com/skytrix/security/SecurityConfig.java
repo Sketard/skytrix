@@ -74,6 +74,7 @@ public class SecurityConfig {
 				refreshUrlMatcher,
 				new AntPathRequestMatcher("/documents/big/{\\d+}", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/documents/small/{\\d+}", HttpMethod.GET.name()),
+				new AntPathRequestMatcher("/documents/small/code/{\\d+}", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/documents/sample/{\\d+}", HttpMethod.GET.name())
 		);
 

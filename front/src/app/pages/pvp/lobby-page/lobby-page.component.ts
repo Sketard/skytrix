@@ -106,10 +106,10 @@ export class LobbyPageComponent implements OnInit {
       data: { quickDuel: true },
     });
 
-    dialogRef.afterClosed().subscribe((result: { decklistId1: number; decklistId2: number } | undefined) => {
+    dialogRef.afterClosed().subscribe((result: { decklistId1: number; decklistId2: number; firstPlayer: number } | undefined) => {
       if (!result) return;
       this.creatingRoom.set(true);
-      this.roomApi.quickDuel(result.decklistId1, result.decklistId2).subscribe({
+      this.roomApi.quickDuel(result.decklistId1, result.decklistId2, result.firstPlayer).subscribe({
         next: response => {
           this.creatingRoom.set(false);
           this.router.navigate(['/pvp/duel', response.roomCode], {

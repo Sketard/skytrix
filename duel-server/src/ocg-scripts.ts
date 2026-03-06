@@ -25,7 +25,6 @@ export const STARTUP_SCRIPTS = [
   'proc_ritual.lua',
   'proc_spirit.lua',
   'proc_synchro.lua',
-  'proc_toon.lua',
   'proc_union.lua',
   'proc_xyz.lua',
 ] as const;

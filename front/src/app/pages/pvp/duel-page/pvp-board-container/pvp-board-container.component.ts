@@ -10,24 +10,22 @@ import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.compo
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
-const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'BANISHED', 'EXTRA', 'DECK'];
+const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
 
-/** Pill zones that show count badges */
-const PILL_ZONE_IDS: ZoneId[] = ['GY', 'BANISHED', 'EXTRA'];
+type ZoneRenderMode = 'terrain' | 'pile-faceup' | 'pile-facedown' | 'deck';
 
 /** Maps ZoneId → CSS grid-area name (M1→mz1, S1→st1, etc.) */
 const ZONE_GRID_AREA: Record<string, string> = {
   M1: 'mz1', M2: 'mz2', M3: 'mz3', M4: 'mz4', M5: 'mz5',
   S1: 'st1', S2: 'st2', S3: 'st3', S4: 'st4', S5: 'st5',
-  FIELD: 'field', GY: 'gy', BANISHED: 'banished', EXTRA: 'extra', DECK: 'deck',
+  FIELD: 'field', GY: 'gy', EXTRA: 'extra', DECK: 'deck',
 };
 
 interface ZoneRenderData {
   zoneId: ZoneId;
   card: CardOnField | null;
   cardCount: number;
-  isPill: boolean;
-  isDeck: boolean;
+  renderMode: ZoneRenderMode;
   gridArea: string;
 }
 
@@ -95,6 +93,9 @@ export class PvpBoardContainerComponent {
     const ownIdx = this.ownPlayerIndex();
     return anim.player !== ownIdx ? anim : null;
   });
+
+  readonly playerBanished = computed((): CardOnField | null => this.findZoneCard(0, 'BANISHED'));
+  readonly opponentBanished = computed((): CardOnField | null => this.findZoneCard(1, 'BANISHED'));
 
   readonly emzL = computed(() => this.findZoneCard(0, 'EMZ_L') ?? this.findZoneCard(1, 'EMZ_L'));
   readonly emzR = computed(() => this.findZoneCard(0, 'EMZ_R') ?? this.findZoneCard(1, 'EMZ_R'));
@@ -223,15 +224,17 @@ export class PvpBoardContainerComponent {
       const zone = zoneMap.get(zoneId);
       const cards = zone?.cards ?? [];
       const card = cards.length > 0 ? cards[0] : null;
-      const isPill = PILL_ZONE_IDS.includes(zoneId);
-      const isDeck = zoneId === 'DECK';
+
+      let renderMode: ZoneRenderMode = 'terrain';
+      if (zoneId === 'DECK') renderMode = 'deck';
+      else if (zoneId === 'EXTRA') renderMode = 'pile-facedown';
+      else if (zoneId === 'GY' || zoneId === 'BANISHED') renderMode = 'pile-faceup';
 
       return {
         zoneId,
         card,
         cardCount: cards.length,
-        isPill,
-        isDeck,
+        renderMode,
         gridArea: ZONE_GRID_AREA[zoneId] ?? zoneId.toLowerCase(),
       };
     });

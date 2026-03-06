@@ -122,6 +122,7 @@ public class RoomService {
         var user = authService.getConnectedUser();
         var deckCards1 = validateDeck(dto.getDecklistId1(), user.getId());
         var deckCards2 = validateDeck(dto.getDecklistId2(), user.getId());
+        var p2First = Integer.valueOf(2).equals(dto.getFirstPlayer());
 
         var room = new Room();
         room.setRoomCode(generateUniqueRoomCode());
@@ -133,13 +134,15 @@ public class RoomService {
         roomRepository.save(room);
 
         try {
-            var deck1 = extractDeck(deckCards1);
-            var deck2 = extractDeck(deckCards2);
+            // With skipRps=true, OCGCore player 0 always goes first.
+            // Swap deck order so the chosen player's deck becomes player 0.
+            var firstDeck = extractDeck(p2First ? deckCards2 : deckCards1);
+            var secondDeck = extractDeck(p2First ? deckCards1 : deckCards2);
             var response = duelServerClient.createDuel(
                     user.getId().toString(),
-                    deck1,
+                    firstDeck,
                     user.getId().toString(),
-                    deck2,
+                    secondDeck,
                     true
             );
 
@@ -147,16 +150,20 @@ public class RoomService {
                 throw new RestClientException("Invalid duel server response");
             }
 
+            // Swap wsTokens so token1 always maps to P1's connection, token2 to P2's.
+            var token1 = p2First ? response.getWsTokens()[1] : response.getWsTokens()[0];
+            var token2 = p2First ? response.getWsTokens()[0] : response.getWsTokens()[1];
+
             room.setDuelServerId(response.getDuelId());
-            room.setWsToken1(response.getWsTokens()[0]);
-            room.setWsToken2(response.getWsTokens()[1]);
+            room.setWsToken1(token1);
+            room.setWsToken2(token2);
             room.setStatus(RoomStatus.ACTIVE);
             roomRepository.save(room);
 
             var result = new QuickDuelResponseDTO();
             result.setRoomCode(room.getRoomCode());
-            result.setWsToken1(response.getWsTokens()[0]);
-            result.setWsToken2(response.getWsTokens()[1]);
+            result.setWsToken1(token1);
+            result.setWsToken2(token2);
             return result;
         } catch (RestClientException e) {
             room.setStatus(RoomStatus.ENDED);

@@ -16,6 +16,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 // === Waiting Room (Story 2.1) ===
@@ -111,22 +112,24 @@
 }
 
 // === Hand Rows (outside perspective) ===
+// Opponent hand: 50% hidden above viewport edge
 .hand-opponent {
   position: absolute;
-  top: 0;
+  top: calc(-1 * var(--pvp-hand-card-height) * 0.5);
   left: 0;
   right: 0;
   z-index: z.$z-pvp-hand;
-  padding: max(8px, env(safe-area-inset-top, 8px)) max(8px, env(safe-area-inset-right, 8px)) 0 max(8px, env(safe-area-inset-left, 8px));
+  padding: 0 max(8px, env(safe-area-inset-right, 8px)) 0 max(8px, env(safe-area-inset-left, 8px));
 }
 
+// Player hand: 35% hidden below viewport edge
 .hand-player {
   position: absolute;
-  bottom: 0;
+  bottom: calc(-1 * var(--pvp-hand-card-height) * 0.35);
   left: 0;
   right: 0;
   z-index: z.$z-pvp-hand;
-  padding: 0 max(8px, env(safe-area-inset-right, 8px)) max(8px, env(safe-area-inset-bottom, 8px)) max(8px, env(safe-area-inset-left, 8px));
+  padding: 0 max(8px, env(safe-area-inset-right, 8px)) 0 max(8px, env(safe-area-inset-left, 8px));
 }
 
 // === Board Container ===

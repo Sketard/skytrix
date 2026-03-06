@@ -6,15 +6,30 @@
     @for (zone of opponentZones(); track zone.zoneId) {
       <div class="zone"
            [class.zone--highlighted]="isHighlighted(zone.zoneId)"
+           [class.zone--banished]="zone.zoneId === 'BANISHED'"
            [style.grid-area]="zone.gridArea">
-        @if (zone.isDeck) {
-          <div class="zone-pill zone-pill--deck">
-            <span class="zone-count">{{ opponentDeckCount() }}</span>
+        @if (zone.renderMode === 'deck') {
+          <div class="zone-pile zone-pile--stack">
+            @if (opponentDeckCount() > 0) {
+              <img src="assets/images/card_back.jpg" alt="Deck" class="card-art">
+            }
           </div>
-        } @else if (zone.isPill) {
-          <div class="zone-pill" (click)="onZonePillClick(zone.zoneId, 1)">
-            <span class="zone-label">{{ zone.zoneId }}</span>
-            <span class="zone-count">{{ zone.cardCount }}</span>
+        } @else if (zone.renderMode === 'pile-facedown') {
+          <div class="zone-pile zone-pile--stack"
+               (click)="onZonePillClick(zone.zoneId, 1)">
+            @if (zone.cardCount > 0) {
+              <img src="assets/images/card_back.jpg" alt="Extra Deck" class="card-art">
+            }
+          </div>
+        } @else if (zone.renderMode === 'pile-faceup') {
+          <div class="zone-pile"
+               (click)="onZonePillClick(zone.zoneId, 1)">
+            @if (zone.card) {
+              <img [src]="getCardImageUrl(zone.card)"
+                   [alt]="zone.zoneId + ' top card'"
+                   class="card-art"
+                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+            }
           </div>
         } @else if (zone.card) {
           <div class="zone-card"
@@ -54,9 +69,21 @@
     }
   </section>
 
-  <!-- Central Strip (H2 refactor: unified EMZ loop) -->
+  <!-- Central Strip (flex participant — EMZ + Banished + Badges) -->
   <section class="central-strip">
-    @for (emz of emzConfigs(); track emz.zoneId; let first = $first) {
+    <!-- Opponent Banished (col 1, aligned with opponent GY above) -->
+    <div class="zone zone--banished zone--banished-opponent"
+         [class.zone--highlighted]="isHighlighted('BANISHED')"
+         (click)="onZonePillClick('BANISHED', 1)">
+      @if (opponentBanished(); as card) {
+        <img [src]="getCardImageUrl(card)"
+             alt="Banished top card"
+             class="card-art"
+             (error)="$any($event.target).src='assets/images/card_back.jpg'">
+      }
+    </div>
+
+    @for (emz of emzConfigs(); track emz.zoneId) {
       <div class="emz" [class]="emz.cssClass">
         @if (emz.zone; as card) {
           <div class="zone-card"
@@ -79,21 +106,38 @@
           <div class="zone-empty"></div>
         }
       </div>
-
-      <!-- Central badges inserted between EMZ_L and EMZ_R -->
-      @if (first) {
-        <div class="central-badges">
-          <app-pvp-timer-badge [timerState]="timerState()"
-                               [turnPlayer]="absoluteTurnPlayer()"
-                               [opponentDisconnected]="opponentDisconnected()" />
-          <app-pvp-phase-badge [phase]="phase()"
-                               [turnPlayer]="turnPlayer()"
-                               [isOwnTurn]="turnPlayer() === 0"
-                               [actionablePrompt]="actionablePrompt()"
-                               (phaseAction)="actionResponse.emit($event)" />
-        </div>
-      }
     }
+    <div class="central-badges">
+      <app-pvp-timer-badge [timerState]="timerState()"
+                           [turnPlayer]="absoluteTurnPlayer()"
+                           [opponentDisconnected]="opponentDisconnected()" />
+      <app-pvp-phase-badge [phase]="phase()"
+                           [turnPlayer]="turnPlayer()"
+                           [isOwnTurn]="turnPlayer() === 0"
+                           [actionablePrompt]="actionablePrompt()"
+                           (phaseAction)="actionResponse.emit($event)" />
+    </div>
+
+    <!-- Player Banished (col 7, aligned with player GY below) -->
+    <div class="zone zone--banished zone--banished-player"
+         [class.zone--highlighted]="isHighlighted('BANISHED')"
+         [class.zone-pile--actionable]="actionableZoneIds().has('BANISHED')"
+         (click)="onZonePillClick('BANISHED', 0)">
+      @if (playerBanished(); as card) {
+        <img [src]="getCardImageUrl(card)"
+             alt="Banished top card"
+             class="card-art"
+             (error)="$any($event.target).src='assets/images/card_back.jpg'">
+      }
+      @if (isHighlighted('BANISHED')) {
+        <button class="zone-highlight-badge"
+                (click)="onHighlightedZoneClick('BANISHED')"
+                aria-label="Zone BANISHED"
+                type="button">
+          {{ highlightBadgeMap().get('BANISHED') }}
+        </button>
+      }
+    </div>
   </section>
 
   <!-- Player Field (no rotation) -->
@@ -101,17 +145,32 @@
     @for (zone of playerZones(); track zone.zoneId) {
       <div class="zone"
            [class.zone--highlighted]="isHighlighted(zone.zoneId)"
+           [class.zone--banished]="zone.zoneId === 'BANISHED'"
            [style.grid-area]="zone.gridArea">
-        @if (zone.isDeck) {
-          <div class="zone-pill zone-pill--deck">
-            <span class="zone-count">{{ playerDeckCount() }}</span>
+        @if (zone.renderMode === 'deck') {
+          <div class="zone-pile zone-pile--stack">
+            @if (playerDeckCount() > 0) {
+              <img src="assets/images/card_back.jpg" alt="Deck" class="card-art">
+            }
           </div>
-        } @else if (zone.isPill) {
-          <div class="zone-pill"
-               [class.zone-pill--actionable]="actionableZoneIds().has(zone.zoneId)"
+        } @else if (zone.renderMode === 'pile-facedown') {
+          <div class="zone-pile zone-pile--stack"
+               [class.zone-pile--actionable]="actionableZoneIds().has(zone.zoneId)"
                (click)="onZonePillClick(zone.zoneId, 0)">
-            <span class="zone-label">{{ zone.zoneId }}</span>
-            <span class="zone-count">{{ zone.cardCount }}</span>
+            @if (zone.cardCount > 0) {
+              <img src="assets/images/card_back.jpg" alt="Extra Deck" class="card-art">
+            }
+          </div>
+        } @else if (zone.renderMode === 'pile-faceup') {
+          <div class="zone-pile"
+               [class.zone-pile--actionable]="actionableZoneIds().has(zone.zoneId)"
+               (click)="onZonePillClick(zone.zoneId, 0)">
+            @if (zone.card) {
+              <img [src]="getCardImageUrl(zone.card)"
+                   [alt]="zone.zoneId + ' top card'"
+                   class="card-art"
+                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+            }
           </div>
         } @else if (zone.card) {
           <div class="zone-card"

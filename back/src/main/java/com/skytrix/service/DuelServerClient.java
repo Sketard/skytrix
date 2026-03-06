@@ -22,7 +22,7 @@ public class DuelServerClient {
     private final String internalKey;
 
     public DuelServerClient(@Value("${duel-server.url}") String duelServerUrl,
-                            @Value("${DUEL_SERVER_INTERNAL_KEY:}") String internalKey) {
+                            @Value("${duel-server.internal-key:dev-internal-key}") String internalKey) {
         this.internalKey = internalKey;
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));

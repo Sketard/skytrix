@@ -27,6 +27,11 @@ import { ShortDeck } from '../../../core/model/short-deck';
         @if (activeSlot() === 'p2' && selectedId2() === null) {
           <p class="mirror-hint">(Miroir de P1)</p>
         }
+        <mat-button-toggle-group [value]="firstPlayer()" (change)="firstPlayer.set($event.value)"
+                                 class="slot-toggle first-toggle">
+          <mat-button-toggle value="p1">P1 1st</mat-button-toggle>
+          <mat-button-toggle value="p2">P2 1st</mat-button-toggle>
+        </mat-button-toggle-group>
       }
       @if (loading()) {
         <div class="picker-loading">
@@ -109,6 +114,7 @@ export class DeckPickerDialogComponent implements OnInit {
   readonly selectedId = signal<number | null>(null);
   readonly selectedId2 = signal<number | null>(null);
   readonly activeSlot = signal<'p1' | 'p2'>('p1');
+  readonly firstPlayer = signal<'p1' | 'p2'>('p1');
   readonly quickDuel = computed(() => this.data?.quickDuel ?? false);
 
   readonly activeSelectedId = computed(() =>
@@ -154,6 +160,7 @@ export class DeckPickerDialogComponent implements OnInit {
       this.dialogRef.close({
         decklistId1: id,
         decklistId2: this.selectedId2() ?? id,
+        firstPlayer: this.firstPlayer() === 'p1' ? 1 : 2,
       });
     } else {
       const name = this.decks().find(d => d.id === id)?.name ?? '';

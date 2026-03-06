@@ -26,6 +26,12 @@ export class PvpLpBadgeComponent {
   readonly flashType = signal<'damage' | 'recover' | null>(null);
   private rafId: number | null = null;
 
+  readonly isDanger = computed(() => {
+    const displayed = this._displayedLp();
+    const value = displayed ?? this.lp();
+    return value <= 2000;
+  });
+
   readonly formattedLp = computed(() => {
     const displayed = this._displayedLp();
     const value = displayed ?? this.lp();

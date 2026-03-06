@@ -7,8 +7,9 @@ import { LoaderService } from '../../services/loader.service';
 export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
   const loaderService = inject(LoaderService);
 
-  const isNotCardFetch = (req: HttpRequest<unknown>): boolean => {
-    return !req.url.includes('documents');
+  const isSilent = (req: HttpRequest<unknown>): boolean => {
+    return req.url.includes('documents')
+      || (req.method === 'GET' && /\/api\/rooms\/?$/.test(req.url));
   };
 
   const removeRequest = (req: HttpRequest<unknown>) => {
@@ -16,10 +17,10 @@ export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn
     if (i >= 0) {
       loaderService.requests.splice(i, 1);
     }
-    loaderService.isLoading.set(loaderService.requests.filter(req => isNotCardFetch(req)).length > 0);
+    loaderService.isLoading.set(loaderService.requests.filter(req => !isSilent(req)).length > 0);
   };
 
-  if (isNotCardFetch(req)) {
+  if (!isSilent(req)) {
     loaderService.requests.push(req);
     loaderService.isLoading.set(true);
   }

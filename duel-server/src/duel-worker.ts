@@ -82,25 +82,27 @@ function countersToRecord(counters?: Record<number, number>): Record<string, num
 }
 
 function decodePlaces(mask: number): PlaceOption[] {
+  // OCGCore field_mask: set bits = UNAVAILABLE zones. Invert to get selectable zones.
+  const available = ~mask;
   const places: PlaceOption[] = [];
   for (let p = 0; p <= 1; p++) {
     const offset = p * 16;
     for (let s = 0; s < 5; s++) {
-      if (mask & (1 << (offset + s)))
+      if (available & (1 << (offset + s)))
         places.push({ player: p as Player, location: LOCATION.MZONE, sequence: s });
     }
     for (let s = 0; s < 2; s++) {
-      if (mask & (1 << (offset + 5 + s)))
+      if (available & (1 << (offset + 5 + s)))
         places.push({ player: p as Player, location: LOCATION.MZONE, sequence: 5 + s });
     }
     for (let s = 0; s < 5; s++) {
-      if (mask & (1 << (offset + 8 + s)))
+      if (available & (1 << (offset + 8 + s)))
         places.push({ player: p as Player, location: LOCATION.SZONE, sequence: s });
     }
-    if (mask & (1 << (offset + 13)))
+    if (available & (1 << (offset + 13)))
       places.push({ player: p as Player, location: LOCATION.SZONE, sequence: 5 });
     for (let s = 0; s < 2; s++) {
-      if (mask & (1 << (offset + 14 + s)))
+      if (available & (1 << (offset + 14 + s)))
         places.push({ player: p as Player, location: LOCATION.SZONE, sequence: 6 + s });
     }
   }
@@ -426,33 +428,42 @@ function buildBoardState(): ServerMessage {
   if (!core || !duel) throw new Error('No active duel');
 
   const fieldState = core.duelQueryField(duel);
-  const flags = (OcgQueryFlags.CODE | OcgQueryFlags.POSITION |
-    OcgQueryFlags.OVERLAY_CARD | OcgQueryFlags.COUNTERS) as number;
+  // WASM bug workaround: combining multiple OcgQueryFlags in a single query
+  // returns null/corrupt data. Query each flag individually and merge results.
+  const FLAG_CODE = OcgQueryFlags.CODE as number;
+  const FLAG_POS = OcgQueryFlags.POSITION as number;
+  const FLAG_OVERLAY = OcgQueryFlags.OVERLAY_CARD as number;
+  const FLAG_COUNTERS = OcgQueryFlags.COUNTERS as number;
 
-  function queryCard(controller: 0 | 1, location: number, sequence: number): CardOnField | null {
-    const info = core!.duelQuery(duel!, {
-      flags, controller, location, sequence, overlaySequence: 0,
+  function queryCard(controller: 0 | 1, location: number, sequence: number, fieldPosition: number): CardOnField {
+    const codeInfo = core!.duelQuery(duel!, {
+      flags: FLAG_CODE, controller, location, sequence, overlaySequence: 0,
     } as never);
-    if (!info || info.code === undefined) return null;
+    const overlayInfo = core!.duelQuery(duel!, {
+      flags: FLAG_OVERLAY, controller, location, sequence, overlaySequence: 0,
+    } as never);
+    const counterInfo = core!.duelQuery(duel!, {
+      flags: FLAG_COUNTERS, controller, location, sequence, overlaySequence: 0,
+    } as never);
     return {
-      cardCode: info.code ?? null,
-      position: (info.position ?? POSITION.FACEDOWN_ATTACK) as Position,
-      overlayMaterials: info.overlayCards ?? [],
-      counters: countersToRecord(info.counters),
+      cardCode: codeInfo?.code ?? null,
+      position: fieldPosition as Position,
+      overlayMaterials: overlayInfo?.overlayCards ?? [],
+      counters: countersToRecord(counterInfo?.counters),
     };
   }
 
   function queryZone(controller: 0 | 1, location: number): CardOnField[] {
     const cards = core!.duelQueryLocation(duel!, {
-      flags, controller, location,
+      flags: FLAG_CODE, controller, location,
     } as never);
     return cards
       .filter((c): c is NonNullable<typeof c> => c != null && c.code !== undefined)
       .map(c => ({
         cardCode: c.code ?? null,
-        position: (c.position ?? POSITION.FACEUP_ATTACK) as Position,
-        overlayMaterials: c.overlayCards ?? [],
-        counters: countersToRecord(c.counters),
+        position: POSITION.FACEUP_ATTACK as Position,
+        overlayMaterials: [] as number[],
+        counters: {} as Record<string, number>,
       }));
   }
 
@@ -463,9 +474,8 @@ function buildBoardState(): ServerMessage {
     // Monster Zones M1-M5 (seq 0-4)
     for (let s = 0; s < 5; s++) {
       const cards: CardOnField[] = [];
-      if ((fp.monsters[s].position as number) !== 0) {
-        const card = queryCard(controller, OcgLocation.MZONE as number, s);
-        if (card) cards.push(card);
+      if (fp.monsters[s] && (fp.monsters[s].position as number) !== 0) {
+        cards.push(queryCard(controller, OcgLocation.MZONE as number, s, fp.monsters[s].position as number));
       }
       zones.push({ zoneId: MZONE_IDS[s], cards });
     }
@@ -474,8 +484,7 @@ function buildBoardState(): ServerMessage {
     for (const [s, zid] of [[5, 'EMZ_L' as ZoneId], [6, 'EMZ_R' as ZoneId]] as const) {
       const cards: CardOnField[] = [];
       if (fp.monsters[s] && (fp.monsters[s].position as number) !== 0) {
-        const card = queryCard(controller, OcgLocation.MZONE as number, s);
-        if (card) cards.push(card);
+        cards.push(queryCard(controller, OcgLocation.MZONE as number, s, fp.monsters[s].position as number));
       }
       zones.push({ zoneId: zid, cards });
     }
@@ -483,15 +492,12 @@ function buildBoardState(): ServerMessage {
     // Spell/Trap Zones S1-S5 (seq 0-4), with pendulum overlap
     for (let s = 0; s < 5; s++) {
       const cards: CardOnField[] = [];
-      if ((fp.spells[s].position as number) !== 0) {
-        const card = queryCard(controller, OcgLocation.SZONE as number, s);
-        if (card) cards.push(card);
+      if (fp.spells[s] && (fp.spells[s].position as number) !== 0) {
+        cards.push(queryCard(controller, OcgLocation.SZONE as number, s, fp.spells[s].position as number));
       } else if (s === 0 && fp.spells[6] && (fp.spells[6].position as number) !== 0) {
-        const card = queryCard(controller, OcgLocation.SZONE as number, 6);
-        if (card) cards.push(card);
+        cards.push(queryCard(controller, OcgLocation.SZONE as number, 6, fp.spells[6].position as number));
       } else if (s === 4 && fp.spells[7] && (fp.spells[7].position as number) !== 0) {
-        const card = queryCard(controller, OcgLocation.SZONE as number, 7);
-        if (card) cards.push(card);
+        cards.push(queryCard(controller, OcgLocation.SZONE as number, 7, fp.spells[7].position as number));
       }
       zones.push({ zoneId: SZONE_IDS[s], cards });
     }
@@ -499,9 +505,8 @@ function buildBoardState(): ServerMessage {
     // Field Zone (seq 5)
     {
       const cards: CardOnField[] = [];
-      if ((fp.spells[5].position as number) !== 0) {
-        const card = queryCard(controller, OcgLocation.SZONE as number, 5);
-        if (card) cards.push(card);
+      if (fp.spells[5] && (fp.spells[5].position as number) !== 0) {
+        cards.push(queryCard(controller, OcgLocation.SZONE as number, 5, fp.spells[5].position as number));
       }
       zones.push({ zoneId: 'FIELD', cards });
     }
@@ -511,6 +516,7 @@ function buildBoardState(): ServerMessage {
     zones.push({ zoneId: 'BANISHED', cards: queryZone(controller, OcgLocation.REMOVED as number) });
     zones.push({ zoneId: 'EXTRA', cards: queryZone(controller, OcgLocation.EXTRA as number) });
     zones.push({ zoneId: 'DECK', cards: [] });
+
     zones.push({ zoneId: 'HAND', cards: queryZone(controller, OcgLocation.HAND as number) });
 
     // TODO: Read LP from fieldState if available (fp.lp) to avoid manual tracking drift
@@ -606,6 +612,7 @@ function runDuelLoop(): void {
     clearTimeout(watchdog);
 
     const messages = core.duelGetMessage(duel);
+    console.log(`[DEBUG] duelProcess status=${status} messages=${messages.length} types=[${messages.map(m => m.type).join(',')}]`);
 
     for (const msg of messages) {
       // Track state for BOARD_STATE construction
@@ -755,9 +762,12 @@ port.on('message', (msg: MainToWorkerMessage) => {
       return;
     }
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
+    console.log(`[DEBUG] PLAYER_RESPONSE promptType=${msg.promptType} response=`, JSON.stringify(response));
     if (response) {
       core.duelSetResponse(duel, response as never);
       runDuelLoop();
+    } else {
+      console.error(`[DEBUG] transformResponse returned null for promptType=${msg.promptType}`);
     }
   }
 });

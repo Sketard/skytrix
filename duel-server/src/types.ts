@@ -11,7 +11,8 @@ export const WATCHDOG_TIMEOUT_MS = 30_000;
 export const RPS_TIMEOUT_MS = 30_000;
 export const TURN_TIME_POOL_MS = 300_000;
 export const TURN_TIME_INCREMENT_MS = 40_000;
-export const INACTIVITY_TIMEOUT_MS = 100_000;
+export const INACTIVITY_TIMEOUT_MS = 120_000;
+export const INACTIVITY_WARNING_BEFORE_MS = 20_000;
 export const INACTIVITY_RACE_WINDOW_MS = 500;
 export const BOTH_DISCONNECTED_CLEANUP_MS = 4 * 60 * 60 * 1000; // 4 hours
 export const STATE_SYNC_RATE_LIMIT_MS = 5_000;
@@ -95,6 +96,7 @@ export interface PlayerSession {
   // Per-player timers (M1 consolidation — formerly standalone Maps)
   gracePeriodTimer: ReturnType<typeof setTimeout> | null;
   inactivityTimer: ReturnType<typeof setTimeout> | null;
+  warningTimer: ReturnType<typeof setTimeout> | null;
   raceWindowTimer: ReturnType<typeof setTimeout> | null;
 }
 

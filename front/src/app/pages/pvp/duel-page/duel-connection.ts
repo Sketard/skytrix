@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
 import type { ChainingMsg } from '../duel-ws.types';
-import { AnnounceCardMsg, DuelEndMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -21,6 +21,7 @@ export class DuelConnection {
   private _rpsInProgress = signal(false);
   private _rematchState = signal<'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired'>('idle');
   private _rematchStarting = signal(false);
+  private _inactivityWarning = signal<InactivityWarningMsg | null>(null);
 
   readonly duelState = this._duelState.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
@@ -35,6 +36,7 @@ export class DuelConnection {
   readonly rpsInProgress = this._rpsInProgress.asReadonly();
   readonly rematchState = this._rematchState.asReadonly();
   readonly rematchStarting = this._rematchStarting.asReadonly();
+  readonly inactivityWarning = this._inactivityWarning.asReadonly();
 
   // --- Reconnect state ---
   private _retryCount = signal(0);
@@ -64,6 +66,10 @@ export class DuelConnection {
   // --- Public API ---
 
   connect(wsToken: string): void {
+    if (this._autoReconnect) {
+      const stored = sessionStorage.getItem('duel-reconnect-token');
+      if (stored) this.reconnectToken = stored;
+    }
     this.wsToken = wsToken;
     this._retryCount.set(0);
     this.openConnection();
@@ -73,7 +79,13 @@ export class DuelConnection {
     if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
       this.onResponse?.(promptType, data);
       this._pendingPrompt.set(null);
+      this._inactivityWarning.set(null);
     }
+  }
+
+  sendActivityPing(): void {
+    this.safeSend({ type: 'ACTIVITY_PING' });
+    this._inactivityWarning.set(null);
   }
 
   clearRpsResult(): void {
@@ -188,10 +200,16 @@ export class DuelConnection {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       if (this.connectionTimeout) {
         clearTimeout(this.connectionTimeout);
         this.connectionTimeout = null;
+      }
+      if (event.code === 4001) {
+        this.reconnectToken = null;
+        try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
+        this._connectionStatus.set('lost');
+        return;
       }
       if (this._connectionStatus() !== 'lost') {
         this.handleReconnect();
@@ -266,12 +284,18 @@ export class DuelConnection {
         this._timerState.set(message);
         break;
 
+      case 'INACTIVITY_WARNING':
+        this._inactivityWarning.set(message);
+        break;
+
       case 'DUEL_END':
         this._pendingPrompt.set(null);
+        this._inactivityWarning.set(null);
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
         this._activeChainLinks.set([]);
         this._animationQueue.set([]);
+        try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
         break;
 
       case 'REMATCH_INVITATION':
@@ -303,6 +327,9 @@ export class DuelConnection {
 
       case 'SESSION_TOKEN':
         this.reconnectToken = (message as SessionTokenMsg).token;
+        if (this._autoReconnect) {
+          try { sessionStorage.setItem('duel-reconnect-token', this.reconnectToken); } catch {}
+        }
         break;
 
       case 'MSG_CHAINING': {

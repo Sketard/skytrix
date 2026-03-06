@@ -22,9 +22,22 @@ export class PvpHandRowComponent {
   readonly overlapMargin = computed(() => {
     const count = this.cards().length;
     if (count < 6) return 0;
-    // -16px base overlap, increasing by -4px per additional card beyond 6
     return -16 - (count - 6) * 4;
   });
+
+  private readonly FAN_MAX_ANGLE = 4;
+  private readonly FAN_MAX_Y = 8;
+
+  fanTransform(index: number): string {
+    const count = this.cards().length;
+    if (count <= 1) return '';
+    const t = (index - (count - 1) / 2) / ((count - 1) / 2);
+    const angle = t * this.FAN_MAX_ANGLE;
+    const yOffset = Math.abs(t) * this.FAN_MAX_Y;
+    const isPlayer = this.side() === 'player';
+    const y = isPlayer ? yOffset : -yOffset;
+    return `rotate(${angle}deg) translateY(${y}px)`;
+  }
 
   readonly getCardImageUrl = getCardImageUrl;
 
