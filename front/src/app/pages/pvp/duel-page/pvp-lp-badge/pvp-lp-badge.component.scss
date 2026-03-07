@@ -1,0 +1,88 @@
+:host {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+// Player LP: bottom-left (near Extra Deck)
+:host-context(.player-field) {
+  bottom: 4px;
+  left: 4px;
+}
+
+// Opponent LP: top-left (near their Deck, from player's view)
+:host-context(.opponent-field) {
+  top: 4px;
+  left: 4px;
+}
+
+.lp-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.lp-value {
+  font-size: var(--pvp-lp-font-size);
+  font-weight: 700;
+  color: #eee;
+  line-height: 1;
+}
+
+.lp-badge--player .lp-value {
+  color: var(--pvp-lp-own);
+}
+
+.lp-badge--opponent .lp-value {
+  color: var(--pvp-lp-opponent);
+}
+
+// Danger overrides both player and opponent colors
+.lp-badge--danger .lp-value {
+  color: var(--pvp-lp-danger);
+}
+
+// === LP Animation Flash (Story 4.2) ===
+// [Review M2/M3/M4 fix] Flash targets text color + text-shadow (not background),
+// uses design tokens for colors, --pvp-transition-highlight-flash for duration (200ms)
+.lp-flash-damage .lp-value {
+  animation: lp-damage-flash var(--pvp-transition-highlight-flash);
+}
+
+.lp-flash-recover .lp-value {
+  animation: lp-recover-flash var(--pvp-transition-highlight-flash);
+}
+
+@keyframes lp-damage-flash {
+  0%, 100% { color: inherit; text-shadow: none; }
+  50% { color: var(--pvp-lp-danger); text-shadow: 0 0 8px var(--pvp-lp-danger); }
+}
+
+@keyframes lp-recover-flash {
+  0%, 100% { color: inherit; text-shadow: none; }
+  50% { color: var(--pvp-lp-own); text-shadow: 0 0 8px var(--pvp-lp-own); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-flash-damage .lp-value,
+  .lp-flash-recover .lp-value {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .lp-badge {
+    border: 1px solid ButtonText;
+    background: Canvas;
+  }
+
+  .lp-value {
+    color: CanvasText;
+  }
+}

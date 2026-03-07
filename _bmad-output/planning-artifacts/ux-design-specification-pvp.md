@@ -44,7 +44,7 @@ MVP scope: PvP between friends (trusted players) in 3 incremental sub-phases —
 
 1. **Mobile-First Board with CSS 3D Perspective** — The PvP board displays two complete player fields (2× 18 zones = 36 zones) plus LP, timer, phase indicator, and prompt UI — all on a mobile landscape viewport (~844×390px). Master Duel uses Unity 3D perspective to compress the opponent's far field. skytrix achieves the same effect with CSS `perspective` + `transform: rotateX()` on the board container (~10 lines of CSS). The opponent's field naturally foreshortens (appears smaller/recessed) while the player's own field (bottom, closest to "camera") stays full-size and thumb-friendly. This is feasible because PvP is click-based — no CDK DragDrop compatibility concern inside a CSS perspective transform. The solo simulator remains 2D flat (drag & drop). **CSS perspective is PvP-A scope (structural layout decision), not PvP-C polish** — without it, the board is unusable on mobile (Dueling Nexus lesson). **Perspective Container Rule:** Only board zones (the two player fields) live inside the CSS perspective container. Player hand, prompts, card inspector, timer badge, and phase badge are all fixed-position overlays OUTSIDE the perspective. LP badges are the exception — they live INSIDE the perspective container (projected via `ng-content` into `PlayerFieldComponent` for grid alignment) but are styled to remain readable despite the 3D transform — they must remain flat, readable, and thumb-accessible regardless of the 3D transform.
 
-2. **Touch-First Prompt UX for 20 SELECT_\* Types** — OCGCore sends ~20 distinct prompt types requiring ~8-10 UI components: card grid selection, yes/no dialogs, zone highlight, position picker, option lists, ordering interfaces, declaration pickers, counters, phase action menus, and RPS. All must be designed first for touch interaction on mobile: 44px+ touch targets, thumb-reachable positioning, readable card art at small sizes. MSG_HINT context (which effect is asking) must be displayed without consuming precious screen space. Desktop adapts the mobile-first layout, not the reverse. **Bottom-Sheet Pattern:** Prompts use a bottom-sheet sliding up from the screen bottom (same component pattern as the deck builder's `app-bottom-sheet`). The board remains visible above the sheet, preserving spatial context while keeping all interactive elements in the thumb zone.
+2. **Touch-First Prompt UX for 20 SELECT_\* Types** — OCGCore sends ~20 distinct prompt types requiring ~8-10 UI components: card grid selection, yes/no dialogs, zone highlight, position picker, option lists, ordering interfaces, declaration pickers, counters, phase action menus, and RPS. All must be designed first for touch interaction on mobile: 44px+ touch targets, thumb-reachable positioning, readable card art at small sizes. MSG_HINT context (which effect is asking) must be displayed without consuming precious screen space. Desktop adapts the mobile-first layout, not the reverse. **Floating Dialog Pattern:** Prompts use a centered floating dialog (50% viewport width) overlaid on the board — matching Master Duel's compact prompt style. The board remains fully visible around the dialog, preserving spatial context. On desktop, right-click anywhere dismisses/cancels the active prompt.
 
 3. **Two Interaction Paradigms in One App** — Solo = drag & drop (player is master, full manual control, desktop-first, 2D flat board). PvP = click-based prompts (engine dictates, player responds, mobile-first, CSS 3D perspective board). Same visual components (zones, cards, inspector), completely different interaction handlers, platform priorities, and board rendering. The player must never feel confused about which mode they're in. **No pills in PvP — distributed actions instead:** The solo simulator's pill system (contextual action buttons) is replaced by engine-driven action distribution. During `SELECT_IDLECMD`, cards with available actions glow on the field; GY/Banished/Extra Deck zone browsers highlight actionable cards. The engine controls all legal actions — the UI maps them spatially rather than presenting action menus per zone.
 
@@ -86,8 +86,8 @@ Comparative Analysis Matrix evaluating Master Duel, EDOPro, and Dueling Nexus ac
 | **PvP board desktop** (`simulateur_masterduel_desktop.jpg`) | Same layout as mobile but with more space. LP in corners (bottom-left you, top-right opponent) with player name. Card inspector panel on left with full card details. Timer badge center-left. Phase badge center-right. |
 | **Chain visualization** (`master_duel_chain.jpg`) | Numbered chain link badges (blue) on each card in the chain. Physical chain animation connecting cards. Currently resolving card enlarged/highlighted at center. Chain resolution is sequential — each link resolves with visual emphasis before the next. |
 | **Duel result screen** (`master_duel_result.jpg`) | Large stylized "VICTORY" title centered in gold. Win reason subtitle ("Time limit win"). Both player profiles displayed below with icons. Single "OK" button to dismiss. Board visible but blurred behind the overlay. Clean, minimal. |
-| **Chain prompt / effect choice** (`events_choice_master_duel.PNG`) | Bottom-sheet dialog anchored center-bottom. Blue banner with contextual text: card name + "Chain another card or effect?". Selectable cards displayed with visible art at readable size. Two action buttons: "Cancel" (left) and "Effect Activation" (right). Board 3D perspective visible above the prompt — spatial context preserved. Chain link animation (blue) visible on the board behind the sheet. Timer (285s) and phase badge (Main 1) remain visible. Validates the bottom-sheet prompt pattern for skytrix PvP. |
-| **Optional effect prompt (CAN)** (`can_master_duel.PNG`) | Yes/No dialog centered on screen for optional effect activation (SELECT_YESNO). Contextual text: "Add the designated card(s) from the Deck to your hand?" with keywords color-highlighted (card(s), Deck, hand). Two large touch-friendly buttons: "NO" (left) / "YES" (right). Board 3D perspective, player's hand, timer (295s), phase (Main 1), LP all remain visible behind dialog. Activation toggle (ON) bottom-right. Demonstrates the simplest prompt pattern — binary choice with clear contextual text. |
+| **Chain prompt / effect choice** (`events_choice_master_duel.PNG`) | Centered floating dialog on board. Blue banner with contextual text: card name + "Chain another card or effect?". Selectable cards displayed with visible art at readable size. Two action buttons: "Cancel" (left) and "Effect Activation" (right). Board 3D perspective visible around the dialog — spatial context fully preserved. Chain link animation (blue) visible on the board behind the dialog. Timer (285s) and phase badge (Main 1) remain visible. Validates the floating dialog prompt pattern for skytrix PvP. |
+| **Optional effect prompt (CAN)** (`can_master_duel.PNG`) | Yes/No floating dialog centered on board for optional effect activation (SELECT_YESNO). Contextual text: "Add the designated card(s) from the Deck to your hand?" with keywords color-highlighted (card(s), Deck, hand). Two large touch-friendly buttons: "NO" (left) / "YES" (right). No card art — text + buttons only. Board 3D perspective, player's hand, timer (295s), phase (Main 1), LP all remain fully visible around dialog. Activation toggle (ON) bottom-right. Demonstrates the simplest prompt pattern — binary choice with clear contextual text. |
 
 ## Core User Experience
 
@@ -112,7 +112,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 ### Effortless Interactions
 
 1. **Read opponent's card** — Tap any card on board → inspector appears instantly. The player deciding whether to activate a handtrap needs to read the opponent's effect NOW, not after a loading delay. Inspector is the #1 PvP component
-2. **Respond to a prompt** — Bottom-sheet already in thumb zone, contextual text + card art visible, 1-2 taps to confirm. No scrolling, no menu navigation
+2. **Respond to a prompt** — Floating dialog centered on board, contextual text visible, 1-2 taps to confirm. No scrolling, no menu navigation. Desktop: right-click = cancel
 3. **Create a duel** — Decklist page → "Duel PvP" button → room code generated → share via any app → opponent joins → duel starts. 3 taps, <30 seconds
 4. **Skip irrelevant prompts** — Activation toggle (Auto/On/Off, like Master Duel) lets the engine auto-decline optional effects the player doesn't care about. Reduces prompt fatigue during opponent's turn
 5. **First normal summon** — Select monster from hand, choose zone on board, monster appears. The "hello world" of PvP — if this feels natural, everything else follows
@@ -126,7 +126,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 
 ### Experience Principles
 
-1. **Thumb Zone Always** — No interaction requires moving the hand on mobile. Prompts as bottom-sheet, inspector via tap, phase actions anchored bottom. The player's thumb never leaves the comfort zone. This is the physical prerequisite — if the player can't reach it, nothing else matters
+1. **Thumb Zone Always** — No interaction requires moving the hand on mobile. Prompts as centered floating dialog, inspector via tap, phase actions anchored bottom. The player's thumb never leaves the comfort zone. This is the physical prerequisite — if the player can't reach it, nothing else matters
 2. **Prompt First** — The entire experience is prompt-driven. Every prompt must be comprehensible in <2s with full context (MSG_HINT + card name + inspector accessible). Prompt clarity is the product
 3. **Board is Contextual Display** — The PvP board is primarily a read-only 3D contextual display the player consults visually while responding to prompts at the bottom. The exception: during SELECT_PLACE prompts, board zones become active tap targets with highlight feedback. Tap any card to inspect, tap highlighted zones to select — nothing more
 4. **Speed Over Polish** — EDOPro speed first, Master Duel polish second. Never blocking. An unanswered prompt = timer ticking. The UX must be fast, not pretty. The animation queue exists from PvP-A (with no-op instant slots) so PvP-C can fill in visual polish without structural changes
@@ -146,7 +146,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 | Lobby / pre-duel | **Positive impatience** — "I can't wait to test this deck" | 3-tap lobby, <30s to duel |
 | First turns | **Growing confidence** — "the UI is clear, I understand" | Readable prompts, accessible inspector |
 | Mid-game (chains) | **Tension + flow** — "I'm in the match" | Sequential chain viz, timer visible but not oppressive |
-| Handtrap moment | **Decision rush** — "now!" | Inspector read, bottom-sheet prompt, 1 tap to activate |
+| Handtrap moment | **Decision rush** — "now!" | Inspector read, floating dialog prompt, 1 tap to activate |
 | Chain resolution | **Satisfaction** — "it worked as planned" | Clear visual feedback of resolution |
 | End of match | **Clean closure** — victory = pride, defeat = "I want a rematch" | VICTORY/DEFEAT + reason + easy rematch |
 | Disconnection/error | **No panic** — "nothing is lost" | Auto-reconnect, state preserved |
@@ -174,20 +174,20 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 
 | Product | What It Does Well | Pattern to Take |
 |---------|------------------|----------------|
-| **Master Duel** | Board 3D perspective mobile, contextual prompts (card art + text + buttons), chain viz (numbered links), activation toggle, duel result screen | Complete PvP board layout, bottom-sheet prompts, Auto/On/Off toggle, result screen |
+| **Master Duel** | Board 3D perspective mobile, contextual prompts (text + buttons in floating dialog), chain viz (numbered links), activation toggle, duel result screen | Complete PvP board layout, floating dialog prompts, Auto/On/Off toggle, result screen |
 | **EDOPro** | Speed (0 blocking), exhaustive prompt coverage (all SELECT_* supported), no fluff | Speed target (<200ms), full 20 prompt type coverage, queue architecture with no-op animation slots |
 | **Dueling Nexus** | Ultra-simple lobby (web-native, room code, join in 1 click), no client install | 3-tap lobby flow, room code sharing, zero friction |
-| **Discord mobile** (cross-domain) | Bottom-sheet action menus, long-press context menus, thumb-reachable navigation | Bottom-sheet as primary mobile interaction pattern, long-press for inspector |
+| **Discord mobile** (cross-domain) | Bottom-sheet action menus, long-press context menus, thumb-reachable navigation | Long-press for inspector |
 | **Chess.com mobile** (cross-domain) | Dual timer (2 players), board flip perspective, move confirmation, rematch button | Dual LP + timer display pattern, result + rematch in 1 tap |
 
 ### Transferable UX Patterns
 
-1. **Bottom-Sheet Prompt (Master Duel + Discord)** — Prompt dialog slides up from bottom. Board visible above. Action buttons in thumb zone. Dismiss by tap outside or "Cancel". Universal mobile-first pattern — no reinvention needed
+1. **Floating Dialog Prompt (Master Duel)** — Centered floating dialog on the board (50% viewport width). Board fully visible around it. Action buttons inside dialog. Cancel via button or right-click (desktop). Compact, minimal board occlusion — Master Duel's proven pattern
 2. **Activation Toggle (Master Duel)** — Auto/On/Off toggle persistent on screen (bottom-right, inside mini-toolbar with surrender — thumb zone). Reduces prompt fatigue by 60-80% during opponent's turn. Critical for flow. **See §Activation Toggle Semantics below for full behavioral definition**
 3. **Numbered Chain Links (Master Duel)** — Numbered badge on each card in the chain. Sequential resolution with highlight. The player sees progression without reading text
 4. **Room Code Lobby (Dueling Nexus)** — Create room → code 4-6 chars → copy/share → opponent pastes code → duel. The simplest lobby pattern that exists on web
 5. **Dual Timer Display (Chess.com)** — Both timers (or LP in our case) visible simultaneously, positioned symmetrically. Player compares at a glance
-6. **Inspector + Prompt Coexistence** — Inspector and active prompt must coexist on screen simultaneously. Tapping a board card opens inspector as an overlay (full variant ≥768px, compact variant <768px) WITHOUT dismissing the current prompt. The player needs to read opponent's effects while a SELECT_CARD prompt is active — this is the handtrap decision moment. On mobile with active prompt: inspector enters compact mode (card art miniature + name + type + ATK/DEF only). Tap compact inspector to expand (temporarily hides prompt context, not the prompt itself)
+6. **Inspector + Prompt Coexistence** — Inspector and active prompt must coexist on screen simultaneously. Tapping a board card opens inspector as an overlay (full variant ≥768px, compact variant <768px) WITHOUT dismissing the current prompt. The player needs to read opponent's effects while a SELECT_CARD prompt is active — this is the handtrap decision moment. On mobile with active prompt: inspector enters compact mode (card art miniature + name + type + ATK/DEF only). Tap compact inspector to expand (temporarily hides prompt dialog, not dismisses it)
 7. **Player Hand as Simple Row** — Hand displayed as a simple row of cards at screen bottom, always visible, outside the CSS perspective container. At 6+ cards, cards overlap (fan overlap like Master Duel). Tap to select, prompt confirms the action. No hidden hand, no swipe-to-reveal — the hand is always accessible
 
 ### Activation Toggle Semantics
@@ -226,7 +226,7 @@ The activation toggle is a **client-side-only** UI control (no server interactio
 | **Adopt** | Master Duel activation toggle | Auto/On/Off, bottom-right (mini-toolbar, thumb zone) | PvP-A |
 | **Adopt** | Dueling Nexus lobby simplicity | Room code, 3-tap flow | PvP-B |
 | **Adapt** | Master Duel chain viz | Numbered links but condensed timing (<200ms/link vs ~2s) | PvP-A (no-op) → PvP-C (animated) |
-| **Adapt** | Master Duel prompts | Bottom-sheet pattern ENRICHED with MSG_HINT context | PvP-A |
+| **Adopt** | Master Duel floating dialog prompts | Centered floating dialog (50% viewport width) with MSG_HINT context. Right-click = cancel on desktop | PvP-A |
 | **Adapt** | Chess.com dual timer | Dual LP + timer display, adapted to YGO format | PvP-A |
 | **Surpass** | EDOPro prompt coverage | Same exhaustiveness (20 types) but with mobile-first UI | PvP-A |
 | **Surpass** | All competitors | Inspector + prompt coexistence — no competitor does this well on mobile | PvP-A |
@@ -240,7 +240,7 @@ The activation toggle is a **client-side-only** UI control (no server interactio
 
 | Risk | What Goes Wrong | Preventive Measure | Phase |
 |------|----------------|-------------------|-------|
-| **Inspector + prompt too cramped on mobile** | Bottom-sheet (40% height) + inspector overlay (40% width) = only 36% of board visible. Player closes inspector every time → can't read effects during prompts | Inspector compact mode when prompt is active: card art mini + name + type + ATK/DEF (1 line). Tap to expand. Desktop: no issue (full overlay + prompt coexist) | PvP-A |
+| **Inspector + prompt too cramped on mobile** | Floating dialog (centered) + inspector overlay = reduced board visibility. Player closes inspector every time → can't read effects during prompts | Inspector compact mode when prompt is active: card art mini + name + type + ATK/DEF (1 line). Tap to expand. Desktop: no issue (full overlay + prompt coexist). Floating dialog mitigates: only ~15-25% board occlusion vs ~40-55% with bottom sheet | PvP-A |
 | **CSS perspective breaks on mid-range devices** | Samsung Galaxy A-series (60% Android mid-range): flickering, non-clickable zones, 15fps rendering | Flat mode fallback (2D without perspective, smaller but functional zones). Test on 3 target devices (iPhone SE, Galaxy A-series, Pixel). Perspective is progressive enhancement, not hard requirement | PvP-A |
 | **Zero feedback = incomprehension** | Cards appear/disappear instantly, LP changes without transition. Player doesn't understand what just happened. "Speed Over Polish" misinterpreted as "zero visual feedback" | Minimum viable CSS transitions from PvP-A: highlight flash on acting card (~100ms), card slide to target zone (~150ms), LP counter decount (~200ms). Distinction: animation = skippable cinematic (PvP-C), transition = instant state feedback (PvP-A) | PvP-A |
 | **Room lost after app switch on mobile** | Player creates room, switches to Discord to share code. Browser kills background tab after 30s. Room lost | Deep link (`skytrix.app/pvp/XXXX`) + Web Share API native share sheet. WebSocket keep-alive ping for backgrounded tabs | PvP-B |
@@ -262,7 +262,7 @@ PvP tokens are namespaced as `--pvp-*` within the existing `_design-tokens.scss`
 | Extension | Token(s) | Description |
 |-----------|----------|-------------|
 | **CSS 3D Perspective** | `--pvp-perspective-depth`, `--pvp-rotate-x-angle`, `--pvp-field-gap` | Board perspective values, tunable without code changes |
-| **Prompt bottom-sheet** | `--pvp-prompt-sheet-max-height`, `--pvp-prompt-sheet-bg`, `--pvp-prompt-sheet-radius` | Bottom-sheet sizing consistent across all prompt types |
+| **Floating prompt dialog** | `--pvp-prompt-dialog-width`, `--pvp-prompt-dialog-bg`, `--pvp-prompt-dialog-radius` | Floating dialog sizing consistent across all prompt types |
 | **Badge overlays** | `--pvp-lp-font-size`, `--pvp-timer-font-size`, `--pvp-phase-badge-font-size` | LP, timer, and phase badge sizing for mobile readability |
 | **Card highlight states** | `--pvp-highlight-selectable`, `--pvp-highlight-selected`, `--pvp-highlight-chain-link` | Zone/card highlight colors for prompt interaction feedback |
 | **Timer color states** | `--pvp-timer-green` (>120s), `--pvp-timer-yellow` (≤60s), `--pvp-timer-red` (≤30s) | Progressive urgency without aggressive flashing |
@@ -273,7 +273,7 @@ PvP tokens are namespaced as `--pvp-*` within the existing `_design-tokens.scss`
 
 1. **No new dependencies** — PvP uses Angular Material, CDK overlays, and standard CSS. No Three.js, no animation libraries, no new packages
 2. **Shared component library** — Card rendering, card inspector, zone components are shared between solo and PvP via `PlayerFieldComponent` extraction (architecture Story 0). **Story 0 is a blocking prerequisite** — without it, PvP cannot reuse zone components and would require duplication, doubling maintenance
-3. **PvP-specific components** — Prompt sheet, badge overlays (LP/timer/phase), activation toggle, chain link badges, duel result overlay. These are PvP-only Angular components
+3. **PvP-specific components** — Prompt dialog, badge overlays (LP/timer/phase), activation toggle, chain link badges, duel result overlay. These are PvP-only Angular components
 4. **Design tokens in CSS custom properties** — All PvP-specific values as `--pvp-*` custom properties in the `// === PvP tokens ===` section of `_design-tokens.scss`
 
 ### Customization Strategy
@@ -321,7 +321,7 @@ The PvP experience has two defining moments: the social entry (share a room code
 
 **Only one novel pattern**: Inspector + prompt coexistence on mobile. No competitor (Master Duel, EDOPro, Dueling Nexus) allows reading a card's full details while an interactive prompt is active on mobile. This is skytrix's primary UX differentiator for PvP.
 
-All other patterns are established (bottom-sheet, activation toggle, numbered chain links, room code lobby, dual timer/LP) — adopted or adapted from proven products.
+All other patterns are established (floating dialog prompts, activation toggle, numbered chain links, room code lobby, dual timer/LP) — adopted or adapted from proven products.
 
 ### 2.5 Experience Mechanics
 
@@ -377,7 +377,7 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 | `--pvp-timer-green` | `#4caf50` | Timer text — comfortable time remaining (>120s) | ~5.6:1 (AA) | Locked |
 | `--pvp-timer-yellow` | `#ff9800` | Timer text — ≤60s remaining | ~6.4:1 (AA) | Locked |
 | `--pvp-timer-red` | `#f44336` | Timer text — ≤30s remaining (no flashing, color only) | ~5.1:1 (AA) | Locked |
-| `--pvp-prompt-sheet-bg` | `rgba(15, 23, 42, 0.95)` | Bottom-sheet prompt background (near-opaque dark) | N/A (surface) | Tunable |
+| `--pvp-prompt-dialog-bg` | `rgba(15, 23, 42, 0.92)` | Floating dialog prompt background (semi-transparent dark) | N/A (surface) | Tunable |
 | `--pvp-prompt-btn-primary` | `#4a90d9` | Positive action buttons (Activate, Yes) | ~5.2:1 (AA) | Locked |
 | `--pvp-prompt-btn-cancel` | `rgba(148, 163, 184, 0.3)` | Cancel/No buttons | N/A (surface) | Tunable |
 | `--pvp-lp-own` | `#f1f5f9` | Own LP display (primary text) | ~15.4:1 (AAA) | Locked |
@@ -394,7 +394,7 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 | LP display | `clamp(1rem, 4dvh, 1.5rem)` | 700 | Life points — readable at glance, scales with viewport |
 | Timer display | `clamp(0.875rem, 3dvh, 1.125rem)` | 600 | Turn timer — visible but not dominant |
 | Phase badge | `0.75rem` | 600 | Phase badge (Draw, Standby, Main 1...) — uppercase |
-| Prompt context (MSG_HINT) | `0.875rem` | 400 | Effect description in bottom-sheet — body text size |
+| Prompt context (MSG_HINT) | `0.875rem` | 400 | Effect description in floating dialog — body text size |
 | Prompt card name | `0.9375rem` | 600 | Card name in prompt — slightly larger than body |
 | Prompt action button | `0.875rem` | 500 | "Yes" / "No" / "Activate" / "Cancel" buttons |
 | Chain link badge | `0.75rem` | 700 | Numbered chain badge on cards (bold, white on blue) |
@@ -415,9 +415,8 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 | `--pvp-perspective-depth` | `800px` | CSS `perspective` on board container. Initial value — to be calibrated during PvP-A on target devices (iPhone SE, Galaxy A-series, Pixel) | Tunable |
 | `--pvp-rotate-x-angle` | `15deg` | CSS `rotateX()` on board. Initial value — to be calibrated | Tunable |
 | `--pvp-field-gap` | `0.25rem` | Gap between player and opponent fields | Tunable |
-| `--pvp-prompt-sheet-compact` | `clamp(60px, 20dvh, 100px)` | Compact sheet for YES/NO, SELECT_POSITION, SELECT_EFFECTYN | Tunable |
-| `--pvp-prompt-sheet-max-height` | `max-height: 55dvh` | Absolute ceiling for full sheet (SELECT_CARD, option lists). Sub-component `preferredHeight` determines actual height within this cap | Tunable |
-| `--pvp-prompt-sheet-radius` | `1rem 1rem 0 0` | Top corners rounded, flush with bottom | Tunable |
+| `--pvp-prompt-dialog-width` | `50dvw` | Floating dialog width — 50% viewport on all breakpoints (Master Duel compact style) | Tunable |
+| `--pvp-prompt-dialog-radius` | `0.75rem` | All corners rounded (floating, not anchored to edge) | Tunable |
 | `--pvp-lp-font-size` | `clamp(1rem, 4dvh, 1.5rem)` | LP text size (matches typography table) | Locked |
 | `--pvp-timer-font-size` | `clamp(0.875rem, 3dvh, 1.125rem)` | Timer text size | Locked |
 | `--pvp-phase-badge-font-size` | `0.75rem` | Phase badge text size | Tunable |
@@ -432,9 +431,9 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 **Layout Principles (PvP):**
 1. **CSS 3D perspective container** — Board zones (2 player fields) inside perspective. Hand, prompts, badges, inspector OUTSIDE (flat, readable, thumb-accessible)
 2. **Mobile landscape primary viewport** — ~844×390px. All layout decisions validated against this minimum. On viewports <360px height, board visibility during prompt+inspector coexistence is ~60% — acceptable because the board is read-only context during prompts, not an interaction target
-3. **Bottom-sheet prompt anchoring** — Prompts slide up from bottom. Two variants: compact (YES/NO) and full (card grids). Board remains visible above
+3. **Floating dialog centering** — Prompts appear as centered floating dialogs (50% viewport width) overlaid on the board. Two content variants: minimal (YES/NO text + buttons) and rich (card strip + buttons). Board fully visible around the dialog
 4. **Badge overlay positioning** — LP badges inside player fields (via `ng-content`), timer in central strip, phase badge in central strip. All edge-positioned overlay elements use `padding: max(8px, env(safe-area-inset-*, 8px))` to avoid camera cutout occlusion on modern phones
-5. **Hand row outside perspective** — Simple card row at screen bottom, native size (not perspective-distorted). Cards overlap at 6+. Hand remains visible above bottom-sheet when prompt is active
+5. **Hand row outside perspective** — Simple card row at screen bottom, native size (not perspective-distorted). Cards overlap at 6+. Hand remains visible behind floating dialog when prompt is active
 
 ### Accessibility Considerations
 
@@ -460,8 +459,8 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 |-----------|-------------|-------|
 | **Perspective tap targets** | All board zones must remain tappable through CSS perspective transform on all target browsers (Chrome, Safari, Samsung Internet) | PvP-A |
 | **Perspective z-fighting** | No visual flickering between overlapping surfaces inside the perspective container | PvP-A |
-| **Bottom-sheet + hand coexistence** | Player hand must remain visible and interactive when a prompt bottom-sheet is active | PvP-A |
-| **Bottom-sheet scroll on iOS** | Scrollable content inside bottom-sheet must scroll fluidly on iOS Safari | PvP-A |
+| **Dialog + hand coexistence** | Player hand must remain visible when a floating prompt dialog is active (dialog centered on board, hand at bottom edge) | PvP-A |
+| **Dialog scroll on iOS** | Scrollable content inside floating dialog (card strip horizontal scroll) must scroll fluidly on iOS Safari | PvP-A |
 | **Badge vs chain link overlap** | LP/timer badges must never visually overlap with chain link badges (inside perspective) | PvP-A |
 | **Timer readability** | Timer text must remain readable regardless of board card artwork behind it (background pill required) | PvP-A |
 | **Chain badge min size** | Chain link badge number must remain readable on opponent's foreshortened cards (minimum 20px) | PvP-A |
@@ -508,10 +507,9 @@ Consolidated reference of all `--pvp-*` tokens for developer implementation:
 | `--pvp-phase-badge-font-size` | `0.75rem` | typography | Tunable |
 | `--pvp-prompt-btn-cancel` | `rgba(148, 163, 184, 0.3)` | color | Tunable |
 | `--pvp-prompt-btn-primary` | `#4a90d9` | color | Locked |
-| `--pvp-prompt-sheet-bg` | `rgba(15, 23, 42, 0.95)` | color | Tunable |
-| `--pvp-prompt-sheet-compact` | `clamp(60px, 20dvh, 100px)` | layout | Tunable |
-| `--pvp-prompt-sheet-max-height` | `55dvh` | layout | Tunable |
-| `--pvp-prompt-sheet-radius` | `1rem 1rem 0 0` | layout | Tunable |
+| `--pvp-prompt-dialog-bg` | `rgba(15, 23, 42, 0.92)` | color | Tunable |
+| `--pvp-prompt-dialog-width` | `50dvw` | layout | Tunable |
+| `--pvp-prompt-dialog-radius` | `0.75rem` | layout | Tunable |
 | `--pvp-rotate-x-angle` | `15deg` | layout | Tunable |
 | `--pvp-selection-glow` | `0 0 8px 2px var(--pvp-accent)` + `scale(1.05)` | interaction | Tunable |
 | `--pvp-timer-font-size` | `clamp(0.875rem, 3dvh, 1.125rem)` | typography | Locked |
@@ -540,7 +538,7 @@ Three board layout approaches were evaluated for the mobile landscape primary vi
 - Own field bottom (full-size, thumb-reachable), opponent field top (foreshortened)
 - Badge overlays (LP/timer/phase) outside perspective
 - Hand row at screen bottom, outside perspective, always visible
-- Prompts as bottom-sheet sliding up over the hand
+- Prompts as centered floating dialog overlaid on the board (50% viewport width)
 
 **Direction B: Split View**
 - Board occupies top 60% of viewport (2D flat, zoomed)
@@ -558,7 +556,7 @@ Three board layout approaches were evaluated for the mobile landscape primary vi
 ### Design Rationale
 
 1. **Board visibility maximized** — Perspective compresses the opponent's field naturally, giving the player's own field maximum screen real estate. No vertical space wasted on permanent panels
-2. **Contextual display preserved** — Bottom-sheet prompts leave the board visible above, so the player sees highlighted zones/cards while making decisions
+2. **Contextual display preserved** — Floating dialog prompts leave the board fully visible around the dialog, so the player sees highlighted zones/cards while making decisions
 3. **Thumb zone enforced** — Hand, prompts, and activation toggle all anchor to the bottom of the screen. The player's thumb never leaves the comfort zone
 4. **Master Duel validated** — Master Duel uses this exact layout paradigm (3D perspective + overlays) and has validated it with millions of mobile users
 5. **CSS feasible** — `perspective` + `rotateX()` achieves the visual compression in ~10 lines of CSS. No 3D library needed
@@ -568,7 +566,7 @@ Three board layout approaches were evaluated for the mobile landscape primary vi
 Desktop uses the same Direction A layout but with more space:
 - Board perspective angle reduced (less foreshortening needed — more screen real estate)
 - Inspector as full variant overlay (art + name + stats + description + effect text) instead of compact overlay
-- Prompt bottom-sheet widens but stays anchored to bottom-center
+- Prompt floating dialog stays centered (same 50% viewport width — consistent with mobile)
 - Hand row cards at larger size, no overlap needed until 8+ cards
 - Keyboard shortcuts available (1-9 for options, Y/N, Esc to cancel, Space to confirm)
 
@@ -634,7 +632,7 @@ flowchart TD
 
 **Fallback:** If no MSG_HINT precedes SELECT_* (e.g., SELECT_POSITION), skip Beat 1. Render directly with generic label ("Choose summon position", "Choose a zone").
 
-**SELECT_YESNO card art:** SELECT_YESNO prompts include a card art thumbnail alongside the card name in the context banner. The player sees the card, not just the name.
+**SELECT_YESNO (no card art):** SELECT_YESNO prompts display contextual text + 2 buttons only. No card art thumbnail — matching Master Duel's minimal yes/no dialog pattern. The MSG_HINT text provides sufficient context.
 
 **Double toggle Off:** If both players set toggle to Off, all optional interaction windows are skipped. The duel accelerates significantly — turns resolve with only mandatory prompts.
 
@@ -719,7 +717,7 @@ flowchart TD
 
 | Pattern | Flows | Description |
 |---------|-------|-------------|
-| **Bottom-sheet interaction** | 2, 3, 4 | All player responses via bottom-sheet in thumb zone. Board visible above |
+| **Floating dialog interaction** | 2, 3, 4 | All player responses via centered floating dialog. Board fully visible around dialog. Desktop: right-click = cancel |
 | **Inspector on demand** | 2, 3 | Tap any card → inspector. Compact mode when prompt active. Auto-collapse on new prompt |
 | **Timer-driven urgency** | 2, 5 | Green (>120s) → yellow (≤60s) → red (≤30s). Timer expiry = auto-select default. Timer continues during disconnect |
 | **Two-beat rendering** | 2 | Context first (MSG_HINT), then interactive elements. Fallback: direct render with generic label |
@@ -751,7 +749,7 @@ flowchart TD
 
 **Angular CDK (utilities):**
 
-- `CDK Portal` — Dynamic prompt sub-component injection into the sheet container
+- `CDK Portal` — Dynamic prompt sub-component injection into the dialog container
 - `CDK Clipboard` — Room link copy-to-clipboard in lobby
 - `CDK A11yModule` — Focus trap in prompts, live announcer for game events
 - `matchMedia('(min-width: 768px)')` — Responsive variant switching (inspector `compact` → `full` at 768px)
@@ -792,7 +790,7 @@ DuelPageComponent (position: fixed; inset: 0; 100dvw × 100dvh)
 │   ├── Surrender button (mat-icon-button)
 │   └── PvpActivationToggleComponent
 ├── CardInspectorComponent (overlay, variant per breakpoint)
-├── PvpPromptSheetComponent (position: absolute, bottom: 0, z-index overlay)
+├── PvpPromptDialogComponent (position: absolute, centered on board, z-index overlay)
 ├── PvpZoneBrowserOverlayComponent (overlay)
 └── PvpDuelResultOverlayComponent (overlay, highest z-index during duel end)
 ```
@@ -828,7 +826,7 @@ DuelPageComponent (position: fixed; inset: 0; 100dvw × 100dvh)
 └──────────────────────────────────────────────────────────────────────┘
 
 Overlays (not shown — appear contextually):
-  • PvpPromptSheetComponent — slides up from bottom, max-height: 55dvh
+  • PvpPromptDialogComponent — centered floating dialog, width: 50dvw
   • CardInspectorComponent — floating overlay (compact <768px / full ≥768px)
   • PvpZoneBrowserOverlayComponent — full overlay for GY/Banished/ED browsing
   • Card Action Menu — absolute div at tapped card position
@@ -844,7 +842,7 @@ Non-visible zones (tap pill on board to browse):
 ```
 z-index stack (highest → lowest):
 1. PvpDuelResultOverlayComponent (during duel end only)
-2. PvpPromptSheetComponent (active prompt — Patterns B/C, no backdrop)
+2. PvpPromptDialogComponent (active prompt — Patterns B/C, no backdrop)
 3. mat-dialog (surrender confirmation)
 4. CardInspectorComponent (temporary z-index bump on re-expand)
 5. Card Action Menu (absolute-positioned div, appears on card tap during IDLECMD)
@@ -897,59 +895,61 @@ PvpBoardContainerComponent grid:
 
 ---
 
-#### 2. PvpPromptSheetComponent (Tier 1)
+#### 2. PvpPromptDialogComponent (Tier 1)
 
-**Purpose:** Bottom-sheet overlay that hosts all prompt interactions via CDK Portal. The board remains visible above, preserving spatial context while keeping interactive elements in the thumb zone.
+**Purpose:** Centered floating dialog that hosts all prompt interactions via CDK Portal. The board remains fully visible around the dialog, preserving spatial context. Matches Master Duel's compact prompt style.
 
-**Design Reference:** Master Duel bottom sheet pattern — context message inside the sheet (top), interactive content (center), action buttons (bottom). Single visual unit.
+**Design Reference:** Master Duel floating dialog pattern — context message at top, interactive content (center), action buttons at bottom. Single compact visual unit centered on the board, occupying ~50% of viewport width and ~15-25% of viewport height.
 
-**Positioning:** `position: absolute; bottom: 0` within `DuelPageComponent` (which is `position: fixed; inset: 0`). Positioned via CSS, NOT CDK Overlay (avoids unnecessary position recalculation). CDK Portal used only for sub-component injection.
+**Positioning:** `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)` within `DuelPageComponent` (which is `position: fixed; inset: 0`). Positioned via CSS, NOT CDK Overlay (avoids unnecessary position recalculation). CDK Portal used only for sub-component injection. Width: `--pvp-prompt-dialog-width: 50dvw` on all breakpoints.
 
 **Anatomy:**
-1. **Collapse handle (▼)** — Tap to reduce sheet to minimal bar ("Waiting for your response..."), tap again to re-open. Allows board inspection during active prompt
-2. **Context area** — MSG_HINT text rendered at Beat 1 (two-beat rendering). The context message lives INSIDE the sheet, not above it
-3. **Portal outlet** — CDK Portal injects the active sub-component
-4. **Action buttons** — Confirm/Cancel anchored at sheet bottom. Always glow + confirm pattern (never tap-direct-send)
+1. **Collapse handle (▼)** — Tap to minimize dialog to a small indicator ("Waiting for your response..."), tap again to restore. Allows board inspection during active prompt
+2. **Context area** — MSG_HINT text rendered at Beat 1 (two-beat rendering). The context message lives INSIDE the dialog, at the top
+3. **Portal outlet** — CDK Portal injects the active sub-component (card strip, option list, numeric input, etc.)
+4. **Action buttons** — Cancel (left) / Confirm (right) anchored at dialog bottom (Master Duel convention). Always glow + confirm pattern (never tap-direct-send). **Desktop: right-click anywhere = Cancel/No** (contextmenu event intercepted)
 
-**Height Strategy — `preferredHeight` per sub-component:**
+**Content Strategy — sub-component determines dialog height:**
 
 ```typescript
 interface PromptSubComponent {
-  preferredHeight: 'compact' | 'full' | number;
+  promptData: Prompt | null;
+  hintContext: HintContext | null;
+  response: EventEmitter<unknown>;
 }
 ```
 
-- `compact` = `clamp(60px, 20dvh, 100px)` — YesNo, simple prompts
-- `full` = `height: auto; max-height: 55dvh` — CardGrid, multi-option prompts (sub-component content determines actual height within the 55dvh ceiling)
-- `number` (px) — Custom height for variable content (OptionList with N items)
+Dialog height is `auto` — determined by sub-component content (context text + cards/options + buttons). No fixed height strategy. The dialog is always compact by nature (centered, 50% width).
 
-The sheet opens at the final height from Beat 1 (context renders), then the interactive sub-component injects at Beat 2 without resizing.
+**Card Thumbnails in Dialog:** Card sizes are **larger than board card sizes** — in a choice context, card identification is the primary information. Cards are displayed as a single horizontal row; ≤5 cards centered, 6+ cards horizontal scroll. Tap/long-press a card to open the inspector for full effect text.
 
 **States:**
 - `closed` — No active prompt
-- `opening` — Animate slide-up to preferredHeight
+- `opening` — Animate fade-in + subtle scale-up (from 0.95 to 1.0)
 - `open` — Interactive, sub-component injected
-- `transitioning` — Sheet stays open, height animates to new `preferredHeight`, sub-component swaps via portal. MSG_HINT context flashes highlight (200ms) to signal new prompt. No close/reopen cycle
-- `collapsed` — Minimal bar after user taps collapse handle (▼). FocusTrap temporarily disabled, focus moves to board
-- `closing` — Animate slide-down after prompt resolution (no more prompts pending)
+- `transitioning` — Dialog stays open, sub-component swaps via portal. MSG_HINT context flashes highlight (200ms) to signal new prompt. No close/reopen cycle
+- `collapsed` — Minimal indicator after user taps collapse handle (▼). FocusTrap temporarily disabled, focus moves to board
+- `closing` — Animate fade-out after prompt resolution (no more prompts pending)
 
-**Beat 1 Input Guard:** During Beat 1 (sheet open, sub-component not yet injected), the portal outlet renders a transparent placeholder with `pointer-events: none`. No phantom taps.
+**Beat 1 Input Guard:** During Beat 1 (dialog open, sub-component not yet injected), the portal outlet renders a transparent placeholder with `pointer-events: none`. No phantom taps.
 
-**Optimistic Response:** After player taps response → buttons disabled, subtle spinner. Server "ACK" is implicit (next server message). If gap >500ms → "Sending..." visible. If disconnect → sheet remains open with "Reconnecting..." header, response re-sent on reconnect.
+**Optimistic Response:** After player taps response → buttons disabled, subtle spinner. Server "ACK" is implicit (next server message). If gap >500ms → "Sending..." visible. If disconnect → dialog remains open with "Reconnecting..." header, response re-sent on reconnect.
+
+**Desktop Right-Click Cancel:** During an active prompt with a cancel/no option, `contextmenu` event is intercepted on the `DuelPageComponent` and routes to the cancel/no action. This matches Master Duel's desktop UX where right-click dismisses prompts. Only active when dialog is open, does not interfere with normal context menu when no prompt is active.
 
 **Interaction Rules:**
-- Zone browser disabled while sheet is `open` (use collapse handle to inspect board)
-- Inspector transitions to `compact` (not closed) when prompt arrives — repositioned above sheet
-- Sheet always wins z-index over all other overlays except DuelResultOverlay
+- Zone browser disabled while dialog is `open` (use collapse handle to inspect board)
+- Inspector transitions to `compact` (not closed) when prompt arrives
+- Dialog always wins z-index over all other overlays except DuelResultOverlay
 - Phase badge expanded menu closes when a prompt arrives
-- Safe areas: `padding-inline: env(safe-area-inset-left, 0px)` on content area
+- No backdrop — board fully visible and readable around the dialog
 
 **Failure Mitigations:**
 - iOS Safari: CSS absolute positioning (no CDK Overlay bugs)
-- Scroll chaining: `overscroll-behavior: contain` on sheet container
+- Scroll chaining: `overscroll-behavior: contain` on dialog card strip
 - Focus trap: CDK `FocusTrap` (dynamically disabled during collapse state)
-- Card height in prompt: calculated relative to sheet available space, not viewport
-- Duel end interrupts: when VICTORY/DEFEAT/DRAW arrives, all prompts cancelled instantly, sheet closes (no animation)
+- Card height in prompt: proportional to board card size
+- Duel end interrupts: when VICTORY/DEFEAT/DRAW arrives, all prompts cancelled instantly, dialog closes (no animation)
 
 ---
 
@@ -1090,9 +1090,9 @@ Phase transitions extracted from `SELECT_BATTLECMD` / `SELECT_IDLECMD` engine pr
 - Cards face-up, rendered by `CardComponent` with thumbnails
 - Tap card → `CardInspectorComponent` (compact variant)
 - During `SELECT_IDLECMD`: cards with available actions pulse (`--pvp-actionable-glow`) — invitation to act. Tap → if 1 action: sent directly. If 2+ actions: Card Action Menu appears with options ("Normal Summon" / "Set" / "Activate Effect")
-- During `SELECT_CARD` prompt: eligible cards glow (`--pvp-selection-glow`) — confirms selection. Selection primarily via `PromptCardGridComponent` in sheet (hand cards duplicated in prompt grid for thumb accessibility)
+- During `SELECT_CARD` prompt: eligible cards glow (`--pvp-selection-glow`) — confirms selection. Selection primarily via `PromptCardGridComponent` in dialog (hand cards duplicated in prompt card strip for thumb accessibility)
 - Non-eligible cards dimmed (`opacity: 0.5`)
-- Z-index: above board, below sheet (cards visually peek above sheet bottom)
+- Z-index: above board, below dialog
 - `pointer-events: auto`
 
 **Side `opponent`:**
@@ -1155,10 +1155,10 @@ Phase transitions extracted from `SELECT_BATTLECMD` / `SELECT_IDLECMD` engine pr
 | **GY** | All cards visible, read-only | Activatable effects highlighted | N/A |
 | **Banished** | All cards visible, read-only | Activatable effects highlighted | N/A |
 | **Extra Deck** | Face-up cards visible, read-only | Summonable monsters highlighted | N/A |
-| **Deck** | **No browse** (order hidden) | **No browse** (search = Pattern B sheet via SELECT_CARD) | Deck count badge only |
+| **Deck** | **No browse** (order hidden) | **No browse** (search = Pattern B dialog via SELECT_CARD) | Deck count badge only |
 
 **Interaction Rules:**
-- **Disabled during active prompt (Patterns B/C)** — Use the prompt sheet's collapse handle (▼) to inspect the board instead
+- **Disabled during active prompt (Patterns B/C)** — Use the prompt dialog's collapse handle (▼) to inspect the board instead
 - **Enabled during SELECT_IDLECMD** — this IS part of the action selection flow
 - Re-enabled immediately after prompt resolution
 - Tap zone on board → overlay opens (in appropriate mode)
@@ -1192,68 +1192,70 @@ Chain link numbers displayed as positioned badges inside the perspective contain
 
 ### Prompt Sub-Components (CDK Portal)
 
-6 sub-components injected into `PvpPromptSheetComponent` via CDK Portal. Each implements the `PromptSubComponent` interface declaring its `preferredHeight`.
+6 sub-components injected into `PvpPromptDialogComponent` via CDK Portal. Each implements the `PromptSubComponent` interface.
 
 #### Protocol → Sub-Component Mapping Table
 
 **Three Visual Prompt Patterns** — the player instantly recognizes what type of response is expected based on the visual form, without reading the text:
 
 **Pattern A — Floating Instruction (spatial action on board):**
-Centered text overlay on the board, `pointer-events: none` (board remains clickable behind). No sheet. Zone highlights on eligible zones. Disappears on zone tap.
+Centered text overlay on the board, `pointer-events: none` (board remains clickable behind). No dialog. Zone highlights on eligible zones. Disappears on zone tap.
 
-**Pattern B — Bottom Sheet (selection from list/grid):**
-Sheet slides up from bottom. Contains interactive content (card grid, option list, numeric input, RPS). Beat 1/Beat 2 lifecycle applies.
+**Pattern B — Floating Dialog with content (selection from list/grid):**
+Centered floating dialog (50% viewport width) overlaid on board. Contains interactive content: card strip (horizontal row), option list, numeric input, or RPS. Beat 1/Beat 2 lifecycle applies. Cancel button + right-click = cancel on desktop.
 
-**Pattern C — Yes/No (optional activation):**
-Sheet in `compact` mode. MSG_HINT context + 2 buttons. Lightest sheet variant.
+**Pattern C — Floating Dialog minimal (Yes/No):**
+Same centered floating dialog but with minimal content: MSG_HINT context text + 2 buttons only. No card art. Lightest dialog variant. Right-click = No on desktop.
 
 | Server Message | Sub-Component | Visual Pattern | Notes |
 |---------------|---------------|----------------|-------|
-| `SELECT_PLACE` / `SELECT_DISFIELD` | PromptZoneHighlightComponent | **A — Floating Instruction** | Numbered badges on eligible zones. No sheet opened |
-| `SELECT_CARD` | PromptCardGridComponent | **B — Bottom Sheet** (`full`) | Horizontal scroll when >4 cards. Hand cards duplicated in grid |
-| `SELECT_UNSELECT_CARD` | PromptCardGridComponent | **B — Bottom Sheet** (`full`) | Toggle selection mode |
-| `SELECT_CHAIN` | PromptCardGridComponent | **B — Bottom Sheet** (`full`) | Chain response card selection |
-| `SELECT_TRIBUTE` | PromptCardGridComponent | **B — Bottom Sheet** (`full`) | Tribute material selection |
-| `SELECT_SUM` | PromptCardGridComponent | **B — Bottom Sheet** (`full`) | Level/rank sum selection |
-| `SELECT_POSITION` | PromptOptionListComponent | **B — Bottom Sheet** (`compact`) | ATK/DEF/Set options with icons |
-| `SELECT_OPTION` | PromptOptionListComponent | **B — Bottom Sheet** (variable) | Generic option selection |
-| `SELECT_TP` | PromptOptionListComponent | **B — Bottom Sheet** (`compact`) | "Go First" / "Go Second" after RPS |
-| `SELECT_NUMBER` / `SELECT_COUNTER` | PromptNumericInputComponent | **B — Bottom Sheet** (`compact`) | Number input with mode declare/counter |
-| `MSG_SELECT_YESNO` (RPS) | PromptRpsComponent | **B — Bottom Sheet** (`full`) | Rock/Paper/Scissors with reveal animation |
-| `SELECT_YESNO` | PromptYesNoComponent | **C — Yes/No** | Includes card art thumbnail in context area |
-| `SELECT_EFFECTYN` | PromptYesNoComponent | **C — Yes/No** | Optional trigger confirmation |
-| Rematch invitation | PromptYesNoComponent | **C — Yes/No** | "Opponent wants a rematch" |
-| `SELECT_BATTLECMD` / `SELECT_IDLECMD` | **Distributed UI** | N/A | Phase transitions → PvpPhaseBadgeComponent. Card actions → `--pvp-actionable-glow` on field/hand cards, PvpZoneBrowserOverlayComponent Action Mode (GY/Banished/ED). Tap card with 1 action → direct. Tap card with 2+ actions → Card Action Menu (absolute div). No sheet |
+| `SELECT_PLACE` / `SELECT_DISFIELD` | PromptZoneHighlightComponent | **A — Floating Instruction** | Numbered badges on eligible zones. No dialog opened |
+| `SELECT_CARD` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Horizontal scroll when >4 cards. Hand cards duplicated in strip |
+| `SELECT_UNSELECT_CARD` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Toggle selection mode, checkmarks on cards |
+| `SELECT_CHAIN` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Chain response card selection |
+| `SELECT_TRIBUTE` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Tribute material selection, checkmarks on cards |
+| `SELECT_SUM` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Level/rank sum selection |
+| `SELECT_POSITION` | PromptOptionListComponent | **B — Floating Dialog** (option list) | ATK/DEF/Set options with icons |
+| `SELECT_OPTION` | PromptOptionListComponent | **B — Floating Dialog** (option list) | Generic option selection |
+| `ANNOUNCE_NUMBER` / `SELECT_COUNTER` | PromptNumericInputComponent | **B — Floating Dialog** (numeric input) | Number input with mode declare/counter |
+| `MSG_SELECT_YESNO` (RPS) | PromptRpsComponent | **B — Floating Dialog** (RPS) | Rock/Paper/Scissors with reveal animation |
+| `SELECT_YESNO` | PromptYesNoComponent | **C — Floating Dialog minimal** | Text + 2 buttons only. No card art |
+| `SELECT_EFFECTYN` | PromptYesNoComponent | **C — Floating Dialog minimal** | Optional trigger confirmation |
+| Rematch invitation | PromptYesNoComponent | **C — Floating Dialog minimal** | "Opponent wants a rematch" |
+| `SORT_CARD` / `SORT_CHAIN` | **Auto-select fallback** | N/A | PvP-A0 scope: auto-respond with default order (`null`). Uncommon prompts (Sylvan excavation, simultaneous optional triggers). Full ordering UI deferred to post-MVP |
+| `ANNOUNCE_RACE` / `ANNOUNCE_ATTRIB` | PromptOptionListComponent | **B — Floating Dialog** (option list) | PvP-A0 scope: present engine-provided options as a list. The engine constrains valid choices |
+| `ANNOUNCE_CARD` | **Auto-select fallback** | N/A | PvP-A0 scope: auto-select first valid option. Full card name search/autocomplete UI deferred to post-MVP. Extremely rare prompt (e.g., Prohibition, Psi-Blocker) |
+| `SELECT_BATTLECMD` / `SELECT_IDLECMD` | **Distributed UI** | N/A | Phase transitions → PvpPhaseBadgeComponent. Card actions → `--pvp-actionable-glow` on field/hand cards, PvpZoneBrowserOverlayComponent Action Mode (GY/Banished/ED). Tap card with 1 action → direct. Tap card with 2+ actions → Card Action Menu (absolute div). No dialog |
 
-#### 1. PromptYesNoComponent — preferredHeight: `compact`
+#### 1. PromptYesNoComponent — Pattern C (Floating Dialog minimal)
 
 **Purpose:** Binary choice for effect activation, confirmation prompts.
-**Content:** Context text (from MSG_HINT) + card art thumbnail (when applicable) + two buttons.
-**Actions:** "Yes" / "No" (or "Cancel" / "Effect Activation" per Master Duel convention).
-**Interaction:** Tap card to select (glow), then tap confirm button. Never tap-direct-send.
-**Accessibility:** Buttons receive immediate focus. `Enter` = confirm, `Escape` = cancel (secondary to tap — Escape may exit fullscreen).
+**Content:** Context text (from MSG_HINT) + two buttons. **No card art** — text and buttons only (Master Duel pattern).
+**Actions:** "No" (left) / "Yes" (right) (or "Cancel" / "Effect Activation" per Master Duel convention).
+**Interaction:** Tap button directly. Desktop: right-click anywhere = No/Cancel.
+**Accessibility:** Buttons receive immediate focus. `Enter` = confirm (Yes), `Escape` = cancel (No).
 
-#### 2. PromptCardGridComponent — preferredHeight: `full`
+#### 2. PromptCardGridComponent — Pattern B (Floating Dialog with card strip)
 
 **Purpose:** Card selection from a set of eligible cards (including hand cards duplicated from `PvpHandRowComponent` for thumb accessibility).
-**Content:** Horizontal row of card thumbnails with name labels.
+**Content:** Single horizontal row of card thumbnails with name labels inside the floating dialog.
 
-**Layout — Adaptive card sizing:**
-- **≤4 cards:** Large thumbnails (~80×116px, Master Duel reference), centered in available width
-- **5–9 cards:** Standard thumbnails, side by side, no scroll
-- **10–12 cards:** Standard thumbnails, horizontal scroll (`overflow-x: auto`)
-- **>12 cards:** 2-row layout (2 rows × ~7-8 cards). `preferredHeight` adjusts (height = 2 × card height + gap). Threshold: `--pvp-card-grid-row-threshold: 12`
+**Layout — Single-row card strip:**
+- Card thumbnails are **larger than board card size** — in a choice context, card recognition is the primary task. The player must be able to identify cards (art, name, type) without needing the inspector for every card
+- **≤5 cards:** Centered in available dialog width, no scroll
+- **6+ cards:** Horizontal scroll (`overflow-x: auto`) with scroll indicator
+- **Always single row** — no 2-row layout (dialog stays compact). If many cards, horizontal scroll handles overflow
 
-**Card height:** Calculated relative to sheet available space (`sheet-content-height - action-buttons - context - gaps`), not viewport. Ensures no overflow on small viewports.
+**Card height:** Larger than board cards. Uses `clamp(5rem, 20dvh, 9rem)` with `aspect-ratio: 59/86` — roughly 1.5–2× board card height, making card art clearly legible at a glance.
 
-**Interaction:** Tap card to select (glow highlight + `transform: scale(1.05)` 150ms). Confirm button always present. For multi-select: tap to toggle, confirm appears when minimum met.
+**Interaction:** Tap card to select (glow highlight + `transform: scale(1.05)` 150ms). Confirm button always present. For multi-select: tap to toggle (checkmark overlay on selected cards), confirm appears when minimum met. Desktop: right-click = Cancel.
 
 **Empty State:** If `cards.length === 0`: display "No valid targets", auto-respond after 1s. Log anomaly.
 
-#### 3. PromptZoneHighlightComponent — Visual Pattern A (Floating Instruction)
+#### 3. PromptZoneHighlightComponent — Pattern A (Floating Instruction)
 
 **Purpose:** Highlight eligible zones or cards on the board for spatial selection prompts.
-**Visual:** **No sheet opened.** A floating instruction text appears centered on the board: `font-weight: 700`, background `rgba(0,0,0,0.6)` with `backdrop-filter: blur(2px)`, `pointer-events: none` (board remains fully interactive behind the text).
+**Visual:** **No dialog opened.** A floating instruction text appears centered on the board: `font-weight: 700`, background `rgba(0,0,0,0.6)` with `backdrop-filter: blur(2px)`, `pointer-events: none` (board remains fully interactive behind the text).
 
 **Two sub-modes:**
 - **Zone selection** (`SELECT_PLACE`, `SELECT_DISFIELD`): Eligible **empty zones** glow with numbered badges (24px+ touch target) — badges essential because empty zones are visually identical, especially on opponent's field with perspective foreshortening
@@ -1263,13 +1265,13 @@ Sheet in `compact` mode. MSG_HINT context + 2 buttons. Lightest sheet variant.
 **Failure Mitigation:** Highlight opacity increased for opponent's field — brighter/thicker border to compensate for foreshortening.
 **Accessibility:** `LiveAnnouncer` announces the instruction text. Highlighted elements have `aria-label="Zone [name]"` or `aria-label="[Card name]"`. Keyboard: `Tab` between highlighted elements, `Enter` to select.
 
-#### 4. PromptOptionListComponent — preferredHeight: variable
+#### 4. PromptOptionListComponent — Pattern B (Floating Dialog with option list)
 
-**Purpose:** Generic list of options. Handles position selection (ATK/DEF with icons), SELECT_TP (Go First/Second), SELECT_OPTION (generic), and any list-based prompt.
+**Purpose:** Generic list of options. Handles position selection (ATK/DEF with icons), SELECT_OPTION (generic), and any list-based prompt.
 **Content:** Vertical list of options, each as a `mat-button` with optional icon.
-**Height:** `N × 48px` where N = number of options. Falls back to `full` if N > 5 (scrollable).
+**Height:** `N × 48px` where N = number of options. Scrollable inside dialog if N > 5.
 
-#### 5. PromptNumericInputComponent — preferredHeight: `compact`
+#### 5. PromptNumericInputComponent — Pattern B (Floating Dialog with numeric input)
 
 **Purpose:** Number input with two modes.
 **Modes:**
@@ -1278,10 +1280,10 @@ Sheet in `compact` mode. MSG_HINT context + 2 buttons. Lightest sheet variant.
 
 **Content:** Label + input field + validation feedback. Min/max constraints from server message.
 
-#### 6. PromptRpsComponent — preferredHeight: `full`
+#### 6. PromptRpsComponent — Pattern B (Floating Dialog with RPS)
 
 **Purpose:** Rock/Paper/Scissors selection with reveal animation.
-**Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to SELECT_TP.
+**Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to turn order selection (HAND_RES).
 **Accessibility:** Three buttons with `aria-label`. Keyboard: 1/2/3 shortcuts.
 **Timeout:** 30s. If no selection → random choice.
 
@@ -1295,7 +1297,7 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 - **Collapsed state (default):** Art 60×87px + card name + type line + ATK/DEF
 - **Expanded state (tap to expand):** Full card text, materials, detailed stats. Collapses back on tap or when a new prompt arrives
 
-**Inspector During Prompt:** When a prompt arrives while inspector is expanded → transitions to compact (not closed). Inspector compact repositions above sheet. Tap compact → re-expand (temporary z-index bump).
+**Inspector During Prompt:** When a prompt arrives while inspector is expanded → transitions to compact (not closed). Inspector compact repositions outside the dialog area. Tap compact → re-expand (temporary z-index bump above dialog).
 
 `@Input() variant: 'full' | 'compact' = 'full'`
 
@@ -1303,9 +1305,9 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 
 **Token Architecture:** All PvP component tokens namespaced `--pvp-*` in `_design-tokens.scss`:
 - **Locked tokens:** `--pvp-chain-badge-size: 24px`, `--pvp-min-touch-target: 44px`
-- **Tunable tokens:** `--pvp-perspective-depth: 800px`, `--pvp-rotate-x-angle: 15deg`, `--pvp-perspective-enabled: 1`, `--pvp-sheet-compact-height`, `--pvp-sheet-full-height`, `--pvp-timer-green`, `--pvp-timer-yellow`, `--pvp-timer-red`, `--pvp-selection-glow`, `--pvp-disabled-opacity: 0.6`, `--pvp-card-grid-row-threshold: 12`
+- **Tunable tokens:** `--pvp-perspective-depth: 800px`, `--pvp-rotate-x-angle: 15deg`, `--pvp-perspective-enabled: 1`, `--pvp-prompt-dialog-width: 50dvw`, `--pvp-prompt-dialog-bg`, `--pvp-prompt-dialog-radius`, `--pvp-timer-green`, `--pvp-timer-yellow`, `--pvp-timer-red`, `--pvp-selection-glow`, `--pvp-disabled-opacity: 0.6`
 
-**CDK Portal Pattern:** `PvpPromptSheetComponent` uses `<ng-template cdkPortalOutlet>` to inject the active prompt sub-component. The sheet resolves `preferredHeight` from the incoming sub-component before animating open. On prompt resolution, the portal outlet is cleared. During consecutive prompts, the sheet transitions (sub-component swap) without closing.
+**CDK Portal Pattern:** `PvpPromptDialogComponent` uses `<ng-template cdkPortalOutlet>` to inject the active prompt sub-component. On prompt resolution, the portal outlet is cleared. During consecutive prompts, the dialog transitions (sub-component swap) without closing.
 
 **Performance Patterns:**
 - All components: `ChangeDetectionStrategy.OnPush`
@@ -1317,16 +1319,16 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 **Interaction Rules Summary:**
 - Zone browser disabled during active prompt (use collapse handle instead)
 - Inspector transitions to compact on new prompt (not closed)
-- Prompt sheet always wins z-index (except DuelResultOverlay during duel end)
+- Prompt dialog always wins z-index (except DuelResultOverlay during duel end)
 - Phase badge menu closes on prompt arrival
-- Hand row cards: selection via prompt grid (duplicated), not direct tap-to-send
+- Hand row cards: selection via prompt card strip (duplicated), not direct tap-to-send
 
 ### Implementation Roadmap
 
 **PvP-A — Functional Duel (Core):**
 
 - PvpBoardContainerComponent (Tier 1, complex — perspective + central strip + grid)
-- PvpPromptSheetComponent + 6 sub-components (Tier 1, complex — portal, states, collapse)
+- PvpPromptDialogComponent + 6 sub-components (Tier 1, complex — portal, states, collapse)
 - PvpTimerBadgeComponent (Tier 2, medium — chess-clock + connection states)
 - PvpLpBadgeComponent (Tier 2, trivial — display + format)
 - PvpPhaseBadgeComponent (Tier 2, medium — badge + expandable menu)
@@ -1345,7 +1347,7 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 - Chain link animation (`.pvp-chain-badge` entrance/exit)
 - LP counter effects (LpBadge animation)
 - Card movement transitions (board animations)
-- Prompt sheet opening/closing polish
+- Prompt dialog opening/closing polish
 
 ## UX Consistency Patterns
 
@@ -1353,9 +1355,9 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 
 The most frequent interaction pattern in PvP. Each duel contains 50-200+ prompts. **Three distinct visual patterns** signal the type of response expected — the player recognizes the pattern before reading the text:
 
-- **Pattern A — Floating Instruction:** Centered text overlay on board, `pointer-events: none`. Board zones remain interactive. Used for spatial prompts (`SELECT_PLACE`, `SELECT_PLACE`). No sheet, no backdrop, no FocusTrap. Simplest pattern.
-- **Pattern B — Bottom Sheet:** Sheet slides up with interactive content (card grids, option lists, numeric input). Beat 1/Beat 2 lifecycle. FocusTrap active. No backdrop — board fully visible.
-- **Pattern C — Yes/No:** Compact sheet with MSG_HINT context + 2 buttons. Lightest sheet variant. Used for optional activations (`SELECT_EFFECTYN`, `SELECT_YESNO`).
+- **Pattern A — Floating Instruction:** Centered text overlay on board, `pointer-events: none`. Board zones remain interactive. Used for spatial prompts (`SELECT_PLACE`, `SELECT_DISFIELD`). No dialog, no backdrop, no FocusTrap. Simplest pattern.
+- **Pattern B — Floating Dialog with content:** Centered floating dialog (50% viewport width) overlaid on board. Contains interactive content (card strip, option lists, numeric input, RPS). Beat 1/Beat 2 lifecycle. FocusTrap active. No backdrop — board fully visible around dialog. Desktop: right-click = cancel.
+- **Pattern C — Floating Dialog minimal:** Same centered floating dialog with MSG_HINT context text + 2 buttons only. No card art. Lightest dialog variant. Used for optional activations (`SELECT_EFFECTYN`, `SELECT_YESNO`). Desktop: right-click = No.
 
 #### Floating Instruction Lifecycle (Pattern A)
 
@@ -1367,37 +1369,37 @@ The most frequent interaction pattern in PvP. Each duel contains 50-200+ prompts
 
 No Beat 1/Beat 2, no FocusTrap, no backdrop. `LiveAnnouncer` announces instruction text on appear.
 
-#### Bottom-Sheet Prompt Lifecycle (Patterns B & C)
+#### Floating Dialog Prompt Lifecycle (Patterns B & C)
 
 | Phase | Behavior | Duration |
 |-------|----------|----------|
-| **Beat 1 — Context** | Sheet opens to `preferredHeight`. MSG_HINT context renders in sheet header area. Sub-component portal is empty | ~50ms (server MSG_HINT → SELECT_* gap) |
+| **Beat 1 — Context** | Dialog fades in (centered on board, 50% viewport width). MSG_HINT context renders in dialog header area. Sub-component portal is empty | ~50ms (server MSG_HINT → SELECT_* gap) |
 | **Beat 2 — Interaction** | Sub-component injects via CDK Portal. Interactive elements appear. Focus moves to first actionable element | Instant after Beat 1 |
-| **Response** | Player taps selection. Response sent to server. Sheet remains open until server ACK (implicit: next server message received) | Player-driven |
-| **Transitioning** | If next prompt arrives immediately: sheet stays open, height animates to new `preferredHeight`, sub-component swaps via portal. MSG_HINT context flashes highlight (200ms) to signal new prompt. No close/reopen cycle | 300ms transition |
-| **Closing** | No more prompts pending. Sheet animates slide-down | 300ms |
+| **Response** | Player taps selection (or right-clicks to cancel on desktop). Response sent to server. Dialog remains open until server ACK (implicit: next server message received) | Player-driven |
+| **Transitioning** | If next prompt arrives immediately: dialog stays open, sub-component swaps via portal. MSG_HINT context flashes highlight (200ms) to signal new prompt. No close/reopen cycle | 300ms transition |
+| **Closing** | No more prompts pending. Dialog fades out | 200ms |
 | **Fallback** | If no MSG_HINT precedes SELECT_*: skip Beat 1, render sub-component immediately with generic label | Instant |
 
-**Sheet Opening Signal:** On initial sheet open (not during `transitioning` swap), a subtle border pulse (`@keyframes pulse-border`, single 500ms pulse on `--pvp-accent`) draws attention to the prompt. Respects `prefers-reduced-motion: reduce` (no pulse, instant appear). The MSG_HINT context + visible chess-clock countdown make the prompt self-explanatory — no tutorial overlay needed.
+**Dialog Opening Signal:** On initial dialog open (not during `transitioning` swap), a subtle border pulse (`@keyframes pulse-border`, single 500ms pulse on `--pvp-accent`) draws attention to the prompt. Respects `prefers-reduced-motion: reduce` (no pulse, instant appear). The MSG_HINT context + visible chess-clock countdown make the prompt self-explanatory — no tutorial overlay needed.
 
-**Beat 1 Input Guard:** During Beat 1 (sheet open, sub-component not yet injected), the portal outlet renders a transparent placeholder with `pointer-events: none`. The sheet intercepts all taps but does not route them. Once Beat 2 injects the sub-component, `pointer-events: auto` activates and focus moves to the first button. No phantom taps.
+**Beat 1 Input Guard:** During Beat 1 (dialog open, sub-component not yet injected), the portal outlet renders a transparent placeholder with `pointer-events: none`. The dialog intercepts all taps but does not route them. Once Beat 2 injects the sub-component, `pointer-events: auto` activates and focus moves to the first button. No phantom taps.
 
 **Optimistic Response with Confirm:** After the player taps a response:
-- Response sent to server. Sheet transitions to "awaiting" state (buttons disabled, subtle spinner)
+- Response sent to server. Dialog transitions to "awaiting" state (buttons disabled, subtle spinner)
 - Server "ACK" is implicit — the next server message (board update, next prompt, animation event) confirms receipt
-- If next message arrives in <500ms (normal case): transition is imperceptible, sheet swaps or closes immediately
-- If gap >500ms (slow network): "Sending..." indicator becomes visible in sheet header
-- If disconnect detected: sheet remains open with "Reconnecting..." in header. Response auto-resent on reconnect
-- If server has already timed out and auto-selected default: sheet closes with snackbar "Response timed out — default action applied"
+- If next message arrives in <500ms (normal case): transition is imperceptible, dialog swaps or closes immediately
+- If gap >500ms (slow network): "Sending..." indicator becomes visible in dialog header
+- If disconnect detected: dialog remains open with "Reconnecting..." in header. Response auto-resent on reconnect
+- If server has already timed out and auto-selected default: dialog closes with snackbar "Response timed out — default action applied"
 
-**Duel End Interrupts All:** When a duel result arrives (VICTORY/DEFEAT/DRAW), all active prompts are immediately cancelled. The sheet closes instantly (no animation). The Result Overlay appears at highest z-index. Any partial selection is abandoned — the server no longer expects a response.
+**Duel End Interrupts All:** When a duel result arrives (VICTORY/DEFEAT/DRAW), all active prompts are immediately cancelled. The dialog closes instantly (no animation). The Result Overlay appears at highest z-index. Any partial selection is abandoned — the server no longer expects a response.
 
 #### Prompt Always Wins (z-index hierarchy)
 
 ```
 z-index stack (highest → lowest):
 1. PvpDuelResultOverlayComponent (during duel end only)
-2. PvpPromptSheetComponent (active prompt — Patterns B/C, no backdrop)
+2. PvpPromptDialogComponent (active prompt — Patterns B/C, no backdrop)
 3. mat-dialog (surrender confirmation)
 4. CardInspectorComponent (temporary z-index bump on re-expand)
 5. Card Action Menu (absolute-positioned div during IDLECMD)
@@ -1409,31 +1411,31 @@ z-index stack (highest → lowest):
 11. PvpBoardContainerComponent (base layer, 100%)
 ```
 
-When a new prompt arrives: inspector transitions to compact (not closed — see Inspector During Prompt), zone browser closes, phase menu collapses. For Pattern B/C: sheet opens or swaps content. For Pattern A: floating instruction appears, no sheet. No two interactive overlays coexist.
+When a new prompt arrives: inspector transitions to compact (not closed — see Inspector During Prompt), zone browser closes, phase menu collapses. For Pattern B/C: dialog opens or swaps content. For Pattern A: floating instruction appears, no dialog. No two interactive overlays coexist.
 
 #### Collapse-to-Inspect
 
-During an active prompt, the zone browser is disabled. Instead: tap the sheet collapse handle (▼) → sheet reduces to minimal bar ("Waiting for your response...") → board fully visible for inspection → tap bar to re-open sheet and resume interaction.
+During an active prompt, the zone browser is disabled. Instead: tap the dialog collapse handle (▼) → dialog minimizes to a small indicator ("Waiting for your response...") → board fully visible for inspection → tap indicator to restore dialog and resume interaction.
 
 **Collapse handle accessibility:**
-- Element: `<button aria-label="Collapse prompt sheet">`
+- Element: `<button aria-label="Collapse prompt dialog">`
 - Keyboard shortcut: `C` key
 - After collapse: focus moves to board
-- After re-open: focus returns to first prompt element
+- After restore: focus returns to first prompt element
 - `LiveAnnouncer`: "Prompt collapsed — inspecting board" / "Prompt restored"
 
 #### Inspector During Prompt
 
 When a prompt arrives while the `CardInspectorComponent` is open:
 - If inspector is `collapsed` → stays collapsed (no change)
-- If inspector is `expanded` → transitions to `compact` (not closed — player still sees art + name + ATK/DEF, but screen space is recovered for the sheet)
-- Inspector compact repositions **above** the sheet (not hidden behind it)
-- Tap inspector compact → re-expand (temporary z-index bump above sheet). Tap again or new prompt → back to compact
+- If inspector is `expanded` → transitions to `compact` (not closed — player still sees art + name + ATK/DEF, but screen space is recovered for the dialog)
+- Inspector compact repositions outside the dialog area (not hidden behind it)
+- Tap inspector compact → re-expand (temporary z-index bump above dialog). Tap again or new prompt → back to compact
 
 #### In-Prompt Card Inspection
 
 Cards displayed inside `PromptCardGridComponent` use tap for **selection**. To inspect a card before selecting:
-- **Mobile:** Long press (500ms) on a card → opens `CardInspectorComponent` as temporary overlay (z-index above sheet). Release or tap elsewhere → inspector closes, return to prompt
+- **Mobile:** Long press (500ms) on a card → opens `CardInspectorComponent` as temporary overlay (z-index above dialog). Release or tap elsewhere → inspector closes, return to prompt
 - **Desktop** (`@media (hover: hover)`): Hover shows tooltip compact (card name + ATK/DEF + first line of effect text). Long press still available for full inspector
 - **Screen reader:** `aria-label` on each card already includes name + ATK/DEF — no additional interaction needed for essential info
 
@@ -1450,14 +1452,14 @@ Cards displayed inside `PromptCardGridComponent` use tap for **selection**. To i
 
 **Subtle Actions** — `mat-icon-button` or text link:
 - Mini-toolbar (bottom-right, thumb zone): Surrender (flag icon), Toggle (cycle icon)
-- Sheet collapse handle (▼)
+- Dialog collapse handle (▼)
 - Zone browse (tap zone directly, no visible button)
 - "Back to Deck" on Result screen (text link to deck editor)
 
 **Touch Target Rule:** All **actionable** interactive elements ≥ 44×44px (`--pvp-min-touch-target`). On mobile landscape, primary action buttons use `min-height: 48px` for comfortable thumb reach. **Board zone exemption:** Board zones (tap-to-browse, informational) are exempt from the 44px minimum — they are navigational, not actional. Zone selection during prompts uses numbered badges (`PromptZoneHighlightComponent`) that DO meet the 44px minimum.
 
 **Button Placement Convention:**
-- Prompt buttons: anchored at bottom of sheet, primary action RIGHT, secondary LEFT (Master Duel convention)
+- Prompt buttons: anchored at bottom of dialog, primary action RIGHT, secondary LEFT (Master Duel convention)
 - Dialog buttons: standard Material dialog footer, primary RIGHT
 - Overlay buttons (surrender, toggle): absolute position on board, always reachable
 
@@ -1561,7 +1563,7 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 ### Overlay and Modal Patterns
 
 **Overlays (non-blocking, board visible):**
-- Prompt sheet: board partially visible above
+- Prompt dialog: centered floating overlay, board fully visible around it
 - Zone browser: overlay panel, board visible behind
 - Inspector: floating overlay (same layout all viewports; full variant ≥768px, compact variant <768px)
 
@@ -1571,7 +1573,7 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 
 **Rule:** Use overlays for game flow (prompts, browsing). Use modals only for destructive/irreversible actions (surrender, leave room).
 
-**Mini-Toolbar During Active Prompt:** The mini-toolbar (surrender + toggle) drops below the sheet z-index during active prompts (Patterns B/C). Visually dimmed and non-interactive — the player must first collapse the sheet to access it. To surrender during a prompt: collapse handle (▼) → board visible → toolbar accessible → surrender → confirmation dialog. This adds intentional friction for destructive actions.
+**Mini-Toolbar During Active Prompt:** The mini-toolbar (surrender + toggle) drops below the dialog z-index during active prompts (Patterns B/C). Visually dimmed and non-interactive — the player must first collapse the dialog to access it. To surrender during a prompt: collapse handle (▼) → board visible → toolbar accessible → surrender → confirmation dialog. This adds intentional friction for destructive actions.
 
 ### Loading and Transition States
 
@@ -1586,7 +1588,7 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 
 **Duel Loading Screen:** Transition screen between RPS result and board display. Content: player names + LP (8000 vs 8000) + "Preparing duel..." + `mat-progress-spinner` (indeterminate, 64px). Displayed until the first board state arrives from the server AND a minimum set of card thumbnails are pre-cached. Not a skeleton — a dedicated transition screen.
 
-**Card Image Pre-Fetch:** During the loading screen, the server sends `MSG_DECK_LIST` (card IDs only — no names, no cheating risk) for the opponent's deck. The client pre-fetches thumbnails for all cards in both decks. The loading screen holds until the board state + critical thumbnails are ready. If a card image fails to load or arrives late during gameplay, the card back is used as a fallback placeholder.
+**Card Image Pre-Fetch:** During the loading screen, the client pre-fetches thumbnails for its **own deck only** (card IDs already known from the submitted decklist). Opponent card thumbnails are fetched **on-demand** as cards become visible (drawn, summoned, revealed by effects) — the client receives card codes in state update messages (`MSG_DRAW`, `MSG_MOVE`, `MSG_SUMMONING`, etc.) and fetches thumbnails lazily. This preserves NFR6 (no opponent decklist leakage). The loading screen holds until the first board state arrives from the server AND the player's own deck thumbnails are pre-cached. If a card image fails to load or arrives late during gameplay, the card back is used as a fallback placeholder.
 
 **Loading Convention:** Use `mat-progress-spinner` (indeterminate) for server-dependent waits. Never use determinate progress bars (server response time is unknown). Spinner size: 40px for inline, 64px for full-screen.
 
@@ -1612,7 +1614,7 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 
 PvP duel view enforces landscape mode. If the device is in portrait orientation, display a **blocking full-screen overlay**: rotation icon + "Rotate your device to landscape" + actionable instruction: "If rotation is locked, disable it in your Control Center / Quick Settings, then rotate your device." No duel in portrait — no "Continue anyway" fallback (portrait is unusable with 36 zones). The lobby page can function in portrait (text/buttons only). Lock activates only on the `/pvp/duel/:roomId` route. Detection: `matchMedia('(orientation: portrait)')`.
 
-**Focus Restoration After Orientation Change:** When returning from portrait (overlay disappears), `DuelPageComponent` listens to `orientationchange` and restores focus: if a prompt is active → `focusTrap.focusFirstTappableElement()` on the sheet; if no prompt → focus on board container. This also handles the edge case of rotation during sheet `transitioning` state — `focusFirstTappableElement()` is idempotent and re-syncs the trap with the current DOM.
+**Focus Restoration After Orientation Change:** When returning from portrait (overlay disappears), `DuelPageComponent` listens to `orientationchange` and restores focus: if a prompt is active → `focusTrap.focusFirstTappableElement()` on the dialog; if no prompt → focus on board container. This also handles the edge case of rotation during dialog `transitioning` state — `focusFirstTappableElement()` is idempotent and re-syncs the trap with the current DOM.
 
 #### App Background Recovery
 
@@ -1643,9 +1645,9 @@ When `PromptCardGridComponent` receives >12 eligible cards:
 
 #### Focus Management
 
-- New prompt → focus moves to first interactive element in sheet
+- New prompt → focus moves to first interactive element in dialog
 - Prompt resolved → focus returns to board
-- Sheet `transitioning` (swap) → focus moves to first element of new sub-component
+- Dialog `transitioning` (swap) → focus moves to first element of new sub-component
 - Dialog opened → CDK `FocusTrap` active
 - Dialog closed → focus returns to trigger element
 - Collapse handle activated → focus moves to board; re-open → focus to first prompt element
@@ -1671,7 +1673,7 @@ When `PromptCardGridComponent` receives >12 eligible cards:
 #### Reduced Motion (prefers-reduced-motion: reduce)
 
 - Chain badge: appear/disappear instantly (no entrance/exit animation)
-- Sheet: open/close/swap instantly (no slide animation)
+- Dialog: open/close/swap instantly (no slide animation)
 - LP counter: snap to value (no counting animation)
 - Card movement: instant position change (no transition)
 - Card selection: no scale animation, glow border only
@@ -1722,7 +1724,7 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 **Desktop Adaptation:**
 - `@media (hover: hover)`: card hover preview (scale + shadow), zone highlight on hover, tooltip hints
 - Larger card art in inspector (full variant), more comfortable spacing
-- Same overlay z-index stack, same component tree, same prompt sheet pattern
+- Same overlay z-index stack, same component tree, same floating dialog prompt pattern
 - No side panel — abandoned in favor of unified overlay layout
 - **Board max dimensions:** `max-width: 1280px; max-height: 720px` on `PvpBoardContainerComponent`, centered in viewport with black background beyond. Prevents card art stretching beyond source resolution on large monitors (card art optimized for ~100-200px rendering). Master Duel uses the same pattern
 
@@ -1754,10 +1756,10 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 | Central strip (EMZ + Timer + Phase) | ~8% | `clamp(1.5rem, 8dvh, 3rem)` |
 | Player field (5 rows, full size) | ~35% | Remaining space |
 | Player hand row (overlay) | ~12% | `clamp(2.5rem, 12dvh, 5rem)` |
-| Prompt sheet (Patterns B/C) | ~40% | Sub-component `preferredHeight` determines actual height (`height: auto`). **Capped at `max-height: 55dvh`** — absolute ceiling to guarantee Monster Zones remain visible above the sheet, even in non-fullscreen mode |
+| Prompt dialog (Patterns B/C) | N/A (floating overlay) | Centered floating dialog, width `50dvw`, height `auto`. Does not consume layout space — overlaid on board. Board fully visible around dialog. Compact by nature (~15-25% viewport height) |
 | Floating instruction (Pattern A) | 0% | `pointer-events: none` centered text. Takes no layout space, does not occlude board interaction |
 
-*Note: Percentages exceed 100% because hand rows and prompt sheet are overlays that overlap the board.*
+*Note: Percentages exceed 100% because hand rows are overlays that overlap the board. The prompt dialog is a centered floating overlay and does not participate in the vertical budget.*
 
 **Hand Row Layout (Master Duel Overlap Pattern):**
 - Cards are rendered at fixed size (no scaling). When the hand exceeds the row width, cards **overlap** with increasing negative `margin-left`
@@ -1771,17 +1773,18 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 **Mini-Toolbar Position (Surrender + Toggle):**
 - `position: absolute; bottom: calc(var(--hand-row-height) + 8px); right: max(8px, env(safe-area-inset-right, 8px))` — above the player hand row, **right side** (thumb zone, like Master Duel). Surrender has `mat-dialog` confirmation as friction — no need to move away from thumb
 - 2 icon buttons stacked vertically: surrender (flag) on top, toggle (cycle) below
-- During active prompt (Patterns B/C): toolbar z-index drops below sheet — non-interactive. Player must collapse sheet first to access surrender (intentional friction for destructive action)
+- During active prompt (Patterns B/C): toolbar z-index drops below dialog — non-interactive. Player must collapse dialog first to access surrender (intentional friction for destructive action)
 - During opponent's turn: toggle hidden (`display: none`), surrender remains visible
 
 **Card Aspect Ratio Preservation:**
 - All card elements use `aspect-ratio: 59/86` (actual Yu-Gi-Oh! card ratio). Only constrain height with `clamp()` — width is calculated automatically. This guarantees correct proportions on all viewport aspect ratios (16:9, 18:9, 21:9 ultra-wide)
 
-**Card Sizing in Prompt Grid:**
-- `PromptCardGridComponent` card dimensions: height-driven with `aspect-ratio: 59/86`, `height: clamp(3rem, 12dvh, 5rem)`
-- ≤ 4 cards: centered in single row (no scroll)
-- 5–12 cards: single row, horizontal scroll if needed
-- \> 12 cards: 2-row layout, horizontal scroll for overflow
+**Card Sizing in Prompt Dialog:**
+- `PromptCardGridComponent` card dimensions: **larger than board card size** with `aspect-ratio: 59/86`. In a choice context, card identification is the primary information — cards must be legible without requiring the inspector for every selection
+- Card height: `clamp(5rem, 20dvh, 9rem)` — roughly 1.5–2× board card height
+- Always single horizontal row within the dialog
+- ≤ 5 cards: centered in dialog width (no scroll)
+- 6+ cards: horizontal scroll within the dialog
 
 ### Safe Area Handling
 
@@ -1791,9 +1794,9 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 - `padding: max(8px, env(safe-area-inset-*, 8px))` on the side facing the viewport edge — the `max()` guarantees a minimum 8px padding even if `env()` returns 0 or is unsupported, and the second `env()` argument provides a fallback if the variable doesn't exist
 - Prevents occlusion by camera notch, rounded corners, or home indicator
 
-**Prompt Sheet:**
-- `padding-bottom: env(safe-area-inset-bottom)` — buttons never hidden behind home indicator
-- Safe area padding applies inside the sheet, not to the sheet container
+**Prompt Dialog:**
+- Centered on board — not edge-anchored, so safe area insets do not apply directly to the dialog container
+- No safe area concern for the floating dialog (it never touches viewport edges)
 
 **Perspective Container:**
 - Board zones inside CSS perspective are not affected by safe areas (they are centered in viewport)
@@ -1805,7 +1808,7 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 
 **Perspective Container Rule (reinforced):**
 - ONLY board zones (PlayerField × 2 + Central Strip) live inside the perspective `<div>`
-- Hand rows, prompt sheet, inspector, badges, toggle, surrender — ALL positioned outside perspective, flat and readable
+- Hand rows, prompt dialog, inspector, badges, toggle, surrender — ALL positioned outside perspective, flat and readable
 - This separation is structural (component tree), not just z-index
 
 ### Accessibility Strategy
@@ -1825,8 +1828,8 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 
 **Keyboard Navigation:**
 - Full keyboard support for all prompts (Tab, Arrow keys, Enter, Space, Escape)
-- `FocusTrap` (CDK) on prompt sheet when open — Tab cycle confined to sheet
-- `FocusTrap` dynamically transfers when sheet swaps sub-component (transitioning state)
+- `FocusTrap` (CDK) on prompt dialog when open — Tab cycle confined to dialog
+- `FocusTrap` dynamically transfers when dialog swaps sub-component (transitioning state)
 - Skip link: hidden "Skip to prompt" link before board, visible on Tab focus
 - Phase badge menu: Arrow Up/Down to navigate phases, Enter to select
 
@@ -1835,12 +1838,12 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 - Connection state changes announced immediately
 - **Chain resolution coalescing:** During accelerated chain resolution (Auto-Resolve, no prompt interrupt), buffer individual announcements. Flush a single summary at the end: "Chain of N links resolved. Your LP: [value]. Opponent LP: [value]." If a prompt interrupts the chain mid-resolution, flush the buffer immediately before announcing the prompt. Prevents screen reader queue overflow (20+ messages in 2s)
 
-**Collapse Handle Accessibility:** See Step 11 `PvpPromptSheetComponent` for `aria-label` toggling ("Collapse prompt" / "Expand prompt"), `aria-expanded` state, and `C` keyboard shortcut. Not duplicated here — single source of truth in component spec.
+**Collapse Handle Accessibility:** See `PvpPromptDialogComponent` spec for `aria-label` toggling ("Collapse prompt" / "Expand prompt"), `aria-expanded` state, and `C` keyboard shortcut. Not duplicated here — single source of truth in component spec.
 
 **Reduced Motion (`prefers-reduced-motion: reduce`):**
 - All animations snap to final state (0ms duration)
 - Chain badges: appear/disappear instantly
-- Sheet: open/close/swap instantly
+- Dialog: open/close/swap instantly
 - LP counter: snap to value
 - Card movement: instant position change
 - Card selection: glow border only, no scale animation
@@ -1892,9 +1895,9 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 
 **Accessibility Development:**
 - Semantic HTML: `<button>` for all interactive elements (never `<div>` with click handler)
-- ARIA: `aria-label` on icon-only buttons, `aria-selected` on card selections, `aria-disabled` on non-eligible cards, `role="dialog"` on prompt sheet
+- ARIA: `aria-label` on icon-only buttons, `aria-selected` on card selections, `aria-disabled` on non-eligible cards, `role="dialog"` on prompt dialog
 - `LiveAnnouncer` injection: announce all game events, prompt arrivals, timer warnings
-- `FocusTrap` from CDK: apply to prompt sheet and dialogs
+- `FocusTrap` from CDK: apply to prompt dialog and surrender dialog
 - Token-level animation control: `--pvp-animation-duration` respects `prefers-reduced-motion`
 
 **Performance Development:**
@@ -1903,19 +1906,19 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 - Card images: thumbnail by default (`width: 100px`), full art lazy-loaded on inspector open, pre-cache deck card images at duel init
 - WebSocket message batching: accumulate per `requestAnimationFrame`, apply as single state update
 - Immutable board state: `BoardStateService` returns new object references on every update (enables OnPush)
-- CSS `position: absolute` for prompt sheet (not CDK Overlay) — avoids reflow on open/close
+- CSS `position: absolute` for prompt dialog (not CDK Overlay) — avoids reflow on open/close
 - CDK Portal for sub-component injection only (dynamic content, not positioning)
 
 ### Architecture Decision Records (Responsive & Accessibility)
 
 | ADR | Decision | Alternative Rejected | Key Trade-off Accepted |
 |-----|----------|---------------------|----------------------|
-| **ADR-R1** | No backdrop on prompt sheet — board fully visible, interaction blocked by prompt state | Semi-transparent backdrop (solo simulator pattern) | Less visual focus on prompt. Accepted: board visibility critical for informed decisions; Master Duel pattern |
+| **ADR-R1** | No backdrop on prompt dialog — board fully visible around floating dialog, interaction blocked by prompt state | Semi-transparent backdrop (solo simulator pattern) | Less visual focus on prompt. Accepted: board visibility critical for informed decisions; Master Duel floating dialog pattern |
 | **ADR-R2** | Card Action Menu = simple `<div>` + `position: absolute` | `mat-menu` (CDK Overlay, built-in keyboard/animation) | Must manually add Tab/Enter keyboard nav (~5 LOC). Accepted: mat-menu creates `CdkConnectedOverlay` per invocation — unacceptable overhead at 50-100 uses/duel |
 | **ADR-R3** | Hand row overlap (negative `margin-left`) at fixed card size | CSS `transform: scale()` shrinking all cards | Left-most cards partially hidden (tap-to-rise needed). Accepted: scaling breaks touch targets below 44px at 7+ cards (WCAG violation); overlap preserves 100% card surface as pointer-events target |
-| **ADR-R4** | Distributed UI for `SELECT_IDLECMD`: phases → PhaseBadge, card actions → glow + Card Action Menu, zone actions → Zone Browser Action Mode | Single bottom sheet listing all 10-30 IDLECMD options | More components, requires familiarity (player must know to tap glowing cards). Accepted: 30-item list unusable on mobile; Master Duel distributes identically; glow provides affordance |
+| **ADR-R4** | Distributed UI for `SELECT_IDLECMD`: phases → PhaseBadge, card actions → glow + Card Action Menu, zone actions → Zone Browser Action Mode | Single dialog listing all 10-30 IDLECMD options | More components, requires familiarity (player must know to tap glowing cards). Accepted: 30-item list unusable on mobile; Master Duel distributes identically; glow provides affordance |
 | **ADR-R5** | CSS `perspective` enabled by default, no performance gate | Gate behind `hardwareConcurrency ≥ 4` with flat fallback | Theoretical risk on very old devices. Accepted: `perspective` + `rotateX` is compositor-only (no layout/paint), negligible GPU cost since ~2016. Gate = complexity for a non-existent problem (YAGNI) |
 | **ADR-R6** | Single breakpoint 768px (inspector variant only) + continuous `clamp()` | Multi-breakpoint (640, 768, 1024, 1280) with granular control | Less granular control at specific widths. Accepted: `clamp()` adapts continuously (better than discrete jumps); solo dev maintains 1 breakpoint not 4 |
 | **ADR-R7** | `dvh`/`dvw` in all duel view sizing | `vh`/`vw` (universal support, static value) | Requires Chrome 108+ / Safari 15.4+. Accepted: matches Chrome+Safari-only browser target; `dvh` tracks actual viewport including address bar changes. `vh`/`vw` retained for lobby only |
-| **ADR-R8** | Prompt sheet `max-height: 55dvh` hard cap | Uncapped `height: auto` | Large prompts (>12 cards, 2-row) need internal scroll. Accepted: 55dvh guarantees top 45% viewport (opponent field + central strip + MZ row) always visible. Internal scroll < blindfolded decisions |
+| **ADR-R8** | Prompt dialog `width: 50dvw` and `height: auto` (centered floating) | Bottom-anchored sheet covering 40-55% of viewport | Floating dialog occludes ~15-25% of board (centered), far less than a bottom sheet. Board fully visible around dialog edges. Card strip uses horizontal scroll within dialog for large selections |
 | **ADR-R9** | Native `matchMedia` for inspector 768px variant switch | CDK `BreakpointObserver` (NgZone re-entry, observable API) | Must manually handle cleanup (`removeEventListener`) and NgZone re-entry if needed. Accepted: single consumer (CardInspector), 3 lines of code, avoids pulling CDK Layout module for one usage |

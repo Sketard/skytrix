@@ -1,0 +1,10 @@
+<div class="lp-badge"
+     [class.lp-badge--player]="side() === 'player'"
+     [class.lp-badge--opponent]="side() === 'opponent'"
+     [class.lp-badge--danger]="isDanger()"
+     [class.lp-flash-damage]="flashType() === 'damage'"
+     [class.lp-flash-recover]="flashType() === 'recover'"
+     role="status"
+     aria-live="polite">
+  <span class="lp-value">{{ formattedLp() }}</span>
+</div>

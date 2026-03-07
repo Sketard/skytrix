@@ -1,0 +1,57 @@
+@use 'z-layers' as z;
+
+:host {
+  display: block;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: z.$z-pvp-animation-overlay;
+}
+
+.inspector-compact {
+  pointer-events: auto;
+  position: absolute;
+  bottom: calc(var(--pvp-hand-card-height) + 8px);
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
+  border-radius: var(--pvp-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  max-width: 220px;
+  transition: bottom var(--pvp-animation-duration);
+
+  // Dialog is now centered — no bottom offset needed when prompt is active
+
+  &__art {
+    width: var(--pvp-inspector-card-width);
+    height: var(--pvp-inspector-card-height);
+    object-fit: cover;
+    border-radius: var(--pvp-radius-md);
+    flex-shrink: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__stats {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+}

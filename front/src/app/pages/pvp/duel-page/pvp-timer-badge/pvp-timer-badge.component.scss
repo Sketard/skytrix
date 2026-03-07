@@ -1,0 +1,48 @@
+:host {
+  display: block;
+}
+
+.timer-badge {
+  font-size: var(--pvp-timer-font-size);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 8px;
+  border-radius: var(--pvp-radius-lg);
+  text-align: center;
+  min-width: 48px;
+  color: var(--text-primary);
+  transition: opacity var(--pvp-transition-highlight-flash), background var(--pvp-transition-highlight-flash);
+}
+
+.timer--green {
+  background: rgba(76, 175, 80, 0.25);
+  color: var(--pvp-timer-green);
+}
+
+.timer--yellow {
+  background: rgba(255, 193, 7, 0.25);
+  color: var(--pvp-timer-yellow);
+}
+
+.timer--red {
+  background: rgba(244, 67, 54, 0.25);
+  color: var(--pvp-timer-red);
+}
+
+.timer--active {
+  // Color-specific backgrounds (.timer--green/yellow/red) take precedence.
+  // No background override here — active state is indicated by full opacity.
+}
+
+.timer--inactive {
+  opacity: 0.5;
+}
+
+.timer-disconnect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pvp-timer-yellow);
+  font-size: 0.75em;
+  white-space: nowrap;
+}

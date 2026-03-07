@@ -32,6 +32,12 @@ public class DocumentController {
         return documentService.getSmallCardImage(id);
     }
 
+    @GetMapping("/small/code/{passcode}")
+    @ResponseStatus(code = HttpStatus.OK)
+    public byte[] getSmallCardImageByPasscode(@PathVariable("passcode") long passcode) {
+        return documentService.getSmallCardImageByPasscode(passcode);
+    }
+
     @GetMapping("/sample")
     @ResponseStatus(code = HttpStatus.OK)
     public byte[] getSampleImageRoute() {

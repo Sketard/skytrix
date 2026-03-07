@@ -100,6 +100,10 @@
               <mat-icon>sports_esports</mat-icon>
               <span>Simulateur</span>
             </button>
+            <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToPvp()">
+              <mat-icon>sports_kabaddi</mat-icon>
+              <span>Duel PvP</span>
+            </button>
           </mat-menu>
         </div>
         <div class="deckBuilder-side-header-row">
@@ -156,6 +160,14 @@
       }
     </div>
   </div>
+
+  <!-- PvP room creation loading overlay -->
+  @if (pvpLoading()) {
+    <div class="deckBuilder-pvpLoading" role="status" aria-label="Creating room">
+      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+      <p>Creating room...</p>
+    </div>
+  }
 
   <app-card-inspector
     [card]="selectedCardForInspector()"

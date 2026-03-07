@@ -1,0 +1,454 @@
+@use 'z-layers' as z;
+
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+// Board ratio derived from zone geometry:
+// 5 flex-rows (2+1+2), row h = H/5
+// Width = 5×h (square MZ/ST) + 2×(h×59/86) (portrait edges) = H × 274/215
+.board-wrapper {
+  height: 90%;
+  aspect-ratio: 274 / 215;
+  max-width: 100%;
+  margin: auto;
+  display: grid;
+  grid-template-rows: 2fr 1fr 2fr;
+  z-index: z.$z-pvp-board;
+}
+
+// === Field Section (shared grid base) ===
+// Edge columns (col 1 & 7: Deck/Extra/GY/Field) are portrait-ratio zones (59/86 ≈ 0.69),
+// center columns (col 2–6: MZ/ST) are square zones — column widths match zone aspect ratios.
+.field-section {
+  position: relative;
+  display: grid;
+  grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+  gap: 2px;
+  padding: 2px;
+  min-height: 0;
+}
+
+// Player field: MZ top, ST bottom (banished moved to central strip)
+.player-field {
+  grid-template-areas:
+    'field    mz1 mz2 mz3 mz4 mz5 gy'
+    'extra    st1 st2 st3 st4 st5 deck';
+  grid-template-rows: 1fr 1fr;
+}
+
+// Opponent field: true 180° mirror (banished moved to central strip)
+.opponent-field {
+  grid-template-areas:
+    'deck     st5 st4 st3 st2 st1 extra'
+    'gy       mz5 mz4 mz3 mz2 mz1 field';
+  grid-template-rows: 1fr 1fr;
+
+  // Rotate opponent's cards 180° so they face the opponent
+  .card-art {
+    transform: rotate(180deg);
+  }
+
+  .zone-card.def-position {
+    transform: rotate(270deg);
+  }
+}
+
+// === Central Strip (grid participant — same height as one zone row) ===
+.central-strip {
+  display: grid;
+  grid-template-columns: 59fr repeat(5, 86fr) 59fr;
+  gap: 2px;
+  padding: 0 2px;
+  align-items: center;
+  z-index: z.$z-pvp-central-strip;
+}
+
+.emz {
+  height: 100%;
+  aspect-ratio: 59 / 86;
+  justify-self: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--pvp-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &--left {
+    grid-column: 3;
+  }
+
+  &--right {
+    grid-column: 5;
+  }
+}
+
+.central-badges {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+// === Zone Cell ===
+.zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--pvp-radius-md);
+  overflow: visible;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+
+  // MZ/ST — square (height = row height, width = height via aspect-ratio)
+  &[style*='mz'],
+  &[style*='st'] {
+    aspect-ratio: 1;
+    justify-self: center;
+  }
+}
+
+// Banished zone positioning (central strip)
+.zone--banished {}
+
+// Opponent banished: col 1 (aligned with opponent GY above)
+.zone--banished-opponent {
+  grid-column: 1;
+}
+
+// Player banished: col 7 (aligned with player GY below)
+.zone--banished-player {
+  grid-column: 7;
+}
+
+// === Zone Card Rendering ===
+.zone-card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+
+  &.def-position {
+    transform: rotate(90deg);
+  }
+}
+
+.card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--pvp-radius-sm);
+  aspect-ratio: 59 / 86;
+}
+
+// === Zone Empty State ===
+.zone-empty {
+  width: 100%;
+  height: 100%;
+}
+
+// === Zone Pile (GY, Banished, Extra, Deck) ===
+.zone-pile {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+  border-radius: var(--pvp-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--pvp-transition-highlight-flash);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  // Stack effect for Deck and Extra (face-down piles)
+  &--stack {
+    cursor: default;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: var(--pvp-radius-sm);
+      background: #2a2a3e;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    &::before {
+      transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset)));
+      z-index: -2;
+    }
+
+    &::after {
+      transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2));
+      z-index: -1;
+    }
+  }
+
+  &--actionable {
+    box-shadow: var(--pvp-actionable-glow);
+    animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+// === XYZ Overlay Indicator ===
+.xyz-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: clamp(14px, 2dvh, 20px);
+  height: clamp(14px, 2dvh, 20px);
+  border-radius: 50%;
+  background: rgba(0, 150, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.5rem, 1.2dvh, 0.7rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+// === Actionable Glow (Story 1.7 — IDLECMD / BATTLECMD) ===
+.zone-card--actionable {
+  box-shadow: var(--pvp-actionable-glow);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  cursor: pointer;
+}
+
+// === Zone Highlight (Story 1.6 — SELECT_PLACE / SELECT_DISFIELD) ===
+.zone--highlighted {
+  border-color: var(--pvp-accent, #c9a84c);
+  box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4);
+}
+
+.zone-highlight-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: z.$z-pvp-animation-overlay;
+  width: clamp(24px, 4dvh, 36px);
+  height: clamp(24px, 4dvh, 36px);
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--pvp-accent, #c9a84c);
+  background: rgba(201, 168, 76, 0.85);
+  color: var(--surface-base);
+  font-size: clamp(0.75rem, 2dvh, 1rem);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 150ms ease-out;
+  animation: badge-pulse 1.5s ease-in-out infinite;
+
+  &:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+
+  // Brighter badge on opponent's field to compensate for perspective foreshortening
+  &--opponent {
+    border-width: 3px;
+    background: rgba(201, 168, 76, 0.95);
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.6);
+  }
+}
+
+@keyframes badge-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(201, 168, 76, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 10px rgba(201, 168, 76, 0.6);
+  }
+}
+
+// === Chain Link Badges (Story 4.1) ===
+.pvp-chain-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: var(--pvp-chain-badge-size);
+  min-height: var(--pvp-chain-badge-size);
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--pvp-chain-badge-bg);
+  color: var(--pvp-chain-badge-color);
+  font-size: 0.75em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: z.$z-pvp-chain-badge;
+  pointer-events: none;
+
+  &--resolving {
+    animation: chain-resolve-pulse var(--pvp-chain-resolve-pulse) ease-in-out;
+  }
+
+  &--overflow {
+    font-size: 0.625em;
+    opacity: 0.85;
+  }
+}
+
+@keyframes chain-resolve-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+// === Game Event Animations (Story 4.2) ===
+// [Review L1 fix] Summon uses --pvp-transition-card-move per AC2 spec
+.pvp-anim-summon {
+  animation: pvp-summon-flash var(--pvp-transition-card-move) ease-out;
+  z-index: z.$z-pvp-animation-overlay;
+}
+
+.pvp-anim-destroy {
+  animation: pvp-destroy-flash var(--pvp-animation-duration) ease-out;
+  z-index: z.$z-pvp-animation-overlay;
+}
+
+.pvp-anim-flip {
+  animation: pvp-flip-flash var(--pvp-animation-duration) ease-out;
+  z-index: z.$z-pvp-animation-overlay;
+}
+
+.pvp-anim-activate {
+  animation: pvp-activate-flash var(--pvp-animation-duration) ease-out;
+  z-index: z.$z-pvp-animation-overlay;
+}
+
+// [Review M1 fix] Use --pvp-summon-highlight token instead of hardcoded green
+@keyframes pvp-summon-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--pvp-summon-highlight);
+  }
+
+  40% {
+    box-shadow: 0 0 12px 4px var(--pvp-summon-highlight);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 var(--pvp-summon-highlight);
+  }
+}
+
+@keyframes pvp-destroy-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--pvp-destroy-highlight);
+    opacity: 1;
+  }
+
+  40% {
+    box-shadow: 0 0 14px 4px var(--pvp-destroy-highlight);
+    opacity: 0.5;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 var(--pvp-destroy-highlight);
+    opacity: 1;
+  }
+}
+
+@keyframes pvp-flip-flash {
+  0% {
+    transform: scaleX(1);
+  }
+
+  50% {
+    transform: scaleX(0);
+  }
+
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pvp-activate-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--pvp-activate-highlight);
+  }
+
+  40% {
+    box-shadow: 0 0 12px 4px var(--pvp-activate-highlight);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 var(--pvp-activate-highlight);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .zone-highlight-badge,
+  .zone-card--actionable,
+  .zone-pile--actionable {
+    animation: none;
+  }
+
+  .pvp-chain-badge--resolving {
+    animation: none;
+  }
+
+  .pvp-anim-summon,
+  .pvp-anim-destroy,
+  .pvp-anim-flip,
+  .pvp-anim-activate {
+    animation: none;
+  }
+}
+
+// === Forced Colors ===
+@media (forced-colors: active) {
+  .zone {
+    border: 2px solid ButtonText;
+  }
+
+  .zone-card {
+    border: 1px solid ButtonText;
+  }
+
+  .zone-empty {
+    border: 1px dashed ButtonText;
+  }
+
+  .card-art {
+    forced-color-adjust: none;
+  }
+
+  .zone-pile {
+    border: 1px solid ButtonText;
+  }
+}

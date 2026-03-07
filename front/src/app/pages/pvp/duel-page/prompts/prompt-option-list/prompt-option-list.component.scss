@@ -1,0 +1,51 @@
+@use '../prompt-btn' as btn;
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 45dvh;
+  overflow-y: auto;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--pvp-min-touch-target-primary, 48px);
+  text-align: left;
+  border-radius: var(--pvp-radius-lg);
+  transition: background var(--pvp-animation-duration) ease-out;
+
+  &--selected {
+    background: var(--accent-primary-dim, rgba(201, 168, 76, 0.2)) !important;
+    color: var(--pvp-accent, #c9a84c);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--pvp-accent, #c9a84c);
+    outline-offset: -2px;
+  }
+}
+
+.option-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.option-label {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.btn {
+  &--primary {
+    @include btn.prompt-btn-primary;
+  }
+}

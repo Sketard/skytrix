@@ -1,6 +1,5 @@
 package com.skytrix.security;
 
-import jakarta.inject.Inject;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -26,27 +25,31 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 @Service
 @Slf4j
 public class AuthService {
-    @Inject
-    private JWTService jwtService;
 
-    @Inject
-    private UserRepository userRepository;
+    private final JWTService jwtService;
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final PasswordEncoder encoder;
+    private final Long refreshValidityMilliseconds;
+    private final String baseApiPath;
 
-    @Inject
-    private UserMapper userMapper;
-
-    @Inject
-    private PasswordEncoder encoder;
-
-    @Value("${jwt.refresh-validity-period}")
-    private Long refreshValidityMilliseconds;
-
-    @Value("${server.servlet.context-path}")
-    private String baseApiPath;
-
+    public AuthService(JWTService jwtService,
+                       UserRepository userRepository,
+                       UserMapper userMapper,
+                       PasswordEncoder encoder,
+                       @Value("${jwt.refresh-validity-period}") Long refreshValidityMilliseconds,
+                       @Value("${server.servlet.context-path}") String baseApiPath) {
+        this.jwtService = jwtService;
+        this.userRepository = userRepository;
+        this.userMapper = userMapper;
+        this.encoder = encoder;
+        this.refreshValidityMilliseconds = refreshValidityMilliseconds;
+        this.baseApiPath = baseApiPath;
+    }
 
     public Long getConnectedUserId() {
-        return getConnectedUser().getId();
+        var userDetail = (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return userDetail.getId();
     }
 
     public User getConnectedUser() {

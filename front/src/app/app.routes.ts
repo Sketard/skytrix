@@ -17,4 +17,20 @@ export const routes: Routes = [
   { path: 'decks/:id', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'search', component: CardSearchPageComponent, canActivate: [AuthService] },
   { path: 'parameters', component: ParameterPageComponent, canActivate: [AuthService] },
+  {
+    path: 'pvp',
+    loadComponent: () => import('./pages/pvp/lobby-page/lobby-page.component').then(m => m.LobbyPageComponent),
+    canActivate: [AuthService],
+  },
+  {
+    path: 'pvp/duel/:roomCode',
+    loadComponent: () => import('./pages/pvp/duel-page/duel-page.component').then(m => m.DuelPageComponent),
+    canActivate: [AuthService],
+    canDeactivate: [(component: import('./pages/pvp/duel-page/duel-page.component').DuelPageComponent) => {
+      if (component.roomState() !== 'active') return true;
+      if (component.wsService.duelResult()) return true;
+      if (component.connectionStatus() === 'lost') return true;
+      return component.confirmSurrender();
+    }],
+  },
 ];

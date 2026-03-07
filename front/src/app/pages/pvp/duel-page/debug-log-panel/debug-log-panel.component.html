@@ -1,0 +1,26 @@
+<div class="debug-panel"
+     id="debug-log-panel"
+     [class.debug-panel--open]="open()"
+     [attr.inert]="open() ? null : true"
+     [attr.aria-hidden]="!open()">
+  <div class="debug-panel__header">
+    <span class="debug-panel__title">Debug Logs</span>
+    <button class="debug-panel__clear" aria-label="Clear logs" (click)="clearRequested.emit()">
+      <mat-icon>delete_outline</mat-icon>
+    </button>
+    <button class="debug-panel__close" aria-label="Close debug panel" (click)="closed.emit()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+  <div class="debug-panel__body" #scrollContainer>
+    @for (entry of entries(); track $index) {
+      <div class="debug-panel__entry">
+        <span class="debug-panel__time">{{ formatTime(entry.timestamp) }}</span>
+        <span class="debug-panel__dot debug-panel__dot--{{ entry.category }}"></span>
+        <span class="debug-panel__text">{{ entry.text }}</span>
+      </div>
+    } @empty {
+      <p class="debug-panel__empty">No logs yet</p>
+    }
+  </div>
+</div>

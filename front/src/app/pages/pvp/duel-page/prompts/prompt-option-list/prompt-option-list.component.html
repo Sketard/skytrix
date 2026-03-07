@@ -1,0 +1,25 @@
+<div class="option-list" role="group" aria-label="Options">
+  @for (opt of options; track opt.index) {
+    <button mat-button
+            class="option-item"
+            [class.option-item--selected]="selectedIndex() === opt.index"
+            (click)="selectOption(opt.index)"
+            [disabled]="answered"
+            [attr.aria-pressed]="selectedIndex() === opt.index"
+            type="button">
+      @if (opt.icon) {
+        <span class="option-icon">{{ opt.icon }}</span>
+      }
+      <span class="option-label">{{ opt.label }}</span>
+    </button>
+  }
+</div>
+
+<div class="actions">
+  <button class="btn btn--primary prompt-confirm-btn"
+          (click)="confirm()"
+          [disabled]="selectedIndex() === null || answered"
+          type="button">
+    Confirm
+  </button>
+</div>

@@ -19,7 +19,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ### Requirements Overview
 
 **Functional Requirements:**
-24 functional requirements across 4 categories covering matchmaking & session management (FR1-7: room creation, deck validation, lobby, auto-start, surrender, disconnection handling, win/draw conditions), turn & phase management (FR8-10: automated phase flow, main phase contextual actions, battle phase actions), player prompts & engine delegation (FR11-13: modal dialogs for all SELECT_* types, chain resolution delegation, full rule enforcement delegation), and board display & information (FR14-24: two-player field display, private information hiding, LP tracking, chain visualization, card inspection, turn indicator, turn timer, inactivity timeout, visual feedback per game event, click-based interaction, duel result screen).
+25 functional requirements across 4 categories covering matchmaking & session management (FR1-7: room creation, deck validation, lobby, auto-start, surrender, disconnection handling, win/draw conditions), turn & phase management (FR8-10: automated phase flow, main phase contextual actions, battle phase actions), player prompts & engine delegation (FR11-13: modal dialogs for all SELECT_* types, chain resolution delegation, full rule enforcement delegation), and board display & information (FR14-25: two-player field display, private information hiding, LP tracking, chain visualization, card inspection, turn indicator, turn timer, inactivity timeout, visual feedback per game event, click-based interaction, duel result screen, client-side activation toggle).
 
 The PvP mode is fundamentally different from the solo simulator: the duel engine (OCGCore) is the sole authority for game state, the player responds to engine prompts rather than freely manipulating the board, and all communication is server-mediated for anti-cheat integrity.
 
@@ -84,7 +84,7 @@ The MVP targets PvP between friends (trusted players). This determines which arc
 |-----|----------|-----------|
 | Thread isolation | Worker thread per duel | Total isolation, acceptable memory overhead (50 × ~2MB WASM) |
 | Type sharing | Independent WebSocket DTOs | Clean boundary, frontend/engine decoupled, boring tech |
-| Board layout PvP | Composition via PlayerFieldComponent | Extract don't rewrite, consistent with solo architecture |
+| Board layout PvP | ~~Composition via PlayerFieldComponent~~ **REVISED: PvP builds own PvpBoardContainerComponent** | Original: Extract don't rewrite. **Revised (2026-02-25 FMA):** Solo grid (7-col, EMZ in grid, drag-drop, 1060×608px) is fundamentally incompatible with PvP grid (6-col, EMZ in central strip, click-based, CSS perspective). Shared reuse happens at CardComponent/CardInspectorComponent level (already in components/), not at grid layout level. Story 1-1 skipped. |
 | Message filter | Whitelist per message type | Safety-critical = explicit, auditable, default DROP policy |
 
 ### Story-Level Implementation Notes
@@ -97,7 +97,7 @@ _These insights surfaced during analysis but are too granular for architecture d
 - Message filter: `MSG_DRAW` contains `card_code` + `position` per drawn card — sanitize `card_code` to 0 for opponent, keep `position`
 - Message filter: `MSG_SHUFFLE_HAND` contains card codes after shuffle — sanitize all to 0 for opponent
 - Message filter: `MSG_CONFIRM_CARDS` reveals specific card codes — route only to the intended player
-- Reconnection snapshot: use `duelQueryField()` for global state + `duelQuery()` per card with `OcgQueryFlags.CODE | POSITION | ATTACK | DEFENSE` for face-up cards
+- Reconnection snapshot: use `duelQueryField()` for global state + `duelQueryLocation()` per zone with FULL_FLAGS (`OcgQueryFlags.CODE | POSITION | ATTACK | DEFENSE | TYPE | LEVEL | RANK | ATTRIBUTE | RACE | OVERLAY_CARD | COUNTERS | LSCALE | RSCALE | LINK`). Apply message filter per player before sending (hand codes → 0 for opponent, face-down codes → 0 for opponent). See `ocgcore-technical-reference.md` §8 for exact query strategy and `OcgFieldState` structure
 - Scripts update: update `data/` folder manually, restart duel server. New duels use new scripts; in-progress duels keep their loaded scripts.
 - Scope reduction (PvP-A0): for first testable increment, implement only the most frequent SELECT_* types (IDLECMD, BATTLECMD, CARD, CHAIN, EFFECTYN, PLACE, POSITION). Others fallback to auto-select first valid option.
 
@@ -206,8 +206,8 @@ All important decisions made — data architecture, auth chain, protocol format,
 |--------|----------|
 | Message format | JSON with type discriminant: `{ "type": "MSG_DRAW", ...data }` |
 | No envelope wrapper | No version, timestamp, or metadata wrapper — YAGNI for MVP |
-| Server → Client | Game events (`MSG_*`), prompts (`SELECT_*`), state updates (`GAME_STATE`, `TIMER_UPDATE`), lifecycle (`DUEL_END`) |
-| Client → Server | `SELECT_RESPONSE` (prompt answers), `SURRENDER` only |
+| Server → Client | Game events (`MSG_*`), prompts (`SELECT_*`), state updates (`GAME_STATE`, `TIMER_STATE`), lifecycle (`DUEL_END`), session (`RPS_RESULT`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`, `REMATCH_INVITATION`, `REMATCH_CANCELLED`, `WAITING`) |
+| Client → Server | `SELECT_RESPONSE` (prompt answers), `SURRENDER`, `RPS_CHOICE`, `REMATCH_REQUEST`, `REMATCH_RESPONSE` |
 | Heartbeat | Native `ws` ping/pong — no application-level heartbeat messages |
 | Protocol versioning | None for MVP (single developer, single client) |
 | Source of truth | `ws-protocol.ts` (duel server) is the canonical protocol definition. Angular `duel-ws.types.ts` is a manual copy. Server changes first, then client. |
@@ -674,7 +674,7 @@ Key compatibility confirmations:
 
 ### Requirements Coverage Validation ✅
 
-**Functional Requirements Coverage (24/24):**
+**Functional Requirements Coverage (25/25):**
 
 | FR | Architectural Support | Primary Files |
 |----|----------------------|---------------|
@@ -702,6 +702,7 @@ Key compatibility confirmations:
 | FR22 (Visual feedback) | FIFO animation queue | `duel-websocket.service.ts` (merged queue) |
 | FR23 (Click-based interaction) | Prompt components (not drag & drop) | `prompts/*.component.ts` |
 | FR24 (Duel result screen) | Duel result state in `duel-page.component.ts` | `duel-page.component.ts` |
+| FR25 (Activation toggle) | Client-side filter (Auto/On/Off) on optional prompts, per-duel state | `pvp-activation-toggle.component.ts`, `duel-websocket.service.ts` |
 
 **Non-Functional Requirements Coverage (10/10):**
 
@@ -774,7 +775,7 @@ Key compatibility confirmations:
 
 **✅ Requirements Analysis**
 
-- [x] Project context thoroughly analyzed (tri-service architecture, 24 FRs, 10 NFRs)
+- [x] Project context thoroughly analyzed (tri-service architecture, 25 FRs, 10 NFRs)
 - [x] Scale and complexity assessed (~20-25 components, high complexity)
 - [x] Technical constraints identified (OCGCore sync mode, ESM patch, anti-cheat)
 - [x] Cross-cutting concerns mapped (8 concerns documented in Step 1)
@@ -806,7 +807,7 @@ Key compatibility confirmations:
 
 **Confidence Level:** HIGH — based on:
 - 10/10 ADRs validated by Comparative Analysis Matrix (all optimal for MVP scope)
-- 24/24 FRs architecturally supported with file-level mapping
+- 25/25 FRs architecturally supported with file-level mapping
 - 10/10 NFRs addressed with specific mechanisms
 - PoC validates core technical risk (OCGCore WASM duel loop)
 - 9 enforcement rules provide clear AI agent constraints

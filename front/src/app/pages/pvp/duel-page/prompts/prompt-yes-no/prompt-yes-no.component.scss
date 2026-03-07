@@ -1,0 +1,24 @@
+@use '../prompt-btn' as btn;
+
+.yes-no-container {
+  display: flex;
+  align-items: center;
+}
+
+.buttons {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.btn {
+  flex: 1;
+
+  &--primary {
+    @include btn.prompt-btn-primary;
+  }
+
+  &--secondary {
+    @include btn.prompt-btn-secondary;
+  }
+}

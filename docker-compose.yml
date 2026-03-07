@@ -11,6 +11,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - skytrix-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -27,11 +29,32 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      DUEL_SERVER_URL: http://duel-server:3001
     volumes:
       - images_data:/app/images
+    networks:
+      - skytrix-internal
     depends_on:
       db:
         condition: service_healthy
+
+  # Duel Server (WebSocket)
+  duel-server:
+    build: ./duel-server
+    container_name: skytrix-duel-server
+    restart: unless-stopped
+    volumes:
+      - ./duel-server/data:/app/data:ro
+    environment:
+      PORT: 3001
+    networks:
+      - skytrix-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # Frontend Angular servi par Nginx
   front:
@@ -40,9 +63,14 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    networks:
+      - skytrix-internal
     depends_on:
       - back
 
 volumes:
   postgres_data:
   images_data:
+
+networks:
+  skytrix-internal:

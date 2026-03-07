@@ -53,6 +53,7 @@ _bmad/
 # Duel server external data (downloaded at setup, ~100 MB)
 duel-server/data/
 duel-server/node_modules/
+duel-server/dist/
 
 # OS
 .DS_Store

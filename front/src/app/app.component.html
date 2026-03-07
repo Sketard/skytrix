@@ -1,6 +1,6 @@
 <div class="app mat-app-background dark-theme no-transition" [class.mobile-mode]="isMobile() && !shouldHideTopBar()">
   <app-loader></app-loader>
-  @if (connectedUser()) {
+  @if (connectedUser() && !navbarHidden()) {
     <navbar></navbar>
   }
   <main class="dark-theme-content" [class.full]="!connectedUser()">

@@ -1,0 +1,55 @@
+:host {
+  display: block;
+}
+
+.activation-toggle {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--pvp-radius-lg);
+  background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color var(--pvp-transition-highlight-flash);
+
+  &:hover {
+    background: rgba(30, 30, 60, 0.9);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--pvp-accent);
+    outline-offset: 2px;
+  }
+
+  &--auto {
+    border-color: var(--border-subtle);
+  }
+
+  &--on {
+    border-color: var(--pvp-accent);
+  }
+
+  &--off {
+    border-color: rgba(255, 255, 255, 0.15);
+    opacity: 0.7;
+  }
+
+  &__icon {
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  &__label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.7);
+  }
+}

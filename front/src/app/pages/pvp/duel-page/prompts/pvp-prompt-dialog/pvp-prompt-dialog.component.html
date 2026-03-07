@@ -1,0 +1,39 @@
+<div class="prompt-dialog"
+     [class.prompt-dialog--visible]="isDialogVisible()"
+     [class.prompt-dialog--collapsed]="dialogState() === 'collapsed'"
+     [class.prompt-dialog--transitioning]="dialogState() === 'transitioning'"
+     [cdkTrapFocus]="trapFocusActive()"
+     [cdkTrapFocusAutoCapture]="true"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Game prompt">
+
+  <button class="collapse-handle"
+          (click)="toggleCollapse()"
+          aria-label="Toggle prompt collapse"
+          type="button">
+    <span class="collapse-arrow"
+          [class.collapse-arrow--up]="dialogState() === 'collapsed'">&#x25BC;</span>
+  </button>
+
+  @if (hintText() && dialogState() !== 'collapsed') {
+    <div class="hint-header"
+         [class.hint-header--flash]="dialogState() === 'transitioning'">
+      <span [innerHTML]="hintText()"></span>
+    </div>
+  }
+
+  @if (dialogState() === 'collapsed') {
+    <div class="collapsed-bar" aria-live="polite">Waiting for your response...</div>
+  }
+
+  <div class="portal-container"
+       [class.portal-container--disabled]="isBeat1()"
+       [class.portal-container--hidden]="dialogState() === 'collapsed'">
+    <ng-template cdkPortalOutlet></ng-template>
+  </div>
+
+  @if (isSending()) {
+    <div class="sending-indicator" aria-live="polite">Sending...</div>
+  }
+</div>

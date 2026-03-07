@@ -1,6 +1,6 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
-inputDocuments: ['prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-pvp.md']
+inputDocuments: ['prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-pvp.md', 'ocgcore-technical-reference.md']
 ---
 
 # skytrix PvP - Epic Breakdown
@@ -174,6 +174,10 @@ The PvP experience handles real-world conditions — surrender, disconnection/re
 The PvP experience reaches Master Duel visual quality with animations per game event, chain link visualization, and animation choreography. Includes chain link badges (numbered), visual feedback per game event (card movement, highlight, LP counter animation), FIFO animation queue (never-blocking), auto-resolve acceleration.
 **FRs covered:** FR17, FR22
 
+### Epic 5: Tech Debt Cleanup
+Technical debt accumulated across Epics 1–4 is resolved: card inspector PvP placeholder, reconnection edge cases (3-3b), room management fixes (RoomDTO deck ID, orphaned room cleanup), infrastructure improvements (Docker integration test, thumbnail pre-fetch).
+**FRs covered:** Debt resolution — no new FRs
+
 ## Epic 1: Core Online Duel
 
 Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore.
@@ -209,7 +213,7 @@ So that server and client development can proceed in parallel against a frozen p
 **Given** the duel-server/ project does not exist
 **When** the scaffold is created
 **Then** `duel-server/` contains: `package.json` (dependencies: `@n1xx1/ocgcore-wasm`, `ws`, `better-sqlite3`, `patch-package`), `tsconfig.json` (strict, ESM, outDir: dist/), `patches/` directory with `@n1xx1+ocgcore-wasm` ESM fix
-**And** `src/ws-protocol.ts` defines all WebSocket DTO types as union discriminated types (`SCREAMING_SNAKE_CASE` message types, `camelCase` fields, explicit `null` for absent values, zero internal imports). Message categories: **Server→Client game**: `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SWAP`, `MSG_ATTACK`, `MSG_BATTLE`, `MSG_WIN`. **Server→Client prompts**: `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TP`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. **Server→Client system**: `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `REMATCH_CANCELLED`, `WORKER_ERROR`, `STATE_SYNC`. **Client→Server**: `PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`
+**And** `src/ws-protocol.ts` defines all WebSocket DTO types as union discriminated types (`SCREAMING_SNAKE_CASE` message types, `camelCase` fields, explicit `null` for absent values, zero internal imports). Message categories: **Server→Client game**: `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SWAP`, `MSG_ATTACK`, `MSG_BATTLE`, `MSG_WIN`. **Server→Client prompts**: `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_COUNTER`, `SORT_CARD`, `SORT_CHAIN`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. **Server→Client system**: `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `REMATCH_CANCELLED`, `WORKER_ERROR`, `STATE_SYNC`. **Client→Server**: `PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`
 **And** `src/types.ts` defines internal types (worker message types, session state interfaces, constants)
 **And** `src/server.ts` creates a `ws.WebSocketServer({ maxPayload: 4096 })` + `node:http` server responding to `GET /health` → 200 and `GET /status` → JSON
 **And** `duel-server/LICENSE` contains AGPL-3.0 text
@@ -376,7 +380,7 @@ So that I understand every decision the engine asks me to make and can respond q
 **And** CDK `FocusTrap` is active when sheet is `open`, disabled during `collapsed` state
 **And** keyboard shortcut `C` toggles collapse handle (collapse/expand)
 **And** keyboard shortcut `Space` confirms the active selection (equivalent to tapping confirm button)
-**And** prompt type → sub-component mapping: `SELECT_YESNO | SELECT_EFFECTYN → PromptYesNo`, `SELECT_CARD | SELECT_CHAIN | SELECT_TRIBUTE | SELECT_SUM | SELECT_UNSELECT_CARD → PromptCardGrid`, `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlight`, `SELECT_POSITION | SELECT_OPTION | SELECT_TP → PromptOptionList`, `SELECT_NUMBER | SELECT_COUNTER | ANNOUNCE_RACE | ANNOUNCE_ATTRIB | ANNOUNCE_CARD | ANNOUNCE_NUMBER → PromptNumericInput`, `RPS_CHOICE → PromptRps`
+**And** prompt type → sub-component mapping: `SELECT_YESNO | SELECT_EFFECTYN → PromptYesNo`, `SELECT_CARD | SELECT_CHAIN | SELECT_TRIBUTE | SELECT_SUM | SELECT_UNSELECT_CARD → PromptCardGrid`, `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlight`, `SELECT_POSITION | SELECT_OPTION → PromptOptionList`, `ANNOUNCE_NUMBER | SELECT_COUNTER | ANNOUNCE_RACE | ANNOUNCE_ATTRIB | ANNOUNCE_CARD → PromptNumericInput`, `RPS_CHOICE → PromptRps`
 
 **Given** the prompt sheet exists
 **When** `PromptYesNoComponent` (Pattern C — compact sheet) is implemented
@@ -406,13 +410,13 @@ So that I understand every decision the engine asks me to make and can respond q
 
 **Given** the prompt sheet exists
 **When** `PromptOptionListComponent` (Pattern B — variable height) is implemented
-**Then** it handles `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TP`
+**Then** it handles `SELECT_POSITION`, `SELECT_OPTION`
 **And** it displays a vertical list of `mat-button` options with optional icons
 **And** `preferredHeight` is `N × 48px` (falls back to `full` if N > 5)
 
 **Given** the prompt sheet exists
 **When** `PromptNumericInputComponent` (Pattern B — compact) is implemented
-**Then** it handles `SELECT_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`
+**Then** it handles `ANNOUNCE_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`
 **And** mode `declare`: free input with validation; mode `counter`: stepper (−/+)
 **And** min/max constraints from server message are enforced
 
@@ -559,7 +563,7 @@ So that we can fairly determine who plays first.
 **Given** both RPS selections are received
 **When** `server.ts` resolves RPS
 **Then** server sends `RPS_RESULT` to both clients (both choices + winner ID) for simultaneous reveal animation
-**And** the winner receives a `SELECT_TP` prompt: "Go First" / "Go Second" (`PromptOptionListComponent`)
+**And** the winner receives a turn order prompt via `HAND_RES`: "Go First" / "Go Second" (`PromptOptionListComponent`)
 **And** if draw: RPS repeats (new `RPS_CHOICE` sent)
 
 **Given** turn order is decided
@@ -845,3 +849,90 @@ So that the duel feels dynamic and I can follow what's happening on the board.
 **When** any game event animation would play
 **Then** all animations are skipped (0ms duration), board state updates are applied immediately
 **And** `LiveAnnouncer` still announces key events (summon, destroy, LP change) for accessibility
+
+## Epic 5: Tech Debt Cleanup
+
+Technical debt accumulated across Epics 1–4 is resolved. All items were documented in retrospectives and confirmed for resolution by the Project Lead.
+
+### Story 5.1: Card Inspector PvP Placeholder
+
+As a player,
+I want to long-press or click a card on the PvP board to open a card inspector overlay,
+So that I can read card effects and check stats during a duel.
+
+**Acceptance Criteria:**
+
+**Given** a card is displayed on the PvP board (any zone: monster, spell/trap, field, GY, banished, extra, hand)
+**When** the player taps/clicks the card
+**Then** a `CardInspectorComponent` overlay opens showing the full card image, name, description, ATK/DEF, and card type
+**And** the overlay uses the existing `CardInspectorComponent` from `components/` (solo simulator)
+**And** the overlay does not block game prompts (closes automatically when a prompt appears)
+**And** the overlay can be dismissed by tapping outside or pressing Escape
+
+**Technical debt source:** Epic 1 Story 1-7 — placeholder TODO in `prompt-card-grid.component.ts:146`
+
+### Story 5.2: Reconnection Edge Cases (Story 3-3b)
+
+As a player,
+I want robust reconnection handling for edge cases (multi-tab, background tab, simultaneous disconnection),
+So that duels survive unusual but realistic network and browser scenarios.
+
+**Acceptance Criteria:**
+
+**Given** the player has the duel open in multiple browser tabs (BroadcastChannel scenario)
+**When** both tabs attempt to reconnect simultaneously
+**Then** only one tab successfully reconnects, the other receives a clear "session active in another tab" message
+**And** the duel continues normally in the active tab
+
+**Given** the player's browser tab goes to background (visibilitychange)
+**When** the tab becomes visible again after a brief background period (< 60s)
+**Then** the WebSocket connection is verified and reconnected if needed
+**And** the board state is re-synced via BOARD_STATE message
+
+**Given** both players disconnect simultaneously
+**When** both players reconnect within the 60-second grace period
+**Then** the duel resumes normally for both players
+**And** if neither reconnects within 60s, the duel is ended as a draw
+
+**Technical debt source:** Epic 3 Story 3-3 — scope reduction to 3-3a (basic reconnection only)
+
+### Story 5.3: Room Management Fixes
+
+As a player,
+I want correct navigation back to my deck after a duel, and I want stale rooms cleaned up automatically,
+So that the lobby stays clean and deck navigation works properly.
+
+**Acceptance Criteria:**
+
+**Given** a duel has ended and the player clicks "Back to Deck"
+**When** the RoomDTO includes the deck ID used to join the room
+**Then** the player navigates to `/deck/:id` (specific deck) instead of `/deck` (deck list)
+**And** `RoomDTO` is extended with `deckId: number` field on both Spring Boot and Angular sides
+
+**Given** a duel room was created but the duel-server ended the duel (5-min timeout, disconnect, etc.)
+**When** the Spring Boot backend checks for stale rooms (scheduled task, e.g., every 5 minutes)
+**Then** rooms whose duel-server session is expired are marked as CLOSED in the database
+**And** CLOSED rooms do not appear in the lobby room list
+
+**Technical debt source:** Epic 3 Story 3-4 — RoomDTO lacks deck ID fields + orphaned room cleanup
+
+### Story 5.4: Infrastructure & Optimization
+
+As a developer,
+I want Docker container integration tests and optimized thumbnail loading,
+So that deployment confidence is higher and duel loading is faster.
+
+**Acceptance Criteria:**
+
+**Given** the duel-server Docker container is built
+**When** an integration test suite runs against the container
+**Then** the test verifies: `GET /health` returns 200, `GET /status` returns valid JSON, WebSocket connection can be established, a minimal duel can be started and completed
+**And** the test runs in CI or locally via `npm run test:integration`
+
+**Given** a duel is loading (loading screen phase)
+**When** the client prepares card thumbnails for display
+**Then** thumbnails for ALL cards in both players' decks (main + extra) are pre-fetched, not just hand cards
+**And** pre-fetch uses `<link rel="prefetch">` or equivalent lazy loading strategy
+**And** duel board rendering shows card images without visible loading delay
+
+**Technical debt source:** Epic 1 Story 1-2 (Docker test) + Epic 2 Story 2-4 (thumbnail pre-fetch)

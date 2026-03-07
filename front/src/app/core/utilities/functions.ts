@@ -34,10 +34,10 @@ export const displayError = (snackBar: MatSnackBar, error: HttpErrorResponse | s
   });
 };
 
-export const displaySuccess = (snackBar: MatSnackBar, message: string) => {
+export const displaySuccess = (snackBar: MatSnackBar, message: string, duration = 2000) => {
   snackBar.openFromComponent(SnackbarComponent, {
     data: { message, type: 'success', icon: 'check_circle' },
-    duration: 2000,
+    duration,
     verticalPosition: 'top',
     horizontalPosition: 'center',
     panelClass: 'snackbar-panel',
@@ -62,6 +62,20 @@ export const parseErrorBlob = (err: HttpErrorResponse, snackBar: MatSnackBar) =>
   });
   reader.readAsText(err.error);
   return obs;
+};
+
+export const relativeTime = (date: string): string => {
+  if (!date) return '';
+  const diff = Date.now() - new Date(date).getTime();
+  if (isNaN(diff)) return '';
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} d ago`;
 };
 
 export const formattedWithoutCaseAndAccent = (a: string): string => {

@@ -1,0 +1,18 @@
+<div class="rps-container">
+  <div class="timer" role="timer" aria-live="polite" aria-atomic="true">{{ secondsLeft() }}s</div>
+
+  <div class="choices">
+    @for (choice of choices; track choice.value) {
+      <button class="choice-btn"
+              [class.choice-btn--selected]="selected() === choice.value"
+              (click)="selectChoice(choice.value)"
+              [disabled]="answered"
+              [attr.aria-label]="choice.label"
+              type="button">
+        <span class="choice-icon">{{ choice.icon }}</span>
+        <span class="choice-label">{{ choice.label }}</span>
+        <span class="choice-key">{{ choice.key }}</span>
+      </button>
+    }
+  </div>
+</div>
