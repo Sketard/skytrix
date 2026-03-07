@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
 import type { ChainingMsg } from '../duel-ws.types';
-import { AnnounceCardMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, CardInfo, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -10,7 +10,7 @@ export class DuelConnection {
   // --- Signals (13 pairs) ---
   private _duelState = signal<DuelState>(EMPTY_DUEL_STATE);
   private _pendingPrompt = signal<Prompt | null>(null);
-  private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '' });
+  private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
   private _animationQueue = signal<GameEvent[]>([]);
   private _timerState = signal<TimerStateMsg | null>(null);
   private _connectionStatus = signal<ConnectionStatus>('connected');
@@ -22,6 +22,7 @@ export class DuelConnection {
   private _rematchState = signal<'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired'>('idle');
   private _rematchStarting = signal(false);
   private _inactivityWarning = signal<InactivityWarningMsg | null>(null);
+  private _waitingForOpponent = signal(false);
 
   readonly duelState = this._duelState.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
@@ -37,6 +38,7 @@ export class DuelConnection {
   readonly rematchState = this._rematchState.asReadonly();
   readonly rematchStarting = this._rematchStarting.asReadonly();
   readonly inactivityWarning = this._inactivityWarning.asReadonly();
+  readonly waitingForOpponent = this._waitingForOpponent.asReadonly();
 
   // --- Reconnect state ---
   private _retryCount = signal(0);
@@ -52,6 +54,10 @@ export class DuelConnection {
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly wsUrlBase: string;
+
+  // --- Last selected cards (for excluding from next card-selection prompt) ---
+  private _lastSelectedCards: CardInfo[] = [];
+  get lastSelectedCards(): CardInfo[] { return this._lastSelectedCards; }
 
   // --- Callbacks (set by wrapper services) ---
   onMessage?: (msg: ServerMessage) => void;
@@ -76,6 +82,22 @@ export class DuelConnection {
 
   sendResponse(promptType: string, data: ResponseData): void {
     if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
+      // Capture selected cards before clearing prompt (for excluding from next prompt)
+      const prompt = this._pendingPrompt();
+      if (prompt && 'cards' in prompt) {
+        const cards = (prompt as { cards: CardInfo[] }).cards;
+        if ('indices' in data) {
+          const indices = data['indices'] as number[];
+          this._lastSelectedCards = indices.map(i => cards[i]).filter(Boolean);
+        } else if ('index' in data && data['index'] != null) {
+          const card = cards[data['index'] as number];
+          this._lastSelectedCards = card ? [card] : [];
+        } else {
+          this._lastSelectedCards = [];
+        }
+      } else {
+        this._lastSelectedCards = [];
+      }
       this.onResponse?.(promptType, data);
       this._pendingPrompt.set(null);
       this._inactivityWarning.set(null);
@@ -115,6 +137,22 @@ export class DuelConnection {
 
   skipPendingAnimations(): void {
     this._animationQueue.set([]);
+  }
+
+  applyChainSolving(chainIndex: number): void {
+    this._activeChainLinks.update(links =>
+      links.map(l => l.chainIndex === chainIndex ? { ...l, resolving: true } : l),
+    );
+  }
+
+  applyChainSolved(chainIndex: number): void {
+    this._activeChainLinks.update(links =>
+      links.filter(l => l.chainIndex !== chainIndex),
+    );
+  }
+
+  applyChainEnd(): void {
+    this._activeChainLinks.set([]);
   }
 
   resetRematchStarting(): void {
@@ -240,7 +278,8 @@ export class DuelConnection {
       case 'BOARD_STATE':
         this._rematchStarting.set(false);
         this._duelState.set(message.data);
-        this._activeChainLinks.set([]);
+        // Chain links are now cleared by MSG_CHAIN_END through the animation queue,
+        // so animations remain visible until the orchestrator processes them.
         break;
 
       case 'STATE_SYNC':
@@ -257,6 +296,7 @@ export class DuelConnection {
       case 'SELECT_UNSELECT_CARD':
       case 'SELECT_COUNTER':
         if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
+        this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);
         break;
       case 'SELECT_IDLECMD':
@@ -270,6 +310,7 @@ export class DuelConnection {
       case 'ANNOUNCE_RACE':
       case 'ANNOUNCE_ATTRIB':
       case 'ANNOUNCE_NUMBER':
+        this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);
         break;
 
@@ -292,9 +333,25 @@ export class DuelConnection {
         this._rpsResult.set(message as RpsResultMsg);
         break;
 
-      case 'MSG_HINT':
-        this._hintContext.set({ hintType: message.hintType, player: message.player, value: message.value, cardName: message.cardName });
+      case 'MSG_HINT': {
+        // HINT_SELECTMSG (3) arrives after a card hint — preserve prior cardName
+        // Other hint types start a new context — clear stale fields
+        const isSelectMsg = message.hintType === 3;
+        const prev = this._hintContext();
+        const merged = {
+          hintType: message.hintType,
+          player: message.player,
+          value: message.value,
+          cardName: message.cardName || (isSelectMsg ? prev.cardName : ''),
+          hintAction: message.hintAction || (isSelectMsg ? prev.hintAction : ''),
+        };
+        console.log('[HintContext] type=%d value=%d cardName=%s hintAction=%s | prev.cardName=%s prev.hintAction=%s | merged.cardName=%s merged.hintAction=%s',
+          message.hintType, message.value, JSON.stringify(message.cardName), JSON.stringify(message.hintAction),
+          JSON.stringify(prev.cardName), JSON.stringify(prev.hintAction),
+          JSON.stringify(merged.cardName), JSON.stringify(merged.hintAction));
+        this._hintContext.set(merged);
         break;
+      }
 
       case 'TIMER_STATE':
         this._timerState.set(message);
@@ -307,6 +364,7 @@ export class DuelConnection {
       case 'DUEL_END':
         this._pendingPrompt.set(null);
         this._inactivityWarning.set(null);
+        this._waitingForOpponent.set(false);
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
         this._activeChainLinks.set([]);
@@ -327,6 +385,7 @@ export class DuelConnection {
         this._duelResult.set(null);
         this._duelState.set(EMPTY_DUEL_STATE);
         this._pendingPrompt.set(null);
+        this._waitingForOpponent.set(false);
         this._opponentDisconnected.set(false);
         this._rematchState.set('idle');
         this._activeChainLinks.set([]);
@@ -339,6 +398,10 @@ export class DuelConnection {
 
       case 'OPPONENT_RECONNECTED':
         this._opponentDisconnected.set(false);
+        break;
+
+      case 'WAITING_RESPONSE':
+        this._waitingForOpponent.set(true);
         break;
 
       case 'SESSION_TOKEN':
@@ -363,19 +426,9 @@ export class DuelConnection {
       }
 
       case 'MSG_CHAIN_SOLVING':
-        this._activeChainLinks.update(links =>
-          links.map(l => l.chainIndex === message.chainIndex ? { ...l, resolving: true } : l),
-        );
-        break;
-
       case 'MSG_CHAIN_SOLVED':
-        this._activeChainLinks.update(links =>
-          links.filter(l => l.chainIndex !== message.chainIndex),
-        );
-        break;
-
       case 'MSG_CHAIN_END':
-        this._activeChainLinks.set([]);
+        this._animationQueue.update(q => [...q, message]);
         break;
 
       case 'MSG_MOVE':

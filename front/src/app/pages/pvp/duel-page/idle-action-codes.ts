@@ -56,3 +56,10 @@ export function buildActionableCardsFromBattle(msg: SelectBattleCmdMsg): Actiona
   addToActionMap(map, msg.activations, 'Activate Effect', BATTLE_ACTION.ACTIVATE);
   return map;
 }
+
+/** Returns true if the action code represents "Activate Effect" for the given prompt type. */
+export function isActivateAction(actionCode: number, promptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD'): boolean {
+  return promptType === 'SELECT_IDLECMD'
+    ? actionCode === IDLE_ACTION.ACTIVATE
+    : actionCode === BATTLE_ACTION.ACTIVATE;
+}

@@ -203,6 +203,19 @@
   &--actionable {
     box-shadow: var(--pvp-actionable-glow);
     animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+
+    &:hover {
+      box-shadow: var(--pvp-actionable-glow-hover);
+    }
+  }
+
+  &--actionable-blue {
+    box-shadow: var(--pvp-actionable-glow-blue);
+    animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+
+    &:hover {
+      box-shadow: var(--pvp-actionable-glow-blue-hover);
+    }
   }
 }
 
@@ -229,6 +242,20 @@
   box-shadow: var(--pvp-actionable-glow);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;
+
+  &:hover {
+    box-shadow: var(--pvp-actionable-glow-hover);
+  }
+}
+
+.zone-card--actionable-blue {
+  box-shadow: var(--pvp-actionable-glow-blue);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: var(--pvp-actionable-glow-blue-hover);
+  }
 }
 
 // === Zone Highlight (Story 1.6 — SELECT_PLACE / SELECT_DISFIELD) ===
@@ -414,7 +441,9 @@
 
   .zone-highlight-badge,
   .zone-card--actionable,
-  .zone-pile--actionable {
+  .zone-card--actionable-blue,
+  .zone-pile--actionable,
+  .zone-pile--actionable-blue {
     animation: none;
   }
 
@@ -428,6 +457,7 @@
   .pvp-anim-activate {
     animation: none;
   }
+
 }
 
 // === Forced Colors ===

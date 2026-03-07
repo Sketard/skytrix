@@ -39,7 +39,8 @@ export function loadDatabase(dbPath: string): CardDB {
     'SELECT id, ot, alias, setcode, type, atk, def, level, race, attribute, category FROM datas WHERE id = ?'
   );
   const nameStmt = db.prepare('SELECT name FROM texts WHERE id = ?');
-  return { db, stmt, nameStmt };
+  const descStmt = db.prepare('SELECT str1,str2,str3,str4,str5,str6,str7,str8,str9,str10,str11,str12,str13,str14,str15,str16 FROM texts WHERE id = ?');
+  return { db, stmt, nameStmt, descStmt };
 }
 
 export function loadScripts(scriptDir: string): ScriptDB {

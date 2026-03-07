@@ -13,6 +13,7 @@ export class PvpHandRowComponent {
   readonly side = input.required<'player' | 'opponent'>();
   readonly cards = input<CardOnField[]>([]);
   readonly actionableCardIndices = input<Set<number>>(new Set());
+  readonly activateCardIndices = input<Set<number>>(new Set());
 
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();

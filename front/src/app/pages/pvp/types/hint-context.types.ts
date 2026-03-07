@@ -3,4 +3,5 @@ export interface HintContext {
   player: number;
   value: number;
   cardName: string;
+  hintAction: string;
 }

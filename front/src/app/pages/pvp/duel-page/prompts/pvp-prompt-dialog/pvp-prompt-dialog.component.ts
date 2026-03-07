@@ -146,7 +146,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
     this.isSending.set(false);
     this.clearTimeouts();
-    this.hintText.set(this.buildHintText(prompt.type, hasHint ? hint.cardName : ''));
+    console.log('[PromptDialog] openForPrompt type=%s | hint=%o hasHint=%s',
+      prompt.type, hint, hasHint);
+    this.hintText.set(this.buildHintText(prompt.type, hasHint ? hint.cardName : '', hasHint ? hint.hintAction : ''));
 
     if (wasOpen) {
       this.dialogState.set('transitioning');
@@ -181,14 +183,19 @@ export class PvpPromptDialogComponent implements OnDestroy {
     ref.instance.promptData = prompt;
     ref.instance.hintContext = this.wsService.hintContext();
 
-    this.responseSubscription = ref.instance.response.subscribe((data: unknown) => {
+    const instance = ref.instance;
+    if ('excludedCards' in instance) {
+      (instance as unknown as { excludedCards: unknown[] }).excludedCards = this.wsService.lastSelectedCards;
+    }
+
+    this.responseSubscription = instance.response.subscribe((data: unknown) => {
       this.wsService.sendResponse(prompt.type, data as ResponseData);
       this.isSending.set(true);
     });
 
-    const instance = ref.instance as unknown as Record<string, unknown>;
-    if ('longPressInspect' in instance && instance['longPressInspect']) {
-      this.longPressSubscription = (instance['longPressInspect'] as { subscribe: (fn: (e: { cardCode: number }) => void) => { unsubscribe(): void } })
+    const rawInstance = ref.instance as unknown as Record<string, unknown>;
+    if ('longPressInspect' in rawInstance && rawInstance['longPressInspect']) {
+      this.longPressSubscription = (rawInstance['longPressInspect'] as { subscribe: (fn: (e: { cardCode: number }) => void) => { unsubscribe(): void } })
         .subscribe((e: { cardCode: number }) => this.longPressInspect.emit(e));
     }
   }
@@ -219,8 +226,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
     }
   }
 
-  private buildHintText(promptType: string, cardName: string): string | null {
+  private buildHintText(promptType: string, cardName: string, hintAction: string): string | null {
     const q = cardName ? `<span class="hint-card-name">\u201C${cardName}\u201D</span>` : '';
+    const act = hintAction ? `<span class="hint-action-label">${hintAction}</span>` : '';
     const a = (verb: string) => `<span class="hint-action">${verb}</span>`;
     switch (promptType) {
       case 'SELECT_CHAIN':
@@ -232,11 +240,13 @@ export class PvpPromptDialogComponent implements OnDestroy {
           ? `${a('Activate')} effect of ${q}?`
           : `${a('Activate')} effect?`;
       case 'SELECT_CARD':
+        if (act) return q ? `${a('Select')} card(s) to ${act} for ${q}` : `${a('Select')} card(s) to ${act}`;
         return q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} card(s)`;
       case 'SELECT_TRIBUTE':
         return q ? `${a('Select')} tribute(s) for ${q}` : `${a('Select')} tribute(s)`;
       case 'SELECT_SUM':
       case 'SELECT_UNSELECT_CARD':
+        if (act) return q ? `${a('Select')} card(s) to ${act} for ${q}` : `${a('Select')} card(s) to ${act}`;
         return q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} cards`;
       case 'SELECT_POSITION':
         return q ? `${a('Choose')} position for ${q}` : `${a('Choose')} position`;

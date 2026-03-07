@@ -33,7 +33,7 @@
           </div>
         } @else if (zone.card) {
           <div class="zone-card"
-               [class.def-position]="isDefense(zone.card.position)"
+               [class.def-position]="isMonsterDefense(zone)"
                [class.pvp-anim-summon]="animatingZoneKeys().has(zone.zoneId + '-1-summon')"
                [class.pvp-anim-destroy]="animatingZoneKeys().has(zone.zoneId + '-1-destroy')"
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-1-flip')"
@@ -121,7 +121,8 @@
     <!-- Player Banished (col 7, aligned with player GY below) -->
     <div class="zone zone--banished zone--banished-player"
          [class.zone--highlighted]="isHighlighted('BANISHED')"
-         [class.zone-pile--actionable]="actionableZoneIds().has('BANISHED')"
+         [class.zone-pile--actionable]="activateZoneIds().has('BANISHED')"
+         [class.zone-pile--actionable-blue]="!activateZoneIds().has('BANISHED') && nonActivateZoneIds().has('BANISHED')"
          (click)="onZonePillClick('BANISHED', 0)">
       @if (playerBanished(); as card) {
         <img [src]="getCardImageUrl(card)"
@@ -155,7 +156,8 @@
           </div>
         } @else if (zone.renderMode === 'pile-facedown') {
           <div class="zone-pile zone-pile--stack"
-               [class.zone-pile--actionable]="actionableZoneIds().has(zone.zoneId)"
+               [class.zone-pile--actionable]="activateZoneIds().has(zone.zoneId)"
+               [class.zone-pile--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
                (click)="onZonePillClick(zone.zoneId, 0)">
             @if (zone.cardCount > 0) {
               <img src="assets/images/card_back.jpg" alt="Extra Deck" class="card-art">
@@ -163,7 +165,8 @@
           </div>
         } @else if (zone.renderMode === 'pile-faceup') {
           <div class="zone-pile"
-               [class.zone-pile--actionable]="actionableZoneIds().has(zone.zoneId)"
+               [class.zone-pile--actionable]="activateZoneIds().has(zone.zoneId)"
+               [class.zone-pile--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
                (click)="onZonePillClick(zone.zoneId, 0)">
             @if (zone.card) {
               <img [src]="getCardImageUrl(zone.card)"
@@ -174,8 +177,9 @@
           </div>
         } @else if (zone.card) {
           <div class="zone-card"
-               [class.def-position]="isDefense(zone.card.position)"
-               [class.zone-card--actionable]="actionableZoneIds().has(zone.zoneId)"
+               [class.def-position]="isMonsterDefense(zone)"
+               [class.zone-card--actionable]="activateZoneIds().has(zone.zoneId)"
+               [class.zone-card--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
                [class.pvp-anim-summon]="animatingZoneKeys().has(zone.zoneId + '-0-summon')"
                [class.pvp-anim-destroy]="animatingZoneKeys().has(zone.zoneId + '-0-destroy')"
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-0-flip')"

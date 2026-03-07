@@ -17,7 +17,7 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import type { ConnectionStatus } from '../types';
 import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
-import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION } from './idle-action-codes';
+import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
 import { locationToZoneId } from '../pvp-zone.utils';
@@ -171,7 +171,7 @@ export class DuelPageComponent implements OnInit {
   // Story 1.7 — Own turn detection
   readonly isOwnTurn = computed(() => this.duelState().turnPlayer === 0);
 
-  // Story 1.7 — Hand actionable indices
+  // Story 1.7 — Hand actionable indices (all actions, for click behavior)
   readonly playerActionableHandIndices = computed((): Set<number> => {
     const prompt = this.actionablePrompt();
     if (!prompt) return new Set();
@@ -187,6 +187,27 @@ export class DuelPageComponent implements OnInit {
     }
     return indices;
   });
+
+  // Hand indices with activate effect (gold glow)
+  readonly playerActivateHandIndices = computed((): Set<number> => {
+    const prompt = this.actionablePrompt();
+    if (!prompt) return new Set();
+    const promptType = prompt.type as 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
+    const actionMap = prompt.type === 'SELECT_IDLECMD'
+      ? buildActionableCardsFromIdle(prompt)
+      : buildActionableCardsFromBattle(prompt);
+    const indices = new Set<number>();
+    for (const [key, actions] of actionMap) {
+      const parts = key.split('-');
+      if (parseInt(parts[0], 10) === LOCATION.HAND && actions.some(a => isActivateAction(a.actionCode, promptType))) {
+        indices.add(parseInt(parts[1], 10));
+      }
+    }
+    return indices;
+  });
+
+  // Server-driven: true when opponent has a pending prompt
+  readonly waitingForOpponent = this.wsService.waitingForOpponent;
 
   // [C2 fix] Has active blocking prompt — excludes IDLECMD/BATTLECMD (distributed UI, not blocking)
   // Story 4.2 — uses visiblePrompt for drain coordination
@@ -526,13 +547,6 @@ export class DuelPageComponent implements OnInit {
       }
     });
 
-    // [Review M1 fix] Defer fullscreen + landscape lock until duel is active
-    effect(() => {
-      if (this.roomState() === 'active') {
-        untracked(() => this.requestFullscreenAndLock());
-      }
-    });
-
     // Story 2.3 — RPS result auto-dismiss (3s winner, 2s draw)
     effect(() => {
       const rps = this.wsService.rpsResult();
@@ -841,9 +855,7 @@ export class DuelPageComponent implements OnInit {
       : buildActionableCardsFromBattle(prompt);
     const key = `${LOCATION.HAND}-${event.index}`;
     const actions = actionMap.get(key) ?? [];
-    if (actions.length === 1) {
-      this.wsService.sendResponse(prompt.type, { action: actions[0].actionCode, index: actions[0].index });
-    } else if (actions.length > 1) {
+    if (actions.length > 0) {
       this.openCardActionMenu(event.element, actions, prompt.type);
     }
   }
@@ -890,10 +902,7 @@ export class DuelPageComponent implements OnInit {
 
     const actions = this.collectActionsForCardCode(event.cardCode, targetLocation, prompt);
 
-    if (actions.length === 1) {
-      this.wsService.sendResponse(prompt.type, { action: actions[0].actionCode, index: actions[0].index });
-      this.closeZoneBrowser();
-    } else if (actions.length > 1) {
+    if (actions.length > 0) {
       this.closeZoneBrowser();
       this.openCardActionMenu(event.element, actions, prompt.type);
     }
@@ -1059,12 +1068,6 @@ export class DuelPageComponent implements OnInit {
     const handler = (e: MediaQueryListEvent) => this.isPortrait.set(e.matches);
     mql.addEventListener('change', handler);
     this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
-  }
-
-  private requestFullscreenAndLock(): void {
-    document.documentElement.requestFullscreen?.().catch(() => {});
-    // @ts-expect-error — screen.orientation.lock is non-standard but supported on mobile
-    screen.orientation.lock?.('landscape-primary')?.catch(() => {});
   }
 
   private mapDuelEndReason(reason: string, isWinner: boolean): string {

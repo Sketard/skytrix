@@ -25,6 +25,7 @@ export interface CardDB {
   db: Database.Database;
   stmt: Database.Statement;
   nameStmt: Database.Statement;
+  descStmt: Database.Statement;
 }
 
 export interface ScriptDB {

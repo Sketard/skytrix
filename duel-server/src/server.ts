@@ -463,6 +463,8 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
     const targetPlayer = (message as { player: Player }).player;
     console.log(`[TIMER] SELECT ${message.type} for player=${targetPlayer}, timerRunning=${session.timerContext?.running}`);
     session.awaitingResponse[targetPlayer] = true;
+    const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
+    sendToPlayer(session, opponentOfTarget, { type: 'WAITING_RESPONSE' });
     startTurnTimer(session);
     startInactivityTimer(session, targetPlayer);
   }

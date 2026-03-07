@@ -3,7 +3,8 @@
      [class.hand-row--opponent]="side() === 'opponent'">
   @for (card of cards(); track $index) {
     <div class="hand-card"
-         [class.hand-card--actionable]="actionableCardIndices().has($index)"
+         [class.hand-card--actionable]="activateCardIndices().has($index)"
+         [class.hand-card--actionable-blue]="!activateCardIndices().has($index) && actionableCardIndices().has($index)"
          [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
          [style.z-index]="$index"
          [style.transform]="fanTransform($index)"

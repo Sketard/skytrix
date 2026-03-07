@@ -43,6 +43,7 @@ export class DuelWebSocketService implements OnDestroy {
   readonly rematchState = computed(() => this._activeConnection().rematchState());
   readonly rematchStarting = computed(() => this._activeConnection().rematchStarting());
   readonly inactivityWarning = computed(() => this._activeConnection().inactivityWarning());
+  readonly waitingForOpponent = computed(() => this._activeConnection().waitingForOpponent());
 
   readonly canRetry = computed(() => this._activeConnection().canRetry());
 
@@ -54,6 +55,10 @@ export class DuelWebSocketService implements OnDestroy {
 
   sendResponse(promptType: string, data: ResponseData): void {
     this._activeConnection().sendResponse(promptType, data);
+  }
+
+  get lastSelectedCards(): import('../duel-ws.types').CardInfo[] {
+    return this._activeConnection().lastSelectedCards;
   }
 
   clearRpsResult(): void {
@@ -82,6 +87,18 @@ export class DuelWebSocketService implements OnDestroy {
 
   clearAnimationQueue(): void {
     this._activeConnection().skipPendingAnimations();
+  }
+
+  applyChainSolving(chainIndex: number): void {
+    this._activeConnection().applyChainSolving(chainIndex);
+  }
+
+  applyChainSolved(chainIndex: number): void {
+    this._activeConnection().applyChainSolved(chainIndex);
+  }
+
+  applyChainEnd(): void {
+    this._activeConnection().applyChainEnd();
   }
 
   retryConnection(): void {

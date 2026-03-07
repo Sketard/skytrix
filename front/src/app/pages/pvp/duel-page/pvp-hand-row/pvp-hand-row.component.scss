@@ -52,10 +52,24 @@
 .hand-card--actionable {
   box-shadow: var(--pvp-actionable-glow);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+
+  &:hover {
+    box-shadow: var(--pvp-actionable-glow-hover);
+  }
+}
+
+.hand-card--actionable-blue {
+  box-shadow: var(--pvp-actionable-glow-blue);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+
+  &:hover {
+    box-shadow: var(--pvp-actionable-glow-blue-hover);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hand-card--actionable {
+  .hand-card--actionable,
+  .hand-card--actionable-blue {
     animation: none;
   }
 }

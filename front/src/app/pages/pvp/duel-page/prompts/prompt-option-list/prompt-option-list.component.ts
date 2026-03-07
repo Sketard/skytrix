@@ -42,7 +42,11 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
         return this.buildPositionOptions();
       case 'SELECT_OPTION':
         return (this.promptData.options ?? []).map((opt, i) => ({
-          index: i, label: `Option ${opt}`, icon: null,
+          index: i,
+          label: this.promptData!.type === 'SELECT_OPTION' && this.promptData!.descriptions?.[i]
+            ? this.promptData!.descriptions[i]
+            : `Option ${i + 1}`,
+          icon: null,
         }));
       case 'ANNOUNCE_RACE':
         return (this.promptData.available ?? []).map((race, i) => ({

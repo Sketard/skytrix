@@ -14,6 +14,15 @@ import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
 
+interface DisplayEntry {
+  card: CardInfo;
+  originalIndex: number;
+}
+
+function cardKey(c: CardInfo): string {
+  return `${c.player}-${c.location}-${c.sequence}-${c.cardCode}`;
+}
+
 @Component({
   selector: 'app-prompt-card-grid',
   templateUrl: './prompt-card-grid.component.html',
@@ -26,6 +35,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
   longPressInspect = new EventEmitter<{ cardCode: number }>();
+  excludedCards: CardInfo[] = [];
 
   readonly selectedIndices = signal<Set<number>>(new Set());
   answered = false;
@@ -35,7 +45,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   private longPressFired = false;
 
   ngOnInit(): void {
-    if (this.cards.length === 0) {
+    if (this.displayEntries.length === 0) {
       console.warn('[PromptCardGrid] Empty card list — auto-responding');
       this.autoRespondTimeout = setTimeout(() => {
         this.response.emit({ indices: [] });
@@ -54,6 +64,31 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   get cards(): CardInfo[] {
     if (!this.promptData) return [];
     return this.promptData.cards ?? [];
+  }
+
+  get displayEntries(): DisplayEntry[] {
+    const all = this.cards;
+    if (this.excludedCards.length === 0) {
+      return all.map((card, i) => ({ card, originalIndex: i }));
+    }
+    const excludedKeys = new Set(this.excludedCards.map(cardKey));
+    // Track used keys to handle duplicates correctly (only exclude once per excluded card)
+    const usedKeys = new Map<string, number>();
+    for (const k of excludedKeys) usedKeys.set(k, 0);
+
+    return all.reduce<DisplayEntry[]>((acc, card, i) => {
+      const k = cardKey(card);
+      if (excludedKeys.has(k)) {
+        const used = usedKeys.get(k)!;
+        const total = this.excludedCards.filter(c => cardKey(c) === k).length;
+        if (used < total) {
+          usedKeys.set(k, used + 1);
+          return acc; // skip this card
+        }
+      }
+      acc.push({ card, originalIndex: i });
+      return acc;
+    }, []);
   }
 
   get isMultiSelect(): boolean {

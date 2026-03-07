@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
 import type { GameEvent } from '../types';
-import type { MoveMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg } from '../duel-ws.types';
+import type { MoveMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 import { DuelWebSocketService } from './duel-web-socket.service';
@@ -183,14 +183,24 @@ export class AnimationOrchestratorService {
         if (zoneId) this.setAnimatingZone(zoneId, 'activate', msg.player);
         return 300;
       }
+      case 'MSG_CHAIN_SOLVING': {
+        const msg = event as ChainSolvingMsg;
+        this.wsService.applyChainSolving(msg.chainIndex);
+        return 400;
+      }
+      case 'MSG_CHAIN_SOLVED': {
+        const msg = event as ChainSolvedMsg;
+        this.wsService.applyChainSolved(msg.chainIndex);
+        return 200;
+      }
+      case 'MSG_CHAIN_END':
+        this.wsService.applyChainEnd();
+        return 0;
       // No-op events: dequeue immediately
       case 'MSG_DRAW':
       case 'MSG_SWAP':
       case 'MSG_ATTACK':
       case 'MSG_BATTLE':
-      case 'MSG_CHAIN_SOLVING':
-      case 'MSG_CHAIN_SOLVED':
-      case 'MSG_CHAIN_END':
         return 0;
       default:
         return 0;
@@ -259,6 +269,12 @@ export class AnimationOrchestratorService {
       const msg = event as RecoverMsg;
       const idx = msg.player === this.ownPlayerIndexFn() ? 0 : 1;
       this.trackedLp[idx] = (this.trackedLp[idx] ?? 8000) + msg.amount;
+    } else if (event.type === 'MSG_CHAIN_SOLVING') {
+      this.wsService.applyChainSolving((event as ChainSolvingMsg).chainIndex);
+    } else if (event.type === 'MSG_CHAIN_SOLVED') {
+      this.wsService.applyChainSolved((event as ChainSolvedMsg).chainIndex);
+    } else if (event.type === 'MSG_CHAIN_END') {
+      this.wsService.applyChainEnd();
     }
   }
 

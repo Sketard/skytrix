@@ -128,6 +128,11 @@
       </div>
     }
 
+    <!-- Opponent thinking glow (top edge) -->
+    @if (waitingForOpponent()) {
+      <div class="opponent-thinking-glow" aria-hidden="true"></div>
+    }
+
     <!-- Board + hands + toolbar — only visible when duel is active (not during RPS) -->
     @if (roomState() === 'active') {
       <!-- Opponent Hand (top, face-down, outside perspective) -->
@@ -158,6 +163,7 @@
                          side="player"
                          [cards]="playerHand()"
                          [actionableCardIndices]="playerActionableHandIndices()"
+                         [activateCardIndices]="playerActivateHandIndices()"
                          (handCardAction)="onPlayerHandAction($event)"
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 

@@ -129,6 +129,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'SESSION_TOKEN':
     case 'OPPONENT_DISCONNECTED':
     case 'OPPONENT_RECONNECTED':
+    case 'WAITING_RESPONSE':
       return message;
 
     // --- Default: DROP unknown types (fail-safe: prefer missing display over info leak) ---

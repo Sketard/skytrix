@@ -70,10 +70,34 @@ const PHASE_MAP: Record<number, Phase> = {
 const MZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
+// HINT_SELECTMSG action labels — mapped from OCGCore HINTMSG_* constants (constant.lua)
+const HINTMSG_LABELS: Record<number, string> = {
+  500: 'release', 501: 'discard', 502: 'destroy', 503: 'banish',
+  504: 'send to GY', 505: 'return to hand', 506: 'add to hand',
+  507: 'return to Deck', 508: 'Normal Summon', 509: 'Special Summon',
+  510: 'Set', 511: 'Fusion material', 512: 'Synchro material',
+  513: 'Xyz material', 514: 'face-up', 515: 'face-down',
+  516: 'ATK position', 517: 'DEF position', 518: 'equip',
+  519: 'detach Xyz material', 520: 'take control', 521: 'replace destruction',
+  527: 'place on field', 531: 'Tribute', 532: 'detach from',
+  533: 'Link material', 549: 'attack target', 550: 'activate effect',
+  551: 'target', 560: 'select', 578: 'attach as material',
+};
+
 function getCardName(code: number): string {
   if (!cardDb || !code) return '';
   const row = cardDb.nameStmt.get(code) as { name: string } | undefined;
   return row?.name ?? '';
+}
+
+function getOptionDesc(optionCode: bigint): string {
+  if (!cardDb) return '';
+  const cardCode = Number(optionCode >> 20n);
+  const strIndex = Number(optionCode & 0xFFFFFn);
+  if (!cardCode) return '';
+  const row = cardDb.descStmt.get(cardCode) as Record<string, string> | undefined;
+  if (!row) return '';
+  return row[`str${strIndex + 1}`] || '';
 }
 
 function toCardInfo(c: OcgCardLoc | OcgCardLocPos): CardInfo {
@@ -205,9 +229,21 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.HINT: {
       const hintType = msg.hint_type as number;
       const value = Number(msg.hint);
-      // value is a cardCode only for HINT_EFFECT(10), HINT_CODE(13), HINT_CARD(15)
-      const isCardHint = hintType === 10 || hintType === 13 || hintType === 15;
-      return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName: isCardHint ? getCardName(value) : '' };
+      let cardName = '';
+      let hintAction = '';
+      if (hintType === 10 || hintType === 13 || hintType === 15) {
+        // HINT_EFFECT / HINT_CODE / HINT_CARD: value is always a card code
+        cardName = getCardName(value);
+      } else if (hintType === 3) {
+        // HINT_SELECTMSG: value is either a HINTMSG_* constant or a card code
+        const label = HINTMSG_LABELS[value];
+        if (label) {
+          hintAction = label;
+        } else {
+          cardName = getCardName(value);
+        }
+      }
+      return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName, hintAction };
     }
 
     case OcgMessageType.CONFIRM_CARDS:
@@ -325,7 +361,11 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SELECT_OPTION:
-      return { type: 'SELECT_OPTION', player: msg.player as Player, options: msg.options.map(Number) };
+      return {
+        type: 'SELECT_OPTION', player: msg.player as Player,
+        options: msg.options.map(Number),
+        descriptions: msg.options.map(o => getOptionDesc(BigInt(o))),
+      };
 
     case OcgMessageType.SELECT_TRIBUTE:
       return {

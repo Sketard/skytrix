@@ -131,7 +131,10 @@
   --pvp-prompt-transition-speed: 300ms;
 
   // --- Actionable Glow ---
-  --pvp-actionable-glow: 0 0 6px 2px var(--pvp-accent);
+  --pvp-actionable-glow: 0 0 4px 4px var(--pvp-accent);
+  --pvp-actionable-glow-hover: 0 0 8px 6px var(--pvp-accent);
+  --pvp-actionable-glow-blue: 0 0 4px 4px rgba(0, 140, 255, 0.8);
+  --pvp-actionable-glow-blue-hover: 0 0 8px 6px rgba(0, 140, 255, 0.8);
 
   // --- Action Menu ---
   --pvp-action-menu-bg: rgba(20, 20, 40, 0.95);
@@ -144,10 +147,13 @@
   --pvp-chain-badge-bg: #4a90d9;
   --pvp-chain-badge-color: #fff;
   --pvp-chain-badge-size: 24px;
-  --pvp-chain-resolve-pulse: 200ms;
+  --pvp-chain-resolve-pulse: 400ms;
 
   // --- Pile Stack ---
   --pvp-pile-stack-offset: 2px;
+
+  // --- Opponent Thinking Glow ---
+  --pvp-opponent-thinking-glow: rgba(220, 40, 40, 0.55);
 
   // --- Game Event Animations (Story 4.2) ---
   --pvp-summon-highlight: rgba(76, 175, 80, 0.6);
@@ -163,8 +169,8 @@
 }
 
 @keyframes pvp-actionable-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%, 100% {}
+  50% {}
 }
 
 // === PvP: Reduced Motion ===

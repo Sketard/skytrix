@@ -179,6 +179,7 @@ export interface HintMsg {
   player: Player;
   value: number;
   cardName: string;
+  hintAction: string;
 }
 
 export interface ConfirmCardsMsg {
@@ -326,6 +327,7 @@ export interface SelectOptionMsg {
   type: 'SELECT_OPTION';
   player: Player;
   options: number[];
+  descriptions: string[];
 }
 
 export interface SelectTributeMsg {
@@ -602,6 +604,10 @@ export interface InactivityWarningMsg {
   remainingSec: number;
 }
 
+export interface WaitingResponseMsg {
+  type: 'WAITING_RESPONSE';
+}
+
 // =============================================================================
 // Union Type Exports
 // =============================================================================
@@ -661,7 +667,8 @@ export type ServerMessage =
   | SessionTokenMsg
   | OpponentDisconnectedMsg
   | OpponentReconnectedMsg
-  | InactivityWarningMsg;
+  | InactivityWarningMsg
+  | WaitingResponseMsg;
 
 export type ClientMessage =
   | PlayerResponseMsg

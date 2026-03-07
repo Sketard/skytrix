@@ -4,7 +4,7 @@ import type { ChainLinkState } from '../../types';
 import { DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
-import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction } from '../idle-action-codes';
+import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, isActivateAction } from '../idle-action-codes';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
 import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
@@ -64,14 +64,34 @@ export class PvpBoardContainerComponent {
       : buildActionableCardsFromBattle(prompt);
   });
 
-  readonly actionableZoneIds = computed((): Set<ZoneId> => {
+  readonly activateZoneIds = computed((): Set<ZoneId> => {
     const map = this.actionableCards();
-    if (map.size === 0) return new Set();
+    const prompt = this.actionablePrompt();
+    if (map.size === 0 || !prompt) return new Set();
+    const promptType = prompt.type as 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
     const zoneIds = new Set<ZoneId>();
-    for (const key of map.keys()) {
-      const parts = key.split('-');
-      const zoneId = this.locationSeqToZoneId(parseInt(parts[0], 10), parseInt(parts[1], 10));
-      if (zoneId) zoneIds.add(zoneId);
+    for (const [key, actions] of map) {
+      if (actions.some(a => isActivateAction(a.actionCode, promptType))) {
+        const parts = key.split('-');
+        const zoneId = this.locationSeqToZoneId(parseInt(parts[0], 10), parseInt(parts[1], 10));
+        if (zoneId) zoneIds.add(zoneId);
+      }
+    }
+    return zoneIds;
+  });
+
+  readonly nonActivateZoneIds = computed((): Set<ZoneId> => {
+    const map = this.actionableCards();
+    const prompt = this.actionablePrompt();
+    if (map.size === 0 || !prompt) return new Set();
+    const promptType = prompt.type as 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
+    const zoneIds = new Set<ZoneId>();
+    for (const [key, actions] of map) {
+      if (actions.some(a => !isActivateAction(a.actionCode, promptType))) {
+        const parts = key.split('-');
+        const zoneId = this.locationSeqToZoneId(parseInt(parts[0], 10), parseInt(parts[1], 10));
+        if (zoneId) zoneIds.add(zoneId);
+      }
     }
     return zoneIds;
   });
@@ -123,6 +143,12 @@ export class PvpBoardContainerComponent {
   readonly isDefense = isDefense;
   readonly getCardImageUrl = getCardImageUrl;
 
+  private static readonly MONSTER_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5']);
+
+  isMonsterDefense(zone: ZoneRenderData): boolean {
+    return PvpBoardContainerComponent.MONSTER_ZONES.has(zone.zoneId) && isDefense(zone.card!.position);
+  }
+
   isHighlighted(zoneId: ZoneId): boolean {
     return this.highlightedZones().has(zoneId);
   }
@@ -154,15 +180,11 @@ export class PvpBoardContainerComponent {
       }
       return;
     }
-    if (actions.length === 1) {
-      this.actionResponse.emit({ action: actions[0].actionCode, index: actions[0].index });
-    } else {
-      this.menuRequest.emit({
-        zoneId: zone.zoneId,
-        element: event.currentTarget as HTMLElement,
-        actions,
-      });
-    }
+    this.menuRequest.emit({
+      zoneId: zone.zoneId,
+      element: event.currentTarget as HTMLElement,
+      actions,
+    });
   }
 
   private getActionsForZone(zoneId: ZoneId): CardAction[] {

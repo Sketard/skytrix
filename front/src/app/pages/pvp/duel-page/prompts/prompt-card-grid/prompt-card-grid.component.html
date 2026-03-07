@@ -1,22 +1,22 @@
-@if (cards.length === 0) {
+@if (displayEntries.length === 0) {
   <div class="empty-state">No valid targets</div>
 } @else {
   <div class="card-strip">
-    @for (card of cards; track $index; let i = $index) {
+    @for (entry of displayEntries; track entry.originalIndex) {
       <button class="card-slot"
-              [class.card-slot--selected]="isSelected(i)"
-              (click)="toggleCard(i)"
-              (pointerdown)="onCardPointerDown(card.cardCode, $event)"
+              [class.card-slot--selected]="isSelected(entry.originalIndex)"
+              (click)="toggleCard(entry.originalIndex)"
+              (pointerdown)="onCardPointerDown(entry.card.cardCode, $event)"
               (pointerup)="onCardPointerUp()"
               (pointermove)="onCardPointerMove($event)"
               (pointercancel)="onCardPointerUp()"
               (contextmenu)="onContextMenu($event)"
               [disabled]="answered"
               type="button"
-              [attr.aria-label]="card.name"
-              [attr.aria-pressed]="isSelected(i)">
+              [attr.aria-label]="entry.card.name"
+              [attr.aria-pressed]="isSelected(entry.originalIndex)">
         <img class="card-img"
-             [src]="getCardImageUrl(card.cardCode)"
+             [src]="getCardImageUrl(entry.card.cardCode)"
              alt=""
              loading="lazy" />
       </button>

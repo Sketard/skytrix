@@ -34,4 +34,5 @@ export class PromptZoneHighlightComponent implements OnInit {
   ngOnInit(): void {
     this.liveAnnouncer.announce(this.instruction(), 'assertive');
   }
+
 }
