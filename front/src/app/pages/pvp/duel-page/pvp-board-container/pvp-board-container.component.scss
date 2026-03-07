@@ -48,7 +48,14 @@
     'gy       mz5 mz4 mz3 mz2 mz1 field';
   grid-template-rows: 1fr 1fr;
 
+  // Rotate opponent's cards 180° so they face the opponent
+  .card-art {
+    transform: rotate(180deg);
+  }
 
+  .zone-card.def-position {
+    transform: rotate(270deg);
+  }
 }
 
 // === Central Strip (grid participant — same height as one zone row) ===

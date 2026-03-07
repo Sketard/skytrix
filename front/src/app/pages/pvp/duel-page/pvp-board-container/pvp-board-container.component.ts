@@ -285,11 +285,6 @@ export class PvpBoardContainerComponent {
     }
   }
 
-  /** CardOnField doesn't include card name — fallback to code identifier */
-  resolveCardName(cardCode: number): string {
-    return 'Card ' + cardCode;
-  }
-
   private findZoneCard(playerIndex: number, zoneId: ZoneId): CardOnField | null {
     const player = this.duelState().players[playerIndex];
     if (!player) return null;

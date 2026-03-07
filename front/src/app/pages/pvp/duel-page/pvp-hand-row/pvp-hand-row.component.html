@@ -4,13 +4,13 @@
   @for (card of cards(); track $index) {
     <div class="hand-card"
          [class.hand-card--actionable]="actionableCardIndices().has($index)"
-         [style.margin-left.px]="$index > 0 && needsOverlap() ? overlapMargin() : 0"
+         [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
          [style.z-index]="$index"
          [style.transform]="fanTransform($index)"
          (click)="onCardTap($index, $event)">
       @if (isPlayerSide() && card.cardCode && card.cardCode !== 0) {
         <img [src]="getCardImageUrl(card)"
-             [alt]="'Hand card ' + ($index + 1)"
+             [alt]="card.name ?? 'Card'"
              class="hand-card-art"
              (error)="$any($event.target).src='assets/images/card_back.jpg'">
       } @else {

@@ -3,15 +3,6 @@
 .yes-no-container {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.card-thumbnail {
-  width: 48px;
-  aspect-ratio: 59 / 86;
-  border-radius: var(--pvp-radius-md);
-  object-fit: cover;
-  flex-shrink: 0;
 }
 
 .buttons {

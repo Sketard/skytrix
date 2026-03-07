@@ -25,41 +25,37 @@ import {
 } from '../prompt.types';
 import { Prompt } from '../../../types';
 
-export type SheetState = 'closed' | 'opening' | 'open' | 'transitioning' | 'collapsed' | 'closing';
+export type DialogState = 'closed' | 'opening' | 'open' | 'transitioning' | 'collapsed' | 'closing';
 
 @Component({
-  selector: 'app-pvp-prompt-sheet',
-  templateUrl: './pvp-prompt-sheet.component.html',
-  styleUrl: './pvp-prompt-sheet.component.scss',
+  selector: 'app-pvp-prompt-dialog',
+  templateUrl: './pvp-prompt-dialog.component.html',
+  styleUrl: './pvp-prompt-dialog.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkPortalOutlet, CdkTrapFocus],
 })
-export class PvpPromptSheetComponent implements OnDestroy {
+export class PvpPromptDialogComponent implements OnDestroy {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
-  // Story 4.2 — Parent passes animation-drained prompt (visiblePrompt) instead of raw pendingPrompt
   readonly prompt = input<Prompt | null>(null);
-  // Story 5.2 — Skip Beat 1 delay when returning from background tab
   readonly skipBeat1 = input(false);
 
-  readonly sheetState = signal<SheetState>('closed');
+  readonly dialogState = signal<DialogState>('closed');
   readonly hintText = signal<string | null>(null);
   readonly isBeat1 = signal(false);
   readonly isSending = signal(false);
-  readonly currentHeight = signal<string>('auto');
 
-  readonly isSheetVisible = computed(() => this.sheetState() !== 'closed');
+  readonly isDialogVisible = computed(() => this.dialogState() !== 'closed');
   readonly trapFocusActive = computed(() => {
-    const s = this.sheetState();
+    const s = this.dialogState();
     return s === 'open' || s === 'opening' || s === 'transitioning';
   });
 
-  // [H1 fix] Expose sheet expanded state for parent (mini-toolbar interaction)
-  readonly sheetExpanded = output<boolean>();
+  readonly dialogExpanded = output<boolean>();
   readonly longPressInspect = output<{ cardCode: number }>();
 
   private beatTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -73,17 +69,16 @@ export class PvpPromptSheetComponent implements OnDestroy {
       untracked(() => this.onPromptChange(prompt));
     });
 
-    // [H1 fix] Emit sheet expanded state for mini-toolbar interaction
     effect(() => {
-      const s = this.sheetState();
+      const s = this.dialogState();
       const expanded = s === 'open' || s === 'opening' || s === 'transitioning';
-      untracked(() => this.sheetExpanded.emit(expanded));
+      untracked(() => this.dialogExpanded.emit(expanded));
     });
   }
 
   @HostListener('document:keydown', ['$event'])
   handleKeydown(event: KeyboardEvent): void {
-    if (this.sheetState() === 'closed') return;
+    if (this.dialogState() === 'closed') return;
 
     const tag = (event.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -101,12 +96,22 @@ export class PvpPromptSheetComponent implements OnDestroy {
     }
   }
 
+  // Desktop: right-click = cancel/no
+  @HostListener('document:contextmenu', ['$event'])
+  handleContextMenu(event: MouseEvent): void {
+    const s = this.dialogState();
+    if (s !== 'open' && s !== 'opening' && s !== 'transitioning') return;
+    event.preventDefault();
+    const cancelBtn = this.elementRef.nativeElement.querySelector('.btn--secondary') as HTMLElement;
+    cancelBtn?.click();
+  }
+
   toggleCollapse(): void {
-    const s = this.sheetState();
+    const s = this.dialogState();
     if (s === 'open' || s === 'transitioning') {
-      this.sheetState.set('collapsed');
+      this.dialogState.set('collapsed');
     } else if (s === 'collapsed') {
-      this.sheetState.set('open');
+      this.dialogState.set('open');
     }
   }
 
@@ -119,9 +124,9 @@ export class PvpPromptSheetComponent implements OnDestroy {
 
   private onPromptChange(prompt: Prompt | null): void {
     if (!prompt || IGNORED_PROMPT_TYPES.has(prompt.type)) {
-      if (this.sheetState() !== 'closed') {
+      if (this.dialogState() !== 'closed') {
         const instant = this.wsService.duelResult() !== null;
-        this.closeSheet(instant);
+        this.closeDialog(instant);
       }
       return;
     }
@@ -137,28 +142,26 @@ export class PvpPromptSheetComponent implements OnDestroy {
   private openForPrompt(prompt: Prompt, componentType: Type<PromptSubComponent>): void {
     const hint = this.wsService.hintContext();
     const hasHint = hint.hintType !== 0;
-    const wasOpen = this.sheetState() !== 'closed' && this.sheetState() !== 'closing';
+    const wasOpen = this.dialogState() !== 'closed' && this.dialogState() !== 'closing';
 
     this.isSending.set(false);
     this.clearTimeouts();
-    this.hintText.set(hasHint ? `Card: ${hint.value}` : null);
+    this.hintText.set(this.buildHintText(prompt.type, hasHint ? hint.cardName : ''));
 
     if (wasOpen) {
-      // Transitioning: swap content without close/reopen
-      this.sheetState.set('transitioning');
+      this.dialogState.set('transitioning');
       this.swapComponent(prompt, componentType);
       this.beatTimeout = setTimeout(() => {
-        if (this.sheetState() === 'transitioning') this.sheetState.set('open');
+        if (this.dialogState() === 'transitioning') this.dialogState.set('open');
       }, 200);
     } else {
-      // Opening: two-beat rendering (skip Beat 1 when returning from background)
-      this.sheetState.set('opening');
+      this.dialogState.set('opening');
       const skipHintDelay = this.skipBeat1();
       this.isBeat1.set(hasHint && !skipHintDelay);
       this.beatTimeout = setTimeout(() => {
         this.attachComponent(prompt, componentType);
         this.isBeat1.set(false);
-        this.sheetState.set('open');
+        this.dialogState.set('open');
       }, (hasHint && !skipHintDelay) ? 50 : 0);
     }
   }
@@ -178,19 +181,11 @@ export class PvpPromptSheetComponent implements OnDestroy {
     ref.instance.promptData = prompt;
     ref.instance.hintContext = this.wsService.hintContext();
 
-    const h = ref.instance.preferredHeight;
-    this.currentHeight.set(
-      h === 'compact' ? 'var(--pvp-prompt-sheet-compact)' :
-      h === 'full' ? 'auto' :
-      `${h}px`
-    );
-
     this.responseSubscription = ref.instance.response.subscribe((data: unknown) => {
       this.wsService.sendResponse(prompt.type, data as ResponseData);
       this.isSending.set(true);
     });
 
-    // Relay long-press inspect from card grid sub-components
     const instance = ref.instance as unknown as Record<string, unknown>;
     if ('longPressInspect' in instance && instance['longPressInspect']) {
       this.longPressSubscription = (instance['longPressInspect'] as { subscribe: (fn: (e: { cardCode: number }) => void) => { unsubscribe(): void } })
@@ -208,8 +203,8 @@ export class PvpPromptSheetComponent implements OnDestroy {
     }
   }
 
-  private closeSheet(instant: boolean): void {
-    if (this.sheetState() === 'closed') return;
+  private closeDialog(instant: boolean): void {
+    if (this.dialogState() === 'closed') return;
     this.clearTimeouts();
     this.detachComponent();
     this.hintText.set(null);
@@ -217,10 +212,48 @@ export class PvpPromptSheetComponent implements OnDestroy {
     this.isBeat1.set(false);
 
     if (instant) {
-      this.sheetState.set('closed');
+      this.dialogState.set('closed');
     } else {
-      this.sheetState.set('closing');
-      this.closingTimeout = setTimeout(() => this.sheetState.set('closed'), 300);
+      this.dialogState.set('closing');
+      this.closingTimeout = setTimeout(() => this.dialogState.set('closed'), 200);
+    }
+  }
+
+  private buildHintText(promptType: string, cardName: string): string | null {
+    const q = cardName ? `<span class="hint-card-name">\u201C${cardName}\u201D</span>` : '';
+    const a = (verb: string) => `<span class="hint-action">${verb}</span>`;
+    switch (promptType) {
+      case 'SELECT_CHAIN':
+        return q
+          ? `${q} is activated. ${a('Chain')} another card or effect?`
+          : `${a('Chain')} another card or effect?`;
+      case 'SELECT_EFFECTYN':
+        return q
+          ? `${a('Activate')} effect of ${q}?`
+          : `${a('Activate')} effect?`;
+      case 'SELECT_CARD':
+        return q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} card(s)`;
+      case 'SELECT_TRIBUTE':
+        return q ? `${a('Select')} tribute(s) for ${q}` : `${a('Select')} tribute(s)`;
+      case 'SELECT_SUM':
+      case 'SELECT_UNSELECT_CARD':
+        return q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} cards`;
+      case 'SELECT_POSITION':
+        return q ? `${a('Choose')} position for ${q}` : `${a('Choose')} position`;
+      case 'SELECT_PLACE':
+      case 'SELECT_DISFIELD':
+        return `${a('Choose')} a zone`;
+      case 'SELECT_OPTION':
+        return `${a('Choose')} an option`;
+      case 'SELECT_COUNTER':
+        return `${a('Distribute')} counters`;
+      case 'SORT_CARD':
+      case 'SORT_CHAIN':
+        return `${a('Set')} card order`;
+      case 'SELECT_YESNO':
+        return q || null;
+      default:
+        return q || null;
     }
   }
 

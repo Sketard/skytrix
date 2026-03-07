@@ -59,6 +59,7 @@ export type ZoneId =
 
 export interface CardOnField {
   cardCode: number | null;
+  name: string | null;
   position: Position;
   overlayMaterials: number[];
   counters: Record<string, number>;
@@ -89,6 +90,7 @@ export interface BoardStatePayload {
 
 export interface CardInfo {
   cardCode: number;
+  name: string;
   player: Player;
   location: CardLocation;
   sequence: number;
@@ -112,6 +114,7 @@ export interface BoardStateMsg {
 export interface MoveMsg {
   type: 'MSG_MOVE';
   cardCode: number;
+  cardName: string;
   player: Player;
   fromLocation: CardLocation;
   fromSequence: number;
@@ -148,6 +151,7 @@ export interface PayLpCostMsg {
 export interface ChainingMsg {
   type: 'MSG_CHAINING';
   cardCode: number;
+  cardName: string;
   player: Player;
   location: CardLocation;
   sequence: number;
@@ -174,6 +178,7 @@ export interface HintMsg {
   hintType: number;
   player: Player;
   value: number;
+  cardName: string;
 }
 
 export interface ConfirmCardsMsg {
@@ -191,6 +196,7 @@ export interface ShuffleHandMsg {
 export interface FlipSummoningMsg {
   type: 'MSG_FLIP_SUMMONING';
   cardCode: number;
+  cardName: string;
   player: Player;
   location: CardLocation;
   sequence: number;
@@ -200,6 +206,7 @@ export interface FlipSummoningMsg {
 export interface ChangePosMsg {
   type: 'MSG_CHANGE_POS';
   cardCode: number;
+  cardName: string;
   player: Player;
   location: CardLocation;
   sequence: number;
@@ -283,6 +290,7 @@ export interface SelectEffectYnMsg {
   type: 'SELECT_EFFECTYN';
   player: Player;
   cardCode: number;
+  cardName: string;
   description: number;
 }
 
@@ -310,6 +318,7 @@ export interface SelectPositionMsg {
   type: 'SELECT_POSITION';
   player: Player;
   cardCode: number;
+  cardName: string;
   positions: number[];
 }
 

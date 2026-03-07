@@ -36,7 +36,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
       const isFromPrivate = PRIVATE_LOCATIONS.has(message.fromLocation);
       const isToPrivate = PRIVATE_LOCATIONS.has(message.toLocation);
       if ((isFromPrivate || isToPrivate) && forPlayer !== message.player) {
-        return { ...message, cardCode: 0 };
+        return { ...message, cardCode: 0, cardName: '' };
       }
       return message;
     }
@@ -46,6 +46,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'MSG_HINT':
       // hintType 10 = HINT_EFFECT: leaks card codes via effect activation hints
       if (message.hintType === 10 && forPlayer !== message.player) return null;
+      // hintType 3 = HINT_SELECTMSG: card name is fine for both players
       return message;
 
     case 'MSG_CONFIRM_CARDS':
@@ -170,7 +171,7 @@ function sanitizeOpponentBoard(board: PlayerBoardState): PlayerBoardState {
         case 'HAND':
           return {
             zoneId: zone.zoneId,
-            cards: zone.cards.map(c => ({ ...c, cardCode: null, overlayMaterials: [], counters: {} })),
+            cards: zone.cards.map(c => ({ ...c, cardCode: null, name: null, overlayMaterials: [], counters: {} })),
           };
 
         // Extra deck: empty array (count available via extraCount)
@@ -207,7 +208,7 @@ function sanitizeFaceDownCard(card: CardOnField): CardOnField {
   const isFaceDown = card.position === POSITION.FACEDOWN_ATTACK ||
     card.position === POSITION.FACEDOWN_DEFENSE;
   if (isFaceDown) {
-    return { ...card, cardCode: null };
+    return { ...card, cardCode: null, name: null };
   }
   return card;
 }

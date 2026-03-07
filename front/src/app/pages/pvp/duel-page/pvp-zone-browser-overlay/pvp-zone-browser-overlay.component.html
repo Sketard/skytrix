@@ -21,10 +21,9 @@
                   type="button"
                   (click)="onCardClick(card, $event)">
             <img [src]="getCardImageUrlByCode(card.cardCode ?? 0)"
-                 alt=""
+                 [alt]="card.name ?? 'Card'"
                  class="zone-browser__card-art"
                  (error)="$any($event.target).src='assets/images/card_back.jpg'">
-            <span class="zone-browser__card-name">Card #{{ card.cardCode ?? '?' }}</span>
           </button>
         }
         @if (cards().length === 0) {

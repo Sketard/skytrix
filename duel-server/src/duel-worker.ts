@@ -70,8 +70,14 @@ const PHASE_MAP: Record<number, Phase> = {
 const MZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
+function getCardName(code: number): string {
+  if (!cardDb || !code) return '';
+  const row = cardDb.nameStmt.get(code) as { name: string } | undefined;
+  return row?.name ?? '';
+}
+
 function toCardInfo(c: OcgCardLoc | OcgCardLocPos): CardInfo {
-  return { cardCode: c.code, player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
+  return { cardCode: c.code, name: getCardName(c.code), player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
 }
 
 function countersToRecord(counters?: Record<number, number>): Record<string, number> {
@@ -162,7 +168,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
 
     case OcgMessageType.MOVE:
       return {
-        type: 'MSG_MOVE', cardCode: msg.card, player: msg.from.controller,
+        type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card), player: msg.from.controller,
         fromLocation: msg.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
         fromSequence: msg.from.sequence,
         fromPosition: msg.from.position as number as Position,
@@ -182,7 +188,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
 
     case OcgMessageType.CHAINING:
       return {
-        type: 'MSG_CHAINING', cardCode: msg.code, player: msg.controller,
+        type: 'MSG_CHAINING', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
         location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
         sequence: msg.sequence, chainIndex: msg.chain_size, description: Number(msg.description),
       };
@@ -196,8 +202,13 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.CHAIN_END:
       return { type: 'MSG_CHAIN_END' };
 
-    case OcgMessageType.HINT:
-      return { type: 'MSG_HINT', hintType: msg.hint_type as number, player: msg.player as Player, value: Number(msg.hint) };
+    case OcgMessageType.HINT: {
+      const hintType = msg.hint_type as number;
+      const value = Number(msg.hint);
+      // value is a cardCode only for HINT_EFFECT(10), HINT_CODE(13), HINT_CARD(15)
+      const isCardHint = hintType === 10 || hintType === 13 || hintType === 15;
+      return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName: isCardHint ? getCardName(value) : '' };
+    }
 
     case OcgMessageType.CONFIRM_CARDS:
       return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo) };
@@ -207,14 +218,14 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
 
     case OcgMessageType.FLIPSUMMONING:
       return {
-        type: 'MSG_FLIP_SUMMONING', cardCode: msg.code, player: msg.controller,
+        type: 'MSG_FLIP_SUMMONING', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
         location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
         sequence: msg.sequence, position: msg.position as number as Position,
       };
 
     case OcgMessageType.POS_CHANGE:
       return {
-        type: 'MSG_CHANGE_POS', cardCode: msg.code, player: msg.controller,
+        type: 'MSG_CHANGE_POS', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
         location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
         sequence: msg.sequence,
         previousPosition: msg.prev_position as number as Position,
@@ -289,7 +300,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SELECT_EFFECTYN:
       return {
         type: 'SELECT_EFFECTYN', player: msg.player as Player,
-        cardCode: msg.code, description: Number(msg.description),
+        cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
       };
 
     case OcgMessageType.SELECT_YESNO:
@@ -310,7 +321,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SELECT_POSITION:
       return {
         type: 'SELECT_POSITION', player: msg.player as Player,
-        cardCode: msg.code, positions: decodePositions(msg.positions as number),
+        cardCode: msg.code, cardName: getCardName(msg.code), positions: decodePositions(msg.positions as number),
       };
 
     case OcgMessageType.SELECT_OPTION:
@@ -445,8 +456,10 @@ function buildBoardState(): ServerMessage {
     const counterInfo = core!.duelQuery(duel!, {
       flags: FLAG_COUNTERS, controller, location, sequence, overlaySequence: 0,
     } as never);
+    const code = codeInfo?.code ?? null;
     return {
-      cardCode: codeInfo?.code ?? null,
+      cardCode: code,
+      name: code ? getCardName(code) : null,
       position: fieldPosition as Position,
       overlayMaterials: overlayInfo?.overlayCards ?? [],
       counters: countersToRecord(counterInfo?.counters),
@@ -461,6 +474,7 @@ function buildBoardState(): ServerMessage {
       .filter((c): c is NonNullable<typeof c> => c != null && c.code !== undefined)
       .map(c => ({
         cardCode: c.code ?? null,
+        name: c.code ? getCardName(c.code) : null,
         position: POSITION.FACEUP_ATTACK as Position,
         overlayMaterials: [] as number[],
         counters: {} as Record<string, number>,

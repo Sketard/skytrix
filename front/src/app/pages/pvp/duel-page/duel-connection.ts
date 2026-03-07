@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
 import type { ChainingMsg } from '../duel-ws.types';
-import { AnnounceCardMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -10,7 +10,7 @@ export class DuelConnection {
   // --- Signals (13 pairs) ---
   private _duelState = signal<DuelState>(EMPTY_DUEL_STATE);
   private _pendingPrompt = signal<Prompt | null>(null);
-  private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0 });
+  private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '' });
   private _animationQueue = signal<GameEvent[]>([]);
   private _timerState = signal<TimerStateMsg | null>(null);
   private _connectionStatus = signal<ConnectionStatus>('connected');
@@ -54,7 +54,6 @@ export class DuelConnection {
   private readonly wsUrlBase: string;
 
   // --- Callbacks (set by wrapper services) ---
-  onAutoSelect?: (type: string) => void;
   onMessage?: (msg: ServerMessage) => void;
   onResponse?: (promptType: string, data: ResponseData) => void;
 
@@ -146,13 +145,27 @@ export class DuelConnection {
 
   private autoSelectSort(message: SortCardMsg | SortChainMsg): void {
     this.sendResponse(message.type, { order: null });
-    this.onAutoSelect?.(message.type);
+  }
+
+  private tryAutoRespondEmptyCards(message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg): boolean {
+    if (message.cards.length > 0) return false;
+    if (message.type === 'SELECT_SUM' && message.mustSelect.length > 0) return false;
+
+    console.warn(`[DuelConnection] Empty cards for ${message.type} — auto-responding`);
+
+    if (message.type === 'SELECT_CHAIN' || message.type === 'SELECT_UNSELECT_CARD') {
+      this.sendResponse(message.type, { index: null });
+    } else if (message.type === 'SELECT_COUNTER') {
+      this.sendResponse(message.type, { counters: [] });
+    } else {
+      this.sendResponse(message.type, { indices: [] });
+    }
+    return true;
   }
 
   private autoSelectAnnounceCard(message: AnnounceCardMsg): void {
     const value = message.opcodes.length > 0 ? message.opcodes[0] : 0;
     this.sendResponse(message.type, { value });
-    this.onAutoSelect?.(message.type);
   }
 
   // --- WS lifecycle ---
@@ -237,20 +250,23 @@ export class DuelConnection {
         this._animationQueue.set([]);
         break;
 
-      case 'SELECT_IDLECMD':
-      case 'SELECT_BATTLECMD':
       case 'SELECT_CARD':
       case 'SELECT_CHAIN':
+      case 'SELECT_TRIBUTE':
+      case 'SELECT_SUM':
+      case 'SELECT_UNSELECT_CARD':
+      case 'SELECT_COUNTER':
+        if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
+        this._pendingPrompt.set(message);
+        break;
+      case 'SELECT_IDLECMD':
+      case 'SELECT_BATTLECMD':
       case 'SELECT_EFFECTYN':
       case 'SELECT_YESNO':
       case 'SELECT_PLACE':
       case 'SELECT_DISFIELD':
       case 'SELECT_POSITION':
       case 'SELECT_OPTION':
-      case 'SELECT_TRIBUTE':
-      case 'SELECT_SUM':
-      case 'SELECT_UNSELECT_CARD':
-      case 'SELECT_COUNTER':
       case 'ANNOUNCE_RACE':
       case 'ANNOUNCE_ATTRIB':
       case 'ANNOUNCE_NUMBER':
@@ -277,7 +293,7 @@ export class DuelConnection {
         break;
 
       case 'MSG_HINT':
-        this._hintContext.set({ hintType: message.hintType, player: message.player, value: message.value });
+        this._hintContext.set({ hintType: message.hintType, player: message.player, value: message.value, cardName: message.cardName });
         break;
 
       case 'TIMER_STATE':
@@ -337,6 +353,7 @@ export class DuelConnection {
         this._activeChainLinks.update(links => [...links, {
           chainIndex: msg.chainIndex,
           cardCode: msg.cardCode,
+          cardName: msg.cardName,
           player: msg.player,
           zoneId: locationToZoneId(msg.location, msg.sequence),
           resolving: false,

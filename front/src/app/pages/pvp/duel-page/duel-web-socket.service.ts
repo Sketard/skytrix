@@ -1,5 +1,4 @@
 import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection, ResponseData } from './duel-connection';
 import { DebugLogService } from './debug-log.service';
@@ -8,16 +7,12 @@ export { ResponseData } from './duel-connection';
 
 @Injectable()
 export class DuelWebSocketService implements OnDestroy {
-  private readonly snackBar = inject(MatSnackBar);
   private readonly debugLog = inject(DebugLogService);
 
   private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true);
   private _activeConnection = signal<DuelConnection>(this._defaultConnection);
 
   constructor() {
-    this._defaultConnection.onAutoSelect = (type: string) => {
-      this.snackBar.open(`Auto-selected: ${type}`, '', { duration: 2000 });
-    };
     this._defaultConnection.onMessage = msg => {
       this.debugLog.logServerMessage(msg);
     };

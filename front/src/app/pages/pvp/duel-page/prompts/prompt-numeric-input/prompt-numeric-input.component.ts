@@ -6,7 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PromptSubComponent, PreferredHeight } from '../prompt.types';
+import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { AnnounceNumberMsg, SelectCounterMsg } from '../../../duel-ws.types';
 
@@ -21,7 +21,6 @@ type NumericPrompt = AnnounceNumberMsg | SelectCounterMsg;
   imports: [FormsModule],
 })
 export class PromptNumericInputComponent implements PromptSubComponent<NumericPrompt> {
-  preferredHeight: PreferredHeight = 'compact';
   promptData: NumericPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();

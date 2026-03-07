@@ -6,7 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { PromptSubComponent, PreferredHeight } from '../prompt.types';
+import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
 
@@ -33,12 +33,6 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
 
   readonly selectedIndex = signal<number | null>(null);
   answered = false;
-
-  get preferredHeight(): PreferredHeight {
-    const count = this.options.length;
-    if (count > 5) return 'full';
-    return count * 48;
-  }
 
   get options(): OptionItem[] {
     if (!this.promptData) return [];

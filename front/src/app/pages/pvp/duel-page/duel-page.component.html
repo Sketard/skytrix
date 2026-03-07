@@ -335,10 +335,10 @@
       </div>
     }
 
-    <!-- Prompt sheet (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
-    <app-pvp-prompt-sheet [prompt]="visiblePrompt()"
+    <!-- Prompt dialog (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
+    <app-pvp-prompt-dialog [prompt]="visiblePrompt()"
                            [skipBeat1]="returningFromBackground()"
-                           (sheetExpanded)="promptSheetExpanded.set($event)"
+                           (dialogExpanded)="promptSheetExpanded.set($event)"
                            (longPressInspect)="onLongPressInspect($event)" />
 
     <!-- Debug Log Panel (dev only) -->

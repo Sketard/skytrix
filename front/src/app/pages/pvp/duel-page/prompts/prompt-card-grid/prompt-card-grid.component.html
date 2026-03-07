@@ -1,7 +1,7 @@
 @if (cards.length === 0) {
   <div class="empty-state">No valid targets</div>
 } @else {
-  <div class="card-grid" [class]="layoutClass">
+  <div class="card-strip">
     @for (card of cards; track $index; let i = $index) {
       <button class="card-slot"
               [class.card-slot--selected]="isSelected(i)"
@@ -13,13 +13,12 @@
               (contextmenu)="onContextMenu($event)"
               [disabled]="answered"
               type="button"
-              [attr.aria-label]="'Card ' + card.cardCode"
+              [attr.aria-label]="card.name"
               [attr.aria-pressed]="isSelected(i)">
         <img class="card-img"
              [src]="getCardImageUrl(card.cardCode)"
              alt=""
              loading="lazy" />
-        <span class="card-label">{{ card.cardCode }}</span>
       </button>
     }
   </div>
@@ -27,6 +26,14 @@
   <div class="actions">
     @if (isMultiSelect || isToggleMode) {
       <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
+    }
+    @if (canCancel) {
+      <button class="btn btn--secondary"
+              (click)="cancel()"
+              [disabled]="answered"
+              type="button">
+        Cancel
+      </button>
     }
     <button class="btn btn--primary prompt-confirm-btn"
             (click)="confirm()"

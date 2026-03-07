@@ -4,10 +4,9 @@ import {
   EventEmitter,
   HostListener,
 } from '@angular/core';
-import { PromptSubComponent, PreferredHeight } from '../prompt.types';
+import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { SelectYesNoMsg, SelectEffectYnMsg } from '../../../duel-ws.types';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 type YesNoPrompt = SelectYesNoMsg | SelectEffectYnMsg;
 
@@ -19,7 +18,6 @@ type YesNoPrompt = SelectYesNoMsg | SelectEffectYnMsg;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PromptYesNoComponent implements PromptSubComponent<YesNoPrompt> {
-  preferredHeight: PreferredHeight = 'compact';
   promptData: YesNoPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
@@ -36,11 +34,6 @@ export class PromptYesNoComponent implements PromptSubComponent<YesNoPrompt> {
 
   get secondaryLabel(): string {
     return this.isEffectYn ? 'Cancel' : 'No';
-  }
-
-  get cardImageUrl(): string | null {
-    if (!this.hintContext?.value) return null;
-    return getCardImageUrlByCode(this.hintContext.value);
   }
 
   selectPrimary(): void {

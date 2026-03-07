@@ -7,7 +7,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { PromptSubComponent, PreferredHeight } from '../prompt.types';
+import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { CardInfo, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
@@ -22,7 +22,6 @@ type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | Select
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnInit, OnDestroy {
-  preferredHeight: PreferredHeight = 'full';
   promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
@@ -87,12 +86,12 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return false;
   }
 
-  get layoutClass(): string {
-    const count = this.cards.length;
-    if (count <= 4) return 'layout-large';
-    if (count <= 9) return 'layout-standard';
-    if (count <= 12) return 'layout-scroll';
-    return 'layout-two-row';
+  get canCancel(): boolean {
+    const p = this.promptData;
+    if (!p) return false;
+    if (p.type === 'SELECT_CHAIN') return !p.forced;
+    if ('cancelable' in p) return (p as SelectCardMsg).cancelable;
+    return false;
   }
 
   get isConfirmEnabled(): boolean {
@@ -129,6 +128,17 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       }
       return next;
     });
+  }
+
+  cancel(): void {
+    if (this.answered || !this.canCancel) return;
+    this.answered = true;
+    const type = this.promptData?.type;
+    if (type === 'SELECT_CHAIN') {
+      this.response.emit({ index: null });
+    } else {
+      this.response.emit({ indices: [] });
+    }
   }
 
   confirm(): void {
@@ -190,6 +200,10 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     if (event.key === 'Enter') {
       event.preventDefault();
       this.confirm();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.cancel();
     }
   }
 }

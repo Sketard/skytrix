@@ -41,7 +41,7 @@
                (click)="onCardInspect(zone.card)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
-                   [alt]="'Card ' + zone.card.cardCode"
+                   [alt]="zone.card.name ?? 'Card'"
                    class="card-art"
                    (error)="$any($event.target).src='assets/images/card_back.jpg'">
             } @else {
@@ -94,7 +94,7 @@
                (click)="onCardInspect(card)">
             @if (isFaceUp(card.position)) {
               <img [src]="getCardImageUrl(card)"
-                   [alt]="emz.zoneId + ' Card'"
+                   [alt]="card.name ?? 'Card'"
                    class="card-art"
                    (error)="$any($event.target).src='assets/images/card_back.jpg'">
             } @else {
@@ -183,7 +183,7 @@
                (click)="onZoneCardClick($event, zone)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
-                   [alt]="'Card ' + zone.card.cardCode"
+                   [alt]="zone.card.name ?? 'Card'"
                    class="card-art"
                    (error)="$any($event.target).src='assets/images/card_back.jpg'">
             } @else {
@@ -222,7 +222,7 @@
             [class.pvp-chain-badge--resolving]="chainLink.resolving"
             [style.right.px]="2 + i * 4"
             [style.z-index]="10 + i"
-            [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + resolveCardName(chainLink.cardCode)">
+            [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + chainLink.cardName">
         {{ chainLink.chainIndex + 1 }}
       </span>
     }

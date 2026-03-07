@@ -1,5 +1,4 @@
 import { computed, DestroyRef, effect, inject, Injectable, Injector, runInInjectionContext, signal } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection } from './duel-connection';
 import { DuelWebSocketService } from './duel-web-socket.service';
@@ -9,7 +8,6 @@ import { DebugLogService } from './debug-log.service';
 @Injectable()
 export class SoloDuelOrchestratorService {
   private readonly wsService = inject(DuelWebSocketService);
-  private readonly snackBar = inject(MatSnackBar);
   private readonly animationService = inject(AnimationOrchestratorService);
   private readonly debugLog = inject(DebugLogService);
   private readonly destroyRef = inject(DestroyRef);
@@ -37,13 +35,6 @@ export class SoloDuelOrchestratorService {
     const conn1 = new DuelConnection(environment.wsUrl, false);
 
     // Set callbacks on both connections
-    conn0.onAutoSelect = (type: string) => {
-      if (this.activePlayerIndex() === 0) this.snackBar.open(`Auto-selected: ${type}`, '', { duration: 2000 });
-    };
-    conn1.onAutoSelect = (type: string) => {
-      if (this.activePlayerIndex() === 1) this.snackBar.open(`Auto-selected: ${type}`, '', { duration: 2000 });
-    };
-
     conn0.onMessage = msg => this.debugLog.logServerMessage(msg);
     conn1.onMessage = msg => this.debugLog.logServerMessage(msg);
     conn0.onResponse = (promptType, data) => this.debugLog.logPlayerResponse(promptType, data);

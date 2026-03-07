@@ -24,6 +24,12 @@
   .hand-row--player & {
     cursor: pointer;
     transform-origin: center bottom;
+
+    &:hover {
+      transform: translateY(-12px) !important;
+      z-index: 100 !important;
+      transition: transform 0.15s ease-out;
+    }
   }
 
   .hand-row--opponent & {
@@ -36,6 +42,10 @@
   height: 100%;
   object-fit: cover;
   display: block;
+
+  .hand-row--opponent & {
+    transform: rotate(180deg);
+  }
 }
 
 // === Actionable Glow (Story 1.7) ===

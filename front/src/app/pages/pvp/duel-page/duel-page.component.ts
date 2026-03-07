@@ -24,7 +24,7 @@ import { locationToZoneId } from '../pvp-zone.utils';
 import { CardDataCacheService } from './card-data-cache.service';
 import { PvpBoardContainerComponent } from './pvp-board-container/pvp-board-container.component';
 import { PvpHandRowComponent } from './pvp-hand-row/pvp-hand-row.component';
-import { PvpPromptSheetComponent } from './prompts/pvp-prompt-sheet/pvp-prompt-sheet.component';
+import { PvpPromptDialogComponent } from './prompts/pvp-prompt-dialog/pvp-prompt-dialog.component';
 import { PromptZoneHighlightComponent } from './prompts/prompt-zone-highlight/prompt-zone-highlight.component';
 import { PvpZoneBrowserOverlayComponent } from './pvp-zone-browser-overlay/pvp-zone-browser-overlay.component';
 import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
@@ -52,7 +52,7 @@ import './prompts/prompt-registry';
     DebugLogService, SoloDuelOrchestratorService,
   ],
   imports: [
-    PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptSheetComponent, PromptZoneHighlightComponent,
+    PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptDialogComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
     MatIconButton, MatButton, MatIcon, MatProgressSpinner,
     MatButtonToggle, MatButtonToggleGroup,

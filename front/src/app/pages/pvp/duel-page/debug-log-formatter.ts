@@ -63,7 +63,7 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return `P${msg.player + 1} drew ${msg.cards.length} card(s)`;
     case 'MSG_MOVE':
       return (
-        `P${msg.player + 1}: [${msg.cardCode}] ` +
+        `P${msg.player + 1}: ${msg.cardName || 'Unknown'} ` +
         `${zoneLabel(msg.fromLocation, msg.fromSequence)} → ${zoneLabel(msg.toLocation, msg.toSequence)} ` +
         `(${positionLabel(msg.toPosition)})`
       );
@@ -74,28 +74,34 @@ export function formatServerMessage(msg: ServerMessage): string | null {
     case 'MSG_PAY_LPCOST':
       return `P${msg.player + 1} paid ${msg.amount} LP`;
     case 'MSG_CHAINING':
-      return `Chain ${msg.chainIndex + 1}: [${msg.cardCode}] activated by P${msg.player + 1}`;
+      return `Chain ${msg.chainIndex + 1}: ${msg.cardName || 'Unknown'} activated by P${msg.player + 1}`;
     case 'MSG_CHAIN_SOLVING':
       return `Resolving chain link ${msg.chainIndex + 1}`;
     case 'MSG_CHAIN_SOLVED':
       return `Chain link ${msg.chainIndex + 1} resolved`;
     case 'MSG_CHAIN_END':
       return 'Chain resolved completely';
-    case 'MSG_HINT':
-      return `Hint: type=${msg.hintType}, value=${msg.value}, P${msg.player + 1}`;
+    case 'MSG_HINT': {
+      const HINT_LABELS: Record<number, string> = {
+        1: 'EVENT', 2: 'MESSAGE', 3: 'SELECTMSG', 4: 'OPSELECTED',
+        5: 'EFFECT', 6: 'RACE', 7: 'ATTRIB', 8: 'CODE', 9: 'NUMBER', 10: 'CARD',
+      };
+      const label = HINT_LABELS[msg.hintType] ?? String(msg.hintType);
+      return `Hint: ${label}(${msg.hintType}), value=${msg.value}, P${msg.player + 1}`;
+    }
     case 'MSG_CONFIRM_CARDS':
       return `P${msg.player + 1} confirmed ${msg.cards.length} card(s)`;
     case 'MSG_SHUFFLE_HAND':
       return `P${msg.player + 1} hand shuffled`;
     case 'MSG_FLIP_SUMMONING':
-      return `P${msg.player + 1}: [${msg.cardCode}] flip summoned at ${zoneLabel(msg.location, msg.sequence)}`;
+      return `P${msg.player + 1}: ${msg.cardName || 'Unknown'} flip summoned at ${zoneLabel(msg.location, msg.sequence)}`;
     case 'MSG_CHANGE_POS':
       return (
-        `P${msg.player + 1}: [${msg.cardCode}] changed position ` +
+        `P${msg.player + 1}: ${msg.cardName || 'Unknown'} changed position ` +
         `(${positionLabel(msg.previousPosition)} → ${positionLabel(msg.currentPosition)})`
       );
     case 'MSG_SWAP':
-      return `Cards swapped: [${msg.card1.cardCode}] ↔ [${msg.card2.cardCode}]`;
+      return `Cards swapped: ${msg.card1.name || 'Unknown'} ↔ ${msg.card2.name || 'Unknown'}`;
     case 'MSG_ATTACK':
       return msg.defenderPlayer === null
         ? `P${msg.attackerPlayer + 1} M${msg.attackerSequence + 1} direct attack`
@@ -123,7 +129,7 @@ export function formatServerMessage(msg: ServerMessage): string | null {
     case 'SELECT_CHAIN':
       return `P${msg.player + 1} prompt: Chain? (${msg.cards.length} options, forced=${msg.forced})`;
     case 'SELECT_EFFECTYN':
-      return `P${msg.player + 1} prompt: Activate [${msg.cardCode}] effect?`;
+      return `P${msg.player + 1} prompt: Activate ${msg.cardName || 'Unknown'} effect?`;
     case 'SELECT_YESNO':
       return `P${msg.player + 1} prompt: Yes/No (desc=${msg.description})`;
     case 'SELECT_PLACE':
@@ -131,7 +137,7 @@ export function formatServerMessage(msg: ServerMessage): string | null {
     case 'SELECT_DISFIELD':
       return `P${msg.player + 1} prompt: Select ${msg.count} field zone(s) to disable`;
     case 'SELECT_POSITION':
-      return `P${msg.player + 1} prompt: Choose position for [${msg.cardCode}]`;
+      return `P${msg.player + 1} prompt: Choose position for ${msg.cardName || 'Unknown'}`;
     case 'SELECT_OPTION':
       return `P${msg.player + 1} prompt: Choose from ${msg.options.length} options`;
     case 'SELECT_TRIBUTE':
@@ -186,23 +192,6 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return null;
     default:
       return null;
-  }
-}
-
-export function extractCardCodes(msg: ServerMessage): number[] {
-  switch (msg.type) {
-    case 'MSG_MOVE':
-    case 'MSG_CHAINING':
-    case 'MSG_FLIP_SUMMONING':
-    case 'MSG_CHANGE_POS':
-      return msg.cardCode > 0 ? [msg.cardCode] : [];
-    case 'MSG_SWAP':
-      return [msg.card1.cardCode, msg.card2.cardCode].filter(c => c > 0);
-    case 'SELECT_EFFECTYN':
-    case 'SELECT_POSITION':
-      return msg.cardCode > 0 ? [msg.cardCode] : [];
-    default:
-      return [];
   }
 }
 

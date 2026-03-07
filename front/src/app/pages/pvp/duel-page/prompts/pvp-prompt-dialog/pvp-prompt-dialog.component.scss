@@ -4,54 +4,56 @@
   display: contents;
 }
 
-.prompt-sheet {
+.prompt-dialog {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 8dvh;
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
   z-index: z.$z-pvp-prompt-sheet;
-  background: var(--pvp-prompt-sheet-bg);
-  border-radius: var(--pvp-prompt-sheet-radius);
-  transform: translateY(100%);
+  width: var(--pvp-prompt-dialog-width, 50dvw);
+  background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
+  border-radius: var(--pvp-prompt-dialog-radius, 0.75rem);
+  opacity: 0;
   transition:
-    transform var(--pvp-prompt-transition-speed) ease-out,
-    max-height var(--pvp-prompt-transition-speed) ease-out;
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
   overflow: hidden;
-  overflow-y: auto;
   overscroll-behavior: contain;
-  max-height: var(--pvp-prompt-sheet-max-height);
-  padding-inline-start: env(safe-area-inset-left, 0px);
-  padding-inline-end: env(safe-area-inset-right, 0px);
-
-  &:not(&--visible) {
-    visibility: hidden;
-    pointer-events: none;
-  }
+  pointer-events: none;
+  visibility: hidden;
 
   &--visible {
-    transform: translateY(0);
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+    pointer-events: auto;
     visibility: visible;
   }
 
   &--collapsed {
-    max-height: none;
     overflow: hidden;
   }
 }
 
 .collapse-handle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
   display: flex;
   justify-content: center;
-  width: 100%;
-  padding: 6px;
-  background: none;
-  border: none;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
   cursor: pointer;
   color: var(--text-secondary, #9e9e9e);
-  min-height: var(--pvp-min-touch-target-primary, 48px);
 
   &:hover {
     color: var(--text-primary, #eaeaea);
+    background: rgba(255, 255, 255, 0.15);
   }
 
   &:focus-visible {
@@ -61,8 +63,8 @@
 }
 
 .collapse-arrow {
-  transition: transform var(--pvp-prompt-transition-speed) ease-out;
-  font-size: 1rem;
+  transition: transform 200ms ease-out;
+  font-size: 0.625rem;
 
   &--up {
     transform: rotate(180deg);
@@ -70,10 +72,21 @@
 }
 
 .hint-header {
-  padding: 4px 16px 8px;
-  font-size: 0.875rem;
+  padding: 6px 16px 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--text-secondary, #9e9e9e);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+
+  // innerHTML-injected spans — needs ::ng-deep to pierce encapsulation
+  ::ng-deep .hint-card-name {
+    color: var(--pvp-accent, #c9a84c);
+  }
+
+  ::ng-deep .hint-action {
+    color: var(--pvp-accent, #c9a84c);
+  }
 
   &--flash {
     animation: hint-flash 200ms ease-in-out;
@@ -115,6 +128,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .prompt-dialog {
+    transition: none;
+  }
+
   .hint-header--flash {
     animation: none;
   }

@@ -24,6 +24,7 @@ export const STATE_SYNC_RATE_LIMIT_MS = 5_000;
 export interface CardDB {
   db: Database.Database;
   stmt: Database.Statement;
+  nameStmt: Database.Statement;
 }
 
 export interface ScriptDB {

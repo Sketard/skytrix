@@ -7,7 +7,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { PromptSubComponent, PreferredHeight } from '../prompt.types';
+import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { RpsChoiceMsg } from '../../../duel-ws.types';
 
@@ -25,7 +25,6 @@ const RPS_CHOICES = [
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PromptRpsComponent implements PromptSubComponent<RpsChoiceMsg>, OnInit, OnDestroy {
-  preferredHeight: PreferredHeight = 'full';
   promptData: RpsChoiceMsg | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();

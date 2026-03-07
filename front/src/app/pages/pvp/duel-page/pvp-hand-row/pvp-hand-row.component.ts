@@ -17,12 +17,18 @@ export class PvpHandRowComponent {
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();
 
-  readonly needsOverlap = computed(() => this.cards().length >= 6);
+  readonly needsOverlap = computed(() => this.cards().length >= 2);
 
   readonly overlapMargin = computed(() => {
     const count = this.cards().length;
-    if (count < 6) return 0;
-    return -16 - (count - 6) * 4;
+    if (count < 2) return null;
+    // Ratio of card height (card width ≈ height × 59/86)
+    // Overlap scales proportionally with card size across all viewports
+    let ratio: number;
+    if (count <= 4) ratio = -0.33;
+    else if (count <= 7) ratio = -0.41;
+    else ratio = -0.41 - (count - 7) * 0.04;
+    return `calc(var(--pvp-hand-card-height) * ${ratio})`;
   });
 
   private readonly FAN_MAX_ANGLE = 4;

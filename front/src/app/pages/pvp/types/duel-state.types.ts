@@ -5,6 +5,7 @@ export type DuelState = BoardStatePayload;
 export interface ChainLinkState {
   chainIndex: number;
   cardCode: number;
+  cardName: string;
   player: number;
   zoneId: string | null;
   resolving: boolean;
