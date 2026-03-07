@@ -68,6 +68,32 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   get displayEntries(): DisplayEntry[] {
     const all = this.cards;
+
+    // For SELECT_SUM, mustSelect cards are auto-included — exclude them from the selectable grid
+    if (this.promptData?.type === 'SELECT_SUM') {
+      const mustSelect = (this.promptData as SelectSumMsg).mustSelect;
+      if (mustSelect.length === 0) return all.map((card, i) => ({ card, originalIndex: i }));
+      const mustUsed = new Map<string, number>();
+      for (const c of mustSelect) {
+        const k = cardKey(c);
+        mustUsed.set(k, (mustUsed.get(k) ?? 0) + 1);
+      }
+      const consumed = new Map<string, number>();
+      return all.reduce<DisplayEntry[]>((acc, card, i) => {
+        const k = cardKey(card);
+        const limit = mustUsed.get(k) ?? 0;
+        if (limit > 0) {
+          const used = consumed.get(k) ?? 0;
+          if (used < limit) {
+            consumed.set(k, used + 1);
+            return acc; // skip — it's a mustSelect card
+          }
+        }
+        acc.push({ card, originalIndex: i });
+        return acc;
+      }, []);
+    }
+
     if (this.excludedCards.length === 0) {
       return all.map((card, i) => ({ card, originalIndex: i }));
     }
@@ -93,21 +119,50 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   get isMultiSelect(): boolean {
     const t = this.promptData?.type;
+    if (t === 'SELECT_CARD') return this.maxSelect > 1;
     return t === 'SELECT_TRIBUTE' || t === 'SELECT_SUM' || t === 'SELECT_UNSELECT_CARD';
   }
 
   get minSelect(): number {
     const p = this.promptData;
     if (!p) return 1;
-    if ('min' in p) return p.min;
+    if (p.type === 'SELECT_SUM') return (p as SelectSumMsg).minCards;
+    if ('min' in p) return (p as { min: number }).min;
     return 1;
+  }
+
+  get sumTarget(): number {
+    if (this.promptData?.type !== 'SELECT_SUM') return 0;
+    return (this.promptData as SelectSumMsg).targetSum;
   }
 
   get maxSelect(): number {
     const p = this.promptData;
     if (!p) return 1;
+    if (p.type === 'SELECT_SUM') {
+      const sum = p as SelectSumMsg;
+      if (sum.selectMax > 0) return sum.selectMax;
+      if (sum.maxCards > 0) return sum.maxCards;
+      return this.cards.length;
+    }
     if ('max' in p) return p.max;
     return 1;
+  }
+
+  /** For SELECT_SUM: sum of amounts from mustSelect cards (always included). */
+  get mustSelectSum(): number {
+    if (this.promptData?.type !== 'SELECT_SUM') return 0;
+    return (this.promptData as SelectSumMsg).mustSelect.reduce((s, c) => s + (c.amount ?? 1), 0);
+  }
+
+  /** For SELECT_SUM: total sum of mustSelect + currently selected optional cards. */
+  get selectedSum(): number {
+    if (this.promptData?.type !== 'SELECT_SUM') return 0;
+    let sum = this.mustSelectSum;
+    for (const idx of this.selectedIndices()) {
+      sum += this.cards[idx]?.amount ?? 1;
+    }
+    return sum;
   }
 
   get isToggleMode(): boolean {
@@ -132,6 +187,10 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   get isConfirmEnabled(): boolean {
     const count = this.selectedIndices().size;
     if (this.isToggleMode) return this.canFinish || count > 0;
+    if (this.promptData?.type === 'SELECT_SUM') {
+      const p = this.promptData as SelectSumMsg;
+      return this.selectedSum >= p.targetSum;
+    }
     if (this.isMultiSelect) return count >= this.minSelect && count <= this.maxSelect;
     return count === 1;
   }
@@ -150,6 +209,12 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       return;
     }
 
+    // Inspect card on every click (shows image + description like in deck builder)
+    const cardCode = this.cards[index]?.cardCode;
+    if (cardCode) {
+      this.longPressInspect.emit({ cardCode });
+    }
+
     this.selectedIndices.update(set => {
       const next = new Set(set);
       if (next.has(index)) {
@@ -158,7 +223,14 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
         if (!this.isMultiSelect && !this.isToggleMode) {
           next.clear();
         }
-        if (this.isMultiSelect && next.size >= this.maxSelect) return set;
+        if (this.promptData?.type === 'SELECT_SUM') {
+          const p = this.promptData as SelectSumMsg;
+          if (next.size >= this.maxSelect) return set;
+          const newSum = this.mustSelectSum + Array.from(next).reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0) + (this.cards[index]?.amount ?? 1);
+          if (newSum > p.targetSum) return set;
+        } else if (this.isMultiSelect && next.size >= this.maxSelect) {
+          return set;
+        }
         next.add(index);
       }
       return next;

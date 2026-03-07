@@ -84,14 +84,17 @@
     </div>
 
     @for (emz of emzConfigs(); track emz.zoneId) {
-      <div class="emz" [class]="emz.cssClass">
+      <div class="emz" [class]="emz.cssClass"
+           [class.zone--highlighted]="isHighlighted(emz.zoneId)">
         @if (emz.zone; as card) {
           <div class="zone-card"
+               [class.zone-card--actionable]="activateZoneIds().has(emz.zoneId)"
+               [class.zone-card--actionable-blue]="!activateZoneIds().has(emz.zoneId) && nonActivateZoneIds().has(emz.zoneId)"
                [class.pvp-anim-summon]="animatingEmzKeys().has(emz.zoneId + '-summon')"
                [class.pvp-anim-destroy]="animatingEmzKeys().has(emz.zoneId + '-destroy')"
                [class.pvp-anim-flip]="animatingEmzKeys().has(emz.zoneId + '-flip')"
                [class.pvp-anim-activate]="animatingEmzKeys().has(emz.zoneId + '-activate')"
-               (click)="onCardInspect(card)">
+               (click)="onEmzCardClick($event, emz.zoneId, card)">
             @if (isFaceUp(card.position)) {
               <img [src]="getCardImageUrl(card)"
                    [alt]="card.name ?? 'Card'"
@@ -100,10 +103,23 @@
             } @else {
               <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
             }
+            @if (card.overlayMaterials.length > 0) {
+              <div class="xyz-indicator">
+                <span>{{ card.overlayMaterials.length }}</span>
+              </div>
+            }
             <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: emz.chainBadges }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
+        }
+        @if (isHighlighted(emz.zoneId)) {
+          <button class="zone-highlight-badge"
+                  (click)="onHighlightedZoneClick(emz.zoneId)"
+                  [attr.aria-label]="'Zone ' + emz.zoneId"
+                  type="button">
+            {{ highlightBadgeMap().get(emz.zoneId) }}
+          </button>
         }
       </div>
     }

@@ -15,4 +15,6 @@ public class QuickDuelDTO {
     private Long decklistId2;
 
     private Integer firstPlayer;
+
+    private boolean skipShuffle;
 }

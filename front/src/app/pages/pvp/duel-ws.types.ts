@@ -94,6 +94,8 @@ export interface CardInfo {
   player: Player;
   location: CardLocation;
   sequence: number;
+  description?: string;
+  amount?: number;
 }
 
 export interface PlaceOption {
@@ -344,8 +346,10 @@ export interface SelectSumMsg {
   player: Player;
   mustSelect: CardInfo[];
   cards: CardInfo[];
-  min: number;
-  max: number;
+  targetSum: number;
+  minCards: number;
+  maxCards: number;
+  selectMax: number;
 }
 
 export interface SelectUnselectCardMsg {

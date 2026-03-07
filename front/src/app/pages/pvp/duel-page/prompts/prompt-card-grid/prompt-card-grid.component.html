@@ -1,6 +1,7 @@
 @if (displayEntries.length === 0) {
   <div class="empty-state">No valid targets</div>
 } @else {
+<div class="card-strip__inner">
   <div class="card-strip">
     @for (entry of displayEntries; track entry.originalIndex) {
       <button class="card-slot"
@@ -21,10 +22,13 @@
              loading="lazy" />
       </button>
     }
+    </div>
   </div>
 
   <div class="actions">
-    @if (isMultiSelect || isToggleMode) {
+    @if (promptData?.type === 'SELECT_SUM') {
+      <span class="selection-count" aria-live="polite">{{ selectedSum }} / {{ sumTarget }} needed</span>
+    } @else if (isMultiSelect || isToggleMode) {
       <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
     }
     @if (canCancel) {

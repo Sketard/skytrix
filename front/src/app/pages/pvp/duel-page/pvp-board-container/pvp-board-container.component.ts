@@ -173,18 +173,17 @@ export class PvpBoardContainerComponent {
   }
 
   onZoneCardClick(event: MouseEvent, zone: ZoneRenderData): void {
-    const actions = this.getActionsForZone(zone.zoneId);
-    if (actions.length === 0) {
-      if (zone.card?.cardCode) {
-        this.cardInspectRequest.emit({ cardCode: zone.card.cardCode });
-      }
-      return;
+    if (zone.card?.cardCode) {
+      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode });
     }
-    this.menuRequest.emit({
-      zoneId: zone.zoneId,
-      element: event.currentTarget as HTMLElement,
-      actions,
-    });
+    const actions = this.getActionsForZone(zone.zoneId);
+    if (actions.length > 0) {
+      this.menuRequest.emit({
+        zoneId: zone.zoneId,
+        element: event.currentTarget as HTMLElement,
+        actions,
+      });
+    }
   }
 
   private getActionsForZone(zoneId: ZoneId): CardAction[] {
@@ -217,12 +216,16 @@ export class PvpBoardContainerComponent {
       case 'FIELD': return `${LOCATION.SZONE}-5`;
       case 'GY': return `${LOCATION.GRAVE}-0`;
       case 'BANISHED': return `${LOCATION.BANISHED}-0`;
+      case 'EMZ_L': return `${LOCATION.MZONE}-5`;
+      case 'EMZ_R': return `${LOCATION.MZONE}-6`;
       case 'EXTRA': return `${LOCATION.EXTRA}-0`;
       default: return null;
     }
   }
 
   private locationSeqToZoneId(location: number, sequence: number): ZoneId | null {
+    if (location === LOCATION.MZONE && sequence === 5) return 'EMZ_L';
+    if (location === LOCATION.MZONE && sequence === 6) return 'EMZ_R';
     if (location === LOCATION.MZONE && sequence <= 4) return `M${sequence + 1}` as ZoneId;
     if (location === LOCATION.SZONE && sequence <= 4) return `S${sequence + 1}` as ZoneId;
     if (location === LOCATION.SZONE && sequence === 5) return 'FIELD';
@@ -300,6 +303,16 @@ export class PvpBoardContainerComponent {
   protected readonly emzRChainBadges = computed(() =>
     this.activeChainLinks().filter(l => l.zoneId === 'EMZ_R'),
   );
+
+  onEmzCardClick(event: MouseEvent, zoneId: ZoneId, card: CardOnField): void {
+    if (card.cardCode) {
+      this.cardInspectRequest.emit({ cardCode: card.cardCode });
+    }
+    const actions = this.getActionsForZone(zoneId);
+    if (actions.length > 0) {
+      this.menuRequest.emit({ zoneId, element: event.currentTarget as HTMLElement, actions });
+    }
+  }
 
   onCardInspect(card: CardOnField): void {
     if (card.cardCode) {

@@ -134,7 +134,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
     if (AUTO_SELECT_PROMPT_TYPES.has(prompt.type)) return;
 
     const componentType = PROMPT_COMPONENT_MAP[prompt.type];
-    if (!componentType) return;
+    if (!componentType) {
+      // Prompt handled elsewhere (e.g. zone highlights for SELECT_PLACE/SELECT_DISFIELD).
+      // Close any open dialog so it doesn't block board interactions.
+      if (this.dialogState() !== 'closed') this.closeDialog(true);
+      return;
+    }
 
     this.openForPrompt(prompt, componentType);
   }

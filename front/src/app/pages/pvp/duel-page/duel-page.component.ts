@@ -17,7 +17,7 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import type { ConnectionStatus } from '../types';
 import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
-import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION, isActivateAction } from './idle-action-codes';
+import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
 import { locationToZoneId } from '../pvp-zone.utils';
@@ -167,6 +167,15 @@ export class DuelPageComponent implements OnInit {
     actions: CardAction[];
     promptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
   } | null>(null);
+
+  // Effect sub-menu: shown when user clicks a grouped "Activate Effect" entry
+  readonly effectSubMenu = signal<CardAction[] | null>(null);
+
+  readonly menuDisplayActions = computed(() => {
+    const menu = this.menuState();
+    if (!menu) return [];
+    return groupMenuActions(menu.actions);
+  });
 
   // Story 1.7 — Own turn detection
   readonly isOwnTurn = computed(() => this.duelState().turnPlayer === 0);
@@ -781,20 +790,36 @@ export class DuelPageComponent implements OnInit {
 
   closeCardActionMenu(): void {
     this.menuState.set(null);
+    this.effectSubMenu.set(null);
     this.teardownMenuListener();
   }
 
-  onMenuAction(action: CardAction): void {
+  onMenuAction(action: CardAction, event?: MouseEvent): void {
+    if (action.children) {
+      // Stop propagation so the click-outside listener doesn't fire on the now-removed button
+      event?.stopPropagation();
+      this.effectSubMenu.set(action.children);
+      return;
+    }
     const menu = this.menuState();
     if (!menu || !this.actionablePrompt()) return;
     this.wsService.sendResponse(menu.promptType, { action: action.actionCode, index: action.index });
     this.closeCardActionMenu();
   }
 
+  onMenuChildAction(action: CardAction): void {
+    this.effectSubMenu.set(null);
+    this.onMenuAction(action);
+  }
+
   onMenuKeydown(event: KeyboardEvent): void {
     switch (event.key) {
       case 'Escape':
-        this.closeCardActionMenu();
+        if (this.effectSubMenu()) {
+          this.effectSubMenu.set(null);
+        } else {
+          this.closeCardActionMenu();
+        }
         event.preventDefault();
         break;
       case 'ArrowDown':

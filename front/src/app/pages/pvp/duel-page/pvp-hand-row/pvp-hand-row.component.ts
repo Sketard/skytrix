@@ -54,15 +54,11 @@ export class PvpHandRowComponent {
 
   onCardTap(index: number, event: MouseEvent): void {
     const card = this.cards()[index];
-    if (this.side() === 'player') {
-      if (this.actionableCardIndices().has(index)) {
-        this.handCardAction.emit({ index, element: event.currentTarget as HTMLElement });
-      } else if (card?.cardCode) {
-        this.cardInspectRequest.emit({ cardCode: card.cardCode });
-      }
-    } else {
-      // Opponent hand: emit inspect (cardCode 0 → card back placeholder)
-      this.cardInspectRequest.emit({ cardCode: card?.cardCode ?? 0 });
+    // Always show card description
+    this.cardInspectRequest.emit({ cardCode: card?.cardCode ?? 0 });
+    // Additionally open action menu if applicable
+    if (this.side() === 'player' && this.actionableCardIndices().has(index)) {
+      this.handCardAction.emit({ index, element: event.currentTarget as HTMLElement });
     }
   }
 }

@@ -22,6 +22,8 @@ export interface CardAction {
   label: string;
   actionCode: number;
   index: number;
+  description?: string;
+  children?: CardAction[];
 }
 
 export type ActionableCardsMap = Map<string, CardAction[]>;
@@ -35,8 +37,36 @@ function addToActionMap(
   cards.forEach((card, idx) => {
     const key = `${card.location}-${card.sequence}`;
     if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push({ label, actionCode, index: idx });
+    map.get(key)!.push({ label, actionCode, index: idx, description: card.description });
   });
+}
+
+/**
+ * Groups multiple "Activate Effect" entries for the same card into a single
+ * entry with `children`. The sub-entries retain their descriptions and indices
+ * so the correct response can still be dispatched.
+ */
+export function groupMenuActions(actions: CardAction[]): CardAction[] {
+  const activateActions = actions.filter(a => a.label === 'Activate Effect');
+  if (activateActions.length <= 1) return actions;
+
+  const grouped: CardAction = {
+    label: 'Activate Effect',
+    actionCode: activateActions[0].actionCode,
+    index: -1,
+    children: activateActions,
+  };
+
+  let replaced = false;
+  const result: CardAction[] = [];
+  for (const action of actions) {
+    if (action.label === 'Activate Effect') {
+      if (!replaced) { result.push(grouped); replaced = true; }
+    } else {
+      result.push(action);
+    }
+  }
+  return result;
 }
 
 export function buildActionableCardsFromIdle(msg: SelectIdleCmdMsg): ActionableCardsMap {

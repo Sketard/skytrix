@@ -175,13 +175,39 @@
              [style.top.px]="menu.top"
              [style.left.px]="menu.left"
              (keydown)="onMenuKeydown($event)">
-          @for (action of menu.actions; track $index) {
-            <button class="card-action-menu__item"
-                    role="menuitem"
-                    type="button"
-                    (click)="onMenuAction(action)">
-              {{ action.label }}
-            </button>
+          @if (effectSubMenu(); as sub) {
+            <div class="card-action-menu__sub-header">
+              <button class="card-action-menu__back" type="button"
+                      (click)="effectSubMenu.set(null); $event.stopPropagation()"
+                      aria-label="Retour">
+                ← Retour
+              </button>
+              <span class="card-action-menu__sub-title">Choisir un effet</span>
+            </div>
+            @for (action of sub; track $index) {
+              <button class="card-action-menu__item card-action-menu__item--effect"
+                      role="menuitem"
+                      type="button"
+                      (click)="onMenuChildAction(action)">
+                <span class="card-action-menu__effect-num">Effet {{ $index + 1 }}</span>
+                @if (action.description) {
+                  <span class="card-action-menu__effect-desc">{{ action.description }}</span>
+                }
+              </button>
+            }
+          } @else {
+            @for (action of menuDisplayActions(); track $index) {
+              <button class="card-action-menu__item"
+                      [class.card-action-menu__item--group]="action.children"
+                      role="menuitem"
+                      type="button"
+                      (click)="onMenuAction(action, $event)">
+                {{ action.label }}
+                @if (action.children) {
+                  <span class="card-action-menu__arrow" aria-hidden="true">▶</span>
+                }
+              </button>
+            }
           }
         </div>
       }

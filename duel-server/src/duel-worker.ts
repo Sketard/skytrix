@@ -56,6 +56,7 @@ let phase: Phase = 'DRAW';
 let lp: [number, number] = [8000, 8000];
 let cardDb: import('./types.js').CardDB | null = null;
 let skipRpsFlag = false;
+let skipShuffleFlag = false;
 
 // =============================================================================
 // Constants & Helpers
@@ -172,6 +173,17 @@ function generateSeed(): [bigint, bigint, bigint, bigint] {
     buf.readBigUInt64LE(16),
     buf.readBigUInt64LE(24),
   ];
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const result = [...arr];
+  // Fisher-Yates with crypto randomness
+  const buf = randomBytes(result.length * 4);
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = buf.readUInt32LE(i * 4) % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
 // =============================================================================
@@ -305,7 +317,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         specialSummons: msg.special_summons.map(toCardInfo),
         repositions: msg.pos_changes.map(toCardInfo),
         setMonsters: msg.monster_sets.map(toCardInfo),
-        activations: msg.activates.map(c => toCardInfo(c)),
+        activations: msg.activates.map(c => ({ ...toCardInfo(c), description: getOptionDesc(c.description) })),
         setSpellTraps: msg.spell_sets.map(toCardInfo),
         canBattlePhase: msg.to_bp, canEndPhase: msg.to_ep,
       };
@@ -314,7 +326,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return {
         type: 'SELECT_BATTLECMD', player: msg.player as Player,
         attacks: msg.attacks.map(c => toCardInfo(c)),
-        activations: msg.chains.map(c => toCardInfo(c)),
+        activations: msg.chains.map(c => ({ ...toCardInfo(c), description: getOptionDesc(c.description) })),
         canMainPhase2: msg.to_m2, canEndPhase: msg.to_ep,
       };
 
@@ -378,9 +390,9 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SELECT_SUM:
       return {
         type: 'SELECT_SUM', player: msg.player as Player,
-        mustSelect: msg.selects_must.map(c => toCardInfo(c)),
-        cards: msg.selects.map(c => toCardInfo(c)),
-        min: msg.min, max: msg.max,
+        mustSelect: msg.selects_must.map(c => ({ ...toCardInfo(c), amount: c.amount })),
+        cards: msg.selects.map(c => ({ ...toCardInfo(c), amount: c.amount })),
+        targetSum: msg.amount, minCards: msg.min, maxCards: msg.max, selectMax: msg.select_max,
       };
 
     case OcgMessageType.SELECT_UNSELECT_CARD:
@@ -497,11 +509,12 @@ function buildBoardState(): ServerMessage {
       flags: FLAG_COUNTERS, controller, location, sequence, overlaySequence: 0,
     } as never);
     const code = codeInfo?.code ?? null;
+    const overlayCards = overlayInfo?.overlayCards ?? [];
     return {
       cardCode: code,
       name: code ? getCardName(code) : null,
       position: fieldPosition as Position,
-      overlayMaterials: overlayInfo?.overlayCards ?? [],
+      overlayMaterials: overlayCards,
       counters: countersToRecord(counterInfo?.counters),
     };
   }
@@ -666,7 +679,6 @@ function runDuelLoop(): void {
     clearTimeout(watchdog);
 
     const messages = core.duelGetMessage(duel);
-    console.log(`[DEBUG] duelProcess status=${status} messages=${messages.length} types=[${messages.map(m => m.type).join(',')}]`);
 
     for (const msg of messages) {
       // Track state for BOARD_STATE construction
@@ -712,6 +724,7 @@ function runDuelLoop(): void {
 async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promise<void> {
   duelId = msg.duelId;
   skipRpsFlag = msg.skipRps === true;
+  skipShuffleFlag = msg.skipShuffle === true;
   const [deck0, deck1] = msg.decks;
 
   const dbPath = join(dataDir, 'cards.cdb');
@@ -754,7 +767,8 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
 
   // 5. Load player decks
   function loadDeck(deck: { main: number[]; extra: number[] }, team: 0 | 1): void {
-    for (const code of deck.main) {
+    const mainCards = skipShuffleFlag ? deck.main : shuffleArray(deck.main);
+    for (const code of mainCards) {
       core!.duelNewCard(duel!, {
         code, team, duelist: 0, controller: team,
         location: OcgLocation.DECK, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
@@ -816,12 +830,9 @@ port.on('message', (msg: MainToWorkerMessage) => {
       return;
     }
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
-    console.log(`[DEBUG] PLAYER_RESPONSE promptType=${msg.promptType} response=`, JSON.stringify(response));
     if (response) {
       core.duelSetResponse(duel, response as never);
       runDuelLoop();
-    } else {
-      console.error(`[DEBUG] transformResponse returned null for promptType=${msg.promptType}`);
     }
   }
 });

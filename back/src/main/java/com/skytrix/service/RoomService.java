@@ -143,7 +143,8 @@ public class RoomService {
                     firstDeck,
                     user.getId().toString(),
                     secondDeck,
-                    true
+                    true,
+                    dto.isSkipShuffle()
             );
 
             if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {

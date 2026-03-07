@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } 
 import { MAT_DIALOG_DATA, MatDialogActions, MatDialogClose, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -32,7 +33,7 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton,
-    MatProgressSpinner, MatIcon, RouterLink, MatButtonToggle, MatButtonToggleGroup,
+    MatProgressSpinner, MatIcon, RouterLink, MatButtonToggle, MatButtonToggleGroup, MatSlideToggle,
   ],
   template: `
     <h2 mat-dialog-title>{{ title }}</h2>
@@ -56,6 +57,10 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
             <mat-button-toggle value="p1">Joueur 1</mat-button-toggle>
             <mat-button-toggle value="p2">Joueur 2</mat-button-toggle>
           </mat-button-toggle-group>
+        </div>
+        <div class="qd-section qd-section--row">
+          <span class="qd-label">Main aléatoire</span>
+          <mat-slide-toggle [checked]="randomHand()" (change)="randomHand.set($event.checked)"></mat-slide-toggle>
         </div>
       }
       @if (loading()) {
@@ -132,6 +137,12 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
       mat-button-toggle {
         flex: 1;
       }
+    }
+
+    .qd-section--row {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .mirror-hint {
@@ -255,6 +266,7 @@ export class DeckPickerDialogComponent implements OnInit {
   readonly selectedId2 = signal<number | null>(null);
   readonly activeSlot = signal<'p1' | 'p2'>('p1');
   readonly firstPlayer = signal<'p1' | 'p2'>('p1');
+  readonly randomHand = signal(false);
   readonly isQuickDuel = computed(() => this.context() === 'quickDuel');
 
   readonly activeSelectedId = computed(() =>
@@ -301,6 +313,7 @@ export class DeckPickerDialogComponent implements OnInit {
         decklistId1: id,
         decklistId2: this.selectedId2() ?? id,
         firstPlayer: this.firstPlayer() === 'p1' ? 1 : 2,
+        skipShuffle: !this.randomHand(),
       });
     } else {
       const name = this.decks().find(d => d.id === id)?.name ?? '';

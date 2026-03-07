@@ -22,10 +22,13 @@ export const STARTUP_SCRIPTS = [
   'proc_maximum.lua',
   'proc_normal.lua',
   'proc_pendulum.lua',
+  'proc_compat.lua',
+  'proc_persistent.lua',
   'proc_ritual.lua',
   'proc_spirit.lua',
   'proc_synchro.lua',
   'proc_union.lua',
+  'proc_workaround.lua',
   'proc_xyz.lua',
 ] as const;
 

@@ -10,13 +10,13 @@
 }
 
 // Single horizontal row — scrollable if cards overflow dialog width
+// Centering trick: outer is flex + overflow-x:auto, inner has margin:auto + flex-shrink:0.
+// - When cards fit: margin:auto centers them.
+// - When cards overflow: flex-shrink:0 prevents squishing, scroll starts from left.
+// DO NOT use justify-content:center on an overflow-x:auto container — it hides left items.
 .card-strip {
   display: flex;
-  gap: 8px;
-  padding: 4px 0;
   overflow-x: auto;
-  flex-wrap: nowrap;
-  justify-content: center;
   -webkit-overflow-scrolling: touch;
 }
 

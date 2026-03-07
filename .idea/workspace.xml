@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="5aeca149-52fc-485d-8916-69bf74003d94" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/back/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/back/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/front/angular.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -14,6 +15,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
@@ -27,10 +31,12 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Node.js.app.config.ts.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "hand-testing",
+    "git-widget-placeholder": "change-card-possessed",
     "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Users/Axel/Desktop/code/skytrix",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -44,10 +50,11 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-WS-251.25410.117" />
+        <option value="jdk-17.0.10-temurin-17.0.10-3183f394aec4-87f3d08d" />
       </set>
     </attachedChunks>
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="5aeca149-52fc-485d-8916-69bf74003d94" name="Changes" comment="" />

@@ -80,21 +80,27 @@ export class DuelConnection {
     this.openConnection();
   }
 
+  // Prompt types that form multi-step card selection sequences — accumulate across steps
+  private static readonly ACCUMULATE_SELECTION_TYPES = new Set([
+    'SELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_UNSELECT_CARD',
+  ]);
+
   sendResponse(promptType: string, data: ResponseData): void {
     if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
       // Capture selected cards before clearing prompt (for excluding from next prompt)
       const prompt = this._pendingPrompt();
-      if (prompt && 'cards' in prompt) {
+      const accumulate = DuelConnection.ACCUMULATE_SELECTION_TYPES.has(promptType);
+      if (prompt && 'cards' in prompt && accumulate) {
         const cards = (prompt as { cards: CardInfo[] }).cards;
+        const base = this._lastSelectedCards;
         if ('indices' in data) {
           const indices = data['indices'] as number[];
-          this._lastSelectedCards = indices.map(i => cards[i]).filter(Boolean);
+          this._lastSelectedCards = [...base, ...indices.map(i => cards[i]).filter(Boolean)];
         } else if ('index' in data && data['index'] != null) {
           const card = cards[data['index'] as number];
-          this._lastSelectedCards = card ? [card] : [];
-        } else {
-          this._lastSelectedCards = [];
+          this._lastSelectedCards = card ? [...base, card] : base;
         }
+        // else: no selection change — keep accumulated list
       } else {
         this._lastSelectedCards = [];
       }
