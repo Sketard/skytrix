@@ -214,14 +214,14 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return {
         type: 'MSG_CHAINING', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
         location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        sequence: msg.sequence, chainIndex: msg.chain_size, description: Number(msg.description),
+        sequence: msg.sequence, chainIndex: msg.chain_size - 1, description: Number(msg.description),
       };
 
     case OcgMessageType.CHAIN_SOLVING:
-      return { type: 'MSG_CHAIN_SOLVING', chainIndex: msg.chain_size };
+      return { type: 'MSG_CHAIN_SOLVING', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.CHAIN_SOLVED:
-      return { type: 'MSG_CHAIN_SOLVED', chainIndex: msg.chain_size };
+      return { type: 'MSG_CHAIN_SOLVED', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.CHAIN_END:
       return { type: 'MSG_CHAIN_END' };
