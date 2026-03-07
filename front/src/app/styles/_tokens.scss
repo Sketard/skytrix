@@ -153,6 +153,13 @@
   --pvp-summon-highlight: rgba(76, 175, 80, 0.6);
   --pvp-destroy-highlight: rgba(244, 67, 54, 0.6);
   --pvp-activate-highlight: rgba(201, 168, 76, 0.8);
+
+  // --- Lobby ---
+  --pvp-lobby-card-bg: var(--surface-card);
+  --pvp-lobby-card-hover: var(--surface-card-hover);
+  --pvp-lobby-accent-border: 3px solid var(--pvp-accent);
+  --pvp-lobby-cta-bg: var(--pvp-accent);
+  --pvp-lobby-cta-color: #121212;
 }
 
 @keyframes pvp-actionable-pulse {

@@ -1,6 +1,6 @@
 export interface PlayerInfo {
   id: number;
-  username: string;
+  pseudo: string;
 }
 
 export interface RoomDTO {

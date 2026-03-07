@@ -1,33 +1,35 @@
 <div class="lobby-container">
   <div class="lobby-header">
-    <h1>PvP Lobby</h1>
-    <div class="lobby-actions">
+    <h1>
+      <mat-icon class="lobby-title-icon">gamepad</mat-icon>
+      Arène PvP
+    </h1>
+    <div class="lobby-header-actions">
       <button mat-icon-button
-              aria-label="Refresh room list"
+              aria-label="Rafraichir la liste des rooms"
               (click)="fetchRooms()"
               [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
       </button>
       @if (!isProduction) {
-        <button mat-stroked-button
-                aria-label="Quick Duel — solo debug mode"
+        <button mat-icon-button
+                aria-label="Duel rapide - mode debug"
                 [disabled]="creatingRoom()"
                 (click)="quickDuel()">
           <mat-icon>bolt</mat-icon>
-          Quick Duel
         </button>
       }
-      <button mat-raised-button
-              color="primary"
-              class="lobby-create-btn"
-              aria-label="Create a room by selecting a deck"
-              [disabled]="creatingRoom()"
-              (click)="createRoom()">
-        <mat-icon>add</mat-icon>
-        Create Room
-      </button>
     </div>
   </div>
+
+  <button mat-raised-button
+          class="lobby-cta"
+          aria-label="Creer une room"
+          [disabled]="creatingRoom()"
+          (click)="createRoom()">
+    <mat-icon>add</mat-icon>
+    Creer une Room
+  </button>
 
   @if (loading() && rooms().length === 0) {
     <div class="lobby-loading">
@@ -35,17 +37,21 @@
     </div>
   } @else if (error()) {
     <div class="lobby-empty">
-      <mat-icon class="lobby-empty-icon">error_outline</mat-icon>
-      <p>{{ error() }}</p>
-      <button mat-raised-button color="primary" (click)="fetchRooms()">Retry</button>
+      <mat-icon class="lobby-empty-icon">wifi_off</mat-icon>
+      <p class="lobby-empty-title">Impossible de charger les rooms</p>
+      <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">Reessayer</button>
     </div>
   } @else if (rooms().length === 0) {
     <div class="lobby-empty">
-      <mat-icon class="lobby-empty-icon">sports_kabaddi</mat-icon>
-      <p>No rooms available. Create one!</p>
-      <button mat-raised-button color="primary" [disabled]="creatingRoom()" (click)="createRoom()">
+      <mat-icon class="lobby-empty-icon">gamepad</mat-icon>
+      <p class="lobby-empty-title">Aucun duel en attente</p>
+      <p class="lobby-empty-subtitle">Cree une room et invite un ami !</p>
+      <button mat-raised-button
+              class="lobby-cta-secondary"
+              [disabled]="creatingRoom()"
+              (click)="createRoom()">
         <mat-icon>add</mat-icon>
-        Create Room
+        Creer une Room
       </button>
     </div>
   } @else {
@@ -53,18 +59,18 @@
       @for (room of rooms(); track room.roomCode) {
         <div class="room-card">
           <div class="room-info">
-            <span class="room-creator">{{ room.player1.username }}</span>
+            <span class="room-creator">{{ room.player1.pseudo }}</span>
             <span class="room-time">{{ getRelativeTime(room.createdAt) }}</span>
           </div>
+          <p class="room-status">En attente d'un adversaire...</p>
           <button mat-raised-button
-                  color="accent"
                   class="room-join-btn"
                   [disabled]="joiningRoomCode() !== null"
                   (click)="joinRoom(room)">
             @if (joiningRoomCode() === room.roomCode) {
               <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
             } @else {
-              Join
+              Rejoindre
             }
           </button>
         </div>

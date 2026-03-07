@@ -1,8 +1,15 @@
+@use '../../../styles/responsive' as r;
+
 :host {
   display: block;
   padding: 16px;
-  max-width: 600px;
+  max-width: 480px;
   margin: 0 auto;
+
+  @include r.respond-above(r.$bp-tablet) {
+    padding: 24px;
+    max-width: 600px;
+  }
 }
 
 .lobby-container {
@@ -11,29 +18,64 @@
   gap: 16px;
 }
 
+// --- Header ---
+
 .lobby-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
 
   h1 {
     margin: 0;
     font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
   }
 }
 
-.lobby-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.lobby-title-icon {
+  color: var(--pvp-accent);
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
 }
 
-.lobby-create-btn {
-  min-height: 44px;
-  min-width: 44px;
+.lobby-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+
+// --- CTA Button ---
+
+.lobby-cta {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--pvp-radius-lg);
+  background: var(--pvp-lobby-cta-bg) !important;
+  color: var(--pvp-lobby-cta-color) !important;
+  transition: filter 200ms ease-out;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: var(--pvp-disabled-opacity);
+  }
+}
+
+.lobby-cta-secondary {
+  min-height: 44px;
+  font-weight: 500;
+}
+
+// --- Loading ---
 
 .lobby-loading {
   display: flex;
@@ -41,59 +83,92 @@
   padding: 48px 0;
 }
 
+// --- Empty / Error State ---
+
 .lobby-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 48px 0;
+  gap: 12px;
+  padding: 48px 16px;
   text-align: center;
-
-  .lobby-empty-icon {
-    font-size: 48px;
-    width: 48px;
-    height: 48px;
-    opacity: 0.5;
-  }
-
-  p {
-    margin: 0;
-    opacity: 0.7;
-  }
 }
+
+.lobby-empty-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  color: var(--pvp-accent);
+  opacity: 0.3;
+}
+
+.lobby-empty-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.lobby-empty-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+// --- Room List ---
 
 .room-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
+
+// --- Room Card ---
 
 .room-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--pvp-radius-lg);
+  background: var(--pvp-lobby-card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: var(--pvp-lobby-accent-border);
+  transition: background 200ms ease-out, box-shadow 200ms ease-out;
+
+  &:hover {
+    background: var(--pvp-lobby-card-hover);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .room-info {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .room-creator {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
 }
 
 .room-time {
   font-size: 0.8rem;
-  opacity: 0.6;
+  color: var(--text-secondary);
+}
+
+.room-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 .room-join-btn {
-  min-height: 36px;
-  min-width: 72px;
+  align-self: stretch;
+  min-height: 44px;
+  font-weight: 600;
+  border-radius: var(--pvp-radius-lg);
 }

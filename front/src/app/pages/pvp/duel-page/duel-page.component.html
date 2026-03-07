@@ -5,7 +5,7 @@
       <h1 class="waiting-room__title">WAITING FOR OPPONENT</h1>
 
       @if (room(); as r) {
-        <p class="waiting-room__deck-name">Your Deck: {{ deckName() || r.player1.username }}</p>
+        <p class="waiting-room__deck-name">Your Deck: {{ deckName() || r.player1.pseudo }}</p>
         <p class="waiting-room__code" aria-label="Room code">{{ r.roomCode }}</p>
       }
 
@@ -88,12 +88,12 @@
       @if (room(); as r) {
         <div class="duel-loading__players">
           <div class="duel-loading__player">
-            <span class="duel-loading__name">{{ r.player1.username }}</span>
+            <span class="duel-loading__name">{{ r.player1.pseudo }}</span>
             <span class="duel-loading__lp">8000 LP</span>
           </div>
           <span class="duel-loading__vs">VS</span>
           <div class="duel-loading__player">
-            <span class="duel-loading__name">{{ r.player2?.username }}</span>
+            <span class="duel-loading__name">{{ r.player2?.pseudo }}</span>
             <span class="duel-loading__lp">8000 LP</span>
           </div>
         </div>

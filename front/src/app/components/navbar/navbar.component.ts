@@ -45,7 +45,7 @@ export class NavbarComponent {
   constructor() {
     this.addTab(new Tab('Construction de deck', 'folder', '/decks'));
     this.addTab(new Tab('Recherche de cartes', 'search', '/search'));
-    this.addTab(new Tab('Duels PvP', 'sports_kabaddi', '/pvp'));
+    this.addTab(new Tab('Arène PvP', 'gamepad', '/pvp'));
     this.addTab(new Tab('Paramètres', 'settings_suggest', '/parameters'));
 
     const sub = this.router.events

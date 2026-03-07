@@ -12,7 +12,7 @@ import { displayError, relativeTime } from '../../../core/utilities/functions';
 import { environment } from '../../../../environments/environment';
 import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
-import { DeckPickerDialogComponent } from './deck-picker-dialog.component';
+import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dialog.component';
 
 @Component({
   selector: 'app-lobby-page',
@@ -36,6 +36,11 @@ export class LobbyPageComponent implements OnInit {
   readonly creatingRoom = signal(false);
   readonly isProduction = environment.production;
 
+  private readonly dialogConfig = {
+    width: 'min(520px, 85dvw)',
+    maxHeight: '80dvh',
+  };
+
   ngOnInit(): void {
     this.fetchRooms();
     this.startPolling();
@@ -52,9 +57,9 @@ export class LobbyPageComponent implements OnInit {
       error: () => {
         this.loading.set(false);
         if (this.rooms().length > 0) {
-          displayError(this.snackBar, 'Failed to refresh rooms');
+          displayError(this.snackBar, 'Echec du rafraichissement');
         } else {
-          this.error.set('Failed to load rooms');
+          this.error.set('Impossible de charger les rooms');
         }
       },
     });
@@ -74,7 +79,8 @@ export class LobbyPageComponent implements OnInit {
 
   createRoom(): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
-      width: '340px',
+      ...this.dialogConfig,
+      data: { context: 'create' satisfies DeckPickerContext },
     });
 
     dialogRef.afterClosed().subscribe((result: { id: number; name: string } | undefined) => {
@@ -90,10 +96,10 @@ export class LobbyPageComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.creatingRoom.set(false);
           if (err.status === 422) {
-            const reason = err.error?.message ?? err.error?.error ?? 'Deck validation failed';
+            const reason = err.error?.message ?? err.error?.error ?? 'Deck invalide';
             displayError(this.snackBar, reason);
           } else {
-            displayError(this.snackBar, 'Failed to create room');
+            displayError(this.snackBar, 'Impossible de creer la room');
           }
         },
       });
@@ -102,8 +108,8 @@ export class LobbyPageComponent implements OnInit {
 
   quickDuel(): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
-      width: '340px',
-      data: { quickDuel: true },
+      ...this.dialogConfig,
+      data: { context: 'quickDuel' satisfies DeckPickerContext },
     });
 
     dialogRef.afterClosed().subscribe((result: { decklistId1: number; decklistId2: number; firstPlayer: number } | undefined) => {
@@ -120,10 +126,10 @@ export class LobbyPageComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.creatingRoom.set(false);
           if (err.status === 422) {
-            const reason = err.error?.message ?? err.error?.error ?? 'Deck validation failed';
+            const reason = err.error?.message ?? err.error?.error ?? 'Deck invalide';
             displayError(this.snackBar, reason);
           } else {
-            displayError(this.snackBar, 'Failed to start quick duel');
+            displayError(this.snackBar, 'Impossible de lancer le duel rapide');
           }
         },
       });
@@ -136,7 +142,8 @@ export class LobbyPageComponent implements OnInit {
 
   joinRoom(room: RoomDTO): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
-      width: '340px',
+      ...this.dialogConfig,
+      data: { context: 'join' satisfies DeckPickerContext },
     });
 
     dialogRef.afterClosed().subscribe((result: { id: number; name: string } | undefined) => {
@@ -151,13 +158,13 @@ export class LobbyPageComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.joiningRoomCode.set(null);
           if (err.status === 409) {
-            displayError(this.snackBar, 'Room is full');
+            displayError(this.snackBar, 'Cette room est complete');
             this.rooms.update(list => list.filter(r => r.roomCode !== room.roomCode));
           } else if (err.status === 422) {
-            const reason = err.error?.message ?? err.error?.error ?? 'Deck validation failed';
+            const reason = err.error?.message ?? err.error?.error ?? 'Deck invalide';
             displayError(this.snackBar, reason);
           } else {
-            displayError(this.snackBar, 'Failed to join room');
+            displayError(this.snackBar, 'Impossible de rejoindre la room');
           }
         },
       });
