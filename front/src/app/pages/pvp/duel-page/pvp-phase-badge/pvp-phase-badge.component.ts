@@ -36,12 +36,14 @@ export class PvpPhaseBadgeComponent {
 
   readonly phase = input.required<Phase>();
   readonly turnPlayer = input.required<Player>();
+  readonly turnCount = input(0);
   readonly isOwnTurn = input(false);
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
 
   readonly phaseAction = output<{ action: number; index: null }>();
 
   readonly abbreviation = computed(() => PHASE_ABBR[this.phase()] ?? 'DP');
+  readonly turnLabel = computed(() => `Tour ${this.turnCount()}`);
   readonly menuExpanded = signal(false);
 
   readonly availableTransitions = computed((): PhaseTransition[] => {

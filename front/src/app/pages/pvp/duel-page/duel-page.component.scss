@@ -336,16 +336,35 @@ app-pvp-board-container {
   }
 }
 
-// === Mini-Toolbar (Story 1.7) ===
-.mini-toolbar {
+// === Right Sidebar (Zone Browser + Mini-Toolbar) ===
+.right-sidebar {
   position: absolute;
-  bottom: calc(var(--pvp-hand-card-height) + 8px);
-  right: max(8px, env(safe-area-inset-right, 8px));
-  z-index: z.$z-pvp-mini-toolbar;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: z.$z-pvp-zone-browser;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-end;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+// === Mini-Toolbar (Story 1.7) ===
+// Desktop (landscape): horizontal row at the bottom of the sidebar
+// Mobile (portrait): vertical column alongside the pile, bottom-aligned
+.mini-toolbar {
+  margin-top: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 6px;
+  padding-right: max(8px, env(safe-area-inset-right, 8px));
+  padding-bottom: 8px;
   transition: opacity 200ms ease;
 
   &--dimmed {
@@ -353,19 +372,75 @@ app-pvp-board-container {
     pointer-events: none;
   }
 
-  &__btn {
-    min-width: 44px;
-    min-height: 44px;
-    color: rgba(255, 255, 255, 0.5);
+  &__item,
+  app-pvp-activation-toggle {
+    width: 44px;
+    height: 44px;
   }
 
-  &__player-toggle,
-  &__first-toggle {
-    ::ng-deep .mat-button-toggle {
-      min-width: 36px;
-      min-height: 32px;
-      font-size: 0.75rem;
+  &__item {
+    width: 44px;
+    height: 44px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px 4px 2px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--pvp-radius-lg);
+    background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color var(--pvp-transition-highlight-flash);
+
+    &:hover {
+      background: rgba(30, 30, 60, 0.9);
     }
+
+    &:focus-visible {
+      outline: 2px solid var(--pvp-accent);
+      outline-offset: 2px;
+    }
+  }
+
+  &__icon {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    line-height: 1;
+    opacity: 0.8;
+
+    &--text {
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+  }
+
+  &__label {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1;
+  }
+}
+
+// Mobile landscape (small viewport height): toolbar vertical alongside pile
+@media (max-height: 500px) {
+  .right-sidebar {
+    flex-direction: row-reverse;
+    align-items: stretch;
+  }
+
+  .mini-toolbar {
+    margin-top: 0;
+    flex-direction: column;
+    align-self: flex-end;
+    padding-right: 0;
+    margin-right: 4px;
   }
 }
 
@@ -647,30 +722,72 @@ app-pvp-board-container {
   }
 }
 
-// === Debug FAB ===
-.debug-fab {
-  position: absolute;
-  bottom: calc(var(--pvp-hand-card-height) + 8px);
-  left: max(8px, env(safe-area-inset-left, 8px));
-  z-index: z.$z-pvp-mini-toolbar;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
+// === Phase Announcement Overlay ===
+.phase-announcement {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: z.$z-pvp-phase-announcement;
+  animation: phase-announce-in 200ms ease-out both;
+
+  &__band {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 40px;
+    background: rgba(0, 0, 0, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  &:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.8);
-    outline-offset: 2px;
+  &__prefix {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  &__separator {
+    font-size: 1.4rem;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  &__label {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+  }
+
+  // Opponent variant — subtle red tint
+  &--opponent &__band {
+    background: rgba(80, 10, 10, 0.6);
+    border-top-color: rgba(200, 60, 60, 0.25);
+    border-bottom-color: rgba(200, 60, 60, 0.25);
+  }
+}
+
+@keyframes phase-announce-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-announcement {
+    animation: none;
   }
 }
 

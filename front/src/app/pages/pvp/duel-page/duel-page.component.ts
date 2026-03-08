@@ -3,8 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, filter, firstValueFrom, map, Observable, of, switchMap, take, timeout } from 'rxjs';
-import { MatIconButton, MatButton } from '@angular/material/button';
-import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
+import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -16,7 +15,7 @@ import { NavbarCollapseService } from '../../../services/navbar-collapse.service
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import type { ConnectionStatus } from '../types';
-import { BoardZone, CardInfo, CardOnField, LOCATION, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
+import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
@@ -54,8 +53,7 @@ import './prompts/prompt-registry';
   imports: [
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptDialogComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
-    MatIconButton, MatButton, MatIcon, MatProgressSpinner,
-    MatButtonToggle, MatButtonToggleGroup,
+    MatButton, MatIcon, MatProgressSpinner,
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
     DebugLogPanelComponent,
   ],
@@ -273,12 +271,14 @@ export class DuelPageComponent implements OnInit {
   readonly activationMode = signal<ActivationMode>('auto');
 
   // Story 1.7 — Zone browser state
+  private zoneBrowserOpenId = 0;
   readonly zoneBrowserState = signal<{
     zoneId: ZoneId;
     cards: CardOnField[];
     playerIndex: number;
     mode: 'browse' | 'action';
     reversed: boolean;
+    openId: number;
   } | null>(null);
 
   // [H2 fix] Actionable card codes for the currently open zone browser
@@ -320,6 +320,16 @@ export class DuelPageComponent implements OnInit {
 
   // Inactivity warning dialog tracking
   private inactivityDialogRef: import('@angular/material/dialog').MatDialogRef<unknown> | null = null;
+
+  // Phase announcement overlay (queued)
+  private readonly _phaseAnnouncement = signal<{ label: string; isOpponent: boolean; phase: Phase; turnPlayer: Player; turnCount: number } | null>(null);
+  readonly phaseAnnouncement = this._phaseAnnouncement.asReadonly();
+  readonly displayedPhase = computed(() => this._phaseAnnouncement()?.phase ?? null);
+  readonly displayedTurnPlayer = computed(() => this._phaseAnnouncement()?.turnPlayer ?? null);
+  readonly displayedTurnCount = computed(() => this._phaseAnnouncement()?.turnCount ?? null);
+  private phaseAnnouncementQueue: { label: string; isOpponent: boolean; phase: Phase; turnPlayer: Player; turnCount: number }[] = [];
+  private phaseAnnouncementTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastAnnouncedPhase: string | null = null;
 
   // Task 16 — Board flip transition for solo player switch
   readonly switching = signal(false);
@@ -408,6 +418,8 @@ export class DuelPageComponent implements OnInit {
       if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
       if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
       if (this.switchTimer) clearTimeout(this.switchTimer);
+      if (this.phaseAnnouncementTimer) clearTimeout(this.phaseAnnouncementTimer);
+      this.phaseAnnouncementQueue.length = 0;
       this.cardDataCache.clearCache();
     });
 
@@ -472,6 +484,24 @@ export class DuelPageComponent implements OnInit {
           this.debugLog.clearLogs();
         });
       }
+    });
+
+    // Phase announcement overlay — show on every phase change
+    effect(() => {
+      const state = this.duelState();
+      const phase = state.phase;
+      const turnPlayer = state.turnPlayer;
+      const turnCount = state.turnCount;
+      untracked(() => {
+        // Skip initial empty state or same phase
+        const key = `${turnPlayer}-${phase}`;
+        if (!phase || key === this.lastAnnouncedPhase) return;
+        this.lastAnnouncedPhase = key;
+
+        const isOpponent = turnPlayer !== 0;
+        const label = this.phaseDisplayName(phase);
+        this.showPhaseAnnouncement(label, isOpponent, phase, turnPlayer, turnCount);
+      });
     });
 
     // Story 2.1 — Countdown timer tick + expiration (delegates to roomService)
@@ -873,13 +903,13 @@ export class DuelPageComponent implements OnInit {
     const isPile = event.zoneId === 'GY' || event.zoneId === 'BANISHED' || event.zoneId === 'EXTRA';
     // Pile zones: reverse so top of pile (most recent) is shown first
     const cards = isPile ? [...(zone?.cards ?? [])].reverse() : (zone?.cards ?? []);
-    const hasActions = this.actionablePrompt() !== null;
     this.zoneBrowserState.set({
       zoneId: event.zoneId,
       cards,
       playerIndex: event.playerIndex,
-      mode: hasActions && event.playerIndex === 0 ? 'action' : 'browse',
+      mode: 'browse',
       reversed: isPile,
+      openId: ++this.zoneBrowserOpenId,
     });
   }
 
@@ -924,7 +954,11 @@ export class DuelPageComponent implements OnInit {
   }
 
   // Story 1.7 — Zone browser methods
-  closeZoneBrowser(): void {
+  closeZoneBrowser(openId?: number): void {
+    // If openId is provided, only close if it still matches the current browser session.
+    // This prevents a stale close (from click-outside animation timeout) from killing
+    // a newly opened zone browser.
+    if (openId != null && this.zoneBrowserState()?.openId !== openId) return;
     this.zoneBrowserState.set(null);
   }
 
@@ -1114,6 +1148,53 @@ export class DuelPageComponent implements OnInit {
     const handler = (e: MediaQueryListEvent) => this.isPortrait.set(e.matches);
     mql.addEventListener('change', handler);
     this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
+  }
+
+  private static readonly PHASE_DISPLAY: Record<string, string> = {
+    DRAW: 'Draw Phase',
+    STANDBY: 'Standby Phase',
+    MAIN1: 'Main Phase 1',
+    BATTLE_START: 'Battle Phase',
+    BATTLE_STEP: 'Battle Step',
+    DAMAGE: 'Damage Step',
+    DAMAGE_CALC: 'Damage Calculation',
+    BATTLE: 'Battle',
+    MAIN2: 'Main Phase 2',
+    END: 'End Phase',
+  };
+
+  private phaseDisplayName(phase: string): string {
+    return DuelPageComponent.PHASE_DISPLAY[phase] ?? phase;
+  }
+
+  private static readonly PHASE_ANNOUNCE_DURATION = 2000;
+
+  private showPhaseAnnouncement(label: string, isOpponent: boolean, phase: Phase, turnPlayer: Player, turnCount: number): void {
+    this.phaseAnnouncementQueue.push({ label, isOpponent, phase, turnPlayer, turnCount });
+    // If no announcement is currently displayed, start draining
+    if (!this.phaseAnnouncementTimer) {
+      this.drainPhaseAnnouncementQueue();
+    }
+  }
+
+  private drainPhaseAnnouncementQueue(): void {
+    const next = this.phaseAnnouncementQueue.shift();
+    if (!next) {
+      // Queue empty — hide overlay after a short fade-out window
+      this.phaseAnnouncementTimer = setTimeout(() => {
+        this._phaseAnnouncement.set(null);
+        this.phaseAnnouncementTimer = null;
+      }, 500);
+      return;
+    }
+
+    this._phaseAnnouncement.set(next);
+    this.liveAnnouncer.announce(next.isOpponent ? `Opponent — ${next.label}` : next.label);
+
+    this.phaseAnnouncementTimer = setTimeout(() => {
+      this.phaseAnnouncementTimer = null;
+      this.drainPhaseAnnouncementQueue();
+    }, DuelPageComponent.PHASE_ANNOUNCE_DURATION);
   }
 
   private mapDuelEndReason(reason: string, isWinner: boolean): string {

@@ -137,6 +137,7 @@
                            [opponentDisconnected]="opponentDisconnected()" />
       <app-pvp-phase-badge [phase]="phase()"
                            [turnPlayer]="turnPlayer()"
+                           [turnCount]="turnCount()"
                            [isOwnTurn]="turnPlayer() === 0"
                            [actionablePrompt]="actionablePrompt()"
                            (phaseAction)="actionResponse.emit($event)" />

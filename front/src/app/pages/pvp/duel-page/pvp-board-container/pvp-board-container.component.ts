@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { NgTemplateOutlet } from '@angular/common';
 import type { ChainLinkState } from '../../types';
 import { DuelState } from '../../types';
-import { BoardZone, CardOnField, LOCATION, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
+import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, isActivateAction } from '../idle-action-codes';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
@@ -47,6 +47,9 @@ export class PvpBoardContainerComponent {
   readonly opponentDisconnected = input(false);
   readonly animatingZone = input<{ zoneId: string; animationType: 'summon' | 'destroy' | 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
   readonly animatingLp = input<LpAnimData | null>(null);
+  readonly displayedPhase = input<Phase | null>(null);
+  readonly displayedTurnPlayer = input<Player | null>(null);
+  readonly displayedTurnCount = input<number | null>(null);
   readonly zoneSelected = output<ZoneId>();
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
@@ -129,8 +132,9 @@ export class PvpBoardContainerComponent {
     { zoneId: 'EMZ_R' as ZoneId, zone: this.emzR(), chainBadges: this.emzRChainBadges(), cssClass: 'emz--right' },
   ]);
 
-  readonly phase = computed(() => this.duelState().phase);
-  readonly turnPlayer = computed(() => this.duelState().turnPlayer);
+  readonly phase = computed(() => this.displayedPhase() ?? this.duelState().phase);
+  readonly turnPlayer = computed(() => this.displayedTurnPlayer() ?? this.duelState().turnPlayer);
+  readonly turnCount = computed(() => this.displayedTurnCount() ?? this.duelState().turnCount);
   // Absolute turn player for PvpTimerBadgeComponent (timerState.player is absolute from server)
   readonly absoluteTurnPlayer = computed((): Player => {
     const relativeTurn = this.duelState().turnPlayer;

@@ -1,7 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, inject, input, output, signal } from '@angular/core';
 import { CardOnField, ZoneId } from '../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../pvp-card.utils';
 import { setupClickOutsideListener } from '../click-outside.utils';
+
+const ZONE_SHORT_LABELS: Partial<Record<ZoneId, string>> = {
+  GY: 'GY',
+  BANISHED: 'BAN',
+  EXTRA: 'ED',
+};
+
 
 @Component({
   selector: 'app-pvp-zone-browser-overlay',
@@ -17,21 +24,18 @@ export class PvpZoneBrowserOverlayComponent {
   readonly zoneId = input.required<ZoneId>();
   readonly cards = input<CardOnField[]>([]);
   readonly playerIndex = input<number>(0);
-  readonly actionableCardCodes = input<Set<number>>(new Set());
-  readonly mode = input<'browse' | 'action'>('browse');
-  /** When true, cards array is reversed for display — sequence must be remapped */
-  readonly reversed = input<boolean>(false);
+  readonly openId = input<number>(0);
 
   readonly inspectCard = output<number>();
-  readonly actionSelected = output<{ cardCode: number; sequence: number; element: HTMLElement }>();
-  readonly closed = output<void>();
+  readonly closed = output<number>();
 
   readonly visible = signal(true);
   readonly isClosing = signal(false);
+  readonly expanded = signal(false);
 
   readonly getCardImageUrlByCode = getCardImageUrlByCode;
 
-  private readonly removeOutsideListener: () => void;
+  private removeOutsideListener: () => void;
   private closeTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -39,36 +43,52 @@ export class PvpZoneBrowserOverlayComponent {
       if (this.closeTimeout) clearTimeout(this.closeTimeout);
     });
     this.removeOutsideListener = setupClickOutsideListener(this.el, this.destroyRef, () => this.close());
+
+    // When the parent switches zone (new openId) on the same component instance,
+    // cancel any pending close and reset state so the overlay stays visible.
+    effect(() => {
+      this.openId(); // track
+      if (this.isClosing()) {
+        if (this.closeTimeout) {
+          clearTimeout(this.closeTimeout);
+          this.closeTimeout = null;
+        }
+        this.isClosing.set(false);
+        this.visible.set(true);
+        this.expanded.set(false);
+        // Re-register click-outside since the old one was torn down by close()
+        this.removeOutsideListener();
+        this.removeOutsideListener = setupClickOutsideListener(this.el, this.destroyRef, () => this.close());
+      }
+    });
+  }
+
+  get zoneLabel(): string {
+    return ZONE_SHORT_LABELS[this.zoneId()] ?? this.zoneId();
   }
 
   isOpponentExtra(): boolean {
     return this.zoneId() === 'EXTRA' && this.playerIndex() === 1;
   }
 
-  isCardActionable(card: CardOnField): boolean {
-    return this.mode() === 'action' && card.cardCode !== null && this.actionableCardCodes().has(card.cardCode);
-  }
-
-  onCardClick(card: CardOnField, index: number, event: MouseEvent): void {
+  onCardClick(card: CardOnField): void {
     if (!card.cardCode) return;
-
-    if (this.mode() === 'action' && this.isCardActionable(card)) {
-      // When reversed, remap display index back to original OCGCore sequence
-      const sequence = this.reversed() ? this.cards().length - 1 - index : index;
-      this.actionSelected.emit({ cardCode: card.cardCode, sequence, element: event.currentTarget as HTMLElement });
-    } else {
-      this.inspectCard.emit(card.cardCode);
-    }
+    this.inspectCard.emit(card.cardCode);
   }
 
-  // [L1 fix] Fade-out animation before removal
+  toggleExpanded(event: MouseEvent): void {
+    event.stopPropagation();
+    this.expanded.update(v => !v);
+  }
+
   close(): void {
     if (this.isClosing()) return;
+    const capturedOpenId = this.openId();
     this.isClosing.set(true);
     this.removeOutsideListener();
     this.closeTimeout = setTimeout(() => {
       this.visible.set(false);
-      this.closed.emit();
+      this.closed.emit(capturedOpenId);
     }, 150);
   }
 

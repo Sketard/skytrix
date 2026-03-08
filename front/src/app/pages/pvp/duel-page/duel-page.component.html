@@ -152,6 +152,9 @@
                                [opponentDisconnected]="wsService.opponentDisconnected()"
                                [animatingZone]="animatingZone()"
                                [animatingLp]="animatingLpPlayer()"
+                               [displayedPhase]="displayedPhase()"
+                               [displayedTurnPlayer]="displayedTurnPlayer()"
+                               [displayedTurnCount]="displayedTurnCount()"
                                (zoneSelected)="onZoneSelected($event)"
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
@@ -212,19 +215,6 @@
         </div>
       }
 
-      <!-- Zone Browser Overlay (Story 1.7) -->
-      @if (zoneBrowserState(); as zb) {
-        <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
-                                       [cards]="zb.cards"
-                                       [playerIndex]="zb.playerIndex"
-                                       [actionableCardCodes]="zoneBrowserActionableCodes()"
-                                       [mode]="zb.mode"
-                                       [reversed]="zb.reversed"
-                                       (inspectCard)="inspectCardByCode($event)"
-                                       (actionSelected)="onZoneBrowserAction($event)"
-                                       (closed)="closeZoneBrowser()" />
-      }
-
       <!-- Card Inspector (Story 1.7) -->
       @if (inspectedCard(); as card) {
         <app-pvp-card-inspector-wrapper [card]="card"
@@ -233,31 +223,72 @@
                                          (dismissed)="closeInspector()" />
       }
 
-      <!-- Mini-Toolbar (Story 1.7 — bottom-right, thumb zone) -->
-      <div class="mini-toolbar"
-           [class.mini-toolbar--dimmed]="hasActivePrompt() && promptSheetExpanded()">
-        <button mat-icon-button
-                aria-label="Surrender"
-                class="mini-toolbar__btn"
-                (click)="onSurrenderClick()">
-          <mat-icon>flag</mat-icon>
-        </button>
-        @if (isSoloMode()) {
-          <mat-button-toggle-group class="mini-toolbar__player-toggle"
-                                   [value]="orchestrator.activePlayerIndex() === 0 ? 'p1' : 'p2'"
-                                   (change)="switchPlayerWithTransition()">
-            <mat-button-toggle value="p1">P1</mat-button-toggle>
-            <mat-button-toggle value="p2">P2</mat-button-toggle>
-          </mat-button-toggle-group>
+      <!-- Right Sidebar: Zone Browser + Mini-Toolbar -->
+      <div class="right-sidebar">
+        @if (zoneBrowserState(); as zb) {
+          <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
+                                         [cards]="zb.cards"
+                                         [playerIndex]="zb.playerIndex"
+                                         [openId]="zb.openId"
+                                         (inspectCard)="inspectCardByCode($event)"
+                                         (closed)="closeZoneBrowser($event)" />
         }
-        @if (isOwnTurn()) {
-          <app-pvp-activation-toggle [(mode)]="activationMode" />
-        }
+
+        <div class="mini-toolbar"
+             [class.mini-toolbar--dimmed]="hasActivePrompt() && promptSheetExpanded()">
+          <button class="mini-toolbar__item"
+                  type="button"
+                  aria-label="Surrender"
+                  (click)="onSurrenderClick()">
+            <mat-icon class="mini-toolbar__icon">flag</mat-icon>
+            <span class="mini-toolbar__label">Exit</span>
+          </button>
+          @if (isSoloMode()) {
+            <button class="mini-toolbar__item"
+                    type="button"
+                    [attr.aria-label]="'Switch to ' + (orchestrator.activePlayerIndex() === 0 ? 'P2' : 'P1')"
+                    (click)="switchPlayerWithTransition()">
+              <span class="mini-toolbar__icon mini-toolbar__icon--text">{{ orchestrator.activePlayerIndex() === 0 ? 'P1' : 'P2' }}</span>
+              <span class="mini-toolbar__label">Player</span>
+            </button>
+          }
+          @if (isOwnTurn()) {
+            <app-pvp-activation-toggle [(mode)]="activationMode" />
+          }
+          @if (!isProduction) {
+            <button class="mini-toolbar__item"
+                    type="button"
+                    aria-label="Toggle debug logs"
+                    [attr.aria-expanded]="debugLog.panelOpen()"
+                    aria-controls="debug-log-panel"
+                    (click)="debugLog.panelOpen.set(!debugLog.panelOpen())">
+              <mat-icon class="mini-toolbar__icon">bug_report</mat-icon>
+              <span class="mini-toolbar__label">Debug</span>
+            </button>
+          }
+        </div>
       </div>
 
       <!-- Zone highlight floating instruction (Pattern A) -->
       @if (isZoneHighlightActive()) {
         <app-prompt-zone-highlight [instruction]="zoneInstruction()" />
+      }
+
+      <!-- Phase announcement overlay -->
+      @if (phaseAnnouncement(); as pa) {
+        <div class="phase-announcement"
+             [class.phase-announcement--opponent]="pa.isOpponent"
+             role="status"
+             aria-live="polite"
+             aria-atomic="true">
+          <div class="phase-announcement__band">
+            @if (pa.isOpponent) {
+              <span class="phase-announcement__prefix">Opponent</span>
+              <span class="phase-announcement__separator">—</span>
+            }
+            <span class="phase-announcement__label">{{ pa.label }}</span>
+          </div>
+        </div>
       }
     }
 
@@ -376,14 +407,6 @@
 
     <!-- Debug Log Panel (dev only) -->
     @if (!isProduction) {
-      <button type="button"
-              class="debug-fab"
-              aria-label="Toggle debug logs"
-              [attr.aria-expanded]="debugLog.panelOpen()"
-              aria-controls="debug-log-panel"
-              (click)="debugLog.panelOpen.set(!debugLog.panelOpen())">
-        <mat-icon>bug_report</mat-icon>
-      </button>
       <app-debug-log-panel [entries]="debugLog.entries()"
                             [open]="debugLog.panelOpen()"
                             (closed)="debugLog.panelOpen.set(false)"

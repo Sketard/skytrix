@@ -4,7 +4,8 @@
        [class.phase-badge--opp-turn]="!isOwnTurn()"
        [class.phase-badge--has-actions]="availableTransitions().length > 0"
        (click)="toggleMenu()">
-    {{ abbreviation() }}
+    <span class="phase-badge__turn">{{ turnLabel() }}</span>
+    <span class="phase-badge__phase">{{ abbreviation() }}</span>
   </div>
 
   @if (menuExpanded() && actionablePrompt() && availableTransitions().length > 0) {
