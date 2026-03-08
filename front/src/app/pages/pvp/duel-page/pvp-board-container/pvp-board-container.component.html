@@ -23,12 +23,18 @@
           </div>
         } @else if (zone.renderMode === 'pile-faceup') {
           <div class="zone-pile"
+               [class.zone-pile--depth-1]="zone.cardCount >= 3 && zone.cardCount < 10"
+               [class.zone-pile--depth-2]="zone.cardCount >= 10"
                (click)="onZonePillClick(zone.zoneId, 1)">
             @if (zone.card) {
-              <img [src]="getCardImageUrl(zone.card)"
-                   [alt]="zone.zoneId + ' top card'"
-                   class="card-art"
-                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              @if (isFaceUp(zone.card.position)) {
+                <img [src]="getCardImageUrl(zone.card)"
+                     [alt]="zone.zoneId + ' top card'"
+                     class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
             }
           </div>
         } @else if (zone.card) {
@@ -74,6 +80,8 @@
     <!-- Opponent Banished (col 1, aligned with opponent GY above) -->
     <div class="zone zone--banished zone--banished-opponent"
          [class.zone--highlighted]="isHighlighted('BANISHED')"
+         [class.pile-depth-1]="opponentBanishedCount() >= 3 && opponentBanishedCount() < 10"
+         [class.pile-depth-2]="opponentBanishedCount() >= 10"
          (click)="onZonePillClick('BANISHED', 1)">
       @if (opponentBanished(); as card) {
         <img [src]="getCardImageUrl(card)"
@@ -137,6 +145,8 @@
     <!-- Player Banished (col 7, aligned with player GY below) -->
     <div class="zone zone--banished zone--banished-player"
          [class.zone--highlighted]="isHighlighted('BANISHED')"
+         [class.pile-depth-1]="playerBanishedCount() >= 3 && playerBanishedCount() < 10"
+         [class.pile-depth-2]="playerBanishedCount() >= 10"
          [class.zone-pile--actionable]="activateZoneIds().has('BANISHED')"
          [class.zone-pile--actionable-blue]="!activateZoneIds().has('BANISHED') && nonActivateZoneIds().has('BANISHED')"
          (click)="onZonePillClick('BANISHED', 0)">
@@ -181,14 +191,20 @@
           </div>
         } @else if (zone.renderMode === 'pile-faceup') {
           <div class="zone-pile"
+               [class.zone-pile--depth-1]="zone.cardCount >= 3 && zone.cardCount < 10"
+               [class.zone-pile--depth-2]="zone.cardCount >= 10"
                [class.zone-pile--actionable]="activateZoneIds().has(zone.zoneId)"
                [class.zone-pile--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
                (click)="onZonePillClick(zone.zoneId, 0)">
             @if (zone.card) {
-              <img [src]="getCardImageUrl(zone.card)"
-                   [alt]="zone.zoneId + ' top card'"
-                   class="card-art"
-                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              @if (isFaceUp(zone.card.position)) {
+                <img [src]="getCardImageUrl(zone.card)"
+                     [alt]="zone.zoneId + ' top card'"
+                     class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
             }
           </div>
         } @else if (zone.card) {

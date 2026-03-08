@@ -57,6 +57,8 @@ let lp: [number, number] = [8000, 8000];
 let cardDb: import('./types.js').CardDB | null = null;
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
+let lastSelectSumMustCount = 0;
+let lastAnnounceNumberOptions: number[] = [];
 
 // =============================================================================
 // Constants & Helpers
@@ -112,29 +114,34 @@ function countersToRecord(counters?: Record<number, number>): Record<string, num
   return result;
 }
 
-function decodePlaces(mask: number): PlaceOption[] {
+function decodePlaces(mask: number, selectingPlayer: Player): PlaceOption[] {
   // OCGCore field_mask: set bits = UNAVAILABLE zones. Invert to get selectable zones.
+  // Bitmask is from the selecting player's perspective:
+  //   bits 0-15  = selecting player's own zones
+  //   bits 16-31 = opponent's zones
   const available = ~mask;
   const places: PlaceOption[] = [];
   for (let p = 0; p <= 1; p++) {
     const offset = p * 16;
+    // p=0 in bitmask → self, p=1 → opponent. Map to absolute OCGCore player index.
+    const actualPlayer = (p === 0 ? selectingPlayer : (1 - selectingPlayer)) as Player;
     for (let s = 0; s < 5; s++) {
       if (available & (1 << (offset + s)))
-        places.push({ player: p as Player, location: LOCATION.MZONE, sequence: s });
+        places.push({ player: actualPlayer, location: LOCATION.MZONE, sequence: s });
     }
     for (let s = 0; s < 2; s++) {
       if (available & (1 << (offset + 5 + s)))
-        places.push({ player: p as Player, location: LOCATION.MZONE, sequence: 5 + s });
+        places.push({ player: actualPlayer, location: LOCATION.MZONE, sequence: 5 + s });
     }
     for (let s = 0; s < 5; s++) {
       if (available & (1 << (offset + 8 + s)))
-        places.push({ player: p as Player, location: LOCATION.SZONE, sequence: s });
+        places.push({ player: actualPlayer, location: LOCATION.SZONE, sequence: s });
     }
     if (available & (1 << (offset + 13)))
-      places.push({ player: p as Player, location: LOCATION.SZONE, sequence: 5 });
+      places.push({ player: actualPlayer, location: LOCATION.SZONE, sequence: 5 });
     for (let s = 0; s < 2; s++) {
       if (available & (1 << (offset + 14 + s)))
-        places.push({ player: p as Player, location: LOCATION.SZONE, sequence: 6 + s });
+        places.push({ player: actualPlayer, location: LOCATION.SZONE, sequence: 6 + s });
     }
   }
   return places;
@@ -357,13 +364,13 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SELECT_PLACE:
       return {
         type: 'SELECT_PLACE', player: msg.player as Player,
-        count: msg.count, places: decodePlaces(msg.field_mask),
+        count: msg.count, places: decodePlaces(msg.field_mask, msg.player as Player),
       };
 
     case OcgMessageType.SELECT_DISFIELD:
       return {
         type: 'SELECT_DISFIELD', player: msg.player as Player,
-        count: msg.count, places: decodePlaces(msg.field_mask),
+        count: msg.count, places: decodePlaces(msg.field_mask, msg.player as Player),
       };
 
     case OcgMessageType.SELECT_POSITION:
@@ -388,6 +395,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SELECT_SUM:
+      lastSelectSumMustCount = msg.selects_must.length;
       return {
         type: 'SELECT_SUM', player: msg.player as Player,
         mustSelect: msg.selects_must.map(c => ({ ...toCardInfo(c), amount: c.amount })),
@@ -431,7 +439,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return { type: 'ANNOUNCE_CARD', player: msg.player as Player, opcodes: msg.opcodes.map(Number) };
 
     case OcgMessageType.ANNOUNCE_NUMBER:
-      return { type: 'ANNOUNCE_NUMBER', player: msg.player as Player, options: msg.options.map(Number) };
+      lastAnnounceNumberOptions = msg.options.map(Number);
+      return { type: 'ANNOUNCE_NUMBER', player: msg.player as Player, options: lastAnnounceNumberOptions };
 
     // --- RPS ---
     case OcgMessageType.ROCK_PAPER_SCISSORS:
@@ -448,6 +457,10 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
           ? null
           : (msg as unknown as { winner: number }).winner as Player,
       };
+
+    case OcgMessageType.RETRY:
+      console.warn('[WORKER] OCGCore sent RETRY — previous response was invalid');
+      return null;
 
     // --- All other OCGCore messages: silently ignored ---
     default:
@@ -521,14 +534,14 @@ function buildBoardState(): ServerMessage {
 
   function queryZone(controller: 0 | 1, location: number): CardOnField[] {
     const cards = core!.duelQueryLocation(duel!, {
-      flags: FLAG_CODE, controller, location,
+      flags: FLAG_CODE | FLAG_POS, controller, location,
     } as never);
     return cards
       .filter((c): c is NonNullable<typeof c> => c != null && c.code !== undefined)
       .map(c => ({
         cardCode: c.code ?? null,
         name: c.code ? getCardName(c.code) : null,
-        position: POSITION.FACEUP_ATTACK as Position,
+        position: (c.position as Position) ?? (POSITION.FACEUP_ATTACK as Position),
         overlayMaterials: [] as number[],
         counters: {} as Record<string, number>,
       }));
@@ -541,8 +554,11 @@ function buildBoardState(): ServerMessage {
     // Monster Zones M1-M5 (seq 0-4)
     for (let s = 0; s < 5; s++) {
       const cards: CardOnField[] = [];
-      if (fp.monsters[s] && (fp.monsters[s].position as number) !== 0) {
-        cards.push(queryCard(controller, OcgLocation.MZONE as number, s, fp.monsters[s].position as number));
+      const monsterSlot = fp.monsters[s];
+      const pos = monsterSlot?.position as number ?? 0;
+      if (monsterSlot && pos !== 0) {
+        const card = queryCard(controller, OcgLocation.MZONE as number, s, pos);
+        cards.push(card);
       }
       zones.push({ zoneId: MZONE_IDS[s], cards });
     }
@@ -628,8 +644,14 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
       return { type: 12, indicies: data['indices'] ?? null }; // OCGCore typo
     case 'SELECT_COUNTER':
       return { type: 13, counters: data['counts'] };
-    case 'SELECT_SUM':
-      return { type: 14, indicies: data['indices'] };
+    case 'SELECT_SUM': {
+      // OCGCore expects indices into the combined array (must + optional).
+      // Client sends indices into the optional-only `cards` array.
+      // Prepend must-select indices (0..mustCount-1) and offset optional indices.
+      const mustIndices = Array.from({ length: lastSelectSumMustCount }, (_, i) => i);
+      const optionalIndices = (data['indices'] as number[]).map(i => i + lastSelectSumMustCount);
+      return { type: 14, indicies: [...mustIndices, ...optionalIndices] };
+    }
     case 'SORT_CARD':
     case 'SORT_CHAIN':
       return { type: 15, order: data['order'] ?? null };
@@ -639,8 +661,11 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
       return { type: 17, attributes: [data['value']] };
     case 'ANNOUNCE_CARD':
       return { type: 18, card: data['value'] };
-    case 'ANNOUNCE_NUMBER':
-      return { type: 19, value: data['value'] };
+    case 'ANNOUNCE_NUMBER': {
+      const val = data['value'] as number;
+      const idx = lastAnnounceNumberOptions.indexOf(val);
+      return { type: 19, value: idx >= 0 ? idx : val };
+    }
     case 'RPS_CHOICE':
       return { type: 20, value: (data['choice'] as number) + 1 }; // Client sends 0-2, OCGCore expects 1-3
     default:
@@ -680,9 +705,16 @@ function runDuelLoop(): void {
 
     const messages = core.duelGetMessage(duel);
 
+    let hasRetry = false;
     for (const msg of messages) {
       // Track state for BOARD_STATE construction
       updateState(msg);
+
+      // RETRY: OCGCore rejected the previous response — flag for re-prompt
+      if (msg.type === OcgMessageType.RETRY) {
+        hasRetry = true;
+        continue;
+      }
 
       // skipRps auto-respond: when OCGCore asks for RPS, respond immediately
       if (skipRpsFlag && msg.type === OcgMessageType.ROCK_PAPER_SCISSORS) {
@@ -692,11 +724,24 @@ function runDuelLoop(): void {
         continue;
       }
 
+      // DEBUG: Log every OCGCore message
+      console.log('[WORKER][MSG] %s raw=%o', OcgMessageType[msg.type] ?? msg.type, msg);
+
       // Transform and forward
       const dto = transformMessage(msg);
       if (dto) {
+        if (dto.type === 'MSG_MOVE') {
+          console.log('[WORKER][MOVE] card=%s (%d) from=loc%d/seq%d → to=loc%d/seq%d',
+            dto.cardName, dto.cardCode, dto.fromLocation, dto.fromSequence,
+            dto.toLocation, dto.toSequence);
+        }
         port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
       }
+    }
+
+    // RETRY recovery: tell the server to re-send the cached prompt
+    if (hasRetry && status === OcgProcessResult.WAITING) {
+      port.postMessage({ type: 'WORKER_RETRY', duelId });
     }
 
     if (status === OcgProcessResult.END) {
@@ -833,6 +878,8 @@ port.on('message', (msg: MainToWorkerMessage) => {
     if (response) {
       core.duelSetResponse(duel, response as never);
       runDuelLoop();
+    } else {
+      console.error('[WORKER] transformResponse returned null for promptType=%s', msg.promptType);
     }
   }
 });

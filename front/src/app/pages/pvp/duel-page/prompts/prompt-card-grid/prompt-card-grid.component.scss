@@ -14,10 +14,17 @@
 // - When cards fit: margin:auto centers them.
 // - When cards overflow: flex-shrink:0 prevents squishing, scroll starts from left.
 // DO NOT use justify-content:center on an overflow-x:auto container — it hides left items.
-.card-strip {
+.card-strip__inner {
   display: flex;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+.card-strip {
+  display: flex;
+  flex-shrink: 0;
+  margin: 0 auto;
 }
 
 .card-slot {

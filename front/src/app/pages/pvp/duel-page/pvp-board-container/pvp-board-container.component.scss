@@ -71,14 +71,14 @@
 .emz {
   position: relative;
   height: 100%;
-  aspect-ratio: 59 / 86;
+  aspect-ratio: 1;
   justify-self: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--pvp-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: visible;
+  overflow: hidden;
   min-width: 0;
   min-height: 0;
 
@@ -123,7 +123,10 @@
 }
 
 // Banished zone positioning (central strip)
-.zone--banished {}
+.zone--banished {
+  cursor: pointer;
+  overflow: visible;
+}
 
 // Opponent banished: col 1 (aligned with opponent GY above)
 .zone--banished-opponent {
@@ -204,6 +207,34 @@
     }
   }
 
+  // Dynamic depth for face-up piles (3-9 cards: 1 layer, 10+: 2 layers)
+  &--depth-1,
+  &--depth-2 {
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: var(--pvp-radius-sm);
+      background: #2a2a3e;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2));
+      z-index: -1;
+    }
+  }
+
+  &--depth-2 {
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: var(--pvp-radius-sm);
+      background: #2a2a3e;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset)));
+      z-index: -2;
+    }
+  }
+
   &--actionable {
     box-shadow: var(--pvp-actionable-glow);
     animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
@@ -220,6 +251,34 @@
     &:hover {
       box-shadow: var(--pvp-actionable-glow-blue-hover);
     }
+  }
+}
+
+// Dynamic depth for Banished zones (central strip — not nested under .zone-pile)
+.pile-depth-1,
+.pile-depth-2 {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: var(--pvp-radius-sm);
+    background: #2a2a3e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2));
+    z-index: -1;
+  }
+}
+
+.pile-depth-2 {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: var(--pvp-radius-sm);
+    background: #2a2a3e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset)));
+    z-index: -2;
   }
 }
 
@@ -253,6 +312,26 @@
 }
 
 .zone-card--actionable-blue {
+  box-shadow: var(--pvp-actionable-glow-blue);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: var(--pvp-actionable-glow-blue-hover);
+  }
+}
+
+.zone-pile--actionable {
+  box-shadow: var(--pvp-actionable-glow);
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: var(--pvp-actionable-glow-hover);
+  }
+}
+
+.zone-pile--actionable-blue {
   box-shadow: var(--pvp-actionable-glow-blue);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;

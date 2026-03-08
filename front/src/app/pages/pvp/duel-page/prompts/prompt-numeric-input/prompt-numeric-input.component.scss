@@ -57,36 +57,44 @@
   color: var(--pvp-accent, #c9a84c);
 }
 
-.number-input {
-  width: 80px;
+
+.option-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: var(--pvp-min-touch-target-primary, 48px);
   height: var(--pvp-min-touch-target-primary, 48px);
-  padding: 0 12px;
+  padding: 0 20px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--pvp-radius-lg);
+  border-radius: var(--pvp-radius-lg, 8px);
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary, #eaeaea);
   font-size: 1.25rem;
-  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--pvp-animation-duration, 150ms) ease-out,
+              border-color var(--pvp-animation-duration, 150ms) ease-out;
 
-  &:focus-visible {
-    outline: 2px solid var(--pvp-accent, #c9a84c);
-    outline-offset: -2px;
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--pvp-accent, #c9a84c);
+  }
+
+  &--selected {
+    background: var(--pvp-accent, #c9a84c);
+    color: #000;
+    border-color: var(--pvp-accent, #c9a84c);
   }
 
   &:disabled {
     opacity: var(--pvp-disabled-opacity, 0.4);
+    cursor: default;
   }
-}
 
-// Remove spin buttons on number input
-.number-input::-webkit-inner-spin-button,
-.number-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.number-input[type='number'] {
-  -moz-appearance: textfield;
+  &:focus-visible {
+    outline: 2px solid var(--pvp-accent, #c9a84c);
+    outline-offset: 2px;
+  }
 }
 
 .btn {

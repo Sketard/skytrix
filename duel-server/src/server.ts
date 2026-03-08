@@ -487,6 +487,18 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       broadcastMessage(session, wmsg.message);
       break;
 
+    case 'WORKER_RETRY': {
+      // OCGCore rejected the player's response — re-send the cached prompt
+      for (const p of [0, 1] as const) {
+        const cached = session.lastSentPrompt[p];
+        if (cached) {
+          console.warn(`[Duel ${session.duelId}] RETRY: re-sending ${cached.type} to player ${p}`);
+          sendToPlayer(session, p, cached);
+        }
+      }
+      break;
+    }
+
     case 'WORKER_ERROR': {
       console.error(`[Duel ${wmsg.duelId}] Worker error: ${wmsg.error}`);
       const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: `Engine error: ${wmsg.error}` };
@@ -1110,6 +1122,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
 
   switch (msg.type) {
     case 'PLAYER_RESPONSE': {
+      console.log(`[SERVER] PLAYER_RESPONSE from player=${playerIndex} promptType=${msg.promptType} awaiting=[${session.awaitingResponse}] lastSentPrompt=${session.lastSentPrompt[playerIndex]?.type}`);
       // Check awaitingResponse flag — prevents spam/out-of-sequence responses
       if (!session.awaitingResponse[playerIndex]) {
         console.error(`[Duel ${session.duelId}] Unexpected PLAYER_RESPONSE from player ${playerIndex}`);

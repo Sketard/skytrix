@@ -49,9 +49,7 @@ export class RoomStateMachineService {
     const expiresAt = new Date(r.createdAt).getTime() + 30 * 60 * 1000;
     const remaining = Math.max(0, expiresAt - Date.now());
     const totalSeconds = Math.floor(remaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const display = `${totalSeconds}s`;
     const color = totalSeconds > 60 ? 'green' : totalSeconds > 30 ? 'yellow' : 'red';
     return { display, color, expired: totalSeconds === 0 };
   });

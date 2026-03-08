@@ -117,6 +117,9 @@ export class PvpBoardContainerComponent {
   readonly playerBanished = computed((): CardOnField | null => this.findZoneCard(0, 'BANISHED'));
   readonly opponentBanished = computed((): CardOnField | null => this.findZoneCard(1, 'BANISHED'));
 
+  readonly playerBanishedCount = computed(() => this.findZoneCardCount(0, 'BANISHED'));
+  readonly opponentBanishedCount = computed(() => this.findZoneCardCount(1, 'BANISHED'));
+
   readonly emzL = computed(() => this.findZoneCard(0, 'EMZ_L') ?? this.findZoneCard(1, 'EMZ_L'));
   readonly emzR = computed(() => this.findZoneCard(0, 'EMZ_R') ?? this.findZoneCard(1, 'EMZ_R'));
 
@@ -163,6 +166,8 @@ export class PvpBoardContainerComponent {
   });
 
   onHighlightedZoneClick(zoneId: ZoneId): void {
+    console.log('[ZONE-CLICK] badge clicked zoneId=%s highlighted=%s highlightedSet=%o',
+      zoneId, this.isHighlighted(zoneId), [...this.highlightedZones()]);
     if (this.isHighlighted(zoneId)) {
       this.zoneSelected.emit(zoneId);
     }
@@ -248,11 +253,13 @@ export class PvpBoardContainerComponent {
     return FIELD_ZONE_IDS.map(zoneId => {
       const zone = zoneMap.get(zoneId);
       const cards = zone?.cards ?? [];
-      const card = cards.length > 0 ? cards[0] : null;
+      const isPile = zoneId === 'GY' || zoneId === 'BANISHED' || zoneId === 'EXTRA';
+      // Pile zones: top of pile = last element (highest OCGCore sequence)
+      const card = cards.length > 0 ? (isPile ? cards[cards.length - 1] : cards[0]) : null;
 
       let renderMode: ZoneRenderMode = 'terrain';
       if (zoneId === 'DECK') renderMode = 'deck';
-      else if (zoneId === 'EXTRA') renderMode = 'pile-facedown';
+      else if (zoneId === 'EXTRA') renderMode = 'pile-faceup';
       else if (zoneId === 'GY' || zoneId === 'BANISHED') renderMode = 'pile-faceup';
 
       return {
@@ -325,5 +332,12 @@ export class PvpBoardContainerComponent {
     if (!player) return null;
     const zone = player.zones.find(z => z.zoneId === zoneId);
     return zone?.cards?.[0] ?? null;
+  }
+
+  private findZoneCardCount(playerIndex: number, zoneId: ZoneId): number {
+    const player = this.duelState().players[playerIndex];
+    if (!player) return 0;
+    const zone = player.zones.find(z => z.zoneId === zoneId);
+    return zone?.cards?.length ?? 0;
   }
 }

@@ -3,6 +3,7 @@ import { PROMPT_COMPONENT_MAP, PromptSubComponent } from './prompt.types';
 import { PromptYesNoComponent } from './prompt-yes-no/prompt-yes-no.component';
 import { PromptCardGridComponent } from './prompt-card-grid/prompt-card-grid.component';
 import { PromptOptionListComponent } from './prompt-option-list/prompt-option-list.component';
+import { PromptPositionSelectComponent } from './prompt-position-select/prompt-position-select.component';
 import { PromptNumericInputComponent } from './prompt-numeric-input/prompt-numeric-input.component';
 import { PromptRpsComponent } from './prompt-rps/prompt-rps.component';
 // PromptZoneHighlightComponent uses Pattern A (no sheet) — not registered in map
@@ -15,7 +16,7 @@ const REGISTRY: [string, Type<PromptSubComponent>][] = [
   ['SELECT_TRIBUTE', PromptCardGridComponent],
   ['SELECT_SUM', PromptCardGridComponent],
   ['SELECT_UNSELECT_CARD', PromptCardGridComponent],
-  ['SELECT_POSITION', PromptOptionListComponent],
+  ['SELECT_POSITION', PromptPositionSelectComponent],
   ['SELECT_OPTION', PromptOptionListComponent],
   ['ANNOUNCE_RACE', PromptOptionListComponent],
   ['ANNOUNCE_ATTRIB', PromptOptionListComponent],

@@ -19,9 +19,11 @@ export class PvpZoneBrowserOverlayComponent {
   readonly playerIndex = input<number>(0);
   readonly actionableCardCodes = input<Set<number>>(new Set());
   readonly mode = input<'browse' | 'action'>('browse');
+  /** When true, cards array is reversed for display — sequence must be remapped */
+  readonly reversed = input<boolean>(false);
 
   readonly inspectCard = output<number>();
-  readonly actionSelected = output<{ cardCode: number; element: HTMLElement }>();
+  readonly actionSelected = output<{ cardCode: number; sequence: number; element: HTMLElement }>();
   readonly closed = output<void>();
 
   readonly visible = signal(true);
@@ -47,11 +49,13 @@ export class PvpZoneBrowserOverlayComponent {
     return this.mode() === 'action' && card.cardCode !== null && this.actionableCardCodes().has(card.cardCode);
   }
 
-  onCardClick(card: CardOnField, event: MouseEvent): void {
+  onCardClick(card: CardOnField, index: number, event: MouseEvent): void {
     if (!card.cardCode) return;
 
     if (this.mode() === 'action' && this.isCardActionable(card)) {
-      this.actionSelected.emit({ cardCode: card.cardCode, element: event.currentTarget as HTMLElement });
+      // When reversed, remap display index back to original OCGCore sequence
+      const sequence = this.reversed() ? this.cards().length - 1 - index : index;
+      this.actionSelected.emit({ cardCode: card.cardCode, sequence, element: event.currentTarget as HTMLElement });
     } else {
       this.inspectCard.emit(card.cardCode);
     }

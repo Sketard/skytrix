@@ -17,11 +17,9 @@ export class PvpTimerBadgeComponent {
 
   readonly display = computed(() => {
     const state = this.timerState();
-    if (!state) return '--:--';
+    if (!state) return '--';
     const totalSec = Math.max(0, Math.floor(state.remainingMs / 1000));
-    const min = Math.floor(totalSec / 60);
-    const sec = totalSec % 60;
-    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    return `${totalSec}s`;
   });
 
   readonly colorClass = computed(() => {

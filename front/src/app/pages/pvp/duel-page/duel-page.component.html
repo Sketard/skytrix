@@ -219,6 +219,7 @@
                                        [playerIndex]="zb.playerIndex"
                                        [actionableCardCodes]="zoneBrowserActionableCodes()"
                                        [mode]="zb.mode"
+                                       [reversed]="zb.reversed"
                                        (inspectCard)="inspectCardByCode($event)"
                                        (actionSelected)="onZoneBrowserAction($event)"
                                        (closed)="closeZoneBrowser()" />

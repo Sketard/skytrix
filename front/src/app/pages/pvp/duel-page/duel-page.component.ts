@@ -143,6 +143,7 @@ export class DuelPageComponent implements OnInit {
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return new Set<ZoneId>();
     const places = (p as SelectPlaceMsg | SelectDisfieldMsg).places;
     const zoneIds = places.map(pl => this.placeOptionToZoneId(pl)).filter((z): z is ZoneId => z !== null);
+    console.log('[HIGHLIGHT] type=%s places=%o → zoneIds=%o', p.type, places, zoneIds);
     return new Set(zoneIds);
   });
 
@@ -277,6 +278,7 @@ export class DuelPageComponent implements OnInit {
     cards: CardOnField[];
     playerIndex: number;
     mode: 'browse' | 'action';
+    reversed: boolean;
   } | null>(null);
 
   // [H2 fix] Actionable card codes for the currently open zone browser
@@ -332,7 +334,14 @@ export class DuelPageComponent implements OnInit {
   private previousChainLinksCount = 0;
 
   // Story 4.2 — Prompt drain: gate prompt display behind animation queue drain
-  readonly visiblePrompt = computed(() => this.isAnimating() ? null : this.wsService.pendingPrompt());
+  readonly visiblePrompt = computed(() => {
+    const animating = this.isAnimating();
+    const prompt = this.wsService.pendingPrompt();
+    if (animating && prompt && (prompt.type === 'SELECT_PLACE' || prompt.type === 'SELECT_DISFIELD')) {
+      console.log('[VISIBLE-PROMPT] SELECT_PLACE/DISFIELD blocked by animation — isAnimating=%s', animating);
+    }
+    return animating ? null : prompt;
+  });
 
   constructor() {
     // --- Initialize extracted services ---
@@ -861,13 +870,16 @@ export class DuelPageComponent implements OnInit {
     const player = this.duelState().players[event.playerIndex];
     if (!player) return;
     const zone = player.zones.find((z: BoardZone) => z.zoneId === event.zoneId);
-    const cards = zone?.cards ?? [];
+    const isPile = event.zoneId === 'GY' || event.zoneId === 'BANISHED' || event.zoneId === 'EXTRA';
+    // Pile zones: reverse so top of pile (most recent) is shown first
+    const cards = isPile ? [...(zone?.cards ?? [])].reverse() : (zone?.cards ?? []);
     const hasActions = this.actionablePrompt() !== null;
     this.zoneBrowserState.set({
       zoneId: event.zoneId,
       cards,
       playerIndex: event.playerIndex,
       mode: hasActions && event.playerIndex === 0 ? 'action' : 'browse',
+      reversed: isPile,
     });
   }
 
@@ -917,7 +929,7 @@ export class DuelPageComponent implements OnInit {
   }
 
   // [H3 fix] Handle actionable card selection from zone browser
-  onZoneBrowserAction(event: { cardCode: number; element: HTMLElement }): void {
+  onZoneBrowserAction(event: { cardCode: number; sequence: number; element: HTMLElement }): void {
     const prompt = this.actionablePrompt();
     const zb = this.zoneBrowserState();
     if (!prompt || !zb) return;
@@ -925,7 +937,7 @@ export class DuelPageComponent implements OnInit {
     const targetLocation = this.zoneIdToLocation(zb.zoneId);
     if (targetLocation === null) return;
 
-    const actions = this.collectActionsForCardCode(event.cardCode, targetLocation, prompt);
+    const actions = this.collectActionsForCardCode(event.cardCode, targetLocation, event.sequence, prompt);
 
     if (actions.length > 0) {
       this.closeZoneBrowser();
@@ -968,11 +980,20 @@ export class DuelPageComponent implements OnInit {
 
   onZoneSelected(zoneId: ZoneId): void {
     const p = this.wsService.pendingPrompt();
-    if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return;
+    console.log('[ZONE-SEL] zoneId=%s pendingPrompt=%o', zoneId, p);
+    if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') {
+      console.warn('[ZONE-SEL] pendingPrompt type mismatch — expected SELECT_PLACE/SELECT_DISFIELD, got', p?.type);
+      return;
+    }
     const prompt = p as SelectPlaceMsg | SelectDisfieldMsg;
+    const mappedZones = prompt.places.map(pl => ({ ...pl, mapped: this.placeOptionToZoneId(pl) }));
+    console.log('[ZONE-SEL] places→zoneId mapping: %o', mappedZones);
     const place = prompt.places.find(pl => this.placeOptionToZoneId(pl) === zoneId);
     if (place) {
+      console.log('[ZONE-SEL] match found, sending response: %o', place);
       this.wsService.sendResponse(prompt.type, { places: [place] });
+    } else {
+      console.error('[ZONE-SEL] NO MATCH for zoneId=%s in places', zoneId);
     }
   }
 
@@ -988,13 +1009,13 @@ export class DuelPageComponent implements OnInit {
   // ---------------------------------------------------------------------------
 
   private collectActionsForCardCode(
-    cardCode: number, targetLocation: number,
+    cardCode: number, targetLocation: number, targetSequence: number,
     prompt: SelectIdleCmdMsg | SelectBattleCmdMsg,
   ): CardAction[] {
     const result: CardAction[] = [];
     const addMatches = (cards: CardInfo[], label: string, actionCode: number) => {
       cards.forEach((card, idx) => {
-        if (card.cardCode === cardCode && card.location === targetLocation) {
+        if (card.cardCode === cardCode && card.location === targetLocation && card.sequence === targetSequence) {
           result.push({ label, actionCode, index: idx });
         }
       });

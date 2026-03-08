@@ -151,9 +151,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
     this.isSending.set(false);
     this.clearTimeouts();
-    console.log('[PromptDialog] openForPrompt type=%s | hint=%o hasHint=%s',
-      prompt.type, hint, hasHint);
-    this.hintText.set(this.buildHintText(prompt.type, hasHint ? hint.cardName : '', hasHint ? hint.hintAction : ''));
+    // For SELECT_CHAIN, only show "X is activated" if there's actually an active chain.
+    // Otherwise the hint cardName is leftover from a summon/effect, not an activation.
+    const chainHasActivation = prompt.type === 'SELECT_CHAIN' && this.wsService.activeChainLinks().length === 0;
+    const cardName = hasHint && !chainHasActivation ? hint.cardName : '';
+    const hintAction = hasHint ? hint.hintAction : '';
+    this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction));
 
     if (wasOpen) {
       this.dialogState.set('transitioning');
@@ -262,6 +265,8 @@ export class PvpPromptDialogComponent implements OnDestroy {
         return `${a('Choose')} an option`;
       case 'SELECT_COUNTER':
         return `${a('Distribute')} counters`;
+      case 'ANNOUNCE_NUMBER':
+        return q ? `${a('Declare')} a number for ${q}` : `${a('Declare')} a number`;
       case 'SORT_CARD':
       case 'SORT_CHAIN':
         return `${a('Set')} card order`;

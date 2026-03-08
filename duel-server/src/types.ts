@@ -80,10 +80,16 @@ export interface WorkerError {
   error: string;
 }
 
+export interface WorkerRetry {
+  type: 'WORKER_RETRY';
+  duelId: string;
+}
+
 export type WorkerToMainMessage =
   | WorkerDuelCreated
   | WorkerMessage
-  | WorkerError;
+  | WorkerError
+  | WorkerRetry;
 
 // =============================================================================
 // Session State

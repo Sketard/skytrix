@@ -1,0 +1,31 @@
+<div class="position-grid" role="group" aria-label="Select position">
+  @for (opt of options; track opt.index) {
+    <button class="position-card"
+            [class.position-card--selected]="selectedIndex() === opt.index"
+            [class.position-card--rotated]="opt.rotated"
+            (click)="selectOption(opt.index)"
+            [disabled]="answered"
+            [attr.aria-pressed]="selectedIndex() === opt.index"
+            [attr.aria-label]="opt.label"
+            type="button">
+      <div class="position-card__slot">
+        <div class="position-card__frame">
+          <img [src]="opt.imageUrl"
+               [alt]="opt.label"
+               class="position-card__img"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'">
+        </div>
+      </div>
+      <span class="position-card__label">{{ opt.label }}</span>
+    </button>
+  }
+</div>
+
+<div class="actions">
+  <button class="btn btn--primary prompt-confirm-btn"
+          (click)="confirm()"
+          [disabled]="selectedIndex() === null || answered"
+          type="button">
+    Confirm
+  </button>
+</div>

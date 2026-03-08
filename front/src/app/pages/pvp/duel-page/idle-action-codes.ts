@@ -87,9 +87,9 @@ export function buildActionableCardsFromBattle(msg: SelectBattleCmdMsg): Actiona
   return map;
 }
 
-/** Returns true if the action code represents "Activate Effect" for the given prompt type. */
+/** Returns true if the action should use the gold glow (activate effect or special summon). */
 export function isActivateAction(actionCode: number, promptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD'): boolean {
   return promptType === 'SELECT_IDLECMD'
-    ? actionCode === IDLE_ACTION.ACTIVATE
+    ? actionCode === IDLE_ACTION.ACTIVATE || actionCode === IDLE_ACTION.SPECIAL_SUMMON
     : actionCode === BATTLE_ACTION.ACTIVATE;
 }

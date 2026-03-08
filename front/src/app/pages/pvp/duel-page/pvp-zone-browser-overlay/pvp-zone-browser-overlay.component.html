@@ -19,7 +19,7 @@
           <button class="zone-browser__card"
                   [class.zone-browser__card--actionable]="isCardActionable(card)"
                   type="button"
-                  (click)="onCardClick(card, $event)">
+                  (click)="onCardClick(card, $index, $event)">
             <img [src]="getCardImageUrlByCode(card.cardCode ?? 0)"
                  [alt]="card.name ?? 'Card'"
                  class="zone-browser__card-art"

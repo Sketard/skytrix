@@ -86,6 +86,7 @@ export class DuelConnection {
   ]);
 
   sendResponse(promptType: string, data: ResponseData): void {
+    console.log('[CONN] sendResponse promptType=%s data=%o wsState=%s', promptType, data, this.ws?.readyState);
     if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
       // Capture selected cards before clearing prompt (for excluding from next prompt)
       const prompt = this._pendingPrompt();
@@ -193,7 +194,6 @@ export class DuelConnection {
 
   private tryAutoRespondEmptyCards(message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg): boolean {
     if (message.cards.length > 0) return false;
-    if (message.type === 'SELECT_SUM' && message.mustSelect.length > 0) return false;
 
     console.warn(`[DuelConnection] Empty cards for ${message.type} — auto-responding`);
 
