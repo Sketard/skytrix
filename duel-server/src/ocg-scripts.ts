@@ -61,6 +61,20 @@ export function loadScripts(scriptDir: string): ScriptDB {
   return { startupScripts, basePath: scriptDir };
 }
 
+/**
+ * Checks which passcodes exist in the cards.cdb database.
+ * Returns the list of passcodes that were NOT found.
+ */
+export function findMissingPasscodes(dbPath: string, passcodes: number[]): number[] {
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    const stmt = db.prepare('SELECT id FROM datas WHERE id = ?');
+    return passcodes.filter(code => !stmt.get(code));
+  } finally {
+    db.close();
+  }
+}
+
 export function validateData(dbPath: string, scriptDir: string): { ok: boolean; reason?: string } {
   // Lightweight validation — no full data load
   try {

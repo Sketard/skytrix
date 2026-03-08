@@ -33,6 +33,7 @@ import com.skytrix.model.entity.Deck;
 import com.skytrix.model.enums.DeckKeyword;
 import com.skytrix.model.enums.TransferType;
 import com.skytrix.repository.CardRepository;
+import com.skytrix.requester.YugiproRequester;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,6 +45,9 @@ public class TransferService {
 
 	@Inject
 	private DeckMapper deckMapper;
+
+	@Inject
+	private YugiproRequester yugiproRequester;
 
 
 	public DeckDTO importDeckFromFile(byte[] content) {
@@ -64,11 +68,15 @@ public class TransferService {
 					case SIDE -> context = SIDE;
 					case EXTRA -> context = EXTRA;
 					case DEFAULT -> {
-						var card = cardRepository.findByPasscode(Long.parseLong(line));
+						var passcode = Long.parseLong(line);
+						var card = cardRepository.findByPasscode(passcode);
+						if (card == null) {
+							card = resolveOldPasscode(passcode);
+						}
 						if (card != null) {
 							deckMap.get(context).add(card);
 						} else {
-							log.warn("No card found with passcode {}", line);
+							log.warn("No card found with passcode {}", passcode);
 						}
 					}
 				}
@@ -106,6 +114,15 @@ public class TransferService {
 
 		// Conversion en byte[]
 		return exportBuilder.toString().getBytes(StandardCharsets.UTF_8);
+	}
+
+	private Card resolveOldPasscode(long oldPasscode) {
+		var resolved = yugiproRequester.fetchById(oldPasscode);
+		if (resolved != null && !resolved.getId().equals(oldPasscode)) {
+			log.info("Resolved old passcode {} → {} ({})", oldPasscode, resolved.getId(), resolved.getName());
+			return cardRepository.findByPasscode(resolved.getId());
+		}
+		return null;
 	}
 
 	private void buildZone(Map<Long, Long> zoneSpecificity, Map<Long, Card> cardsMap, StringBuilder builder, TransferType exportType) {

@@ -13,12 +13,14 @@ import com.skytrix.model.dto.room.DuelCreationResponse;
 import com.skytrix.model.dto.room.DuelDeckDTO;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.HttpClientErrorException;
 
 @Service
 @Slf4j
 public class DuelServerClient {
 
     private final RestClient restClient;
+    private final RestClient longTimeoutRestClient;
     private final String internalKey;
 
     public DuelServerClient(@Value("${duel-server.url}") String duelServerUrl,
@@ -30,6 +32,14 @@ public class DuelServerClient {
         this.restClient = RestClient.builder()
                 .baseUrl(duelServerUrl)
                 .requestFactory(factory)
+                .build();
+
+        var longFactory = new SimpleClientHttpRequestFactory();
+        longFactory.setConnectTimeout(Duration.ofSeconds(10));
+        longFactory.setReadTimeout(Duration.ofMinutes(5));
+        this.longTimeoutRestClient = RestClient.builder()
+                .baseUrl(duelServerUrl)
+                .requestFactory(longFactory)
                 .build();
     }
 
@@ -82,6 +92,56 @@ public class DuelServerClient {
         }
     }
 
+    /**
+     * Asks the duel server which passcodes are missing from its cards.cdb.
+     * Returns the list of unknown passcodes, or empty if all are valid.
+     */
+    public List<Integer> findMissingPasscodes(List<Integer> passcodes) {
+        try {
+            var response = restClient.post()
+                    .uri("/api/validate-passcodes")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("X-Internal-Key", internalKey)
+                    .body(new ValidatePasscodesRequest(passcodes))
+                    .retrieve()
+                    .body(ValidatePasscodesResponse.class);
+            return response != null && response.missing() != null ? response.missing() : List.of();
+        } catch (Exception e) {
+            log.warn("Failed to validate passcodes against duel server: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    public void updateData() {
+        int maxRetries = 2;
+        Exception lastException = null;
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                longTimeoutRestClient.put()
+                        .uri("/api/update-data")
+                        .header("X-Internal-Key", internalKey)
+                        .retrieve()
+                        .toBodilessEntity();
+                return;
+            } catch (HttpClientErrorException e) {
+                // 4xx errors (e.g., 409 Conflict when duels are active) are not transient — don't retry
+                throw e;
+            } catch (Exception e) {
+                lastException = e;
+                if (attempt < maxRetries) {
+                    log.warn("Duel server update failed (attempt {}/{}): {} — retrying",
+                            attempt + 1, maxRetries + 1, e.getMessage());
+                    try { Thread.sleep(2_000L * (attempt + 1)); } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrupted during retry", ie);
+                    }
+                }
+            }
+        }
+        log.error("Duel server update failed after {} attempts", maxRetries + 1);
+        throw new RuntimeException("Duel server update failed", lastException);
+    }
+
     public void terminateDuel(String duelServerId) {
         try {
             restClient.delete()
@@ -97,4 +157,6 @@ public class DuelServerClient {
     private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2, boolean skipRps, Boolean skipShuffle) {}
     private record DuelPlayer(String id, DuelDeckDTO deck) {}
     private record ActiveDuelsResponse(List<String> duelIds) {}
+    private record ValidatePasscodesRequest(List<Integer> passcodes) {}
+    private record ValidatePasscodesResponse(List<Integer> missing) {}
 }

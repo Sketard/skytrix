@@ -11,5 +11,6 @@ public class MiscInfoDTO {
 	private Date tcgDate;
 	@JsonProperty("genesys_points")
 	private Integer genesysPoint;
-
+	@JsonProperty("beta_id")
+	private Long betaId;
 }

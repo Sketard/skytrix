@@ -65,4 +65,16 @@ public class YugiproCardDTO {
             .findAny()
             .orElse(0);
     }
+
+    /**
+     * Returns the pre-release passcode (beta_id) if this card replaced an older entry.
+     */
+    public Long getBetaId() {
+        return getMiscInfo()
+            .stream()
+            .map(MiscInfoDTO::getBetaId)
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElse(null);
+    }
 }

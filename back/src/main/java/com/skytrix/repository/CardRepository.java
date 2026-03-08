@@ -13,5 +13,7 @@ public interface CardRepository extends CrudRepository<Card, Long>, JpaSpecifica
 
 	Card findByPasscode(long passcode);
 
+	List<Card> findAllByPasscodeIn(List<Long> passcodes);
+
 	boolean existsByIdAndFavoritedById(Long cardId, Long userId);
 }

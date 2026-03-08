@@ -10,7 +10,10 @@ import type { CardDB, ScriptDB } from './types.js';
 export function createCardReader(db: CardDB): (code: number) => OcgCardData | null {
   return (code: number): OcgCardData | null => {
     const row = db.stmt.get(code) as Record<string, number | bigint> | undefined;
-    if (!row) return null;
+    if (!row) {
+      console.warn(`[CardReader] Card not found in cards.cdb: ${code}`);
+      return null;
+    }
 
     // Decode setcodes from packed 64-bit integer
     const setcodes: number[] = [];

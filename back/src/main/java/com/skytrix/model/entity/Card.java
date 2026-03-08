@@ -79,8 +79,14 @@ public class Card {
 
 
     public void addTranslation(String cardName, String description, Language language) {
-        var alreadyTraduced = mapToList(translations, Translation::getLanguage);
-        if (!alreadyTraduced.contains(language)) {
+        var existing = translations.stream()
+                .filter(t -> t.getLanguage() == language)
+                .findFirst()
+                .orElse(null);
+        if (existing != null) {
+            existing.setName(cardName);
+            existing.setDescription(description);
+        } else {
             var trad = Translation.builder()
                 .name(cardName)
                 .description(description)

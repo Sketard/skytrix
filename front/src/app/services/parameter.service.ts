@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, take } from 'rxjs';
+import { SyncStatus } from '../core/model/sync-status';
 
 @Injectable({
   providedIn: 'root',
@@ -22,5 +23,21 @@ export class ParameterService {
 
   public fetchDatabaseBanlist(): Observable<void> {
     return this.httpClient.put<void>('/api/parameters/update/ban-list', {}).pipe(take(1));
+  }
+
+  public updateDuelData(): Observable<void> {
+    return this.httpClient.put<void>('/api/parameters/update/duel-data', {}).pipe(take(1));
+  }
+
+  public getSyncStatus(): Observable<SyncStatus> {
+    return this.httpClient.get<SyncStatus>('/api/parameters/status');
+  }
+
+  public pauseTask(task: string): Observable<void> {
+    return this.httpClient.post<void>(`/api/parameters/pause/${task}`, {}).pipe(take(1));
+  }
+
+  public resumeTask(task: string): Observable<void> {
+    return this.httpClient.post<void>(`/api/parameters/resume/${task}`, {}).pipe(take(1));
   }
 }

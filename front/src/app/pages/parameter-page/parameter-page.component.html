@@ -30,14 +30,27 @@
           <span class="parameters-action-desc">Télécharge les images des cartes</span>
           <span class="parameters-action-date">{{ lastSync('images') }}</span>
         </div>
-        <button mat-flat-button (click)="fetchDatabaseImages()" [disabled]="loading().images">
-          @if (loading().images) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            Mettre à jour
+        <div class="parameters-action-controls">
+          @if (isTracked('images')) {
+            <button mat-icon-button (click)="togglePause('images')" [matTooltip]="isPaused('images') ? 'Reprendre' : 'Pause'">
+              <mat-icon>{{ isPaused('images') ? 'play_arrow' : 'pause' }}</mat-icon>
+            </button>
           }
-        </button>
+          <button mat-flat-button (click)="fetchDatabaseImages()" [disabled]="loading().images">
+            @if (loading().images && !isTracked('images')) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Mettre à jour
+            }
+          </button>
+        </div>
       </div>
+      @if (isTracked('images')) {
+        <div class="parameters-progress">
+          <mat-progress-bar mode="determinate" [value]="getProgress('images')"></mat-progress-bar>
+          <span class="parameters-progress-label">{{ getProgressLabel('images') }} ({{ getProgress('images') }}%)</span>
+        </div>
+      }
       <mat-divider></mat-divider>
       <div class="parameters-action">
         <div class="parameters-action-info">
@@ -45,14 +58,53 @@
           <span class="parameters-action-desc">Télécharge les versions TCG traduites</span>
           <span class="parameters-action-date">{{ lastSync('tcgImages') }}</span>
         </div>
-        <button mat-flat-button (click)="fetchDatabaseTcgImages()" [disabled]="loading().tcgImages">
-          @if (loading().tcgImages) {
+        <div class="parameters-action-controls">
+          @if (isTracked('tcgImages')) {
+            <button mat-icon-button (click)="togglePause('tcgImages')" [matTooltip]="isPaused('tcgImages') ? 'Reprendre' : 'Pause'">
+              <mat-icon>{{ isPaused('tcgImages') ? 'play_arrow' : 'pause' }}</mat-icon>
+            </button>
+          }
+          <button mat-flat-button (click)="fetchDatabaseTcgImages()" [disabled]="loading().tcgImages">
+            @if (loading().tcgImages && !isTracked('tcgImages')) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Mettre à jour
+            }
+          </button>
+        </div>
+      </div>
+      @if (isTracked('tcgImages')) {
+        <div class="parameters-progress">
+          <mat-progress-bar mode="determinate" [value]="getProgress('tcgImages')"></mat-progress-bar>
+          <span class="parameters-progress-label">{{ getProgressLabel('tcgImages') }} ({{ getProgress('tcgImages') }}%)</span>
+        </div>
+      }
+    </mat-card>
+  </section>
+
+  <section>
+    <h3><mat-icon>sports_esports</mat-icon> Serveur de duel</h3>
+    <mat-card>
+      <div class="parameters-action">
+        <div class="parameters-action-info">
+          <span class="parameters-action-title">Mettre à jour les données de duel</span>
+          <span class="parameters-action-desc">Télécharge cards.cdb et scripts Lua depuis ProjectIgnis</span>
+          <span class="parameters-action-date">{{ lastSync('duelData') }}</span>
+        </div>
+        <button mat-flat-button (click)="updateDuelData()" [disabled]="loading().duelData">
+          @if (loading().duelData && !isTracked('duelData')) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
             Mettre à jour
           }
         </button>
       </div>
+      @if (isTracked('duelData')) {
+        <div class="parameters-progress">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <span class="parameters-progress-label">Mise à jour en cours...</span>
+        </div>
+      }
     </mat-card>
   </section>
 

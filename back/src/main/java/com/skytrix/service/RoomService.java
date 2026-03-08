@@ -2,6 +2,7 @@ package com.skytrix.service;
 
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -23,14 +24,17 @@ import com.skytrix.model.entity.Room;
 import com.skytrix.model.enums.DeckKeyword;
 import com.skytrix.model.enums.RoomStatus;
 import com.skytrix.repository.CardDeckIndexRepository;
+import com.skytrix.repository.CardRepository;
 import com.skytrix.repository.DeckRepository;
 import com.skytrix.repository.RoomRepository;
 import com.skytrix.security.AuthService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RoomService {
 
     private static final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -40,6 +44,7 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final DeckRepository deckRepository;
     private final CardDeckIndexRepository cardDeckIndexRepository;
+    private final CardRepository cardRepository;
     private final AuthService authService;
     private final DuelServerClient duelServerClient;
     private final RoomMapper roomMapper;
@@ -86,6 +91,7 @@ public class RoomService {
             var deck1Cards = cardDeckIndexRepository.findByDeckId(room.getPlayer1DecklistId());
             var deck1 = extractDeck(deck1Cards);
             var deck2 = extractDeck(deckCards);
+            validatePasscodesOrThrow(deck1, deck1Cards, deck2, deckCards);
             var response = duelServerClient.createDuel(
                     room.getPlayer1().getId().toString(),
                     deck1,
@@ -138,6 +144,8 @@ public class RoomService {
             // Swap deck order so the chosen player's deck becomes player 0.
             var firstDeck = extractDeck(p2First ? deckCards2 : deckCards1);
             var secondDeck = extractDeck(p2First ? deckCards1 : deckCards2);
+            validatePasscodesOrThrow(firstDeck, p2First ? deckCards2 : deckCards1,
+                    secondDeck, p2First ? deckCards1 : deckCards2);
             var response = duelServerClient.createDuel(
                     user.getId().toString(),
                     firstDeck,
@@ -253,6 +261,57 @@ public class RoomService {
                 .mapToInt(c -> c.getCard().getPasscode().intValue())
                 .toArray();
         return new DuelDeckDTO(main, extra);
+    }
+
+    /**
+     * Validates that all passcodes in both decks exist in the duel server's cards.cdb.
+     * Throws a 422 with card names if any are missing.
+     */
+    private void validatePasscodesOrThrow(DuelDeckDTO deck1, List<CardDeckIndex> deck1Cards,
+                                          DuelDeckDTO deck2, List<CardDeckIndex> deck2Cards) {
+        var allPasscodes = new java.util.ArrayList<Integer>();
+        for (int code : deck1.getMain()) allPasscodes.add(code);
+        for (int code : deck1.getExtra()) allPasscodes.add(code);
+        for (int code : deck2.getMain()) allPasscodes.add(code);
+        for (int code : deck2.getExtra()) allPasscodes.add(code);
+
+        var uniquePasscodes = allPasscodes.stream().distinct().toList();
+
+        // Check Spring DB first — cards should always be in our DB
+        var uniquePasscodesLong = uniquePasscodes.stream().map(Integer::longValue).toList();
+        var savedCards = cardRepository.findAllByPasscodeIn(uniquePasscodesLong);
+        var savedPasscodes = savedCards.stream().map(c -> c.getPasscode().intValue()).collect(Collectors.toSet());
+        var missingInDb = uniquePasscodes.stream().filter(code -> !savedPasscodes.contains(code)).toList();
+        if (!missingInDb.isEmpty()) {
+            log.error("Cards in deck but missing from database: {}", missingInDb);
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Card data inconsistency — " + missingInDb.size() + " card(s) not found in database. Try re-syncing cards from the Parameters page.");
+        }
+
+        // Check duel server — cards.cdb might be outdated
+        var missingPasscodes = duelServerClient.findMissingPasscodes(uniquePasscodes);
+
+        if (missingPasscodes.isEmpty()) return;
+
+        // Build passcode → card name map for a user-friendly error message
+        var allCards = new java.util.ArrayList<>(deck1Cards);
+        allCards.addAll(deck2Cards);
+        var passcodeToName = allCards.stream()
+                .collect(Collectors.toMap(
+                        c -> c.getCard().getPasscode().intValue(),
+                        c -> c.getCard().getName(),
+                        (a, b) -> a
+                ));
+
+        var unknownCards = missingPasscodes.stream()
+                .map(code -> passcodeToName.getOrDefault(code, "passcode=" + code))
+                .distinct()
+                .toList();
+
+        log.warn("Deck contains cards unknown to duel engine: {}", unknownCards);
+        throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Cards not recognized by duel engine (passcode mismatch): " + String.join(", ", unknownCards)
+                        + ". Try updating duel server data from the Parameters page.");
     }
 
     private String generateUniqueRoomCode() {

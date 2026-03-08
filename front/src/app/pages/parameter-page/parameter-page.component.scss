@@ -71,13 +71,41 @@
       font-style: italic;
     }
 
+    &-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+
     button {
       flex-shrink: 0;
       min-width: 120px;
     }
 
+    button[mat-icon-button] {
+      min-width: unset;
+    }
+
     mat-spinner {
       margin: 0 auto;
+    }
+  }
+
+  &-progress {
+    padding: 0 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    mat-progress-bar {
+      border-radius: 4px;
+    }
+
+    &-label {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-align: right;
     }
   }
 }

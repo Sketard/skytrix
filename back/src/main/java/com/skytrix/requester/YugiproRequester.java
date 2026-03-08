@@ -5,12 +5,14 @@ import com.skytrix.model.dto.yugipro.EmbeddedDTO;
 import com.skytrix.model.dto.yugipro.YugiproCardDTO;
 import com.skytrix.model.entity.CardImage;
 import com.skytrix.model.enums.Language;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 
 @Service
+@Slf4j
 public class YugiproRequester extends Requester {
     private static final String BASE_URI = "https://db.ygoprodeck.com/api/v7/cardinfo.php";
 
@@ -34,19 +36,38 @@ public class YugiproRequester extends Requester {
         var response = sendRequest(request);
         var data = parseResponse(response, new TypeReference<EmbeddedDTO>() {
         });
-        return data.getData().stream().findAny().orElse(null);
+        return data.getData() == null ? null : data.getData().stream().findAny().orElse(null);
+    }
+
+    public YugiproCardDTO fetchById(Long id) {
+        var uri = defaultFetchAllBuilder().queryParam("id", id);
+
+        var request = createGetRequest(uri.toUriString());
+        try {
+            var response = sendRequest(request);
+            var data = parseResponse(response, new TypeReference<EmbeddedDTO>() {
+            });
+            return data.getData().stream().findAny().orElse(null);
+        } catch (Exception e) {
+            log.warn("Could not resolve passcode {} via API", id);
+            return null;
+        }
     }
 
     public byte[] fetchImage(CardImage cardImage, boolean small) {
         var url = "https://images.ygoprodeck.com/images/%s/%s.jpg".formatted((small ? "cards_small" : "cards"), cardImage.getCard().getPasscode());
         var request = createGetRequest(url);
         var response = sendRequestByteArray(request);
+        if (response.statusCode() != 200) {
+            log.warn("Image fetch returned HTTP {} for imageId {}", response.statusCode(), cardImage.getImageId());
+            return null;
+        }
         return response.body();
     }
 
     private UriComponentsBuilder defaultFetchAllBuilder() {
         return UriComponentsBuilder.fromUriString(BASE_URI)
-            .queryParam("misc", "yes")
-            .queryParam("format", "genesys");
+                .queryParam("misc", "yes")
+                .queryParam("format", "genesys");
     }
 }

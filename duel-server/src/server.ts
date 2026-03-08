@@ -2,12 +2,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
-import { resolve, join } from 'node:path';
+import { resolve, join, basename } from 'node:path';
 import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_WARNING_BEFORE_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS } from './types.js';
 import type { WorkerToMainMessage, DuelSession, PlayerSession, Deck, TimerContext } from './types.js';
 import type { ServerMessage, ClientMessage, Player, SelectPromptType } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
-import { validateData } from './ocg-scripts.js';
+import { validateData, findMissingPasscodes } from './ocg-scripts.js';
+import { updateData } from './data-updater.js';
 
 // =============================================================================
 // Configuration
@@ -160,6 +161,64 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // GET /api/duels/active — List active duel IDs (internal, used by Spring Boot scheduler)
   if (method === 'GET' && pathname === '/api/duels/active') {
     json(res, 200, { duelIds: [...activeDuels.keys()] });
+    return;
+  }
+
+  // PUT /api/update-data — Download latest cards.cdb + scripts from ProjectIgnis
+  if (method === 'PUT' && pathname === '/api/update-data') {
+    if (!validateInternalAuth(req, res)) return;
+
+    if (activeDuels.size > 0) {
+      json(res, 409, { error: 'Cannot update while duels are active', activeDuels: activeDuels.size });
+      return;
+    }
+
+    try {
+      const result = await updateData(DATA_DIR);
+      const revalidation = validateData(dbPath, scriptsDir);
+      dataReady = revalidation.ok;
+      json(res, 200, { ...result, dataReady });
+    } catch (err) {
+      console.error('[UpdateData] Failed:', err);
+      json(res, 500, { error: 'Update failed', detail: err instanceof Error ? err.message : String(err) });
+    }
+    return;
+  }
+
+  // POST /api/validate-passcodes — Check which passcodes exist in cards.cdb
+  if (method === 'POST' && pathname === '/api/validate-passcodes') {
+    if (!validateInternalAuth(req, res)) return;
+    if (!dataReady) {
+      json(res, 503, { error: 'Server not ready — data validation failed' });
+      return;
+    }
+
+    let body: string;
+    try {
+      body = await readBody(req);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
+        json(res, 413, { error: 'Payload too large' });
+        return;
+      }
+      throw err;
+    }
+
+    let parsed: { passcodes: unknown };
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      json(res, 400, { error: 'Invalid JSON' });
+      return;
+    }
+
+    if (!Array.isArray(parsed.passcodes) || !parsed.passcodes.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0)) {
+      json(res, 400, { error: 'passcodes must be an array of positive integers' });
+      return;
+    }
+
+    const missing = findMissingPasscodes(dbPath, parsed.passcodes as number[]);
+    json(res, 200, { missing });
     return;
   }
 
