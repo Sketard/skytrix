@@ -59,6 +59,12 @@ export class DuelConnection {
   private _lastSelectedCards: CardInfo[] = [];
   get lastSelectedCards(): CardInfo[] { return this._lastSelectedCards; }
 
+  // --- Hint consumed flag ---
+  // Set after a prompt response is sent. Prevents stale cardName from a previous
+  // effect from bleeding into unrelated prompts via HINT_SELECTMSG merge.
+  // Cleared when a fresh HINT type 10/13/15 (card-identifying hint) arrives.
+  private _hintCardConsumed = false;
+
   // --- Callbacks (set by wrapper services) ---
   onMessage?: (msg: ServerMessage) => void;
   onResponse?: (promptType: string, data: ResponseData) => void;
@@ -105,6 +111,7 @@ export class DuelConnection {
       } else {
         this._lastSelectedCards = [];
       }
+      this._hintCardConsumed = true;
       this.onResponse?.(promptType, data);
       this._pendingPrompt.set(null);
       this._inactivityWarning.set(null);
@@ -195,7 +202,11 @@ export class DuelConnection {
   private tryAutoRespondEmptyCards(message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg): boolean {
     if (message.cards.length > 0) return false;
 
-    console.warn(`[DuelConnection] Empty cards for ${message.type} — auto-responding`);
+    // SELECT_SUM: mustSelect is the primary selection pool, not auto-included.
+    // Don't auto-respond if mustSelect has candidates the player must choose from.
+    if (message.type === 'SELECT_SUM' && ((message as SelectSumMsg).mustSelect?.length ?? 0) > 0) return false;
+
+    console.warn(`[DuelConnection] Empty cards for ${message.type} — auto-responding (cards=%o)`, message.cards);
 
     if (message.type === 'SELECT_CHAIN' || message.type === 'SELECT_UNSELECT_CARD') {
       this.sendResponse(message.type, { index: null });
@@ -301,6 +312,8 @@ export class DuelConnection {
       case 'SELECT_SUM':
       case 'SELECT_UNSELECT_CARD':
       case 'SELECT_COUNTER':
+        console.log('[CONN] Received %s cards=%d excludedCards=%d', message.type,
+          (message as { cards?: unknown[] }).cards?.length ?? -1, this._lastSelectedCards.length);
         if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
         this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);
@@ -340,19 +353,22 @@ export class DuelConnection {
         break;
 
       case 'MSG_HINT': {
-        // HINT_SELECTMSG (3) arrives after a card hint — preserve prior cardName
-        // Other hint types start a new context — clear stale fields
         const isSelectMsg = message.hintType === 3;
+        const isCardHint = !isSelectMsg; // type 10/13/15 identify a new card
+        // A fresh card-identifying hint clears the consumed flag
+        if (isCardHint) this._hintCardConsumed = false;
         const prev = this._hintContext();
+        // Only preserve prev cardName if it hasn't been consumed by a prior prompt response
+        const canInherit = isSelectMsg && !this._hintCardConsumed;
         const merged = {
           hintType: message.hintType,
           player: message.player,
           value: message.value,
-          cardName: message.cardName || (isSelectMsg ? prev.cardName : ''),
-          hintAction: message.hintAction || (isSelectMsg ? prev.hintAction : ''),
+          cardName: message.cardName || (canInherit ? prev.cardName : ''),
+          hintAction: message.hintAction || (canInherit ? prev.hintAction : ''),
         };
-        console.log('[HintContext] type=%d value=%d cardName=%s hintAction=%s | prev.cardName=%s prev.hintAction=%s | merged.cardName=%s merged.hintAction=%s',
-          message.hintType, message.value, JSON.stringify(message.cardName), JSON.stringify(message.hintAction),
+        console.log('[HintContext] type=%d value=%d consumed=%s cardName=%s hintAction=%s | prev.cardName=%s prev.hintAction=%s | merged.cardName=%s merged.hintAction=%s',
+          message.hintType, message.value, this._hintCardConsumed, JSON.stringify(message.cardName), JSON.stringify(message.hintAction),
           JSON.stringify(prev.cardName), JSON.stringify(prev.hintAction),
           JSON.stringify(merged.cardName), JSON.stringify(merged.hintAction));
         this._hintContext.set(merged);

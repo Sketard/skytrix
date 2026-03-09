@@ -15,7 +15,7 @@ import type {
   OcgCardLoc,
   OcgCardLocPos,
 } from '@n1xx1/ocgcore-wasm';
-import { loadDatabase, loadScripts, STARTUP_SCRIPTS } from './ocg-scripts.js';
+import { loadDatabase, loadScripts, loadSystemStrings, STARTUP_SCRIPTS } from './ocg-scripts.js';
 import { createCardReader, createScriptReader } from './ocg-callbacks.js';
 import { WATCHDOG_TIMEOUT_MS } from './types.js';
 import type { MainToWorkerMessage } from './types.js';
@@ -55,9 +55,9 @@ let turnCount = 0;
 let phase: Phase = 'DRAW';
 let lp: [number, number] = [8000, 8000];
 let cardDb: import('./types.js').CardDB | null = null;
+let systemStrings: Map<number, string> = new Map();
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
-let lastSelectSumMustCount = 0;
 let lastAnnounceNumberOptions: number[] = [];
 
 // =============================================================================
@@ -73,19 +73,6 @@ const PHASE_MAP: Record<number, Phase> = {
 const MZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
-// HINT_SELECTMSG action labels — mapped from OCGCore HINTMSG_* constants (constant.lua)
-const HINTMSG_LABELS: Record<number, string> = {
-  500: 'release', 501: 'discard', 502: 'destroy', 503: 'banish',
-  504: 'send to GY', 505: 'return to hand', 506: 'add to hand',
-  507: 'return to Deck', 508: 'Normal Summon', 509: 'Special Summon',
-  510: 'Set', 511: 'Fusion material', 512: 'Synchro material',
-  513: 'Xyz material', 514: 'face-up', 515: 'face-down',
-  516: 'ATK position', 517: 'DEF position', 518: 'equip',
-  519: 'detach Xyz material', 520: 'take control', 521: 'replace destruction',
-  527: 'place on field', 531: 'Tribute', 532: 'detach from',
-  533: 'Link material', 549: 'attack target', 550: 'activate effect',
-  551: 'target', 560: 'select', 578: 'attach as material',
-};
 
 function getCardName(code: number): string {
   if (!cardDb || !code) return '';
@@ -94,10 +81,13 @@ function getCardName(code: number): string {
 }
 
 function getOptionDesc(optionCode: bigint): string {
-  if (!cardDb) return '';
   const cardCode = Number(optionCode >> 20n);
   const strIndex = Number(optionCode & 0xFFFFFn);
-  if (!cardCode) return '';
+  if (!cardCode) {
+    // System string (cardCode=0) — look up in strings.conf
+    return systemStrings.get(strIndex) ?? '';
+  }
+  if (!cardDb) return '';
   const row = cardDb.descStmt.get(cardCode) as Record<string, string> | undefined;
   if (!row) return '';
   return row[`str${strIndex + 1}`] || '';
@@ -254,10 +244,10 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         // HINT_EFFECT / HINT_CODE / HINT_CARD: value is always a card code
         cardName = getCardName(value);
       } else if (hintType === 3) {
-        // HINT_SELECTMSG: value is either a HINTMSG_* constant or a card code
-        const label = HINTMSG_LABELS[value];
-        if (label) {
-          hintAction = label;
+        // HINT_SELECTMSG: value is either a system string ID or a card code
+        const sysStr = systemStrings.get(value);
+        if (sysStr) {
+          hintAction = sysStr;
         } else {
           cardName = getCardName(value);
         }
@@ -379,14 +369,20 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         cardCode: msg.code, cardName: getCardName(msg.code), positions: decodePositions(msg.positions as number),
       };
 
-    case OcgMessageType.SELECT_OPTION:
+    case OcgMessageType.SELECT_OPTION: {
+      const rawOptions = msg.options.map(Number);
+      const descriptions = msg.options.map(o => getOptionDesc(BigInt(o)));
+      console.log('[WORKER][SELECT_OPTION] raw options=%o decoded=%o descriptions=%o',
+        msg.options.map(String), rawOptions.map(o => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF, hex: '0x' + o.toString(16) })), descriptions);
       return {
         type: 'SELECT_OPTION', player: msg.player as Player,
-        options: msg.options.map(Number),
-        descriptions: msg.options.map(o => getOptionDesc(BigInt(o))),
+        options: rawOptions, descriptions,
       };
+    }
 
     case OcgMessageType.SELECT_TRIBUTE:
+      console.log('[WORKER][SELECT_TRIBUTE] raw selects=%o min=%d max=%d can_cancel=%s',
+        msg.selects, msg.min, msg.max, msg.can_cancel);
       return {
         type: 'SELECT_TRIBUTE', player: msg.player as Player,
         min: msg.min, max: msg.max,
@@ -395,7 +391,6 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SELECT_SUM:
-      lastSelectSumMustCount = msg.selects_must.length;
       return {
         type: 'SELECT_SUM', player: msg.player as Player,
         mustSelect: msg.selects_must.map(c => ({ ...toCardInfo(c), amount: c.amount })),
@@ -645,12 +640,10 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
     case 'SELECT_COUNTER':
       return { type: 13, counters: data['counts'] };
     case 'SELECT_SUM': {
-      // OCGCore expects indices into the combined array (must + optional).
-      // Client sends indices into the optional-only `cards` array.
-      // Prepend must-select indices (0..mustCount-1) and offset optional indices.
-      const mustIndices = Array.from({ length: lastSelectSumMustCount }, (_, i) => i);
-      const optionalIndices = (data['indices'] as number[]).map(i => i + lastSelectSumMustCount);
-      return { type: 14, indicies: [...mustIndices, ...optionalIndices] };
+      // OCGCore expects indices into the combined array (must first, then optional).
+      // Client sends indices into the merged [must...optional] array directly.
+      const indices = data['indices'] as number[] | null;
+      return { type: 14, indicies: indices ?? null };
     }
     case 'SORT_CARD':
     case 'SORT_CHAIN':
@@ -697,13 +690,16 @@ function runDuelLoop(): void {
     } catch (err) {
       clearTimeout(watchdog);
       const message = err instanceof Error ? err.message : String(err);
+      console.error('[WORKER] duelProcess threw:', message);
       port.postMessage({ type: 'WORKER_ERROR', duelId, error: message });
       cleanup();
       return;
     }
     clearTimeout(watchdog);
 
+    console.log('[WORKER] duelProcess status=%d (0=END, 1=WAITING, 2=CONTINUE)', status);
     const messages = core.duelGetMessage(duel);
+    console.log('[WORKER] duelGetMessage count=%d', messages.length);
 
     let hasRetry = false;
     for (const msg of messages) {
@@ -712,6 +708,7 @@ function runDuelLoop(): void {
 
       // RETRY: OCGCore rejected the previous response — flag for re-prompt
       if (msg.type === OcgMessageType.RETRY) {
+        console.warn('[WORKER] RETRY received — OCGCore rejected previous response');
         hasRetry = true;
         continue;
       }
@@ -736,6 +733,8 @@ function runDuelLoop(): void {
             dto.toLocation, dto.toSequence);
         }
         port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
+      } else {
+        console.warn('[WORKER] transformMessage returned null for type=%s (%d)', OcgMessageType[msg.type] ?? 'UNKNOWN', msg.type);
       }
     }
 
@@ -781,6 +780,7 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
   // 2. Load data
   const db = loadDatabase(dbPath);
   cardDb = db;
+  systemStrings = loadSystemStrings(join(dataDir, 'strings.conf'));
   const scripts = loadScripts(scriptsDir);
   const cardReader = createCardReader(db);
   const scriptReader = createScriptReader(scripts);
@@ -875,9 +875,12 @@ port.on('message', (msg: MainToWorkerMessage) => {
       return;
     }
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
+    console.log('[WORKER] transformResponse promptType=%s response=%o', msg.promptType, response);
     if (response) {
       core.duelSetResponse(duel, response as never);
+      console.log('[WORKER] duelSetResponse done, calling runDuelLoop...');
       runDuelLoop();
+      console.log('[WORKER] runDuelLoop returned');
     } else {
       console.error('[WORKER] transformResponse returned null for promptType=%s', msg.promptType);
     }

@@ -62,6 +62,28 @@ export function loadScripts(scriptDir: string): ScriptDB {
 }
 
 /**
+ * Parses a strings.conf file (ProjectIgnis format) and returns system strings
+ * as a Map from numeric ID to display text.
+ * Lines like `!system 1160 Activate it as a Pendulum Spell` → Map { 1160 → "Activate it as a Pendulum Spell" }
+ */
+export function loadSystemStrings(filePath: string): Map<number, string> {
+  const map = new Map<number, string>();
+  if (!existsSync(filePath)) {
+    console.warn(`[Scripts] strings.conf not found: ${filePath}`);
+    return map;
+  }
+  const content = readFileSync(filePath, 'utf-8');
+  for (const line of content.split('\n')) {
+    const match = line.match(/^!system\s+(\d+)\s+(.+)/);
+    if (match) {
+      map.set(Number(match[1]), match[2].trimEnd());
+    }
+  }
+  console.log(`[Scripts] Loaded ${map.size} system strings from strings.conf`);
+  return map;
+}
+
+/**
  * Checks which passcodes exist in the cards.cdb database.
  * Returns the list of passcodes that were NOT found.
  */

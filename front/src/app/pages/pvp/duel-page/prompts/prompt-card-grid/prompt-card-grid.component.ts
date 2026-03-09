@@ -39,60 +39,32 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   readonly selectedIndices = signal<Set<number>>(new Set());
   answered = false;
-  private autoRespondTimeout: ReturnType<typeof setTimeout> | null = null;
   private longPressTimeout: ReturnType<typeof setTimeout> | null = null;
   private longPressStartPos: { x: number; y: number } | null = null;
   private longPressFired = false;
 
   ngOnInit(): void {
-    if (this.displayEntries.length === 0) {
-      console.warn('[PromptCardGrid] Empty card list — auto-responding');
-      this.autoRespondTimeout = setTimeout(() => {
-        this.response.emit({ indices: [] });
-      }, 1000);
-    }
+    console.log('[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
+      this.promptData?.type, this.cards.length, this.excludedCards.length, this.displayEntries.length);
   }
 
   ngOnDestroy(): void {
-    if (this.autoRespondTimeout) {
-      clearTimeout(this.autoRespondTimeout);
-      this.autoRespondTimeout = null;
-    }
     this.cancelLongPress();
   }
 
   get cards(): CardInfo[] {
     if (!this.promptData) return [];
+    // For SELECT_SUM, combine mustSelect + optional into a single selectable pool.
+    // mustSelect is the primary pool (not auto-included), player picks from it.
+    if (this.promptData.type === 'SELECT_SUM') {
+      const p = this.promptData as SelectSumMsg;
+      return [...(p.mustSelect ?? []), ...(p.cards ?? [])];
+    }
     return this.promptData.cards ?? [];
   }
 
   get displayEntries(): DisplayEntry[] {
     const all = this.cards;
-
-    // For SELECT_SUM, mustSelect cards are auto-included — exclude them from the selectable grid
-    if (this.promptData?.type === 'SELECT_SUM') {
-      const mustSelect = (this.promptData as SelectSumMsg).mustSelect;
-      if (mustSelect.length === 0) return all.map((card, i) => ({ card, originalIndex: i }));
-      const mustUsed = new Map<string, number>();
-      for (const c of mustSelect) {
-        const k = cardKey(c);
-        mustUsed.set(k, (mustUsed.get(k) ?? 0) + 1);
-      }
-      const consumed = new Map<string, number>();
-      return all.reduce<DisplayEntry[]>((acc, card, i) => {
-        const k = cardKey(card);
-        const limit = mustUsed.get(k) ?? 0;
-        if (limit > 0) {
-          const used = consumed.get(k) ?? 0;
-          if (used < limit) {
-            consumed.set(k, used + 1);
-            return acc; // skip — it's a mustSelect card
-          }
-        }
-        acc.push({ card, originalIndex: i });
-        return acc;
-      }, []);
-    }
 
     if (this.excludedCards.length === 0) {
       return all.map((card, i) => ({ card, originalIndex: i }));
@@ -141,7 +113,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     if (!p) return 1;
     if (p.type === 'SELECT_SUM') {
       const sum = p as SelectSumMsg;
-      if (sum.selectMax > 0) return sum.selectMax;
+      // selectMax is a mode flag (0=exact, 1=at-least), NOT a card count
       if (sum.maxCards > 0) return sum.maxCards;
       return this.cards.length;
     }
@@ -149,16 +121,10 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return 1;
   }
 
-  /** For SELECT_SUM: sum of amounts from mustSelect cards (always included). */
-  get mustSelectSum(): number {
-    if (this.promptData?.type !== 'SELECT_SUM') return 0;
-    return (this.promptData as SelectSumMsg).mustSelect.reduce((s, c) => s + (c.amount ?? 1), 0);
-  }
-
-  /** For SELECT_SUM: total sum of mustSelect + currently selected optional cards. */
+  /** For SELECT_SUM: total sum of currently selected cards. */
   get selectedSum(): number {
     if (this.promptData?.type !== 'SELECT_SUM') return 0;
-    let sum = this.mustSelectSum;
+    let sum = 0;
     for (const idx of this.selectedIndices()) {
       sum += this.cards[idx]?.amount ?? 1;
     }
@@ -226,8 +192,9 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
         if (this.promptData?.type === 'SELECT_SUM') {
           const p = this.promptData as SelectSumMsg;
           if (next.size >= this.maxSelect) return set;
-          const newSum = this.mustSelectSum + Array.from(next).reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0) + (this.cards[index]?.amount ?? 1);
-          if (newSum > p.targetSum) return set;
+          // Block adding more cards once target sum is reached or would be exceeded
+          const currentSum = Array.from(next).reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0);
+          if (currentSum >= p.targetSum) return set; // already at/above target — no more picks
         } else if (this.isMultiSelect && next.size >= this.maxSelect) {
           return set;
         }

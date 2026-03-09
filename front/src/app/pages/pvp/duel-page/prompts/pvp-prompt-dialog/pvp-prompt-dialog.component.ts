@@ -123,6 +123,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   // --- Private ---
 
   private onPromptChange(prompt: Prompt | null): void {
+    console.log('[PROMPT-DIALOG] onPromptChange type=%s dialogState=%s', prompt?.type ?? 'null', this.dialogState());
     if (!prompt || IGNORED_PROMPT_TYPES.has(prompt.type)) {
       if (this.dialogState() !== 'closed') {
         const instant = this.wsService.duelResult() !== null;
@@ -234,10 +235,44 @@ export class PvpPromptDialogComponent implements OnDestroy {
     }
   }
 
+  // Yu-Gi-Oh game mechanic keywords highlighted à la Master Duel.
+  // Sorted longest-first so multi-word terms match before their substrings.
+  private static readonly HINT_KEYWORDS = [
+    'Tribute Summon', 'Normal Summon', 'Special Summon', 'Flip Summon',
+    'Fusion Material', 'Synchro Material', 'Xyz Material', 'Link Material',
+    'Pendulum Spell',
+    'Attack Position', 'Defense Position',
+    'Tribute', 'discard', 'destroy', 'banish', 'equip', 'detach',
+    'activate', 'negate', 'target', 'reveal', 'Set',
+    'send to the GY', 'return to the hand', 'return to the Deck',
+    'return to the GY', 'add to your hand', 'place on the field',
+    'attach as material', 'change control',
+    'face-up', 'face-down',
+    'Chain',
+  ];
+
+  private static readonly HINT_KEYWORD_RE = new RegExp(
+    `(${PvpPromptDialogComponent.HINT_KEYWORDS.map(k => k.replace(/[-/]/g, '\\$&')).join('|')})`,
+    'gi',
+  );
+
+  /** Wraps Yu-Gi-Oh keywords in <span class="hint-action"> for gold highlighting. */
+  private highlightKeywords(text: string): string {
+    return text.replace(
+      PvpPromptDialogComponent.HINT_KEYWORD_RE,
+      match => `<span class="hint-action">${match}</span>`,
+    );
+  }
+
   private buildHintText(promptType: string, cardName: string, hintAction: string): string | null {
     const q = cardName ? `<span class="hint-card-name">\u201C${cardName}\u201D</span>` : '';
-    const act = hintAction ? `<span class="hint-action-label">${hintAction}</span>` : '';
+    const act = hintAction ? this.highlightKeywords(hintAction) : '';
     const a = (verb: string) => `<span class="hint-action">${verb}</span>`;
+
+    // hintAction contains full system strings from strings.conf
+    // (e.g. "Select the card(s) to Tribute") — use directly + append card context
+    const withCardContext = act ? (q ? `${act} for ${q}` : act) : null;
+
     switch (promptType) {
       case 'SELECT_CHAIN':
         return q
@@ -248,21 +283,17 @@ export class PvpPromptDialogComponent implements OnDestroy {
           ? `${a('Activate')} effect of ${q}?`
           : `${a('Activate')} effect?`;
       case 'SELECT_CARD':
-        if (act) return q ? `${a('Select')} card(s) to ${act} for ${q}` : `${a('Select')} card(s) to ${act}`;
-        return q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} card(s)`;
       case 'SELECT_TRIBUTE':
-        return q ? `${a('Select')} tribute(s) for ${q}` : `${a('Select')} tribute(s)`;
       case 'SELECT_SUM':
       case 'SELECT_UNSELECT_CARD':
-        if (act) return q ? `${a('Select')} card(s) to ${act} for ${q}` : `${a('Select')} card(s) to ${act}`;
-        return q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} cards`;
+        return withCardContext ?? (q ? `${a('Select')} card(s) for ${q}` : `${a('Select')} card(s)`);
       case 'SELECT_POSITION':
         return q ? `${a('Choose')} position for ${q}` : `${a('Choose')} position`;
       case 'SELECT_PLACE':
       case 'SELECT_DISFIELD':
         return `${a('Choose')} a zone`;
       case 'SELECT_OPTION':
-        return `${a('Choose')} an option`;
+        return withCardContext ?? `${a('Choose')} an option`;
       case 'SELECT_COUNTER':
         return `${a('Distribute')} counters`;
       case 'ANNOUNCE_NUMBER':
