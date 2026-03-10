@@ -4,7 +4,8 @@
        [class.zone-browser--closing]="isClosing()"
        role="dialog"
        [attr.aria-label]="zoneId() + ' browser'"
-       (keydown)="onKeydown($event)">
+       (keydown)="onKeydown($event)"
+       (contextmenu)="close(); $event.preventDefault()">
 
     <button class="zone-browser__expand-tab"
             type="button"
@@ -14,6 +15,9 @@
     </button>
 
     <div class="zone-browser__header">
+      @if (zoneIconPath) {
+        <img [src]="zoneIconPath" alt="" class="zone-browser__zone-icon" />
+      }
       <span class="zone-browser__title">{{ zoneLabel }} ({{ cards().length }})</span>
     </div>
 

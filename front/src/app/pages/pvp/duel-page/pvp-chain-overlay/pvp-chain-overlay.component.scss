@@ -1,0 +1,279 @@
+@use 'z-layers' as z;
+
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: z.$z-pvp-chain-overlay;
+  pointer-events: none;
+}
+
+.chain-overlay-container {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--pvp-chain-overlay-transition);
+
+  &.visible {
+    opacity: 1;
+  }
+
+  // Hide overlay during prompts without destroying DOM (preserves animation state)
+  &.chain-overlay--hidden {
+    visibility: hidden;
+  }
+}
+
+.chain-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--pvp-chain-overlay-backdrop);
+}
+
+.chain-card-container {
+  position: absolute;
+  inset: 0;
+}
+
+// --- Card base ---
+
+.chain-card {
+  position: absolute;
+  border-radius: 8px;
+  overflow: visible;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: top 600ms ease-out,
+                left 600ms ease-out,
+                width 600ms ease-out,
+                height 600ms ease-out,
+                transform 600ms ease-out,
+                opacity 600ms ease-out,
+                filter 600ms ease-out;
+  }
+}
+
+.chain-card__art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 8px;
+}
+
+// --- Position: Back (C1 — oldest, smallest, top-right, partially off-screen) ---
+
+.chain-card--back {
+  top: -10%;
+  left: calc(80% - 20dvh * 59 / 86);
+  height: 20dvh;
+  width: calc(20dvh * 59 / 86);
+  transform: perspective(1200px) rotateZ(-12deg) rotateY(8deg) rotateX(-3deg);
+  filter: brightness(0.7);
+  opacity: 0.8;
+  z-index: 1;
+}
+
+// --- Position: Mid (C2 — middle card) ---
+
+.chain-card--mid {
+  top: 10%;
+  left: 30%;
+  height: 30dvh;
+  width: calc(30dvh * 59 / 86);
+  transform: perspective(1200px) rotateZ(5deg) rotateY(6deg) rotateX(-2deg);
+  filter: brightness(0.85);
+  opacity: 0.9;
+  z-index: 2;
+}
+
+// --- Position: Front (C3 — newest, largest, bottom-right) ---
+
+.chain-card--front {
+  top: calc(80% - 45dvh);
+  left: calc(70% - 45dvh * 59 / 86);
+  height: 45dvh;
+  width: calc(45dvh * 59 / 86);
+  transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg);
+  filter: brightness(1);
+  opacity: 1;
+  z-index: 3;
+}
+
+// --- Entry animation (new card appears and pulses once) ---
+
+@keyframes chain-entry-pulse {
+  0% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+  50% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1.08); box-shadow: 0 0 30px 8px var(--pvp-chain-glow-resolving); }
+  100% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+}
+
+.chain-card--entering {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: chain-entry-pulse var(--chain-entry-duration, 600ms) ease-in-out both;
+  }
+}
+
+// --- Resolving glow (pulse on front card before exit) ---
+
+@keyframes chain-resolve-glow {
+  0% { box-shadow: 0 0 20px var(--pvp-chain-glow-resolving); }
+  50% { box-shadow: 0 0 40px 10px var(--pvp-chain-glow-resolving); }
+  100% { box-shadow: 0 0 20px var(--pvp-chain-glow-resolving); }
+}
+
+.chain-card--resolving {
+  box-shadow: 0 0 20px var(--pvp-chain-glow-resolving);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: chain-resolve-glow var(--chain-resolve-pulse, 600ms) ease-in-out;
+  }
+
+  .chain-badge {
+    text-shadow:
+      0 0 12px rgba(255, 215, 0, 0.8),
+      0 0 24px rgba(255, 215, 0, 0.5);
+  }
+}
+
+// --- Resolution exit (front card slides out right) ---
+
+@keyframes chain-resolve-exit {
+  from {
+    top: calc(80% - 45dvh);
+    left: calc(70% - 45dvh * 59 / 86);
+    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg);
+    opacity: 1;
+  }
+  to {
+    top: calc(80% - 45dvh);
+    left: calc(70% - 45dvh * 59 / 86 + 200px);
+    transform: perspective(1200px) rotateZ(3deg) rotateY(-20deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+.chain-card--resolve-exiting {
+  height: 45dvh;
+  width: calc(45dvh * 59 / 86);
+  z-index: 4;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: chain-resolve-exit var(--chain-resolve-exit, 600ms) ease-in forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 0;
+  }
+}
+
+// --- Overflow exit (oldest card pushed out from C1 upward) ---
+
+@keyframes chain-overflow-exit {
+  from {
+    top: -10%;
+    left: calc(80% - 20dvh * 59 / 86);
+    transform: perspective(1200px) rotateZ(-12deg) rotateY(8deg) rotateX(3deg);
+    opacity: 0.8;
+    filter: brightness(0.7);
+  }
+  to {
+    top: -25%;
+    left: calc(85% - 20dvh * 59 / 86);
+    transform: perspective(1200px) rotateZ(-15deg) rotateY(8deg) rotateX(3deg) scale(0.5);
+    opacity: 0;
+    filter: brightness(0.3);
+  }
+}
+
+.chain-card--exiting {
+  height: 20dvh;
+  width: calc(20dvh * 59 / 86);
+  z-index: 0;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: chain-overflow-exit var(--chain-overflow-duration, 600ms) ease-out forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 0;
+  }
+}
+
+// --- Chain number (Master Duel style: white + cyan outline + glow) ---
+
+.chain-badge {
+  position: absolute;
+  bottom: -2%;
+  background: none;
+  border-radius: 0;
+  border: none;
+  padding: 0;
+  color: #fff;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  z-index: 10;
+  -webkit-text-stroke: 2px #4a90d9;
+  paint-order: stroke fill;
+  text-shadow:
+    0 0 8px rgba(74, 144, 217, 0.8),
+    0 0 16px rgba(74, 144, 217, 0.5),
+    2px 4px 6px rgba(0, 0, 0, 0.7);
+}
+
+// Badge position per card slot
+.chain-card--back .chain-badge,
+.chain-card--front .chain-badge,
+.chain-card--exiting .chain-badge,
+.chain-card--resolve-exiting .chain-badge {
+  right: -2%;
+}
+
+.chain-card--mid .chain-badge {
+  left: -2%;
+}
+
+// Badge size proportional to card
+.chain-card--back .chain-badge {
+  font-size: calc(20dvh * 0.20);
+}
+
+.chain-card--mid .chain-badge {
+  font-size: calc(30dvh * 0.20);
+}
+
+.chain-card--front .chain-badge,
+.chain-card--resolve-exiting .chain-badge {
+  font-size: calc(45dvh * 0.20);
+}
+
+// --- Reduced motion ---
+
+@media (prefers-reduced-motion: reduce) {
+  .chain-card {
+    transition: none;
+  }
+
+  .chain-card--entering {
+    animation: none;
+    opacity: 1;
+  }
+
+  .chain-card--resolving {
+    animation: none;
+    box-shadow: none;
+  }
+
+  .chain-card--front {
+    transform: none;
+  }
+
+  .chain-card--mid {
+    transform: none;
+  }
+
+  .chain-card--back {
+    transform: none;
+  }
+}

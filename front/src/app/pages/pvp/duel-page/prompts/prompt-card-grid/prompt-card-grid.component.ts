@@ -9,14 +9,21 @@ import {
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
-import { CardInfo, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
+import { CardInfo, CardLocation, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
 
 interface DisplayEntry {
   card: CardInfo;
   originalIndex: number;
+}
+
+interface ZoneGroup {
+  location: CardLocation;
+  iconPath: string;
+  entries: DisplayEntry[];
 }
 
 function cardKey(c: CardInfo): string {
@@ -87,6 +94,24 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       acc.push({ card, originalIndex: i });
       return acc;
     }, []);
+  }
+
+  get zoneGroups(): ZoneGroup[] {
+    const entries = this.displayEntries;
+    const map = new Map<CardLocation, DisplayEntry[]>();
+    for (const entry of entries) {
+      const loc = entry.card.location;
+      const list = map.get(loc);
+      if (list) list.push(entry);
+      else map.set(loc, [entry]);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => getZoneDisplayOrder(a) - getZoneDisplayOrder(b))
+      .map(([location, groupEntries]) => ({
+        location,
+        iconPath: getZoneIconPath(location),
+        entries: groupEntries,
+      }));
   }
 
   get isMultiSelect(): boolean {

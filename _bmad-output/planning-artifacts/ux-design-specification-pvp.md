@@ -73,7 +73,7 @@ Comparative Analysis Matrix evaluating Master Duel, EDOPro, and Dueling Nexus ac
 | **Info density** | Excellent (3D manages depth) | Overloaded | Flat, no hierarchy | **Adopt** Master Duel LP/timer/phase positioning. Perspective provides natural hierarchy |
 | **Card inspection** | Good (side panel, long press) | Good (right-click) | OK (popup) | **Adopt** Master Duel pattern (matches solo inspector) |
 | **Animations** | Beautiful but blocking (worst score) | Instant (best score) | Fast, minimal | **Hybrid** — EDOPro speed (<200ms) + Master Duel visual feedback. Never blocking |
-| **Chain viz** | Rich (numbered links, chain animation) | Text only | Minimal | **Adapt** Master Duel (numbered links + card highlight) with condensed timing |
+| **Chain viz** | Rich (overlay cascade, chain connectors) | Text only | Minimal | **Adapt** Master Duel (chain overlay with 3-card cascade + connectors) with condensed timing |
 | **Lobby** | Functional, buried in menus | Functional, ugly | Simple, browser-based | **Adopt** Dueling Nexus simplicity (web-native, ultra-fast room creation) |
 
 **Key insight from Dueling Nexus:** A 2D flat web board without visual hierarchy fails on mobile. CSS perspective is the minimum viable solution for mobile board readability in a web context.
@@ -84,7 +84,7 @@ Comparative Analysis Matrix evaluating Master Duel, EDOPro, and Dueling Nexus ac
 |---|---|
 | **PvP board mobile** (`simulateur_masterduel.jpg`) | Landscape orientation. Own field bottom, opponent mirrored top. LP on left/right edges (large text). Timer as green numeric badge center-left. Phase indicator center-right. Action buttons (Summon/Set) as large circular touch targets near selected card. Card inspector as overlay panel (left side). Activation toggle (Auto/On/Off) bottom-right. 3D perspective compresses opponent's far field. |
 | **PvP board desktop** (`simulateur_masterduel_desktop.jpg`) | Same layout as mobile but with more space. LP in corners (bottom-left you, top-right opponent) with player name. Card inspector panel on left with full card details. Timer badge center-left. Phase badge center-right. |
-| **Chain visualization** (`master_duel_chain.jpg`) | Numbered chain link badges (blue) on each card in the chain. Physical chain animation connecting cards. Currently resolving card enlarged/highlighted at center. Chain resolution is sequential — each link resolves with visual emphasis before the next. |
+| **Chain visualization** (`master_duel_chain.jpg`) | Dedicated chain overlay with 3-card cascade (depth scaling, alternating rotateY). Physical chain connectors between cards. Currently resolving card enlarged at front with golden glow. Overlay appears/disappears rhythmically during construction (FIFO) and resolution (LIFO), revealing the board between each step. |
 | **Duel result screen** (`master_duel_result.jpg`) | Large stylized "VICTORY" title centered in gold. Win reason subtitle ("Time limit win"). Both player profiles displayed below with icons. Single "OK" button to dismiss. Board visible but blurred behind the overlay. Clean, minimal. |
 | **Chain prompt / effect choice** (`events_choice_master_duel.PNG`) | Centered floating dialog on board. Blue banner with contextual text: card name + "Chain another card or effect?". Selectable cards displayed with visible art at readable size. Two action buttons: "Cancel" (left) and "Effect Activation" (right). Board 3D perspective visible around the dialog — spatial context fully preserved. Chain link animation (blue) visible on the board behind the dialog. Timer (285s) and phase badge (Main 1) remain visible. Validates the floating dialog prompt pattern for skytrix PvP. |
 | **Optional effect prompt (CAN)** (`can_master_duel.PNG`) | Yes/No floating dialog centered on board for optional effect activation (SELECT_YESNO). Contextual text: "Add the designated card(s) from the Deck to your hand?" with keywords color-highlighted (card(s), Deck, hand). Two large touch-friendly buttons: "NO" (left) / "YES" (right). No card art — text + buttons only. Board 3D perspective, player's hand, timer (295s), phase (Main 1), LP all remain fully visible around dialog. Activation toggle (ON) bottom-right. Demonstrates the simplest prompt pattern — binary choice with clear contextual text. |
@@ -145,7 +145,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 |-------|---------------|---------------------|
 | Lobby / pre-duel | **Positive impatience** — "I can't wait to test this deck" | 3-tap lobby, <30s to duel |
 | First turns | **Growing confidence** — "the UI is clear, I understand" | Readable prompts, accessible inspector |
-| Mid-game (chains) | **Tension + flow** — "I'm in the match" | Sequential chain viz, timer visible but not oppressive |
+| Mid-game (chains) | **Tension + flow** — "I'm in the match" | Chain overlay cascade with rhythmic reveal, timer visible but not oppressive |
 | Handtrap moment | **Decision rush** — "now!" | Inspector read, floating dialog prompt, 1 tap to activate |
 | Chain resolution | **Satisfaction** — "it worked as planned" | Clear visual feedback of resolution |
 | End of match | **Clean closure** — victory = pride, defeat = "I want a rematch" | VICTORY/DEFEAT + reason + easy rematch |
@@ -164,7 +164,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 |----------------------|-------------------|
 | Confidence vs Confusion | MSG_HINT ALWAYS visible. Never a prompt without context |
 | Control vs Helplessness | Auto/On/Off toggle accessible at all times. Timer visible but not stressful (color changes at <30s, no aggressive flashing) |
-| Tension vs Anxiety | Chain viz shows clear progression. The player sees WHERE they are in resolution |
+| Tension vs Anxiety | Chain overlay shows clear progression (3-card cascade, badges decrement). The player sees WHERE they are in resolution |
 | Satisfaction vs Frustration | Immediate visual feedback after every action (highlight, card movement, LP change) |
 | Flow vs Interruption | Animations never blocking. Prompt appears as soon as resolution completes, no artificial delay |
 
@@ -184,7 +184,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 
 1. **Floating Dialog Prompt (Master Duel)** — Centered floating dialog on the board (50% viewport width). Board fully visible around it. Action buttons inside dialog. Cancel via button or right-click (desktop). Compact, minimal board occlusion — Master Duel's proven pattern
 2. **Activation Toggle (Master Duel)** — Auto/On/Off toggle persistent on screen (bottom-right, inside mini-toolbar with surrender — thumb zone). Reduces prompt fatigue by 60-80% during opponent's turn. Critical for flow. **See §Activation Toggle Semantics below for full behavioral definition**
-3. **Numbered Chain Links (Master Duel)** — Numbered badge on each card in the chain. Sequential resolution with highlight. The player sees progression without reading text
+3. **Chain Resolution Overlay (Master Duel)** — Dedicated overlay with 3-card cascade (depth scaling + alternating rotateY). Numbered badges. Rhythmic appear/disappear during construction and resolution. The player sees progression without reading text
 4. **Room Code Lobby (Dueling Nexus)** — Create room → code 4-6 chars → copy/share → opponent pastes code → duel. The simplest lobby pattern that exists on web
 5. **Dual Timer Display (Chess.com)** — Both timers (or LP in our case) visible simultaneously, positioned symmetrically. Player compares at a glance
 6. **Inspector + Prompt Coexistence** — Inspector and active prompt must coexist on screen simultaneously. Tapping a board card opens inspector as an overlay (full variant ≥768px, compact variant <768px) WITHOUT dismissing the current prompt. The player needs to read opponent's effects while a SELECT_CARD prompt is active — this is the handtrap decision moment. On mobile with active prompt: inspector enters compact mode (card art miniature + name + type + ATK/DEF only). Tap compact inspector to expand (temporarily hides prompt dialog, not dismisses it)
@@ -225,7 +225,7 @@ The activation toggle is a **client-side-only** UI control (no server interactio
 | **Adopt** | Master Duel board layout | CSS perspective container + identical zone layout | PvP-A |
 | **Adopt** | Master Duel activation toggle | Auto/On/Off, bottom-right (mini-toolbar, thumb zone) | PvP-A |
 | **Adopt** | Dueling Nexus lobby simplicity | Room code, 3-tap flow | PvP-B |
-| **Adapt** | Master Duel chain viz | Numbered links but condensed timing (<200ms/link vs ~2s) | PvP-A (no-op) → PvP-C (animated) |
+| **Adapt** | Master Duel chain viz | Chain overlay with 3-card cascade, condensed timing (<400ms/link vs ~2s). CSS `perspective` + `rotateY` + `scale` for depth effect | PvP-A |
 | **Adopt** | Master Duel floating dialog prompts | Centered floating dialog (50% viewport width) with MSG_HINT context. Right-click = cancel on desktop | PvP-A |
 | **Adapt** | Chess.com dual timer | Dual LP + timer display, adapted to YGO format | PvP-A |
 | **Surpass** | EDOPro prompt coverage | Same exhaustiveness (20 types) but with mobile-first UI | PvP-A |
@@ -273,7 +273,7 @@ PvP tokens are namespaced as `--pvp-*` within the existing `_design-tokens.scss`
 
 1. **No new dependencies** — PvP uses Angular Material, CDK overlays, and standard CSS. No Three.js, no animation libraries, no new packages
 2. **Shared component library** — Card rendering, card inspector, zone components are shared between solo and PvP via `PlayerFieldComponent` extraction (architecture Story 0). **Story 0 is a blocking prerequisite** — without it, PvP cannot reuse zone components and would require duplication, doubling maintenance
-3. **PvP-specific components** — Prompt dialog, badge overlays (LP/timer/phase), activation toggle, chain link badges, duel result overlay. These are PvP-only Angular components
+3. **PvP-specific components** — Prompt dialog, badge overlays (LP/timer/phase), activation toggle, chain overlay, duel result overlay. These are PvP-only Angular components
 4. **Design tokens in CSS custom properties** — All PvP-specific values as `--pvp-*` custom properties in the `// === PvP tokens ===` section of `_design-tokens.scss`
 
 ### Customization Strategy
@@ -313,7 +313,7 @@ The PvP experience has two defining moments: the social entry (share a room code
 | Prompt comprehension | <2s from prompt display to understanding | Player never asks "what is this asking?" |
 | Response speed | 1-2 taps to answer any prompt | All prompt UIs require ≤2 taps |
 | Visual feedback | Every state change has visible transition | No "teleporting" cards or silent LP changes |
-| Chain clarity | Player identifies which card resolves at any point | Numbered chain links + highlight on resolving card |
+| Chain clarity | Player identifies which card resolves at any point | Chain overlay with 3-card cascade, numbered badges, golden glow on resolving card |
 | Duel result | Player understands why the duel ended | Win condition reason on result screen |
 | Rematch intent | Player wants to immediately replay | Rematch button 1-tap on result screen. Reuses existing room if opponent still connected; creates new room with shareable code if opponent left |
 
@@ -321,7 +321,7 @@ The PvP experience has two defining moments: the social entry (share a room code
 
 **Only one novel pattern**: Inspector + prompt coexistence on mobile. No competitor (Master Duel, EDOPro, Dueling Nexus) allows reading a card's full details while an interactive prompt is active on mobile. This is skytrix's primary UX differentiator for PvP.
 
-All other patterns are established (floating dialog prompts, activation toggle, numbered chain links, room code lobby, dual timer/LP) — adopted or adapted from proven products.
+All other patterns are established (floating dialog prompts, activation toggle, chain resolution overlay, room code lobby, dual timer/LP) — adopted or adapted from proven products.
 
 ### 2.5 Experience Mechanics
 
@@ -330,7 +330,7 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 **Phase 0 — Observation (Spectator Mode)**
 
 - **When:** Opponent's turn, chain resolutions the player didn't initiate, engine-driven state changes
-- **Player sees:** Cards moving, effects resolving, LP changing, chain links appearing
+- **Player sees:** Cards moving, effects resolving, LP changing, chain overlay appearing/disappearing
 - **Player does:** Consults inspector (tap opponent's cards to read effects), builds mental model of game state, prepares handtrap decisions
 - **System provides:** Animation queue playback (no-op in PvP-A, visual polish in PvP-C), continuous board state updates via WebSocket
 - **Emotion:** Tension — "what is my opponent doing? Should I respond?"
@@ -373,7 +373,9 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 |-------|-------|-------|----------|----------------|
 | `--pvp-highlight-selectable` | `rgba(0, 212, 255, 0.3)` | Selectable zone/card glow during prompts (cyan) | N/A (glow) | Locked |
 | `--pvp-highlight-selected` | `rgba(0, 212, 255, 0.6)` | Confirmed selection highlight (intensified cyan) | N/A (glow) | Locked |
-| `--pvp-highlight-chain-link` | `#4a90d9` | Chain link badge background (blue, like Master Duel) | ~5.2:1 (AA) | Locked |
+| `--pvp-chain-badge-bg` | `#4a90d9` | Chain overlay badge background (blue, like Master Duel) | ~5.2:1 (AA) | Locked |
+| `--pvp-chain-overlay-backdrop` | `rgba(0, 0, 0, 0.6)` | Chain overlay backdrop | N/A (surface) | Tunable |
+| `--pvp-chain-glow-resolving` | `rgba(255, 215, 0, 0.6)` | Golden glow on resolving card | N/A (glow) | Locked |
 | `--pvp-timer-green` | `#4caf50` | Timer text — comfortable time remaining (>120s) | ~5.6:1 (AA) | Locked |
 | `--pvp-timer-yellow` | `#ff9800` | Timer text — ≤60s remaining | ~6.4:1 (AA) | Locked |
 | `--pvp-timer-red` | `#f44336` | Timer text — ≤30s remaining (no flashing, color only) | ~5.1:1 (AA) | Locked |
@@ -383,7 +385,7 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 | `--pvp-lp-own` | `#f1f5f9` | Own LP display (primary text) | ~15.4:1 (AAA) | Locked |
 | `--pvp-lp-opponent` | `#f1f5f9` | Opponent LP display (primary text — differentiation by position, not color) | ~15.4:1 (AAA) | Locked |
 
-**Color Rule (PvP):** Same as solo — maximum 3 active highlight colors at any moment. During prompts: cyan selectable + cyan selected. During chain resolution: blue chain links + cyan resolving card. Never both simultaneously.
+**Color Rule (PvP):** Same as solo — maximum 3 active highlight colors at any moment. During prompts: cyan selectable + cyan selected. During chain resolution: chain overlay with blue badges + golden resolving glow (overlay is separate from board, no color conflict). Never prompts and chain overlay simultaneously.
 
 ### Typography System
 
@@ -397,10 +399,10 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 | Prompt context (MSG_HINT) | `0.875rem` | 400 | Effect description in floating dialog — body text size |
 | Prompt card name | `0.9375rem` | 600 | Card name in prompt — slightly larger than body |
 | Prompt action button | `0.875rem` | 500 | "Yes" / "No" / "Activate" / "Cancel" buttons |
-| Chain link badge | `0.75rem` | 700 | Numbered chain badge on cards (bold, white on blue) |
+| Chain overlay badge | `0.875rem` | 700 | Numbered chain badge in overlay (bold, white on blue, larger than old on-card badge) |
 | Activation toggle | `0.6875rem` | 500 | Auto/On/Off label — small, persistent, non-intrusive |
 
-**Unit Rule:** Elements outside the perspective container (LP, timer, prompts, hand) use `rem`. Elements inside the perspective container (chain link badges, zone highlights, card overlays) use card-relative units (`em` / `%`) so they scale with the board transform.
+**Unit Rule:** Elements outside the perspective container (LP, timer, prompts, hand, chain overlay) use `rem`. Elements inside the perspective container (zone highlights, card overlays) use card-relative units (`em` / `%`) so they scale with the board transform.
 
 **Typography Principle (PvP):** LP and timer are the only persistent large text on the board. All other text lives in overlays (prompts, inspector). The PvP board is even more minimal than solo — no zone labels, no pill text. Card art and position convey everything.
 
@@ -445,7 +447,7 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 **Contrast Compliance (PvP-specific):**
 - All PvP color tokens verified ≥ WCAG AA (4.5:1 for text, 3:1 for UI components)
 - Timer color states all exceed AA (see color table)
-- Chain link badge: white `#ffffff` on `#4a90d9` = ~3.4:1 (AA for large text / UI components)
+- Chain overlay badge: white `#ffffff` on `#4a90d9` = ~3.4:1 (AA for large text / UI components). Overlay backdrop (`rgba(0,0,0,0.6)`) ensures card art readability
 
 **Perspective:** No automatic performance gate (ADR-R5). CSS `perspective` + `rotateX` is compositor-only — negligible GPU cost. Enabled by default on all devices. If real performance issues are observed, a flat 2D fallback can be added later (YAGNI).
 
@@ -461,9 +463,9 @@ The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation
 | **Perspective z-fighting** | No visual flickering between overlapping surfaces inside the perspective container | PvP-A |
 | **Dialog + hand coexistence** | Player hand must remain visible when a floating prompt dialog is active (dialog centered on board, hand at bottom edge) | PvP-A |
 | **Dialog scroll on iOS** | Scrollable content inside floating dialog (card strip horizontal scroll) must scroll fluidly on iOS Safari | PvP-A |
-| **Badge vs chain link overlap** | LP/timer badges must never visually overlap with chain link badges (inside perspective) | PvP-A |
+| **Chain overlay z-order** | Chain overlay must appear above board but below prompts and result overlay. Overlay must not block prompt interaction (pointer-events: none) | PvP-A |
 | **Timer readability** | Timer text must remain readable regardless of board card artwork behind it (background pill required) | PvP-A |
-| **Chain badge min size** | Chain link badge number must remain readable on opponent's foreshortened cards (minimum 20px) | PvP-A |
+| **Chain overlay mobile readability** | Chain overlay card art and badge numbers must remain readable on mobile landscape (~844×390px). Cards use hand-card sizing | PvP-A |
 | **clamp() fallback** | All `clamp()` values must have a fixed fallback declaration for pre-2020 browsers | PvP-A |
 
 ### Competitive Visual Benchmarking
@@ -495,7 +497,18 @@ Consolidated reference of all `--pvp-*` tokens for developer implementation:
 | `--pvp-field-gap` | `0.25rem` | layout | Tunable |
 | `--pvp-hand-card-height` | `clamp(48px, 12dvh, 72px)` | layout | Tunable |
 | `--pvp-hand-overlap` | `30%` | layout | Tunable |
-| `--pvp-highlight-chain-link` | `#4a90d9` | color | Locked |
+| `--pvp-chain-badge-bg` | `#4a90d9` | color | Locked |
+| `--pvp-chain-badge-color` | `#fff` | color | Locked |
+| `--pvp-chain-badge-size` | `28px` | layout | Locked |
+| `--pvp-chain-card-perspective` | `800px` | layout | Tunable |
+| `--pvp-chain-card-rotate-y` | `8deg` | layout | Tunable |
+| `--pvp-chain-card-scale-back` | `0.70` | layout | Tunable |
+| `--pvp-chain-card-scale-front` | `1.00` | layout | Locked |
+| `--pvp-chain-card-scale-mid` | `0.85` | layout | Tunable |
+| `--pvp-chain-glow-resolving` | `rgba(255, 215, 0, 0.6)` | color | Locked |
+| `--pvp-chain-link-color` | `#8a9bb5` | color | Tunable |
+| `--pvp-chain-overlay-backdrop` | `rgba(0, 0, 0, 0.6)` | color | Tunable |
+| `--pvp-chain-overlay-transition` | `300ms` | animation | Tunable |
 | `--pvp-highlight-selectable` | `rgba(0, 212, 255, 0.3)` | color | Locked |
 | `--pvp-highlight-selected` | `rgba(0, 212, 255, 0.6)` | color | Locked |
 | `--pvp-lp-font-size` | `clamp(1rem, 4dvh, 1.5rem)` | typography | Locked |
@@ -642,7 +655,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Opponent activates effect\nChain link badge appears on card"] --> B["SELECT_YESNO prompt:\n'Activate [handtrap]?'"]
+    A["Opponent activates effect\nChain overlay appears with card cascade"] --> B["SELECT_YESNO prompt:\n'Activate [handtrap]?'"]
     B --> C{"Player needs to\nread opponent's card?"}
     C -- Yes --> D["Tap opponent's card on board"]
     D --> E{"Inspector already\nexpanded?"}
@@ -656,7 +669,7 @@ flowchart TD
     J --> K["Player decides"]
     C -- No --> K
     K --> L{"Activate?"}
-    L -- Yes --> M["Tap 'Yes' → chain link added\nDecision rush emotion"]
+    L -- Yes --> M["Tap 'Yes' → chain overlay shows new link\nDecision rush emotion"]
     L -- No --> N["Tap 'No' → opponent's effect resolves"]
 ```
 
@@ -764,7 +777,7 @@ flowchart TD
 
 #### Component Inventory Overview
 
-**8 Custom PvP Components** + **6 Prompt Sub-Components** = 14 total units. Chain link visualization uses a CSS class (`.pvp-chain-badge`) rather than a dedicated component.
+**9 Custom PvP Components** + **6 Prompt Sub-Components** = 15 total units. Chain visualization uses a dedicated overlay component (`PvpChainOverlayComponent`).
 
 #### Duel View Layout — Full-Overlay Architecture
 
@@ -791,6 +804,7 @@ DuelPageComponent (position: fixed; inset: 0; 100dvw × 100dvh)
 │   └── PvpActivationToggleComponent
 ├── CardInspectorComponent (overlay, variant per breakpoint)
 ├── PvpPromptDialogComponent (position: absolute, centered on board, z-index overlay)
+├── PvpChainOverlayComponent (overlay, pointer-events: none — visual animation only)
 ├── PvpZoneBrowserOverlayComponent (overlay)
 └── PvpDuelResultOverlayComponent (overlay, highest z-index during duel end)
 ```
@@ -1168,25 +1182,102 @@ Phase transitions extracted from `SELECT_BATTLECMD` / `SELECT_IDLECMD` engine pr
 
 ---
 
-#### Chain Link Visualization (CSS class, not component)
+#### PvpChainOverlayComponent (dedicated overlay, not CSS class)
 
-Chain link numbers displayed as positioned badges inside the perspective container:
+A **full-screen non-interactive overlay** that manages the entire chain lifecycle: construction (FIFO) and resolution (LIFO). Replaces the previous `.pvp-chain-badge` CSS-only approach. The overlay makes **short rhythmic appearances** — the board remains visible between each appearance.
 
-```css
-.pvp-chain-badge {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--pvp-chain-badge-bg);
-  color: var(--pvp-chain-badge-color);
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--pvp-chain-badge-z);
-}
+`pointer-events: none` on the entire component — purely visual animation, no user interaction.
+
+**Position:** Fixed overlay outside the perspective container. Z-index: above board, below prompts and result overlay.
+
+**Visual Layout — 3-Card Cascade (Master Duel style):**
+
 ```
+┌──────────────────────────────────────────────┐
+│                   OVERLAY                     │
+│          ┌───────┐                            │
+│          │ Card  │  ← N-2 (smallest,          │
+│          │  N-2  │    rotateY(-8deg),          │
+│          │  [7]  │    scale(0.70))             │
+│          └───┬───┘                            │
+│           ⛓ │ chain connector (SVG/CSS)       │
+│              ├───────────┐                    │
+│              │  Card N-1 │ ← N-1 (medium,     │
+│              │   [8]     │   rotateY(+8deg),   │
+│              │           │   scale(0.85))      │
+│              └─────┬─────┘                    │
+│               ⛓   │ chain connector           │
+│         ┌──────────┴──────────┐               │
+│         │      Card N         │ ← Latest      │
+│         │       [9]           │   (largest,    │
+│         │   rotateY(-8deg)    │   scale(1.00)) │
+│         └─────────────────────┘               │
+│                                               │
+│  backdrop: rgba(0, 0, 0, 0.6)                │
+└──────────────────────────────────────────────┘
+```
+
+**CSS Transform Properties per Position:**
+
+| Position | `scale()` | `rotateY()` | `opacity` | `z-index` |
+|----------|-----------|-------------|-----------|-----------|
+| **N-2** (back) | `0.70` | Even index: `+8deg`, Odd: `-8deg` | `0.7` | `1` |
+| **N-1** (middle) | `0.85` | Even index: `+8deg`, Odd: `-8deg` | `0.85` | `2` |
+| **N** (front) | `1.00` | Even index: `+8deg`, Odd: `-8deg` | `1.0` | `3` |
+
+`perspective(800px)` on the overlay card container. Parity is based on `chainIndex`: even = right (+Y), odd = left (-Y). Maximum 3 cards visible — older cards exit upward with `opacity → 0`.
+
+**Chain Connectors:** SVG inline between cards (metallic chain link motif, positioned absolute, dynamic length) or CSS fallback (`border-left: 3px dashed var(--pvp-chain-link-color)` + chain icon endpoints).
+
+**Phase: Construction (FIFO) — MSG_CHAINING events:**
+
+| Event | Animation | Duration |
+|-------|-----------|----------|
+| **Chainlink 1** | Overlay fade-in + backdrop. Card enters from bottom: `scale(0) → 1.0` + `rotateY`. Badge [1] appears | 400ms |
+| **Chainlink 2+** | Overlay reappears. Existing cards shift up and shrink (scale transition to new position). New card enters at front position. Chain connector extends | 400ms |
+| **Between chainlinks** | Overlay fade-out → board visible | 300ms pause |
+
+**Phase: Resolution (LIFO) — MSG_CHAIN_SOLVING / MSG_CHAIN_SOLVED events:**
+
+| Event | Animation | Duration |
+|-------|-----------|----------|
+| **MSG_CHAIN_SOLVING (link N)** | Overlay appears. Front card pulses (`scale 1.0 → 1.1 → 1.0`) + golden glow. Badge [N] glows | 300ms |
+| **MSG_CHAIN_SOLVED (link N)** | Front card exits (slide-out + fade). Remaining cards shift down and grow (position promotion) | 300ms |
+| **Board changed** (delta detected) | Overlay fade-out → player sees board impact (destruction, summon, GY send…) | 500ms pause |
+| **Board unchanged** | Direct transition to next link resolution — no fade-out | 0ms |
+| **MSG_CHAIN_END** | Final overlay fade-out | 200ms |
+
+**Board Change Detection:** The animation orchestrator counts board-changing events (`MSG_MOVE`, `MSG_DAMAGE`, `MSG_RECOVER`, etc.) between `MSG_CHAIN_SOLVING` and `MSG_CHAIN_SOLVED`. If any board events occurred → pause overlay to show board. If none → chain next resolution immediately. No snapshot diffing needed — the event stream provides the data directly.
+
+**Auto-Resolve Acceleration:** When no prompt interrupts the chain (both players' triggers auto-skipped): construction animation 400ms → 250ms, resolution animation 300ms → 150ms, board-changed pause 500ms → 300ms. `prefers-reduced-motion: reduce` → all durations 0ms, overlay shows static card positions briefly then disappears.
+
+**Design Tokens:**
+
+```scss
+// === Chain Overlay tokens ===
+--pvp-chain-overlay-backdrop: rgba(0, 0, 0, 0.6);
+--pvp-chain-overlay-transition: 300ms;
+--pvp-chain-card-perspective: 800px;
+--pvp-chain-card-rotate-y: 8deg;
+--pvp-chain-card-scale-back: 0.70;
+--pvp-chain-card-scale-mid: 0.85;
+--pvp-chain-card-scale-front: 1.00;
+--pvp-chain-badge-bg: #4a90d9;
+--pvp-chain-badge-color: #fff;
+--pvp-chain-badge-size: 28px;
+--pvp-chain-link-color: #8a9bb5;
+--pvp-chain-glow-resolving: rgba(255, 215, 0, 0.6);
+```
+
+**Inputs:** `activeChainLinks: ChainLinkState[]`, `phase: 'building' | 'resolving'`
+**Outputs:** `overlayDismissed` (signals parent that board is visible between appearances)
+
+**Accessibility:**
+- `role="status"` + `aria-live="polite"` on container
+- Announcements: "Chain Link N: [card name] added" / "Chain Link N resolving" / "Chain Link N resolved"
+- `prefers-reduced-motion: reduce` → no rotateY, no scale animation, instant transitions
+
+**Mobile:** Cards use hand-card size (readable on mobile). Backdrop ensures readability on small screens. No touch interaction — overlay is visual narration only.
 
 ---
 
@@ -1304,7 +1395,7 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 ### Component Implementation Strategy
 
 **Token Architecture:** All PvP component tokens namespaced `--pvp-*` in `_design-tokens.scss`:
-- **Locked tokens:** `--pvp-chain-badge-size: 24px`, `--pvp-min-touch-target: 44px`
+- **Locked tokens:** `--pvp-chain-badge-size: 28px`, `--pvp-chain-card-scale-front: 1.00`, `--pvp-min-touch-target: 44px`
 - **Tunable tokens:** `--pvp-perspective-depth: 800px`, `--pvp-rotate-x-angle: 15deg`, `--pvp-perspective-enabled: 1`, `--pvp-prompt-dialog-width: 50dvw`, `--pvp-prompt-dialog-bg`, `--pvp-prompt-dialog-radius`, `--pvp-timer-green`, `--pvp-timer-yellow`, `--pvp-timer-red`, `--pvp-selection-glow`, `--pvp-disabled-opacity: 0.6`
 
 **CDK Portal Pattern:** `PvpPromptDialogComponent` uses `<ng-template cdkPortalOutlet>` to inject the active prompt sub-component. On prompt resolution, the portal outlet is cleared. During consecutive prompts, the dialog transitions (sub-component swap) without closing.
@@ -1344,10 +1435,11 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 
 **PvP-C — Visual Polish (no new components):**
 
-- Chain link animation (`.pvp-chain-badge` entrance/exit)
 - LP counter effects (LpBadge animation)
 - Card movement transitions (board animations)
 - Prompt dialog opening/closing polish
+
+> **Note:** Chain overlay animations are PvP-A scope (structural component, not polish). `PvpChainOverlayComponent` is built in PvP-A alongside the chain message handling.
 
 ## UX Consistency Patterns
 
@@ -1470,10 +1562,10 @@ Cards displayed inside `PromptCardGridComponent` use tap for **selection**. To i
 | Event | Feedback | Duration | LiveAnnouncer |
 |-------|----------|----------|---------------|
 | Card played | Card movement animation (PvP-C polish) | 300ms | "Opponent normal summoned [card name]" |
-| Effect activated | Zone glow + chain badge appears | 500ms | "Chain Link N: [effect name] activated" |
+| Effect activated (chain building) | Chain overlay appears with card cascade + badge. Overlay fades out between chainlinks | 400ms appear + 300ms pause | "Chain Link N: [effect name] activated" |
 | LP change | LP counter animates to new value (PvP-C) | 400ms | "Your LP: [value]. Opponent LP: [value]" |
 | Phase change | PvpPhaseBadgeComponent updates | Instant + 200ms highlight | "Battle Phase" / "Main Phase 2" |
-| Chain resolving | Chain badges decrement sequentially | 300ms per link | "Chain Link N resolving" |
+| Chain resolving | Chain overlay shows cascade, front card pulses + golden glow, then exits. Overlay pauses if board changed | 300ms resolve + 500ms board pause | "Chain Link N resolving" |
 
 #### System Feedback (text notification)
 
@@ -1493,16 +1585,16 @@ Cards displayed inside `PromptCardGridComponent` use tap for **selection**. To i
 
 #### Animation Choreography
 
-**Chain Resolution (sequential):**
-- Each chain link: badge decrement animation (300ms) → effect animation → result (LP change, etc.)
-- Inter-link gap: 200ms
-- Total for 5-link chain: ~2.5s at normal speed
+**Chain Resolution (sequential via PvpChainOverlayComponent):**
+- **Construction phase:** Each chainlink: overlay appears (400ms) → card cascade animation → overlay fades out (300ms pause) → board visible → next chainlink
+- **Resolution phase:** Each chainlink: overlay appears → front card pulses + golden glow (300ms) → card exits (300ms) → if board changed: overlay fades out (500ms pause, board visible) → next link. If board unchanged: direct transition (0ms)
+- Total for 5-link chain construction: ~3.5s. Resolution: ~3-5s depending on board changes
 
 **Auto-Resolve Acceleration:** When no prompt interrupts the chain (both players' triggers auto-skipped):
-- Reduce inter-link gap: 200ms → 100ms
-- Reduce animation per link: 300ms → 150ms
-- 10 links = 2.5s instead of 5s
-- `prefers-reduced-motion: reduce` → instant (0ms), badges appear/disappear immediately
+- Construction: 400ms → 250ms appear, 300ms → 150ms pause
+- Resolution: 300ms → 150ms per link, 500ms → 300ms board pause
+- 10 links = ~4s instead of ~8s
+- `prefers-reduced-motion: reduce` → instant (0ms), overlay shows static positions briefly
 - When a prompt interrupts the chain (active trigger), revert to normal timing
 
 **Inter-Prompt Gap:** Minimum 300ms between prompt resolution and next prompt appearance. During `transitioning` state, this gap is the swap animation duration — the player perceives continuity, not silence.
@@ -1672,7 +1764,7 @@ When `PromptCardGridComponent` receives >12 eligible cards:
 
 #### Reduced Motion (prefers-reduced-motion: reduce)
 
-- Chain badge: appear/disappear instantly (no entrance/exit animation)
+- Chain overlay: no rotateY, no scale animation, no cascade transition — overlay shows static card positions briefly then disappears
 - Dialog: open/close/swap instantly (no slide animation)
 - LP counter: snap to value (no counting animation)
 - Card movement: instant position change (no transition)
@@ -1836,13 +1928,13 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 **Screen Reader (LiveAnnouncer):**
 - All game events, prompt arrivals, timer warnings, duel results announced (see Accessibility Patterns in UX Consistency Patterns section)
 - Connection state changes announced immediately
-- **Chain resolution coalescing:** During accelerated chain resolution (Auto-Resolve, no prompt interrupt), buffer individual announcements. Flush a single summary at the end: "Chain of N links resolved. Your LP: [value]. Opponent LP: [value]." If a prompt interrupts the chain mid-resolution, flush the buffer immediately before announcing the prompt. Prevents screen reader queue overflow (20+ messages in 2s)
+- **Chain resolution coalescing:** During accelerated chain resolution (Auto-Resolve, no prompt interrupt), buffer individual announcements. Flush a single summary at the end: "Chain of N links resolved. Your LP: [value]. Opponent LP: [value]." If a prompt interrupts the chain mid-resolution, flush the buffer immediately before announcing the prompt. Prevents screen reader queue overflow (20+ messages in 2s). Chain overlay animations are visual-only and do not trigger additional announcements beyond the coalesced summary
 
 **Collapse Handle Accessibility:** See `PvpPromptDialogComponent` spec for `aria-label` toggling ("Collapse prompt" / "Expand prompt"), `aria-expanded` state, and `C` keyboard shortcut. Not duplicated here — single source of truth in component spec.
 
 **Reduced Motion (`prefers-reduced-motion: reduce`):**
 - All animations snap to final state (0ms duration)
-- Chain badges: appear/disappear instantly
+- Chain overlay: static positions, no cascade/rotate/scale animation, instant show/hide
 - Dialog: open/close/swap instantly
 - LP counter: snap to value
 - Card movement: instant position change

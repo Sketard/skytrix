@@ -23,6 +23,8 @@ export interface CardAction {
   actionCode: number;
   index: number;
   description?: string;
+  cardName?: string;
+  cardCode?: number;
   children?: CardAction[];
 }
 
@@ -37,7 +39,7 @@ function addToActionMap(
   cards.forEach((card, idx) => {
     const key = `${card.location}-${card.sequence}`;
     if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push({ label, actionCode, index: idx, description: card.description });
+    map.get(key)!.push({ label, actionCode, index: idx, description: card.description, cardName: card.name, cardCode: card.cardCode });
   });
 }
 
@@ -92,4 +94,27 @@ export function isActivateAction(actionCode: number, promptType: 'SELECT_IDLECMD
   return promptType === 'SELECT_IDLECMD'
     ? actionCode === IDLE_ACTION.ACTIVATE || actionCode === IDLE_ACTION.SPECIAL_SUMMON
     : actionCode === BATTLE_ACTION.ACTIVATE;
+}
+
+/**
+ * Groups pile actions by action type. Each group becomes a single entry
+ * whose children are the individual cards that can perform that action.
+ * Always uses children (even for a single card) so the prompt opens.
+ */
+export function groupPileActions(actions: CardAction[]): CardAction[] {
+  const groups = new Map<string, CardAction[]>();
+  for (const action of actions) {
+    if (!groups.has(action.label)) groups.set(action.label, []);
+    groups.get(action.label)!.push(action);
+  }
+  const result: CardAction[] = [];
+  for (const [label, entries] of groups) {
+    result.push({
+      label,
+      actionCode: entries[0].actionCode,
+      index: -1,
+      children: entries,
+    });
+  }
+  return result;
 }

@@ -17,14 +17,50 @@
 .card-strip__inner {
   display: flex;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  padding-top: 28px; // room for badge overhang
 }
 
 .card-strip {
   display: flex;
   flex-shrink: 0;
   margin: 0 auto;
+  gap: 8px;
+}
+
+// Zone group: badge + cards wrapped in a bordered container (Master Duel style)
+.zone-group {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  border-radius: 0 var(--pvp-radius-md) var(--pvp-radius-md) var(--pvp-radius-md);
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.zone-group__badge {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: var(--pvp-radius-md) var(--pvp-radius-md) 0 0;
+}
+
+.zone-group__icon {
+  width: 24px;
+  height: 24px;
+  opacity: 1;
+  filter: brightness(0) invert(1);
+}
+
+.zone-group__cards {
+  display: flex;
 }
 
 .card-slot {

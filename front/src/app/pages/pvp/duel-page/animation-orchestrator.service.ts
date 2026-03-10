@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { effect, Injectable, Injector, signal, untracked } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
 import type { GameEvent } from '../types';
@@ -8,11 +8,52 @@ import { locationToZoneId } from '../pvp-zone.utils';
 import { DuelWebSocketService } from './duel-web-socket.service';
 
 /**
- * Manages the animation queue processing pipeline for the duel page.
- * Owns LP tracking, zone animation state, queue collapse logic (AC7),
- * speed multiplier (AC8), and the lazy CSS token reader for LP counter duration.
- *
+ * Central animation queue processor for the duel page.
  * Provided at component level (NOT root).
+ *
+ * ## Role in the chain animation protocol
+ *
+ * Three layers collaborate for chain animations:
+ *   DuelConnection (data) → AnimationOrchestrator (timing) → PvpChainOverlay (visuals)
+ *
+ * This service is the timing layer. It dequeues events one-by-one from the animation queue
+ * and controls WHEN signal mutations happen, ensuring the overlay sees state changes at the
+ * right moment for animations.
+ *
+ * ## Chain resolution flow (per link)
+ *
+ *   1. Queue yields MSG_CHAIN_SOLVING(N)
+ *      → calls applyChainSolving() which sets chainPhase='resolving' + marks link N as resolving
+ *      → returns 600ms (pulse glow time)
+ *
+ *   2. Queue yields board-changing events (MSG_MOVE, MSG_DAMAGE, etc.)
+ *      → processed normally, _boardEventsSinceSolving tracks count
+ *
+ *   3. Queue yields MSG_CHAIN_SOLVED(N)
+ *      → calls applyChainSolved() which removes link N from activeChainLinks
+ *      → sets chainOverlayBoardChanged based on whether board events occurred
+ *      → returns 'async' — queue PAUSES, _waitingForOverlay = true
+ *
+ *   4. Overlay animates: exit card → cascade → board change pause (if needed)
+ *      → sets chainOverlayReady = true
+ *
+ *   5. Resume effect detects chainOverlayReady → resumes queue processing
+ *
+ *   6. Queue yields MSG_CHAIN_END
+ *      → calls applyChainEnd() which sets chainPhase='idle' + clears all links
+ *      → returns 400ms, then queue goes idle
+ *
+ * ## Queue collapse (AC7)
+ *
+ * When queue length > 5, all but the last 3 events are instantly applied (no animation).
+ * Chain resolution events (CHAIN_SOLVING/SOLVED/END) are exempt — they need the async
+ * overlay contract to work correctly.
+ *
+ * ## Other responsibilities
+ * - LP tracking (trackedLp) with animated counter via baseLpDuration CSS token
+ * - Zone animation signals (summon/destroy/flip/activate glow)
+ * - Speed multiplier (AC8) applied to all sync durations
+ * - Chain acceleration detection (AC5): ≥3 solved without prompt → faster animations
  */
 @Injectable()
 export class AnimationOrchestratorService {
@@ -27,6 +68,29 @@ export class AnimationOrchestratorService {
   } | null>(null);
 
   readonly animatingLpPlayer = signal<LpAnimData | null>(null);
+
+  // --- Chain overlay async contract (see class doc "Chain resolution flow") ---
+  /** Set to false by overlay on CHAIN_SOLVED, back to true after exit anim + board pause. */
+  readonly chainOverlayReady = signal<boolean>(true);
+  /** Whether board-changing events occurred between CHAIN_SOLVING and CHAIN_SOLVED. */
+  readonly chainOverlayBoardChanged = signal<boolean>(false);
+
+  /** True while the overlay entry animation is playing (gates SELECT_CHAIN in visiblePrompt). */
+  readonly chainEntryAnimating = signal<boolean>(false);
+
+  // --- Story 6.3 AC5: Auto-resolve acceleration ---
+  readonly chainAccelerated = signal<boolean>(false);
+  private _chainSolvedCount = 0;
+  private _promptDuringChain = false;
+
+  /** Board-changing events that increment the counter during chain resolution */
+  private static readonly BOARD_CHANGING_EVENTS = new Set([
+    'MSG_MOVE', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST', 'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS',
+  ]);
+
+  private _waitingForOverlay = false;
+  private _insideChainResolution = false;
+  private _boardEventsSinceSolving = 0;
 
   // --- Internal state ---
   private trackedLp: [number, number] = [8000, 8000];
@@ -59,18 +123,33 @@ export class AnimationOrchestratorService {
     liveAnnouncer: LiveAnnouncer;
     ownPlayerIndex: () => number;
     speedMultiplier: () => number;
+    injector: Injector;
   }): void {
     this.wsService = config.wsService;
     this.liveAnnouncer = config.liveAnnouncer;
     this.ownPlayerIndexFn = config.ownPlayerIndex;
     this.speedMultiplierFn = config.speedMultiplier;
+
+    // Resume effect: when overlay signals ready, resume queue processing
+    effect(() => {
+      const ready = this.chainOverlayReady();
+      untracked(() => {
+        if (ready && this._isAnimating() && this._waitingForOverlay) {
+          this._waitingForOverlay = false;
+          this.processAnimationQueue();
+        }
+      });
+    }, { injector: config.injector });
   }
 
   /** Called by the animation queue watcher effect in the component. */
   startProcessingIfIdle(): void {
     if (!this._isAnimating()) {
+      console.log('[ORCH-DBG] startProcessingIfIdle → starting');
       this._isAnimating.set(true);
       this.processAnimationQueue();
+    } else {
+      console.log('[ORCH-DBG] startProcessingIfIdle → already animating, waitingForOverlay=%s', this._waitingForOverlay);
     }
   }
 
@@ -87,10 +166,17 @@ export class AnimationOrchestratorService {
     return [...this.trackedLp] as [number, number];
   }
 
+  /** Notify the orchestrator that a prompt interrupted the chain. */
+  notifyPromptDuringChain(): void {
+    this._promptDuringChain = true;
+    this.chainAccelerated.set(false);
+  }
+
   /** Clean up all pending animation timeouts. */
   destroy(): void {
     this.animationTimeouts.forEach(t => clearTimeout(t));
     this.animationTimeouts = [];
+    this.resetChainState();
   }
 
   /** Reset animation state for solo mode player switch. */
@@ -98,8 +184,20 @@ export class AnimationOrchestratorService {
     this.animationTimeouts.forEach(t => clearTimeout(t));
     this.animationTimeouts = [];
     this._isAnimating.set(false);
+    this.chainEntryAnimating.set(false);
     this.animatingZone.set(null);
     this.animatingLpPlayer.set(null);
+    this.resetChainState();
+  }
+
+  /** Centralized chain state reset — called from destroy, resetForSwitch, and MSG_CHAIN_END processing. */
+  private resetChainState(): void {
+    this._waitingForOverlay = false;
+    this._insideChainResolution = false;
+    this._boardEventsSinceSolving = 0;
+    this._chainSolvedCount = 0;
+    this._promptDuringChain = false;
+    this.chainAccelerated.set(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -110,7 +208,10 @@ export class AnimationOrchestratorService {
     const queue = this.wsService.animationQueue();
 
     // Queue collapse (AC7): if queue > 5, instantly process all but last 3
-    if (queue.length > 5) {
+    // Skip collapse when queue contains chain resolution events — these need the async overlay contract
+    if (queue.length > 5 && !queue.some(e =>
+      e.type === 'MSG_CHAIN_SOLVING' || e.type === 'MSG_CHAIN_SOLVED' || e.type === 'MSG_CHAIN_END'
+    )) {
       const collapseCount = queue.length - 3;
       for (let i = 0; i < collapseCount; i++) {
         const event = this.wsService.dequeueAnimation();
@@ -120,6 +221,7 @@ export class AnimationOrchestratorService {
 
     const event = this.wsService.dequeueAnimation();
     if (!event) {
+      console.log('[ORCH-DBG] Queue empty → isAnimating=false');
       this._isAnimating.set(false);
       this.animatingZone.set(null);
       this.animatingLpPlayer.set(null);
@@ -131,11 +233,18 @@ export class AnimationOrchestratorService {
       return;
     }
 
-    const duration = this.processEvent(event);
+    console.log('[ORCH-DBG] Processing event=%s queueRemaining=%d', event.type, this.wsService.animationQueue().length);
+    const result = this.processEvent(event);
+
+    if (result === 'async') {
+      // Orchestrator pauses until overlay signals ready via chainOverlayReady
+      this._waitingForOverlay = true;
+      return;
+    }
 
     // AC8: speed multiplier (0.5 when activation toggle is Off)
     const speedMultiplier = this.speedMultiplierFn();
-    const adjustedDuration = Math.round(duration * speedMultiplier);
+    const adjustedDuration = Math.round(result * speedMultiplier);
 
     const timeout = setTimeout(() => {
       this.animatingZone.set(null);
@@ -147,7 +256,12 @@ export class AnimationOrchestratorService {
     this.animationTimeouts.push(timeout);
   }
 
-  private processEvent(event: GameEvent): number {
+  private processEvent(event: GameEvent): number | 'async' {
+    // Track board-changing events between CHAIN_SOLVING and CHAIN_SOLVED (drives board pause in overlay)
+    if (this._insideChainResolution && AnimationOrchestratorService.BOARD_CHANGING_EVENTS.has(event.type)) {
+      this._boardEventsSinceSolving++;
+    }
+
     switch (event.type) {
       case 'MSG_MOVE':
         return this.processMoveEvent(event as MoveMsg);
@@ -181,21 +295,35 @@ export class AnimationOrchestratorService {
         const msg = event as ChainingMsg;
         const zoneId = locationToZoneId(msg.location, msg.sequence);
         if (zoneId) this.setAnimatingZone(zoneId, 'activate', msg.player);
-        return 300;
+        console.log('[ORCH-DBG] MSG_CHAINING chainIndex=%d → 1400ms', msg.chainIndex);
+        return 1400;
       }
       case 'MSG_CHAIN_SOLVING': {
         const msg = event as ChainSolvingMsg;
+        console.log('[ORCH-DBG] MSG_CHAIN_SOLVING chainIndex=%d → applyChainSolving + 600ms', msg.chainIndex);
         this.wsService.applyChainSolving(msg.chainIndex);
-        return 400;
+        this._insideChainResolution = true;
+        this._boardEventsSinceSolving = 0;
+        return 600;
       }
       case 'MSG_CHAIN_SOLVED': {
         const msg = event as ChainSolvedMsg;
+        console.log('[ORCH-DBG] MSG_CHAIN_SOLVED chainIndex=%d boardEvents=%d → async', msg.chainIndex, this._boardEventsSinceSolving);
         this.wsService.applyChainSolved(msg.chainIndex);
-        return 200;
+        this.chainOverlayBoardChanged.set(this._boardEventsSinceSolving > 0);
+        this._insideChainResolution = false;
+        // AC5: Track solved count for acceleration detection
+        this._chainSolvedCount++;
+        if (!this._promptDuringChain && this._chainSolvedCount >= 3) {
+          this.chainAccelerated.set(true);
+        }
+        return 'async';
       }
       case 'MSG_CHAIN_END':
+        console.log('[ORCH-DBG] MSG_CHAIN_END → applyChainEnd + resetChainState + 400ms');
         this.wsService.applyChainEnd();
-        return 0;
+        this.resetChainState();
+        return 400;
       // No-op events: dequeue immediately
       case 'MSG_DRAW':
       case 'MSG_SWAP':
@@ -271,8 +399,12 @@ export class AnimationOrchestratorService {
       this.trackedLp[idx] = (this.trackedLp[idx] ?? 8000) + msg.amount;
     } else if (event.type === 'MSG_CHAIN_SOLVING') {
       this.wsService.applyChainSolving((event as ChainSolvingMsg).chainIndex);
+      this._insideChainResolution = true;
+      this._boardEventsSinceSolving = 0;
     } else if (event.type === 'MSG_CHAIN_SOLVED') {
+      // Collapsed: bypass async overlay contract — just apply state
       this.wsService.applyChainSolved((event as ChainSolvedMsg).chainIndex);
+      this._insideChainResolution = false;
     } else if (event.type === 'MSG_CHAIN_END') {
       this.wsService.applyChainEnd();
     }

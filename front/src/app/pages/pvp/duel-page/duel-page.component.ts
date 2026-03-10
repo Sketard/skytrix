@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, Injector, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -15,7 +15,7 @@ import { NavbarCollapseService } from '../../../services/navbar-collapse.service
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import type { ConnectionStatus } from '../types';
-import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, PlaceOption, SelectBattleCmdMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
+import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, PlaceOption, SelectBattleCmdMsg, SelectCardMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
@@ -36,6 +36,7 @@ import { DebugLogService } from './debug-log.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { InactivityWarningDialogComponent } from './inactivity-warning-dialog.component';
+import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { environment } from '../../../../environments/environment';
 import './prompts/prompt-registry';
 
@@ -56,6 +57,7 @@ import './prompts/prompt-registry';
     MatButton, MatIcon, MatProgressSpinner,
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
     DebugLogPanelComponent,
+    PvpChainOverlayComponent,
   ],
 })
 export class DuelPageComponent implements OnInit {
@@ -77,6 +79,7 @@ export class DuelPageComponent implements OnInit {
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
+  private readonly injector = inject(Injector);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
   readonly isProduction = environment.production;
   readonly isSoloMode = signal(false);
@@ -128,6 +131,7 @@ export class DuelPageComponent implements OnInit {
   // Delegate card inspection signals to service
   readonly inspectedCard = this.cardInspection.inspectedCard;
   readonly inspectorForceExpanded = this.cardInspection.inspectorForceExpanded;
+  readonly getCardImageUrl = getCardImageUrlByCode;
 
   // Zone highlight (Pattern A — SELECT_PLACE / SELECT_DISFIELD)
   // Story 4.2 — All prompt-dependent computeds use visiblePrompt (drain coordination)
@@ -169,6 +173,24 @@ export class DuelPageComponent implements OnInit {
 
   // Effect sub-menu: shown when user clicks a grouped "Activate Effect" entry
   readonly effectSubMenu = signal<CardAction[] | null>(null);
+
+  // Pile card selection: synthetic prompt for choosing a card from a pile action group
+  readonly pilePrompt = signal<SelectCardMsg | null>(null);
+  private pileActions: CardAction[] = [];
+  private pilePromptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD' = 'SELECT_IDLECMD';
+
+  readonly effectivePrompt = computed(() => this.pilePrompt() ?? this.visiblePrompt());
+
+  readonly pileResponseHandler = (data: unknown) => {
+    const resp = data as { indices: number[] };
+    const idx = resp.indices?.[0];
+    const action = this.pileActions[idx];
+    if (action) {
+      this.wsService.sendResponse(this.pilePromptType, { action: action.actionCode, index: action.index });
+    }
+    this.pilePrompt.set(null);
+    this.pileActions = [];
+  };
 
   readonly menuDisplayActions = computed(() => {
     const menu = this.menuState();
@@ -344,13 +366,26 @@ export class DuelPageComponent implements OnInit {
   private previousChainLinksCount = 0;
 
   // Story 4.2 — Prompt drain: gate prompt display behind animation queue drain
+  // During chain building with pending cost, let cost prompts through immediately
+  // (the zone glow continues visually behind the prompt dialog).
+  // After cost paid, gate on chainEntryAnimating so the overlay entry animation
+  // plays before SELECT_CHAIN appears.
   readonly visiblePrompt = computed(() => {
     const animating = this.isAnimating();
+    const chainEntryAnim = this.animationService.chainEntryAnimating();
     const prompt = this.wsService.pendingPrompt();
-    if (animating && prompt && (prompt.type === 'SELECT_PLACE' || prompt.type === 'SELECT_DISFIELD')) {
-      console.log('[VISIBLE-PROMPT] SELECT_PLACE/DISFIELD blocked by animation — isAnimating=%s', animating);
+    const blocked = animating || chainEntryAnim;
+    if (!blocked) return prompt;
+    // During chain building with pending cost → let cost prompts through immediately
+    if (this.wsService.chainPhase() === 'building' && this.wsService.hasPendingChainEntry()) {
+      return prompt;
     }
-    return animating ? null : prompt;
+    if (prompt) {
+      console.log('[VISIBLE-PROMPT] BLOCKED prompt=%s isAnimating=%s chainEntryAnim=%s chainPhase=%s hasPending=%s queueLen=%d',
+        prompt.type, animating, chainEntryAnim, this.wsService.chainPhase(), this.wsService.hasPendingChainEntry(),
+        this.wsService.animationQueue().length);
+    }
+    return null;
   });
 
   constructor() {
@@ -361,6 +396,7 @@ export class DuelPageComponent implements OnInit {
       liveAnnouncer: this.liveAnnouncer,
       ownPlayerIndex: () => this.ownPlayerIndex(),
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
+      injector: this.injector,
     });
     this.cardInspection.init(this.cardDataCache);
 
@@ -712,6 +748,17 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
+    // Story 6.3 AC5 — Notify orchestrator when prompt interrupts chain resolution
+    effect(() => {
+      const prompt = this.wsService.pendingPrompt();
+      const chainPhase = this.wsService.chainPhase();
+      untracked(() => {
+        if (prompt && chainPhase === 'resolving') {
+          this.animationService.notifyPromptDuringChain();
+        }
+      });
+    });
+
     // Story 4.2 — Animation queue watcher: delegate to animation service
     effect(() => {
       const queue = this.wsService.animationQueue();
@@ -787,6 +834,13 @@ export class DuelPageComponent implements OnInit {
     this.wsService.sendRematchRequest();
   }
 
+  @HostListener('document:keydown', ['$event'])
+  onGlobalKeydown(event: KeyboardEvent): void {
+    if (event.key === 's' && this.isSoloMode() && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      this.switchPlayerWithTransition();
+    }
+  }
+
   switchPlayerWithTransition(): void {
     if (this.switching()) return;
     this.switching.set(true);
@@ -835,7 +889,31 @@ export class DuelPageComponent implements OnInit {
 
   onMenuAction(action: CardAction, event?: MouseEvent): void {
     if (action.children) {
-      // Stop propagation so the click-outside listener doesn't fire on the now-removed button
+      // Pile grouped actions (children with cardCode) → open prompt card grid
+      if (action.children[0]?.cardCode) {
+        const menu = this.menuState();
+        if (!menu) return;
+        this.pileActions = action.children;
+        this.pilePromptType = menu.promptType;
+        this.pilePrompt.set({
+          type: 'SELECT_CARD',
+          player: 0,
+          min: 1,
+          max: 1,
+          cancelable: true,
+          cards: action.children.map(c => ({
+            cardCode: c.cardCode!,
+            name: c.cardName ?? '',
+            player: 0 as Player,
+            location: 0 as any,
+            sequence: 0,
+            description: c.description,
+          })),
+        });
+        this.closeCardActionMenu();
+        return;
+      }
+      // Same-card effect grouping → sub-menu
       event?.stopPropagation();
       this.effectSubMenu.set(action.children);
       return;

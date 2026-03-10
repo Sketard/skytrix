@@ -1,0 +1,43 @@
+@if (activeChainLinks().length > 0) {
+  <div class="chain-overlay-container"
+       [class.chain-overlay--hidden]="promptActive() && phase() !== 'resolving'"
+       [class.visible]="overlayVisible()"
+       [style.--chain-resolve-pulse]="cssDurations().pulse"
+       [style.--chain-resolve-exit]="cssDurations().exit"
+       [style.--chain-entry-duration]="cssDurations().entry"
+       [style.--chain-overflow-duration]="cssDurations().overflow"
+       role="status"
+       aria-live="polite">
+    <div class="chain-overlay-backdrop"></div>
+    <div class="chain-card-container">
+      <!-- Exiting card (overflow or resolve-exit) -->
+      @if (exitingCard(); as exiting) {
+        <div class="chain-card"
+             [class.chain-card--exiting]="exiting.type === 'overflow'"
+             [class.chain-card--resolve-exiting]="exiting.type === 'resolved'">
+          <img class="chain-card__art"
+               [src]="getCardImageUrl(exiting.card.cardCode)"
+               [alt]="exiting.card.cardName"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'">
+          <span class="chain-badge">{{ exiting.card.chainIndex + 1 }}</span>
+        </div>
+      }
+
+      <!-- Visible cards (max 3) — cascade positions -->
+      @for (card of visibleCards(); track card.chainIndex; let i = $index) {
+        <div class="chain-card"
+             [class.chain-card--entering]="card.chainIndex === enteringCardIndex()"
+             [class.chain-card--resolving]="card.position === 'front' && phase() === 'resolving' && exitingCard()?.type !== 'resolved' && resolvingIndex() === card.chainIndex"
+             [class.chain-card--front]="card.position === 'front'"
+             [class.chain-card--mid]="card.position === 'mid'"
+             [class.chain-card--back]="card.position === 'back'">
+          <img class="chain-card__art"
+               [src]="getCardImageUrl(card.cardCode)"
+               [alt]="card.cardName"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'">
+          <span class="chain-badge">{{ card.chainIndex + 1 }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}

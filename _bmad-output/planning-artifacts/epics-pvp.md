@@ -131,12 +131,12 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 | FR14 | Epic 1 | Two-player board display (CSS 3D perspective) |
 | FR15 | Epic 1 | Private information hiding (message filter) |
 | FR16 | Epic 1 | LP display (both players) |
-| FR17 | Epic 4 | Chain visualization (numbered links) |
+| FR17 | Epic 6 ✅ | Chain visualization (overlay cascade) |
 | FR18 | Epic 1 | Card detail inspection (face-up/public zones) |
 | FR19 | Epic 1 | Turn indicator (visual + type of response expected) |
 | FR20 | Epic 3 | Turn timer (chess-clock cumulative pool) |
 | FR21 | Epic 3 | Inactivity timeout (100s forfeit) |
-| FR22 | Epic 4 | Visual feedback per game event (animations) |
+| FR22 | Epic 6 ✅ (partial) + Epic 7 | Visual feedback per game event — chain overlay + basic orchestration (Epic 6); card travel animations, buffer & replay, XYZ material visuals (Epic 7) |
 | FR23 | Epic 1 | Click-based interaction (not drag & drop) |
 | FR24 | Epic 3 | Duel result screen |
 | FR25 | Epic 1 | Activation toggle (Auto/On/Off) |
@@ -158,27 +158,31 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 
 ## Epic List
 
-### Epic 1: Core Online Duel
+### Epic 1: Core Online Duel ✅ COMPLETED
 Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore. Includes duel server scaffold + Docker, OCGCore integration (worker threads), WebSocket protocol + message filter, PlayerFieldComponent extraction (Story 0), board CSS 3D perspective (2 player fields), prompt handling (frequent SELECT_* types: IDLECMD, BATTLECMD, CARD, CHAIN, EFFECTYN, PLACE, POSITION — others fallback to auto-select), turn/phase management, LP tracking, win detection (LP=0 native OCGCore), hand display, card inspector adaptation, activation toggle, Spring Boot deck relay minimal.
 **FRs covered:** FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR18, FR19, FR23, FR25
 
-### Epic 2: Lobby & Matchmaking
+### Epic 2: Lobby & Matchmaking ✅ COMPLETED
 Players can create duel rooms from decklists, browse the lobby, join a room with a validated deck, and start duels through RPS. Includes room creation UI, deck validation (TCG format, banlist, size), room browsing/joining, waiting room (polling), RPS + turn order selection, deep link sharing, Web Share API, duel loading screen.
 **FRs covered:** FR1, FR2, FR3, FR4
 
-### Epic 3: Session Resilience & Duel Lifecycle
+### Epic 3: Session Resilience & Duel Lifecycle ✅ COMPLETED
 The PvP experience handles real-world conditions — surrender, disconnection/reconnection, turn timers, inactivity, and clear duel results with rematch. Includes surrender flow, disconnection handling (60s grace, snapshot reconnection), turn timer (chess-clock 300s + 40s/turn), inactivity timeout (100s), duel result screen (VICTORY/DEFEAT/DRAW + reason), rematch flow, app background recovery, single tab enforcement.
 **FRs covered:** FR5, FR6, FR7, FR20, FR21, FR24
 
-### Epic 4: Visual Polish & Chain Visualization
-The PvP experience reaches Master Duel visual quality with animations per game event, chain link visualization, and animation choreography. Includes chain link badges (numbered), visual feedback per game event (card movement, highlight, LP counter animation), FIFO animation queue (never-blocking), auto-resolve acceleration.
-**FRs covered:** FR17, FR22
-
-### Epic 5: Tech Debt Cleanup
+### Epic 5: Tech Debt Cleanup ✅ COMPLETED
 Technical debt accumulated across Epics 1–4 is resolved: card inspector PvP placeholder, reconnection edge cases (3-3b), room management fixes (RoomDTO deck ID, orphaned room cleanup), infrastructure improvements (Docker integration test, thumbnail pre-fetch).
 **FRs covered:** Debt resolution — no new FRs
 
-## Epic 1: Core Online Duel
+### Epic 6: Chain Overlay Refactoring ✅ COMPLETED
+Chain visualization refactored from simple on-card CSS badges to a dedicated full-screen overlay component matching Master Duel's chain cascade animation. Includes PvpChainOverlayComponent, AnimationOrchestratorService, async overlay contract, board-change detection, and acceleration features.
+**FRs covered:** FR17, FR22 (partial — chain visualization and basic animation orchestration)
+
+### Epic 7: Board Animations & Card Travel
+Board animations replace in-place glow effects with spatial card travel between zones, with buffer & replay during chain resolution, and visual enhancements for XYZ materials.
+**FRs covered:** FR22 (completion — card travel animations)
+
+## Epic 1: Core Online Duel ✅ COMPLETED
 
 Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore.
 
@@ -492,7 +496,7 @@ So that I can play a complete turn with full information and strategic control.
 **And** it is positioned `absolute, bottom-right` outside the CSS perspective container
 **And** both elements have `min-height: 44px` touch target
 
-## Epic 2: Lobby & Matchmaking
+## Epic 2: Lobby & Matchmaking ✅ COMPLETED
 
 Players can create duel rooms from decklists, browse the lobby, join a room with a validated deck, and start duels through RPS.
 
@@ -603,7 +607,7 @@ So that my friend can join instantly and I'm never confused by a blank screen.
 **And** if a thumbnail fails to load: card back is used as fallback
 **And** if 15 seconds pass without first board state arriving: display "Taking longer than expected..." + "Return to lobby" button
 
-## Epic 3: Session Resilience & Duel Lifecycle
+## Epic 3: Session Resilience & Duel Lifecycle ✅ COMPLETED
 
 The PvP experience handles real-world conditions — surrender, disconnection/reconnection, turn timers, inactivity, and clear duel results with rematch.
 
@@ -765,92 +769,7 @@ So that I know the outcome and can quickly play again.
 **Then** the room status transitions to `ENDED`
 **And** the result screen shows "Room closed" and only "Back to Lobby" / "Back to Deck" remain
 
-## Epic 4: Visual Polish & Chain Visualization
-
-The PvP experience reaches Master Duel visual quality with animations per game event, chain link visualization, and animation choreography.
-
-### Story 4.1: Chain Link Visualization
-
-As a player,
-I want to see numbered chain link badges on cards as effects are chained and resolved,
-So that I can follow the order of effect resolution during complex chains.
-
-**Acceptance Criteria:**
-
-**Given** the duel engine adds a chain link (MSG_CHAINING)
-**When** the client processes the message
-**Then** a CSS badge (`.pvp-chain-badge`) appears on the activating card's zone with the chain link number (1, 2, 3...)
-**And** the badge is 24px minimum, `border-radius: 50%`, background `--pvp-chain-badge-bg`, text `--pvp-chain-badge-text`
-**And** each new chain link adds a new badge on the corresponding card (multiple badges can coexist on the board)
-**And** if multiple chain links activate on the same card zone: badges are offset horizontally (4px each) with newest on top, max 3 visible + "+N" overflow indicator
-**And** the badge has `aria-label="Chain link [N]: [card name]"`
-
-**Given** chain links are displayed on the board
-**When** the chain begins resolving (MSG_CHAIN_SOLVING → MSG_CHAIN_SOLVED per link)
-**Then** the currently resolving link's badge pulses briefly (`--pvp-chain-resolve-pulse`, 200ms)
-**And** after resolution, the badge is removed from that card
-**And** badges are removed in LIFO order (last added = first resolved) matching Yu-Gi-Oh! chain resolution rules
-
-**Given** the full chain has resolved (MSG_CHAIN_END)
-**When** all links are processed
-**Then** all remaining chain badges are cleared from the board
-**And** `LiveAnnouncer` announces "Chain resolved" for accessibility
-
-**Given** `prefers-reduced-motion: reduce` is active
-**When** chain badges appear or resolve
-**Then** badges appear/disappear instantly (no pulse animation, 0ms transitions)
-
-### Story 4.2: Game Event Visual Feedback & Animation Queue
-
-As a player,
-I want visual feedback for every game event (summon, destroy, activate, flip, LP change),
-So that the duel feels dynamic and I can follow what's happening on the board.
-
-**Acceptance Criteria:**
-
-**Given** `DuelWebSocketService` exposes `animationQueue: Signal<GameEvent[]>` (FIFO)
-**When** a game event message arrives from the server
-**Then** it is pushed to the animation queue before the board state is updated
-**And** the animation system dequeues and plays events sequentially
-**And** each animation completes within ~400ms maximum (under NFR1 500ms threshold)
-**And** after animation completes, the board state update is applied
-
-**Given** the animation system processes events
-**When** a summon event occurs (MSG_MOVE to Monster Zone)
-**Then** the card animates from its origin (hand/extra deck) to the target zone via CSS `translate` + `scale` (0 → 1)
-
-**Given** the animation system processes events
-**When** a destroy event occurs (MSG_MOVE to GY from field)
-**Then** the card flashes with `--pvp-destroy-highlight` (red pulse, 200ms) then fades (`opacity: 1 → 0`, 200ms)
-
-**Given** the animation system processes events
-**When** an effect activation occurs (MSG_CHAINING)
-**Then** the activating card glows with `--pvp-activate-highlight` (brief bright pulse, 300ms)
-
-**Given** the animation system processes events
-**When** a flip event occurs (MSG_FLIP_SUMMONING or MSG_CHANGE_POS to face-up)
-**Then** the card rotates on Y-axis (180deg, 300ms) revealing the face
-
-**Given** the animation system processes events
-**When** LP changes (MSG_DAMAGE, MSG_RECOVER, MSG_PAY_LPCOST)
-**Then** `PvpLpBadgeComponent` animates the LP value counting up/down to the new value (300ms)
-**And** damage: LP text flashes `--pvp-defeat` (red); recovery: LP text flashes `--pvp-victory` (green)
-
-**Given** the animation queue accumulates faster than playback (e.g., during rapid chain resolution)
-**When** the queue length exceeds 5 pending events
-**Then** older queued animations are collapsed: play instantly (0ms) to catch up, applying board state updates sequentially in correct order before rendering the final visual state
-**And** the most recent 3 events always play at normal speed
-
-**Given** the activation toggle is set to Off
-**When** auto-resolved actions generate game events
-**Then** animations play at 2× speed (duration halved) to accelerate through non-interactive sequences
-
-**Given** `prefers-reduced-motion: reduce` is active
-**When** any game event animation would play
-**Then** all animations are skipped (0ms duration), board state updates are applied immediately
-**And** `LiveAnnouncer` still announces key events (summon, destroy, LP change) for accessibility
-
-## Epic 5: Tech Debt Cleanup
+## Epic 5: Tech Debt Cleanup ✅ COMPLETED
 
 Technical debt accumulated across Epics 1–4 is resolved. All items were documented in retrospectives and confirmed for resolution by the Project Lead.
 
@@ -936,3 +855,347 @@ So that deployment confidence is higher and duel loading is faster.
 **And** duel board rendering shows card images without visible loading delay
 
 **Technical debt source:** Epic 1 Story 1-2 (Docker test) + Epic 2 Story 2-4 (thumbnail pre-fetch)
+
+## Epic 6: Chain Overlay Refactoring ✅ COMPLETED
+
+The chain visualization is refactored from simple on-card CSS badges (Story 4.1) to a dedicated full-screen overlay component matching Master Duel's chain cascade animation. This is a structural refactoring (PvP-A scope), not visual polish — the overlay is a new component with its own lifecycle, animation timing, and board-change detection logic.
+
+**Replaces:** Story 4.1 (Chain Link Visualization) — old implementation fully removed.
+
+**Reference:** `master_duel_chain.jpg`, updated `ux-design-specification-pvp.md` (PvpChainOverlayComponent spec).
+
+### Story 6.1: Teardown Old Chain Badges & Scaffold PvpChainOverlayComponent
+
+As a player,
+I want the old on-card chain badges replaced by a dedicated chain overlay component,
+so that chain visualization can evolve into a full Master Duel-style cascade animation.
+
+**Acceptance Criteria:**
+
+**Given** the old `.pvp-chain-badge` CSS class and `#chainBadgeTpl` ng-template exist in PvpBoardContainerComponent
+**When** this story is complete
+**Then** all chain badge rendering is removed from PvpBoardContainerComponent (template, SCSS, computed signals, input)
+**And** existing chain badge tokens are updated (`--pvp-chain-badge-size` 24→28px), `--pvp-chain-resolve-pulse` removed (both main and reduced-motion), and 9 new chain overlay tokens are added
+**And** `PvpChainOverlayComponent` exists as a standalone component shell (fixed overlay, `pointer-events: none`, signal inputs for `activeChainLinks`, `phase`, `promptActive`, `boardChanged`)
+**And** a `chainPhase` signal (`'idle' | 'building' | 'resolving'`) is added to DuelConnection tracking chain lifecycle
+**And** animation orchestrator chain event durations are updated for overlay timing
+**And** the orchestrator is migrated to support async events: `processEvent()` returns `number | 'async'`, with `chainOverlayReady` / `chainOverlayBoardChanged` signals and `_boardEventsSinceSolving` counter scaffolded for Story 6.3 board-change detection
+
+### Story 6.2: Chain Overlay Card Cascade & Construction Animation (FIFO)
+
+As a player,
+I want the chain overlay to display cards in a Master Duel-style 3-card cascade with depth effect and chain connectors, appearing rhythmically as each chain link is added,
+so that I can visually follow chain construction with a cinematic feel.
+
+**Acceptance Criteria:**
+
+**Given** the chain overlay is visible and contains 1+ chain links
+**When** the overlay renders during construction phase
+**Then** cards are displayed in a vertical cascade layout (max 3 visible): front `scale(1.0)`, mid `scale(0.85)`, back `scale(0.70)`, with `rotateY(±8deg)` alternating by parity
+**And** `perspective: 800px` on the card container (CSS property, not transform function) creates a shared vanishing point for depth
+**And** visual chain connectors (SVG or CSS fallback) link adjacent cards
+**And** older cards (4th+) exit upward with fade-out
+**And** the overlay appears/disappears rhythmically between chain links (400ms appear + 300ms fade-out): board visible between each
+**And** new cards enter from below with scale-up animation, existing cards shift to new positions
+**And** `prefers-reduced-motion: reduce` → no animations, instant positions
+**And** `LiveAnnouncer` announces "Chain Link [N]: [cardName] added" on each link
+
+### Story 6.3: Chain Resolution Animation (LIFO) & Board Change Detection
+
+As a player,
+I want the chain overlay to animate resolution in reverse order (LIFO) with the resolving card highlighted, and the overlay to pause and reveal the board when a card effect changes the game state,
+so that I can see each chain effect's impact on the board before the next one resolves.
+
+**Acceptance Criteria:**
+
+**Given** the chain is in resolving phase
+**When** MSG_CHAIN_SOLVING fires for a chain link
+**Then** the front card pulses with golden glow (`scale 1.0→1.1→1.0`, `box-shadow: var(--pvp-chain-glow-resolving)`)
+**And** on MSG_CHAIN_SOLVED, the front card exits (slide-out + fade), remaining cards promote positions
+
+**Given** the board state changed after a chain link resolved (detected via orchestrator event counting between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED)
+**When** the card exit animation completes
+**Then** the overlay fades out for 500ms, revealing the board impact, then resumes for the next link
+**And** the orchestrator waits for the overlay's `chainOverlayReady` signal before dequeuing the next event (async contract from Story 6.1 AC6)
+**And** if board state is unchanged, the overlay transitions directly (no pause)
+
+**Given** auto-resolve is active (no prompt interrupts)
+**When** the chain resolves automatically
+**Then** all timings are reduced (construction 250ms, resolution 150ms, board pause 300ms)
+**And** prompt interruption reverts to normal timing
+
+**Given** a chain of exactly 1 link
+**When** it resolves
+**Then** skip the resolution overlay entirely (card was shown during construction), only perform board-change pause if applicable
+
+**Given** `prefers-reduced-motion: reduce` is active
+**When** the chain resolves
+**Then** no animations, instant state changes, no dramatic pauses
+
+**Given** disconnection during chain resolution
+**When** STATE_SYNC is received
+**Then** overlay disappears instantly, all chain state cleared
+
+## Epic 7: Board Animations & Card Travel
+
+Board animations replace in-place glow effects (pvp-summon-flash, pvp-destroy-flash) with spatial card travel between zones. Board events during chain resolution are buffered and replayed as visible animations. XYZ monsters gain stacked material indicators with detach animations.
+
+**Reference:** `ux-design-board-animations.md`
+
+### Story 7.1: CardTravelService & Zone Element Registry
+
+As a developer,
+I want a dedicated `CardTravelService` and a zone element registry on the board container,
+So that card travel animations can resolve source/destination DOM positions and animate floating card elements between zones.
+
+**Acceptance Criteria:**
+
+**Given** PvpBoardContainerComponent renders zone elements
+**When** the component initializes
+**Then** a zone element registry exposes a `getZoneRect(zoneKey: string): DOMRect | null` method that returns `getBoundingClientRect()` for any rendered zone (MZ, SZ, hand, deck, extra, GY, banished, EMZ)
+**And** non-field zones (hand, deck, extra, GY, banished) resolve to the center of their pile/container element
+
+**Given** `CardTravelService` is component-scoped and needs access to zone DOM rects
+**When** the service is injected alongside the board container
+**Then** the board container registers its `getZoneRect()` method with the `CardTravelService` during `ngAfterViewInit` (e.g., via a `registerZoneResolver(fn)` callback) — the service does not directly reference the board component, preserving unidirectional dependency
+
+**Given** `CardTravelService` is provided as component-scoped (same scope as `AnimationOrchestratorService`)
+**When** `travel(source, destination, cardImage, options)` is called
+**Then** a `position: fixed` floating `<div>` is created in the document body with the card image (face or back) sized to match the source zone's card dimensions
+**And** it is positioned at the source zone's bounding rect
+**And** Web Animations API (`element.animate()`) drives the Lift → Travel → Land keyframes
+**And** the method returns `Promise<void>` that resolves after the floating element is removed on animation completion
+
+**Given** multiple concurrent `travel()` calls are in progress
+**When** each call creates its own floating element
+**Then** all floating elements animate independently without interference
+
+**Given** `prefers-reduced-motion: reduce` is active
+**When** `travel()` is called
+**Then** no floating element is created, the Promise resolves immediately (card appears/disappears instantly via BOARD_STATE)
+
+**Given** multiple floating card elements exist simultaneously (parallel travel animations)
+**When** the `CardTravelService` creates floating elements
+**Then** all floating elements use a z-index above the board surface but below the chain overlay and prompt overlay — ensuring travels are visible during normal gameplay but never obscure chain/prompt UI during replay
+
+**Given** `getZoneRect(zoneKey)` returns `null` (zone not yet rendered or already destroyed)
+**When** `travel()` is called with a source or destination that resolves to `null`
+**Then** the travel is skipped silently — the Promise resolves immediately, and the card appears/disappears via BOARD_STATE (graceful degradation, same as reduced-motion path)
+
+**Given** the `DuelPageComponent` is destroyed during active travel animations (navigation away, disconnect)
+**When** `CardTravelService.ngOnDestroy` is called
+**Then** all in-flight floating `<div>` elements are immediately removed from `document.body`
+**And** all pending animation Promises are resolved (no dangling Promises or orphaned DOM nodes)
+
+**Given** `travel()` accepts a `cardImage` parameter
+**When** the orchestrator calls `travel()`
+**Then** `cardImage` is a string URL (card image path) and the `options` object controls face/back display (`options.showBack: boolean`) — the Travel phase flip (e.g., destroy → flip to back) is driven by `options.flipDuringTravel: boolean`, not by swapping the image URL
+
+**Given** zones opponent are rendered under CSS `perspective` + `rotateX` + `rotateZ(180deg)`
+**When** `getZoneRect()` is called for an opponent zone
+**Then** the rect returned corresponds to the visual on-screen position (post-transformation) — `getBoundingClientRect()` natively returns post-transform coords, so the `position: fixed` floating element aligns visually with the target zone without manual compensation
+
+### Story 7.2: Card Travel Animations for MSG_MOVE Events
+
+**Depends on:** Story 7.1 (CardTravelService & zone element registry)
+
+As a player,
+I want card movements between zones (summon, destroy, bounce, return to deck, field-to-field) to display as spatial travel animations instead of in-place glow effects,
+So that I can visually perceive where a card came from and where it went.
+
+**Acceptance Criteria:**
+
+**Given** a MSG_MOVE event for a summon (hand/deck/extra → MZ/SZ)
+**When** the orchestrator processes the event
+**Then** `CardTravelService.travel()` is called with source = origin zone, destination = target zone, card face visible on arrival
+**And** a green impact glow pulses on the destination zone during the Land phase
+**And** the orchestrator returns the travel Promise duration (~400ms) instead of the previous fixed 300ms
+
+**Given** MSG_MOVE contains `fromLocation`/`fromSequence` and `toLocation`/`toSequence`
+**When** the orchestrator processes a MSG_MOVE
+**Then** it uses the MSG_MOVE payload fields (not the current BOARD_STATE) to determine source and destination zones for the travel animation — the BOARD_STATE may already reflect the final position
+
+**Given** a MSG_MOVE event for a destroy (MZ/SZ → GY/banished)
+**When** the orchestrator processes the event
+**Then** `CardTravelService.travel()` is called with card flipping to back during the Travel phase
+**And** a red departure glow appears on the source zone during the Lift phase
+
+**Given** a MSG_MOVE event for a bounce (MZ/SZ → hand)
+**When** the orchestrator processes the event
+**Then** `CardTravelService.travel()` is called with no destructive glow
+**And** the travel uses a reduced `rotateY(4deg)` (half of the standard 8deg) and `ease-out` easing (instead of `ease-in-out`) for a lighter, non-aggressive feel
+
+**Given** a MSG_MOVE event for return to deck (MZ/SZ → deck)
+**When** the orchestrator processes the event
+**Then** card flips to back during travel, deck pile pulses on arrival with a neutral glow (same color as field-to-field)
+
+**Given** a MSG_MOVE event for field-to-field (MZ → MZ or SZ → SZ)
+**When** the orchestrator processes the event
+**Then** direct travel with neutral glow
+
+**Given** a token is destroyed (detected via `card.isToken === true` on the `CardInstance` in the zone data model)
+**When** the orchestrator processes the token destruction event
+**Then** the token dissolves in-place (fade out + scale down), no travel animation to GY
+
+**Given** multiple cards travel simultaneously (e.g., Raigeki → 5 destroys)
+**When** the orchestrator processes the batch
+**Then** each card departs with ~50ms stagger between them
+**And** cards converge toward the destination with slight position offsets to prevent overlap
+
+**Given** the speed multiplier is active (`speedMultiplierFn()`)
+**When** any travel animation plays
+**Then** all durations are multiplied by the speed factor
+**And** the travel duration never drops below the 200ms floor
+
+**Given** `pvp-summon-flash` and `pvp-destroy-flash` CSS keyframes exist in the board styles
+**When** this story is complete
+**Then** both keyframes and their associated CSS classes are removed from the codebase (replaced by travel animations)
+**And** before removal, a codebase-wide grep confirms `pvp-summon-flash` and `pvp-destroy-flash` are not referenced outside `pvp-board-container.component.scss`
+**And** the `.pvp-animating-zone` class (if it exists) is updated to work with the new `Set<string>` from `animatingZoneKeys`
+**And** `pvp-flip-flash` and `pvp-activate-flash` keyframes remain unchanged (in-place by nature)
+
+**Given** the `--pvp-actionable-glow` (blue/gold interactive glow indicating actionable cards during IDLECMD/BATTLECMD)
+**When** this story is complete
+**Then** the interactive actionable glow system is completely untouched — it is prompt system UI, not animation effects, and must continue to function identically
+
+### Story 7.3: Buffer & Replay During Chain Resolution
+
+**Depends on:** Story 7.1 (CardTravelService), Story 7.2 (MSG_MOVE travel animations)
+
+As a player,
+I want board events during chain resolution to be buffered and replayed as visible card travel animations when the overlay briefly hides,
+So that I can see each chain link's impact on the board as spatial card movements instead of instant state changes.
+
+**Acceptance Criteria:**
+
+**Given** the orchestrator is inside chain resolution (`_insideChainResolution = true`) and receives a board-changing event (MSG_MOVE, MSG_DRAW — extensible as new travel events are added in future stories)
+**When** the event arrives between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED
+**Then** the event is pushed to `_bufferedBoardEvents[]` instead of being processed immediately
+
+**Given** a BOARD_STATE is received during buffering (between SOLVING and SOLVED)
+**When** the buffer contains pending events
+**Then** the BOARD_STATE is applied immediately to the data model (zones map), but the visual rendering of zones being animated is masked by the floating elements — the final position is correct underneath the floating element, and the replay animates only the visual transition
+
+**Given** MSG_CHAIN_SOLVED fires and there are buffered events
+**When** the overlay exit animation completes and the overlay fades out
+**Then** buffered events replay on the visible board in two sequential beats:
+- Beat 1 (zones): all MSG_MOVE travel animations play in parallel with 50ms stagger, duration = `max(individual durations) + (count - 1) × stagger`
+- Beat 2 (LP): all MSG_DAMAGE/MSG_RECOVER/MSG_PAY_LPCOST animations play in parallel
+**And** the board pause duration is dynamically calculated from `Beat 1 + Beat 2` (not fixed 1000ms)
+**And** replay does NOT start until the overlay has fully faded out (`opacity: 0` + `visibility: hidden`) — contractualized via an `overlayHidden` signal emitted by PvpChainOverlayComponent
+**And** after replay completes, the overlay fades back in (if more chain links remain)
+**And** `chainOverlayReady` is set to `true` after the full replay cycle
+
+**Given** a chain link produces no board-changing events (empty buffer)
+**When** MSG_CHAIN_SOLVED fires
+**Then** the pause is skipped entirely — same behavior as current `chainOverlayBoardChanged = false` path (retro-compatible)
+
+**Given** `animatingZone` signal currently tracks a single zone
+**When** this story is complete
+**Then** it evolves to `Set<string>` of zone keys to support parallel replay (aligned with existing `animatingZoneKeys()` computed signal in the board component)
+
+**Given** `prefers-reduced-motion: reduce` is active
+**When** buffered events would replay
+**Then** duration = 0ms, instant state changes, no travel animations (existing behavior via `reducedMotion` flag)
+
+**Given** accelerated mode is active (3+ chain links)
+**When** replay occurs
+**Then** travel durations use accelerated timings (250ms base, 30ms stagger, 200ms floor)
+
+**Given** a STATE_SYNC or disconnection event is received while the buffer contains pending events (mid-chain disconnect)
+**When** the orchestrator processes STATE_SYNC
+**Then** `_bufferedBoardEvents[]` is flushed without replay — all buffered events are discarded
+**And** `_insideChainResolution` is reset to `false`, chain overlay disappears instantly (aligned with Story 6.3 disconnect AC)
+**And** the board reflects the STATE_SYNC snapshot directly (no animation)
+
+### Story 7.4: MSG_DRAW Travel & MSG_SHUFFLE_HAND Animation
+
+**Depends on:** Story 7.1 (CardTravelService)
+
+As a player,
+I want draw events to show a card traveling from deck to hand and shuffle events to show a fan-out/fan-in animation on the deck,
+So that these common game events have clear visual feedback instead of being invisible state changes.
+
+**Acceptance Criteria:**
+
+**Given** a MSG_DRAW event is received by the orchestrator during normal gameplay (not initial hand distribution)
+**When** the event is processed (currently a no-op returning `0`)
+**Then** it is promoted to a travel event: `CardTravelService.travel()` is called with source = deck pile zone, destination = hand container
+**And** the floating element shows a card back during travel (hand updates via BOARD_STATE)
+**And** `DrawMsg.player` determines which player's deck/hand zones are used (own deck → own hand for player, opponent deck → opponent hand for opponent)
+**And** opponent draws are visible to the local player (card back travels from opponent deck to opponent hand area at top of screen)
+**And** the orchestrator returns the travel Promise duration instead of `0`
+
+**Given** multiple consecutive MSG_DRAW events occur outside chain resolution (e.g., Pot of Greed → 2× draw)
+**When** the orchestrator processes them sequentially
+**Then** each draw travel plays with ~50ms stagger (same stagger logic as MSG_MOVE batch), not sequentially end-to-end
+
+**Given** the initial hand distribution (5× MSG_DRAW at duel start, before the first turn)
+**When** the loading screen is still active
+**Then** the initial MSG_DRAW events do NOT trigger travel animations — the hand appears directly via BOARD_STATE (the loading screen already masks them)
+
+**Given** a MSG_DRAW event occurs during chain resolution
+**When** the event is buffered and replayed
+**Then** the draw travel animation participates in Beat 1 (zone travels) alongside other MSG_MOVE events
+
+**Given** a MSG_SHUFFLE_HAND event is received
+**When** the orchestrator processes it
+**Then** a fan-out/fan-in CSS animation plays on the deck zone: 2-3 pseudo-element card backs (`::before`, `::after`) offset ±3px/±2deg from deck center (~100ms fan-out), then return to stacked position (~150ms fan-in)
+**And** total duration is ~250ms
+
+**Given** `prefers-reduced-motion: reduce` is active
+**When** MSG_DRAW or MSG_SHUFFLE_HAND is processed
+**Then** no travel animation, no fan-out/fan-in — instant state change
+
+**Given** the speed multiplier is active
+**When** MSG_DRAW travel or MSG_SHUFFLE_HAND animation plays
+**Then** durations are multiplied by the speed factor (200ms floor for travel)
+
+### Story 7.5: XYZ Material Visual Enhancement
+
+**Depends on:** Story 7.1 (CardTravelService), Story 7.2 (travel animation patterns)
+
+As a player,
+I want XYZ monsters to display stacked card-back indicators beneath them showing attached materials, and detached materials to slide out before traveling to the graveyard,
+So that I can visually track XYZ material count and detachment events.
+
+**Acceptance Criteria:**
+
+**Given** a monster zone contains an XYZ monster with `overlayMaterials.length > 0`
+**When** the zone renders
+**Then** 1-3 small card-back colored rectangles are visible offset ~2px each below/behind the monster card (stacked effect)
+**And** the offset scales proportionally with zone card size (2px is relative to the default card dimensions — on smaller screens, use proportional offset e.g., `0.05em` or percentage-based)
+**And** the number of visible layers = `Math.min(overlayMaterials.length, 3)`
+**And** the existing blue badge with material count is preserved on top
+
+**Given** `overlayMaterials.length` is 0
+**When** the zone renders
+**Then** no stacked indicators are displayed
+
+**Given** a MSG_MOVE event detaches a material from an XYZ monster overlay to GY
+**When** the orchestrator processes the event
+**Then** one stacked card "slides out" from under the XYZ monster (vertical offset + slide animation, ~200ms)
+**And** then performs a standard travel animation toward GY (departure point = XYZ parent monster position with slight vertical offset downward)
+**And** badge count updates (e.g., 3 → 2), one stacked indicator disappears after the slide-out completes
+
+**Given** a MSG_MOVE event originates from the overlay zone (`fromLocation = OVERLAY`)
+**When** the orchestrator determines the animation type
+**Then** it triggers the XYZ detach slide-out + travel animation (this AC)
+**And** if `fromLocation = MZONE` (not OVERLAY), it triggers a standard destroy travel animation (Story 7.2) — the `fromLocation` field distinguishes detach from normal monster destruction
+
+**Given** `.emz-slot` has `overflow: hidden`
+**When** this story is complete
+**Then** it is changed to `overflow: visible` to prevent clipping of stacked material indicators on EMZ-positioned XYZ monsters
+
+**Given** `prefers-reduced-motion: reduce` is active
+**When** a material is detached
+**Then** no slide-out animation — indicator disappears instantly, badge updates, no travel
+
+**Given** a card effect re-attaches a material to an XYZ monster (e.g., via MSG_MOVE with `toLocation = OVERLAY`)
+**When** `overlayMaterials.length` increases
+**Then** the stacked indicators update reactively — a new indicator layer appears (no animation needed, instant addition)
+**And** the badge count updates accordingly
+
+**Given** the speed multiplier is active
+**When** the detach slide-out animation plays
+**Then** the 200ms base duration is multiplied by the speed factor

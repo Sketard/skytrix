@@ -1,4 +1,4 @@
-# generated: 2026-02-25
+# generated: 2026-03-10
 # project: skytrix
 # project_key: NOKEY
 # tracking_system: file-system
@@ -34,7 +34,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-25
+generated: 2026-03-10
 project: skytrix
 project_key: NOKEY
 tracking_system: file-system
@@ -76,3 +76,17 @@ development_status:
   5-3-room-management-fixes: done
   5-4-infrastructure-optimization: done
   epic-5-retrospective: optional
+
+  epic-6: done
+  6-1-teardown-chain-badges-scaffold-overlay: done
+  6-2-chain-overlay-cascade-construction: done
+  6-3-chain-resolution-board-change-detection: done
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-card-travel-service-zone-element-registry: backlog
+  7-2-card-travel-animations-msg-move-events: backlog
+  7-3-buffer-replay-during-chain-resolution: backlog
+  7-4-msg-draw-travel-msg-shuffle-hand-animation: backlog
+  7-5-xyz-material-visual-enhancement: backlog
+  epic-7-retrospective: optional

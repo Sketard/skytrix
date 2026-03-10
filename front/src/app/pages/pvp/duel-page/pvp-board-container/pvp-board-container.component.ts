@@ -1,10 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
-import type { ChainLinkState } from '../../types';
 import { DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
-import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, isActivateAction } from '../idle-action-codes';
+import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupPileActions, isActivateAction } from '../idle-action-codes';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
 import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
@@ -35,7 +33,7 @@ interface ZoneRenderData {
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent],
+  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent],
 })
 export class PvpBoardContainerComponent {
   readonly duelState = input.required<DuelState>();
@@ -43,7 +41,6 @@ export class PvpBoardContainerComponent {
   readonly ownPlayerIndex = input<Player>(0);
   readonly highlightedZones = input<Set<ZoneId>>(new Set());
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
-  readonly activeChainLinks = input<ChainLinkState[]>([]);
   readonly opponentDisconnected = input(false);
   readonly animatingZone = input<{ zoneId: string; animationType: 'summon' | 'destroy' | 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
   readonly animatingLp = input<LpAnimData | null>(null);
@@ -128,8 +125,8 @@ export class PvpBoardContainerComponent {
 
   /** H2 refactor: unified EMZ config array for @for loop deduplication */
   protected readonly emzConfigs = computed(() => [
-    { zoneId: 'EMZ_L' as ZoneId, zone: this.emzL(), chainBadges: this.emzLChainBadges(), cssClass: 'emz--left' },
-    { zoneId: 'EMZ_R' as ZoneId, zone: this.emzR(), chainBadges: this.emzRChainBadges(), cssClass: 'emz--right' },
+    { zoneId: 'EMZ_L' as ZoneId, zone: this.emzL(), cssClass: 'emz--left', isOpponent: this.isOpponentEmz('EMZ_L') },
+    { zoneId: 'EMZ_R' as ZoneId, zone: this.emzR(), cssClass: 'emz--right', isOpponent: this.isOpponentEmz('EMZ_R') },
   ]);
 
   readonly phase = computed(() => this.displayedPhase() ?? this.duelState().phase);
@@ -177,8 +174,21 @@ export class PvpBoardContainerComponent {
     }
   }
 
-  onZonePillClick(zoneId: ZoneId, playerIndex: number): void {
+  onZonePillClick(event: MouseEvent, zoneId: ZoneId, playerIndex: number): void {
     this.zonePillRequest.emit({ zoneId, playerIndex });
+    // If player's own pile has actionable cards, also open the action menu
+    if (playerIndex === 0) {
+      const actions = this.getActionsForZone(zoneId);
+      console.log('[PILE-CLICK] zoneId=%s actions=%d map-keys=%o activateZones=%o nonActivateZones=%o',
+        zoneId, actions.length, [...this.actionableCards().keys()], [...this.activateZoneIds()], [...this.nonActivateZoneIds()]);
+      if (actions.length > 0) {
+        this.menuRequest.emit({
+          zoneId,
+          element: event.currentTarget as HTMLElement,
+          actions: groupPileActions(actions),
+        });
+      }
+    }
   }
 
   onZoneCardClick(event: MouseEvent, zone: ZoneRenderData): void {
@@ -276,18 +286,6 @@ export class PvpBoardContainerComponent {
     });
   }
 
-  /** Pre-computed chain badges grouped by "zoneId-relativePlayerIndex" key */
-  protected readonly chainBadgesByZone = computed(() => {
-    const map = new Map<string, ChainLinkState[]>();
-    const ownIdx = this.ownPlayerIndex();
-    for (const link of this.activeChainLinks()) {
-      const relPlayer = link.player === ownIdx ? 0 : 1;
-      const key = `${link.zoneId}-${relPlayer}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(link);
-    }
-    return map;
-  });
 
   /** Pre-computed animation state: Set of "zoneId-relativePlayer-type" keys for O(1) template lookup */
   protected readonly animatingZoneKeys = computed(() => {
@@ -306,14 +304,6 @@ export class PvpBoardContainerComponent {
     return new Set<string>();
   });
 
-  /** Pre-computed EMZ chain badges */
-  protected readonly emzLChainBadges = computed(() =>
-    this.activeChainLinks().filter(l => l.zoneId === 'EMZ_L'),
-  );
-
-  protected readonly emzRChainBadges = computed(() =>
-    this.activeChainLinks().filter(l => l.zoneId === 'EMZ_R'),
-  );
 
   onEmzCardClick(event: MouseEvent, zoneId: ZoneId, card: CardOnField): void {
     if (card.cardCode) {
@@ -329,6 +319,10 @@ export class PvpBoardContainerComponent {
     if (card.cardCode) {
       this.cardInspectRequest.emit({ cardCode: card.cardCode });
     }
+  }
+
+  private isOpponentEmz(zoneId: ZoneId): boolean {
+    return this.findZoneCard(0, zoneId) === null && this.findZoneCard(1, zoneId) !== null;
   }
 
   private findZoneCard(playerIndex: number, zoneId: ZoneId): CardOnField | null {

@@ -6,7 +6,7 @@
     </h1>
     <div class="lobby-header-actions">
       <button mat-icon-button
-              aria-label="Rafraichir la liste des rooms"
+              aria-label="Rafraîchir la liste des rooms"
               (click)="fetchRooms()"
               [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
@@ -24,11 +24,11 @@
 
   <button mat-raised-button
           class="lobby-cta"
-          aria-label="Creer une room"
+          aria-label="Créer une room"
           [disabled]="creatingRoom()"
           (click)="createRoom()">
     <mat-icon>add</mat-icon>
-    Creer une Room
+    Créer une Room
   </button>
 
   @if (loading() && rooms().length === 0) {
@@ -39,19 +39,19 @@
     <div class="lobby-empty">
       <mat-icon class="lobby-empty-icon">wifi_off</mat-icon>
       <p class="lobby-empty-title">Impossible de charger les rooms</p>
-      <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">Reessayer</button>
+      <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">Réessayer</button>
     </div>
   } @else if (rooms().length === 0) {
     <div class="lobby-empty">
       <mat-icon class="lobby-empty-icon">gamepad</mat-icon>
       <p class="lobby-empty-title">Aucun duel en attente</p>
-      <p class="lobby-empty-subtitle">Cree une room et invite un ami !</p>
+      <p class="lobby-empty-subtitle">Crée une room et invite un ami !</p>
       <button mat-raised-button
               class="lobby-cta-secondary"
               [disabled]="creatingRoom()"
               (click)="createRoom()">
         <mat-icon>add</mat-icon>
-        Creer une Room
+        Créer une Room
       </button>
     </div>
   } @else {

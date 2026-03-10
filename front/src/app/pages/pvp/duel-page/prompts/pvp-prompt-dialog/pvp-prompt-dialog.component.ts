@@ -43,6 +43,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
   readonly prompt = input<Prompt | null>(null);
   readonly skipBeat1 = input(false);
+  readonly responseOverride = input<((data: unknown) => void) | null>(null);
 
   readonly dialogState = signal<DialogState>('closed');
   readonly hintText = signal<string | null>(null);
@@ -198,7 +199,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
     }
 
     this.responseSubscription = instance.response.subscribe((data: unknown) => {
-      this.wsService.sendResponse(prompt.type, data as ResponseData);
+      const override = this.responseOverride();
+      if (override) {
+        override(data);
+      } else {
+        this.wsService.sendResponse(prompt.type, data as ResponseData);
+      }
       this.isSending.set(true);
     });
 

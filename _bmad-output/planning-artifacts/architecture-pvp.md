@@ -1,6 +1,6 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
-inputDocuments: ['prd-pvp.md', 'architecture.md', 'project-context.md', 'research-ygo-duel-engine.md', 'research-ocgcore-message-protocol.md', 'research-wasm-js-duel-engines.md', 'research-web-ygo-simulators.md']
+inputDocuments: ['prd-pvp.md', 'architecture.md', 'project-context.md', 'research-ygo-duel-engine.md', 'research-ocgcore-message-protocol.md', 'research-wasm-js-duel-engines.md', 'research-web-ygo-simulators.md', 'ux-design-board-animations.md']
 workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
@@ -8,6 +8,10 @@ completedAt: '2026-02-24'
 project_name: 'skytrix'
 user_name: 'Axel'
 date: '2026-02-24'
+lastEdited: '2026-03-10'
+editHistory:
+  - date: '2026-03-10'
+    changes: 'Integrated animation orchestration architecture (3-layer chain system, async overlay contract, pending chain entry) and PvP-C board animations (card travel, buffer/replay, CardTravelService, XYZ material visuals, Beat-based parallel replay, acceleration features)'
 ---
 
 # Architecture Decision Document — PvP (Online Automated Duels)
@@ -71,7 +75,12 @@ The MVP targets PvP between friends (trusted players). This determines which arc
 - **Component reuse (solo ↔ PvP) (T1):** Board zones, card component, card inspector shared between modes. Data source differs: solo = local signals via BoardStateService, PvP = server-pushed state via WebSocket. The PvP board layout differs fundamentally from solo: two player fields visible (36 zones vs 18), different aspect ratio, opponent's field mirrored. Architecture uses composition: extract a `PlayerFieldComponent` (18 zones) from the solo board. PvP composes two instances (own + opponent mirrored). Solo uses it directly.
 - **Two interaction paradigms (T1):** Solo = drag & drop (CDK DragDrop), PvP = click-based prompts. Same visual components, completely different interaction handlers.
 - **Turn timer & inactivity (T1):** Timer state is server-authoritative. Server pushes timer updates; client displays. Timer pauses during opponent's decisions and chain resolution. Edge case: timeout during mandatory SELECT_* — the server forfeits the match and properly closes the OCGCore duel instance.
-- **Animation queue (T1):** OCGCore produces event messages in bursts during chain resolution (10+ messages in <100ms). The client uses a basic FIFO animation queue that sequences visual feedback, consuming server messages at animation speed rather than network speed.
+- **Animation orchestration (T1):** OCGCore produces event messages in bursts during chain resolution (10+ messages in <100ms). The client implements a **three-layer animation architecture**: `DuelConnection` (data — enqueues events, manages chain link state), `AnimationOrchestratorService` (timing — dequeues sequentially, controls signal mutations, coordinates async pauses), `PvpChainOverlayComponent` (visual — card cascade, resolve-exit animations, board pause). The orchestrator consumes messages at animation speed, not network speed. Key mechanisms:
+  - **Async overlay contract:** On `MSG_CHAIN_SOLVED`, the orchestrator pauses (returns `'async'`), sets `chainOverlayReady = false`. The overlay plays its exit animation, optionally hides for a board pause window, then sets `chainOverlayReady = true` to resume the orchestrator.
+  - **Pending chain entry:** `MSG_CHAINING` does NOT immediately commit to `activeChainLinks`. It is stored as `_pendingChainEntry` and committed only after cost prompts complete (`SELECT_EFFECTYN` response sent, `WAITING_RESPONSE` received, next `MSG_CHAINING`, or `MSG_CHAIN_SOLVING`). This prevents cards from appearing in the overlay before their activation cost is paid.
+  - **Board event buffer & replay (PvP-C):** During chain resolution (`MSG_CHAIN_SOLVING` → `MSG_CHAIN_SOLVED`), board-changing events (`MSG_MOVE`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_DAMAGE`, etc.) are buffered instead of processed immediately. After the overlay exit animation, buffered events replay as visible card travel animations on the board during the overlay-hidden window. Board pause duration is **dynamic** (calculated from replay animation time) instead of fixed.
+  - **Card travel animations (PvP-C):** Replace in-place glow effects (`pvp-summon-flash`, `pvp-destroy-flash`) with spatial card movement between zones (Lift → Travel → Land). A dedicated `CardTravelService` (component-scoped) creates `position: fixed` floating elements, resolves source/destination rects via `getBoundingClientRect()`, animates with Web Animations API, and cleans up on completion. `pvp-flip-flash` and `pvp-activate-flash` remain unchanged (in-place by nature).
+  - **Acceleration features:** AC5 (auto-resolve: ≥3 chain links solved without prompt → halve animation durations), AC7 (queue collapse: > 5 queued events → instantly apply all but last 3, skip if chain resolution events present), AC8 (speed multiplier: activation toggle `off` → 0.5× all durations).
 - **Prompt UI components (T1):** The 20 SELECT_* types map to ~8-10 distinct UI components grouped by interaction pattern: card grid selection (SELECT_CARD, SELECT_TRIBUTE, SELECT_SUM, SELECT_UNSELECT_CARD), yes/no dialogs (SELECT_EFFECTYN, SELECT_YESNO), zone highlight (SELECT_PLACE, SELECT_DISFIELD), position picker (SELECT_POSITION), option list (SELECT_OPTION, SELECT_CHAIN), ordering (SORT_CARD, SORT_CHAIN), declaration pickers (ANNOUNCE_RACE, ANNOUNCE_ATTRIB, ANNOUNCE_CARD, ANNOUNCE_NUMBER), counters (SELECT_COUNTER), phase action menus (SELECT_IDLECMD, SELECT_BATTLECMD), and RPS (ROCK_PAPER_SCISSORS).
 - **IDLECMD/BATTLECMD as distributed UI (T1):** SELECT_IDLECMD and SELECT_BATTLECMD are NOT rendered as prompt sheet components. Instead, card-specific actions are distributed spatially: cards with available actions glow on the field (`--pvp-actionable-glow`), zone browsers (GY, Banished, ED) highlight actionable cards, and phase transitions (Battle Phase, Main Phase 2, End Turn) are handled by `PvpPhaseBadgeComponent`. Tap a card with 1 action → sent directly. Tap a card with 2+ actions → contextual action menu (absolute-positioned div, not a sheet). The client maps the engine's flat action list to spatial UI elements. See UX spec §PvpPhaseBadgeComponent and §Card Action Menu.
 - **MSG_HINT as UX-critical (T1):** OCGCore sends MSG_HINT (HINT_SELECTMSG, HINT_EFFECT, HINT_CODE) before SELECT_* messages to provide context (which effect is asking, what the prompt means). These hints are essential for a usable UI — without them, prompts are blind choices. The Angular WebSocket service must maintain a `currentHintContext` consumed by all prompt components.
@@ -223,19 +232,96 @@ All important decisions made — data architecture, auth chain, protocol format,
 
 ### Frontend Architecture
 
-**PvP State Flow — `DuelWebSocketService` (scoped to DuelPageComponent):**
+**PvP State Flow — `DuelConnection` (data layer, scoped to DuelPageComponent):**
 
 | Signal | Type | Purpose |
 |--------|------|---------|
 | `duelState` | `Signal<DuelState>` | Board state, LP, phase, turn, card positions |
 | `pendingPrompt` | `Signal<Prompt \| null>` | Current SELECT_* awaiting player response |
 | `hintContext` | `Signal<HintContext>` | Current MSG_HINT context (which effect is asking, what the prompt means) |
-| `animationQueue` | `Signal<GameEvent[]>` | FIFO queue of events to animate sequentially |
+| `animationQueue` | `Signal<GameEvent[]>` | FIFO queue of events consumed by orchestrator |
 | `timerState` | `Signal<TimerState \| null>` | Dedicated timer signal (player, remaining seconds) — decoupled from duelState |
 | `connectionStatus` | `Signal<ConnectionStatus>` | `connected \| reconnecting \| lost \| resynchronized` (resynchronized auto-clears after 3s) |
+| `activeChainLinks` | `Signal<ChainLinkState[]>` | Active chain links (pending entry mechanism — see below) |
+| `chainPhase` | `Signal<'idle' \| 'building' \| 'resolving'>` | Chain lifecycle phase |
+| `hasPendingChainEntry` | `Signal<boolean>` | True when a MSG_CHAINING is stored but not yet committed |
 
-**Coordination Rules:**
-- Prompt display waits for `animationQueue` to drain — prevents out-of-context popups during chain resolution
+**Chain Phase Transition Timing:**
+- `building` — set **immediately** when first `MSG_CHAINING` arrives (overlay needs this for entry animation)
+- `resolving` — deferred to `applyChainSolving()` called by orchestrator (messages arrive in bursts, orchestrator processes sequentially with animation delays)
+- `idle` — deferred to `applyChainEnd()` called by orchestrator (same reason)
+
+**Animation Orchestration — `AnimationOrchestratorService` (component-scoped):**
+
+Three-layer architecture: `DuelConnection` (data) → `AnimationOrchestratorService` (timing) → `PvpChainOverlayComponent` + `PvpBoardContainerComponent` (visuals).
+
+| Signal | Type | Purpose |
+|--------|------|---------|
+| `isAnimating` | `Signal<boolean>` | Queue processing active — gates prompt display |
+| `animatingZone` | `Signal<Set<string>>` | Set of `"zoneId-relativePlayerIndex-animationType"` keys — supports parallel replay |
+| `animatingLpPlayer` | `Signal<LpAnimData \| null>` | LP change with interpolation metadata (fromLp, toLp, durationMs) |
+| `chainOverlayReady` | `Signal<boolean>` | Async overlay contract: false during resolution, true when overlay finishes |
+| `chainOverlayBoardChanged` | `Signal<boolean>` | Board-changing events occurred since last SOLVING |
+| `chainEntryAnimating` | `Signal<boolean>` | Gates SELECT_CHAIN prompts until entry animation finishes |
+| `chainAccelerated` | `Signal<boolean>` | Auto-resolve acceleration (≥3 solved without prompt → halve durations) |
+| `chainBoardReplayDuration` | `Signal<number>` | Dynamic board pause duration calculated from buffered replay (PvP-C) |
+
+**Event Processing Flow:**
+```
+DuelPageComponent effect watches animationQueue → startProcessingIfIdle()
+  → processAnimationQueue() dequeue loop:
+    → processEvent(event) → returns duration (ms) or 'async'
+    → 'async': pause until chainOverlayReady = true (resume effect)
+    → duration: setTimeout with speedMultiplier → recurse
+    → empty queue: stop animating, sync trackedLp
+```
+
+**Chain Resolution Flow (per link):**
+```
+MSG_CHAIN_SOLVING(N) → applyChainSolving() + 600ms pulse glow
+  → board events (MSG_MOVE, MSG_DAMAGE...) → BUFFERED in _bufferedBoardEvents[]
+MSG_CHAIN_SOLVED(N) → applyChainSolved() + return 'async' (pause queue)
+  → overlay plays resolve-exit animation on front card
+  → overlay fades out
+    → REPLAY buffered events: Beat 1 (zone travels, parallel) → Beat 2 (LP, parallel)
+    → board pause = Beat 1 duration + Beat 2 duration (dynamic, not fixed)
+  → overlay fades back in (if more chain links remain)
+  → chainOverlayReady = true → orchestrator resumes
+MSG_CHAIN_END → applyChainEnd() + resetChainState() + 400ms
+```
+
+**Card Travel Service — `CardTravelService` (component-scoped, PvP-C):**
+
+| Aspect | Detail |
+|--------|--------|
+| Responsibility | Creates `position: fixed` floating card elements, calculates source/destination rects, runs Web Animations API, cleans up |
+| API | `travel(source: ZoneRef, dest: ZoneRef, cardImage: string, options: TravelOptions): Promise<void>` |
+| Zone resolution | Accepts zone IDs → resolves DOM rects via `getBoundingClientRect()` on board zone elements (zone element registry in `PvpBoardContainerComponent`) |
+| Parallel support | Multiple concurrent `travel()` calls — each creates its own floating element |
+| Animation phases | Lift (0-15%: scale up, shadow, departure glow) → Travel (15-75%: translate, 3D rotation, easing) → Land (75-100%: micro-bounce, impact glow, settle) |
+| Cleanup | Floating element removed after animation; card already in final position via BOARD_STATE (graceful degradation) |
+
+**Beat-Based Parallel Replay (PvP-C):**
+
+| Beat | Events | Behavior | Duration |
+|------|--------|----------|----------|
+| Beat 1 (zones) | MSG_MOVE, MSG_FLIP_SUMMONING, MSG_CHANGE_POS | All zone travel animations play simultaneously with 50ms stagger | `max(individual) + (count-1) × stagger` |
+| Beat 2 (LP) | MSG_DAMAGE, MSG_RECOVER, MSG_PAY_LPCOST | All LP animations play simultaneously | `baseLpDuration` from CSS token |
+
+If only one beat has events, the other is skipped. Total board pause = Beat 1 + Beat 2 (when both exist).
+
+**Prompt Display Coordination:**
+```typescript
+visiblePrompt = computed(() => {
+  if (isAnimating() || chainEntryAnimating()) {
+    // Exception: allow cost prompts through during building + pending chain
+    if (chainPhase() === 'building' && hasPendingChainEntry()) return prompt;
+    return null;
+  }
+  return prompt;
+});
+```
+- Prompt display waits for animation queue to drain — prevents out-of-context popups during chain resolution
 - `hintContext` always set before `pendingPrompt` — consumed by all prompt components for labeling
 - No reuse of solo `BoardStateService` — PvP state flow is fundamentally different (server-pushed, read-only)
 - Visual components shared (zones, cards, inspector) — only data source differs
@@ -351,11 +437,15 @@ These patterns cover **only the new duel server (Node.js)** and the **PvP-specif
 ```
 pages/pvp/
 ├── lobby/                          # Room list, creation (+ deck picker), waiting room (polling)
-├── duel/
-│   ├── duel-page.component.ts      # Container (scopes DuelWebSocketService), duel result state
-│   ├── duel-websocket.service.ts   # 6 signals + animation queue (merged)
-│   ├── pvp-board.component.ts      # Composes 2× PlayerFieldComponent (own + mirrored)
-│   └── prompts/                    # SELECT_* prompt components (3 types MVP)
+├── duel-page/
+│   ├── duel-page.component.ts         # Container (scopes services), manages duel result state, wires effects
+│   ├── duel-connection.ts              # Data layer: WebSocket handling, 10 signals, pending chain entry, animationQueue
+│   ├── animation-orchestrator.service.ts # Timing layer: dequeue loop, buffer/replay, async overlay contract, acceleration
+│   ├── card-travel.service.ts          # NEW (PvP-C): floating elements, Web Animations API, zone rect resolution
+│   ├── pvp-board-container/            # Board layout: 2× player fields, zone element registry, XYZ indicators
+│   ├── pvp-chain-overlay/              # Visual layer: card cascade, resolve-exit, board pause
+│   ├── pvp-lp-badge/                   # LP counter with rAF interpolation
+│   └── prompts/                        # SELECT_* prompt components (3 types MVP)
 │       ├── card-select-prompt.component.ts  # CARD, TRIBUTE, SUM, UNSELECT_CARD
 │       ├── zone-select-prompt.component.ts  # PLACE, DISFIELD
 │       └── choice-prompt.component.ts       # EFFECTYN, YESNO, POSITION, OPTION, CHAIN, RPS
@@ -383,6 +473,93 @@ pages/pvp/
 OCGCore binary → [duel-worker.ts: transform] → DTO → [message-filter.ts: filter] → [server.ts: ws.send()]
 ```
 Each step has a single owner file. No file bypasses the chain.
+
+### Animation Patterns
+
+**Three-Layer Separation:**
+- `DuelConnection`: enqueues `GameEvent` objects, manages `activeChainLinks` + `chainPhase` signals, handles pending chain entry commit logic. Never triggers visual animations directly.
+- `AnimationOrchestratorService`: sole owner of animation timing. Dequeues events, calls `DuelConnection.applyChain*()` mutations at the right moment, controls `animatingZone`/`animatingLpPlayer` signals, manages buffer/replay during chain resolution, coordinates with overlay via `chainOverlayReady`.
+- Visual components (`PvpChainOverlayComponent`, `PvpBoardContainerComponent`, `PvpLpBadgeComponent`): react to signals only. Never dequeue or mutate game state.
+
+**Async Overlay Contract:**
+```
+Orchestrator: chainOverlayReady = true (initial)
+MSG_CHAIN_SOLVED → orchestrator pauses, returns 'async'
+  → Overlay: chainOverlayReady = false
+  → Overlay plays exit animation + board pause
+  → Overlay: chainOverlayReady = true
+  → Orchestrator resume effect detects ready → resumes queue
+```
+The overlay NEVER calls orchestrator methods. Communication is unidirectional via signals.
+
+**Buffer & Replay (PvP-C):**
+- When `_insideChainResolution = true`, board-changing events (`MSG_MOVE`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`) are pushed to `_bufferedBoardEvents[]` instead of processed.
+- On `MSG_CHAIN_SOLVED`, the orchestrator transmits the buffer to the overlay via `chainBoardReplayDuration` signal.
+- Replay executes in two sequential beats (each internally parallel):
+  - Beat 1 (zones): all `CardTravelService.travel()` calls fire simultaneously with 50ms stagger
+  - Beat 2 (LP): all LP interpolations fire simultaneously
+- Board pause duration = `max(Beat 1 durations) + (count-1) × stagger + Beat 2 duration` (dynamic, not fixed)
+- If no board-changing events buffered, skip pause entirely (same as current `chainOverlayBoardChanged = false` behavior)
+
+**Card Travel (PvP-C):**
+- Replaces in-place glow effects for summon/destroy events. `pvp-summon-flash` and `pvp-destroy-flash` CSS keyframes are removed.
+- Travel animation phases: Lift (0-15%: `scale(1.15)`, shadow expand, departure glow) → Travel (15-75%: `position: fixed` translate, `rotateY(8deg)`, `ease-in-out`) → Land (75-100%: micro-bounce `1.15→1.05→1`, impact glow pulse)
+- `pvp-flip-flash` and `pvp-activate-flash` remain unchanged (in-place by nature)
+- Token destruction: dissolve in-place (fade + scale down), no travel — tokens don't go to GY
+
+**Event-Specific Travel Behavior:**
+
+| Event | Source → Destination | Details |
+|-------|---------------------|---------|
+| MSG_MOVE summon | Hand/Deck/Extra → MZ/SZ | Face visible on arrival, green impact glow |
+| MSG_MOVE destroy | MZ/SZ → GY/Banished | Card flips to back during travel, red departure glow |
+| MSG_MOVE bounce | MZ/SZ → Hand | No destructive glow, softer travel arc |
+| MSG_MOVE return to deck | MZ/SZ → Deck | Card flips to back, deck pulses on arrival |
+| MSG_MOVE field-to-field | MZ → MZ, SZ → SZ | Direct travel, neutral glow |
+| MSG_DRAW | Deck → Hand | Card back visible during travel (promoted from no-op) |
+| MSG_SHUFFLE_HAND | Deck zone in-place | Fan-out/fan-in pseudo-elements (~250ms) |
+| XYZ material detach | XYZ parent → GY | Slide-out from stacked indicator, then standard travel |
+
+**Stagger for Parallel Travels:**
+- ~50ms stagger between each card's departure (e.g., Raigeki → 5 destroys)
+- Slight position offsets at destination prevent visual overlap
+- Total: `max(travel duration) + (count-1) × 50ms`
+
+**XYZ Material Visual Enhancement (PvP-C):**
+- Resting state: 2-3 stacked card-back indicators beneath XYZ monster (pseudo-elements, max 3 visible layers)
+- Detach: one indicator slides out → standard travel to GY → badge count updates
+- `.emz-slot` overflow changed from `hidden` to `visible` (prevents clipping on EMZ-positioned XYZ monsters)
+
+**LP Tracking:**
+- Orchestrator maintains private `trackedLp: [player, opponent]` — synced to board state when queue is empty
+- `animatingLpPlayer` signal carries interpolation metadata (`fromLp`, `toLp`, `durationMs`)
+- `PvpLpBadgeComponent` uses `requestAnimationFrame` for smooth counter interpolation
+
+**Acceleration Features:**
+- AC5 (auto-resolve): ≥3 chain links solved without user prompt → `chainAccelerated = true` → halve all animation durations. Overlay buffers announcements, announces "Chain of N links resolved" on chain end.
+- AC7 (queue collapse): > 5 queued events → instantly apply all but last 3 (LP tracking updated, no visual animation). Skip collapse if chain resolution events present in queue.
+- AC8 (speed multiplier): activation toggle `off` → `speedMultiplier = 0.5` applied to all `setTimeout` durations in orchestrator. Card travel minimum floor: 200ms even after multiplier.
+
+**Timing & Duration Reference:**
+
+| Animation | Normal | Accelerated (AC5/3+ chain) | Reduced Motion |
+|-----------|--------|----------------------------|----------------|
+| Card travel (Lift→Travel→Land) | 400ms | 250ms (min 200ms floor) | Instant (no travel) |
+| Stagger between parallel cards | 50ms | 30ms | 0ms |
+| LP counter interpolation | CSS `--pvp-transition-lp-counter` | Same × speed multiplier | 0ms |
+| Chain overlay pulse glow | 600ms | 300ms | 300ms |
+| Chain overlay exit | 600ms | 300ms | 300ms |
+| Chain overlay board pause | Dynamic (from buffer) | Same × speed multiplier | 0ms |
+| Deck shuffle (fan-out/fan-in) | 250ms | 150ms | Instant |
+| XYZ detach slide-out | 200ms | 120ms | Instant |
+| MSG_CHAINING activate glow | 1400ms | 700ms | 700ms |
+
+**Accessibility (`prefers-reduced-motion: reduce`):**
+- All CSS animation tokens set to `0ms`
+- Card travel: no floating element, card appears/disappears instantly
+- Board pause during chain: duration = 0ms
+- LP interpolation: snap to final value
+- Screen reader announcements unchanged (semantic, not visual)
 
 ### Process Patterns
 
@@ -415,6 +592,12 @@ Each step has a single owner file. No file bypasses the chain.
 7. Follow the MSG_HINT → SELECT_* → SELECT_RESPONSE invariant order
 8. Route all worker communication through typed `postMessage` — never shared memory or global state
 9. Keep `ws-protocol.ts` self-contained — zero internal imports (it is copied to Angular, cannot depend on server internals)
+10. Never mutate game state from visual components — only `DuelConnection` mutates chain/board state, only `AnimationOrchestratorService` controls timing
+11. Overlay ↔ orchestrator communication is unidirectional via signals — overlay NEVER calls orchestrator methods
+12. Card travel minimum duration floor: 200ms after speed multiplier — below this threshold travel is imperceptible
+13. All card travel floating elements MUST be cleaned up on animation completion — leaked DOM elements accumulate and degrade performance
+14. Buffer & replay ONLY during chain resolution (`_insideChainResolution = true`) — normal gameplay events process immediately
+15. Beat ordering is fixed: Beat 1 (zone travels) completes before Beat 2 (LP) starts — LP changes must appear after the card movement that caused them
 
 **Cross-Reference:** `duel-ws.types.ts` (Angular) is the client-side counterpart of `ws-protocol.ts` (duel server). These two files define opposite ends of the same protocol boundary (ADR-2). The server file is the source of truth.
 
@@ -424,6 +607,9 @@ Each step has a single owner file. No file bypasses the chain.
 2. **Sending `ws.send()` from `message-filter.ts` or `duel-worker.ts`** — only `server.ts` owns the WebSocket connection.
 3. **Omitting `null` and relying on `undefined`/missing field** — Angular signals break on `undefined` vs `null` mismatch.
 4. **Hardcoding message type strings** — always reference the union type. Typos in strings are silent bugs.
+5. **Processing board events immediately during chain resolution** — events between `MSG_CHAIN_SOLVING` and `MSG_CHAIN_SOLVED` must be buffered, not processed. Immediate processing causes animations to play behind the overlay (invisible to user).
+6. **Using fixed board pause duration during chain replay** — pause must be dynamic, calculated from buffered event replay durations. Fixed duration causes desync between animation completion and overlay return.
+7. **Leaking floating card elements** — every `CardTravelService.travel()` call must remove its floating element on completion or interruption. Use `finally` or `animation.onfinish`.
 
 ## Project Structure & Boundaries
 
@@ -478,11 +664,22 @@ front/src/app/
 │       │   ├── room-create.component.ts  # Includes deck picker (select from user's decks)
 │       │   └── waiting-room.component.ts # Polls GET /api/rooms/:id for opponent join status
 │       │
-│       ├── duel/
-│       │   ├── duel-page.component.ts    # Container (scopes DuelWebSocketService), manages duel result state
-│       │   ├── duel-websocket.service.ts # 6 signals + FIFO animation queue (merged)
-│       │   ├── pvp-board.component.ts    # Composes 2× PlayerFieldComponent (own + opponent mirrored)
-│       │   └── prompts/                  # SELECT_* prompt components (3 types MVP)
+│       ├── duel-page/
+│       │   ├── duel-page.component.ts         # Container (scopes services), manages duel result state, wires effects
+│       │   ├── duel-connection.ts              # Data layer: WebSocket handling, 10 signals, pending chain entry, animationQueue
+│       │   ├── animation-orchestrator.service.ts # Timing layer: dequeue loop, buffer/replay, async overlay contract, acceleration
+│       │   ├── card-travel.service.ts          # NEW (PvP-C): floating elements, Web Animations API, zone rect resolution
+│       │   ├── pvp-board-container/            # Board layout: 2× player fields, zone element registry, XYZ indicators
+│       │   │   ├── pvp-board-container.component.ts
+│       │   │   ├── pvp-board-container.component.html
+│       │   │   └── pvp-board-container.component.scss  # Zone animations, travel anchor styles, XYZ stacked indicators
+│       │   ├── pvp-chain-overlay/              # Visual layer: card cascade, resolve-exit, board pause
+│       │   │   ├── pvp-chain-overlay.component.ts
+│       │   │   ├── pvp-chain-overlay.component.html
+│       │   │   └── pvp-chain-overlay.component.scss    # Chain card positions, entry/exit/resolve animations
+│       │   ├── pvp-lp-badge/                   # LP counter with rAF interpolation
+│       │   │   └── pvp-lp-badge.component.ts
+│       │   └── prompts/                        # SELECT_* prompt components (3 types MVP)
 │       │       ├── card-select-prompt.component.ts  # CARD, TRIBUTE, SUM, UNSELECT_CARD
 │       │       ├── zone-select-prompt.component.ts  # PLACE, DISFIELD
 │       │       └── choice-prompt.component.ts       # EFFECTYN, YESNO, POSITION, OPTION, CHAIN, RPS
@@ -634,8 +831,8 @@ spring-boot:
 |-------------|---------------|
 | FR1-7: Matchmaking & Sessions | `RoomController.java`, `RoomService.java`, `Room.java`, `lobby-page.component.ts`, `room.service.ts`, `waiting-room.component.ts` |
 | FR8-10: Turn & Phase Management | `duel-worker.ts` (OCGCore delegation), `duel-page.component.ts` |
-| FR11-13: Player Prompts | `prompts/*.component.ts` (4 types), `duel-websocket.service.ts` (hintContext + pendingPrompt) |
-| FR14-24: Board Display & Info | `pvp-board.component.ts`, `player-field.component.ts`, `duel-websocket.service.ts` (animationQueue) |
+| FR11-13: Player Prompts | `prompts/*.component.ts` (3 types), `duel-connection.ts` (hintContext + pendingPrompt) |
+| FR14-24: Board Display & Info | `pvp-board-container.component.ts`, `player-field.component.ts`, `duel-connection.ts` (animationQueue), `animation-orchestrator.service.ts`, `card-travel.service.ts` (PvP-C), `pvp-chain-overlay.component.ts`, `pvp-lp-badge.component.ts` |
 | NFR1-2: Network & Latency | `server.ts` (WebSocket), `duel-websocket.service.ts` (connectionStatus) |
 | NFR4-5: Reconnection | `server.ts` (grace period), `duel-websocket.service.ts` (resynchronized) |
 | NFR6-8: Security | `message-filter.ts`, `SecurityConfig.java`, `server.ts` (maxPayload, awaitingResponse) |
@@ -664,7 +861,7 @@ Key compatibility confirmations:
 - All files use `kebab-case.ts` naming
 - Union discriminated types used throughout (never `type: string`)
 - Explicit `null` for absent values enforced across wire format and Angular signals
-- 9 enforcement rules documented and cross-referenced
+- 15 enforcement rules documented and cross-referenced
 
 **Structure Alignment:**
 - Duel server: 9 source files with clear single-responsibility boundaries
@@ -694,12 +891,12 @@ Key compatibility confirmations:
 | FR14 (Two-player display) | `PlayerFieldComponent` ×2 (own + mirrored) | `pvp-board.component.ts`, `player-field.component.ts` |
 | FR15 (Private info hiding) | Whitelist filter + default DROP | `message-filter.ts` |
 | FR16 (LP display) | `duelState` signal includes LP | `duel-websocket.service.ts` |
-| FR17 (Chain visualization) | `animationQueue` signal + chain events | `duel-websocket.service.ts` |
+| FR17 (Chain visualization) | Three-layer animation architecture + async overlay contract | `animation-orchestrator.service.ts`, `pvp-chain-overlay.component.ts`, `duel-connection.ts` |
 | FR18 (Card inspection) | Reuse existing card inspector | Shared `components/` |
 | FR19 (Turn indicator) | `duelState` signal includes phase/turn | `duel-page.component.ts` |
 | FR20 (Turn timer) | `timerState` signal, server-authoritative | `server.ts`, `duel-websocket.service.ts` |
 | FR21 (Inactivity timeout) | Server-side 100s watchdog | `server.ts` |
-| FR22 (Visual feedback) | FIFO animation queue | `duel-websocket.service.ts` (merged queue) |
+| FR22 (Visual feedback) | Card travel animations (PvP-C) + buffer/replay during chain + LP interpolation | `animation-orchestrator.service.ts`, `card-travel.service.ts`, `pvp-board-container.component.ts`, `pvp-lp-badge.component.ts` |
 | FR23 (Click-based interaction) | Prompt components (not drag & drop) | `prompts/*.component.ts` |
 | FR24 (Duel result screen) | Duel result state in `duel-page.component.ts` | `duel-page.component.ts` |
 | FR25 (Activation toggle) | Client-side filter (Auto/On/Off) on optional prompts, per-duel state | `pvp-activation-toggle.component.ts`, `duel-websocket.service.ts` |
@@ -723,7 +920,7 @@ Key compatibility confirmations:
 
 **Decision Completeness:**
 - All critical decisions documented with specific library versions (`ws`, `better-sqlite3`, `@n1xx1/ocgcore-wasm` 0.1.1, Node.js 22+ LTS, TypeScript 5.9)
-- 9 enforcement rules provide clear, verifiable constraints for AI agents
+- 15 enforcement rules provide clear, verifiable constraints for AI agents (9 original + 6 animation-specific)
 - Transformation chain documented: OCGCore → worker → DTO → filter → WebSocket
 - Protocol boundary clearly defined (ADR-2): `ws-protocol.ts` = source of truth, zero internal imports
 
@@ -737,7 +934,7 @@ Key compatibility confirmations:
 - Naming conventions: 4 categories (message types, code, files, Angular)
 - Communication patterns: protocol invariant, worker contract, transformation chain
 - Process patterns: error handling per file, loading states, logging
-- Anti-patterns: 4 critical anti-patterns documented
+- Anti-patterns: 7 critical anti-patterns documented (4 original + 3 animation-specific)
 
 **Implementation Notes (Party Mode):**
 
@@ -793,6 +990,7 @@ Key compatibility confirmations:
 - [x] Structure patterns defined (complete file trees for all 3 services)
 - [x] Communication patterns specified (protocol invariant, transformation chain, worker contract)
 - [x] Process patterns documented (error handling, loading states, logging)
+- [x] Animation patterns documented (three-layer separation, async overlay contract, buffer/replay, card travel, Beat grouping, acceleration, timing reference, accessibility)
 
 **✅ Project Structure**
 
@@ -810,7 +1008,7 @@ Key compatibility confirmations:
 - 25/25 FRs architecturally supported with file-level mapping
 - 10/10 NFRs addressed with specific mechanisms
 - PoC validates core technical risk (OCGCore WASM duel loop)
-- 9 enforcement rules provide clear AI agent constraints
+- 15 enforcement rules provide clear AI agent constraints
 - 3 Party Mode clarifications address implementation ambiguities
 
 **Key Strengths:**
@@ -829,9 +1027,9 @@ Key compatibility confirmations:
 
 **AI Agent Guidelines:**
 
-- Follow all 9 enforcement rules exactly as documented in §Implementation Patterns
+- Follow all 15 enforcement rules exactly as documented in §Implementation Patterns
 - Use the dependency graph (Phase 0 → 1A/1B → 2A/2B → 3) for implementation ordering
-- Respect the 4 critical anti-patterns (no shared mutable state, no ws.send outside server.ts, explicit null, no hardcoded type strings)
+- Respect the 7 critical anti-patterns (no shared mutable state, no ws.send outside server.ts, explicit null, no hardcoded type strings, no immediate board events during chain, no fixed board pause, no leaked floating elements)
 - Refer to FR → Structure mapping for file-level implementation targets
 - PvP-A0 scope: implement frequent SELECT_* types first, others fallback to auto-select
 

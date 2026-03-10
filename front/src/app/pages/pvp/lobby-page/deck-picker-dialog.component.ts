@@ -22,7 +22,7 @@ const TITLES: Record<DeckPickerContext, string> = {
 };
 
 const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
-  create: 'Creer la room',
+  create: 'Créer la room',
   join: 'Rejoindre',
   quickDuel: 'Lancer le duel',
 };
@@ -70,12 +70,12 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
       } @else if (fetchError()) {
         <div class="picker-message">
           <p>Impossible de charger les decks</p>
-          <button mat-button (click)="loadDecks()">Reessayer</button>
+          <button mat-button (click)="loadDecks()">Réessayer</button>
         </div>
       } @else if (decks().length === 0) {
         <div class="picker-message">
           <p>Aucun deck disponible</p>
-          <p class="picker-hint">Cree un deck dans le Deck Builder pour commencer.</p>
+          <p class="picker-hint">Crée un deck dans le Deck Builder pour commencer.</p>
           <a [routerLink]="['/decks']" mat-button (click)="dialogRef.close()">Aller au Deck Builder</a>
         </div>
       } @else {

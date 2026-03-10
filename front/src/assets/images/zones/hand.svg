@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+  <defs>
+    <!-- Center card masked by both side cards -->
+    <mask id="hc">
+      <rect width="24" height="24" fill="white"/>
+      <rect x="3" y="3" width="7" height="11" rx="0.75" fill="black" stroke="black" stroke-width="0.4" transform="rotate(-10 6.5 14)"/>
+      <rect x="14" y="3" width="7" height="11" rx="0.75" fill="black" stroke="black" stroke-width="0.4" transform="rotate(10 17.5 14)"/>
+    </mask>
+  </defs>
+  <!-- Right card (bottom, complete) -->
+  <rect x="14" y="3" width="7" height="11" rx="0.75" transform="rotate(10 17.5 14)"/>
+  <!-- Center card (middle, masked by both side cards) -->
+  <rect x="8.5" y="3" width="7" height="11" rx="0.75" mask="url(#hc)"/>
+  <!-- Left card (top, complete) -->
+  <rect x="3" y="3" width="7" height="11" rx="0.75" transform="rotate(-10 6.5 14)"/>
+  <!-- Grip arc -->
+  <path d="M4 19q8 3.5 16 0" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

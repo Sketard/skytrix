@@ -16,7 +16,7 @@
           </div>
         } @else if (zone.renderMode === 'pile-facedown') {
           <div class="zone-pile zone-pile--stack"
-               (click)="onZonePillClick(zone.zoneId, 1)">
+               (click)="onZonePillClick($event, zone.zoneId, 1)">
             @if (zone.cardCount > 0) {
               <img src="assets/images/card_back.jpg" alt="Extra Deck" class="card-art">
             }
@@ -25,7 +25,7 @@
           <div class="zone-pile"
                [class.zone-pile--depth-1]="zone.cardCount >= 3 && zone.cardCount < 10"
                [class.zone-pile--depth-2]="zone.cardCount >= 10"
-               (click)="onZonePillClick(zone.zoneId, 1)">
+               (click)="onZonePillClick($event, zone.zoneId, 1)">
             @if (zone.card) {
               @if (isFaceUp(zone.card.position)) {
                 <img [src]="getCardImageUrl(zone.card)"
@@ -58,7 +58,6 @@
                 <span>{{ zone.card.overlayMaterials.length }}</span>
               </div>
             }
-            <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: chainBadgesByZone().get(zone.zoneId + '-1') ?? [] }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -82,7 +81,7 @@
          [class.zone--highlighted]="isHighlighted('BANISHED')"
          [class.pile-depth-1]="opponentBanishedCount() >= 3 && opponentBanishedCount() < 10"
          [class.pile-depth-2]="opponentBanishedCount() >= 10"
-         (click)="onZonePillClick('BANISHED', 1)">
+         (click)="onZonePillClick($event, 'BANISHED', 1)">
       @if (opponentBanished(); as card) {
         <img [src]="getCardImageUrl(card)"
              alt="Banished top card"
@@ -93,6 +92,7 @@
 
     @for (emz of emzConfigs(); track emz.zoneId) {
       <div class="emz" [class]="emz.cssClass"
+           [class.emz--opponent]="emz.isOpponent"
            [class.zone--highlighted]="isHighlighted(emz.zoneId)">
         @if (emz.zone; as card) {
           <div class="zone-card"
@@ -116,7 +116,6 @@
                 <span>{{ card.overlayMaterials.length }}</span>
               </div>
             }
-            <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: emz.chainBadges }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -150,7 +149,7 @@
          [class.pile-depth-2]="playerBanishedCount() >= 10"
          [class.zone-pile--actionable]="activateZoneIds().has('BANISHED')"
          [class.zone-pile--actionable-blue]="!activateZoneIds().has('BANISHED') && nonActivateZoneIds().has('BANISHED')"
-         (click)="onZonePillClick('BANISHED', 0)">
+         (click)="onZonePillClick($event, 'BANISHED', 0)">
       @if (playerBanished(); as card) {
         <img [src]="getCardImageUrl(card)"
              alt="Banished top card"
@@ -185,7 +184,7 @@
           <div class="zone-pile zone-pile--stack"
                [class.zone-pile--actionable]="activateZoneIds().has(zone.zoneId)"
                [class.zone-pile--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
-               (click)="onZonePillClick(zone.zoneId, 0)">
+               (click)="onZonePillClick($event, zone.zoneId, 0)">
             @if (zone.cardCount > 0) {
               <img src="assets/images/card_back.jpg" alt="Extra Deck" class="card-art">
             }
@@ -196,7 +195,7 @@
                [class.zone-pile--depth-2]="zone.cardCount >= 10"
                [class.zone-pile--actionable]="activateZoneIds().has(zone.zoneId)"
                [class.zone-pile--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
-               (click)="onZonePillClick(zone.zoneId, 0)">
+               (click)="onZonePillClick($event, zone.zoneId, 0)">
             @if (zone.card) {
               @if (isFaceUp(zone.card.position)) {
                 <img [src]="getCardImageUrl(zone.card)"
@@ -231,7 +230,6 @@
                 <span>{{ zone.card.overlayMaterials.length }}</span>
               </div>
             }
-            <ng-container *ngTemplateOutlet="chainBadgeTpl; context: { badges: chainBadgesByZone().get(zone.zoneId + '-0') ?? [] }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -250,26 +248,3 @@
     <app-pvp-lp-badge [lp]="playerLp()" side="player" [animatingLp]="playerLpAnim()" />
   </section>
 </div>
-
-<!-- H10 refactor: shared chain badge rendering template -->
-<ng-template #chainBadgeTpl let-badges="badges">
-  @for (chainLink of badges; track chainLink.chainIndex; let i = $index) {
-    @if (i < 3) {
-      <span class="pvp-chain-badge"
-            [class.pvp-chain-badge--resolving]="chainLink.resolving"
-            [style.right.px]="2 + i * 4"
-            [style.z-index]="10 + i"
-            [attr.aria-label]="'Chain link ' + (chainLink.chainIndex + 1) + ': ' + chainLink.cardName">
-        {{ chainLink.chainIndex + 1 }}
-      </span>
-    }
-  }
-  @if (badges.length > 3) {
-    <span class="pvp-chain-badge pvp-chain-badge--overflow"
-          [style.right.px]="2 + 3 * 4"
-          [style.z-index]="13"
-          [attr.aria-label]="(badges.length - 3) + ' more chain links'">
-      +{{ badges.length - 3 }}
-    </span>
-  }
-</ng-template>

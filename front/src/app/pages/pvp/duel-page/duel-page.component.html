@@ -146,7 +146,6 @@
                                [duelState]="duelState()"
                                [timerState]="timerState()"
                                [ownPlayerIndex]="ownPlayerIndex()"
-                               [activeChainLinks]="wsService.activeChainLinks()"
                                [highlightedZones]="highlightedZones()"
                                [actionablePrompt]="actionablePrompt()"
                                [opponentDisconnected]="wsService.opponentDisconnected()"
@@ -185,14 +184,18 @@
                       aria-label="Retour">
                 ← Retour
               </button>
-              <span class="card-action-menu__sub-title">Choisir un effet</span>
+              <span class="card-action-menu__sub-title">{{ sub[0].cardName ? 'Choisir une carte' : 'Choisir un effet' }}</span>
             </div>
             @for (action of sub; track $index) {
               <button class="card-action-menu__item card-action-menu__item--effect"
                       role="menuitem"
                       type="button"
                       (click)="onMenuChildAction(action)">
-                <span class="card-action-menu__effect-num">Effet {{ $index + 1 }}</span>
+                @if (action.cardName) {
+                  <span class="card-action-menu__effect-num">{{ action.cardName }}</span>
+                } @else {
+                  <span class="card-action-menu__effect-num">Effet {{ $index + 1 }}</span>
+                }
                 @if (action.description) {
                   <span class="card-action-menu__effect-desc">{{ action.description }}</span>
                 }
@@ -201,14 +204,10 @@
           } @else {
             @for (action of menuDisplayActions(); track $index) {
               <button class="card-action-menu__item"
-                      [class.card-action-menu__item--group]="action.children"
                       role="menuitem"
                       type="button"
                       (click)="onMenuAction(action, $event)">
                 {{ action.label }}
-                @if (action.children) {
-                  <span class="card-action-menu__arrow" aria-hidden="true">▶</span>
-                }
               </button>
             }
           }
@@ -354,6 +353,9 @@
       </div>
     }
 
+    <!-- Story 6.1 / 6.3 — Chain Overlay (H1: services injected directly, only promptActive as input) -->
+    <app-pvp-chain-overlay [promptActive]="hasActivePrompt()" />
+
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {
       <div class="rematch-starting-overlay" role="status" aria-live="polite">
@@ -400,8 +402,9 @@
     }
 
     <!-- Prompt dialog (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
-    <app-pvp-prompt-dialog [prompt]="visiblePrompt()"
+    <app-pvp-prompt-dialog [prompt]="effectivePrompt()"
                            [skipBeat1]="returningFromBackground()"
+                           [responseOverride]="pilePrompt() ? pileResponseHandler : null"
                            (dialogExpanded)="promptSheetExpanded.set($event)"
                            (longPressInspect)="onLongPressInspect($event)" />
 

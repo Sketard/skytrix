@@ -89,6 +89,10 @@
   &--right {
     grid-column: 5;
   }
+
+  &--opponent .card-art {
+    transform: rotate(180deg);
+  }
 }
 
 .central-badges {
@@ -131,6 +135,10 @@
 // Opponent banished: col 1 (aligned with opponent GY above)
 .zone--banished-opponent {
   grid-column: 1;
+
+  .card-art {
+    transform: rotate(180deg);
+  }
 }
 
 // Player banished: col 7 (aligned with player GY below)
@@ -394,50 +402,6 @@
   }
 }
 
-// === Chain Link Badges (Story 4.1) ===
-.pvp-chain-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: var(--pvp-chain-badge-size);
-  min-height: var(--pvp-chain-badge-size);
-  width: 1.5em;
-  height: 1.5em;
-  border-radius: 50%;
-  background: var(--pvp-chain-badge-bg);
-  color: var(--pvp-chain-badge-color);
-  font-size: 0.75em;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: z.$z-pvp-chain-badge;
-  pointer-events: none;
-
-  &--resolving {
-    animation: chain-resolve-pulse var(--pvp-chain-resolve-pulse) ease-in-out;
-  }
-
-  &--overflow {
-    font-size: 0.625em;
-    opacity: 0.85;
-  }
-}
-
-@keyframes chain-resolve-pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  50% {
-    transform: scale(1.3);
-    opacity: 0.7;
-  }
-}
-
 // === Game Event Animations (Story 4.2) ===
 // [Review L1 fix] Summon uses --pvp-transition-card-move per AC2 spec
 .pvp-anim-summon {
@@ -527,10 +491,6 @@
   .zone-card--actionable-blue,
   .zone-pile--actionable,
   .zone-pile--actionable-blue {
-    animation: none;
-  }
-
-  .pvp-chain-badge--resolving {
     animation: none;
   }
 

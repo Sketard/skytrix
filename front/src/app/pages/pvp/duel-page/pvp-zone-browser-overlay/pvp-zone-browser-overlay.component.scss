@@ -76,10 +76,21 @@
 }
 
 .zone-browser__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding: 6px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
-  text-align: center;
+}
+
+.zone-browser__zone-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 1;
+  filter: brightness(0) invert(1);
 }
 
 .zone-browser__title {

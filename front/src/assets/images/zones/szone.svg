@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+  <defs>
+    <mask id="wand-groove">
+      <rect width="24" height="24" fill="white"/>
+      <!-- Wand stick (inclined, shorter to leave room for top star) -->
+      <line x1="10" y1="16" x2="13" y2="10" stroke="black" stroke-width="1.1" stroke-linecap="round"/>
+      <!-- Star 1 (top of wand, big) -->
+      <line x1="13.5" y1="8.2" x2="13.5" y2="10.2" stroke="black" stroke-width="0.6"/>
+      <line x1="12.5" y1="9.2" x2="14.5" y2="9.2" stroke="black" stroke-width="0.6"/>
+      <line x1="12.8" y1="8.5" x2="14.2" y2="9.9" stroke="black" stroke-width="0.45"/>
+      <line x1="14.2" y1="8.5" x2="12.8" y2="9.9" stroke="black" stroke-width="0.45"/>
+      <!-- Star 2 (above, smaller) -->
+      <line x1="12" y1="6.5" x2="12" y2="7.5" stroke="black" stroke-width="0.4"/>
+      <line x1="11.5" y1="7" x2="12.5" y2="7" stroke="black" stroke-width="0.4"/>
+      <!-- Star 3 (right) -->
+      <line x1="15.5" y1="9" x2="15.5" y2="10" stroke="black" stroke-width="0.4"/>
+      <line x1="15" y1="9.5" x2="16" y2="9.5" stroke="black" stroke-width="0.4"/>
+      <!-- Star 4 (top right, small) -->
+      <line x1="15" y1="7" x2="15" y2="7.8" stroke="black" stroke-width="0.35"/>
+      <line x1="14.6" y1="7.4" x2="15.4" y2="7.4" stroke="black" stroke-width="0.35"/>
+    </mask>
+  </defs>
+
+  <!-- Scroll body with wand carved in -->
+  <rect x="6.5" y="6" width="11" height="12" rx="0.5" mask="url(#wand-groove)"/>
+
+  <!-- Horizontal grain lines across parchment body -->
+  <line x1="7" y1="7.5" x2="17" y2="7.5" stroke="black" stroke-width="0.3" opacity="0.08"/>
+  <line x1="7" y1="9.2" x2="17" y2="9.2" stroke="black" stroke-width="0.25" opacity="0.06"/>
+  <line x1="7" y1="10.8" x2="17" y2="10.8" stroke="black" stroke-width="0.3" opacity="0.09"/>
+  <line x1="7" y1="12.5" x2="17" y2="12.5" stroke="black" stroke-width="0.2" opacity="0.07"/>
+  <line x1="7" y1="14" x2="17" y2="14" stroke="black" stroke-width="0.3" opacity="0.08"/>
+  <line x1="7" y1="15.5" x2="17" y2="15.5" stroke="black" stroke-width="0.25" opacity="0.06"/>
+  <line x1="7" y1="16.8" x2="17" y2="16.8" stroke="black" stroke-width="0.2" opacity="0.07"/>
+
+  <!-- Vertical grain lines (subtle cross-grain) -->
+  <line x1="9" y1="6.5" x2="9" y2="17.5" stroke="black" stroke-width="0.2" opacity="0.05"/>
+  <line x1="12" y1="6.5" x2="12" y2="17.5" stroke="black" stroke-width="0.15" opacity="0.04"/>
+  <line x1="15" y1="6.5" x2="15" y2="17.5" stroke="black" stroke-width="0.2" opacity="0.05"/>
+
+  <!-- Top roll -->
+  <rect x="5.5" y="4" width="13" height="3" rx="1.5"/>
+
+  <!-- Bottom roll -->
+  <rect x="5.5" y="17" width="13" height="3" rx="1.5"/>
+
+  <!-- Edge creases -->
+  <line x1="6.5" y1="6" x2="6.5" y2="18" stroke="black" stroke-width="0.3" opacity="0.1"/>
+  <line x1="17.5" y1="6" x2="17.5" y2="18" stroke="black" stroke-width="0.3" opacity="0.1"/>
+</svg>

@@ -143,11 +143,14 @@
   // --- Zone Browser ---
   --pvp-zone-browser-bg: rgba(20, 20, 40, 0.95);
 
-  // --- Chain Badges (Story 4.1) ---
+  // --- Chain Badges ---
   --pvp-chain-badge-bg: #4a90d9;
   --pvp-chain-badge-color: #fff;
-  --pvp-chain-badge-size: 24px;
-  --pvp-chain-resolve-pulse: 400ms;
+
+  // --- Chain Overlay (Story 6.1) ---
+  --pvp-chain-overlay-backdrop: rgba(0, 0, 0, 0.6);
+  --pvp-chain-overlay-transition: 600ms;
+  --pvp-chain-glow-resolving: rgba(255, 215, 0, 0.6);
 
   // --- Pile Stack ---
   --pvp-pile-stack-offset: 2px;
@@ -181,7 +184,7 @@
     --pvp-transition-lp-counter: 0ms;
     --pvp-animation-duration: 0ms;
     --pvp-prompt-transition-speed: 0ms;
-    --pvp-chain-resolve-pulse: 0ms;
+    --pvp-chain-overlay-transition: 0ms;
     --pvp-actionable-pulse-animation: none;
     --pvp-summon-highlight: transparent;
     --pvp-destroy-highlight: transparent;

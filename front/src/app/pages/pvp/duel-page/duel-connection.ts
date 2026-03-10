@@ -6,6 +6,40 @@ import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
 
+/**
+ * Data layer for a single duel WebSocket connection.
+ * Owns all reactive state (signals) and translates raw server messages into signal updates.
+ *
+ * ## Chain animation protocol — phase transitions
+ *
+ * Chain phases flow: idle → building → resolving → idle.
+ * Phase transitions are intentionally split across two layers:
+ *
+ * - **`building`**: set IMMEDIATELY here in handleMessage when the first MSG_CHAINING arrives.
+ *   The overlay needs this instantly to show entry animations during chain construction.
+ *
+ * - **`resolving` / `idle`**: set DEFERRED — NOT in handleMessage, but in applyChainSolving()
+ *   and applyChainEnd(), which are called by the AnimationOrchestratorService when it processes
+ *   these events from the animation queue.
+ *
+ * Why? Messages arrive from the server in bursts (all CHAIN_SOLVING/SOLVED/END at once),
+ * but the orchestrator processes them sequentially with animation delays. If we set
+ * phase='idle' immediately on MSG_CHAIN_END receipt, the overlay sees idle while the
+ * orchestrator is still animating CHAIN_SOLVED events — breaking the async overlay contract.
+ *
+ * ## Pending chain entry mechanism
+ *
+ * MSG_CHAINING does NOT immediately add links to activeChainLinks. Instead, the link is
+ * stored as a "pending entry" and committed later (by SELECT_CHAIN, WAITING_RESPONSE,
+ * MSG_CHAIN_SOLVING, or the next MSG_CHAINING). This ensures cards requiring cost payment
+ * complete their cost prompts BEFORE appearing in the chain overlay visually.
+ *
+ * ## Solo mode dual connections
+ *
+ * In solo mode, two DuelConnection instances exist (one per player). The server broadcasts
+ * all messages to both. Only the active connection's queue is processed by the orchestrator;
+ * the inactive connection accumulates events and replays them on player switch.
+ */
 export class DuelConnection {
   // --- Signals (13 pairs) ---
   private _duelState = signal<DuelState>(EMPTY_DUEL_STATE);
@@ -16,6 +50,7 @@ export class DuelConnection {
   private _connectionStatus = signal<ConnectionStatus>('connected');
   private _opponentDisconnected = signal(false);
   private _activeChainLinks = signal<ChainLinkState[]>([]);
+  private _chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   private _duelResult = signal<DuelEndMsg | null>(null);
   private _rpsResult = signal<RpsResultMsg | null>(null);
   private _rpsInProgress = signal(false);
@@ -32,6 +67,7 @@ export class DuelConnection {
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
   readonly activeChainLinks = this._activeChainLinks.asReadonly();
+  readonly chainPhase = this._chainPhase.asReadonly();
   readonly duelResult = this._duelResult.asReadonly();
   readonly rpsResult = this._rpsResult.asReadonly();
   readonly rpsInProgress = this._rpsInProgress.asReadonly();
@@ -59,6 +95,13 @@ export class DuelConnection {
   private _lastSelectedCards: CardInfo[] = [];
   get lastSelectedCards(): CardInfo[] { return this._lastSelectedCards; }
 
+  // --- Pending chain entry ---
+  // MSG_CHAINING stores here instead of immediately adding to _activeChainLinks.
+  // Committed when cost prompts are resolved (SELECT_CHAIN, MSG_CHAIN_SOLVING, next MSG_CHAINING).
+  private _pendingChainEntry: ChainLinkState | null = null;
+  private _hasPendingChainEntry = signal(false);
+  readonly hasPendingChainEntry = this._hasPendingChainEntry.asReadonly();
+
   // --- Hint consumed flag ---
   // Set after a prompt response is sent. Prevents stale cardName from a previous
   // effect from bleeding into unrelated prompts via HINT_SELECTMSG merge.
@@ -72,6 +115,16 @@ export class DuelConnection {
   constructor(wsUrlBase: string, autoReconnect: boolean) {
     this.wsUrlBase = wsUrlBase;
     this._autoReconnect = autoReconnect;
+  }
+
+  /** Flush pending chain entry into activeChainLinks (cost is resolved). */
+  private commitPendingChainEntry(): void {
+    if (this._pendingChainEntry) {
+      const entry = this._pendingChainEntry;
+      this._pendingChainEntry = null;
+      this._hasPendingChainEntry.set(false);
+      this._activeChainLinks.update(links => [...links, entry]);
+    }
   }
 
   // --- Public API ---
@@ -154,6 +207,7 @@ export class DuelConnection {
   }
 
   applyChainSolving(chainIndex: number): void {
+    this._chainPhase.set('resolving');
     this._activeChainLinks.update(links =>
       links.map(l => l.chainIndex === chainIndex ? { ...l, resolving: true } : l),
     );
@@ -166,6 +220,7 @@ export class DuelConnection {
   }
 
   applyChainEnd(): void {
+    this._chainPhase.set('idle');
     this._activeChainLinks.set([]);
   }
 
@@ -290,6 +345,7 @@ export class DuelConnection {
   }
 
   private handleMessage(message: ServerMessage): void {
+    console.log('[WS-RAW] ← %s %o', message.type, message);
     this.onMessage?.(message);
     switch (message.type) {
       case 'BOARD_STATE':
@@ -303,6 +359,7 @@ export class DuelConnection {
         this._rematchStarting.set(false);
         this._duelState.set(message.data);
         this._activeChainLinks.set([]);
+        this._chainPhase.set('idle');
         this._animationQueue.set([]);
         break;
 
@@ -312,6 +369,8 @@ export class DuelConnection {
       case 'SELECT_SUM':
       case 'SELECT_UNSELECT_CARD':
       case 'SELECT_COUNTER':
+        // SELECT_CHAIN means cost phase is done — commit pending chain entry
+        if (message.type === 'SELECT_CHAIN') this.commitPendingChainEntry();
         console.log('[CONN] Received %s cards=%d excludedCards=%d', message.type,
           (message as { cards?: unknown[] }).cards?.length ?? -1, this._lastSelectedCards.length);
         if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
@@ -384,12 +443,15 @@ export class DuelConnection {
         break;
 
       case 'DUEL_END':
+        this._pendingChainEntry = null;
+        this._hasPendingChainEntry.set(false);
         this._pendingPrompt.set(null);
         this._inactivityWarning.set(null);
         this._waitingForOpponent.set(false);
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
         this._activeChainLinks.set([]);
+        this._chainPhase.set('idle');
         this._animationQueue.set([]);
         try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
         break;
@@ -403,6 +465,8 @@ export class DuelConnection {
         break;
 
       case 'REMATCH_STARTING':
+        this._pendingChainEntry = null;
+        this._hasPendingChainEntry.set(false);
         this._rematchStarting.set(true);
         this._duelResult.set(null);
         this._duelState.set(EMPTY_DUEL_STATE);
@@ -411,6 +475,7 @@ export class DuelConnection {
         this._opponentDisconnected.set(false);
         this._rematchState.set('idle');
         this._activeChainLinks.set([]);
+        this._chainPhase.set('idle');
         this._animationQueue.set([]);
         break;
 
@@ -423,6 +488,7 @@ export class DuelConnection {
         break;
 
       case 'WAITING_RESPONSE':
+        this.commitPendingChainEntry();
         this._waitingForOpponent.set(true);
         break;
 
@@ -435,21 +501,42 @@ export class DuelConnection {
 
       case 'MSG_CHAINING': {
         const msg = message as ChainingMsg;
-        this._activeChainLinks.update(links => [...links, {
+        if (this._chainPhase() === 'idle') {
+          this._chainPhase.set('building');
+        }
+        // Commit any previous pending entry first (its cost is resolved)
+        this.commitPendingChainEntry();
+        // Store as pending — will be committed when cost prompts are resolved
+        this._pendingChainEntry = {
           chainIndex: msg.chainIndex,
           cardCode: msg.cardCode,
           cardName: msg.cardName,
           player: msg.player,
           zoneId: locationToZoneId(msg.location, msg.sequence),
           resolving: false,
-        }]);
+        };
+        this._hasPendingChainEntry.set(true);
         this._animationQueue.update(q => [...q, message]);
         break;
       }
 
       case 'MSG_CHAIN_SOLVING':
+        console.log('[CHAIN-DBG] MSG_CHAIN_SOLVING chainIndex=%d queueLen=%d isAnimating=%s chainPhase=%s activeLinks=%d',
+          (message as any).chainIndex, this._animationQueue().length, 'n/a', this._chainPhase(), this._activeChainLinks().length);
+        this.commitPendingChainEntry();
+        // Phase transition deferred to applyChainSolving() — called by orchestrator when queue reaches this event
+        this._animationQueue.update(q => [...q, message]);
+        break;
       case 'MSG_CHAIN_SOLVED':
+        console.log('[CHAIN-DBG] MSG_CHAIN_SOLVED chainIndex=%d queueLen=%d activeLinks=%d',
+          (message as any).chainIndex, this._animationQueue().length, this._activeChainLinks().length);
+        this._animationQueue.update(q => [...q, message]);
+        break;
       case 'MSG_CHAIN_END':
+        console.log('[CHAIN-DBG] MSG_CHAIN_END queueLen=%d activeLinks=%d',
+          this._animationQueue().length, this._activeChainLinks().length);
+        this.commitPendingChainEntry();
+        // Phase transition deferred to applyChainEnd() — called by orchestrator when queue reaches this event
         this._animationQueue.update(q => [...q, message]);
         break;
 

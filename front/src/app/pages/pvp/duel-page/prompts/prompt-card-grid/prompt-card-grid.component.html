@@ -3,24 +3,33 @@
 } @else {
 <div class="card-strip__inner">
   <div class="card-strip">
-    @for (entry of displayEntries; track entry.originalIndex) {
-      <button class="card-slot"
-              [class.card-slot--selected]="isSelected(entry.originalIndex)"
-              (click)="toggleCard(entry.originalIndex)"
-              (pointerdown)="onCardPointerDown(entry.card.cardCode, $event)"
-              (pointerup)="onCardPointerUp()"
-              (pointermove)="onCardPointerMove($event)"
-              (pointercancel)="onCardPointerUp()"
-              (contextmenu)="onContextMenu($event)"
-              [disabled]="answered"
-              type="button"
-              [attr.aria-label]="entry.card.name"
-              [attr.aria-pressed]="isSelected(entry.originalIndex)">
-        <img class="card-img"
-             [src]="getCardImageUrl(entry.card.cardCode)"
-             alt=""
-             loading="lazy" />
-      </button>
+    @for (group of zoneGroups; track group.location) {
+      <div class="zone-group">
+        <div class="zone-group__badge">
+          <img [src]="group.iconPath" alt="" class="zone-group__icon" />
+        </div>
+        <div class="zone-group__cards">
+          @for (entry of group.entries; track entry.originalIndex) {
+            <button class="card-slot"
+                    [class.card-slot--selected]="isSelected(entry.originalIndex)"
+                    (click)="toggleCard(entry.originalIndex)"
+                    (pointerdown)="onCardPointerDown(entry.card.cardCode, $event)"
+                    (pointerup)="onCardPointerUp()"
+                    (pointermove)="onCardPointerMove($event)"
+                    (pointercancel)="onCardPointerUp()"
+                    (contextmenu)="onContextMenu($event)"
+                    [disabled]="answered"
+                    type="button"
+                    [attr.aria-label]="entry.card.name"
+                    [attr.aria-pressed]="isSelected(entry.originalIndex)">
+              <img class="card-img"
+                   [src]="getCardImageUrl(entry.card.cardCode)"
+                   alt=""
+                   loading="lazy" />
+            </button>
+          }
+        </div>
+      </div>
     }
     </div>
   </div>

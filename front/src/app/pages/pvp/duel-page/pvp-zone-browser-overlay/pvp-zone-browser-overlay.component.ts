@@ -9,6 +9,14 @@ const ZONE_SHORT_LABELS: Partial<Record<ZoneId, string>> = {
   EXTRA: 'ED',
 };
 
+const ZONE_ICON_PATHS: Partial<Record<ZoneId, string>> = {
+  GY: 'assets/images/zones/gy.svg',
+  BANISHED: 'assets/images/zones/banished.svg',
+  EXTRA: 'assets/images/zones/extra.svg',
+  DECK: 'assets/images/zones/deck.svg',
+  HAND: 'assets/images/zones/hand.svg',
+};
+
 
 @Component({
   selector: 'app-pvp-zone-browser-overlay',
@@ -65,6 +73,10 @@ export class PvpZoneBrowserOverlayComponent {
 
   get zoneLabel(): string {
     return ZONE_SHORT_LABELS[this.zoneId()] ?? this.zoneId();
+  }
+
+  get zoneIconPath(): string | null {
+    return ZONE_ICON_PATHS[this.zoneId()] ?? null;
   }
 
   isOpponentExtra(): boolean {
