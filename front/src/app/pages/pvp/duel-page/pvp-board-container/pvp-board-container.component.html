@@ -1,3 +1,66 @@
+<!-- Shared alteration indicator template (Story 8.3) -->
+<ng-template #indicators let-card let-zoneId="zoneId">
+  @if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk
+    || card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
+    <div class="stat-badge" aria-hidden="true">
+      @if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk) {
+        <span [class.stat-badge__value--boost]="card.currentAtk > card.baseAtk"
+              [class.stat-badge__value--debuff]="card.currentAtk < card.baseAtk">{{ formatStat(card.currentAtk) }}</span>
+      }
+      @if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk
+        && card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
+        <span class="stat-badge__separator">/</span>
+      }
+      @if (card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
+        <span [class.stat-badge__value--boost]="card.currentDef > card.baseDef"
+              [class.stat-badge__value--debuff]="card.currentDef < card.baseDef">{{ formatStat(card.currentDef) }}</span>
+      }
+    </div>
+  }
+  @if (card.isEffectNegated) {
+    <svg class="negated-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
+      <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    </svg>
+  }
+  @if (card.currentLevel != null && card.baseLevel != null && card.currentLevel !== card.baseLevel) {
+    <div class="level-badge" aria-hidden="true"
+         [class.level-badge--boost]="card.currentLevel > card.baseLevel"
+         [class.level-badge--debuff]="card.currentLevel < card.baseLevel">
+      <img src="assets/images/icons/level-star.svg" class="level-badge__icon" alt="">{{ card.currentLevel }}
+    </div>
+  }
+  @if (card.currentRank != null && card.baseRank != null && card.currentRank !== card.baseRank) {
+    <div class="level-badge" aria-hidden="true"
+         [class.level-badge--boost]="card.currentRank > card.baseRank"
+         [class.level-badge--debuff]="card.currentRank < card.baseRank">
+      <img src="assets/images/icons/rank-star.svg" class="level-badge__icon" alt="">{{ card.currentRank }}
+    </div>
+  }
+  @if (card.currentAttribute != null && card.baseAttribute != null && card.currentAttribute !== card.baseAttribute) {
+    <img [src]="'assets/images/attributes/' + getAttributeName(card.currentAttribute) + '.svg'"
+         class="alteration-icon" alt="" aria-hidden="true">
+  }
+  @if (card.currentRace != null && card.baseRace != null && card.currentRace !== card.baseRace) {
+    <img [src]="'assets/images/races/' + getRaceName(card.currentRace) + '.webp'"
+         class="alteration-icon alteration-icon--race" alt="" aria-hidden="true">
+  }
+  @if (totalCounters(card.counters) > 0) {
+    <div class="counter-indicator" aria-hidden="true"
+         [class.counter-indicator--with-xyz]="card.overlayMaterials.length > 0">{{ totalCounters(card.counters) }}</div>
+  }
+  @if (zoneId === 'S1' && card.currentLScale != null && card.baseLScale != null && card.currentLScale !== card.baseLScale) {
+    <div class="pendulum-scale" aria-hidden="true"
+         [class.pendulum-scale--boost]="card.currentLScale > card.baseLScale"
+         [class.pendulum-scale--debuff]="card.currentLScale < card.baseLScale">{{ card.currentLScale }}</div>
+  }
+  @if (zoneId === 'S5' && card.currentRScale != null && card.baseRScale != null && card.currentRScale !== card.baseRScale) {
+    <div class="pendulum-scale" aria-hidden="true"
+         [class.pendulum-scale--boost]="card.currentRScale > card.baseRScale"
+         [class.pendulum-scale--debuff]="card.currentRScale < card.baseRScale">{{ card.currentRScale }}</div>
+  }
+</ng-template>
+
 <div class="board-wrapper">
   <!-- Opponent Field (rotateX applied) -->
   <section class="field-section opponent-field">
@@ -5,6 +68,7 @@
 
     @for (zone of opponentZones(); track zone.zoneId) {
       <div class="zone"
+           [attr.data-zone]="zone.zoneId + '-1'"
            [class.zone--highlighted]="isHighlighted(zone.zoneId)"
            [class.zone--banished]="zone.zoneId === 'BANISHED'"
            [style.grid-area]="zone.gridArea">
@@ -26,7 +90,12 @@
                [class.zone-pile--depth-1]="zone.cardCount >= 3 && zone.cardCount < 10"
                [class.zone-pile--depth-2]="zone.cardCount >= 10"
                (click)="onZonePillClick($event, zone.zoneId, 1)">
-            @if (zone.card) {
+            @let pileImg1 = maskedPileImages().get(zone.zoneId + '-1');
+            @if (pileImg1 !== undefined) {
+              @if (pileImg1) {
+                <img [src]="pileImg1" [alt]="zone.zoneId + ' top card'" class="card-art">
+              }
+            } @else if (zone.card) {
               @if (isFaceUp(zone.card.position)) {
                 <img [src]="getCardImageUrl(zone.card)"
                      [alt]="zone.zoneId + ' top card'"
@@ -36,14 +105,20 @@
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
               }
             }
+            @if (chainBadges().get(zone.zoneId + '-1'); as chainNum) {
+              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+            }
           </div>
         } @else if (zone.card) {
           <div class="zone-card"
                [class.def-position]="isMonsterDefense(zone)"
-               [class.pvp-anim-summon]="animatingZoneKeys().has(zone.zoneId + '-1-summon')"
-               [class.pvp-anim-destroy]="animatingZoneKeys().has(zone.zoneId + '-1-destroy')"
+               [class.zone-card--equip-highlight]="equipHighlightedZones().has(zone.zoneId + '-1')"
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-1-flip')"
                [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-1-activate')"
+               [style.visibility]="maskedZoneKeys().has(zone.zoneId + '-1') ? 'hidden' : null"
+               [attr.aria-label]="isFaceUp(zone.card.position) ? buildAriaLabel(zone.card) : 'Face-down card'"
+               (mouseenter)="onEquipHover(zone.zoneId + '-1')"
+               (mouseleave)="onEquipLeave()"
                (click)="onCardInspect(zone.card)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
@@ -54,13 +129,35 @@
               <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
             }
             @if (zone.card.overlayMaterials.length > 0) {
+              <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
+                @if (zone.card.overlayMaterials.length >= 3) {
+                  <div class="xyz-material-layer-3"></div>
+                }
+              </div>
               <div class="xyz-indicator">
                 <span>{{ zone.card.overlayMaterials.length }}</span>
               </div>
             }
+            @if (chainBadges().get(zone.zoneId + '-1'); as chainNum) {
+              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+            }
+            <ng-container [ngTemplateOutlet]="indicators"
+                          [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
           </div>
         } @else {
-          <div class="zone-empty"></div>
+          @let ghostCard1 = maskedSourceImages().get(zone.zoneId + '-1');
+          @if (ghostCard1) {
+            <div class="zone-card" [class.def-position]="isDefense(ghostCard1.position)" style="pointer-events:none">
+              @if (isFaceUp(ghostCard1.position)) {
+                <img [src]="getCardImageUrl(ghostCard1)" [alt]="ghostCard1.name ?? 'Card'" class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+            </div>
+          } @else {
+            <div class="zone-empty"></div>
+          }
         }
         @if (isHighlighted(zone.zoneId)) {
           <button class="zone-highlight-badge zone-highlight-badge--opponent"
@@ -78,30 +175,45 @@
   <section class="central-strip">
     <!-- Opponent Banished (col 1, aligned with opponent GY above) -->
     <div class="zone zone--banished zone--banished-opponent"
+         data-zone="BANISHED-1"
          [class.zone--highlighted]="isHighlighted('BANISHED')"
-         [class.pile-depth-1]="opponentBanishedCount() >= 3 && opponentBanishedCount() < 10"
-         [class.pile-depth-2]="opponentBanishedCount() >= 10"
          (click)="onZonePillClick($event, 'BANISHED', 1)">
-      @if (opponentBanished(); as card) {
-        <img [src]="getCardImageUrl(card)"
-             alt="Banished top card"
-             class="card-art"
-             (error)="$any($event.target).src='assets/images/card_back.jpg'">
-      }
+      <div class="zone-pile"
+           [class.zone-pile--depth-1]="opponentBanishedCount() >= 3 && opponentBanishedCount() < 10"
+           [class.zone-pile--depth-2]="opponentBanishedCount() >= 10">
+        @let banishedImg1 = maskedPileImages().get('BANISHED-1');
+        @if (banishedImg1 !== undefined) {
+          @if (banishedImg1) {
+            <img [src]="banishedImg1" alt="Banished top card" class="card-art">
+          }
+        } @else {
+          @if (opponentBanished(); as card) {
+            <img [src]="getCardImageUrl(card)"
+                 alt="Banished top card"
+                 class="card-art"
+                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
+          }
+        }
+        @if (chainBadges().get('BANISHED-1'); as chainNum) {
+          <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+        }
+      </div>
     </div>
 
     @for (emz of emzConfigs(); track emz.zoneId) {
-      <div class="emz" [class]="emz.cssClass"
+      <div class="emz" [attr.data-zone]="emz.zoneId + '-0'" [class]="emz.cssClass"
            [class.emz--opponent]="emz.isOpponent"
            [class.zone--highlighted]="isHighlighted(emz.zoneId)">
         @if (emz.zone; as card) {
           <div class="zone-card"
                [class.zone-card--actionable]="activateZoneIds().has(emz.zoneId)"
                [class.zone-card--actionable-blue]="!activateZoneIds().has(emz.zoneId) && nonActivateZoneIds().has(emz.zoneId)"
-               [class.pvp-anim-summon]="animatingEmzKeys().has(emz.zoneId + '-summon')"
-               [class.pvp-anim-destroy]="animatingEmzKeys().has(emz.zoneId + '-destroy')"
+               [class.zone-card--equip-highlight]="equipHighlightedZones().has(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                [class.pvp-anim-flip]="animatingEmzKeys().has(emz.zoneId + '-flip')"
                [class.pvp-anim-activate]="animatingEmzKeys().has(emz.zoneId + '-activate')"
+               [attr.aria-label]="isFaceUp(card.position) ? buildAriaLabel(card) : 'Face-down card'"
+               (mouseenter)="onEquipHover(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
+               (mouseleave)="onEquipLeave()"
                (click)="onEmzCardClick($event, emz.zoneId, card)">
             @if (isFaceUp(card.position)) {
               <img [src]="getCardImageUrl(card)"
@@ -112,10 +224,20 @@
               <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
             }
             @if (card.overlayMaterials.length > 0) {
+              <div class="xyz-material-stack" [attr.data-count]="card.overlayMaterials.length >= 3 ? 3 : card.overlayMaterials.length">
+                @if (card.overlayMaterials.length >= 3) {
+                  <div class="xyz-material-layer-3"></div>
+                }
+              </div>
               <div class="xyz-indicator">
                 <span>{{ card.overlayMaterials.length }}</span>
               </div>
             }
+            @if (chainBadges().get(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')); as chainNum) {
+              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+            }
+            <ng-container [ngTemplateOutlet]="indicators"
+                          [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -144,18 +266,31 @@
 
     <!-- Player Banished (col 7, aligned with player GY below) -->
     <div class="zone zone--banished zone--banished-player"
+         data-zone="BANISHED-0"
          [class.zone--highlighted]="isHighlighted('BANISHED')"
-         [class.pile-depth-1]="playerBanishedCount() >= 3 && playerBanishedCount() < 10"
-         [class.pile-depth-2]="playerBanishedCount() >= 10"
-         [class.zone-pile--actionable]="activateZoneIds().has('BANISHED')"
-         [class.zone-pile--actionable-blue]="!activateZoneIds().has('BANISHED') && nonActivateZoneIds().has('BANISHED')"
          (click)="onZonePillClick($event, 'BANISHED', 0)">
-      @if (playerBanished(); as card) {
-        <img [src]="getCardImageUrl(card)"
-             alt="Banished top card"
-             class="card-art"
-             (error)="$any($event.target).src='assets/images/card_back.jpg'">
-      }
+      <div class="zone-pile"
+           [class.zone-pile--depth-1]="playerBanishedCount() >= 3 && playerBanishedCount() < 10"
+           [class.zone-pile--depth-2]="playerBanishedCount() >= 10"
+           [class.zone-pile--actionable]="activateZoneIds().has('BANISHED')"
+           [class.zone-pile--actionable-blue]="!activateZoneIds().has('BANISHED') && nonActivateZoneIds().has('BANISHED')">
+        @let banishedImg0 = maskedPileImages().get('BANISHED-0');
+        @if (banishedImg0 !== undefined) {
+          @if (banishedImg0) {
+            <img [src]="banishedImg0" alt="Banished top card" class="card-art">
+          }
+        } @else {
+          @if (playerBanished(); as card) {
+            <img [src]="getCardImageUrl(card)"
+                 alt="Banished top card"
+                 class="card-art"
+                 (error)="$any($event.target).src='assets/images/card_back.jpg'">
+          }
+        }
+        @if (chainBadges().get('BANISHED-0'); as chainNum) {
+          <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+        }
+      </div>
       @if (isHighlighted('BANISHED')) {
         <button class="zone-highlight-badge"
                 (click)="onHighlightedZoneClick('BANISHED')"
@@ -171,6 +306,7 @@
   <section class="field-section player-field">
     @for (zone of playerZones(); track zone.zoneId) {
       <div class="zone"
+           [attr.data-zone]="zone.zoneId + '-0'"
            [class.zone--highlighted]="isHighlighted(zone.zoneId)"
            [class.zone--banished]="zone.zoneId === 'BANISHED'"
            [style.grid-area]="zone.gridArea">
@@ -196,7 +332,12 @@
                [class.zone-pile--actionable]="activateZoneIds().has(zone.zoneId)"
                [class.zone-pile--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
                (click)="onZonePillClick($event, zone.zoneId, 0)">
-            @if (zone.card) {
+            @let pileImg0 = maskedPileImages().get(zone.zoneId + '-0');
+            @if (pileImg0 !== undefined) {
+              @if (pileImg0) {
+                <img [src]="pileImg0" [alt]="zone.zoneId + ' top card'" class="card-art">
+              }
+            } @else if (zone.card) {
               @if (isFaceUp(zone.card.position)) {
                 <img [src]="getCardImageUrl(zone.card)"
                      [alt]="zone.zoneId + ' top card'"
@@ -206,16 +347,22 @@
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
               }
             }
+            @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
+              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+            }
           </div>
         } @else if (zone.card) {
           <div class="zone-card"
                [class.def-position]="isMonsterDefense(zone)"
                [class.zone-card--actionable]="activateZoneIds().has(zone.zoneId)"
                [class.zone-card--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
-               [class.pvp-anim-summon]="animatingZoneKeys().has(zone.zoneId + '-0-summon')"
-               [class.pvp-anim-destroy]="animatingZoneKeys().has(zone.zoneId + '-0-destroy')"
+               [class.zone-card--equip-highlight]="equipHighlightedZones().has(zone.zoneId + '-0')"
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-0-flip')"
                [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-0-activate')"
+               [style.visibility]="maskedZoneKeys().has(zone.zoneId + '-0') ? 'hidden' : null"
+               [attr.aria-label]="isFaceUp(zone.card.position) ? buildAriaLabel(zone.card) : 'Face-down card'"
+               (mouseenter)="onEquipHover(zone.zoneId + '-0')"
+               (mouseleave)="onEquipLeave()"
                (click)="onZoneCardClick($event, zone)">
             @if (isFaceUp(zone.card.position)) {
               <img [src]="getCardImageUrl(zone.card)"
@@ -226,13 +373,35 @@
               <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
             }
             @if (zone.card.overlayMaterials.length > 0) {
+              <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
+                @if (zone.card.overlayMaterials.length >= 3) {
+                  <div class="xyz-material-layer-3"></div>
+                }
+              </div>
               <div class="xyz-indicator">
                 <span>{{ zone.card.overlayMaterials.length }}</span>
               </div>
             }
+            @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
+              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+            }
+            <ng-container [ngTemplateOutlet]="indicators"
+                          [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
           </div>
         } @else {
-          <div class="zone-empty"></div>
+          @let ghostCard0 = maskedSourceImages().get(zone.zoneId + '-0');
+          @if (ghostCard0) {
+            <div class="zone-card" [class.def-position]="isDefense(ghostCard0.position)" style="pointer-events:none">
+              @if (isFaceUp(ghostCard0.position)) {
+                <img [src]="getCardImageUrl(ghostCard0)" [alt]="ghostCard0.name ?? 'Card'" class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+            </div>
+          } @else {
+            <div class="zone-empty"></div>
+          }
         }
         @if (isHighlighted(zone.zoneId)) {
           <button class="zone-highlight-badge"

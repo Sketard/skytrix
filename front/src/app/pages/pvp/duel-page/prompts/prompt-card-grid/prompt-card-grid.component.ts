@@ -4,7 +4,6 @@ import {
   EventEmitter,
   HostListener,
   OnDestroy,
-  OnInit,
   signal,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
@@ -37,7 +36,7 @@ function cardKey(c: CardInfo): string {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnInit, OnDestroy {
+export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnDestroy {
   promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
@@ -49,11 +48,6 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   private longPressTimeout: ReturnType<typeof setTimeout> | null = null;
   private longPressStartPos: { x: number; y: number } | null = null;
   private longPressFired = false;
-
-  ngOnInit(): void {
-    console.log('[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
-      this.promptData?.type, this.cards.length, this.excludedCards.length, this.displayEntries.length);
-  }
 
   ngOnDestroy(): void {
     this.cancelLongPress();
@@ -110,7 +104,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       .map(([location, groupEntries]) => ({
         location,
         iconPath: getZoneIconPath(location),
-        entries: groupEntries,
+        entries: groupEntries.sort((a, b) => b.card.name.localeCompare(a.card.name)),
       }));
   }
 

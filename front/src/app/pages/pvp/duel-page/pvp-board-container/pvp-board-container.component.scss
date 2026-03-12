@@ -78,7 +78,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   min-width: 0;
   min-height: 0;
 
@@ -92,6 +92,11 @@
 
   &--opponent .card-art {
     transform: rotate(180deg);
+  }
+
+  .zone-card {
+    position: absolute;
+    inset: 0;
   }
 }
 
@@ -127,9 +132,15 @@
 }
 
 // Banished zone positioning (central strip)
+// height: auto + aspect-ratio: 59/86 overrides .zone's height: 100% (which can't
+// resolve when parent uses align-items: center). Column width × 86/59 = strip row
+// height exactly (274/215 board ratio guarantees this), so the zone fills the row.
 .zone--banished {
   cursor: pointer;
   overflow: visible;
+  height: auto;
+  width: 100%;
+  aspect-ratio: 59 / 86;
 }
 
 // Opponent banished: col 1 (aligned with opponent GY above)
@@ -154,15 +165,154 @@
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: translate 150ms ease-out;
+
+  .card-art { transition: box-shadow 150ms ease-out; }
 
   &.def-position {
     transform: rotate(90deg);
   }
 }
 
+// === Alteration Indicators (Story 8.3) ===
+
+// AC1: ATK/DEF stat badge (bottom-left)
+.stat-badge {
+  position: absolute;
+  bottom: 3%;
+  left: 3%;
+  background: var(--pvp-alteration-badge-bg);
+  border-radius: var(--pvp-radius-sm);
+  font-size: var(--pvp-alteration-badge-font-size);
+  font-weight: 700;
+  padding: 3% 5%;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  white-space: nowrap;
+  max-width: 45%;
+  overflow: hidden;
+
+  &__value--boost { color: var(--pvp-alteration-boost); }
+  &__value--debuff { color: var(--pvp-alteration-debuff); }
+  &__separator { color: rgba(255, 255, 255, 0.5); }
+}
+
+// AC2: Effect negated overlay (center) — inline SVG with currentColor for forced-colors fallback (AC12b)
+.negated-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 65%;
+  height: 65%;
+  pointer-events: none;
+  z-index: 3;
+  opacity: var(--pvp-alteration-negated-opacity);
+  color: #b4b4b4;
+}
+
+// AC3: Level/Rank badge (top-left)
+.level-badge {
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  background: var(--pvp-alteration-badge-bg);
+  border-radius: var(--pvp-radius-sm);
+  font-size: var(--pvp-alteration-badge-font-size);
+  font-weight: 700;
+  padding: 3% 5%;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
+  &__icon {
+    width: var(--pvp-alteration-badge-icon-size);
+    height: var(--pvp-alteration-badge-icon-size);
+    flex-shrink: 0;
+  }
+
+  &--boost { color: var(--pvp-alteration-boost); }
+  &--debuff { color: var(--pvp-alteration-debuff); }
+}
+
+// AC4: Attribute/Type icons (top-right)
+.alteration-icon {
+  position: absolute;
+  top: 3%;
+  right: 3%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  object-fit: contain;
+  z-index: 2;
+
+  &--race {
+    top: calc(3% + 24% + 3%);
+  }
+}
+
+// AC5: Counter badge (bottom-right)
+.counter-indicator {
+  position: absolute;
+  bottom: 3%;
+  right: 3%;
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(150, 50, 200, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pvp-alteration-badge-font-size);
+  font-weight: 700;
+  color: var(--text-primary);
+  pointer-events: none;
+  z-index: 2;
+
+  &--with-xyz {
+    bottom: calc(3% + 24% + 3%);
+  }
+}
+
+// AC6: Equip hover float (uses `translate` to avoid colliding with `transform: rotate`)
+.zone-card--equip-highlight {
+  translate: 0 var(--pvp-alteration-equip-lift);
+
+  .card-art { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); }
+}
+
+// AC7: Pendulum scale coloring (bottom-center, S1/S5 only)
+.pendulum-scale {
+  position: absolute;
+  bottom: 3%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--pvp-alteration-badge-bg);
+  border-radius: var(--pvp-radius-sm);
+  font-size: var(--pvp-alteration-badge-font-size);
+  font-weight: 700;
+  padding: 3% 5%;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  color: var(--text-primary);
+
+  &--boost { color: var(--pvp-alteration-boost); }
+  &--debuff { color: var(--pvp-alteration-debuff); }
+}
+
 .card-art {
-  width: 100%;
   height: 100%;
+  width: auto;
   object-fit: contain;
   border-radius: var(--pvp-radius-sm);
   aspect-ratio: 59 / 86;
@@ -262,32 +412,58 @@
   }
 }
 
-// Dynamic depth for Banished zones (central strip — not nested under .zone-pile)
-.pile-depth-1,
-.pile-depth-2 {
+
+// === XYZ Material Stack (Story 7.5 — stacked card-back indicators behind XYZ monsters) ===
+.xyz-material-stack {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  &::before,
   &::after {
     content: '';
     position: absolute;
-    inset: 2px;
+    inset: 0;
+    background: #1e293b;
+    border: 1px solid rgba(0, 212, 255, 0.15);
     border-radius: var(--pvp-radius-sm);
-    background: #2a2a3e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2));
-    z-index: -1;
+  }
+
+  &[data-count='1']::before {
+    transform: translate(1.5%, 3%);
+  }
+
+  &[data-count='1']::after {
+    content: none;
+  }
+
+  &[data-count='2']::before {
+    transform: translate(1.5%, 3%);
+  }
+
+  &[data-count='2']::after {
+    transform: translate(3%, 6%);
+  }
+
+  &[data-count='3']::before {
+    transform: translate(1.5%, 3%);
+  }
+
+  &[data-count='3']::after {
+    transform: translate(3%, 6%);
   }
 }
 
-.pile-depth-2 {
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 2px;
-    border-radius: var(--pvp-radius-sm);
-    background: #2a2a3e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset)));
-    z-index: -2;
-  }
+// Third XYZ material layer (only rendered for 3+ materials — pseudo-elements cap at 2)
+.xyz-material-layer-3 {
+  position: absolute;
+  inset: 0;
+  background: #1e293b;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: var(--pvp-radius-sm);
+  transform: translate(4.5%, 9%);
+  z-index: -1;
 }
 
 // === XYZ Overlay Indicator ===
@@ -308,25 +484,53 @@
   pointer-events: none;
 }
 
+// === Chain Badge (pulsing circle with chain link number) ===
+.chain-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 35%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: rgba(30, 90, 200, 0.9);
+  border: 2px solid rgba(150, 150, 160, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.8rem, 2dvh, 1.4rem);
+  font-weight: 900;
+
+  &.chain-badge--double {
+    font-size: clamp(0.55rem, 1.4dvh, 0.95rem);
+  }
+  color: #fff;
+  pointer-events: none;
+  z-index: 5;
+  animation: chain-badge-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes chain-badge-pulse {
+  from { opacity: 0.4; transform: translate(-50%, -50%) scale(0.9); }
+  to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
+}
+
 // === Actionable Glow (Story 1.7 — IDLECMD / BATTLECMD) ===
 .zone-card--actionable {
-  box-shadow: var(--pvp-actionable-glow);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;
 
-  &:hover {
-    box-shadow: var(--pvp-actionable-glow-hover);
-  }
+  .card-art { box-shadow: var(--pvp-actionable-glow); }
+  &:hover .card-art { box-shadow: var(--pvp-actionable-glow-hover); }
 }
 
 .zone-card--actionable-blue {
-  box-shadow: var(--pvp-actionable-glow-blue);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;
 
-  &:hover {
-    box-shadow: var(--pvp-actionable-glow-blue-hover);
-  }
+  .card-art { box-shadow: var(--pvp-actionable-glow-blue); }
+  &:hover .card-art { box-shadow: var(--pvp-actionable-glow-blue-hover); }
 }
 
 .zone-pile--actionable {
@@ -402,17 +606,48 @@
   }
 }
 
-// === Game Event Animations (Story 4.2) ===
-// [Review L1 fix] Summon uses --pvp-transition-card-move per AC2 spec
-.pvp-anim-summon {
-  animation: pvp-summon-flash var(--pvp-transition-card-move) ease-out;
-  z-index: z.$z-pvp-animation-overlay;
+// === Deck Shuffle Animation (Story 7.4 — MSG_SHUFFLE_HAND) ===
+// ::before and ::after have different base transforms, so each needs its own keyframe.
+
+@keyframes pvp-shuffle-fan-before {
+  0%, 100% { transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset))); }
+  40% { transform: translate(calc(var(--pvp-pile-stack-offset) + 3px), calc(-1 * var(--pvp-pile-stack-offset))) rotate(2deg); }
 }
 
-.pvp-anim-destroy {
-  animation: pvp-destroy-flash var(--pvp-animation-duration) ease-out;
-  z-index: z.$z-pvp-animation-overlay;
+@keyframes pvp-shuffle-fan-after {
+  0%, 100% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2)); }
+  40% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2 - 3px), calc(-1 * var(--pvp-pile-stack-offset) / 2)) rotate(-2deg); }
 }
+
+.pvp-deck-shuffle {
+  &::before {
+    animation: pvp-shuffle-fan-before var(--pvp-shuffle-duration, 250ms) ease-in-out;
+  }
+
+  &::after {
+    animation: pvp-shuffle-fan-after var(--pvp-shuffle-duration, 250ms) ease-in-out;
+  }
+}
+
+// === XYZ Detach Slide-Out Animation (Story 7.5 — overlay material detach) ===
+
+@keyframes pvp-xyz-detach-slide {
+  0% {
+    transform: translate(1.5%, 3%);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(1.5%, 18%);
+    opacity: 0;
+  }
+}
+
+.pvp-xyz-detach .xyz-material-stack::before {
+  animation: pvp-xyz-detach-slide var(--pvp-detach-duration, 200ms) ease-out forwards;
+}
+
+// === In-Place Animations (flip/activate — summon/destroy replaced by CardTravelService in Story 7.2) ===
 
 .pvp-anim-flip {
   animation: pvp-flip-flash var(--pvp-animation-duration) ease-out;
@@ -420,40 +655,9 @@
 }
 
 .pvp-anim-activate {
-  animation: pvp-activate-flash var(--pvp-animation-duration) ease-out;
   z-index: z.$z-pvp-animation-overlay;
-}
 
-// [Review M1 fix] Use --pvp-summon-highlight token instead of hardcoded green
-@keyframes pvp-summon-flash {
-  0% {
-    box-shadow: 0 0 0 0 var(--pvp-summon-highlight);
-  }
-
-  40% {
-    box-shadow: 0 0 12px 4px var(--pvp-summon-highlight);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 var(--pvp-summon-highlight);
-  }
-}
-
-@keyframes pvp-destroy-flash {
-  0% {
-    box-shadow: 0 0 0 0 var(--pvp-destroy-highlight);
-    opacity: 1;
-  }
-
-  40% {
-    box-shadow: 0 0 14px 4px var(--pvp-destroy-highlight);
-    opacity: 0.5;
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 var(--pvp-destroy-highlight);
-    opacity: 1;
-  }
+  .card-art { animation: pvp-activate-flash var(--pvp-animation-duration) ease-out; }
 }
 
 @keyframes pvp-flip-flash {
@@ -494,13 +698,40 @@
     animation: none;
   }
 
-  .pvp-anim-summon,
-  .pvp-anim-destroy,
-  .pvp-anim-flip,
-  .pvp-anim-activate {
+  .pvp-anim-flip {
     animation: none;
   }
 
+  .pvp-anim-activate .card-art {
+    animation: none;
+  }
+
+  .pvp-deck-shuffle::before,
+  .pvp-deck-shuffle::after {
+    animation: none;
+  }
+
+  .pvp-xyz-detach .xyz-material-stack::before {
+    animation: none;
+  }
+
+  .xyz-material-stack::before,
+  .xyz-material-stack::after {
+    transition: none;
+  }
+
+  // AC10: Equip hover — snap instantly (only equip-related properties)
+  .zone-card { transition: translate 0s; }
+  .zone-card .card-art { transition: box-shadow 0s; }
+
+}
+
+// AC11: Enhanced contrast — thicker badges
+@media (prefers-contrast: more) {
+  .stat-badge,
+  .level-badge {
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  }
 }
 
 // === Forced Colors ===
@@ -523,5 +754,18 @@
 
   .zone-pile {
     border: 1px solid ButtonText;
+  }
+
+  // AC12b: Preserve semantic colors on alteration badges
+  .stat-badge,
+  .level-badge,
+  .counter-indicator,
+  .alteration-icon {
+    forced-color-adjust: none;
+  }
+
+  // AC12b: Negated SVG falls back to CanvasText system color
+  .negated-icon {
+    color: CanvasText;
   }
 }

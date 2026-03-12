@@ -41,6 +41,7 @@ export const LOCATION = {
   GRAVE: 0x10,
   BANISHED: 0x20,
   EXTRA: 0x40,
+  OVERLAY: 0x80,
 } as const;
 export type CardLocation = (typeof LOCATION)[keyof typeof LOCATION];
 
@@ -63,6 +64,24 @@ export interface CardOnField {
   position: Position;
   overlayMaterials: number[];
   counters: Record<string, number>;
+  currentAtk?: number;
+  currentDef?: number;
+  baseAtk?: number;
+  baseDef?: number;
+  currentLevel?: number;
+  baseLevel?: number;
+  currentRank?: number;
+  baseRank?: number;
+  currentAttribute?: number;
+  baseAttribute?: number;
+  currentRace?: number;
+  baseRace?: number;
+  currentLScale?: number;
+  currentRScale?: number;
+  baseLScale?: number;
+  baseRScale?: number;
+  isEffectNegated?: boolean;
+  equipTarget?: { controller: 0 | 1; location: number; sequence: number } | null;
 }
 
 export interface BoardZone {
@@ -124,6 +143,7 @@ export interface MoveMsg {
   toLocation: CardLocation;
   toSequence: number;
   toPosition: Position;
+  isToken: boolean;
 }
 
 export interface DrawMsg {
@@ -173,6 +193,11 @@ export interface ChainSolvedMsg {
 
 export interface ChainEndMsg {
   type: 'MSG_CHAIN_END';
+}
+
+export interface ChainNegatedMsg {
+  type: 'MSG_CHAIN_NEGATED';
+  chainIndex: number;
 }
 
 export interface HintMsg {
@@ -287,6 +312,8 @@ export interface SelectChainMsg {
   player: Player;
   cards: CardInfo[];
   forced: boolean;
+  hintTiming: number;
+  hintTimingLabel: string;
 }
 
 export interface SelectEffectYnMsg {
@@ -628,6 +655,7 @@ export type ServerMessage =
   | ChainSolvingMsg
   | ChainSolvedMsg
   | ChainEndMsg
+  | ChainNegatedMsg
   | HintMsg
   | ConfirmCardsMsg
   | ShuffleHandMsg

@@ -111,6 +111,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'MSG_CHAIN_SOLVING':
     case 'MSG_CHAIN_SOLVED':
     case 'MSG_CHAIN_END':
+    case 'MSG_CHAIN_NEGATED':
     case 'MSG_FLIP_SUMMONING':
     case 'MSG_CHANGE_POS':
     case 'MSG_SWAP':
@@ -209,7 +210,29 @@ function sanitizeFaceDownCard(card: CardOnField): CardOnField {
   const isFaceDown = card.position === POSITION.FACEDOWN_ATTACK ||
     card.position === POSITION.FACEDOWN_DEFENSE;
   if (isFaceDown) {
-    return { ...card, cardCode: null, name: null };
+    return {
+      ...card,
+      cardCode: null,
+      name: null,
+      currentAtk: undefined,
+      currentDef: undefined,
+      baseAtk: undefined,
+      baseDef: undefined,
+      currentLevel: undefined,
+      baseLevel: undefined,
+      currentRank: undefined,
+      baseRank: undefined,
+      currentAttribute: undefined,
+      baseAttribute: undefined,
+      currentRace: undefined,
+      baseRace: undefined,
+      currentLScale: undefined,
+      currentRScale: undefined,
+      baseLScale: undefined,
+      baseRScale: undefined,
+      isEffectNegated: undefined,
+      equipTarget: undefined,
+    };
   }
   return card;
 }

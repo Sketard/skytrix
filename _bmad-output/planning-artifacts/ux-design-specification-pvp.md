@@ -20,7 +20,7 @@ An online PvP automated duel mode for skytrix, powered by OCGCore — the open-s
 
 The PvP mode reuses the solo simulator's visual components (board zones, card rendering, card inspector) but with a distinct data flow: server-pushed state via WebSocket, read-only board, prompt-driven interaction. Visual polish targets Yu-Gi-Oh! Master Duel quality: animations per game event, chain visualization, turn timer, duel result screen.
 
-MVP scope: PvP between friends (trusted players) in 3 incremental sub-phases — PvP-A (functional duel), PvP-B (lobby & session management), PvP-C (visual polish). **PvP-C is lightweight:** chain animations, LP counter effects, and card movement transitions are nice-to-have enhancements, not a separate architecture. This UX spec focuses on PvP-A and PvP-B decisions; PvP-C polish layers on top without structural changes.
+MVP scope: PvP between friends (trusted players) in 3 incremental sub-phases — PvP-A (functional duel), PvP-B (lobby & session management), PvP-C (visual polish). **PvP-C is implemented:** card travel animations, chain overlay, LP counter effects, draw animation, XYZ detach, token dissolution, and the full masking system are all in place. This UX spec focuses on PvP-A and PvP-B UX decisions; for the complete animation implementation, see [animation-architecture-pvp.md](./animation-architecture-pvp.md).
 
 ### Design North Star
 
@@ -129,7 +129,7 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 1. **Thumb Zone Always** — No interaction requires moving the hand on mobile. Prompts as centered floating dialog, inspector via tap, phase actions anchored bottom. The player's thumb never leaves the comfort zone. This is the physical prerequisite — if the player can't reach it, nothing else matters
 2. **Prompt First** — The entire experience is prompt-driven. Every prompt must be comprehensible in <2s with full context (MSG_HINT + card name + inspector accessible). Prompt clarity is the product
 3. **Board is Contextual Display** — The PvP board is primarily a read-only 3D contextual display the player consults visually while responding to prompts at the bottom. The exception: during SELECT_PLACE prompts, board zones become active tap targets with highlight feedback. Tap any card to inspect, tap highlighted zones to select — nothing more
-4. **Speed Over Polish** — EDOPro speed first, Master Duel polish second. Never blocking. An unanswered prompt = timer ticking. The UX must be fast, not pretty. The animation queue exists from PvP-A (with no-op instant slots) so PvP-C can fill in visual polish without structural changes
+4. **Speed Over Polish** — EDOPro speed first, Master Duel polish second. Never blocking. An unanswered prompt = timer ticking. The UX must be fast, not pretty. PvP-C visual polish (card travels, chain overlay, LP counter) is implemented and always interruptible — it adds feedback without ever blocking the prompt flow.
 
 ## Desired Emotional Response
 
@@ -242,7 +242,7 @@ The activation toggle is a **client-side-only** UI control (no server interactio
 |------|----------------|-------------------|-------|
 | **Inspector + prompt too cramped on mobile** | Floating dialog (centered) + inspector overlay = reduced board visibility. Player closes inspector every time → can't read effects during prompts | Inspector compact mode when prompt is active: card art mini + name + type + ATK/DEF (1 line). Tap to expand. Desktop: no issue (full overlay + prompt coexist). Floating dialog mitigates: only ~15-25% board occlusion vs ~40-55% with bottom sheet | PvP-A |
 | **CSS perspective breaks on mid-range devices** | Samsung Galaxy A-series (60% Android mid-range): flickering, non-clickable zones, 15fps rendering | Flat mode fallback (2D without perspective, smaller but functional zones). Test on 3 target devices (iPhone SE, Galaxy A-series, Pixel). Perspective is progressive enhancement, not hard requirement | PvP-A |
-| **Zero feedback = incomprehension** | Cards appear/disappear instantly, LP changes without transition. Player doesn't understand what just happened. "Speed Over Polish" misinterpreted as "zero visual feedback" | Minimum viable CSS transitions from PvP-A: highlight flash on acting card (~100ms), card slide to target zone (~150ms), LP counter decount (~200ms). Distinction: animation = skippable cinematic (PvP-C), transition = instant state feedback (PvP-A) | PvP-A |
+| **Zero feedback = incomprehension** | Cards appear/disappear instantly, LP changes without transition. Player doesn't understand what just happened. | Resolved by PvP-C implementation: card travel animations, LP counter interpolation, chain overlay, and zone glow provide full visual feedback. All animations respect `prefers-reduced-motion` and the speed multiplier toggle. See [animation-architecture-pvp.md](./animation-architecture-pvp.md). | Implemented |
 | **Room lost after app switch on mobile** | Player creates room, switches to Discord to share code. Browser kills background tab after 30s. Room lost | Deep link (`skytrix.app/pvp/XXXX`) + Web Share API native share sheet. WebSocket keep-alive ping for backgrounded tabs | PvP-B |
 
 ## Design System Foundation

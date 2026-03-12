@@ -167,6 +167,78 @@
   }
 }
 
+// --- Negated treatment (greyscale + grey shake + collapse exit) ---
+
+@keyframes chain-negated-shake {
+  0%   { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(0); }
+  20%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(-3px); }
+  40%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(3px); }
+  60%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(-2px); }
+  80%  { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(1px); }
+  100% { transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) translateX(0); }
+}
+
+@keyframes chain-negated-exit {
+  from {
+    top: calc(80% - 45dvh);
+    left: calc(70% - 45dvh * 59 / 86);
+    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(1);
+    filter: grayscale(1) brightness(1);
+    opacity: 1;
+  }
+  to {
+    top: calc(80% - 45dvh);
+    left: calc(70% - 45dvh * 59 / 86);
+    transform: perspective(1200px) rotateZ(3deg) rotateY(-8deg) scale(0.6);
+    filter: grayscale(1) brightness(0.5);
+    opacity: 0;
+  }
+}
+
+.chain-card--negated {
+  box-shadow: 0 0 20px var(--pvp-chain-glow-negated);
+  filter: grayscale(1);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: chain-negated-shake var(--chain-resolve-pulse, 600ms) ease-in-out;
+  }
+
+  .chain-badge {
+    text-shadow:
+      0 0 8px rgba(160, 160, 160, 0.6),
+      2px 4px 6px rgba(0, 0, 0, 0.7);
+    -webkit-text-stroke: 2px rgba(160, 160, 160, 0.8);
+  }
+}
+
+// Badge position for negated state — explicit to avoid reliance on chain-card--front co-occurrence
+.chain-card--negated .chain-badge {
+  right: -2%;
+}
+
+.chain-card--negated-exiting {
+  height: 45dvh;
+  width: calc(45dvh * 59 / 86);
+  z-index: 4;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: chain-negated-exit var(--chain-resolve-exit, 600ms) ease-in forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 0;
+  }
+}
+
+.chain-card--negated-exiting .chain-badge {
+  font-size: calc(45dvh * 0.20);
+  right: -2%;
+  text-shadow:
+    0 0 8px rgba(160, 160, 160, 0.6),
+    2px 4px 6px rgba(0, 0, 0, 0.7);
+  -webkit-text-stroke: 2px rgba(160, 160, 160, 0.8);
+}
+
 // --- Overflow exit (oldest card pushed out from C1 upward) ---
 
 @keyframes chain-overflow-exit {
@@ -263,6 +335,12 @@
   .chain-card--resolving {
     animation: none;
     box-shadow: none;
+  }
+
+  .chain-card--negated {
+    animation: none;
+    box-shadow: 0 0 20px var(--pvp-chain-glow-negated); // static grey preserved — intentional per UX spec
+    filter: grayscale(1);
   }
 
   .chain-card--front {

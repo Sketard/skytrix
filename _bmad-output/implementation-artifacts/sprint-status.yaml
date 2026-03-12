@@ -83,10 +83,15 @@ development_status:
   6-3-chain-resolution-board-change-detection: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-card-travel-service-zone-element-registry: backlog
-  7-2-card-travel-animations-msg-move-events: backlog
-  7-3-buffer-replay-during-chain-resolution: backlog
-  7-4-msg-draw-travel-msg-shuffle-hand-animation: backlog
-  7-5-xyz-material-visual-enhancement: backlog
-  epic-7-retrospective: optional
+  epic-7: done
+  7-1-card-travel-service-zone-element-registry: done
+  7-2-card-travel-animations-msg-move-events: done
+  7-3-buffer-replay-during-chain-resolution: done
+  7-4-msg-draw-travel-msg-shuffle-hand-animation: done
+  7-5-xyz-material-visual-enhancement: done
+  epic-7-retrospective: done
+
+  epic-8: in-progress # Card Alteration Visual Indicators
+  8-1-server-card-alteration-data-extraction: done
+  8-2-frontend-alteration-types-enum-mapping: done
+  8-3-alteration-indicator-ui-rendering: done

@@ -14,6 +14,7 @@
 }
 
 .hand-card {
+  position: relative;
   height: var(--pvp-hand-card-height);
   aspect-ratio: 59 / 86;
   flex-shrink: 0;
@@ -25,12 +26,13 @@
     cursor: pointer;
     transform-origin: center bottom;
 
-    &:hover {
+    &.hand-card--hovered,
+    &.hand-card--selected {
       transform: translateY(-12px) !important;
-      z-index: 100 !important;
       transition: transform 0.15s ease-out;
     }
   }
+
 
   .hand-row--opponent & {
     transform-origin: center top;
@@ -53,7 +55,7 @@
   box-shadow: var(--pvp-actionable-glow);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
 
-  &:hover {
+  &.hand-card--hovered {
     box-shadow: var(--pvp-actionable-glow-hover);
   }
 }
@@ -62,9 +64,36 @@
   box-shadow: var(--pvp-actionable-glow-blue);
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
 
-  &:hover {
+  &.hand-card--hovered {
     box-shadow: var(--pvp-actionable-glow-blue-hover);
   }
+}
+
+// === Chain Badge ===
+.chain-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: rgba(255, 180, 0, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.8rem, 2dvh, 1.4rem);
+  font-weight: 900;
+  color: #000;
+  pointer-events: none;
+  z-index: 5;
+  animation: chain-badge-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes chain-badge-pulse {
+  from { opacity: 0.4; transform: translate(-50%, -50%) scale(0.9); }
+  to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -72,6 +101,16 @@
   .hand-card--actionable-blue {
     animation: none;
   }
+
+  .chain-badge {
+    animation: none;
+  }
+}
+
+// === Selected card (tap-to-lift, Master Duel pattern) ===
+.hand-row--player:has(.hand-card--selected) .hand-card:not(.hand-card--selected) {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
 }
 
 @media (forced-colors: active) {

@@ -1,4 +1,4 @@
-import { BoardStatePayload } from '../duel-ws.types';
+import { BoardStatePayload, CardLocation } from '../duel-ws.types';
 
 export type DuelState = BoardStatePayload;
 
@@ -8,7 +8,10 @@ export interface ChainLinkState {
   cardName: string;
   player: number;
   zoneId: string | null;
+  location: CardLocation;
+  sequence: number;
   resolving: boolean;
+  negated: boolean;
 }
 
 export const EMPTY_DUEL_STATE: DuelState = {

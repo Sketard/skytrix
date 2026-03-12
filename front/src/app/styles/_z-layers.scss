@@ -35,7 +35,8 @@ $z-pvp-debug-panel: 58;
 $z-pvp-floating-instruction: 60;
 $z-pvp-phase-announcement: 62;
 $z-pvp-zone-browser: 65;
-$z-pvp-chain-overlay: 68;
+$z-pvp-chain-overlay: 950; // above $z-pvp-card-travel (900) — chain overlay must not be obscured by traveling cards
+$z-pvp-card-travel: 900; // referenced as z-index literal in card-travel.service.ts
 $z-pvp-card-action-menu: 70;
 $z-pvp-prompt-sheet: 80; // used by pvp-prompt-dialog
 $z-pvp-rps-overlay: 85;

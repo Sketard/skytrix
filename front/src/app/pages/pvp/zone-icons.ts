@@ -9,6 +9,7 @@ const ZONE_ICON_MAP: Record<CardLocation, string> = {
   [LOCATION.DECK]: 'assets/images/zones/deck.svg',
   [LOCATION.MZONE]: 'assets/images/zones/mzone.svg',
   [LOCATION.SZONE]: 'assets/images/zones/szone.svg',
+  [LOCATION.OVERLAY]: 'assets/images/zones/mzone.svg',
 };
 
 /** Display order for zone groups (most common first). */
