@@ -1187,6 +1187,8 @@ export class DuelPageComponent implements OnInit {
       role: 'alertdialog',
       ariaLabel: 'Surrender confirmation',
       width: '320px',
+      panelClass: 'surrender-dialog-panel',
+      autoFocus: false,
       disableClose: false,
     });
     return dialogRef.afterClosed().pipe(

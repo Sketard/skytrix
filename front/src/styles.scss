@@ -146,6 +146,43 @@ a, button {
   cursor: pointer;
 }
 
+// === Surrender Confirmation Dialog ===
+.surrender-dialog-panel {
+  --mdc-dialog-container-color: #0f1729;
+  --mdc-dialog-container-shape: 12px;
+  --mdc-dialog-subhead-color: #eee;
+  --mdc-dialog-supporting-text-color: #9e9e9e;
+
+  .mat-mdc-dialog-surface {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-top: 3px solid #b71c1c !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .mat-mdc-dialog-title {
+    color: #eee;
+  }
+
+  .mat-mdc-dialog-content {
+    color: #9e9e9e;
+  }
+
+  .mat-mdc-dialog-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 8px;
+
+    .mat-mdc-outlined-button {
+      --mdc-outlined-button-label-text-color: rgba(255, 255, 255, 0.5);
+      --mdc-outlined-button-outline-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .mat-mdc-unelevated-button {
+      --mdc-filled-button-container-color: #b71c1c;
+      --mdc-filled-button-label-text-color: #fff;
+    }
+  }
+}
+
 .snackbar-panel {
   // panelClass applied on overlay pane
   padding: 0 !important;
