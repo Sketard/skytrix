@@ -69,13 +69,13 @@ export class PvpHandRowComponent {
   onContainerMouseMove(event: MouseEvent): void {
     if (this.side() !== 'player') return;
     const cardEls = (this.el.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.hand-card');
-    let best = -1, minDist = Infinity;
+    let best = -1, minDist = Infinity, cardWidth = 0;
     cardEls.forEach((el, i) => {
       const { left, width } = el.getBoundingClientRect();
       const dist = Math.abs(event.clientX - (left + width / 2));
-      if (dist < minDist) { minDist = dist; best = i; }
+      if (dist < minDist) { minDist = dist; best = i; cardWidth = width; }
     });
-    this.hoveredIndex.set(best === -1 ? null : best);
+    this.hoveredIndex.set(best !== -1 && minDist <= cardWidth / 2 ? best : null);
   }
 
   onContainerMouseLeave(): void {

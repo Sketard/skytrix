@@ -61,6 +61,10 @@ export class SoloDuelOrchestratorService {
     this.animationService.resetForSwitch();
     this.activePlayerIndex.set(newIndex);
     this.wsService.setActiveConnection(conns[newIndex]);
+    // Ensure the incoming connection buffers BOARD_STATE instead of applying it immediately.
+    // setBoardActive is only called once at game start (on P1's connection), so P2 would
+    // otherwise apply every BOARD_STATE instantly, bypassing the animation masking system.
+    conns[newIndex].setBoardActive(true);
     // Synchronously start processing the incoming queue to set destination masks
     // BEFORE Angular renders — prevents a one-frame flash of cards at destination
     // without animation (otherwise the queue-watcher effect only fires after rendering).

@@ -100,10 +100,18 @@ export class AnimationOrchestratorService {
     'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST', 'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS',
   ]);
 
+  // Impact glow colors by destination
+  private static readonly GLOW_GY      = 'rgba(160,160,190,0.6)';
+  private static readonly GLOW_BANISH  = 'rgba(180,100,255,0.6)';
+  private static readonly GLOW_NEUTRAL = 'rgba(180,180,220,0.5)'; // deck / field-to-field
+  private static readonly GLOW_DESTROY = 'rgba(255,60,60,0.6)';   // departure: destroy
+  private static readonly GLOW_DISCARD = 'rgba(255,200,50,0.5)';  // departure: hand cost/discard
+
   private _waitingForOverlay = false;
   private _waitingForDraw = false;
   private _insideChainResolution = false;
   private _bufferedBoardEvents: GameEvent[] = [];
+  private _replayPendingEvents: readonly GameEvent[] | null = null;
   private _replayTimeouts: ReturnType<typeof setTimeout>[] = [];
   /** Deferred MSG_CHAIN_SOLVING event — re-processed after banner display */
   private _deferredSolvingEvent: GameEvent | null = null;
@@ -141,7 +149,6 @@ export class AnimationOrchestratorService {
    * How many hand cards per zone key are currently in-flight (animation started, board state
    * already applied). Used to compute the correct original DOM index for subsequent ghost creation.
    */
-  private readonly _handInFlightCount = new Map<string, number>();
 
   /**
    * Source zone keys (e.g. 'M3-0') mapped to the card that was there before the board state
@@ -269,8 +276,13 @@ export class AnimationOrchestratorService {
 
     // Pre-mask destinations before the stagger fires: processDrawEvent calls applyPendingBoardState
     // internally, which would reveal MZONE/SZONE/pile destinations before their travel animations.
+    // Also pre-capture hand ghost divs: preMaskQueuedSources() must run while cards are still in DOM.
     this.preMaskQueuedPileDestinations(zoneEvents);
     this.preMaskQueuedZoneDestinations(zoneEvents);
+    this.preMaskQueuedSources(zoneEvents);
+    // Expose replay events so travelMaskedPile keep-alive checks the buffer, not the live queue.
+    // Cleared in the beat1 timeout once all travels have completed.
+    this._replayPendingEvents = zoneEvents;
 
     const stagger = 50;
     const travelDuration = this.scaledDuration(400, 200);
@@ -299,6 +311,7 @@ export class AnimationOrchestratorService {
 
     return new Promise<void>(resolve => {
       const t1 = setTimeout(() => {
+        this._replayPendingEvents = null; // all travels done — restore live-queue keep-alive
         for (const event of lpEvents) {
           this.fireLpReplayEvent(event);
         }
@@ -377,6 +390,7 @@ export class AnimationOrchestratorService {
     this._waitingForOverlay = false;
     this._insideChainResolution = false;
     this._bufferedBoardEvents = [];
+    this._replayPendingEvents = null;
     this._replayTimeouts.forEach(t => clearTimeout(t));
     this._replayTimeouts = [];
     this.maskedZoneKeys.set(new Set());
@@ -479,8 +493,14 @@ export class AnimationOrchestratorService {
     if (result instanceof Promise) {
       console.log('[ANIM:EVENT] type=%s → Promise (awaiting travel, maskedPile=%o maskedZones=%o)',
         event.type, [...this.maskedPileImages().entries()], [...this.maskedZoneKeys()]);
-      // Wait for the actual animation to finish (travel, etc.)
-      result.then(continueQueue);
+      // Guard against hung promises (element detached mid-animation, etc.) — force-continue after 3s.
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; continueQueue(); } };
+      const guard = setTimeout(() => {
+        console.warn('[ANIM:DEADLOCK] Travel promise never resolved for %s — forcing queue continue', event.type);
+        done();
+      }, 3000);
+      result.then(() => { clearTimeout(guard); done(); });
       return;
     }
 
@@ -535,9 +555,18 @@ export class AnimationOrchestratorService {
       }
       case 'MSG_CHAINING': {
         const msg = event as ChainingMsg;
+        const relPlayer = this.relativePlayer(msg.player);
         const zoneId = locationToZoneId(msg.location, msg.sequence);
-        if (zoneId) this.setAnimatingZone(zoneId, 'activate', msg.player);
-        return 400; // glow (300ms) + breathing room (100ms)
+        if (zoneId) {
+          this.setAnimatingZone(zoneId, 'activate', msg.player);
+          const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
+          if (zoneKey) return this.cardTravelService.activateEffect(zoneKey);
+        }
+        if (msg.location === LOCATION.HAND) {
+          const handEl = this.resolveHandCard(`HAND-${relPlayer}`, msg.sequence);
+          if (handEl instanceof HTMLElement) return this.cardTravelService.activateEffect(handEl);
+        }
+        return 400; // fallback: CSS glow (300ms) + breathing room (100ms)
       }
       case 'MSG_CHAIN_SOLVING': {
         const msg = event as ChainSolvingMsg;
@@ -636,11 +665,9 @@ export class AnimationOrchestratorService {
     // so it sits at the card's original screen position even after board state removes it.
     let handGhostDiv: HTMLDivElement | null = null;
     if (from === LOCATION.HAND) {
-      const inFlight = this._handInFlightCount.get(srcKey) ?? 0;
-      const ghostKey = `${srcKey}-${msg.fromSequence + inFlight}`;
+      const ghostKey = `${srcKey}-s${msg.fromSequence}`;
       handGhostDiv = this._handGhostDivs.get(ghostKey) ?? null;
       if (handGhostDiv) this._handGhostDivs.delete(ghostKey);
-      this._handInFlightCount.set(srcKey, inFlight + 1);
     }
     const src: string | HTMLElement = from === LOCATION.HAND
       ? (handGhostDiv ?? this.resolveHandCard(srcKey, msg.fromSequence))
@@ -654,22 +681,25 @@ export class AnimationOrchestratorService {
       && (msg.toPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
     // Opponent cards are rendered rotated 180° in the board; apply the same rotation to the travel float.
     const baseRotateZ = relPlayer === 1 ? 180 : undefined;
+    const isPile = (loc: number) => loc === LOCATION.GRAVE || loc === LOCATION.BANISHED || loc === LOCATION.EXTRA;
 
-    // Summon/Activate to field: any pile/hand → MZONE (special summon), or HAND/GRAVE/BANISHED → SZONE (set/activate)
+    // Summon/Activate to field: any pile/hand → MZONE (special summon), or HAND/GRAVE/BANISHED/DECK/EXTRA → SZONE (set/activate/pendulum)
     const isToMZONE = to === LOCATION.MZONE
       && (from === LOCATION.HAND || from === LOCATION.EXTRA || from === LOCATION.DECK
           || from === LOCATION.GRAVE || from === LOCATION.BANISHED);
     const isToSZONE = to === LOCATION.SZONE
-      && (from === LOCATION.HAND || from === LOCATION.GRAVE || from === LOCATION.BANISHED);
+      && (from === LOCATION.HAND || from === LOCATION.GRAVE || from === LOCATION.BANISHED
+          || from === LOCATION.DECK || from === LOCATION.EXTRA);
     if (isToMZONE || isToSZONE) {
       const isMonsterDefense = to === LOCATION.MZONE
         && (msg.toPosition & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0;
       const isSet = (msg.toPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
       this.announceEvent('Card summoned', msg.player);
       const summonP = this.cardTravelService.travel(src, dstKey, cardImage, {
-        duration: travelDuration, impactGlowColor: 'rgba(60,255,100,0.6)',
+        duration: travelDuration,
         destRotateZ: isMonsterDefense ? 90 : undefined,
         showBack: isSet, baseRotateZ,
+        landingStyle: 'slam',
       });
       handGhostDiv?.remove(); // travel() captured position synchronously — safe to remove now
       return this.travelMasked(dstKey, summonP);
@@ -695,14 +725,24 @@ export class AnimationOrchestratorService {
     if ((from === LOCATION.MZONE || from === LOCATION.SZONE)
       && (to === LOCATION.GRAVE || to === LOCATION.BANISHED || to === LOCATION.EXTRA)) {
       this.announceEvent('Card destroyed', msg.player);
-      return this.travelMaskedPile(dstKey, this.prevPileImage(to, msg.toSequence, relPlayer),
-        this.cardTravelService.travel(srcKey, dstKey, cardImage, {
-          duration: travelDuration,
-          showBack: isFaceDown,
-          flipDuringTravel: isBanishFaceDown,
-          departureGlowColor: 'rgba(255,60,60,0.6)',
-          baseRotateZ,
-        }));
+      const srcEl = this.cardTravelService.getZoneElement(srcKey);
+      const preEffect = (srcEl && !this._reducedMotion)
+        ? this.cardTravelService.preDestroyEffect(srcEl)
+        : Promise.resolve();
+      const impactGlow = to === LOCATION.GRAVE
+        ? AnimationOrchestratorService.GLOW_GY
+        : to === LOCATION.BANISHED ? AnimationOrchestratorService.GLOW_BANISH : undefined;
+      return preEffect.then(() =>
+        this.travelMaskedPile(dstKey, this.prevPileImage(to, msg.toSequence, relPlayer),
+          this.cardTravelService.travel(srcKey, dstKey, cardImage, {
+            duration: travelDuration,
+            showBack: isFaceDown,
+            flipDuringTravel: isBanishFaceDown,
+            departureGlowColor: AnimationOrchestratorService.GLOW_DESTROY,
+            impactGlowColor: impactGlow,
+            landingStyle: to === LOCATION.BANISHED ? 'banish' : 'soft',
+            baseRotateZ,
+          })));
     }
 
     // Bounce: MZONE/SZONE -> HAND (no zone masking — hand uses its own hiddenHandCardCount mechanism)
@@ -713,15 +753,15 @@ export class AnimationOrchestratorService {
     // Return to deck: MZONE/SZONE -> DECK (no masking — deck always shows card_back.jpg)
     if ((from === LOCATION.MZONE || from === LOCATION.SZONE) && to === LOCATION.DECK) {
       return this.cardTravelService.travel(srcKey, dstKey, cardImage, {
-        duration: travelDuration, flipDuringTravel: true, impactGlowColor: 'rgba(180,180,220,0.5)', baseRotateZ,
+        duration: travelDuration, flipDuringTravel: true, impactGlowColor: AnimationOrchestratorService.GLOW_NEUTRAL, baseRotateZ,
       });
     }
 
-    // Field-to-field: MZONE->MZONE or SZONE->SZONE
-    if ((from === LOCATION.MZONE && to === LOCATION.MZONE)
-      || (from === LOCATION.SZONE && to === LOCATION.SZONE)) {
+    // Field-to-field: MZONE/SZONE -> MZONE/SZONE (repositioning, cross-zone moves)
+    if ((from === LOCATION.MZONE || from === LOCATION.SZONE)
+      && (to === LOCATION.MZONE || to === LOCATION.SZONE)) {
       return this.travelMasked(dstKey, this.cardTravelService.travel(srcKey, dstKey, cardImage, {
-        duration: travelDuration, impactGlowColor: 'rgba(180,180,220,0.5)', baseRotateZ,
+        duration: travelDuration, impactGlowColor: AnimationOrchestratorService.GLOW_NEUTRAL, baseRotateZ,
       }));
     }
 
@@ -732,11 +772,14 @@ export class AnimationOrchestratorService {
       // Hidden opponent card: starts as card_back, flips to reveal face in GY.
       // Known card or banish face-down: starts face-up, flips to face-down (or no flip).
       const showBack = isHiddenCard && to === LOCATION.GRAVE;
+      const impactGlow = to === LOCATION.GRAVE ? AnimationOrchestratorService.GLOW_GY : AnimationOrchestratorService.GLOW_BANISH;
       const discardP = this.cardTravelService.travel(src, dstKey, cardImage, {
         duration: travelDuration,
         flipDuringTravel: shouldFlip,
         showBack,
-        departureGlowColor: 'rgba(255,200,50,0.5)',
+        departureGlowColor: AnimationOrchestratorService.GLOW_DISCARD,
+        impactGlowColor: impactGlow,
+        landingStyle: to === LOCATION.BANISHED ? 'banish' : 'soft',
         baseRotateZ,
       });
       handGhostDiv?.remove();
@@ -746,7 +789,7 @@ export class AnimationOrchestratorService {
     // Return from hand to deck: HAND -> DECK
     if (from === LOCATION.HAND && to === LOCATION.DECK) {
       const deckP = this.cardTravelService.travel(src, dstKey, cardImage, {
-        duration: travelDuration, flipDuringTravel: true, impactGlowColor: 'rgba(180,180,220,0.5)', baseRotateZ,
+        duration: travelDuration, flipDuringTravel: true, impactGlowColor: AnimationOrchestratorService.GLOW_NEUTRAL, baseRotateZ,
       });
       handGhostDiv?.remove();
       return deckP;
@@ -760,25 +803,43 @@ export class AnimationOrchestratorService {
           duration: travelDuration,
           showBack: isFaceDown,
           flipDuringTravel: isFaceDown && !isBanishFaceDown,
+          impactGlowColor: to === LOCATION.GRAVE ? AnimationOrchestratorService.GLOW_GY : AnimationOrchestratorService.GLOW_BANISH,
+          landingStyle: to === LOCATION.BANISHED ? 'banish' : 'soft',
           baseRotateZ,
         }));
     }
 
     // Add to hand from pile: GRAVE/BANISHED/EXTRA -> HAND
-    if ((from === LOCATION.GRAVE || from === LOCATION.BANISHED || from === LOCATION.EXTRA)
-      && to === LOCATION.HAND) {
+    if (isPile(from) && to === LOCATION.HAND) {
       return this.cardTravelService.travel(srcKey, dst, cardImage, { duration: travelDuration, baseRotateZ });
     }
 
     // Return from pile to deck: GRAVE/BANISHED/EXTRA -> DECK
-    if ((from === LOCATION.GRAVE || from === LOCATION.BANISHED || from === LOCATION.EXTRA)
-      && to === LOCATION.DECK) {
+    if (isPile(from) && to === LOCATION.DECK) {
       return this.cardTravelService.travel(srcKey, dstKey, cardImage, {
-        duration: travelDuration, flipDuringTravel: true, impactGlowColor: 'rgba(180,180,220,0.5)', baseRotateZ,
+        duration: travelDuration, flipDuringTravel: true, impactGlowColor: AnimationOrchestratorService.GLOW_NEUTRAL, baseRotateZ,
       });
     }
 
-    return 0;
+    // Pile-to-pile: GRAVE/BANISHED/EXTRA -> GRAVE/BANISHED/EXTRA (banish from GY, return from banish, etc.)
+    if (isPile(from) && isPile(to)) {
+      return this.travelMaskedPile(dstKey, this.prevPileImage(to, msg.toSequence, relPlayer),
+        this.cardTravelService.travel(srcKey, dstKey, cardImage, {
+          duration: travelDuration,
+          showBack: isFaceDown,
+          flipDuringTravel: isBanishFaceDown,
+          impactGlowColor: to === LOCATION.BANISHED ? AnimationOrchestratorService.GLOW_BANISH : AnimationOrchestratorService.GLOW_GY,
+          landingStyle: to === LOCATION.BANISHED ? 'banish' : 'soft',
+          baseRotateZ,
+        }));
+    }
+
+    // Generic fallback: any unhandled transition (HAND->EXTRA, DECK->HAND, OVERLAY->*, etc.)
+    const fallbackP = this.cardTravelService.travel(src, dst, cardImage, { duration: travelDuration, baseRotateZ });
+    handGhostDiv?.remove(); // travel() captured source rect synchronously — safe to remove now
+    if (to === LOCATION.MZONE || to === LOCATION.SZONE) return this.travelMasked(dstKey, fallbackP);
+    if (isPile(to)) return this.travelMaskedPile(dstKey, this.prevPileImage(to, msg.toSequence, relPlayer), fallbackP);
+    return fallbackP;
   }
 
   private travelMasked(dstKey: string, p: Promise<void>): Promise<void> {
@@ -796,15 +857,13 @@ export class AnimationOrchestratorService {
    * - GRAVE/BANISHED/EXTRA: stores card image in maskedPileImages (source side) so the pile
    *   widget keeps showing the departing card until its travel animation actually starts.
    */
-  private preMaskQueuedSources(): void {
+  private preMaskQueuedSources(events: readonly GameEvent[] = this.wsService.animationQueue()): void {
     const state = this.wsService.duelState();
     const currentSrcImages = this.maskedSourceImages();
     const currentPileImages = this.maskedPileImages();
     let srcUpdates: Map<string, CardOnField> | null = null;
     let pileUpdates: Map<string, string | null> | null = null;
-    const handScanOffsets = new Map<string, number>();
-
-    for (const event of this.wsService.animationQueue()) {
+    for (const event of events) {
       if (event.type !== 'MSG_MOVE') continue;
       const msg = event as MoveMsg;
       const from = msg.fromLocation;
@@ -830,23 +889,17 @@ export class AnimationOrchestratorService {
         pileUpdates.set(srcKey, image);
         this._sourcePileMasks.add(srcKey);
       } else if (from === LOCATION.HAND) {
-        // DOM indices shift as cards are removed: original index = fromSequence + in-flight + scan offset.
-        // in-flight = cards already animated from this hand zone in the current batch (before board state).
-        // scanOffset = events for this zone scanned earlier in this same preMaskQueuedSources call.
-        const inFlight = this._handInFlightCount.get(srcKey) ?? 0;
-        const scanOffset = handScanOffsets.get(srcKey) ?? 0;
-        const domIndex = msg.fromSequence + inFlight + scanOffset;
-        const ghostKey = `${srcKey}-${domIndex}`;
-        if (this._handGhostDivs.has(ghostKey)) {
-          handScanOffsets.set(srcKey, scanOffset + 1);
-          continue;
-        }
+        // Use fromSequence as the stable ghost key — unique per card, immune to in-flight/scan-offset collisions.
+        const ghostKey = `${srcKey}-s${msg.fromSequence}`;
+        if (this._handGhostDivs.has(ghostKey)) continue;
+        // DOM index == fromSequence: board state not yet applied, hand DOM still intact at scan time.
+        const domIndex = msg.fromSequence;
         const zone = this.cardTravelService.getZoneElement(srcKey);
         const handCards = zone?.querySelectorAll<HTMLElement>('.hand-card');
         const el = handCards && domIndex < handCards.length ? handCards[domIndex] : null;
-        if (!el) { handScanOffsets.set(srcKey, scanOffset + 1); continue; }
+        if (!el) continue;
         const rect = el.getBoundingClientRect();
-        if (rect.width === 0) { handScanOffsets.set(srcKey, scanOffset + 1); continue; }
+        if (rect.width === 0) continue;
         const isOwn = relPlayer === 0;
         const imgSrc = isOwn && msg.cardCode
           ? getCardImageUrlByCode(msg.cardCode)
@@ -859,7 +912,6 @@ export class AnimationOrchestratorService {
         ghost.appendChild(img);
         document.body.appendChild(ghost);
         this._handGhostDivs.set(ghostKey, ghost);
-        handScanOffsets.set(srcKey, scanOffset + 1);
       }
     }
 
@@ -953,7 +1005,7 @@ export class AnimationOrchestratorService {
   private _clearHandGhosts(): void {
     for (const ghost of this._handGhostDivs.values()) ghost.remove();
     this._handGhostDivs.clear();
-    this._handInFlightCount.clear();
+
   }
 
   /**
@@ -981,8 +1033,10 @@ export class AnimationOrchestratorService {
       if (remaining <= 0) {
         this._pileFlightCounts.delete(dstKey);
         // Keep mask alive if a queued event will animate to the same pile (sequential queue case).
-        // That event's travelMaskedPile will take over (count 0→1) and clear the mask when done.
-        const nextPileEvent = this.wsService.animationQueue().find(e => {
+        // During chain replay, check the replay buffer (not the live queue — buffered events are
+        // not in wsService.animationQueue() and the keep-alive would always miss them).
+        const eventsToCheck = this._replayPendingEvents ?? this.wsService.animationQueue();
+        const nextPileEvent = eventsToCheck.find(e => {
           if (e.type !== 'MSG_MOVE') return false;
           const m = e as MoveMsg;
           const rp = this.relativePlayer(m.player);
@@ -1117,10 +1171,12 @@ export class AnimationOrchestratorService {
     if (this._reducedMotion) return 0;
     const relPlayer = this.relativePlayer(msg.player);
     const isOwnDraw = relPlayer === 0;
+    // Initial draw (opening hand) happens at turnCount === 0 — skip highlight there.
+    const isInitialDraw = this.wsService.duelState().turnCount === 0;
     const srcKey = `DECK-${relPlayer}`;
     const dstKey = `HAND-${relPlayer}`;
     const travelDuration = this.scaledDuration(400, 200);
-    const stagger = this.scaledDuration(100, 50);
+    const highlightDuration = this.scaledDuration(450, 150);
 
     // Enable draw masking — BOARD_STATE will be applied immediately so hand
     // zone has correct dimensions, but new cards are hidden until revealed.
@@ -1136,42 +1192,52 @@ export class AnimationOrchestratorService {
 
     const drawCount = msg.cards.length;
     const handZone = this.cardTravelService.getZoneElement(dstKey);
-    let landed = 0;
 
-    for (let i = 0; i < drawCount; i++) {
-      const card = msg.cards[i];
-      const cardImage = isOwnDraw && card
-        ? this.cardTravelService.toAbsoluteUrl(`/api/documents/small/code/${card}`)
-        : this.cardTravelService.toAbsoluteUrl('assets/images/card_back.jpg');
+    // Deadlock guard: if the async sequence never resolves, force-unblock the queue.
+    const perCard = travelDuration + (isInitialDraw ? 0 : highlightDuration);
+    const guardId = setTimeout(() => {
+      console.warn('[ANIM:DEADLOCK] Draw sequence timed out — forcing queue continue');
+      this._waitingForDraw = false;
+      this.processAnimationQueue();
+    }, drawCount * perCard + 600) as unknown as ReturnType<typeof setTimeout>;
+    this.animationTimeouts.push(guardId);
 
-      const travelOpts = {
-        duration: travelDuration,
-        showBack: true,
-        flipDuringTravel: isOwnDraw && !!card,
-      };
-
-      const startTravel = (): void => {
+    const runSequence = async (): Promise<void> => {
+      for (let i = 0; i < drawCount; i++) {
+        // First card: wait one frame for Angular to render hidden slots after BOARD_STATE
+        if (i === 0) await new Promise<void>(r => setTimeout(r, 16));
+        const card = msg.cards[i];
+        const cardImage = isOwnDraw && card
+          ? this.cardTravelService.toAbsoluteUrl(`/api/documents/small/code/${card}`)
+          : this.cardTravelService.toAbsoluteUrl('assets/images/card_back.jpg');
         const targetEl = this.resolveHandCardTarget(handZone, drawCount, i, dstKey);
-        this.cardTravelService.travel(srcKey, targetEl, cardImage, travelOpts)
-          .then(() => {
-            this.revealOneHandCard(relPlayer);
-            landed++;
-            if (landed === drawCount) {
-              this._waitingForDraw = false;
-              this.processAnimationQueue();
-            }
-          });
-      };
+        await this.cardTravelService.travel(srcKey, targetEl, cardImage, {
+          duration: travelDuration, showBack: true, flipDuringTravel: isOwnDraw && !!card,
+        });
+        this.revealOneHandCard(relPlayer);
+        if (!isInitialDraw) await this.highlightDrawnCard(targetEl, highlightDuration);
+      }
+      clearTimeout(guardId);
+      this._waitingForDraw = false;
+      this.processAnimationQueue();
+    };
 
-      // First card waits one frame for Angular to render hidden cards after BOARD_STATE
-      const delay = i * stagger + (i === 0 ? 16 : 0);
-      const id = setTimeout(startTravel, delay);
-      this.animationTimeouts.push(id as unknown as ReturnType<typeof setTimeout>);
-    }
-
+    runSequence();
     this.announceEvent('Card drawn', msg.player);
     this._waitingForDraw = true;
     return 'async';
+  }
+
+  private async highlightDrawnCard(el: HTMLElement | string, duration: number): Promise<void> {
+    if (!(el instanceof HTMLElement)) return;
+    await el.animate([
+      { transform: 'translateY(-12px)', boxShadow: '0 0 0 0px rgba(80,160,255,0)',    offset: 0    },
+      { transform: 'translateY(-12px)', boxShadow: '0 0 10px 3px rgba(80,160,255,0.85)', offset: 0.18 },
+      { transform: 'translateY(-12px)', boxShadow: '0 0 2px 1px rgba(80,160,255,0.15)', offset: 0.40 },
+      { transform: 'translateY(-12px)', boxShadow: '0 0 10px 3px rgba(80,160,255,0.75)', offset: 0.58 },
+      { transform: 'translateY(-12px)', boxShadow: '0 0 0 0px rgba(80,160,255,0)',    offset: 0.80 },
+      { transform: 'translateY(0px)',   boxShadow: '0 0 0 0px rgba(80,160,255,0)',    offset: 1.0  },
+    ], { duration, fill: 'none', easing: 'ease-out' }).finished;
   }
 
   private processShuffleEvent(msg: ShuffleHandMsg): number {
@@ -1215,6 +1281,8 @@ export class AnimationOrchestratorService {
           duration: travelDuration,
           showBack: true,
           departureGlowColor: 'rgba(0, 150, 255, 0.4)',
+          impactGlowColor: msg.toLocation === LOCATION.GRAVE ? 'rgba(160,160,190,0.6)' : 'rgba(180,100,255,0.6)',
+          landingStyle: msg.toLocation === LOCATION.GRAVE ? 'soft' : 'banish',
         }).then(resolve);
       }, slideOutDuration);
       this.animationTimeouts.push(tid);
