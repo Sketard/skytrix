@@ -835,7 +835,35 @@ So that the lobby stays clean and deck navigation works properly.
 
 **Technical debt source:** Epic 3 Story 3-4 — RoomDTO lacks deck ID fields + orphaned room cleanup
 
-### Story 5.4: Infrastructure & Optimization
+### Story 5.3b: Hard Refresh Recovery During Active Duel
+
+As a player,
+I want the app to reconnect to my active duel after a page refresh,
+So that accidentally refreshing the browser doesn't force me to forfeit.
+
+**Acceptance Criteria:**
+
+**Given** the duel route is `/pvp/duel/:duelId`
+**When** a player navigates directly to that URL (page refresh or deep link)
+**Then** `DuelPageComponent.ngOnInit` detects the `duelId` in the route and triggers the reconnection flow (same as Story 3.3) instead of attempting a new duel creation
+
+**Given** `DuelPageComponent` initializes with a `duelId` in the route
+**When** it needs to establish the WebSocket connection
+**Then** the `wsUrl` is either derived from `environment.ts` base URL + `duelId`, or retrieved from `sessionStorage` if set at join time
+**And** `sessionStorage` key is `pvp_duel_wsUrl` — cleared on `DUEL_END` or manual navigation away from the duel page
+
+**Given** the client has a `duelId` in route and a `wsUrl`
+**When** `DuelWebSocketService` attempts reconnection
+**Then** it calls `GET /api/duels/:duelId/status` on Spring Boot before opening the WebSocket
+**And** if the response is `ACTIVE`: proceed with WS connection (reconnection flow from Story 3.3 applies)
+**And** if the response is `ENDED` or `NOT_FOUND`: navigate to `/pvp/lobby` with a `mat-snackbar` "This duel has already ended"
+
+**Given** Spring Boot receives `GET /api/duels/:duelId/status`
+**When** the duel exists and is active in the database
+**Then** it returns `{ status: 'ACTIVE', wsUrl: string }`
+**And** the route is protected by existing JWT authentication
+
+**Technical debt source:** Story 3.3 — reconnection covers WS drop but not full page reload (Angular bootstrap from scratch)
 
 As a developer,
 I want Docker container integration tests and optimized thumbnail loading,

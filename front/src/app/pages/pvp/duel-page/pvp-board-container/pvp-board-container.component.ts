@@ -1,11 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { DuelState } from '../../types';
+import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, effect, inject, Injector, input, output, signal } from '@angular/core';
+import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupPileActions, isActivateAction } from '../idle-action-codes';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
 import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
+import { CardTravelService } from '../card-travel.service';
+import { formatStat, getAttributeName, getRaceName, totalCounters } from '../../pvp-alteration.utils';
+import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
+import { NgTemplateOutlet } from '@angular/common';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -33,17 +37,60 @@ interface ZoneRenderData {
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent],
+  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent, NgTemplateOutlet],
 })
-export class PvpBoardContainerComponent {
+export class PvpBoardContainerComponent implements AfterViewInit {
+  private readonly injector = inject(Injector);
+  private readonly cardTravelService = inject(CardTravelService);
+  private readonly zoneElements = new Map<string, HTMLElement>();
+
+  /** Only rebuild zone map when players appear/disappear, not on every state update */
+  private readonly hasOpponent = computed(() => this.duelState().players[1] != null);
+
+  constructor() {
+    // Dynamic rebuild: re-query zone elements when opponent field first renders
+    effect(() => {
+      this.hasOpponent(); // track only player presence changes
+      afterNextRender(() => this.rebuildZoneMap(), { injector: this.injector });
+    });
+    effect(() => {
+      const badges = this.chainBadges();
+      if (badges.size > 0) {
+        console.log('[DBG:BADGE] chainBadges non-empty (%d entries): %o', badges.size, [...badges.entries()]);
+      } else {
+        console.log('[DBG:BADGE] chainBadges cleared (size=0)');
+      }
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.rebuildZoneMap();
+    this.cardTravelService.registerZoneResolver(this.getZoneElement.bind(this));
+  }
+
+  getZoneElement(zoneKey: string): HTMLElement | null {
+    return this.zoneElements.get(zoneKey) ?? null;
+  }
+
+  private rebuildZoneMap(): void {
+    this.zoneElements.clear();
+    const elements = document.querySelectorAll<HTMLElement>('[data-zone]');
+    elements.forEach(el => {
+      const key = el.getAttribute('data-zone');
+      if (key) this.zoneElements.set(key, el);
+    });
+  }
+
   readonly duelState = input.required<DuelState>();
   readonly timerState = input<TimerStateMsg | null>(null);
   readonly ownPlayerIndex = input<Player>(0);
   readonly highlightedZones = input<Set<ZoneId>>(new Set());
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
   readonly opponentDisconnected = input(false);
-  readonly animatingZone = input<{ zoneId: string; animationType: 'summon' | 'destroy' | 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
+  readonly animatingZone = input<{ zoneId: string; animationType: 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
   readonly animatingLp = input<LpAnimData | null>(null);
+  readonly activeChainLinks = input<ChainLinkState[]>([]);
+  readonly chainPhase = input<'idle' | 'building' | 'resolving'>('idle');
   readonly displayedPhase = input<Phase | null>(null);
   readonly displayedTurnPlayer = input<Player | null>(null);
   readonly displayedTurnCount = input<number | null>(null);
@@ -52,6 +99,9 @@ export class PvpBoardContainerComponent {
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();
+  readonly maskedZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly maskedPileImages = input<ReadonlyMap<string, string | null>>(new Map());
+  readonly maskedSourceImages = input<ReadonlyMap<string, CardOnField>>(new Map());
 
   readonly playerZones = computed(() => this.buildFieldZones(0));
   readonly opponentZones = computed(() => this.buildFieldZones(1));
@@ -146,6 +196,35 @@ export class PvpBoardContainerComponent {
   readonly isFaceUp = isFaceUp;
   readonly isDefense = isDefense;
   readonly getCardImageUrl = getCardImageUrl;
+  readonly formatStat = formatStat;
+  readonly getAttributeName = getAttributeName;
+  readonly getRaceName = getRaceName;
+  readonly totalCounters = totalCounters;
+
+  protected readonly equipMap = computed(() => {
+    const map = new Map<string, string[]>();
+    const state = this.duelState();
+    for (let relPlayer = 0; relPlayer < 2; relPlayer++) {
+      const player = state.players[relPlayer];
+      if (!player) continue;
+      for (const zone of player.zones) {
+        const card = zone.cards[0];
+        if (!card?.equipTarget) continue;
+        const equipKey = `${zone.zoneId}-${relPlayer}`;
+        const target = card.equipTarget;
+        const targetZoneId = locationToZoneId(target.location, target.sequence);
+        if (!targetZoneId) continue;
+        const targetKey = `${targetZoneId}-${target.controller}`;
+        const eArr = map.get(equipKey);
+        if (eArr) eArr.push(targetKey); else map.set(equipKey, [targetKey]);
+        const tArr = map.get(targetKey);
+        if (tArr) tArr.push(equipKey); else map.set(targetKey, [equipKey]);
+      }
+    }
+    return map;
+  });
+
+  protected readonly equipHighlightedZones = signal(new Set<string>());
 
   private static readonly MONSTER_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5']);
 
@@ -167,8 +246,6 @@ export class PvpBoardContainerComponent {
   });
 
   onHighlightedZoneClick(zoneId: ZoneId): void {
-    console.log('[ZONE-CLICK] badge clicked zoneId=%s highlighted=%s highlightedSet=%o',
-      zoneId, this.isHighlighted(zoneId), [...this.highlightedZones()]);
     if (this.isHighlighted(zoneId)) {
       this.zoneSelected.emit(zoneId);
     }
@@ -179,8 +256,6 @@ export class PvpBoardContainerComponent {
     // If player's own pile has actionable cards, also open the action menu
     if (playerIndex === 0) {
       const actions = this.getActionsForZone(zoneId);
-      console.log('[PILE-CLICK] zoneId=%s actions=%d map-keys=%o activateZones=%o nonActivateZones=%o',
-        zoneId, actions.length, [...this.actionableCards().keys()], [...this.activateZoneIds()], [...this.nonActivateZoneIds()]);
       if (actions.length > 0) {
         this.menuRequest.emit({
           zoneId,
@@ -286,6 +361,29 @@ export class PvpBoardContainerComponent {
     });
   }
 
+  /**
+   * Chain badge map: key → chain link number (only when chain ≥ 2).
+   * Keys: "ZoneId-relPlayer" for field zones, "ZONENAME-relPlayer" for piles,
+   * "HAND-relPlayer-sequence" for individual hand cards.
+   * When multiple links target the same slot, only the highest number is kept.
+   */
+  protected readonly chainBadges = computed(() => {
+    const links = this.activeChainLinks();
+    const map = new Map<string, number>();
+    if (links.length < 2 && this.chainPhase() !== 'resolving') return map;
+    const ownIdx = this.ownPlayerIndex();
+    for (const link of links) {
+      const relPlayer = link.player === ownIdx ? 0 : 1;
+      const chainNum = link.chainIndex + 1;
+      const key = link.zoneId
+        ? `${link.zoneId}-${relPlayer}`
+        : link.location === LOCATION.HAND
+          ? `HAND-${relPlayer}-${link.sequence}`
+          : locationToZoneKey(link.location, link.sequence, relPlayer);
+      if (!map.has(key) || map.get(key)! < chainNum) map.set(key, chainNum);
+    }
+    return map;
+  });
 
   /** Pre-computed animation state: Set of "zoneId-relativePlayer-type" keys for O(1) template lookup */
   protected readonly animatingZoneKeys = computed(() => {
@@ -319,6 +417,47 @@ export class PvpBoardContainerComponent {
     if (card.cardCode) {
       this.cardInspectRequest.emit({ cardCode: card.cardCode });
     }
+  }
+
+  onEquipHover(zoneKey: string): void {
+    const linked = this.equipMap().get(zoneKey);
+    if (linked?.length) {
+      this.equipHighlightedZones.set(new Set(linked));
+    }
+  }
+
+  onEquipLeave(): void {
+    if (this.equipHighlightedZones().size > 0) {
+      this.equipHighlightedZones.set(new Set());
+    }
+  }
+
+  buildAriaLabel(card: CardOnField): string {
+    const parts: string[] = [card.name ?? 'Card'];
+    if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk) {
+      parts.push(`ATK ${card.currentAtk} ${card.currentAtk > card.baseAtk ? 'boosted' : 'reduced'} from ${card.baseAtk}`);
+    }
+    if (card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
+      parts.push(`DEF ${card.currentDef} ${card.currentDef > card.baseDef ? 'boosted' : 'reduced'} from ${card.baseDef}`);
+    }
+    if (card.isEffectNegated) parts.push('effect negated');
+    if (card.currentLevel != null && card.baseLevel != null && card.currentLevel !== card.baseLevel) {
+      parts.push(`level ${card.currentLevel} from ${card.baseLevel}`);
+    }
+    if (card.currentRank != null && card.baseRank != null && card.currentRank !== card.baseRank) {
+      parts.push(`rank ${card.currentRank} from ${card.baseRank}`);
+    }
+    if (card.currentAttribute != null && card.baseAttribute != null && card.currentAttribute !== card.baseAttribute) {
+      const name = getAttributeName(card.currentAttribute);
+      if (name) parts.push(`attribute changed to ${name}`);
+    }
+    if (card.currentRace != null && card.baseRace != null && card.currentRace !== card.baseRace) {
+      const name = getRaceName(card.currentRace);
+      if (name) parts.push(`type changed to ${name}`);
+    }
+    const cnt = totalCounters(card.counters);
+    if (cnt > 0) parts.push(`${cnt} counter${cnt > 1 ? 's' : ''}`);
+    return parts.join(', ');
   }
 
   private isOpponentEmz(zoneId: ZoneId): boolean {

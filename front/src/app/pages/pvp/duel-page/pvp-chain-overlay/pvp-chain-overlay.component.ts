@@ -25,6 +25,7 @@ export interface VisibleCard {
 export interface ExitingCardState {
   card: VisibleCard;
   type: 'overflow' | 'resolved';
+  negated: boolean;
 }
 
 /**
@@ -93,6 +94,9 @@ export class PvpChainOverlayComponent {
   /** chainIndex of the front card being resolved (pulse glow) */
   readonly resolvingIndex = signal(-1);
 
+  /** chainIndex of the front card being resolved as negated (grey shake) */
+  readonly negatedResolvingIndex = signal(-1);
+
   /** Whether card entry animation is in progress (for burst detection) */
   private entryAnimInProgress = false;
   private entryTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -100,14 +104,14 @@ export class PvpChainOverlayComponent {
   /** Track whether we've already handled the first resolving phase entry */
   private resolutionStarted = false;
 
-  /** AC7: buffer announcements during auto-resolve */
-  private announcementBuffer: string[] = [];
-
   /** Store resolving card info before link removal */
   private resolvingCardInfo: { cardCode: number; cardName: string } | null = null;
-
-  /** Reduced motion detection for JS-controlled durations */
-  private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private resolvingNegated = false;
+  /** True once overlayVisible was set during building phase (chain had ≥2 links) */
+  private overlayShownDuringBuild = false;
+  /** Dedup guard: track last resolving link announced to prevent duplicate liveAnnouncer/buffer calls */
+  private lastAnnouncedResolvingIndex = -1;
+  private lastAnnouncedNegated = false;
 
   private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
 
@@ -115,18 +119,16 @@ export class PvpChainOverlayComponent {
   private hasPendingEntry = false;
   private pendingPrevCount = 0;
 
-  // --- Animation durations (halved when chainAccelerated) ---
+  // --- Animation durations (scaled by speedMultiplier) ---
   readonly durations = computed(() => {
-    const fast = this.orchestrator.chainAccelerated();
+    const scale = (base: number) => Math.round(base * this.orchestrator.speedMultiplier());
     return {
-      pulse: fast ? 300 : 600,
-      exit: fast ? 300 : 600,
-      fadeOut: fast ? 300 : 600,
-      boardPause: this.reducedMotion ? 0 : (fast ? 600 : 1000),
-      constructAppear: fast ? 500 : 800,
-      constructFadeOut: fast ? 300 : 600,
-      entry: fast ? 300 : 600,
-      overflow: fast ? 300 : 600,
+      pulse: this.orchestrator.chainPulseDuration(),
+      exit: scale(600),
+      constructAppear: scale(800),
+      constructFadeOut: scale(600),
+      entry: scale(600),
+      overflow: scale(600),
     };
   });
 
@@ -145,12 +147,12 @@ export class PvpChainOverlayComponent {
 
   /** CSS variable values synced with JS durations for accelerated mode */
   readonly cssDurations = computed(() => {
-    const fast = this.orchestrator.chainAccelerated();
+    const d = this.durations();
     return {
-      pulse: fast ? '300ms' : '600ms',
-      exit: fast ? '300ms' : '600ms',
-      entry: fast ? '300ms' : '600ms',
-      overflow: fast ? '300ms' : '600ms',
+      pulse: `${d.pulse}ms`,
+      exit: `${d.exit}ms`,
+      entry: `${d.entry}ms`,
+      overflow: `${d.overflow}ms`,
     };
   });
 
@@ -217,7 +219,7 @@ export class PvpChainOverlayComponent {
       });
     });
 
-    // Effect B — resolving detection (pulse glow + overlay visibility)
+    // Effect B — resolving detection (pulse glow / negated shake + overlay visibility)
     effect(() => {
       const links = this.activeChainLinks();
       const phase = this.phase();
@@ -225,23 +227,54 @@ export class PvpChainOverlayComponent {
       untracked(() => {
         if (phase !== 'resolving' || links.length === 0) {
           this.resolvingIndex.set(-1);
+          this.negatedResolvingIndex.set(-1);
           return;
         }
 
         const resolvingLink = links.find(l => l.resolving);
+        console.log('[DBG:EFFECT-B] phase=resolving links=%d resolvingLink=%o allLinks=%o',
+          links.length,
+          resolvingLink ? { idx: resolvingLink.chainIndex, negated: resolvingLink.negated, name: resolvingLink.cardName } : null,
+          links.map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
         if (resolvingLink) {
-          this.resolvingIndex.set(resolvingLink.chainIndex);
           this.resolvingCardInfo = { cardCode: resolvingLink.cardCode, cardName: resolvingLink.cardName };
+          this.resolvingNegated = resolvingLink.negated;
 
-          // Show overlay during resolving phase so pulse glow + exit animation are visible
-          this.overlayVisible.set(true);
-
-          const announcement = `Chain Link ${resolvingLink.chainIndex + 1} resolving: ${resolvingLink.cardName}`;
-          if (this.orchestrator.chainAccelerated()) {
-            this.announcementBuffer.push(announcement);
+          if (resolvingLink.negated) {
+            this.negatedResolvingIndex.set(resolvingLink.chainIndex);
+            this.resolvingIndex.set(-1);
           } else {
+            this.resolvingIndex.set(resolvingLink.chainIndex);
+          }
+
+          // Show overlay during resolving phase so animation is visible —
+          // skip only for chain-1 (overlay was never shown during building)
+          if (this.overlayShownDuringBuild) this.overlayVisible.set(true);
+
+          // Dedup: announce only for a new link, or when negation state changes (resolving→negated)
+          const isNewLink = resolvingLink.chainIndex !== this.lastAnnouncedResolvingIndex;
+          const isNegationUpdate = resolvingLink.chainIndex === this.lastAnnouncedResolvingIndex
+            && resolvingLink.negated && !this.lastAnnouncedNegated;
+          if (isNewLink || isNegationUpdate) {
+            this.lastAnnouncedResolvingIndex = resolvingLink.chainIndex;
+            this.lastAnnouncedNegated = resolvingLink.negated;
+            const announcement = resolvingLink.negated
+              ? `Chain Link ${resolvingLink.chainIndex + 1} negated: ${resolvingLink.cardName}`
+              : `Chain Link ${resolvingLink.chainIndex + 1} resolving: ${resolvingLink.cardName}`;
             this.liveAnnouncer.announce(announcement);
           }
+        }
+      });
+    });
+
+    // Effect D — Hide overlay during "Chain Resolution" banner
+    effect(() => {
+      const announcing = this.orchestrator.chainResolutionAnnounce();
+      untracked(() => {
+        if (announcing) {
+          this.cancelEntryTimer();
+          this.entryAnimInProgress = false;
+          this.overlayVisible.set(false);
         }
       });
     });
@@ -262,6 +295,29 @@ export class PvpChainOverlayComponent {
         }
       });
     });
+
+    // Effect E — Hide overlay when a prompt arrives during chain resolution.
+    // After the fade-out completes, release the gate so the prompt becomes visible.
+    // When the prompt closes (promptActive → false), re-show the overlay for the next link.
+    effect(() => {
+      const isPromptActive = this.promptActive();
+      const phase = this.phase();
+
+      untracked(() => {
+        if (phase !== 'resolving') return;
+
+        if (isPromptActive && this.overlayVisible()) {
+          this.orchestrator.chainPromptGateActive.set(true);
+          this.overlayVisible.set(false);
+          this.scheduleTimeout(() => {
+            this.orchestrator.chainPromptGateActive.set(false);
+          }, this.durations().exit);
+        } else if (!isPromptActive && this.orchestrator.chainPromptGateActive()) {
+          // Prompt closed before fade-out finished — release gate immediately
+          this.orchestrator.chainPromptGateActive.set(false);
+        }
+      });
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -269,12 +325,16 @@ export class PvpChainOverlayComponent {
   // ---------------------------------------------------------------------------
 
   private onNewChainLink(prevCount: number, links: ChainLinkState[]): void {
+    // Chain-1: no overlay — only board glow via animatingZone. Skip entirely.
+    if (links.length < 2) return;
+
     // Handle exit card (overflow > 3)
     if (prevCount >= 3) {
       const exitingLink = links[links.length - 4];
       if (exitingLink) {
         this.exitingCard.set({
           type: 'overflow',
+          negated: false,
           card: {
             chainIndex: exitingLink.chainIndex,
             cardCode: exitingLink.cardCode,
@@ -299,6 +359,7 @@ export class PvpChainOverlayComponent {
     }
 
     // Normal flow: show overlay, animate entry, then fade out
+    this.overlayShownDuringBuild = true;
     this.overlayVisible.set(true);
     this.entryAnimInProgress = true;
     this.orchestrator.chainEntryAnimating.set(true);
@@ -318,16 +379,17 @@ export class PvpChainOverlayComponent {
   // ---------------------------------------------------------------------------
 
   private onChainLinkResolved(): void {
-    // Overlay should already be visible from Effect B, but ensure it
-    this.overlayVisible.set(true);
     this.orchestrator.chainOverlayReady.set(false);
 
-    const resolvedIdx = this.resolvingIndex();
+    const resolvedIdx = this.resolvingNegated ? this.negatedResolvingIndex() : this.resolvingIndex();
     const cardInfo = this.resolvingCardInfo;
+    // Capture at scheduling time — immune to concurrent Effect B updates before the timeout fires
+    const negatedAtSchedule = this.resolvingNegated;
 
     if (resolvedIdx >= 0) {
       this.exitingCard.set({
         type: 'resolved',
+        negated: negatedAtSchedule,
         card: {
           chainIndex: resolvedIdx,
           cardCode: cardInfo?.cardCode ?? 0,
@@ -337,28 +399,31 @@ export class PvpChainOverlayComponent {
       });
     }
 
-    // After exit animation: clear exiting card, handle board change pause
-    // The CSS transitions on .chain-card positions animate the cascade automatically
+    // After exit animation: clean up and handle board change pause.
+    // negatedAtSchedule is passed explicitly so the decision is independent of later field resets.
     this.scheduleTimeout(() => {
       this.exitingCard.set(null);
-      this.resolvingIndex.set(-1);
+      this.overlayVisible.set(false);
+      this.handleBoardChangePause(negatedAtSchedule);
+      this.resolvingNegated = false;
       this.resolvingCardInfo = null;
-      this.handleBoardChangePause();
+      this.resolvingIndex.set(-1);
+      this.negatedResolvingIndex.set(-1);
     }, this.durations().exit);
   }
 
-  private handleBoardChangePause(): void {
+  private handleBoardChangePause(negated = this.resolvingNegated): void {
+    // Negated effect: no board change possible — skip board reveal pause entirely.
+    if (negated) {
+      this.orchestrator.chainOverlayReady.set(true);
+      return;
+    }
     if (this.orchestrator.chainOverlayBoardChanged()) {
-      this.overlayVisible.set(false);
-
-      this.scheduleTimeout(() => {
-        this.scheduleTimeout(() => {
-          if (this.activeChainLinks().length > 0) {
-            this.overlayVisible.set(true);
-          }
-          this.orchestrator.chainOverlayReady.set(true);
-        }, this.durations().boardPause);
-      }, this.durations().fadeOut);
+      // Replay board events — travels are z-index 1000, visible above everything.
+      // Overlay re-shown by Effect B when next MSG_CHAIN_SOLVING pulse starts.
+      this.orchestrator.replayBufferedEvents().then(() => {
+        this.orchestrator.chainOverlayReady.set(true);
+      });
     } else {
       this.orchestrator.chainOverlayReady.set(true);
     }
@@ -374,16 +439,15 @@ export class PvpChainOverlayComponent {
     this.resolutionStarted = false;
     this.exitingCard.set(null);
     this.resolvingIndex.set(-1);
+    this.negatedResolvingIndex.set(-1);
     this.resolvingCardInfo = null;
+    this.resolvingNegated = false;
     this.hasPendingEntry = false;
     this.pendingPrevCount = 0;
 
-    // AC7: Flush buffered announcements as coalesced summary
-    if (this.announcementBuffer.length > 0) {
-      const count = this.announcementBuffer.length;
-      this.liveAnnouncer.announce(`Chain of ${count} links resolved`);
-      this.announcementBuffer = [];
-    }
+    this.overlayShownDuringBuild = false;
+    this.lastAnnouncedResolvingIndex = -1;
+    this.lastAnnouncedNegated = false;
   }
 
   // ---------------------------------------------------------------------------

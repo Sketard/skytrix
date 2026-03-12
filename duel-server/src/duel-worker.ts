@@ -64,6 +64,16 @@ let lastAnnounceNumberOptions: number[] = [];
 // Constants & Helpers
 // =============================================================================
 
+// Maps OCGCore hint_timing bitmask values to strings.conf system string indices.
+const TIMING_STRING_ID: Record<number, number> = {
+  0x01: 20, // Draw Phase
+  0x02: 21, // Standby Phase
+  0x04: 23, // Attempting to end the Main Phase
+  0x08: 80, // Entering the Battle Phase
+  0x10: 25, // End of the Battle Phase
+  0x20: 81, // Entering the End Phase
+};
+
 const PHASE_MAP: Record<number, Phase> = {
   1: 'DRAW', 2: 'STANDBY', 4: 'MAIN1', 8: 'BATTLE_START',
   16: 'BATTLE_STEP', 32: 'DAMAGE', 64: 'DAMAGE_CALC',
@@ -78,6 +88,16 @@ function getCardName(code: number): string {
   if (!cardDb || !code) return '';
   const row = cardDb.nameStmt.get(code) as { name: string } | undefined;
   return row?.name ?? '';
+}
+
+const TYPE_TOKEN = 0x4000;
+const TYPE_XYZ = 0x800000;
+const TYPE_LINK = 0x4000000;
+const STATUS_DISABLED = 0x0001;
+function isTokenCard(code: number): boolean {
+  if (!cardDb || !code) return false;
+  const row = cardDb.stmt.get(code) as Record<string, number | bigint> | undefined;
+  return row ? (Number(row['type']) & TYPE_TOKEN) !== 0 : false;
 }
 
 function getOptionDesc(optionCode: bigint): string {
@@ -208,6 +228,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         toLocation: msg.to.location as number as (typeof LOCATION)[keyof typeof LOCATION],
         toSequence: msg.to.sequence,
         toPosition: msg.to.position as number as Position,
+        isToken: isTokenCard(msg.card),
       };
 
     case OcgMessageType.DAMAGE:
@@ -227,13 +248,22 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.CHAIN_SOLVING:
+      console.log('[DBG:WORKER] CHAIN_SOLVING → MSG_CHAIN_SOLVING chainIndex=%d', msg.chain_size - 1);
       return { type: 'MSG_CHAIN_SOLVING', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.CHAIN_SOLVED:
+      console.log('[DBG:WORKER] CHAIN_SOLVED → MSG_CHAIN_SOLVED chainIndex=%d', msg.chain_size - 1);
       return { type: 'MSG_CHAIN_SOLVED', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.CHAIN_END:
+      console.log('[DBG:WORKER] CHAIN_END → MSG_CHAIN_END');
       return { type: 'MSG_CHAIN_END' };
+
+    case OcgMessageType.CHAIN_NEGATED:
+    case OcgMessageType.CHAIN_DISABLED:
+      console.log('[DBG:WORKER] %s → MSG_CHAIN_NEGATED chainIndex=%d (chain_size=%d)',
+        OcgMessageType[msg.type], msg.chain_size - 1, msg.chain_size);
+      return { type: 'MSG_CHAIN_NEGATED', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.HINT: {
       const hintType = msg.hint_type as number;
@@ -335,12 +365,17 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         cancelable: msg.can_cancel,
       };
 
-    case OcgMessageType.SELECT_CHAIN:
+    case OcgMessageType.SELECT_CHAIN: {
+      const timing = msg.hint_timing as number;
+      const timingLabel = systemStrings.get(TIMING_STRING_ID[timing] ?? 0) ?? '';
       return {
         type: 'SELECT_CHAIN', player: msg.player as Player,
         cards: msg.selects.map(c => toCardInfo(c)),
         forced: msg.forced,
+        hintTiming: timing,
+        hintTimingLabel: timingLabel,
       };
+    }
 
     case OcgMessageType.SELECT_EFFECTYN:
       return {
@@ -505,26 +540,107 @@ function buildBoardState(): ServerMessage {
   const FLAG_POS = OcgQueryFlags.POSITION as number;
   const FLAG_OVERLAY = OcgQueryFlags.OVERLAY_CARD as number;
   const FLAG_COUNTERS = OcgQueryFlags.COUNTERS as number;
+  const FLAG_ATK = OcgQueryFlags.ATTACK as number;
+  const FLAG_DEF = OcgQueryFlags.DEFENSE as number;
+  const FLAG_BASE_ATK = OcgQueryFlags.BASE_ATTACK as number;
+  const FLAG_BASE_DEF = OcgQueryFlags.BASE_DEFENSE as number;
+  const FLAG_LEVEL = OcgQueryFlags.LEVEL as number;
+  const FLAG_RANK = OcgQueryFlags.RANK as number;
+  const FLAG_ATTRIBUTE = OcgQueryFlags.ATTRIBUTE as number;
+  const FLAG_RACE = OcgQueryFlags.RACE as number;
+  const FLAG_STATUS = OcgQueryFlags.STATUS as number;
+  const FLAG_EQUIP = OcgQueryFlags.EQUIP_CARD as number;
+  const FLAG_LSCALE = OcgQueryFlags.LSCALE as number;
+  const FLAG_RSCALE = OcgQueryFlags.RSCALE as number;
+
+  function queryFlag(controller: 0 | 1, location: number, sequence: number, flags: number) {
+    return core!.duelQuery(duel!, { flags, controller, location, sequence, overlaySequence: 0 } as never);
+  }
 
   function queryCard(controller: 0 | 1, location: number, sequence: number, fieldPosition: number): CardOnField {
-    const codeInfo = core!.duelQuery(duel!, {
-      flags: FLAG_CODE, controller, location, sequence, overlaySequence: 0,
-    } as never);
-    const overlayInfo = core!.duelQuery(duel!, {
-      flags: FLAG_OVERLAY, controller, location, sequence, overlaySequence: 0,
-    } as never);
-    const counterInfo = core!.duelQuery(duel!, {
-      flags: FLAG_COUNTERS, controller, location, sequence, overlaySequence: 0,
-    } as never);
+    const codeInfo = queryFlag(controller, location, sequence, FLAG_CODE);
+    const overlayInfo = queryFlag(controller, location, sequence, FLAG_OVERLAY);
+    const counterInfo = queryFlag(controller, location, sequence, FLAG_COUNTERS);
     const code = codeInfo?.code ?? null;
     const overlayCards = overlayInfo?.overlayCards ?? [];
-    return {
+
+    const card: CardOnField = {
       cardCode: code,
       name: code ? getCardName(code) : null,
       position: fieldPosition as Position,
       overlayMaterials: overlayCards,
       counters: countersToRecord(counterInfo?.counters),
     };
+
+    // Alteration fields only for face-up cards (AC8, AC9 — queryCard is only called for field zones)
+    const isFaceUp = (fieldPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
+    if (isFaceUp && code) {
+      const atkInfo = queryFlag(controller, location, sequence, FLAG_ATK);
+      const defInfo = queryFlag(controller, location, sequence, FLAG_DEF);
+      const baseAtkInfo = queryFlag(controller, location, sequence, FLAG_BASE_ATK);
+      const baseDefInfo = queryFlag(controller, location, sequence, FLAG_BASE_DEF);
+      const levelInfo = queryFlag(controller, location, sequence, FLAG_LEVEL);
+      const rankInfo = queryFlag(controller, location, sequence, FLAG_RANK);
+      const attrInfo = queryFlag(controller, location, sequence, FLAG_ATTRIBUTE);
+      const raceInfo = queryFlag(controller, location, sequence, FLAG_RACE);
+      const statusInfo = queryFlag(controller, location, sequence, FLAG_STATUS);
+      const equipInfo = queryFlag(controller, location, sequence, FLAG_EQUIP);
+      const lscaleInfo = queryFlag(controller, location, sequence, FLAG_LSCALE);
+      const rscaleInfo = queryFlag(controller, location, sequence, FLAG_RSCALE);
+
+      // Number() guards: WASM may return bigint for any numeric field
+      card.currentAtk = atkInfo?.attack !== undefined ? Number(atkInfo.attack) : undefined;
+      card.currentDef = defInfo?.defense !== undefined ? Number(defInfo.defense) : undefined;
+      card.baseAtk = baseAtkInfo?.baseAttack !== undefined ? Number(baseAtkInfo.baseAttack) : undefined;
+      card.baseDef = baseDefInfo?.baseDefense !== undefined ? Number(baseDefInfo.baseDefense) : undefined;
+      card.currentLevel = levelInfo?.level !== undefined ? Number(levelInfo.level) : undefined;
+      card.currentRank = rankInfo?.rank !== undefined ? Number(rankInfo.rank) : undefined;
+      card.currentAttribute = attrInfo?.attribute !== undefined ? Number(attrInfo.attribute) : undefined;
+      card.currentRace = raceInfo?.race !== undefined ? Number(raceInfo.race) : undefined;
+      card.currentLScale = lscaleInfo?.leftScale !== undefined ? Number(lscaleInfo.leftScale) : undefined;
+      card.currentRScale = rscaleInfo?.rightScale !== undefined ? Number(rscaleInfo.rightScale) : undefined;
+
+      // Base values from card database (level, rank, attribute, race, scales)
+      const dbRow = cardDb?.stmt.get(code) as Record<string, number | bigint> | undefined;
+      if (dbRow) {
+        const rawLevel = Number(dbRow['level']);
+        const cardType = Number(dbRow['type']);
+        const isXyz = (cardType & TYPE_XYZ) !== 0;
+        const isLink = (cardType & TYPE_LINK) !== 0;
+        card.baseLevel = (isXyz || isLink) ? 0 : (rawLevel & 0xFF);
+        card.baseRank = isXyz ? (rawLevel & 0xFF) : 0;
+        card.baseAttribute = Number(dbRow['attribute']);
+        card.baseRace = Number(dbRow['race']);
+        card.baseLScale = (rawLevel >> 16) & 0xFF;
+        card.baseRScale = (rawLevel >> 24) & 0xFF;
+      } else {
+        console.warn('[WORKER] No DB row for card code=%d — base alteration fields unavailable', code);
+      }
+
+      // Effect negation from STATUS bitmask (AC4)
+      if (statusInfo?.status !== undefined) {
+        card.isEffectNegated = (Number(statusInfo.status) & STATUS_DISABLED) !== 0;
+      }
+
+      // Equip target (AC5)
+      const ec = equipInfo?.equipCard;
+      if (ec) {
+        if (ec.controller !== undefined && ec.sequence !== undefined) {
+          card.equipTarget = {
+            controller: ec.controller,
+            location: Number(ec.location),
+            sequence: ec.sequence,
+          };
+        } else {
+          console.warn('[WORKER] Unexpected EQUIP_CARD format: %o', ec);
+          card.equipTarget = null;
+        }
+      } else {
+        card.equipTarget = null;
+      }
+    }
+
+    return card;
   }
 
   function queryZone(controller: 0 | 1, location: number): CardOnField[] {

@@ -1,21 +1,30 @@
 <div class="hand-row"
      [class.hand-row--player]="side() === 'player'"
-     [class.hand-row--opponent]="side() === 'opponent'">
+     [class.hand-row--opponent]="side() === 'opponent'"
+     (mousemove)="onContainerMouseMove($event)"
+     (mouseleave)="onContainerMouseLeave()">
   @for (card of cards(); track $index) {
+    @let chainNum = chainBadges().get($index);
     <div class="hand-card"
+         [class.hand-card--hovered]="hoveredIndex() === $index"
+         [class.hand-card--selected]="selectedIndex() === $index"
          [class.hand-card--actionable]="activateCardIndices().has($index)"
          [class.hand-card--actionable-blue]="!activateCardIndices().has($index) && actionableCardIndices().has($index)"
          [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
-         [style.z-index]="$index"
+         [style.z-index]="chainNum ? (1000 + chainNum) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index)"
          [style.transform]="fanTransform($index)"
+         [style.visibility]="$index >= cards().length - hiddenFromEnd() ? 'hidden' : null"
          (click)="onCardTap($index, $event)">
-      @if (isPlayerSide() && card.cardCode && card.cardCode !== 0) {
+      @if ((isPlayerSide() || chainNum) && card.cardCode && card.cardCode !== 0) {
         <img [src]="getCardImageUrl(card)"
              [alt]="card.name ?? 'Card'"
              class="hand-card-art"
              (error)="$any($event.target).src='assets/images/card_back.jpg'">
       } @else {
         <img src="assets/images/card_back.jpg" alt="Card back" class="hand-card-art">
+      }
+      @if (chainNum) {
+        <div class="chain-badge">{{ chainNum }}</div>
       }
     </div>
   }

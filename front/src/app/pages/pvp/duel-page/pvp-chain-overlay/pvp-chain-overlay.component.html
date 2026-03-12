@@ -1,6 +1,6 @@
 @if (activeChainLinks().length > 0) {
   <div class="chain-overlay-container"
-       [class.chain-overlay--hidden]="promptActive() && phase() !== 'resolving'"
+       [class.chain-overlay--hidden]="promptActive() && phase() === 'building'"
        [class.visible]="overlayVisible()"
        [style.--chain-resolve-pulse]="cssDurations().pulse"
        [style.--chain-resolve-exit]="cssDurations().exit"
@@ -14,7 +14,8 @@
       @if (exitingCard(); as exiting) {
         <div class="chain-card"
              [class.chain-card--exiting]="exiting.type === 'overflow'"
-             [class.chain-card--resolve-exiting]="exiting.type === 'resolved'">
+             [class.chain-card--resolve-exiting]="exiting.type === 'resolved' && !exiting.negated"
+             [class.chain-card--negated-exiting]="exiting.type === 'resolved' && exiting.negated">
           <img class="chain-card__art"
                [src]="getCardImageUrl(exiting.card.cardCode)"
                [alt]="exiting.card.cardName"
@@ -27,7 +28,8 @@
       @for (card of visibleCards(); track card.chainIndex; let i = $index) {
         <div class="chain-card"
              [class.chain-card--entering]="card.chainIndex === enteringCardIndex()"
-             [class.chain-card--resolving]="card.position === 'front' && phase() === 'resolving' && exitingCard()?.type !== 'resolved' && resolvingIndex() === card.chainIndex"
+             [class.chain-card--resolving]="card.position === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && resolvingIndex() === card.chainIndex"
+             [class.chain-card--negated]="card.position === 'front' && phase() === 'resolving' && exitingCard()?.card?.chainIndex !== card.chainIndex && negatedResolvingIndex() === card.chainIndex && card.chainIndex !== enteringCardIndex()"
              [class.chain-card--front]="card.position === 'front'"
              [class.chain-card--mid]="card.position === 'mid'"
              [class.chain-card--back]="card.position === 'back'">

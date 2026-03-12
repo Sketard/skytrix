@@ -151,5 +151,6 @@ export class SimBoardComponent {
       }
       return;
     }
+
   }
 }

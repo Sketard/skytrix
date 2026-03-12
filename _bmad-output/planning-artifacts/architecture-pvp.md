@@ -12,6 +12,8 @@ lastEdited: '2026-03-10'
 editHistory:
   - date: '2026-03-10'
     changes: 'Integrated animation orchestration architecture (3-layer chain system, async overlay contract, pending chain entry) and PvP-C board animations (card travel, buffer/replay, CardTravelService, XYZ material visuals, Beat-based parallel replay, acceleration features)'
+  - date: '2026-03-12'
+    changes: 'Replaced animation orchestration detail section with summary + link to animation-architecture-pvp.md (new dedicated document). Removed obsolete AC5 and animatingZone Set<string> signal.'
 ---
 
 # Architecture Decision Document — PvP (Online Automated Duels)
@@ -255,60 +257,11 @@ All important decisions made — data architecture, auth chain, protocol format,
 
 Three-layer architecture: `DuelConnection` (data) → `AnimationOrchestratorService` (timing) → `PvpChainOverlayComponent` + `PvpBoardContainerComponent` (visuals).
 
-| Signal | Type | Purpose |
-|--------|------|---------|
-| `isAnimating` | `Signal<boolean>` | Queue processing active — gates prompt display |
-| `animatingZone` | `Signal<Set<string>>` | Set of `"zoneId-relativePlayerIndex-animationType"` keys — supports parallel replay |
-| `animatingLpPlayer` | `Signal<LpAnimData \| null>` | LP change with interpolation metadata (fromLp, toLp, durationMs) |
-| `chainOverlayReady` | `Signal<boolean>` | Async overlay contract: false during resolution, true when overlay finishes |
-| `chainOverlayBoardChanged` | `Signal<boolean>` | Board-changing events occurred since last SOLVING |
-| `chainEntryAnimating` | `Signal<boolean>` | Gates SELECT_CHAIN prompts until entry animation finishes |
-| `chainAccelerated` | `Signal<boolean>` | Auto-resolve acceleration (≥3 solved without prompt → halve durations) |
-| `chainBoardReplayDuration` | `Signal<number>` | Dynamic board pause duration calculated from buffered replay (PvP-C) |
+The orchestrator dequeues `GameEvent` objects from `wsService.animationQueue` and controls when signal mutations happen. It returns a duration (ms), a `Promise<void>`, or `'async'` for each event — the queue pauses on `'async'` until the overlay or draw animation signals completion.
 
-**Event Processing Flow:**
-```
-DuelPageComponent effect watches animationQueue → startProcessingIfIdle()
-  → processAnimationQueue() dequeue loop:
-    → processEvent(event) → returns duration (ms) or 'async'
-    → 'async': pause until chainOverlayReady = true (resume effect)
-    → duration: setTimeout with speedMultiplier → recurse
-    → empty queue: stop animating, sync trackedLp
-```
+Key acceleration features: AC7 queue collapse (queue > 5 non-chain events → instantly apply all but last 3), AC8 speed multiplier (0.5× when activation toggle is Off). Full `prefers-reduced-motion` support.
 
-**Chain Resolution Flow (per link):**
-```
-MSG_CHAIN_SOLVING(N) → applyChainSolving() + 600ms pulse glow
-  → board events (MSG_MOVE, MSG_DAMAGE...) → BUFFERED in _bufferedBoardEvents[]
-MSG_CHAIN_SOLVED(N) → applyChainSolved() + return 'async' (pause queue)
-  → overlay plays resolve-exit animation on front card
-  → overlay fades out
-    → REPLAY buffered events: Beat 1 (zone travels, parallel) → Beat 2 (LP, parallel)
-    → board pause = Beat 1 duration + Beat 2 duration (dynamic, not fixed)
-  → overlay fades back in (if more chain links remain)
-  → chainOverlayReady = true → orchestrator resumes
-MSG_CHAIN_END → applyChainEnd() + resetChainState() + 400ms
-```
-
-**Card Travel Service — `CardTravelService` (component-scoped, PvP-C):**
-
-| Aspect | Detail |
-|--------|--------|
-| Responsibility | Creates `position: fixed` floating card elements, calculates source/destination rects, runs Web Animations API, cleans up |
-| API | `travel(source: ZoneRef, dest: ZoneRef, cardImage: string, options: TravelOptions): Promise<void>` |
-| Zone resolution | Accepts zone IDs → resolves DOM rects via `getBoundingClientRect()` on board zone elements (zone element registry in `PvpBoardContainerComponent`) |
-| Parallel support | Multiple concurrent `travel()` calls — each creates its own floating element |
-| Animation phases | Lift (0-15%: scale up, shadow, departure glow) → Travel (15-75%: translate, 3D rotation, easing) → Land (75-100%: micro-bounce, impact glow, settle) |
-| Cleanup | Floating element removed after animation; card already in final position via BOARD_STATE (graceful degradation) |
-
-**Beat-Based Parallel Replay (PvP-C):**
-
-| Beat | Events | Behavior | Duration |
-|------|--------|----------|----------|
-| Beat 1 (zones) | MSG_MOVE, MSG_FLIP_SUMMONING, MSG_CHANGE_POS | All zone travel animations play simultaneously with 50ms stagger | `max(individual) + (count-1) × stagger` |
-| Beat 2 (LP) | MSG_DAMAGE, MSG_RECOVER, MSG_PAY_LPCOST | All LP animations play simultaneously | `baseLpDuration` from CSS token |
-
-If only one beat has events, the other is skipped. Total board pause = Beat 1 + Beat 2 (when both exist).
+> See [animation-architecture-pvp.md](./animation-architecture-pvp.md) for the complete signal reference, queue processing flow, all animation types, the masking system, chain resolution sequence diagram, and `PvpChainOverlayComponent` state machine.
 
 **Prompt Display Coordination:**
 ```typescript
@@ -490,11 +443,11 @@ MSG_CHAIN_SOLVED → orchestrator pauses, returns 'async'
   → Overlay: chainOverlayReady = true
   → Orchestrator resume effect detects ready → resumes queue
 ```
-The overlay NEVER calls orchestrator methods. Communication is unidirectional via signals.
+The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()` which the overlay invokes during the board-pause window to trigger travel animations on the visible board. All other communication is unidirectional via signals.
 
 **Buffer & Replay (PvP-C):**
 - When `_insideChainResolution = true`, board-changing events (`MSG_MOVE`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`) are pushed to `_bufferedBoardEvents[]` instead of processed.
-- On `MSG_CHAIN_SOLVED`, the orchestrator transmits the buffer to the overlay via `chainBoardReplayDuration` signal.
+- On `MSG_CHAIN_SOLVED`, the overlay calls `replayBufferedEvents()` during the board-pause window (after fade-out).
 - Replay executes in two sequential beats (each internally parallel):
   - Beat 1 (zones): all `CardTravelService.travel()` calls fire simultaneously with 50ms stagger
   - Beat 2 (LP): all LP interpolations fire simultaneously
@@ -593,7 +546,7 @@ The overlay NEVER calls orchestrator methods. Communication is unidirectional vi
 8. Route all worker communication through typed `postMessage` — never shared memory or global state
 9. Keep `ws-protocol.ts` self-contained — zero internal imports (it is copied to Angular, cannot depend on server internals)
 10. Never mutate game state from visual components — only `DuelConnection` mutates chain/board state, only `AnimationOrchestratorService` controls timing
-11. Overlay ↔ orchestrator communication is unidirectional via signals — overlay NEVER calls orchestrator methods
+11. Overlay ↔ orchestrator communication is unidirectional via signals — overlay NEVER calls orchestrator methods except `replayBufferedEvents()` (board-pause replay trigger)
 12. Card travel minimum duration floor: 200ms after speed multiplier — below this threshold travel is imperceptible
 13. All card travel floating elements MUST be cleaned up on animation completion — leaked DOM elements accumulate and degrade performance
 14. Buffer & replay ONLY during chain resolution (`_insideChainResolution = true`) — normal gameplay events process immediately

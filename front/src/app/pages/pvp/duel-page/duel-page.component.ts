@@ -30,6 +30,7 @@ import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/p
 import { ActivationMode, PvpActivationToggleComponent } from './pvp-activation-toggle/pvp-activation-toggle.component';
 import { setupClickOutsideListener } from './click-outside.utils';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
+import { CardTravelService } from './card-travel.service';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
 import { DebugLogService } from './debug-log.service';
@@ -43,12 +44,12 @@ import './prompts/prompt-registry';
 @Component({
   selector: 'app-duel-page',
   templateUrl: './duel-page.component.html',
-  styleUrl: './duel-page.component.scss',
+  styleUrls: ['./duel-page.component.scss', './duel-page-overlays.scss', './duel-page-ui.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
-    AnimationOrchestratorService, RoomStateMachineService, CardInspectionService,
+    AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService,
   ],
   imports: [
@@ -61,7 +62,6 @@ import './prompts/prompt-registry';
   ],
 })
 export class DuelPageComponent implements OnInit {
-  private static readonly MENU_WIDTH = 160;
   private static readonly MENU_HEIGHT = 200;
   private static readonly MENU_WIDTH_WITH_PADDING = 164;
   private static readonly MENU_HEIGHT_WITH_PADDING = 204;
@@ -80,12 +80,14 @@ export class DuelPageComponent implements OnInit {
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
   private readonly injector = inject(Injector);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
   readonly isProduction = environment.production;
   readonly isSoloMode = signal(false);
 
   // --- Extracted services ---
   readonly animationService = inject(AnimationOrchestratorService);
+  private readonly cardTravelService = inject(CardTravelService);
   readonly roomService = inject(RoomStateMachineService);
   readonly cardInspection = inject(CardInspectionService);
 
@@ -120,6 +122,15 @@ export class DuelPageComponent implements OnInit {
   readonly duelState = this.wsService.duelState;
   readonly timerState = this.wsService.timerState;
 
+  // In solo mode, show the active player's own timer instead of the last received timer
+  readonly displayedTimerState = computed(() => {
+    if (!this.isSoloMode()) return this.timerState();
+    const conns = this.orchestrator.connections();
+    if (!conns) return this.timerState();
+    const activeIdx = this.orchestrator.activePlayerIndex();
+    return conns[activeIdx].timerStatePerPlayer()[activeIdx] ?? this.timerState();
+  });
+
   readonly playerHand = computed(() => this.getHandCards(0));
   readonly opponentHand = computed(() => this.getHandCards(1));
 
@@ -145,7 +156,6 @@ export class DuelPageComponent implements OnInit {
     if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return new Set<ZoneId>();
     const places = (p as SelectPlaceMsg | SelectDisfieldMsg).places;
     const zoneIds = places.map(pl => this.placeOptionToZoneId(pl)).filter((z): z is ZoneId => z !== null);
-    console.log('[HIGHLIGHT] type=%s places=%o → zoneIds=%o', p.type, places, zoneIds);
     return new Set(zoneIds);
   });
 
@@ -250,11 +260,42 @@ export class DuelPageComponent implements OnInit {
   private prefetchStarted = false;
 
   // Story 3.1 — Own player index (0 = player1, 1 = player2)
+  // In solo mode, tracks the active connection's player index so the board and badges
+  // render from the correct perspective after switching players.
   readonly ownPlayerIndex = computed(() => {
+    if (this.isSoloMode()) return this.orchestrator.activePlayerIndex();
     const r = this.room();
     const userId = this.authService.user()?.id;
     if (!r || !userId) return 0;
     return userId === r.player1.id ? 0 : 1;
+  });
+
+  /** Chain badges for hand cards: sequence index → chain link number (player side). */
+  readonly playerHandChainBadges = computed(() => {
+    const links = this.wsService.activeChainLinks();
+    const ownIdx = this.ownPlayerIndex();
+    const map = new Map<number, number>();
+    if (links.length < 2 && this.wsService.chainPhase() !== 'resolving') return map;
+    for (const link of links) {
+      if (link.location !== LOCATION.HAND || link.player !== ownIdx) continue;
+      const chainNum = link.chainIndex + 1;
+      if (!map.has(link.sequence) || map.get(link.sequence)! < chainNum) map.set(link.sequence, chainNum);
+    }
+    return map;
+  });
+
+  /** Chain badges for hand cards: sequence index → chain link number (opponent side). */
+  readonly opponentHandChainBadges = computed(() => {
+    const links = this.wsService.activeChainLinks();
+    const ownIdx = this.ownPlayerIndex();
+    const map = new Map<number, number>();
+    if (links.length < 2 && this.wsService.chainPhase() !== 'resolving') return map;
+    for (const link of links) {
+      if (link.location !== LOCATION.HAND || link.player === ownIdx) continue;
+      const chainNum = link.chainIndex + 1;
+      if (!map.has(link.sequence) || map.get(link.sequence)! < chainNum) map.set(link.sequence, chainNum);
+    }
+    return map;
   });
 
   // Story 3.4 — Duel result display with reason mapping
@@ -272,6 +313,9 @@ export class DuelPageComponent implements OnInit {
 
   // Story 3.4 — Rematch UI state
   readonly rematchButtonLabel = computed(() => {
+    if (this.isSoloMode()) {
+      return this.wsService.rematchStarting() ? 'Starting...' : 'Rematch';
+    }
     switch (this.wsService.rematchState()) {
       case 'idle': return 'Rematch';
       case 'requested': return 'Waiting for opponent...';
@@ -282,6 +326,7 @@ export class DuelPageComponent implements OnInit {
   });
 
   readonly rematchDisabled = computed(() => {
+    if (this.isSoloMode()) return this.wsService.rematchStarting();
     const state = this.wsService.rematchState();
     return state === 'requested' || state === 'opponent-left' || state === 'expired';
   });
@@ -326,6 +371,9 @@ export class DuelPageComponent implements OnInit {
 
   // Story 3.1 — Surrender dialog template ref
   @ViewChild('surrenderDialog') surrenderDialogTpl!: TemplateRef<void>;
+
+  /** Guard prevents the click that opens the browser from immediately closing it. */
+  private _zoneBrowserClickGuard = false;
 
   // Story 3.1 — duelResult as observable (created in injection context for toObservable)
   private readonly duelResult$ = toObservable(this.wsService.duelResult);
@@ -374,16 +422,15 @@ export class DuelPageComponent implements OnInit {
     const animating = this.isAnimating();
     const chainEntryAnim = this.animationService.chainEntryAnimating();
     const prompt = this.wsService.pendingPrompt();
-    const blocked = animating || chainEntryAnim;
+    const queuePending = this.wsService.animationQueue().length > 0;
+    const chainPromptGate = this.animationService.chainPromptGateActive();
+    const blocked = animating || chainEntryAnim || queuePending || chainPromptGate;
     if (!blocked) return prompt;
-    // During chain building with pending cost → let cost prompts through immediately
-    if (this.wsService.chainPhase() === 'building' && this.wsService.hasPendingChainEntry()) {
+    // During chain building with pending cost → let cost prompts through,
+    // but ONLY if the sole blocker is chain entry animation (not active travels/moves)
+    if (this.wsService.chainPhase() === 'building' && this.wsService.hasPendingChainEntry()
+      && !animating && !queuePending) {
       return prompt;
-    }
-    if (prompt) {
-      console.log('[VISIBLE-PROMPT] BLOCKED prompt=%s isAnimating=%s chainEntryAnim=%s chainPhase=%s hasPending=%s queueLen=%d',
-        prompt.type, animating, chainEntryAnim, this.wsService.chainPhase(), this.wsService.hasPendingChainEntry(),
-        this.wsService.animationQueue().length);
     }
     return null;
   });
@@ -394,11 +441,25 @@ export class DuelPageComponent implements OnInit {
     this.animationService.init({
       wsService: this.wsService,
       liveAnnouncer: this.liveAnnouncer,
+      cardTravelService: this.cardTravelService,
       ownPlayerIndex: () => this.ownPlayerIndex(),
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
+      isBoardActive: () => this.roomState() === 'active',
       injector: this.injector,
     });
+    this.cardTravelService.registerContainer(this.elementRef.nativeElement);
     this.cardInspection.init(this.cardDataCache);
+    this.wsService.onStateSync = () => {
+      this.animationService.onStateSync();
+      // On reconnect (STATE_SYNC), skip the duel-loading phase — thumbnails were
+      // already loaded in the previous session; no need to show the loading screen again.
+      this.thumbnailsReady.set(true);
+      // Silence the phase announcement that would otherwise fire when duelState is
+      // restored by STATE_SYNC. This runs synchronously before Angular effects (microtasks),
+      // so lastAnnouncedPhase is already set when the phase effect fires.
+      const s = this.wsService.duelState();
+      if (s.phase) this.lastAnnouncedPhase = `${s.turnPlayer}-${s.phase}`;
+    };
 
     // --- Bootstrap room ---
     const code = this.route.snapshot.paramMap.get('roomCode');
@@ -406,16 +467,30 @@ export class DuelPageComponent implements OnInit {
 
     if (isSolo && code) {
       this.isSoloMode.set(true);
-      const wsToken1 = history.state?.wsToken1 as string | undefined;
-      const wsToken2 = history.state?.wsToken2 as string | undefined;
+      const soloTokensKey = `solo-duel-tokens-${code}`;
+      const stored = (() => { try { return JSON.parse(sessionStorage.getItem(soloTokensKey) ?? 'null'); } catch { return null; } })();
+      const wsToken1 = (history.state?.wsToken1 as string | undefined) ?? stored?.wsToken1;
+      const wsToken2 = (history.state?.wsToken2 as string | undefined) ?? stored?.wsToken2;
 
       if (!wsToken1 || !wsToken2) {
         displayError(this.snackBar, 'Solo duel session expired');
         this.router.navigate(['/pvp']);
       } else {
+        const restoredPlayer = (stored?.activePlayer as 0 | 1 | undefined) ?? 0;
+        try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, wsToken2, activePlayer: restoredPlayer })); } catch {}
+        this.tabGuard.init(code);
+        this.tabGuard.broadcast();
         this.orchestrator.init(wsToken1, wsToken2);
-        this.roomService.forceState('active');
-        this.thumbnailsReady.set(true);
+        if (restoredPlayer === 1) this.orchestrator.switchPlayer();
+        this.roomService.forceState('connecting');
+
+        // Persist active player index so refresh restores the same view
+        effect(() => {
+          const activePlayer = this.orchestrator.activePlayerIndex();
+          untracked(() => {
+            try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, wsToken2, activePlayer })); } catch {}
+          });
+        });
 
         // Watch for connection loss in solo mode
         effect(() => {
@@ -451,6 +526,9 @@ export class DuelPageComponent implements OnInit {
       this.teardownMenuListener();
       this.roomService.destroy();
       this.animationService.destroy();
+      if (isSolo && code) {
+        try { sessionStorage.removeItem(`solo-duel-tokens-${code}`); } catch {}
+      }
       if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
       if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
       if (this.switchTimer) clearTimeout(this.switchTimer);
@@ -529,7 +607,9 @@ export class DuelPageComponent implements OnInit {
       const turnPlayer = state.turnPlayer;
       const turnCount = state.turnCount;
       untracked(() => {
-        // Skip initial empty state or same phase
+        // Skip if board not active yet (init, connecting, duel-loading) — prevents
+        // EMPTY_DUEL_STATE (phase='DRAW') and STATE_SYNC restore from triggering announcements
+        if (this.roomState() !== 'active') return;
         const key = `${turnPlayer}-${phase}`;
         if (!phase || key === this.lastAnnouncedPhase) return;
         this.lastAnnouncedPhase = key;
@@ -569,6 +649,10 @@ export class DuelPageComponent implements OnInit {
       if (!prompt || mode === 'on') return;
 
       untracked(() => {
+        // After a STATE_SYNC (reconnect), suppress auto-respond until the game resumes
+        // (first BOARD_STATE). Ensures prompts re-sent by the server are shown to the user.
+        if (this.wsService.justReconnected()) return;
+
         const isOptionalEffectYn = prompt.type === 'SELECT_EFFECTYN';
         const isOptionalChain = prompt.type === 'SELECT_CHAIN' && !(prompt as SelectChainMsg).forced;
         if (!isOptionalEffectYn && !isOptionalChain) return;
@@ -627,6 +711,7 @@ export class DuelPageComponent implements OnInit {
             this.loadingTimeoutRef = null;
           }
           this.roomState.set('active');
+          this.wsService.setBoardActive(true);
         });
       }
     });
@@ -654,7 +739,7 @@ export class DuelPageComponent implements OnInit {
 
     // Story 3.2 — LiveAnnouncer timer warnings at 60s, 30s, 10s (own timer only)
     effect(() => {
-      const ts = this.timerState();
+      const ts = this.displayedTimerState();
       if (!ts) return;
       untracked(() => {
         if (ts.player !== this.ownPlayerIndex()) return;
@@ -748,16 +833,6 @@ export class DuelPageComponent implements OnInit {
       });
     });
 
-    // Story 6.3 AC5 — Notify orchestrator when prompt interrupts chain resolution
-    effect(() => {
-      const prompt = this.wsService.pendingPrompt();
-      const chainPhase = this.wsService.chainPhase();
-      untracked(() => {
-        if (prompt && chainPhase === 'resolving') {
-          this.animationService.notifyPromptDuringChain();
-        }
-      });
-    });
 
     // Story 4.2 — Animation queue watcher: delegate to animation service
     effect(() => {
@@ -810,6 +885,8 @@ export class DuelPageComponent implements OnInit {
   private endRoomIfNeeded(): void {
     if (this.roomService.roomId) {
       this.http.post(`/api/rooms/${this.roomService.roomId}/end`, {}).subscribe();
+    } else if (this.isSoloMode() && this.roomCode()) {
+      this.http.post(`/api/rooms/${this.roomCode()}/end`, {}).subscribe();
     }
   }
 
@@ -834,10 +911,27 @@ export class DuelPageComponent implements OnInit {
     this.wsService.sendRematchRequest();
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this._zoneBrowserClickGuard || !this.zoneBrowserState()) return;
+    const zoneEl = document.querySelector('app-pvp-zone-browser-overlay');
+    if (!zoneEl || !zoneEl.contains(event.target as Node)) {
+      zoneEl?.querySelector('.zone-browser')?.classList.add('zone-browser--closing');
+      setTimeout(() => this.closeZoneBrowser(), 150);
+    }
+  }
+
   @HostListener('document:keydown', ['$event'])
   onGlobalKeydown(event: KeyboardEvent): void {
     if (event.key === 's' && this.isSoloMode() && !event.ctrlKey && !event.altKey && !event.metaKey) {
       this.switchPlayerWithTransition();
+    }
+
+    if (event.key === 'Escape') {
+      if (this.menuState()) this.closeCardActionMenu();
+      if (this.zoneBrowserState()) this.closeZoneBrowser();
+      this.onSurrenderClick();
+      event.preventDefault();
     }
   }
 
@@ -855,12 +949,17 @@ export class DuelPageComponent implements OnInit {
     const rect = element.getBoundingClientRect();
     const vpWidth = window.visualViewport?.width ?? window.innerWidth;
     const vpHeight = window.visualViewport?.height ?? window.innerHeight;
-    let left = rect.right + 4;
-    let top = rect.top;
-
-    if (left + DuelPageComponent.MENU_WIDTH > vpWidth) {
-      left = rect.left - DuelPageComponent.MENU_WIDTH_WITH_PADDING;
+    const gap = 10;
+    // Initial left approximation (corrected after render using actual width)
+    let left = rect.left;
+    let top = rect.top - DuelPageComponent.MENU_HEIGHT - gap;
+    // Clamp horizontally
+    left = Math.max(4, Math.min(left, vpWidth - DuelPageComponent.MENU_WIDTH_WITH_PADDING));
+    // If above viewport, place below the card instead
+    if (top < 4) {
+      top = rect.bottom + gap;
     }
+    // If below also overflows, clamp to bottom
     if (top + DuelPageComponent.MENU_HEIGHT > vpHeight) {
       top = Math.max(4, vpHeight - DuelPageComponent.MENU_HEIGHT_WITH_PADDING);
     }
@@ -872,6 +971,19 @@ export class DuelPageComponent implements OnInit {
     setTimeout(() => {
       const menuEl = document.querySelector('.card-action-menu') as HTMLElement | null;
       if (menuEl) {
+        // Correct position using actual rendered dimensions
+        const actualHeight = menuEl.offsetHeight;
+        const actualWidth = menuEl.offsetWidth;
+        const correctedTop = rect.top - actualHeight - gap;
+        const centeredLeft = Math.max(4, Math.min(
+          rect.left + rect.width / 2 - actualWidth / 2,
+          vpWidth - actualWidth - 4,
+        ));
+        this.menuState.update(s => s ? {
+          ...s,
+          left: centeredLeft,
+          top: correctedTop >= 4 ? correctedTop : s.top,
+        } : s);
         this.teardownMenuListener = setupClickOutsideListener(
           { nativeElement: menuEl } as ElementRef,
           this.destroyRef,
@@ -981,6 +1093,8 @@ export class DuelPageComponent implements OnInit {
     const isPile = event.zoneId === 'GY' || event.zoneId === 'BANISHED' || event.zoneId === 'EXTRA';
     // Pile zones: reverse so top of pile (most recent) is shown first
     const cards = isPile ? [...(zone?.cards ?? [])].reverse() : (zone?.cards ?? []);
+    this._zoneBrowserClickGuard = true;
+    setTimeout(() => this._zoneBrowserClickGuard = false, 0);
     this.zoneBrowserState.set({
       zoneId: event.zoneId,
       cards,
@@ -1092,20 +1206,11 @@ export class DuelPageComponent implements OnInit {
 
   onZoneSelected(zoneId: ZoneId): void {
     const p = this.wsService.pendingPrompt();
-    console.log('[ZONE-SEL] zoneId=%s pendingPrompt=%o', zoneId, p);
-    if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') {
-      console.warn('[ZONE-SEL] pendingPrompt type mismatch — expected SELECT_PLACE/SELECT_DISFIELD, got', p?.type);
-      return;
-    }
+    if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return;
     const prompt = p as SelectPlaceMsg | SelectDisfieldMsg;
-    const mappedZones = prompt.places.map(pl => ({ ...pl, mapped: this.placeOptionToZoneId(pl) }));
-    console.log('[ZONE-SEL] places→zoneId mapping: %o', mappedZones);
     const place = prompt.places.find(pl => this.placeOptionToZoneId(pl) === zoneId);
     if (place) {
-      console.log('[ZONE-SEL] match found, sending response: %o', place);
       this.wsService.sendResponse(prompt.type, { places: [place] });
-    } else {
-      console.error('[ZONE-SEL] NO MATCH for zoneId=%s in places', zoneId);
     }
   }
 
@@ -1167,21 +1272,21 @@ export class DuelPageComponent implements OnInit {
   }
 
   /** Pre-load a list of card images into the browser cache. Resolves when all are attempted. */
-  private preloadImages(codes: number[]): Promise<void> {
+  private async preloadImages(codes: number[]): Promise<void> {
     const promises = codes.map(code => new Promise<void>((resolve) => {
       const img = new Image();
       img.onload = () => resolve();
       img.onerror = () => resolve();
       img.src = getCardImageUrlByCode(code);
     }));
-    return Promise.allSettled(promises).then(() => {});
+    await Promise.allSettled(promises);
   }
 
   // Story 5.4 — Pre-fetch ALL own deck card thumbnails (main + extra) via deck API
   private async preFetchDeckThumbnails(): Promise<void> {
     const decklistId = this.room()?.decklistId;
     if (!decklistId) {
-      this.preFetchHandThumbnails();
+      this.preFetchVisibleThumbnails().then(() => this.thumbnailsReady.set(true));
       return;
     }
 
@@ -1194,29 +1299,25 @@ export class DuelPageComponent implements OnInit {
 
       await this.preloadImages(allCodes);
     } catch {
-      // API failure — proceed without full pre-fetch
+      await this.preFetchVisibleThumbnails();
     }
 
     this.thumbnailsReady.set(true);
   }
 
-  // Fallback: pre-fetch hand cards only (when decklistId unavailable)
-  private preFetchHandThumbnails(): void {
-    const player = this.duelState().players[0];
-    if (!player) {
-      this.thumbnailsReady.set(true);
-      return;
+  // Fallback: pre-fetch all visible card thumbnails from current board state
+  private async preFetchVisibleThumbnails(): Promise<void> {
+    const codes = new Set<number>();
+    for (const player of this.duelState().players) {
+      for (const zone of player.zones) {
+        for (const card of zone.cards) {
+          if (card.cardCode) codes.add(card.cardCode);
+        }
+      }
     }
-    const handZone = player.zones.find((z: BoardZone) => z.zoneId === 'HAND');
-    const handCards = handZone?.cards ?? [];
-    const cardCodes = handCards.map(c => c.cardCode).filter((code): code is number => !!code);
-
-    if (cardCodes.length === 0) {
-      this.thumbnailsReady.set(true);
-      return;
+    if (codes.size > 0) {
+      await this.preloadImages([...codes]);
     }
-
-    this.preloadImages(cardCodes).then(() => this.thumbnailsReady.set(true));
   }
 
   private initOrientationLock(): void {

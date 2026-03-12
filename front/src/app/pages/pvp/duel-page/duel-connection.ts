@@ -1,6 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
-import type { ChainingMsg } from '../duel-ws.types';
+import type { ChainingMsg, MoveMsg } from '../duel-ws.types';
 import { AnnounceCardMsg, CardInfo, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
@@ -47,6 +47,7 @@ export class DuelConnection {
   private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
   private _animationQueue = signal<GameEvent[]>([]);
   private _timerState = signal<TimerStateMsg | null>(null);
+  private _timerStatePerPlayer = signal<[TimerStateMsg | null, TimerStateMsg | null]>([null, null]);
   private _connectionStatus = signal<ConnectionStatus>('connected');
   private _opponentDisconnected = signal(false);
   private _activeChainLinks = signal<ChainLinkState[]>([]);
@@ -58,12 +59,18 @@ export class DuelConnection {
   private _rematchStarting = signal(false);
   private _inactivityWarning = signal<InactivityWarningMsg | null>(null);
   private _waitingForOpponent = signal(false);
+  private _pendingBoardState: DuelState | null = null;
+  private _boardActive = false;
+  private _animating = false;
+  private _drawMaskActive = false;
+  private _pendingBoardStateTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly duelState = this._duelState.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
   readonly hintContext = this._hintContext.asReadonly();
   readonly animationQueue = this._animationQueue.asReadonly();
   readonly timerState = this._timerState.asReadonly();
+  readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
   readonly activeChainLinks = this._activeChainLinks.asReadonly();
@@ -108,13 +115,28 @@ export class DuelConnection {
   // Cleared when a fresh HINT type 10/13/15 (card-identifying hint) arrives.
   private _hintCardConsumed = false;
 
+  // --- Just-reconnected flag ---
+  // Set to true on STATE_SYNC (reconnect), cleared on the first BOARD_STATE after
+  // the game resumes. While true, the activation-toggle auto-respond is suppressed
+  // so that prompts re-sent by the server after reconnect are shown to the user.
+  private _justReconnected = signal(false);
+  readonly justReconnected = this._justReconnected.asReadonly();
+
   // --- Callbacks (set by wrapper services) ---
   onMessage?: (msg: ServerMessage) => void;
   onResponse?: (promptType: string, data: ResponseData) => void;
+  onStateSync?: () => void;
 
-  constructor(wsUrlBase: string, autoReconnect: boolean) {
+  private readonly storageKey: string;
+
+  constructor(wsUrlBase: string, autoReconnect: boolean, storageKey = 'duel-reconnect-token') {
     this.wsUrlBase = wsUrlBase;
     this._autoReconnect = autoReconnect;
+    this.storageKey = storageKey;
+  }
+
+  clearStorageToken(): void {
+    try { sessionStorage.removeItem(this.storageKey); } catch {}
   }
 
   /** Flush pending chain entry into activeChainLinks (cost is resolved). */
@@ -131,7 +153,7 @@ export class DuelConnection {
 
   connect(wsToken: string): void {
     if (this._autoReconnect) {
-      const stored = sessionStorage.getItem('duel-reconnect-token');
+      const stored = sessionStorage.getItem(this.storageKey);
       if (stored) this.reconnectToken = stored;
     }
     this.wsToken = wsToken;
@@ -145,7 +167,6 @@ export class DuelConnection {
   ]);
 
   sendResponse(promptType: string, data: ResponseData): void {
-    console.log('[CONN] sendResponse promptType=%s data=%o wsState=%s', promptType, data, this.ws?.readyState);
     if (this.safeSend({ type: 'PLAYER_RESPONSE', promptType, data })) {
       // Capture selected cards before clearing prompt (for excluding from next prompt)
       const prompt = this._pendingPrompt();
@@ -204,6 +225,62 @@ export class DuelConnection {
 
   skipPendingAnimations(): void {
     this._animationQueue.set([]);
+    this.applyPendingBoardState();
+    // If chain RESOLUTION was in progress when switching, force-clear so the overlay doesn't
+    // freeze on the next view (MSG_CHAIN_END would never fire since the queue was cleared).
+    // 'building' phase is intentionally left intact — chain links are still valid data.
+    if (this._chainPhase() === 'resolving') {
+      this.applyChainEnd();
+    }
+  }
+
+  applyPendingBoardState(): void {
+    this.cancelPendingBoardStateFlush();
+    if (this._pendingBoardState) {
+      this._duelState.set(this._pendingBoardState);
+      this._pendingBoardState = null;
+    }
+  }
+
+  /**
+   * Schedule auto-flush of pending board state after a short delay.
+   * If animation events arrive before the timer fires, the timer is cancelled
+   * (via cancelPendingBoardStateFlush called from setAnimating).
+   */
+  private schedulePendingBoardStateFlush(): void {
+    this.cancelPendingBoardStateFlush();
+    this._pendingBoardStateTimer = setTimeout(() => {
+      this._pendingBoardStateTimer = null;
+      // Only auto-flush if no animations started in the meantime.
+      // During chain resolution, the orchestrator controls when board state is applied
+      // (after overlay exit + replay) — never auto-flush in that phase.
+      if (!this._animating && this._animationQueue().length === 0
+        && this._chainPhase() !== 'resolving') {
+        this.applyPendingBoardState();
+      }
+    }, 50);
+  }
+
+  private cancelPendingBoardStateFlush(): void {
+    if (this._pendingBoardStateTimer !== null) {
+      clearTimeout(this._pendingBoardStateTimer);
+      this._pendingBoardStateTimer = null;
+    }
+  }
+
+  setBoardActive(active: boolean): void {
+    this._boardActive = active;
+  }
+
+  setAnimating(animating: boolean): void {
+    this._animating = animating;
+    if (animating) {
+      this.cancelPendingBoardStateFlush();
+    }
+  }
+
+  setDrawMaskActive(active: boolean): void {
+    this._drawMaskActive = active;
   }
 
   applyChainSolving(chainIndex: number): void {
@@ -217,11 +294,23 @@ export class DuelConnection {
     this._activeChainLinks.update(links =>
       links.filter(l => l.chainIndex !== chainIndex),
     );
+    console.log('[DBG:BADGE] applyChainSolved idx=%d → remaining links=%o',
+      chainIndex, this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId })));
   }
 
   applyChainEnd(): void {
     this._chainPhase.set('idle');
     this._activeChainLinks.set([]);
+    console.log('[DBG:BADGE] applyChainEnd → phase=idle, links cleared');
+  }
+
+  private applyChainNegated(chainIndex: number): void {
+    if (this._pendingChainEntry?.chainIndex === chainIndex) {
+      this._pendingChainEntry = { ...this._pendingChainEntry, negated: true };
+    }
+    this._activeChainLinks.update(links =>
+      links.map(l => l.chainIndex === chainIndex ? { ...l, negated: true } : l),
+    );
   }
 
   resetRematchStarting(): void {
@@ -235,6 +324,7 @@ export class DuelConnection {
   }
 
   cleanup(): void {
+    this.cancelPendingBoardStateFlush();
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
     }
@@ -260,8 +350,6 @@ export class DuelConnection {
     // SELECT_SUM: mustSelect is the primary selection pool, not auto-included.
     // Don't auto-respond if mustSelect has candidates the player must choose from.
     if (message.type === 'SELECT_SUM' && ((message as SelectSumMsg).mustSelect?.length ?? 0) > 0) return false;
-
-    console.warn(`[DuelConnection] Empty cards for ${message.type} — auto-responding (cards=%o)`, message.cards);
 
     if (message.type === 'SELECT_CHAIN' || message.type === 'SELECT_UNSELECT_CARD') {
       this.sendResponse(message.type, { index: null });
@@ -330,7 +418,7 @@ export class DuelConnection {
       }
       if (event.code === 4001) {
         this.reconnectToken = null;
-        try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
+        try { sessionStorage.removeItem(this.storageKey); } catch {}
         this._connectionStatus.set('lost');
         return;
       }
@@ -345,22 +433,36 @@ export class DuelConnection {
   }
 
   private handleMessage(message: ServerMessage): void {
-    console.log('[WS-RAW] ← %s %o', message.type, message);
     this.onMessage?.(message);
     switch (message.type) {
       case 'BOARD_STATE':
         this._rematchStarting.set(false);
-        this._duelState.set(message.data);
-        // Chain links are now cleared by MSG_CHAIN_END through the animation queue,
-        // so animations remain visible until the orchestrator processes them.
+        this._justReconnected.set(false);
+        if (!this._boardActive) {
+          this._duelState.set(message.data);
+        } else if (this._drawMaskActive) {
+          // Draw masking handles visual hiding — apply immediately
+          this._duelState.set(message.data);
+        } else {
+          // Buffer for non-draw animations — apply when queue empties
+          this._pendingBoardState = message.data;
+          this.schedulePendingBoardStateFlush();
+        }
         break;
 
       case 'STATE_SYNC':
         this._rematchStarting.set(false);
+        this._pendingBoardState = null;
         this._duelState.set(message.data);
         this._activeChainLinks.set([]);
         this._chainPhase.set('idle');
         this._animationQueue.set([]);
+        // Clear stale prompt + hint: server will re-send them in order (hint first, then prompt)
+        this._pendingPrompt.set(null);
+        this._hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
+        // Suppress auto-respond until the game resumes (first BOARD_STATE after reconnect)
+        this._justReconnected.set(true);
+        this.onStateSync?.();
         break;
 
       case 'SELECT_CARD':
@@ -371,8 +473,6 @@ export class DuelConnection {
       case 'SELECT_COUNTER':
         // SELECT_CHAIN means cost phase is done — commit pending chain entry
         if (message.type === 'SELECT_CHAIN') this.commitPendingChainEntry();
-        console.log('[CONN] Received %s cards=%d excludedCards=%d', message.type,
-          (message as { cards?: unknown[] }).cards?.length ?? -1, this._lastSelectedCards.length);
         if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
         this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);
@@ -426,17 +526,21 @@ export class DuelConnection {
           cardName: message.cardName || (canInherit ? prev.cardName : ''),
           hintAction: message.hintAction || (canInherit ? prev.hintAction : ''),
         };
-        console.log('[HintContext] type=%d value=%d consumed=%s cardName=%s hintAction=%s | prev.cardName=%s prev.hintAction=%s | merged.cardName=%s merged.hintAction=%s',
-          message.hintType, message.value, this._hintCardConsumed, JSON.stringify(message.cardName), JSON.stringify(message.hintAction),
-          JSON.stringify(prev.cardName), JSON.stringify(prev.hintAction),
-          JSON.stringify(merged.cardName), JSON.stringify(merged.hintAction));
+        console.log('[MSG_HINT] raw:', { hintType: message.hintType, cardName: message.cardName, hintAction: message.hintAction, isSelectMsg, canInherit }, '=> merged:', merged);
         this._hintContext.set(merged);
         break;
       }
 
-      case 'TIMER_STATE':
-        this._timerState.set(message);
+      case 'TIMER_STATE': {
+        const timerMsg = message as TimerStateMsg;
+        this._timerState.set(timerMsg);
+        this._timerStatePerPlayer.update(states => {
+          const updated: [TimerStateMsg | null, TimerStateMsg | null] = [...states] as [TimerStateMsg | null, TimerStateMsg | null];
+          updated[timerMsg.player] = timerMsg;
+          return updated;
+        });
         break;
+      }
 
       case 'INACTIVITY_WARNING':
         this._inactivityWarning.set(message);
@@ -453,7 +557,7 @@ export class DuelConnection {
         this._activeChainLinks.set([]);
         this._chainPhase.set('idle');
         this._animationQueue.set([]);
-        try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
+        try { sessionStorage.removeItem(this.storageKey); } catch {}
         break;
 
       case 'REMATCH_INVITATION':
@@ -495,7 +599,7 @@ export class DuelConnection {
       case 'SESSION_TOKEN':
         this.reconnectToken = (message as SessionTokenMsg).token;
         if (this._autoReconnect) {
-          try { sessionStorage.setItem('duel-reconnect-token', this.reconnectToken); } catch {}
+          try { sessionStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
         }
         break;
 
@@ -513,7 +617,10 @@ export class DuelConnection {
           cardName: msg.cardName,
           player: msg.player,
           zoneId: locationToZoneId(msg.location, msg.sequence),
+          location: msg.location,
+          sequence: msg.sequence,
           resolving: false,
+          negated: false,
         };
         this._hasPendingChainEntry.set(true);
         this._animationQueue.update(q => [...q, message]);
@@ -521,27 +628,38 @@ export class DuelConnection {
       }
 
       case 'MSG_CHAIN_SOLVING':
-        console.log('[CHAIN-DBG] MSG_CHAIN_SOLVING chainIndex=%d queueLen=%d isAnimating=%s chainPhase=%s activeLinks=%d',
-          (message as any).chainIndex, this._animationQueue().length, 'n/a', this._chainPhase(), this._activeChainLinks().length);
+        console.log('[DBG:CONN] MSG_CHAIN_SOLVING chainIndex=%d | links=%o',
+          (message as any).chainIndex,
+          this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
         this.commitPendingChainEntry();
         // Phase transition deferred to applyChainSolving() — called by orchestrator when queue reaches this event
         this._animationQueue.update(q => [...q, message]);
         break;
       case 'MSG_CHAIN_SOLVED':
-        console.log('[CHAIN-DBG] MSG_CHAIN_SOLVED chainIndex=%d queueLen=%d activeLinks=%d',
-          (message as any).chainIndex, this._animationQueue().length, this._activeChainLinks().length);
+        console.log('[DBG:CONN] MSG_CHAIN_SOLVED chainIndex=%d', (message as any).chainIndex);
         this._animationQueue.update(q => [...q, message]);
         break;
       case 'MSG_CHAIN_END':
-        console.log('[CHAIN-DBG] MSG_CHAIN_END queueLen=%d activeLinks=%d',
-          this._animationQueue().length, this._activeChainLinks().length);
+        console.log('[DBG:CONN] MSG_CHAIN_END');
         this.commitPendingChainEntry();
         // Phase transition deferred to applyChainEnd() — called by orchestrator when queue reaches this event
         this._animationQueue.update(q => [...q, message]);
         break;
 
+      case 'MSG_CHAIN_NEGATED':
+        console.log('[DBG:CONN] MSG_CHAIN_NEGATED chainIndex=%d | links before=%o',
+          message.chainIndex,
+          this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
+        this.applyChainNegated(message.chainIndex);
+        console.log('[DBG:CONN] MSG_CHAIN_NEGATED links after=%o',
+          this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
+        break;
+
       case 'MSG_MOVE':
+        this._animationQueue.update(q => [...q, message]);
+        break;
       case 'MSG_DRAW':
+      case 'MSG_SHUFFLE_HAND':
       case 'MSG_DAMAGE':
       case 'MSG_RECOVER':
       case 'MSG_PAY_LPCOST':
@@ -554,7 +672,6 @@ export class DuelConnection {
         break;
 
       default:
-        console.log('Unhandled message type:', (message as ServerMessage).type);
         break;
     }
   }
@@ -584,7 +701,6 @@ export class DuelConnection {
       this.ws.send(JSON.stringify(data));
       return true;
     }
-    console.warn('WebSocket not open, message dropped:', data);
     return false;
   }
 }

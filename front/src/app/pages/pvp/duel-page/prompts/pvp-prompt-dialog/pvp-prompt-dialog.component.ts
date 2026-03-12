@@ -124,7 +124,6 @@ export class PvpPromptDialogComponent implements OnDestroy {
   // --- Private ---
 
   private onPromptChange(prompt: Prompt | null): void {
-    console.log('[PROMPT-DIALOG] onPromptChange type=%s dialogState=%s', prompt?.type ?? 'null', this.dialogState());
     if (!prompt || IGNORED_PROMPT_TYPES.has(prompt.type)) {
       if (this.dialogState() !== 'closed') {
         const instant = this.wsService.duelResult() !== null;
@@ -156,9 +155,13 @@ export class PvpPromptDialogComponent implements OnDestroy {
     // For SELECT_CHAIN, only show "X is activated" if there's actually an active chain.
     // Otherwise the hint cardName is leftover from a summon/effect, not an activation.
     const chainHasActivation = prompt.type === 'SELECT_CHAIN' && this.wsService.activeChainLinks().length === 0;
-    const cardName = hasHint && !chainHasActivation ? hint.cardName : '';
+    const hintCardName = hasHint && !chainHasActivation ? hint.cardName : '';
+    // Fallback to the prompt's own cardName (e.g. SELECT_EFFECTYN, SELECT_YESNO carry it directly)
+    const cardName = hintCardName || ('cardName' in prompt ? (prompt as { cardName: string }).cardName : '');
+    console.log(`[PROMPT] type=${prompt.type} | hint=`, hint, `| hintCardName="${hintCardName}" | promptCardName="${'cardName' in prompt ? (prompt as { cardName: string }).cardName : 'n/a'}" | resolved="${cardName}"`);
     const hintAction = hasHint ? hint.hintAction : '';
-    this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction));
+    const hintTimingLabel = prompt.type === 'SELECT_CHAIN' ? (prompt as { hintTimingLabel: string }).hintTimingLabel : '';
+    this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel));
 
     if (wasOpen) {
       this.dialogState.set('transitioning');
@@ -270,7 +273,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
     );
   }
 
-  private buildHintText(promptType: string, cardName: string, hintAction: string): string | null {
+  private buildHintText(promptType: string, cardName: string, hintAction: string, hintTimingLabel = ''): string | null {
     const q = cardName ? `<span class="hint-card-name">\u201C${cardName}\u201D</span>` : '';
     const act = hintAction ? this.highlightKeywords(hintAction) : '';
     const a = (verb: string) => `<span class="hint-action">${verb}</span>`;
@@ -280,10 +283,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
     const withCardContext = act ? (q ? `${act} for ${q}` : act) : null;
 
     switch (promptType) {
-      case 'SELECT_CHAIN':
-        return q
-          ? `${q} is activated. ${a('Chain')} another card or effect?`
-          : `${a('Chain')} another card or effect?`;
+      case 'SELECT_CHAIN': {
+        const tl = hintTimingLabel ? this.highlightKeywords(hintTimingLabel) : '';
+        const chain = `${a('Chain')} another card or effect?`;
+        if (q) return tl ? `${tl}. ${q} is activated. ${chain}` : `${q} is activated. ${chain}`;
+        return tl ? `${tl}. ${chain}` : chain;
+      }
       case 'SELECT_EFFECTYN':
         return q
           ? `${a('Activate')} effect of ${q}?`
@@ -307,6 +312,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
       case 'SORT_CARD':
       case 'SORT_CHAIN':
         return `${a('Set')} card order`;
+      case 'SELECT_IDLECMD':
+      case 'SELECT_BATTLECMD':
+        return act ? `It is the ${act}.` : null;
       case 'SELECT_YESNO':
         return q || null;
       default:

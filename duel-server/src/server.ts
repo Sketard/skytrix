@@ -32,6 +32,7 @@ interface ActiveDuelSession extends DuelSession {
   awaitingResponse: [boolean, boolean];
   lastBoardState: ServerMessage | null;
   lastSentPrompt: [ServerMessage | null, ServerMessage | null];
+  lastSentHint: [ServerMessage | null, ServerMessage | null];
   decks: [Deck, Deck];
   rematchRequested: [boolean, boolean];
   rematchTimeout: ReturnType<typeof setTimeout> | null;
@@ -293,6 +294,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       awaitingResponse: [false, false],
       lastBoardState: null,
       lastSentPrompt: [null, null],
+      lastSentHint: [null, null],
       decks: [parsed.player1.deck, parsed.player2.deck],
       rematchRequested: [false, false],
       rematchTimeout: null,
@@ -433,6 +435,7 @@ function startRematch(session: ActiveDuelSession): void {
   session.awaitingResponse = [false, false];
   session.lastBoardState = null;
   session.lastSentPrompt = [null, null];
+  session.lastSentHint = [null, null];
   session.rematchRequested = [false, false];
   session.endedAt = null;
   session.startedAt = Date.now();
@@ -552,6 +555,10 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
       // Cache filtered SELECT_* message for prompt re-send on reconnection
       if (isSelectMessage(message) && (message as { player: Player }).player === playerIndex) {
         session.lastSentPrompt[playerIndex] = filtered;
+      }
+      // Cache last MSG_HINT per player for re-send on reconnection (precedes SELECT_*)
+      if (message.type === 'MSG_HINT') {
+        session.lastSentHint[playerIndex] = filtered;
       }
       sendToPlayer(session, playerIndex, filtered);
     }
@@ -794,6 +801,7 @@ function clearAllDuelTimers(session: ActiveDuelSession): void {
 function cleanupDuelSession(session: ActiveDuelSession): void {
   session.endedAt = session.endedAt ?? Date.now();
   session.lastSentPrompt = [null, null];
+  session.lastSentHint = [null, null];
 
   // Clear rematch timeout
   if (session.rematchTimeout) {
@@ -993,8 +1001,11 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       sendToPlayer(session, opponentIndex, { type: 'OPPONENT_RECONNECTED' });
 
-      // Re-send cached prompt if player had a pending selection
+      // Re-send cached hint + prompt if player had a pending selection
       if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
+        if (session.lastSentHint[playerIndex]) {
+          sendToPlayer(session, playerIndex, session.lastSentHint[playerIndex]!);
+        }
         sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
       }
     }
@@ -1142,6 +1153,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       console.log(`[TIMER] PLAYER_RESPONSE from player=${playerIndex}, promptType=${msg.promptType}`);
       session.awaitingResponse[playerIndex] = false;
       session.lastSentPrompt[playerIndex] = null;
+      session.lastSentHint[playerIndex] = null;
 
       // Story 3.2 — Pause turn timer + clear inactivity/race timers on player response
       pauseTurnTimer(session);
@@ -1195,8 +1207,11 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       session.lastStateSyncAt[playerIndex] = now;
 
       sendStateSnapshot(session, playerIndex);
-      // Re-send pending prompt if player has one
+      // Re-send pending hint + prompt if player has one
       if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
+        if (session.lastSentHint[playerIndex]) {
+          sendToPlayer(session, playerIndex, session.lastSentHint[playerIndex]!);
+        }
         sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
       }
       break;

@@ -1,6 +1,7 @@
 import {
   MoveMsg,
   DrawMsg,
+  ShuffleHandMsg,
   DamageMsg,
   RecoverMsg,
   PayLpCostMsg,
@@ -18,6 +19,7 @@ import {
 export type GameEvent =
   | MoveMsg
   | DrawMsg
+  | ShuffleHandMsg
   | DamageMsg
   | RecoverMsg
   | PayLpCostMsg

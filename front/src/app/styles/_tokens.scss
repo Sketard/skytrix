@@ -149,8 +149,9 @@
 
   // --- Chain Overlay (Story 6.1) ---
   --pvp-chain-overlay-backdrop: rgba(0, 0, 0, 0.6);
-  --pvp-chain-overlay-transition: 600ms;
+  --pvp-chain-overlay-transition: 200ms;
   --pvp-chain-glow-resolving: rgba(255, 215, 0, 0.6);
+  --pvp-chain-glow-negated: rgba(160, 160, 160, 0.6);
 
   // --- Pile Stack ---
   --pvp-pile-stack-offset: 2px;
@@ -159,9 +160,16 @@
   --pvp-opponent-thinking-glow: rgba(220, 40, 40, 0.55);
 
   // --- Game Event Animations (Story 4.2) ---
-  --pvp-summon-highlight: rgba(76, 175, 80, 0.6);
-  --pvp-destroy-highlight: rgba(244, 67, 54, 0.6);
   --pvp-activate-highlight: rgba(201, 168, 76, 0.8);
+
+  // --- Alteration Indicators (Story 8.2) ---
+  --pvp-alteration-badge-font-size: clamp(0.45rem, 1.5dvh, 0.8rem);
+  --pvp-alteration-badge-icon-size: clamp(0.45rem, 1.5dvh, 0.8rem);
+  --pvp-alteration-boost: #4caf50;
+  --pvp-alteration-debuff: #f44336;
+  --pvp-alteration-badge-bg: rgba(0, 0, 0, 0.8);
+  --pvp-alteration-negated-opacity: 0.55;
+  --pvp-alteration-equip-lift: -4px;
 
   // --- Lobby ---
   --pvp-lobby-card-bg: var(--surface-card);
@@ -186,9 +194,15 @@
     --pvp-prompt-transition-speed: 0ms;
     --pvp-chain-overlay-transition: 0ms;
     --pvp-actionable-pulse-animation: none;
-    --pvp-summon-highlight: transparent;
-    --pvp-destroy-highlight: transparent;
     --pvp-activate-highlight: transparent;
+  }
+}
+
+// === PvP: High Contrast ===
+@media (prefers-contrast: more) {
+  :root {
+    --pvp-alteration-badge-bg: rgba(0, 0, 0, 0.95);
+    --pvp-alteration-negated-opacity: 0.75;
   }
 }
 

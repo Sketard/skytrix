@@ -1,4 +1,4 @@
-import { LOCATION, ZoneId } from './duel-ws.types';
+import { LOCATION, type CardLocation, ZoneId } from './duel-ws.types';
 
 /**
  * Maps an OCGCore (location, sequence) pair to a board ZoneId.
@@ -15,4 +15,27 @@ export function locationToZoneId(location: number, sequence: number): ZoneId | n
     if (sequence === 5) return 'FIELD';
   }
   return null;
+}
+
+/**
+ * Maps an OCGCore (location, sequence, relativePlayer) to a zone element registry key.
+ * For field zones (MZONE/SZONE), uses locationToZoneId → "ZoneId-player".
+ * For non-field zones (HAND, DECK, EXTRA, GRAVE, BANISHED), maps to "NAME-player".
+ */
+export function locationToZoneKey(location: CardLocation, sequence: number, relativePlayer: number): string {
+  const zoneId = locationToZoneId(location, sequence);
+  if (zoneId) return `${zoneId}-${relativePlayer}`;
+
+  switch (location) {
+    case LOCATION.HAND: return `HAND-${relativePlayer}`;
+    case LOCATION.DECK: return `DECK-${relativePlayer}`;
+    case LOCATION.EXTRA: return `EXTRA-${relativePlayer}`;
+    case LOCATION.GRAVE: return `GY-${relativePlayer}`;
+    case LOCATION.BANISHED: return `BANISHED-${relativePlayer}`;
+    case LOCATION.OVERLAY: {
+      const parentZoneId = locationToZoneId(LOCATION.MZONE, sequence);
+      return parentZoneId ? `${parentZoneId}-${relativePlayer}` : `UNKNOWN-${relativePlayer}`;
+    }
+    default: return `UNKNOWN-${relativePlayer}`;
+  }
 }

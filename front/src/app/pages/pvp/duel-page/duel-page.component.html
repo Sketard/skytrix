@@ -136,21 +136,25 @@
     <!-- Board + hands + toolbar — only visible when duel is active (not during RPS) -->
     @if (roomState() === 'active') {
       <!-- Opponent Hand (top, face-down, outside perspective) -->
-      <app-pvp-hand-row class="hand-opponent"
+      <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
                          [cards]="opponentHand()"
+                         [hiddenFromEnd]="animationService.hiddenHandCardCount()[1]"
+                         [chainBadges]="opponentHandChainBadges()"
                          (cardInspectRequest)="onOpponentHandInspect($event)" />
 
       <!-- Board with CSS 3D perspective -->
       <app-pvp-board-container [class.switching]="switching()"
                                [duelState]="duelState()"
-                               [timerState]="timerState()"
+                               [timerState]="displayedTimerState()"
                                [ownPlayerIndex]="ownPlayerIndex()"
                                [highlightedZones]="highlightedZones()"
                                [actionablePrompt]="actionablePrompt()"
                                [opponentDisconnected]="wsService.opponentDisconnected()"
                                [animatingZone]="animatingZone()"
                                [animatingLp]="animatingLpPlayer()"
+                               [activeChainLinks]="wsService.activeChainLinks()"
+                               [chainPhase]="wsService.chainPhase()"
                                [displayedPhase]="displayedPhase()"
                                [displayedTurnPlayer]="displayedTurnPlayer()"
                                [displayedTurnCount]="displayedTurnCount()"
@@ -158,14 +162,19 @@
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
                                (zonePillRequest)="onZonePillRequest($event)"
+                               [maskedZoneKeys]="animationService.maskedZoneKeys()"
+                               [maskedPileImages]="animationService.maskedPileImages()"
+                               [maskedSourceImages]="animationService.maskedSourceImages()"
                                (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Player Hand (bottom, face-up, outside perspective) -->
-      <app-pvp-hand-row class="hand-player"
+      <app-pvp-hand-row class="hand-player" data-zone="HAND-0"
                          side="player"
                          [cards]="playerHand()"
+                         [hiddenFromEnd]="animationService.hiddenHandCardCount()[0]"
                          [actionableCardIndices]="playerActionableHandIndices()"
                          [activateCardIndices]="playerActivateHandIndices()"
+                         [chainBadges]="playerHandChainBadges()"
                          (handCardAction)="onPlayerHandAction($event)"
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 
@@ -286,6 +295,16 @@
               <span class="phase-announcement__separator">—</span>
             }
             <span class="phase-announcement__label">{{ pa.label }}</span>
+          </div>
+        </div>
+      }
+
+      <!-- Chain resolution announcement -->
+      @if (animationService.chainResolutionAnnounce()) {
+        <div class="phase-announcement phase-announcement--chain"
+             role="status" aria-live="polite" aria-atomic="true">
+          <div class="phase-announcement__band">
+            <span class="phase-announcement__label">Chain Resolution</span>
           </div>
         </div>
       }

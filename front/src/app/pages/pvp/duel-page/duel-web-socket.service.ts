@@ -12,12 +12,17 @@ export class DuelWebSocketService implements OnDestroy {
   private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true);
   private _activeConnection = signal<DuelConnection>(this._defaultConnection);
 
+  onStateSync?: () => void;
+
   constructor() {
     this._defaultConnection.onMessage = msg => {
       this.debugLog.logServerMessage(msg);
     };
     this._defaultConnection.onResponse = (promptType, data) => {
       this.debugLog.logPlayerResponse(promptType, data);
+    };
+    this._defaultConnection.onStateSync = () => {
+      this.onStateSync?.();
     };
   }
 
@@ -48,6 +53,7 @@ export class DuelWebSocketService implements OnDestroy {
   readonly waitingForOpponent = computed(() => this._activeConnection().waitingForOpponent());
 
   readonly canRetry = computed(() => this._activeConnection().canRetry());
+  readonly justReconnected = computed(() => this._activeConnection().justReconnected());
 
   // --- Delegated methods ---
 
@@ -89,6 +95,22 @@ export class DuelWebSocketService implements OnDestroy {
 
   clearAnimationQueue(): void {
     this._activeConnection().skipPendingAnimations();
+  }
+
+  applyPendingBoardState(): void {
+    this._activeConnection().applyPendingBoardState();
+  }
+
+  setBoardActive(active: boolean): void {
+    this._activeConnection().setBoardActive(active);
+  }
+
+  setAnimating(animating: boolean): void {
+    this._activeConnection().setAnimating(animating);
+  }
+
+  setDrawMaskActive(active: boolean): void {
+    this._activeConnection().setDrawMaskActive(active);
   }
 
   applyChainSolving(chainIndex: number): void {
