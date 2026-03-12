@@ -46,6 +46,7 @@ interface ActiveDuelSession extends DuelSession {
   timerContext: TimerContext | null;
   skipRps: boolean;
   skipShuffle: boolean;
+  turnTimeSecs: number;
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
@@ -243,7 +244,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       throw err;
     }
 
-    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck }; skipRps?: boolean; skipShuffle?: boolean };
+    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck }; skipRps?: boolean; skipShuffle?: boolean; turnTimeSecs?: number };
     try {
       parsed = JSON.parse(body);
     } catch {
@@ -258,6 +259,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     const skipRps = parsed.skipRps === true;
     const skipShuffle = parsed.skipShuffle === true;
+    const rawTurnTimeSecs = typeof parsed.turnTimeSecs === 'number' ? parsed.turnTimeSecs : 300;
+    const turnTimeSecs = Math.min(3600, Math.max(30, Math.round(rawTurnTimeSecs)));
 
     // Validate deck arrays (M2: prevent worker crash on malformed input)
     if (!Array.isArray(parsed.player1.deck?.main) || !Array.isArray(parsed.player1.deck?.extra) ||
@@ -306,6 +309,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       timerContext: null,
       skipRps,
       skipShuffle,
+      turnTimeSecs,
     };
 
     // Spawn worker
@@ -474,7 +478,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       session.startedAt = Date.now();
       // Initialize turn timer context
       session.timerContext = {
-        pools: [TURN_TIME_POOL_MS, TURN_TIME_POOL_MS],
+        pools: [session.turnTimeSecs * 1000, session.turnTimeSecs * 1000],
         running: false,
         activePlayer: 0,
         intervalRef: null,

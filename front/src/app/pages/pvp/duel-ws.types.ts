@@ -383,6 +383,8 @@ export interface SelectUnselectCardMsg {
   type: 'SELECT_UNSELECT_CARD';
   player: Player;
   cards: CardInfo[];
+  /** Number of cards at the start of `cards` that can be selected (added). The rest are already selected (can be removed). */
+  selectCount: number;
   canFinish: boolean;
 }
 

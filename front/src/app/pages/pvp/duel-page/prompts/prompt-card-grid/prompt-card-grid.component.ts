@@ -44,10 +44,27 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   excludedCards: CardInfo[] = [];
 
   readonly selectedIndices = signal<Set<number>>(new Set());
+  /** For SELECT_SUM: tracks each selected card's chosen contribution amount. */
+  readonly selectedCardAmounts = signal<Map<number, number>>(new Map());
+  /** For SELECT_UNSELECT_CARD: the card index the user just toggled (delta to send to engine), or null if confirming as-is. */
+  readonly toggledIndex = signal<number | null>(null);
   answered = false;
   private longPressTimeout: ReturnType<typeof setTimeout> | null = null;
   private longPressStartPos: { x: number; y: number } | null = null;
   private longPressFired = false;
+
+  ngOnInit(): void {
+    console.log('[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
+      this.promptData?.type, this.cards.length, this.excludedCards.length, this.displayEntries.length);
+    // Pre-highlight cards already in the engine's material group (unselect_cards section).
+    if (this.promptData?.type === 'SELECT_UNSELECT_CARD') {
+      const p = this.promptData as SelectUnselectCardMsg;
+      const selectCount = p.selectCount ?? 0;
+      const preSelected = new Set<number>();
+      for (let i = selectCount; i < p.cards.length; i++) preSelected.add(i);
+      this.selectedIndices.set(preSelected);
+    }
+  }
 
   ngOnDestroy(): void {
     this.cancelLongPress();
@@ -140,13 +157,11 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return 1;
   }
 
-  /** For SELECT_SUM: total sum of currently selected cards. */
+  /** For SELECT_SUM: total sum of currently selected cards (uses chosen amounts). */
   get selectedSum(): number {
     if (this.promptData?.type !== 'SELECT_SUM') return 0;
     let sum = 0;
-    for (const idx of this.selectedIndices()) {
-      sum += this.cards[idx]?.amount ?? 1;
-    }
+    for (const amount of this.selectedCardAmounts().values()) sum += amount;
     return sum;
   }
 
@@ -171,7 +186,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   get isConfirmEnabled(): boolean {
     const count = this.selectedIndices().size;
-    if (this.isToggleMode) return this.canFinish || count > 0;
+    if (this.isToggleMode) return this.canFinish || this.toggledIndex() !== null;
     if (this.promptData?.type === 'SELECT_SUM') {
       const p = this.promptData as SelectSumMsg;
       return this.selectedSum >= p.targetSum;
@@ -183,8 +198,18 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   readonly getCardImageUrl = getCardImageUrlByCode;
 
   isSelected(index: number): boolean {
+    if (this.promptData?.type === 'SELECT_SUM') return this.selectedCardAmounts().has(index);
     return this.selectedIndices().has(index);
   }
+
+  // OCGCore encodes dual-use cards as: low 16 bits = min (1), high 16 bits = max (link rating).
+  private getAmountMin(card: CardInfo): number { return (card.amount ?? 1) & 0xFFFF; }
+  private getAmountMax(card: CardInfo): number {
+    const hi = (card.amount ?? 1) >>> 16;
+    return hi !== 0 ? hi : this.getAmountMin(card);
+  }
+  isDualAmount(card: CardInfo): boolean { return this.getAmountMin(card) !== this.getAmountMax(card); }
+  getSelectedAmount(index: number): number { return this.selectedCardAmounts().get(index) ?? 1; }
 
   toggleCard(index: number): void {
     if (this.answered) return;
@@ -200,6 +225,50 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       this.longPressInspect.emit({ cardCode });
     }
 
+    if (this.promptData?.type === 'SELECT_SUM') {
+      const p = this.promptData as SelectSumMsg;
+      this.selectedCardAmounts.update(map => {
+        const next = new Map(map);
+        const card = this.cards[index];
+        if (!card) return map;
+        const amtMin = this.getAmountMin(card);
+        const amtMax = this.getAmountMax(card);
+        const currentAmt = next.get(index);
+        if (currentAmt === undefined) {
+          // Unselected → select with max amount (link rating or 1 for normal monsters)
+          if (next.size >= this.maxSelect) return map;
+          const currentSum = Array.from(next.values()).reduce((s, a) => s + a, 0);
+          if (currentSum >= p.targetSum) return map;
+          next.set(index, amtMax);
+        } else if (amtMin !== amtMax && currentAmt !== amtMin) {
+          // Dual-amount card selected at max → toggle down to min (use as single monster)
+          next.set(index, amtMin);
+        } else {
+          // Selected at min (or non-dual) → deselect
+          next.delete(index);
+        }
+        return next;
+      });
+      return;
+    }
+    if (this.promptData?.type === 'SELECT_UNSELECT_CARD') {
+      const p = this.promptData as SelectUnselectCardMsg;
+      const selectCount = p.selectCount ?? 0;
+      const isPreSelected = index >= selectCount; // card is already in engine's material group
+      const newToggled = this.toggledIndex() === index ? null : index;
+      this.toggledIndex.set(newToggled);
+      // Rebuild visual selection: start from engine pre-selection, then apply the pending toggle
+      this.selectedIndices.update(() => {
+        const next = new Set<number>();
+        for (let i = selectCount; i < p.cards.length; i++) next.add(i); // restore pre-selected
+        if (newToggled !== null) {
+          if (isPreSelected) next.delete(newToggled); // removing from group
+          else next.add(newToggled);                  // adding to group
+        }
+        return next;
+      });
+      return;
+    }
     this.selectedIndices.update(set => {
       const next = new Set(set);
       if (next.has(index)) {
@@ -208,13 +277,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
         if (!this.isMultiSelect && !this.isToggleMode) {
           next.clear();
         }
-        if (this.promptData?.type === 'SELECT_SUM') {
-          const p = this.promptData as SelectSumMsg;
-          if (next.size >= this.maxSelect) return set;
-          // Block adding more cards once target sum is reached or would be exceeded
-          const currentSum = Array.from(next).reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0);
-          if (currentSum >= p.targetSum) return set; // already at/above target — no more picks
-        } else if (this.isMultiSelect && next.size >= this.maxSelect) {
+        if (this.isMultiSelect && next.size >= this.maxSelect) {
           return set;
         }
         next.add(index);
@@ -239,10 +302,20 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     this.answered = true;
 
     const type = this.promptData?.type;
-    const indices = Array.from(this.selectedIndices());
 
+    if (type === 'SELECT_SUM') {
+      this.response.emit({ indices: Array.from(this.selectedCardAmounts().keys()) });
+      return;
+    }
+
+    const indices = Array.from(this.selectedIndices());
     // SELECT_CHAIN and SELECT_UNSELECT_CARD use { index } (single)
-    if (type === 'SELECT_CHAIN' || type === 'SELECT_UNSELECT_CARD') {
+    if (type === 'SELECT_UNSELECT_CARD') {
+      const idx = this.toggledIndex();
+      console.log('[PromptCardGrid] SELECT_UNSELECT_CARD confirm: toggledIndex=%o card=%o canFinish=%s',
+        idx, idx != null ? this.cards[idx] : null, (this.promptData as SelectUnselectCardMsg)?.canFinish);
+      this.response.emit({ index: idx });
+    } else if (type === 'SELECT_CHAIN') {
       this.response.emit({ index: indices[0] ?? null });
     } else {
       this.response.emit({ indices });

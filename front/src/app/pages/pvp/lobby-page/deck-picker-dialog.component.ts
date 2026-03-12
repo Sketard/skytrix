@@ -5,6 +5,7 @@ import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatIcon } from '@angular/material/icon';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { ShortDeck } from '../../../core/model/short-deck';
@@ -34,6 +35,7 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
   imports: [
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton,
     MatProgressSpinner, MatIcon, RouterLink, MatButtonToggle, MatButtonToggleGroup, MatSlideToggle,
+    FormsModule,
   ],
   template: `
     <h2 mat-dialog-title>{{ title }}</h2>
@@ -61,6 +63,16 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
         <div class="qd-section qd-section--row">
           <span class="qd-label">Main aléatoire</span>
           <mat-slide-toggle [checked]="randomHand()" (change)="randomHand.set($event.checked)"></mat-slide-toggle>
+        </div>
+        <div class="qd-section qd-section--row">
+          <span class="qd-label">Temps par tour (secondes)</span>
+          <input class="qd-time-input"
+                 type="number"
+                 min="30"
+                 max="3600"
+                 step="30"
+                 [ngModel]="turnTimeSecs()"
+                 (ngModelChange)="turnTimeSecs.set(+$event)" />
         </div>
       }
       @if (loading()) {
@@ -143,6 +155,23 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
+    }
+
+    .qd-time-input {
+      width: 72px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: var(--surface-card);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 0.95rem;
+      text-align: right;
+
+      &:focus {
+        outline: 2px solid var(--pvp-accent);
+        outline-offset: -1px;
+      }
     }
 
     .mirror-hint {
@@ -267,6 +296,7 @@ export class DeckPickerDialogComponent implements OnInit {
   readonly activeSlot = signal<'p1' | 'p2'>('p1');
   readonly firstPlayer = signal<'p1' | 'p2'>('p1');
   readonly randomHand = signal(false);
+  readonly turnTimeSecs = signal(300);
   readonly isQuickDuel = computed(() => this.context() === 'quickDuel');
 
   readonly activeSelectedId = computed(() =>
@@ -314,6 +344,7 @@ export class DeckPickerDialogComponent implements OnInit {
         decklistId2: this.selectedId2() ?? id,
         firstPlayer: this.firstPlayer() === 'p1' ? 1 : 2,
         skipShuffle: !this.randomHand(),
+        turnTimeSecs: Math.min(3600, Math.max(30, this.turnTimeSecs())),
       });
     } else {
       const name = this.decks().find(d => d.id === id)?.name ?? '';

@@ -26,6 +26,9 @@
                    [src]="getCardImageUrl(entry.card.cardCode)"
                    alt=""
                    loading="lazy" />
+              @if (promptData?.type === 'SELECT_SUM' && isSelected(entry.originalIndex) && isDualAmount(entry.card)) {
+                <span class="card-slot__amount-badge">×{{ getSelectedAmount(entry.originalIndex) }}</span>
+              }
             </button>
           }
         </div>
@@ -37,7 +40,9 @@
   <div class="actions">
     @if (promptData?.type === 'SELECT_SUM') {
       <span class="selection-count" aria-live="polite">{{ selectedSum }} / {{ sumTarget }} needed</span>
-    } @else if (isMultiSelect || isToggleMode) {
+    } @else if (isToggleMode && canFinish) {
+      <span class="selection-count selection-count--ready" aria-live="polite">✓ Materials ready — confirm or add more</span>
+    } @else if (isMultiSelect && !isToggleMode) {
       <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
     }
     @if (canCancel) {
@@ -49,6 +54,7 @@
       </button>
     }
     <button class="btn btn--primary prompt-confirm-btn"
+            [class.btn--ready]="isToggleMode && canFinish && toggledIndex() === null"
             (click)="confirm()"
             [disabled]="!isConfirmEnabled || answered"
             type="button">

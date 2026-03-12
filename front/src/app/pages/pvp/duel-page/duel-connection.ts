@@ -101,7 +101,9 @@ export class DuelConnection {
   private readonly wsUrlBase: string;
 
   // --- Last selected cards (for excluding from next card-selection prompt) ---
+  // Only accumulated within a streak of the same prompt type; resets on type change.
   private _lastSelectedCards: CardInfo[] = [];
+  private _lastSelectedPromptType: string | null = null;
   get lastSelectedCards(): CardInfo[] { return this._lastSelectedCards; }
 
   // --- Pending chain entry ---
@@ -175,7 +177,9 @@ export class DuelConnection {
       const accumulate = DuelConnection.ACCUMULATE_SELECTION_TYPES.has(promptType);
       if (prompt && 'cards' in prompt && accumulate) {
         const cards = (prompt as { cards: CardInfo[] }).cards;
-        const base = this._lastSelectedCards;
+        // Reset accumulator when the prompt type changes (e.g. SELECT_UNSELECT_CARD → SELECT_CARD)
+        const base = this._lastSelectedPromptType === promptType ? this._lastSelectedCards : [];
+        this._lastSelectedPromptType = promptType;
         if ('indices' in data) {
           const indices = data['indices'] as number[];
           this._lastSelectedCards = [...base, ...indices.map(i => cards[i]).filter(Boolean)];
@@ -186,6 +190,7 @@ export class DuelConnection {
         // else: no selection change — keep accumulated list
       } else {
         this._lastSelectedCards = [];
+        this._lastSelectedPromptType = null;
       }
       this._hintCardConsumed = true;
       this.onResponse?.(promptType, data);
@@ -475,6 +480,12 @@ export class DuelConnection {
       case 'SELECT_COUNTER':
         // SELECT_CHAIN means cost phase is done — commit pending chain entry
         if (message.type === 'SELECT_CHAIN') this.commitPendingChainEntry();
+        // Reset exclusion accumulator when the prompt type changes mid-sequence
+        // (must happen before _pendingPrompt.set so attachComponent reads the correct value)
+        if (this._lastSelectedPromptType !== null && this._lastSelectedPromptType !== message.type) {
+          this._lastSelectedCards = [];
+          this._lastSelectedPromptType = null;
+        }
         if (this.tryAutoRespondEmptyCards(message as SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg)) break;
         this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);

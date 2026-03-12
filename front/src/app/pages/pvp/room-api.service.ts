@@ -29,7 +29,7 @@ export class RoomApiService {
     return this.http.post<RoomDTO>(`/api/rooms/${roomCode}/join`, { decklistId });
   }
 
-  quickDuel(decklistId1: number, decklistId2: number, firstPlayer: number, skipShuffle: boolean): Observable<QuickDuelResponse> {
-    return this.http.post<QuickDuelResponse>('/api/rooms/quick-duel', { decklistId1, decklistId2, firstPlayer, skipShuffle });
+  quickDuel(decklistId1: number, decklistId2: number, firstPlayer: number, skipShuffle: boolean, turnTimeSecs: number): Observable<QuickDuelResponse> {
+    return this.http.post<QuickDuelResponse>('/api/rooms/quick-duel', { decklistId1, decklistId2, firstPlayer, skipShuffle, turnTimeSecs });
   }
 }

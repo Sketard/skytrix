@@ -434,9 +434,14 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SELECT_UNSELECT_CARD:
+      console.log('[WORKER][SELECT_UNSELECT_CARD] select=%d unselect=%d can_finish=%s selectable=%o selected=%o',
+        msg.select_cards.length, msg.unselect_cards.length, msg.can_finish,
+        msg.select_cards.map(c => `code=${c.code} loc=${c.location} seq=${c.sequence}`),
+        msg.unselect_cards.map(c => `code=${c.code} loc=${c.location} seq=${c.sequence}`));
       return {
         type: 'SELECT_UNSELECT_CARD', player: msg.player as Player,
         cards: [...msg.select_cards, ...msg.unselect_cards].map(toCardInfo),
+        selectCount: msg.select_cards.length,
         canFinish: msg.can_finish,
       };
 
