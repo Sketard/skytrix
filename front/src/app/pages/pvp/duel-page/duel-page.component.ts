@@ -302,13 +302,14 @@ export class DuelPageComponent implements OnInit {
   readonly resultOutcome = computed(() => {
     const result = this.wsService.duelResult();
     if (!result) return null;
+    const cause = result.reason;
     if (result.winner === null) {
-      return { outcome: 'draw' as const, reason: this.mapDuelEndReason(result.reason, false) || 'Draw' };
+      return { outcome: 'draw' as const, reason: this.mapDuelEndReason(result.reason, false) || 'Draw', cause };
     }
     const isWinner = result.winner === this.ownPlayerIndex();
     const outcome = isWinner ? 'victory' as const : 'defeat' as const;
     const reason = this.mapDuelEndReason(result.reason, isWinner);
-    return { outcome, reason };
+    return { outcome, reason, cause };
   });
 
   // Story 3.4 — Rematch UI state

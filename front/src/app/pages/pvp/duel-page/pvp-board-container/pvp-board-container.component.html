@@ -120,29 +120,33 @@
                (mouseenter)="onEquipHover(zone.zoneId + '-1')"
                (mouseleave)="onEquipLeave()"
                (click)="onCardInspect(zone.card)">
-            @if (isFaceUp(zone.card.position)) {
-              <img [src]="getCardImageUrl(zone.card)"
-                   [alt]="zone.card.name ?? 'Card'"
-                   class="card-art"
-                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
-            } @else {
-              <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
-            }
             @if (zone.card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
                 @if (zone.card.overlayMaterials.length >= 3) {
                   <div class="xyz-material-layer-3"></div>
                 }
               </div>
-              <div class="xyz-indicator">
-                <span>{{ zone.card.overlayMaterials.length }}</span>
-              </div>
             }
-            @if (chainBadges().get(zone.zoneId + '-1'); as chainNum) {
-              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
-            }
-            <ng-container [ngTemplateOutlet]="indicators"
-                          [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
+            <div class="card-inner">
+              @if (isFaceUp(zone.card.position)) {
+                <img [src]="getCardImageUrl(zone.card)"
+                     [alt]="zone.card.name ?? 'Card'"
+                     class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+              @if (zone.card.overlayMaterials.length > 0) {
+                <div class="xyz-indicator">
+                  <span>{{ zone.card.overlayMaterials.length }}</span>
+                </div>
+              }
+              @if (chainBadges().get(zone.zoneId + '-1'); as chainNum) {
+                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+              }
+              <ng-container [ngTemplateOutlet]="indicators"
+                            [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
+            </div>
           </div>
         } @else {
           @let ghostCard1 = maskedSourceImages().get(zone.zoneId + '-1');
@@ -215,29 +219,33 @@
                (mouseenter)="onEquipHover(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                (mouseleave)="onEquipLeave()"
                (click)="onEmzCardClick($event, emz.zoneId, card)">
-            @if (isFaceUp(card.position)) {
-              <img [src]="getCardImageUrl(card)"
-                   [alt]="card.name ?? 'Card'"
-                   class="card-art"
-                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
-            } @else {
-              <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
-            }
             @if (card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="card.overlayMaterials.length >= 3 ? 3 : card.overlayMaterials.length">
                 @if (card.overlayMaterials.length >= 3) {
                   <div class="xyz-material-layer-3"></div>
                 }
               </div>
-              <div class="xyz-indicator">
-                <span>{{ card.overlayMaterials.length }}</span>
-              </div>
             }
-            @if (chainBadges().get(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')); as chainNum) {
-              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
-            }
-            <ng-container [ngTemplateOutlet]="indicators"
-                          [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId }"></ng-container>
+            <div class="card-inner">
+              @if (isFaceUp(card.position)) {
+                <img [src]="getCardImageUrl(card)"
+                     [alt]="card.name ?? 'Card'"
+                     class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+              @if (card.overlayMaterials.length > 0) {
+                <div class="xyz-indicator">
+                  <span>{{ card.overlayMaterials.length }}</span>
+                </div>
+              }
+              @if (chainBadges().get(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')); as chainNum) {
+                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+              }
+              <ng-container [ngTemplateOutlet]="indicators"
+                            [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId }"></ng-container>
+            </div>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -364,29 +372,33 @@
                (mouseenter)="onEquipHover(zone.zoneId + '-0')"
                (mouseleave)="onEquipLeave()"
                (click)="onZoneCardClick($event, zone)">
-            @if (isFaceUp(zone.card.position)) {
-              <img [src]="getCardImageUrl(zone.card)"
-                   [alt]="zone.card.name ?? 'Card'"
-                   class="card-art"
-                   (error)="$any($event.target).src='assets/images/card_back.jpg'">
-            } @else {
-              <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
-            }
             @if (zone.card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
                 @if (zone.card.overlayMaterials.length >= 3) {
                   <div class="xyz-material-layer-3"></div>
                 }
               </div>
-              <div class="xyz-indicator">
-                <span>{{ zone.card.overlayMaterials.length }}</span>
-              </div>
             }
-            @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
-              <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
-            }
-            <ng-container [ngTemplateOutlet]="indicators"
-                          [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
+            <div class="card-inner">
+              @if (isFaceUp(zone.card.position)) {
+                <img [src]="getCardImageUrl(zone.card)"
+                     [alt]="zone.card.name ?? 'Card'"
+                     class="card-art"
+                     (error)="$any($event.target).src='assets/images/card_back.jpg'">
+              } @else {
+                <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+              @if (zone.card.overlayMaterials.length > 0) {
+                <div class="xyz-indicator">
+                  <span>{{ zone.card.overlayMaterials.length }}</span>
+                </div>
+              }
+              @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
+                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
+              }
+              <ng-container [ngTemplateOutlet]="indicators"
+                            [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
+            </div>
           </div>
         } @else {
           @let ghostCard0 = maskedSourceImages().get(zone.zoneId + '-0');

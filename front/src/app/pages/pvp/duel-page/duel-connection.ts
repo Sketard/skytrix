@@ -50,6 +50,7 @@ export class DuelConnection {
   private _timerStatePerPlayer = signal<[TimerStateMsg | null, TimerStateMsg | null]>([null, null]);
   private _connectionStatus = signal<ConnectionStatus>('connected');
   private _opponentDisconnected = signal(false);
+  private _disconnectGraceSec = signal(0);
   private _activeChainLinks = signal<ChainLinkState[]>([]);
   private _chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   private _duelResult = signal<DuelEndMsg | null>(null);
@@ -73,6 +74,7 @@ export class DuelConnection {
   readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
+  readonly disconnectGraceSec = this._disconnectGraceSec.asReadonly();
   readonly activeChainLinks = this._activeChainLinks.asReadonly();
   readonly chainPhase = this._chainPhase.asReadonly();
   readonly duelResult = this._duelResult.asReadonly();
@@ -554,6 +556,7 @@ export class DuelConnection {
         this._waitingForOpponent.set(false);
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
+        this._disconnectGraceSec.set(0);
         this._activeChainLinks.set([]);
         this._chainPhase.set('idle');
         this._animationQueue.set([]);
@@ -577,6 +580,7 @@ export class DuelConnection {
         this._pendingPrompt.set(null);
         this._waitingForOpponent.set(false);
         this._opponentDisconnected.set(false);
+        this._disconnectGraceSec.set(0);
         this._rematchState.set('idle');
         this._activeChainLinks.set([]);
         this._chainPhase.set('idle');
@@ -585,10 +589,12 @@ export class DuelConnection {
 
       case 'OPPONENT_DISCONNECTED':
         this._opponentDisconnected.set(true);
+        this._disconnectGraceSec.set(message.gracePeriodSec);
         break;
 
       case 'OPPONENT_RECONNECTED':
         this._opponentDisconnected.set(false);
+        this._disconnectGraceSec.set(0);
         break;
 
       case 'WAITING_RESPONSE':

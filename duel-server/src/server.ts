@@ -1041,7 +1041,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
       // Story 3.3 — Notify opponent of disconnection
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
-      sendToPlayer(session!, opponentIndex, { type: 'OPPONENT_DISCONNECTED' });
+      sendToPlayer(session!, opponentIndex, { type: 'OPPONENT_DISCONNECTED', gracePeriodSec: RECONNECT_GRACE_MS / 1000 });
 
       startGracePeriod(session!, playerIndex);
     } else {

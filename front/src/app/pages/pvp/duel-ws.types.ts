@@ -492,6 +492,7 @@ export interface SessionTokenMsg {
 
 export interface OpponentDisconnectedMsg {
   type: 'OPPONENT_DISCONNECTED';
+  gracePeriodSec: number;
 }
 
 export interface OpponentReconnectedMsg {

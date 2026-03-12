@@ -167,11 +167,21 @@
   position: relative;
   transition: translate 150ms ease-out;
 
-  .card-art { transition: box-shadow 150ms ease-out; }
-
   &.def-position {
     transform: rotate(90deg);
   }
+}
+
+// Wraps card-art + indicators — sized to actual card ratio so absolute indicators
+// align with the card image instead of the (square) zone cell.
+.card-inner {
+  position: relative;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 59 / 86;
+  overflow: hidden;
+
+  .card-art { transition: box-shadow 150ms ease-out; }
 }
 
 // === Alteration Indicators (Story 8.3) ===

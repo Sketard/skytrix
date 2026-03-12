@@ -383,14 +383,32 @@
       </div>
     }
 
+    <!-- Story 3.3 — Disconnect Grace Overlay -->
+    @if (wsService.opponentDisconnected() && !wsService.duelResult()) {
+      <div class="disconnect-grace-overlay" role="status" aria-live="polite">
+        <div class="disconnect-grace-overlay__content">
+          <p class="disconnect-grace-overlay__title">Opponent disconnected</p>
+          <p class="disconnect-grace-overlay__subtitle">Waiting for reconnection...</p>
+          <div class="disconnect-grace-overlay__bar-track">
+            <div class="disconnect-grace-overlay__bar"
+                 [style.animation-duration]="wsService.disconnectGraceSec() + 's'"></div>
+          </div>
+          <button class="disconnect-grace-overlay__leave" (click)="backToLobby()">Leave</button>
+        </div>
+      </div>
+    }
+
     <!-- Story 3.4 — Duel Result Overlay -->
     @if (resultOutcome(); as result) {
-      <div class="result-overlay" role="status" aria-live="assertive">
+      <div class="result-overlay"
+           [class.result-overlay--victory]="result.outcome === 'victory'"
+           [class.result-overlay--defeat]="result.outcome === 'defeat'"
+           [class.result-overlay--draw]="result.outcome === 'draw'"
+           [class.result-overlay--cause-disconnect]="result.cause === 'disconnect' || result.cause === 'draw_both_disconnect'"
+           [class.result-overlay--cause-timeout]="result.cause === 'timeout' || result.cause === 'inactivity'"
+           role="status" aria-live="assertive">
         <div class="result-overlay__content">
-          <h1 class="result-overlay__title"
-              [class.result-overlay__title--victory]="result.outcome === 'victory'"
-              [class.result-overlay__title--defeat]="result.outcome === 'defeat'"
-              [class.result-overlay__title--draw]="result.outcome === 'draw'">
+          <h1 class="result-overlay__title">
             @switch (result.outcome) {
               @case ('victory') { VICTORY }
               @case ('defeat') { DEFEAT }

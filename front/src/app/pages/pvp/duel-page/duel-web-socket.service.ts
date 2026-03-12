@@ -41,6 +41,7 @@ export class DuelWebSocketService implements OnDestroy {
   readonly timerState = computed(() => this._activeConnection().timerState());
   readonly connectionStatus = computed(() => this._activeConnection().connectionStatus());
   readonly opponentDisconnected = computed(() => this._activeConnection().opponentDisconnected());
+  readonly disconnectGraceSec = computed(() => this._activeConnection().disconnectGraceSec());
   readonly activeChainLinks = computed(() => this._activeConnection().activeChainLinks());
   readonly chainPhase = computed(() => this._activeConnection().chainPhase());
   readonly hasPendingChainEntry = computed(() => this._activeConnection().hasPendingChainEntry());
