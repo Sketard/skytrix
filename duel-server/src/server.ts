@@ -17,6 +17,11 @@ import { updateData } from './data-updater.js';
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
 const DATA_DIR = resolve(process.env['DATA_DIR'] ?? join(import.meta.dirname!, '../data'));
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const WS_RATE_LIMIT_WINDOW_MS = 60_000;
+const WS_RATE_LIMIT_MAX = 10;
+const MAX_INVALID_RESPONSES = 5;
+const BLUFF_DELAY_MIN_MS = 200;
+const BLUFF_DELAY_MAX_MS = 1500;
 
 const startTime = Date.now();
 let totalDuelsServed = 0;
@@ -47,6 +52,8 @@ interface ActiveDuelSession extends DuelSession {
   skipRps: boolean;
   skipShuffle: boolean;
   turnTimeSecs: number;
+  invalidResponseCount: [number, number];
+  promptSentAt: [number, number];
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
@@ -310,6 +317,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       skipRps,
       skipShuffle,
       turnTimeSecs,
+      invalidResponseCount: [0, 0],
+      promptSentAt: [0, 0],
     };
 
     // Spawn worker
@@ -446,6 +455,8 @@ function startRematch(session: ActiveDuelSession): void {
   session.bothDisconnected = false;
   session.storedDuelResult = null;
   session.lastStateSyncAt = [0, 0];
+  session.invalidResponseCount = [0, 0];
+  session.promptSentAt = [0, 0];
 
   clearAllDuelTimers(session);
 
@@ -499,7 +510,19 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       for (const p of [0, 1] as const) {
         const cached = session.lastSentPrompt[p];
         if (cached) {
-          console.warn(`[Duel ${session.duelId}] RETRY: re-sending ${cached.type} to player ${p}`);
+          session.invalidResponseCount[p]++;
+          console.warn(`[Duel ${session.duelId}] RETRY #${session.invalidResponseCount[p]}: re-sending ${cached.type} to player ${p}`);
+
+          if (session.invalidResponseCount[p] >= MAX_INVALID_RESPONSES) {
+            const winner: Player = p === 0 ? 1 : 0;
+            const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
+            sendToPlayer(session, 0, endMsg);
+            sendToPlayer(session, 1, endMsg);
+            handleDuelEnd(session);
+            safeTerminateWorker(session);
+            return;
+          }
+
           sendToPlayer(session, p, cached);
         }
       }
@@ -546,6 +569,7 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
     const targetPlayer = (message as { player: Player }).player;
     console.log(`[TIMER] SELECT ${message.type} for player=${targetPlayer}, timerRunning=${session.timerContext?.running}`);
     session.awaitingResponse[targetPlayer] = true;
+    session.promptSentAt[targetPlayer] = Date.now();
     const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
     sendToPlayer(session, opponentOfTarget, { type: 'WAITING_RESPONSE' });
     startTurnTimer(session);
@@ -878,7 +902,36 @@ const server = createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, maxPayload: MAX_PAYLOAD_SIZE });
 
+// Rate limiting: track WS connection attempts per IP
+const wsConnectionLog = new Map<string, number[]>();
+
+function isWsRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = wsConnectionLog.get(ip) ?? [];
+  const recent = timestamps.filter(t => now - t < WS_RATE_LIMIT_WINDOW_MS);
+  recent.push(now);
+  wsConnectionLog.set(ip, recent);
+  return recent.length > WS_RATE_LIMIT_MAX;
+}
+
+// Cleanup stale IPs every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of wsConnectionLog) {
+    const recent = timestamps.filter(t => now - t < WS_RATE_LIMIT_WINDOW_MS);
+    if (recent.length === 0) wsConnectionLog.delete(ip);
+    else wsConnectionLog.set(ip, recent);
+  }
+}, 5 * 60_000);
+
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  const ip = req.headers['x-real-ip'] as string ?? req.socket.remoteAddress ?? 'unknown';
+
+  if (isWsRateLimited(ip)) {
+    ws.close(4029, 'Too many connections');
+    return;
+  }
+
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   const token = url.searchParams.get('token');
   const reconnect = url.searchParams.get('reconnect');
@@ -1155,6 +1208,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       }
 
       console.log(`[TIMER] PLAYER_RESPONSE from player=${playerIndex}, promptType=${msg.promptType}`);
+      session.invalidResponseCount[playerIndex] = 0;
       session.awaitingResponse[playerIndex] = false;
       session.lastSentPrompt[playerIndex] = null;
       session.lastSentHint[playerIndex] = null;
@@ -1163,13 +1217,25 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       pauseTurnTimer(session);
       clearInactivityTimer(session, playerIndex as Player);
 
-      // Forward to worker
-      session.worker.postMessage({
-        type: 'PLAYER_RESPONSE',
-        playerIndex,
-        promptType: msg.promptType,
-        data: msg.data,
-      });
+      const forwardToWorker = () => {
+        if (session.endedAt) return;
+        session.worker.postMessage({
+          type: 'PLAYER_RESPONSE',
+          playerIndex,
+          promptType: msg.promptType,
+          data: msg.data,
+        });
+      };
+
+      // Bluff timer: if response arrived suspiciously fast, delay forwarding
+      // to prevent the opponent from inferring "no traps" from instant responses
+      const elapsed = Date.now() - session.promptSentAt[playerIndex];
+      if (elapsed < BLUFF_DELAY_MAX_MS) {
+        const delay = BLUFF_DELAY_MIN_MS + Math.random() * (BLUFF_DELAY_MAX_MS - BLUFF_DELAY_MIN_MS);
+        setTimeout(forwardToWorker, delay - elapsed);
+      } else {
+        forwardToWorker();
+      }
       break;
     }
 

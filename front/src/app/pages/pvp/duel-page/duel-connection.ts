@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
 import type { ChainingMsg, MoveMsg } from '../duel-ws.types';
-import { AnnounceCardMsg, CardInfo, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { CardInfo, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -85,6 +85,11 @@ export class DuelConnection {
   readonly inactivityWarning = this._inactivityWarning.asReadonly();
   readonly waitingForOpponent = this._waitingForOpponent.asReadonly();
 
+  /** Dev-only: inject a fake prompt to test prompt UI without a real duel. */
+  debugInjectPrompt(prompt: ServerMessage): void {
+    this._pendingPrompt.set(prompt as any);
+  }
+
   // --- Reconnect state ---
   private _retryCount = signal(0);
   private readonly _maxRetries = 6;
@@ -138,7 +143,12 @@ export class DuelConnection {
   private readonly storageKey: string;
 
   constructor(wsUrlBase: string, autoReconnect: boolean, storageKey = 'duel-reconnect-token') {
-    this.wsUrlBase = wsUrlBase;
+    if (wsUrlBase.startsWith('/')) {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      this.wsUrlBase = `${proto}//${location.host}${wsUrlBase}`;
+    } else {
+      this.wsUrlBase = wsUrlBase;
+    }
     this._autoReconnect = autoReconnect;
     this.storageKey = storageKey;
   }
@@ -355,10 +365,6 @@ export class DuelConnection {
 
   // --- Auto-select methods ---
 
-  private autoSelectSort(message: SortCardMsg | SortChainMsg): void {
-    this.sendResponse(message.type, { order: null });
-  }
-
   private tryAutoRespondEmptyCards(message: SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg | SelectCounterMsg): boolean {
     if (message.cards.length > 0) return false;
 
@@ -374,11 +380,6 @@ export class DuelConnection {
       this.sendResponse(message.type, { indices: [] });
     }
     return true;
-  }
-
-  private autoSelectAnnounceCard(message: AnnounceCardMsg): void {
-    const value = message.opcodes.length > 0 ? message.opcodes[0] : 0;
-    this.sendResponse(message.type, { value });
   }
 
   // --- WS lifecycle ---
@@ -516,10 +517,9 @@ export class DuelConnection {
 
       case 'SORT_CARD':
       case 'SORT_CHAIN':
-        this.autoSelectSort(message);
-        break;
       case 'ANNOUNCE_CARD':
-        this.autoSelectAnnounceCard(message);
+        this._waitingForOpponent.set(false);
+        this._pendingPrompt.set(message);
         break;
 
       case 'RPS_CHOICE':

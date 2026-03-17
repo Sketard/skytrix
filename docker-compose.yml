@@ -30,6 +30,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       DUEL_SERVER_URL: http://duel-server:3001
+      DUEL_SERVER_INTERNAL_KEY: ${INTERNAL_API_KEY}
     volumes:
       - images_data:/app/images
     networks:
@@ -47,6 +48,7 @@ services:
       - ./duel-server/data:/app/data:ro
     environment:
       PORT: 3001
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
     networks:
       - skytrix-internal
     healthcheck:
@@ -63,6 +65,9 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ${TLS_CERT_DIR:-./certs}:/etc/nginx/certs:ro
     networks:
       - skytrix-internal
     depends_on:
