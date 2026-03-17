@@ -113,6 +113,7 @@ export interface CardInfo {
   player: Player;
   location: CardLocation;
   sequence: number;
+  position?: number;
   description?: string;
   amount?: number;
 }
@@ -144,6 +145,7 @@ export interface MoveMsg {
   toSequence: number;
   toPosition: Position;
   isToken: boolean;
+  reason: number;
 }
 
 export interface DrawMsg {
@@ -221,6 +223,11 @@ export interface ShuffleHandMsg {
   cards: (number | null)[];
 }
 
+export interface ShuffleDeckMsg {
+  type: 'MSG_SHUFFLE_DECK';
+  player: Player;
+}
+
 export interface FlipSummoningMsg {
   type: 'MSG_FLIP_SUMMONING';
   cardCode: number;
@@ -256,6 +263,11 @@ export interface SwapMsg {
   type: 'MSG_SWAP';
   card1: CardInfo;
   card2: CardInfo;
+}
+
+export interface BecomeTargetMsg {
+  type: 'MSG_BECOME_TARGET';
+  cards: { player: Player; location: CardLocation; sequence: number }[];
 }
 
 export interface AttackMsg {
@@ -672,10 +684,12 @@ export type ServerMessage =
   | HintMsg
   | ConfirmCardsMsg
   | ShuffleHandMsg
+  | ShuffleDeckMsg
   | FlipSummoningMsg
   | ChangePosMsg
   | SetMsg
   | SwapMsg
+  | BecomeTargetMsg
   | AttackMsg
   | BattleMsg
   | WinMsg

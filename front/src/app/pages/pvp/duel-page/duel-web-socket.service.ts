@@ -98,6 +98,10 @@ export class DuelWebSocketService implements OnDestroy {
     return this._activeConnection().dequeueAnimation();
   }
 
+  removeAnimationAt(index: number): void {
+    this._activeConnection().removeAnimationAt(index);
+  }
+
   clearAnimationQueue(): void {
     this._activeConnection().skipPendingAnimations();
   }

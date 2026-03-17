@@ -105,6 +105,7 @@ export class SoloDuelOrchestratorService {
         if (starting0 && starting1) {
           this.activePlayerIndex.set(0);
           this.wsService.setActiveConnection(conns[0]);
+          this.animationService.resetForSwitch();
           conns[0].resetRematchStarting();
           conns[1].resetRematchStarting();
           this._rematchReset.update(c => c + 1);

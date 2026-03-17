@@ -35,7 +35,7 @@ export interface ExitingCardState {
  *
  * **Effect A (main chain logic)** — watches activeChainLinks + chainPhase.
  *   - building phase: new link added → onNewChainLink() (entry animation + overlay fade)
- *   - resolving phase: link removed → onChainLinkResolved() (exit animation + board pause)
+ *   - resolving phase: link removed → onChainLinkResolved() (hide → board replay → re-show → exit)
  *   - idle phase + 0 links → onChainEnd() (full cleanup)
  *   Also handles late commits: when a pending chain entry is committed at the same time
  *   as MSG_CHAIN_SOLVING, Angular batches both, so we see phase='resolving' + new link.
@@ -51,7 +51,8 @@ export interface ExitingCardState {
  *
  * During resolution, the overlay controls pacing:
  *   orchestrator sets chainOverlayReady=true (initial) → CHAIN_SOLVED pauses queue
- *   → overlay sets chainOverlayReady=false → plays exit animation → board pause
+ *   → overlay sets chainOverlayReady=false → hide overlay → replay board events
+ *   → impact pause → re-show overlay → exit animation → cleanup
  *   → sets chainOverlayReady=true → orchestrator resumes
  *
  * ## chainEntryAnimating gate
@@ -107,6 +108,13 @@ export class PvpChainOverlayComponent {
   /** Store resolving card info before link removal */
   private resolvingCardInfo: { cardCode: number; cardName: string } | null = null;
   private resolvingNegated = false;
+  /** Resolved card that stays visible at front until the next resolving link pushes it out.
+   *  Signal so that visibleCards recomputes when it's set/cleared. */
+  readonly pendingExitCard = signal<ExitingCardState | null>(null);
+  /** Re-entrancy guard — true while onChainLinkResolved async flow is running */
+  private resolvingInFlight = false;
+  /** True while the exit→pulse timeout in Effect B is pending (prevents duplicate pulse) */
+  private exitPulseInFlight = false;
   /** True once overlayVisible was set during building phase (chain had ≥2 links) */
   private overlayShownDuringBuild = false;
   /** Dedup guard: track last resolving link announced to prevent duplicate liveAnnouncer/buffer calls */
@@ -124,7 +132,10 @@ export class PvpChainOverlayComponent {
     const scale = (base: number) => Math.round(base * this.orchestrator.speedMultiplier());
     return {
       pulse: this.orchestrator.chainPulseDuration(),
-      exit: scale(600),
+      exit: this.orchestrator.chainExitDuration(),
+      overlayFadeOut: Math.max(200, scale(300)),
+      overlayFadeIn: Math.max(200, scale(300)),
+      impactPause: Math.max(200, scale(300)),
       constructAppear: scale(800),
       constructFadeOut: scale(600),
       entry: scale(600),
@@ -132,17 +143,30 @@ export class PvpChainOverlayComponent {
     };
   });
 
-  /** Last 3 active chain links mapped to positions */
+  /** Last 3 active chain links mapped to positions, with pendingExitCard held at front. */
   readonly visibleCards = computed<VisibleCard[]>(() => {
     const links = this.activeChainLinks();
+    const pending = this.pendingExitCard();
     const positions: Array<'front' | 'mid' | 'back'> = ['front', 'mid', 'back'];
     const last3 = links.slice(-3);
-    return last3.reverse().map((link, i) => ({
+    const cards = last3.reverse().map((link, i) => ({
       chainIndex: link.chainIndex,
       cardCode: link.cardCode,
       cardName: link.cardName,
       position: positions[i],
     }));
+
+    // Resolved card stays at front until pushed out — shift others back
+    if (pending) {
+      cards.forEach(c => {
+        const idx = positions.indexOf(c.position);
+        c.position = positions[idx + 1] ?? 'back';
+      });
+      cards.unshift({ ...pending.card, position: 'front' });
+      return cards.slice(0, 3);
+    }
+
+    return cards;
   });
 
   /** CSS variable values synced with JS durations for accelerated mode */
@@ -219,7 +243,10 @@ export class PvpChainOverlayComponent {
       });
     });
 
-    // Effect B — resolving detection (pulse glow / negated shake + overlay visibility)
+    // Effect B — resolving detection (pending exit → pulse glow + overlay visibility)
+    // When a new resolving link appears AND a pendingExitCard exists from the previous
+    // resolution, the exit animation plays first, then the pulse starts after exitDuration.
+    // The orchestrator's MSG_CHAIN_SOLVING return value accounts for this extra time.
     effect(() => {
       const links = this.activeChainLinks();
       const phase = this.phase();
@@ -240,16 +267,23 @@ export class PvpChainOverlayComponent {
           this.resolvingCardInfo = { cardCode: resolvingLink.cardCode, cardName: resolvingLink.cardName };
           this.resolvingNegated = resolvingLink.negated;
 
-          if (resolvingLink.negated) {
-            this.negatedResolvingIndex.set(resolvingLink.chainIndex);
-            this.resolvingIndex.set(-1);
-          } else {
-            this.resolvingIndex.set(resolvingLink.chainIndex);
-          }
-
           // Show overlay during resolving phase so animation is visible —
           // skip only for chain-1 (overlay was never shown during building)
           if (this.overlayShownDuringBuild) this.overlayVisible.set(true);
+
+          // Previous resolved card still on screen → push it out, then pulse
+          if (this.pendingExitCard()) {
+            this.exitingCard.set(this.pendingExitCard());
+            this.pendingExitCard.set(null);
+            this.exitPulseInFlight = true;
+            this.scheduleTimeout(() => {
+              this.exitPulseInFlight = false;
+              this.exitingCard.set(null);
+              this.applyResolvingPulse(resolvingLink.chainIndex, resolvingLink.negated);
+            }, this.durations().exit);
+          } else if (!this.exitPulseInFlight) {
+            this.applyResolvingPulse(resolvingLink.chainIndex, resolvingLink.negated);
+          }
 
           // Dedup: announce only for a new link, or when negation state changes (resolving→negated)
           const isNewLink = resolvingLink.chainIndex !== this.lastAnnouncedResolvingIndex;
@@ -311,7 +345,7 @@ export class PvpChainOverlayComponent {
           this.overlayVisible.set(false);
           this.scheduleTimeout(() => {
             this.orchestrator.chainPromptGateActive.set(false);
-          }, this.durations().exit);
+          }, this.durations().overlayFadeOut);
         } else if (!isPromptActive && this.orchestrator.chainPromptGateActive()) {
           // Prompt closed before fade-out finished — release gate immediately
           this.orchestrator.chainPromptGateActive.set(false);
@@ -378,18 +412,36 @@ export class PvpChainOverlayComponent {
   // Resolution phase handlers
   // ---------------------------------------------------------------------------
 
-  private onChainLinkResolved(): void {
+  /**
+   * Resolution sequence per link:
+   *   1. Hide overlay (fade-out) so the board is visible
+   *   2. Replay buffered board events (player sees impact)
+   *   3. Pause so the player can absorb the board change
+   *   4. Re-show overlay — resolved card stays visible (no exit yet)
+   *   5. Signal ready → orchestrator processes next MSG_CHAIN_SOLVING
+   *
+   * The resolved card's exit is deferred to pendingExitCard. It will be
+   * "pushed out" by the next resolving link (see Effect B). On chain end,
+   * it simply disappears with the overlay.
+   *
+   * Cancelled gracefully by clearAllTimers() on chain end — pending waitFor
+   * promises never resolve, so the rest of the async chain is discarded.
+   */
+  private async onChainLinkResolved(): Promise<void> {
+    if (this.resolvingInFlight) return;
+    this.resolvingInFlight = true;
     this.orchestrator.chainOverlayReady.set(false);
 
+    // Snapshot mutable state before any await — immune to concurrent Effect B updates
     const resolvedIdx = this.resolvingNegated ? this.negatedResolvingIndex() : this.resolvingIndex();
     const cardInfo = this.resolvingCardInfo;
-    // Capture at scheduling time — immune to concurrent Effect B updates before the timeout fires
-    const negatedAtSchedule = this.resolvingNegated;
+    const negated = this.resolvingNegated;
 
+    // Store resolved card for deferred exit (pushed out by next resolving link)
     if (resolvedIdx >= 0) {
-      this.exitingCard.set({
+      this.pendingExitCard.set({
         type: 'resolved',
-        negated: negatedAtSchedule,
+        negated,
         card: {
           chainIndex: resolvedIdx,
           cardCode: cardInfo?.cardCode ?? 0,
@@ -399,33 +451,40 @@ export class PvpChainOverlayComponent {
       });
     }
 
-    // After exit animation: clean up and handle board change pause.
-    // negatedAtSchedule is passed explicitly so the decision is independent of later field resets.
-    this.scheduleTimeout(() => {
-      this.exitingCard.set(null);
-      this.overlayVisible.set(false);
-      this.handleBoardChangePause(negatedAtSchedule);
-      this.resolvingNegated = false;
-      this.resolvingCardInfo = null;
-      this.resolvingIndex.set(-1);
-      this.negatedResolvingIndex.set(-1);
-    }, this.durations().exit);
+    // 1. Hide overlay so the board is visible underneath
+    this.overlayVisible.set(false);
+    await this.waitFor(this.durations().overlayFadeOut);
+
+    // 2–3. Replay board events + pause for impact (skip for negated — no board change)
+    await this.replayAndPause(negated);
+
+    // 4. Re-show overlay — resolved card stays visible until pushed out
+    if (this.overlayShownDuringBuild) this.overlayVisible.set(true);
+    await this.waitFor(this.durations().overlayFadeIn);
+
+    // 5. Cleanup resolving state + signal ready
+    this.resolvingInFlight = false;
+    this.resolvingNegated = false;
+    this.resolvingCardInfo = null;
+    this.resolvingIndex.set(-1);
+    this.negatedResolvingIndex.set(-1);
+    this.orchestrator.chainOverlayReady.set(true);
   }
 
-  private handleBoardChangePause(negated = this.resolvingNegated): void {
-    // Negated effect: no board change possible — skip board reveal pause entirely.
-    if (negated) {
-      this.orchestrator.chainOverlayReady.set(true);
-      return;
-    }
+  private async replayAndPause(negated: boolean): Promise<void> {
+    if (negated) return;
     if (this.orchestrator.chainOverlayBoardChanged()) {
-      // Replay board events — travels are z-index 1000, visible above everything.
-      // Overlay re-shown by Effect B when next MSG_CHAIN_SOLVING pulse starts.
-      this.orchestrator.replayBufferedEvents().then(() => {
-        this.orchestrator.chainOverlayReady.set(true);
-      });
+      await this.orchestrator.replayBufferedEvents();
+      await this.waitFor(this.durations().impactPause);
+    }
+  }
+
+  private applyResolvingPulse(chainIndex: number, negated: boolean): void {
+    if (negated) {
+      this.negatedResolvingIndex.set(chainIndex);
+      this.resolvingIndex.set(-1);
     } else {
-      this.orchestrator.chainOverlayReady.set(true);
+      this.resolvingIndex.set(chainIndex);
     }
   }
 
@@ -437,7 +496,10 @@ export class PvpChainOverlayComponent {
     this.overlayVisible.set(false);
     this.clearAllTimers();
     this.resolutionStarted = false;
+    this.resolvingInFlight = false;
+    this.exitPulseInFlight = false;
     this.exitingCard.set(null);
+    this.pendingExitCard.set(null);
     this.resolvingIndex.set(-1);
     this.negatedResolvingIndex.set(-1);
     this.resolvingCardInfo = null;
@@ -476,5 +538,10 @@ export class PvpChainOverlayComponent {
     }, ms);
     this.activeTimers.add(id);
     return id;
+  }
+
+  /** Promise wrapper around scheduleTimeout — cancelled by clearAllTimers (promise never resolves). */
+  private waitFor(ms: number): Promise<void> {
+    return new Promise(resolve => this.scheduleTimeout(resolve, ms));
   }
 }

@@ -139,7 +139,8 @@
       <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
                          [cards]="opponentHand()"
-                         [hiddenFromEnd]="animationService.hiddenHandCardCount()[1]"
+                         [hiddenIndices]="animationService.hiddenHandIndices()[1]"
+                         [hideAll]="animationService.initialDrawPending()[1]"
                          [chainBadges]="opponentHandChainBadges()"
                          (cardInspectRequest)="onOpponentHandInspect($event)" />
 
@@ -165,13 +166,16 @@
                                [maskedZoneKeys]="animationService.maskedZoneKeys()"
                                [maskedPileImages]="animationService.maskedPileImages()"
                                [maskedSourceImages]="animationService.maskedSourceImages()"
+                               [targetedZoneKeys]="animationService.targetedZoneKeys()"
+                               [preTargetZoneKeys]="preTargetZoneKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Player Hand (bottom, face-up, outside perspective) -->
-      <app-pvp-hand-row class="hand-player" data-zone="HAND-0"
+      <app-pvp-hand-row #playerHandRow class="hand-player" data-zone="HAND-0"
                          side="player"
                          [cards]="playerHand()"
-                         [hiddenFromEnd]="animationService.hiddenHandCardCount()[0]"
+                         [hiddenIndices]="animationService.hiddenHandIndices()[0]"
+                         [hideAll]="animationService.initialDrawPending()[0]"
                          [actionableCardIndices]="playerActionableHandIndices()"
                          [activateCardIndices]="playerActivateHandIndices()"
                          [chainBadges]="playerHandChainBadges()"
@@ -441,9 +445,11 @@
     <!-- Prompt dialog (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
     <app-pvp-prompt-dialog [prompt]="effectivePrompt()"
                            [skipBeat1]="returningFromBackground()"
+                           [ownPlayerIndex]="ownPlayerIndex()"
                            [responseOverride]="pilePrompt() ? pileResponseHandler : null"
                            (dialogExpanded)="promptSheetExpanded.set($event)"
-                           (longPressInspect)="onLongPressInspect($event)" />
+                           (longPressInspect)="onLongPressInspect($event)"
+                           (preTargetCards)="onPreTargetCards($event)" />
 
     <!-- Debug Log Panel (dev only) -->
     @if (!isProduction) {

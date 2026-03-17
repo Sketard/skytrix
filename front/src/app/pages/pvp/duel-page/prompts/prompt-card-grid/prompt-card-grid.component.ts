@@ -8,8 +8,8 @@ import {
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
-import { CardInfo, CardLocation, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { CardInfo, CardLocation, LOCATION, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
+import { getCardImageUrlByCode, isFaceUp } from '../../../pvp-card.utils';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
@@ -23,6 +23,11 @@ interface ZoneGroup {
   location: CardLocation;
   iconPath: string;
   entries: DisplayEntry[];
+  groupKey: string;
+}
+
+function isFieldZone(loc: CardLocation): boolean {
+  return loc === LOCATION.MZONE || loc === LOCATION.SZONE;
 }
 
 function cardKey(c: CardInfo): string {
@@ -41,8 +46,10 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
   longPressInspect = new EventEmitter<{ cardCode: number }>();
+  preTargetCards = new EventEmitter<CardInfo[]>();
   excludedCards: CardInfo[] = [];
   revealedCards: CardInfo[] = [];
+  ownPlayerIndex = 0;
 
   readonly selectedIndices = signal<Set<number>>(new Set());
   /** For SELECT_SUM: tracks each selected card's chosen contribution amount. */
@@ -110,20 +117,38 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   get zoneGroups(): ZoneGroup[] {
     const entries = this.displayEntries;
-    const map = new Map<CardLocation, DisplayEntry[]>();
+    const map = new Map<string, DisplayEntry[]>();
     for (const entry of entries) {
       const loc = entry.card.location;
-      const list = map.get(loc);
+      // Field zones: group by player+location to separate own vs opponent
+      const key = isFieldZone(loc) ? `${entry.card.player}-${loc}` : `${loc}`;
+      const list = map.get(key);
       if (list) list.push(entry);
-      else map.set(loc, [entry]);
+      else map.set(key, [entry]);
     }
     return Array.from(map.entries())
-      .sort(([a], [b]) => getZoneDisplayOrder(a) - getZoneDisplayOrder(b))
-      .map(([location, groupEntries]) => ({
-        location,
-        iconPath: getZoneIconPath(location),
-        entries: groupEntries.sort((a, b) => b.card.name.localeCompare(a.card.name)),
-      }));
+      .sort(([a], [b]) => {
+        const locA = Number(a.split('-').pop()!);
+        const locB = Number(b.split('-').pop()!);
+        return getZoneDisplayOrder(locA as CardLocation) - getZoneDisplayOrder(locB as CardLocation);
+      })
+      .map(([key, groupEntries]) => {
+        const location = Number(key.split('-').pop()!) as CardLocation;
+        if (isFieldZone(location)) {
+          const isOpponent = groupEntries[0]?.card.player !== this.ownPlayerIndex;
+          groupEntries.sort((a, b) =>
+            isOpponent ? b.card.sequence - a.card.sequence : a.card.sequence - b.card.sequence,
+          );
+        } else {
+          groupEntries.sort((a, b) => b.card.name.localeCompare(a.card.name));
+        }
+        return {
+          location,
+          groupKey: key,
+          iconPath: getZoneIconPath(location),
+          entries: groupEntries,
+        };
+      });
   }
 
   get isMultiSelect(): boolean {
@@ -196,7 +221,14 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return count === 1;
   }
 
-  readonly getCardImageUrl = getCardImageUrlByCode;
+  private static readonly CARD_BACK = 'assets/images/card_back.jpg';
+
+  getCardImageUrl(card: CardInfo): string {
+    if (card.position != null && !isFaceUp(card.position) && card.player !== this.ownPlayerIndex) {
+      return PromptCardGridComponent.CARD_BACK;
+    }
+    return getCardImageUrlByCode(card.cardCode);
+  }
 
   isSelected(index: number): boolean {
     if (this.promptData?.type === 'SELECT_SUM') return this.selectedCardAmounts().has(index);
@@ -285,6 +317,11 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       }
       return next;
     });
+
+    const selected = Array.from(this.selectedIndices())
+      .map(i => this.cards[i])
+      .filter(Boolean);
+    this.preTargetCards.emit(selected);
   }
 
   cancel(): void {

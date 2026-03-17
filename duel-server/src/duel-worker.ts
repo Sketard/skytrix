@@ -114,7 +114,9 @@ function getOptionDesc(optionCode: bigint): string {
 }
 
 function toCardInfo(c: OcgCardLoc | OcgCardLocPos): CardInfo {
-  return { cardCode: c.code, name: getCardName(c.code), player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
+  const info: CardInfo = { cardCode: c.code, name: getCardName(c.code), player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
+  if ('position' in c) info.position = c.position as number;
+  return info;
 }
 
 function countersToRecord(counters?: Record<number, number>): Record<string, number> {
@@ -219,7 +221,18 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.DRAW:
       return { type: 'MSG_DRAW', player: msg.player as Player, cards: msg.drawn.map(d => d.code) };
 
-    case OcgMessageType.MOVE:
+    case OcgMessageType.MOVE: {
+      let reason = 0;
+      if (core && duel && msg.to.location as number !== 0) {
+        const reasonInfo = core.duelQuery(duel, {
+          flags: OcgQueryFlags.REASON as number,
+          controller: msg.to.controller,
+          location: msg.to.location as number,
+          sequence: msg.to.sequence,
+          overlaySequence: 0,
+        } as never);
+        reason = reasonInfo?.reason ?? 0;
+      }
       return {
         type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card), player: msg.from.controller,
         fromLocation: msg.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
@@ -229,7 +242,9 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         toSequence: msg.to.sequence,
         toPosition: msg.to.position as number as Position,
         isToken: isTokenCard(msg.card),
+        reason,
       };
+    }
 
     case OcgMessageType.DAMAGE:
       return { type: 'MSG_DAMAGE', player: msg.player as Player, amount: msg.amount };
@@ -292,6 +307,9 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SHUFFLE_HAND:
       return { type: 'MSG_SHUFFLE_HAND', player: msg.player as Player, cards: msg.cards };
 
+    case OcgMessageType.SHUFFLE_DECK:
+      return { type: 'MSG_SHUFFLE_DECK', player: msg.player as Player };
+
     case OcgMessageType.FLIPSUMMONING:
       return {
         type: 'MSG_FLIP_SUMMONING', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
@@ -317,6 +335,16 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
 
     case OcgMessageType.SWAP:
       return { type: 'MSG_SWAP', card1: toCardInfo(msg.card1), card2: toCardInfo(msg.card2) };
+
+    case OcgMessageType.BECOME_TARGET:
+      return {
+        type: 'MSG_BECOME_TARGET',
+        cards: msg.cards.map(c => ({
+          player: c.controller as Player,
+          location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+          sequence: c.sequence,
+        })),
+      };
 
     case OcgMessageType.ATTACK:
       return {

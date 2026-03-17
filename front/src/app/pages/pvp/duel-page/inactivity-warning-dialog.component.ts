@@ -8,12 +8,12 @@ import { MatButton } from '@angular/material/button';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatDialogTitle, MatDialogContent, MatDialogActions, MatButton],
   template: `
-    <h2 mat-dialog-title>Êtes-vous toujours là ?</h2>
+    <h2 mat-dialog-title>Are you still there?</h2>
     <mat-dialog-content>
-      <p>Vous serez déclaré forfait pour inactivité si vous ne répondez pas.</p>
+      <p>You will forfeit due to inactivity if you don't respond.</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-raised-button color="primary" (click)="acknowledge()">Je suis là</button>
+      <button mat-flat-button (click)="acknowledge()">I'm here</button>
     </mat-dialog-actions>
   `,
 })

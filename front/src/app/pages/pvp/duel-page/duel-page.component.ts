@@ -19,7 +19,7 @@ import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, PlaceOption,
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
-import { locationToZoneId } from '../pvp-zone.utils';
+import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { CardDataCacheService } from './card-data-cache.service';
 import { PvpBoardContainerComponent } from './pvp-board-container/pvp-board-container.component';
 import { PvpHandRowComponent } from './pvp-hand-row/pvp-hand-row.component';
@@ -131,8 +131,12 @@ export class DuelPageComponent implements OnInit {
     return conns[activeIdx].timerStatePerPlayer()[activeIdx] ?? this.timerState();
   });
 
-  readonly playerHand = computed(() => this.getHandCards(0));
-  readonly opponentHand = computed(() => this.getHandCards(1));
+  readonly playerHand = computed(() => [
+    ...this.getHandCards(0), ...this.animationService.handGhostCards()[0],
+  ]);
+  readonly opponentHand = computed(() => [
+    ...this.getHandCards(1), ...this.animationService.handGhostCards()[1],
+  ]);
 
   // Delegate animation signals to service
   readonly isAnimating = this.animationService.isAnimating;
@@ -335,6 +339,8 @@ export class DuelPageComponent implements OnInit {
   // [H1 fix] Track prompt sheet expanded state for mini-toolbar interaction
   readonly promptSheetExpanded = signal(false);
 
+  readonly preTargetZoneKeys = signal<ReadonlySet<string>>(new Set());
+
   // Story 1.7 — Activation toggle mode
   readonly activationMode = signal<ActivationMode>('auto');
 
@@ -372,6 +378,7 @@ export class DuelPageComponent implements OnInit {
 
   // Story 3.1 — Surrender dialog template ref
   @ViewChild('surrenderDialog') surrenderDialogTpl!: TemplateRef<void>;
+  @ViewChild('playerHandRow') private playerHandRow?: PvpHandRowComponent;
 
   /** Guard prevents the click that opens the browser from immediately closing it. */
   private _zoneBrowserClickGuard = false;
@@ -590,13 +597,14 @@ export class DuelPageComponent implements OnInit {
       }
     });
 
-    // Story 5.1 — Clear card data cache on rematch
+    // Story 5.1 — Clear card data cache and animation state on rematch
     effect(() => {
       const starting = this.wsService.rematchStarting();
       if (starting) {
         untracked(() => {
           this.cardDataCache.clearCache();
           this.debugLog.clearLogs();
+          this.animationService.onStateSync();
         });
       }
     });
@@ -784,7 +792,11 @@ export class DuelPageComponent implements OnInit {
       const warning = this.wsService.inactivityWarning();
       untracked(() => {
         if (warning && !this.inactivityDialogRef) {
-          this.inactivityDialogRef = this.dialog.open(InactivityWarningDialogComponent, { disableClose: true });
+          this.inactivityDialogRef = this.dialog.open(InactivityWarningDialogComponent, {
+            disableClose: true,
+            width: '320px',
+            panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--warning'],
+          });
           this.inactivityDialogRef.afterClosed().subscribe(() => {
             if (this.inactivityDialogRef) {
               this.inactivityDialogRef = null;
@@ -998,6 +1010,7 @@ export class DuelPageComponent implements OnInit {
     this.menuState.set(null);
     this.effectSubMenu.set(null);
     this.teardownMenuListener();
+    this.playerHandRow?.selectedIndex.set(null);
   }
 
   onMenuAction(action: CardAction, event?: MouseEvent): void {
@@ -1134,6 +1147,19 @@ export class DuelPageComponent implements OnInit {
     await this.cardInspection.inspectByCode(event.cardCode, true);
   }
 
+  onPreTargetCards(cards: CardInfo[]): void {
+    if (cards.length === 0) {
+      this.preTargetZoneKeys.set(new Set());
+      return;
+    }
+    const ownIdx = this.ownPlayerIndex();
+    const keys = new Set(cards.map(c => {
+      const relPlayer = c.player === ownIdx ? 0 : 1;
+      return locationToZoneKey(c.location, c.sequence, relPlayer);
+    }));
+    this.preTargetZoneKeys.set(keys);
+  }
+
   async onOpponentHandInspect(event: { cardCode: number }): Promise<void> {
     if (!event.cardCode) {
       this.cardInspection.showUnknownCard();
@@ -1187,7 +1213,7 @@ export class DuelPageComponent implements OnInit {
       role: 'alertdialog',
       ariaLabel: 'Surrender confirmation',
       width: '320px',
-      panelClass: 'surrender-dialog-panel',
+      panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
       autoFocus: false,
       disableClose: false,
     });

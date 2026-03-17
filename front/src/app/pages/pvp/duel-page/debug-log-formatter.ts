@@ -93,6 +93,8 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return `P${msg.player + 1} confirmed ${msg.cards.length} card(s)`;
     case 'MSG_SHUFFLE_HAND':
       return `P${msg.player + 1} hand shuffled`;
+    case 'MSG_SHUFFLE_DECK':
+      return `P${msg.player + 1} deck shuffled`;
     case 'MSG_FLIP_SUMMONING':
       return `P${msg.player + 1}: ${msg.cardName || 'Unknown'} flip summoned at ${zoneLabel(msg.location, msg.sequence)}`;
     case 'MSG_CHANGE_POS':

@@ -2,6 +2,7 @@ import {
   MoveMsg,
   DrawMsg,
   ShuffleHandMsg,
+  ShuffleDeckMsg,
   DamageMsg,
   RecoverMsg,
   PayLpCostMsg,
@@ -12,6 +13,7 @@ import {
   FlipSummoningMsg,
   ChangePosMsg,
   SwapMsg,
+  BecomeTargetMsg,
   AttackMsg,
   BattleMsg,
   ConfirmCardsMsg,
@@ -21,6 +23,7 @@ export type GameEvent =
   | MoveMsg
   | DrawMsg
   | ShuffleHandMsg
+  | ShuffleDeckMsg
   | DamageMsg
   | RecoverMsg
   | PayLpCostMsg
@@ -31,6 +34,7 @@ export type GameEvent =
   | FlipSummoningMsg
   | ChangePosMsg
   | SwapMsg
+  | BecomeTargetMsg
   | AttackMsg
   | BattleMsg
   | ConfirmCardsMsg;

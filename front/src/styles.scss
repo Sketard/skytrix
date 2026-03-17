@@ -146,8 +146,8 @@ a, button {
   cursor: pointer;
 }
 
-// === Surrender Confirmation Dialog ===
-.surrender-dialog-panel {
+// === PvP Dialog Base ===
+.pvp-dialog-panel {
   --mdc-dialog-container-color: #0f1729;
   --mdc-dialog-container-shape: 12px;
   --mdc-dialog-subhead-color: #eee;
@@ -155,7 +155,6 @@ a, button {
 
   .mat-mdc-dialog-surface {
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-top: 3px solid #b71c1c !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
   }
 
@@ -177,9 +176,26 @@ a, button {
     }
 
     .mat-mdc-unelevated-button {
-      --mdc-filled-button-container-color: #b71c1c;
       --mdc-filled-button-label-text-color: #fff;
     }
+  }
+
+  // --- Surrender (danger) ---
+  &--danger .mat-mdc-dialog-surface {
+    border-top: 3px solid #b71c1c !important;
+  }
+
+  &--danger .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
+    --mdc-filled-button-container-color: #b71c1c;
+  }
+
+  // --- Inactivity (warning) ---
+  &--warning .mat-mdc-dialog-surface {
+    border-top: 3px solid #ff9800 !important;
+  }
+
+  &--warning .mat-mdc-dialog-actions .mat-mdc-unelevated-button {
+    --mdc-filled-button-container-color: #ff9800;
   }
 }
 

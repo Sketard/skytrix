@@ -113,6 +113,8 @@
           <div class="zone-card"
                [class.def-position]="isMonsterDefense(zone)"
                [class.zone-card--equip-highlight]="equipHighlightedZones().has(zone.zoneId + '-1')"
+               [class.zone-card--targeted]="targetedZoneKeys().has(zone.zoneId + '-1')"
+               [class.zone-card--pre-target]="preTargetZoneKeys().has(zone.zoneId + '-1')"
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-1-flip')"
                [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-1-activate')"
                [style.visibility]="maskedZoneKeys().has(zone.zoneId + '-1') ? 'hidden' : null"
@@ -151,12 +153,15 @@
         } @else {
           @let ghostCard1 = maskedSourceImages().get(zone.zoneId + '-1');
           @if (ghostCard1) {
-            <div class="zone-card" [class.def-position]="isDefense(ghostCard1.position)" style="pointer-events:none">
+            <div class="zone-card" [class.def-position]="isMonsterZone(zone.zoneId) && isDefense(ghostCard1.position)" style="pointer-events:none">
               @if (isFaceUp(ghostCard1.position)) {
                 <img [src]="getCardImageUrl(ghostCard1)" [alt]="ghostCard1.name ?? 'Card'" class="card-art"
                      (error)="$any($event.target).src='assets/images/card_back.jpg'">
               } @else {
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+              @if (chainBadges().get(zone.zoneId + '-1'); as chainNum) {
+                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
               }
             </div>
           } @else {
@@ -213,6 +218,8 @@
                [class.zone-card--actionable]="activateZoneIds().has(emz.zoneId)"
                [class.zone-card--actionable-blue]="!activateZoneIds().has(emz.zoneId) && nonActivateZoneIds().has(emz.zoneId)"
                [class.zone-card--equip-highlight]="equipHighlightedZones().has(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
+               [class.zone-card--targeted]="targetedZoneKeys().has(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
+               [class.zone-card--pre-target]="preTargetZoneKeys().has(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                [class.pvp-anim-flip]="animatingEmzKeys().has(emz.zoneId + '-flip')"
                [class.pvp-anim-activate]="animatingEmzKeys().has(emz.zoneId + '-activate')"
                [attr.aria-label]="isFaceUp(card.position) ? buildAriaLabel(card) : 'Face-down card'"
@@ -365,6 +372,8 @@
                [class.zone-card--actionable]="activateZoneIds().has(zone.zoneId)"
                [class.zone-card--actionable-blue]="!activateZoneIds().has(zone.zoneId) && nonActivateZoneIds().has(zone.zoneId)"
                [class.zone-card--equip-highlight]="equipHighlightedZones().has(zone.zoneId + '-0')"
+               [class.zone-card--targeted]="targetedZoneKeys().has(zone.zoneId + '-0')"
+               [class.zone-card--pre-target]="preTargetZoneKeys().has(zone.zoneId + '-0')"
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-0-flip')"
                [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-0-activate')"
                [style.visibility]="maskedZoneKeys().has(zone.zoneId + '-0') ? 'hidden' : null"
@@ -403,12 +412,15 @@
         } @else {
           @let ghostCard0 = maskedSourceImages().get(zone.zoneId + '-0');
           @if (ghostCard0) {
-            <div class="zone-card" [class.def-position]="isDefense(ghostCard0.position)" style="pointer-events:none">
+            <div class="zone-card" [class.def-position]="isMonsterZone(zone.zoneId) && isDefense(ghostCard0.position)" style="pointer-events:none">
               @if (isFaceUp(ghostCard0.position)) {
                 <img [src]="getCardImageUrl(ghostCard0)" [alt]="ghostCard0.name ?? 'Card'" class="card-art"
                      (error)="$any($event.target).src='assets/images/card_back.jpg'">
               } @else {
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+              }
+              @if (chainBadges().get(zone.zoneId + '-0'); as chainNum) {
+                <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
               }
             </div>
           } @else {

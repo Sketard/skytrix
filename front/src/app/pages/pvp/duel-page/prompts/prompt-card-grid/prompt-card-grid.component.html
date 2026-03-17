@@ -4,7 +4,7 @@
     <div class="revealed-cards__list">
       @for (card of revealedCards; track card.cardCode + '-' + card.sequence) {
         <img class="revealed-cards__img"
-             [src]="getCardImageUrl(card.cardCode)"
+             [src]="getCardImageUrl(card)"
              [title]="card.name"
              alt="{{ card.name }}" />
       }
@@ -16,7 +16,7 @@
 } @else {
 <div class="card-strip__inner">
   <div class="card-strip">
-    @for (group of zoneGroups; track group.location) {
+    @for (group of zoneGroups; track group.groupKey) {
       <div class="zone-group">
         <div class="zone-group__badge">
           <img [src]="group.iconPath" alt="" class="zone-group__icon" />
@@ -36,7 +36,7 @@
                     [attr.aria-label]="entry.card.name"
                     [attr.aria-pressed]="isSelected(entry.originalIndex)">
               <img class="card-img"
-                   [src]="getCardImageUrl(entry.card.cardCode)"
+                   [src]="getCardImageUrl(entry.card)"
                    alt=""
                    loading="lazy" />
               @if (promptData?.type === 'SELECT_SUM' && isSelected(entry.originalIndex) && isDualAmount(entry.card)) {

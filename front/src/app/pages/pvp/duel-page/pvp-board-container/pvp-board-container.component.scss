@@ -563,6 +563,73 @@
   }
 }
 
+// === Pre-Target Pulse (subtle pulse while selecting in prompt) ===
+.zone-card--pre-target {
+  .card-art,
+  .card-inner {
+    animation: pvp-pre-target-pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes pvp-pre-target-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px 2px rgba(255, 180, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px 4px rgba(255, 180, 60, 0.6);
+  }
+}
+
+// === Target Reticle (crosshair overlay on targeted cards) ===
+.zone-card--targeted {
+  z-index: 5;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 5%;
+    z-index: 10;
+    border: 2px solid rgba(255, 60, 60, 0.8);
+    border-radius: 50%;
+    animation: pvp-reticle-appear 0.6s ease-out forwards;
+    pointer-events: none;
+  }
+
+  // Crosshair lines
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 5%;
+    z-index: 10;
+    background:
+      // Horizontal line
+      linear-gradient(to right, transparent 10%, rgba(255, 60, 60, 0.7) 10%, rgba(255, 60, 60, 0.7) 35%, transparent 35%, transparent 65%, rgba(255, 60, 60, 0.7) 65%, rgba(255, 60, 60, 0.7) 90%, transparent 90%),
+      // Vertical line
+      linear-gradient(to bottom, transparent 10%, rgba(255, 60, 60, 0.7) 10%, rgba(255, 60, 60, 0.7) 35%, transparent 35%, transparent 65%, rgba(255, 60, 60, 0.7) 65%, rgba(255, 60, 60, 0.7) 90%, transparent 90%);
+    background-size: 100% 2px, 2px 100%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    border-radius: 50%;
+    animation: pvp-reticle-appear 0.6s ease-out forwards;
+    pointer-events: none;
+  }
+}
+
+@keyframes pvp-reticle-appear {
+  0% {
+    opacity: 0;
+    transform: scale(1.6) rotate(-30deg);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
 // === Zone Highlight (Story 1.6 — SELECT_PLACE / SELECT_DISFIELD) ===
 .zone--highlighted {
   border-color: var(--pvp-accent, #c9a84c);
@@ -621,21 +688,27 @@
 
 @keyframes pvp-shuffle-fan-before {
   0%, 100% { transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset))); }
-  40% { transform: translate(calc(var(--pvp-pile-stack-offset) + 3px), calc(-1 * var(--pvp-pile-stack-offset))) rotate(2deg); }
+  12% { transform: translate(calc(var(--pvp-pile-stack-offset) + 8px), calc(-1 * var(--pvp-pile-stack-offset))) rotate(5deg); }
+  37% { transform: translate(calc(var(--pvp-pile-stack-offset) - 6px), calc(-1 * var(--pvp-pile-stack-offset))) rotate(-4deg); }
+  62% { transform: translate(calc(var(--pvp-pile-stack-offset) + 7px), calc(-1 * var(--pvp-pile-stack-offset))) rotate(4deg); }
+  87% { transform: translate(calc(var(--pvp-pile-stack-offset) - 5px), calc(-1 * var(--pvp-pile-stack-offset))) rotate(-3deg); }
 }
 
 @keyframes pvp-shuffle-fan-after {
   0%, 100% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2)); }
-  40% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2 - 3px), calc(-1 * var(--pvp-pile-stack-offset) / 2)) rotate(-2deg); }
+  12% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2 - 8px), calc(-1 * var(--pvp-pile-stack-offset) / 2)) rotate(-5deg); }
+  37% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2 + 6px), calc(-1 * var(--pvp-pile-stack-offset) / 2)) rotate(4deg); }
+  62% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2 - 7px), calc(-1 * var(--pvp-pile-stack-offset) / 2)) rotate(-4deg); }
+  87% { transform: translate(calc(var(--pvp-pile-stack-offset) / 2 + 5px), calc(-1 * var(--pvp-pile-stack-offset) / 2)) rotate(3deg); }
 }
 
 .pvp-deck-shuffle {
   &::before {
-    animation: pvp-shuffle-fan-before var(--pvp-shuffle-duration, 250ms) ease-in-out;
+    animation: pvp-shuffle-fan-before var(--pvp-shuffle-duration, 500ms) ease-in-out;
   }
 
   &::after {
-    animation: pvp-shuffle-fan-after var(--pvp-shuffle-duration, 250ms) ease-in-out;
+    animation: pvp-shuffle-fan-after var(--pvp-shuffle-duration, 500ms) ease-in-out;
   }
 }
 
@@ -706,6 +779,14 @@
   .zone-pile--actionable,
   .zone-pile--actionable-blue {
     animation: none;
+  }
+
+  .zone-card--targeted {
+    &::before, &::after { animation: none; }
+  }
+
+  .zone-card--pre-target {
+    .card-art, .card-inner { animation: none; }
   }
 
   .pvp-anim-flip {
