@@ -16,9 +16,10 @@ import { updateData } from './data-updater.js';
 
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
 const DATA_DIR = resolve(process.env['DATA_DIR'] ?? join(import.meta.dirname!, '../data'));
+const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const WS_RATE_LIMIT_WINDOW_MS = 60_000;
-const WS_RATE_LIMIT_MAX = 10;
+const WS_RATE_LIMIT_MAX = 30;
 const MAX_INVALID_RESPONSES = 5;
 const BLUFF_DELAY_MIN_MS = 200;
 const BLUFF_DELAY_MAX_MS = 1500;
@@ -902,32 +903,48 @@ const server = createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, maxPayload: MAX_PAYLOAD_SIZE });
 
-// Rate limiting: track WS connection attempts per IP
-const wsConnectionLog = new Map<string, number[]>();
+// Rate limiting: sliding-window counter per IP (failed/rejected connections only)
+const wsFailedConnections = new Map<string, number[]>();
 
 function isWsRateLimited(ip: string): boolean {
   const now = Date.now();
-  const timestamps = wsConnectionLog.get(ip) ?? [];
+  const timestamps = wsFailedConnections.get(ip);
+  if (!timestamps) return false;
   const recent = timestamps.filter(t => now - t < WS_RATE_LIMIT_WINDOW_MS);
-  recent.push(now);
-  wsConnectionLog.set(ip, recent);
-  return recent.length > WS_RATE_LIMIT_MAX;
+  if (recent.length === 0) {
+    wsFailedConnections.delete(ip);
+    return false;
+  }
+  wsFailedConnections.set(ip, recent);
+  return recent.length >= WS_RATE_LIMIT_MAX;
+}
+
+function recordFailedWsAttempt(ip: string): void {
+  const now = Date.now();
+  const timestamps = wsFailedConnections.get(ip) ?? [];
+  timestamps.push(now);
+  // Cap array size to prevent memory growth from rapid-fire spam
+  if (timestamps.length > WS_RATE_LIMIT_MAX * 2) {
+    timestamps.splice(0, timestamps.length - WS_RATE_LIMIT_MAX);
+  }
+  wsFailedConnections.set(ip, timestamps);
 }
 
 // Cleanup stale IPs every 5 minutes
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, timestamps] of wsConnectionLog) {
+  for (const [ip, timestamps] of wsFailedConnections) {
     const recent = timestamps.filter(t => now - t < WS_RATE_LIMIT_WINDOW_MS);
-    if (recent.length === 0) wsConnectionLog.delete(ip);
-    else wsConnectionLog.set(ip, recent);
+    if (recent.length === 0) wsFailedConnections.delete(ip);
+    else wsFailedConnections.set(ip, recent);
   }
 }, 5 * 60_000);
 
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-  const ip = req.headers['x-real-ip'] as string ?? req.socket.remoteAddress ?? 'unknown';
+  // Trust x-real-ip only behind a reverse proxy in production; fall back to socket IP otherwise
+  const ip = (IS_PRODUCTION && req.headers['x-real-ip'] as string) || req.socket.remoteAddress || 'unknown';
 
-  if (isWsRateLimited(ip)) {
+  if (IS_PRODUCTION && isWsRateLimited(ip)) {
     ws.close(4029, 'Too many connections');
     return;
   }
@@ -937,6 +954,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   const reconnect = url.searchParams.get('reconnect');
 
   if (!token && !reconnect) {
+    recordFailedWsAttempt(ip);
     ws.close(4001, 'Missing token');
     return;
   }
@@ -948,11 +966,13 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     // --- Reconnection flow ---
     const reconInfo = reconnectTokens.get(reconnect);
     if (!reconInfo) {
+      recordFailedWsAttempt(ip);
       ws.close(4001, 'Invalid or expired reconnect token');
       return;
     }
     session = activeDuels.get(reconInfo.duelId);
     if (!session) {
+      recordFailedWsAttempt(ip);
       ws.close(4001, 'Duel not found');
       reconnectTokens.delete(reconnect);
       return;
@@ -985,11 +1005,13 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     // --- Initial connection flow ---
     const tokenInfo = pendingTokens.get(token!);
     if (!tokenInfo) {
+      recordFailedWsAttempt(ip);
       ws.close(4001, 'Invalid or expired token');
       return;
     }
     session = activeDuels.get(tokenInfo.duelId);
     if (!session) {
+      recordFailedWsAttempt(ip);
       ws.close(4001, 'Duel not found');
       pendingTokens.delete(token!);
       return;

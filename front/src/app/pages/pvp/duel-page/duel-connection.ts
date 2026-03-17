@@ -93,8 +93,9 @@ export class DuelConnection {
   // --- Reconnect state ---
   private _retryCount = signal(0);
   private readonly _maxRetries = 6;
+  /** After this many failed reconnect-token attempts, fall back to wsToken. */
+  private readonly _reconnectFallbackThreshold = 2;
   private readonly _autoReconnect: boolean;
-
   readonly canRetry = computed(() => this._retryCount() < this._maxRetries && this._autoReconnect);
 
   // --- WS internals ---
@@ -176,6 +177,7 @@ export class DuelConnection {
     }
     this.wsToken = wsToken;
     this._retryCount.set(0);
+
     this.openConnection();
   }
 
@@ -344,6 +346,7 @@ export class DuelConnection {
 
   retryConnection(): void {
     this._retryCount.set(0);
+
     this._connectionStatus.set('reconnecting');
     this.openConnection();
   }
@@ -408,14 +411,14 @@ export class DuelConnection {
         clearTimeout(this.connectionTimeout);
         this.connectionTimeout = null;
       }
-      this._connectionStatus.set('connected');
-      this._retryCount.set(0);
+      // retryCount and connectionStatus are NOT updated here — only on SESSION_TOKEN.
+      // Updating on open would flash 'connected' then snap to 'reconnecting'/'lost'
+      // if the server accepts the handshake but immediately closes.
       this._opponentDisconnected.set(false);
       this._rematchStarting.set(false);
       if (!this.reconnectToken) {
         this._rematchState.set('idle');
       }
-      this.wsToken = null;
     };
 
     this.ws.onmessage = event => {
@@ -432,11 +435,21 @@ export class DuelConnection {
         clearTimeout(this.connectionTimeout);
         this.connectionTimeout = null;
       }
-      if (event.code === 4001) {
+      // 4029 = rate limited — no point retrying immediately
+      if (event.code === 4029) {
         this.reconnectToken = null;
         try { sessionStorage.removeItem(this.storageKey); } catch {}
         this._connectionStatus.set('lost');
         return;
+      }
+      // 4001 = invalid/expired token — discard it but let handleReconnect try fallback
+      if (event.code === 4001) {
+        if (this.reconnectToken) {
+          this.reconnectToken = null;
+          try { sessionStorage.removeItem(this.storageKey); } catch {}
+        } else {
+          this.wsToken = null;
+        }
       }
       if (this._connectionStatus() !== 'lost') {
         this.handleReconnect();
@@ -625,6 +638,10 @@ export class DuelConnection {
         break;
 
       case 'SESSION_TOKEN':
+        // Server confirmed the session — connection is genuinely alive.
+        this._connectionStatus.set('connected');
+        this._retryCount.set(0);
+        this.wsToken = null; // no longer needed as fallback
         this.reconnectToken = (message as SessionTokenMsg).token;
         if (this._autoReconnect) {
           try { sessionStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
@@ -716,7 +733,16 @@ export class DuelConnection {
       return;
     }
 
+    // If reconnect token failed enough times and a fresh wsToken is available, fall back to it.
+    if (this.reconnectToken && this._retryCount() >= this._reconnectFallbackThreshold && this.wsToken) {
+      this.reconnectToken = null;
+      try { sessionStorage.removeItem(this.storageKey); } catch {}
+      this._retryCount.set(0);
+    }
+
     if (this._retryCount() >= this._maxRetries) {
+      this.reconnectToken = null;
+      try { sessionStorage.removeItem(this.storageKey); } catch {}
       this._connectionStatus.set('lost');
       return;
     }
