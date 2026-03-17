@@ -285,6 +285,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName, hintAction };
     }
 
+    case OcgMessageType.CONFIRM_DECKTOP:
     case OcgMessageType.CONFIRM_CARDS:
       return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo) };
 
@@ -305,6 +306,13 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         sequence: msg.sequence,
         previousPosition: msg.prev_position as number as Position,
         currentPosition: msg.position as number as Position,
+      };
+
+    case OcgMessageType.SET:
+      return {
+        type: 'MSG_SET', cardCode: msg.code, cardName: getCardName(msg.code), player: msg.controller,
+        location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+        sequence: msg.sequence, position: msg.position as number as Position,
       };
 
     case OcgMessageType.SWAP:

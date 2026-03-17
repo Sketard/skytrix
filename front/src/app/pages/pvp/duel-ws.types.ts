@@ -242,6 +242,16 @@ export interface ChangePosMsg {
   currentPosition: Position;
 }
 
+export interface SetMsg {
+  type: 'MSG_SET';
+  cardCode: number;
+  cardName: string;
+  player: Player;
+  location: CardLocation;
+  sequence: number;
+  position: Position;
+}
+
 export interface SwapMsg {
   type: 'MSG_SWAP';
   card1: CardInfo;
@@ -664,6 +674,7 @@ export type ServerMessage =
   | ShuffleHandMsg
   | FlipSummoningMsg
   | ChangePosMsg
+  | SetMsg
   | SwapMsg
   | AttackMsg
   | BattleMsg

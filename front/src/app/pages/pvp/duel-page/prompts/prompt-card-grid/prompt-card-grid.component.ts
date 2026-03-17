@@ -42,6 +42,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   response = new EventEmitter<unknown>();
   longPressInspect = new EventEmitter<{ cardCode: number }>();
   excludedCards: CardInfo[] = [];
+  revealedCards: CardInfo[] = [];
 
   readonly selectedIndices = signal<Set<number>>(new Set());
   /** For SELECT_SUM: tracks each selected card's chosen contribution amount. */

@@ -1,7 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
 import type { ChainingMsg, MoveMsg } from '../duel-ws.types';
-import { AnnounceCardMsg, CardInfo, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
+import { AnnounceCardMsg, CardInfo, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, SortCardMsg, SortChainMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -105,6 +105,10 @@ export class DuelConnection {
   private _lastSelectedCards: CardInfo[] = [];
   private _lastSelectedPromptType: string | null = null;
   get lastSelectedCards(): CardInfo[] { return this._lastSelectedCards; }
+
+  // --- Last confirmed/revealed cards (from MSG_CONFIRM_CARDS — excavation/reveal effects) ---
+  private _lastConfirmedCards: CardInfo[] = [];
+  get lastConfirmedCards(): CardInfo[] { return this._lastConfirmedCards; }
 
   // --- Pending chain entry ---
   // MSG_CHAINING stores here instead of immediately adding to _activeChainLinks.
@@ -458,6 +462,7 @@ export class DuelConnection {
         break;
 
       case 'STATE_SYNC':
+        this._lastConfirmedCards = [];
         this._rematchStarting.set(false);
         this._pendingBoardState = null;
         this._duelState.set(message.data);
@@ -560,6 +565,7 @@ export class DuelConnection {
         break;
 
       case 'DUEL_END':
+        this._lastConfirmedCards = [];
         this._pendingChainEntry = null;
         this._hasPendingChainEntry.set(false);
         this._pendingPrompt.set(null);
@@ -583,6 +589,7 @@ export class DuelConnection {
         break;
 
       case 'REMATCH_STARTING':
+        this._lastConfirmedCards = [];
         this._pendingChainEntry = null;
         this._hasPendingChainEntry.set(false);
         this._rematchStarting.set(true);
@@ -672,6 +679,10 @@ export class DuelConnection {
           this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
         break;
 
+      case 'MSG_CONFIRM_CARDS':
+        this._lastConfirmedCards = (message as ConfirmCardsMsg).cards;
+        this._animationQueue.update(q => [...q, message]);
+        break;
       case 'MSG_MOVE':
         this._animationQueue.update(q => [...q, message]);
         break;
