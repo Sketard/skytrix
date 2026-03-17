@@ -1,5 +1,36 @@
 @use '../prompt-btn' as btn;
 
+.revealed-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  &__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #9e9e9e);
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__img {
+    width: 36px;
+    height: auto;
+    border-radius: 2px;
+    object-fit: cover;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    opacity: 0.85;
+  }
+}
+
 .option-list {
   display: flex;
   flex-direction: column;

@@ -156,10 +156,22 @@ export class PvpPromptDialogComponent implements OnDestroy {
     // Otherwise the hint cardName is leftover from a summon/effect, not an activation.
     const chainHasActivation = prompt.type === 'SELECT_CHAIN' && this.wsService.activeChainLinks().length === 0;
     const hintCardName = hasHint && !chainHasActivation ? hint.cardName : '';
-    // Fallback to the prompt's own cardName (e.g. SELECT_EFFECTYN, SELECT_YESNO carry it directly)
-    const cardName = hintCardName || ('cardName' in prompt ? (prompt as { cardName: string }).cardName : '');
-    console.log(`[PROMPT] type=${prompt.type} | hint=`, hint, `| hintCardName="${hintCardName}" | promptCardName="${'cardName' in prompt ? (prompt as { cardName: string }).cardName : 'n/a'}" | resolved="${cardName}"`);
-    const hintAction = hasHint ? hint.hintAction : '';
+    // Fallback to the prompt's own cardName (e.g. SELECT_EFFECTYN, SELECT_YESNO carry it directly).
+    // For SELECT_OPTION with no card context, use the last revealed card (excavated monster) if available.
+    const promptCardName = 'cardName' in prompt ? (prompt as { cardName: string }).cardName : '';
+    const confirmedCards = this.wsService.lastConfirmedCards;
+    const lastConfirmedName = prompt.type === 'SELECT_OPTION' && confirmedCards.length > 0
+      ? confirmedCards[confirmedCards.length - 1].name
+      : '';
+    const cardName = hintCardName || promptCardName || lastConfirmedName;
+    console.log(`[PROMPT] type=${prompt.type} | hint=`, hint, `| hintCardName="${hintCardName}" | promptCardName="${promptCardName}" | lastConfirmedName="${lastConfirmedName}" | resolved="${cardName}"`);
+    // HINT_SELECTMSG (hintType 3) is meant for card-selection prompts.
+    // Ignore its action for non-selection prompts (e.g. SELECT_OPTION) to prevent
+    // a stale "Select the card(s) to destroy" from a previous targeting step bleeding in.
+    const isCardSelectionPrompt = prompt.type === 'SELECT_CARD' || prompt.type === 'SELECT_CHAIN'
+      || prompt.type === 'SELECT_TRIBUTE' || prompt.type === 'SELECT_SUM'
+      || prompt.type === 'SELECT_UNSELECT_CARD' || prompt.type === 'SELECT_COUNTER';
+    const hintAction = hasHint && (hint.hintType !== 3 || isCardSelectionPrompt) ? hint.hintAction : '';
     const hintTimingLabel = prompt.type === 'SELECT_CHAIN' ? (prompt as { hintTimingLabel: string }).hintTimingLabel : '';
     this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel));
 
@@ -199,6 +211,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
     const instance = ref.instance;
     if ('excludedCards' in instance) {
       (instance as unknown as { excludedCards: unknown[] }).excludedCards = this.wsService.lastSelectedCards;
+    }
+    if ('revealedCards' in instance) {
+      (instance as unknown as { revealedCards: unknown[] }).revealedCards = this.wsService.lastConfirmedCards;
     }
 
     this.responseSubscription = instance.response.subscribe((data: unknown) => {
@@ -304,7 +319,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
       case 'SELECT_DISFIELD':
         return `${a('Choose')} a zone`;
       case 'SELECT_OPTION':
-        return withCardContext ?? `${a('Choose')} an option`;
+        return withCardContext ?? (q ? `${a('Choose')} an option for ${q}` : `${a('Choose')} an option`);
       case 'SELECT_COUNTER':
         return `${a('Distribute')} counters`;
       case 'ANNOUNCE_NUMBER':

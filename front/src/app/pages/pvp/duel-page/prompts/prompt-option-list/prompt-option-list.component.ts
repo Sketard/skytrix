@@ -8,7 +8,8 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
-import { POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
+import { CardInfo, POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
+import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 interface OptionItem {
   index: number;
@@ -30,6 +31,9 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
   promptData: OptionListPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  revealedCards: CardInfo[] = [];
+
+  readonly getCardImageUrl = getCardImageUrlByCode;
 
   readonly selectedIndex = signal<number | null>(null);
   answered = false;

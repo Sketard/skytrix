@@ -70,6 +70,10 @@ export class DuelWebSocketService implements OnDestroy {
     return this._activeConnection().lastSelectedCards;
   }
 
+  get lastConfirmedCards(): import('../duel-ws.types').CardInfo[] {
+    return this._activeConnection().lastConfirmedCards;
+  }
+
   clearRpsResult(): void {
     this._activeConnection().clearRpsResult();
   }

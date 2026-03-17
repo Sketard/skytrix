@@ -2,7 +2,7 @@ import { effect, Injectable, Injector, signal, untracked } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import type { LpAnimData } from './pvp-lp-badge/pvp-lp-badge.component';
 import type { GameEvent } from '../types';
-import type { CardOnField, MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg } from '../duel-ws.types';
+import type { CardOnField, MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
@@ -97,7 +97,7 @@ export class AnimationOrchestratorService {
 
   /** Board-changing events that increment the counter during chain resolution */
   private static readonly BOARD_CHANGING_EVENTS = new Set([
-    'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST', 'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS',
+    'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST', 'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
   ]);
 
   // Impact glow colors by destination
@@ -604,6 +604,8 @@ export class AnimationOrchestratorService {
         return this.processDrawEvent(event as DrawMsg);
       case 'MSG_SHUFFLE_HAND':
         return this.processShuffleEvent(event as ShuffleHandMsg);
+      case 'MSG_CONFIRM_CARDS':
+        return this.processConfirmCardsEvent(event as ConfirmCardsMsg);
       // No-op events: dequeue immediately
       case 'MSG_SWAP':
       case 'MSG_ATTACK':
@@ -1255,6 +1257,43 @@ export class AnimationOrchestratorService {
     }, duration);
     this.animationTimeouts.push(tid);
     return 250;
+  }
+
+  private processConfirmCardsEvent(msg: ConfirmCardsMsg): number | 'async' {
+    if (!this.isBoardActiveFn() || this._reducedMotion || msg.cards.length === 0) return 0;
+    const relPlayer = this.relativePlayer(msg.player);
+    const deckKey = `DECK-${relPlayer}`;
+    const flipDuration = this.scaledDuration(500, 200);
+    const holdDuration = this.scaledDuration(700, 200);
+
+    const totalMs = msg.cards.length * (flipDuration + holdDuration);
+    const guardId = setTimeout(() => {
+      console.warn('[ANIM:DEADLOCK] Confirm-cards sequence timed out — forcing queue continue');
+      this.processAnimationQueue();
+    }, totalMs + 800) as unknown as ReturnType<typeof setTimeout>;
+    this.animationTimeouts.push(guardId);
+
+    const runSequence = async (): Promise<void> => {
+      this.cardTravelService.clearLandedTravels();
+      for (const card of msg.cards) {
+        const cardImage = this.cardTravelService.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
+        // Travel from deck to deck (same position) with flip: back → face-up
+        await this.cardTravelService.travel(deckKey, deckKey, cardImage, {
+          duration: flipDuration,
+          showBack: true,
+          flipDuringTravel: true,
+        });
+        // Hold the revealed card face-up before moving to the next
+        await new Promise<void>(r => setTimeout(r, holdDuration));
+        this.cardTravelService.clearLandedTravels();
+      }
+      clearTimeout(guardId);
+      this.processAnimationQueue();
+    };
+
+    runSequence();
+    this.announceEvent('Cards revealed', msg.player);
+    return 'async';
   }
 
   private processOverlayDetachEvent(msg: MoveMsg): number | Promise<void> {

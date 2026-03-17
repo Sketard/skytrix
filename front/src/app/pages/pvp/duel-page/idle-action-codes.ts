@@ -12,8 +12,8 @@ export const IDLE_ACTION = {
 } as const;
 
 export const BATTLE_ACTION = {
-  ATTACK: 0,
-  ACTIVATE: 1,
+  ACTIVATE: 0, // SELECT_CHAIN = 0
+  ATTACK: 1,   // SELECT_BATTLE = 1
   MAIN_PHASE_2: 2,
   END_TURN: 3,
 } as const;

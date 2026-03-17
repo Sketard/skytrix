@@ -14,6 +14,7 @@ import {
   SwapMsg,
   AttackMsg,
   BattleMsg,
+  ConfirmCardsMsg,
 } from '../duel-ws.types';
 
 export type GameEvent =
@@ -31,4 +32,5 @@ export type GameEvent =
   | ChangePosMsg
   | SwapMsg
   | AttackMsg
-  | BattleMsg;
+  | BattleMsg
+  | ConfirmCardsMsg;
