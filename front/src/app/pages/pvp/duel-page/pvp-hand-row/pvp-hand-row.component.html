@@ -6,6 +6,7 @@
   @for (card of cards(); track $index) {
     @let chainNum = chainBadges().get($index);
     <div class="hand-card"
+         [attr.data-card-code]="card.cardCode"
          [class.hand-card--hovered]="hoveredIndex() === $index"
          [class.hand-card--selected]="selectedIndex() === $index"
          [class.hand-card--actionable]="activateCardIndices().has($index)"
@@ -13,7 +14,7 @@
          [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
          [style.z-index]="chainNum ? (1000 + chainNum) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index)"
          [style.transform]="fanTransform($index)"
-         [style.visibility]="$index >= cards().length - hiddenFromEnd() ? 'hidden' : null"
+         [style.visibility]="(hideAll() || hiddenIndices().has($index)) ? 'hidden' : null"
          (click)="onCardTap($index, $event)">
       @if ((isPlayerSide() || chainNum) && card.cardCode && card.cardCode !== 0) {
         <img [src]="getCardImageUrl(card)"

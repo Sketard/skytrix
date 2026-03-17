@@ -102,6 +102,8 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly maskedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly maskedPileImages = input<ReadonlyMap<string, string | null>>(new Map());
   readonly maskedSourceImages = input<ReadonlyMap<string, CardOnField>>(new Map());
+  readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
 
   readonly playerZones = computed(() => this.buildFieldZones(0));
   readonly opponentZones = computed(() => this.buildFieldZones(1));
@@ -228,8 +230,12 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   private static readonly MONSTER_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5']);
 
+  isMonsterZone(zoneId: ZoneId): boolean {
+    return PvpBoardContainerComponent.MONSTER_ZONES.has(zoneId);
+  }
+
   isMonsterDefense(zone: ZoneRenderData): boolean {
-    return PvpBoardContainerComponent.MONSTER_ZONES.has(zone.zoneId) && isDefense(zone.card!.position);
+    return this.isMonsterZone(zone.zoneId) && isDefense(zone.card!.position);
   }
 
   isHighlighted(zoneId: ZoneId): boolean {

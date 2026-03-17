@@ -13,13 +13,16 @@ export class PvpHandRowComponent {
   private readonly el = inject(ElementRef<HTMLElement>);
   readonly hoveredIndex = signal<number | null>(null);
   readonly selectedIndex = signal<number | null>(null);
+  private readonly isSmallViewport = typeof window !== 'undefined' && window.matchMedia('(max-height: 500px)').matches;
 
   readonly side = input.required<'player' | 'opponent'>();
   readonly cards = input<CardOnField[]>([]);
   readonly actionableCardIndices = input<Set<number>>(new Set());
   readonly activateCardIndices = input<Set<number>>(new Set());
-  /** Number of cards to hide from the end of the hand (draw masking). */
-  readonly hiddenFromEnd = input(0);
+  /** Specific card indices to hide (hand masking for draw/move-to-hand animations). */
+  readonly hiddenIndices = input<ReadonlySet<number>>(new Set());
+  /** Hide the entire hand (initial draw pending). */
+  readonly hideAll = input(false);
   /** Chain link badges: hand card index → chain link number. */
   readonly chainBadges = input<Map<number, number>>(new Map());
 
@@ -32,17 +35,31 @@ export class PvpHandRowComponent {
     });
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.selectedIndex() === null && this.hoveredIndex() === null) return;
+    if (!this.el.nativeElement.contains(event.target as Node)) {
+      this.selectedIndex.set(null);
+      this.hoveredIndex.set(null);
+    }
+  }
+
   readonly needsOverlap = computed(() => this.cards().length >= 2);
 
   readonly overlapMargin = computed(() => {
     const count = this.cards().length;
     if (count < 2) return null;
-    // Ratio of card height (card width ≈ height × 59/86)
-    // Overlap scales proportionally with card size across all viewports
     let ratio: number;
-    if (count <= 4) ratio = -0.33;
-    else if (count <= 7) ratio = -0.41;
-    else ratio = -0.41 - (count - 7) * 0.04;
+    if (this.isSmallViewport) {
+      // Mobile: minimal overlap for easy tap targets
+      if (count <= 6) ratio = -0.05;
+      else ratio = -0.05 - (count - 6) * 0.02;
+    } else {
+      // Desktop: tighter overlap
+      if (count <= 4) ratio = -0.33;
+      else if (count <= 7) ratio = -0.41;
+      else ratio = -0.41 - (count - 7) * 0.04;
+    }
     return `calc(var(--pvp-hand-card-height) * ${ratio})`;
   });
 
@@ -80,12 +97,6 @@ export class PvpHandRowComponent {
 
   onContainerMouseLeave(): void {
     this.hoveredIndex.set(null);
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if ((this.el.nativeElement as HTMLElement).contains(event.target as Node)) return;
-    this.selectedIndex.set(null);
   }
 
   onCardTap(index: number, event: MouseEvent): void {

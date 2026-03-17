@@ -127,6 +127,24 @@
   color: var(--pvp-accent, #c9a84c);
 }
 
+@media (max-height: 500px) {
+  .collapse-handle {
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .hint-header {
+    padding: 4px 10px 5px;
+    font-size: 0.75rem;
+  }
+
+  .portal-container {
+    padding: 4px 10px 10px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .prompt-dialog {
     transition: none;

@@ -234,6 +234,10 @@ export class DuelConnection {
     return first;
   }
 
+  removeAnimationAt(index: number): void {
+    this._animationQueue.update(q => [...q.slice(0, index), ...q.slice(index + 1)]);
+  }
+
   skipPendingAnimations(): void {
     this._animationQueue.set([]);
     this.applyPendingBoardState();
@@ -688,6 +692,7 @@ export class DuelConnection {
         break;
       case 'MSG_DRAW':
       case 'MSG_SHUFFLE_HAND':
+      case 'MSG_SHUFFLE_DECK':
       case 'MSG_DAMAGE':
       case 'MSG_RECOVER':
       case 'MSG_PAY_LPCOST':
@@ -696,6 +701,7 @@ export class DuelConnection {
       case 'MSG_SWAP':
       case 'MSG_ATTACK':
       case 'MSG_BATTLE':
+      case 'MSG_BECOME_TARGET':
         this._animationQueue.update(q => [...q, message]);
         break;
 

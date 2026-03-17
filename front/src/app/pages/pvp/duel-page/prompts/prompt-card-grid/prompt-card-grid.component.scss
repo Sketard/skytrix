@@ -186,6 +186,21 @@
   }
 }
 
+@media (max-height: 500px) {
+  .card-img {
+    height: clamp(6rem, 28dvh, 11rem);
+  }
+
+  .actions {
+    padding-top: 4px;
+    gap: 8px;
+  }
+
+  .selection-count {
+    font-size: 0.6875rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card-slot {
     transition: none;

@@ -11,6 +11,7 @@
   &--opponent {
     pointer-events: none;
   }
+
 }
 
 .hand-card {
@@ -20,6 +21,7 @@
   flex-shrink: 0;
   border-radius: 3px;
   overflow: hidden;
+  pointer-events: auto;
   transition: transform var(--pvp-transition-card-move);
 
   .hand-row--player & {

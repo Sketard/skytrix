@@ -18,6 +18,12 @@
     font-size: 0.9375rem;
   }
 
+  @media (max-height: 500px) {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 0.75rem;
+  }
+
   &:disabled {
     opacity: var(--pvp-disabled-opacity, 0.4);
     cursor: default;

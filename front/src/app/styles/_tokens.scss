@@ -91,6 +91,7 @@
   --pvp-inspector-card-width: 60px;
   --pvp-inspector-card-height: 87px;
   --pvp-hand-card-height: 18dvh;
+
   --pvp-hand-overlap: -20px;
   --pvp-card-min-tap-target: 44px;
   --pvp-min-touch-target-primary: 48px;
@@ -122,6 +123,10 @@
 
   // --- Prompt Dialog ---
   --pvp-prompt-dialog-width: 50dvw;
+
+  @media (max-height: 500px) {
+    --pvp-prompt-dialog-width: 70dvw;
+  }
   --pvp-prompt-dialog-bg: rgba(15, 23, 42, 0.92);
   --pvp-prompt-dialog-radius: 0.75rem;
 

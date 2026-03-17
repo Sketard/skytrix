@@ -10,7 +10,8 @@ export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn
   const isSilent = (req: HttpRequest<unknown>): boolean => {
     return req.url.includes('documents')
       || (req.method === 'GET' && /\/api\/rooms\/?$/.test(req.url))
-      || (req.method === 'GET' && req.url.includes('/parameters/status'));
+      || (req.method === 'GET' && req.url.includes('/parameters/status'))
+      || (req.method === 'GET' && req.url.includes('/api/cards/code/'));
   };
 
   const removeRequest = (req: HttpRequest<unknown>) => {

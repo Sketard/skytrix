@@ -24,6 +24,7 @@ import {
   PromptSubComponent,
 } from '../prompt.types';
 import { Prompt } from '../../../types';
+import { CardInfo } from '../../../duel-ws.types';
 
 export type DialogState = 'closed' | 'opening' | 'open' | 'transitioning' | 'collapsed' | 'closing';
 
@@ -44,6 +45,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   readonly prompt = input<Prompt | null>(null);
   readonly skipBeat1 = input(false);
   readonly responseOverride = input<((data: unknown) => void) | null>(null);
+  readonly ownPlayerIndex = input(0);
 
   readonly dialogState = signal<DialogState>('closed');
   readonly hintText = signal<string | null>(null);
@@ -58,11 +60,13 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
   readonly dialogExpanded = output<boolean>();
   readonly longPressInspect = output<{ cardCode: number }>();
+  readonly preTargetCards = output<CardInfo[]>();
 
   private beatTimeout: ReturnType<typeof setTimeout> | null = null;
   private closingTimeout: ReturnType<typeof setTimeout> | null = null;
   private responseSubscription: { unsubscribe(): void } | null = null;
   private longPressSubscription: { unsubscribe(): void } | null = null;
+  private preTargetSubscription: { unsubscribe(): void } | null = null;
 
   constructor() {
     effect(() => {
@@ -215,6 +219,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
     if ('revealedCards' in instance) {
       (instance as unknown as { revealedCards: unknown[] }).revealedCards = this.wsService.lastConfirmedCards;
     }
+    if ('ownPlayerIndex' in instance) {
+      (instance as unknown as { ownPlayerIndex: number }).ownPlayerIndex = this.ownPlayerIndex();
+    }
 
     this.responseSubscription = instance.response.subscribe((data: unknown) => {
       const override = this.responseOverride();
@@ -231,6 +238,10 @@ export class PvpPromptDialogComponent implements OnDestroy {
       this.longPressSubscription = (rawInstance['longPressInspect'] as { subscribe: (fn: (e: { cardCode: number }) => void) => { unsubscribe(): void } })
         .subscribe((e: { cardCode: number }) => this.longPressInspect.emit(e));
     }
+    if ('preTargetCards' in rawInstance && rawInstance['preTargetCards']) {
+      this.preTargetSubscription = (rawInstance['preTargetCards'] as { subscribe: (fn: (cards: CardInfo[]) => void) => { unsubscribe(): void } })
+        .subscribe((cards: CardInfo[]) => this.preTargetCards.emit(cards));
+    }
   }
 
   private detachComponent(): void {
@@ -238,6 +249,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
     this.responseSubscription = null;
     this.longPressSubscription?.unsubscribe();
     this.longPressSubscription = null;
+    this.preTargetSubscription?.unsubscribe();
+    this.preTargetSubscription = null;
+    this.preTargetCards.emit([]);
     if (this.portalOutlet?.hasAttached()) {
       this.portalOutlet.detach();
     }

@@ -32,6 +32,9 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
       }
       return message;
 
+    case 'MSG_SHUFFLE_DECK':
+      return message;
+
     case 'MSG_MOVE': {
       const isFromPrivate = PRIVATE_LOCATIONS.has(message.fromLocation);
       const isToPrivate = PRIVATE_LOCATIONS.has(message.toLocation);
@@ -115,6 +118,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'MSG_FLIP_SUMMONING':
     case 'MSG_CHANGE_POS':
     case 'MSG_SWAP':
+    case 'MSG_BECOME_TARGET':
     case 'MSG_ATTACK':
     case 'MSG_BATTLE':
     case 'MSG_WIN':
