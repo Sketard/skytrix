@@ -1,34 +1,72 @@
-<div class="numeric-container">
-  @if (isDeclareMode && declareOptions.length > 0) {
-    <div class="input-group">
-      @for (opt of declareOptions; track opt) {
-        <button class="option-btn"
-                [class.option-btn--selected]="value() === opt"
-                (click)="selectAndConfirm(opt)"
-                [disabled]="answered"
-                type="button">{{ opt }}</button>
+@if (isMultiCounterMode) {
+  <div class="multi-counter">
+    <div class="multi-counter__status" aria-live="polite">{{ countsSum }} / {{ counterMax }}</div>
+    <div class="multi-counter__strip">
+      @for (card of counterCards; track $index) {
+        <div class="multi-counter__card">
+          <img class="multi-counter__img"
+               [src]="getCardImageUrl(card.cardCode)"
+               [attr.aria-label]="card.name"
+               alt=""
+               loading="lazy" />
+          <div class="mini-stepper">
+            <button class="mini-stepper__btn"
+                    (click)="decrementCard($index)"
+                    [disabled]="cardCounts()[$index] <= 0 || answered"
+                    aria-label="Decrease"
+                    type="button">&#x2212;</button>
+            <span class="mini-stepper__value">{{ cardCounts()[$index] }}</span>
+            <button class="mini-stepper__btn"
+                    (click)="incrementCard($index)"
+                    [disabled]="countsSum >= counterMax || answered"
+                    aria-label="Increase"
+                    type="button">+</button>
+          </div>
+        </div>
       }
     </div>
-  } @else if (isCounterMode) {
-    <label class="label" id="numeric-label">Select counters</label>
-    <div class="input-group">
-      <button class="stepper-btn"
-              (click)="decrement()"
-              [disabled]="value() <= 0 || answered"
-              aria-label="Decrease"
-              type="button">&#x2212;</button>
-      <span class="stepper-value" aria-live="polite" aria-labelledby="numeric-label">{{ value() }}</span>
-      <button class="stepper-btn"
-              (click)="increment()"
-              [disabled]="value() >= counterMax || answered"
-              aria-label="Increase"
-              type="button">+</button>
-    </div>
+  </div>
+  <div class="actions">
     <button class="btn btn--primary prompt-confirm-btn"
             (click)="confirm()"
             [disabled]="!isCounterValid || answered"
             type="button">
       Confirm
     </button>
-  }
-</div>
+  </div>
+} @else {
+  <div class="numeric-container">
+    @if (isDeclareMode && declareOptions.length > 0) {
+      <div class="input-group">
+        @for (opt of declareOptions; track opt) {
+          <button class="option-btn"
+                  [class.option-btn--selected]="value() === opt"
+                  (click)="selectAndConfirm(opt)"
+                  [disabled]="answered"
+                  type="button">{{ opt }}</button>
+        }
+      </div>
+    } @else if (isCounterMode) {
+      <label class="label" id="numeric-label">Select counters</label>
+      <div class="input-group">
+        <button class="stepper-btn"
+                (click)="decrement()"
+                [disabled]="value() <= 0 || answered"
+                aria-label="Decrease"
+                type="button">&#x2212;</button>
+        <span class="stepper-value" aria-live="polite" aria-labelledby="numeric-label">{{ value() }}</span>
+        <button class="stepper-btn"
+                (click)="increment()"
+                [disabled]="value() >= counterMax || answered"
+                aria-label="Increase"
+                type="button">+</button>
+      </div>
+      <button class="btn btn--primary prompt-confirm-btn"
+              (click)="confirm()"
+              [disabled]="!isCounterValid || answered"
+              type="button">
+        Confirm
+      </button>
+    }
+  </div>
+}

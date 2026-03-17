@@ -1,0 +1,44 @@
+<div class="search-box">
+  <input #searchInput
+         class="search-input"
+         type="text"
+         placeholder="Search card name..."
+         (input)="onSearchInput($event)"
+         [disabled]="answered"
+         autocomplete="off" />
+</div>
+
+<div class="card-strip__inner" role="listbox">
+  @if (isSearching()) {
+    <div class="empty-state">Searching...</div>
+  } @else if (results().length === 0) {
+    <div class="empty-state">Type at least 2 characters</div>
+  } @else {
+    <div class="card-strip">
+      @for (entry of results(); track entry.code) {
+        <button class="card-slot"
+                [class.card-slot--selected]="selectedEntry()?.code === entry.code"
+                (click)="selectEntry(entry)"
+                [disabled]="answered"
+                role="option"
+                [attr.aria-selected]="selectedEntry()?.code === entry.code"
+                [attr.aria-label]="entry.name"
+                type="button">
+          <img class="card-img"
+               [src]="getCardImageUrl(entry.code)"
+               alt=""
+               loading="lazy" />
+        </button>
+      }
+    </div>
+  }
+</div>
+
+<div class="actions">
+  <button class="btn btn--primary prompt-confirm-btn"
+          (click)="confirm()"
+          [disabled]="!selectedEntry() || answered"
+          type="button">
+    Confirm
+  </button>
+</div>

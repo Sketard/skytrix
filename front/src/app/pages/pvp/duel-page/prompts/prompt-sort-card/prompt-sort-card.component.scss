@@ -1,0 +1,78 @@
+@use '../prompt-btn' as btn;
+@use '../prompt-card' as card;
+
+.card-strip {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.card-slot {
+  @include card.card-slot;
+
+  &--assigned {
+    border-color: var(--pvp-accent, #c9a84c);
+    box-shadow: var(--pvp-selection-glow);
+  }
+
+  &--last:hover:not(:disabled) {
+    border-color: rgba(255, 80, 80, 0.6);
+  }
+}
+
+.card-slot__rank {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--pvp-accent, #c9a84c);
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.card-img {
+  @include card.card-img;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.btn {
+  &--primary {
+    @include btn.prompt-btn-primary;
+  }
+
+  &--secondary {
+    @include btn.prompt-btn-secondary;
+  }
+}
+
+@media (max-height: 500px) {
+  .card-img {
+    @include card.card-img-short;
+  }
+
+  .actions {
+    padding-top: 4px;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @include card.card-slot-reduced-motion;
+}

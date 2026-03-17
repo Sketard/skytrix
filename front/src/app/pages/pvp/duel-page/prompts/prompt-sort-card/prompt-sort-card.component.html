@@ -1,0 +1,36 @@
+<div class="card-strip">
+  @for (card of cards; track $index) {
+    <button class="card-slot"
+            [class.card-slot--assigned]="getRank($index) !== null"
+            [class.card-slot--last]="isLastAssigned($index)"
+            (click)="toggleCard($index)"
+            [disabled]="answered"
+            type="button"
+            [attr.aria-label]="card.name">
+      <img class="card-img"
+           [src]="getCardImageUrl(card)"
+           alt=""
+           loading="lazy" />
+      @if (getRank($index); as rank) {
+        <span class="card-slot__rank">{{ rank }}</span>
+      }
+    </button>
+  }
+</div>
+
+<div class="actions">
+  @if (orderedIndices().length > 0) {
+    <button class="btn btn--secondary"
+            (click)="reset()"
+            [disabled]="answered"
+            type="button">
+      Reset
+    </button>
+  }
+  <button class="btn btn--primary prompt-confirm-btn"
+          (click)="confirm()"
+          [disabled]="!isComplete || answered"
+          type="button">
+    Confirm
+  </button>
+</div>

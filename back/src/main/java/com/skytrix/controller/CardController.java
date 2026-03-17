@@ -56,6 +56,12 @@ public class CardController {
         return cardService.removeFavorite(cardId);
     }
 
+    @GetMapping("/names")
+    @ResponseStatus(code = HttpStatus.OK)
+    public List<Map<String, Object>> searchNames(@RequestParam("q") String q) {
+        return cardService.searchNames(q);
+    }
+
     @GetMapping("/possessed")
     @ResponseStatus(code = HttpStatus.OK)
     public Map<Long, Integer> getPossessedCards() {

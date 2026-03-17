@@ -1,4 +1,5 @@
 @use '../prompt-btn' as btn;
+@use '../prompt-card' as card;
 
 .numeric-container {
   display: flex;
@@ -57,7 +58,6 @@
   color: var(--pvp-accent, #c9a84c);
 }
 
-
 .option-btn {
   display: flex;
   justify-content: center;
@@ -97,8 +97,98 @@
   }
 }
 
+// --- Multi-card counter distribution ---
+
+.multi-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.multi-counter__status {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #9e9e9e);
+}
+
+.multi-counter__strip {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 4px;
+}
+
+.multi-counter__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.multi-counter__img {
+  @include card.card-img;
+}
+
+.mini-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  &__btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary, #eaeaea);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background var(--pvp-animation-duration) ease-out;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    &:disabled {
+      opacity: var(--pvp-disabled-opacity, 0.4);
+      cursor: default;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--pvp-accent, #c9a84c);
+      outline-offset: 2px;
+    }
+  }
+
+  &__value {
+    font-size: 1rem;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    color: var(--pvp-accent, #c9a84c);
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
 .btn {
   &--primary {
     @include btn.prompt-btn-primary;
+  }
+}
+
+@media (max-height: 500px) {
+  .multi-counter__img {
+    @include card.card-img-short;
   }
 }

@@ -99,6 +99,13 @@ public class CardService {
         }
     }
 
+    public List<Map<String, Object>> searchNames(String query) {
+        var results = cardRepository.searchNamesByQuery(query, 30);
+        return results.stream()
+            .map(row -> Map.<String, Object>of("code", row[0], "name", row[1]))
+            .toList();
+    }
+
     public Map<Long, Integer> getPossessedMap(Long userId) {
         return cardUserPossessedRepository.findAllByUserId(userId)
             .stream()

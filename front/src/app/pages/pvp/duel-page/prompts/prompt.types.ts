@@ -20,7 +20,7 @@ export interface PromptSubComponent<T extends Prompt = Prompt> {
 export const IGNORED_PROMPT_TYPES = new Set(['SELECT_IDLECMD', 'SELECT_BATTLECMD']);
 
 // Auto-select fallback types (PvP-A0: respond automatically with first valid option)
-export const AUTO_SELECT_PROMPT_TYPES = new Set(['SORT_CARD', 'SORT_CHAIN', 'ANNOUNCE_CARD']);
+export const AUTO_SELECT_PROMPT_TYPES = new Set<string>([]);
 
 // Populated as each sub-component is created (Tasks 4-9).
 // Keyed by ServerMessage 'type' discriminant.

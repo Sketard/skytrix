@@ -6,6 +6,8 @@ import { PromptOptionListComponent } from './prompt-option-list/prompt-option-li
 import { PromptPositionSelectComponent } from './prompt-position-select/prompt-position-select.component';
 import { PromptNumericInputComponent } from './prompt-numeric-input/prompt-numeric-input.component';
 import { PromptRpsComponent } from './prompt-rps/prompt-rps.component';
+import { PromptSortCardComponent } from './prompt-sort-card/prompt-sort-card.component';
+import { PromptAnnounceCardComponent } from './prompt-announce-card/prompt-announce-card.component';
 // PromptZoneHighlightComponent uses Pattern A (no sheet) — not registered in map
 
 const REGISTRY: [string, Type<PromptSubComponent>][] = [
@@ -23,6 +25,9 @@ const REGISTRY: [string, Type<PromptSubComponent>][] = [
   ['ANNOUNCE_NUMBER', PromptNumericInputComponent],
   ['SELECT_COUNTER', PromptNumericInputComponent],
   ['RPS_CHOICE', PromptRpsComponent],
+  ['SORT_CARD', PromptSortCardComponent],
+  ['SORT_CHAIN', PromptSortCardComponent],
+  ['ANNOUNCE_CARD', PromptAnnounceCardComponent],
 ];
 
 for (const [type, component] of REGISTRY) {

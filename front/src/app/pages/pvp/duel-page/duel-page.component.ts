@@ -1417,4 +1417,5 @@ export class DuelPageComponent implements OnInit {
       default: return reason;
     }
   }
+
 }

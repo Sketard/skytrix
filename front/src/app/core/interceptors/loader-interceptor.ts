@@ -11,7 +11,8 @@ export function loaderInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn
     return req.url.includes('documents')
       || (req.method === 'GET' && /\/api\/rooms\/?$/.test(req.url))
       || (req.method === 'GET' && req.url.includes('/parameters/status'))
-      || (req.method === 'GET' && req.url.includes('/api/cards/code/'));
+      || (req.method === 'GET' && req.url.includes('/api/cards/code/'))
+      || (req.method === 'GET' && req.url.includes('/api/cards/names'));
   };
 
   const removeRequest = (req: HttpRequest<unknown>) => {

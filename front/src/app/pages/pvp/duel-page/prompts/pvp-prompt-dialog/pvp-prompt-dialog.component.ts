@@ -338,6 +338,8 @@ export class PvpPromptDialogComponent implements OnDestroy {
         return `${a('Distribute')} counters`;
       case 'ANNOUNCE_NUMBER':
         return q ? `${a('Declare')} a number for ${q}` : `${a('Declare')} a number`;
+      case 'ANNOUNCE_CARD':
+        return q ? `${a('Declare')} a card name for ${q}` : `${a('Declare')} a card name`;
       case 'SORT_CARD':
       case 'SORT_CHAIN':
         return `${a('Set')} card order`;

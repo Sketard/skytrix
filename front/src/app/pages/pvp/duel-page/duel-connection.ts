@@ -85,11 +85,6 @@ export class DuelConnection {
   readonly inactivityWarning = this._inactivityWarning.asReadonly();
   readonly waitingForOpponent = this._waitingForOpponent.asReadonly();
 
-  /** Dev-only: inject a fake prompt to test prompt UI without a real duel. */
-  debugInjectPrompt(prompt: ServerMessage): void {
-    this._pendingPrompt.set(prompt as any);
-  }
-
   // --- Reconnect state ---
   private _retryCount = signal(0);
   private readonly _maxRetries = 6;

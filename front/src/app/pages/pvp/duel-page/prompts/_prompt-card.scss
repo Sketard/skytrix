@@ -1,0 +1,64 @@
+// Shared card slot & image styles for prompt sub-components.
+// Same pattern as _prompt-btn.scss — Angular ViewEncapsulation requires
+// each component to emit its own styles; the mixin keeps the source-of-truth here.
+
+@mixin card-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--pvp-radius-md);
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform var(--pvp-animation-duration) ease-out,
+    box-shadow var(--pvp-animation-duration) ease-out,
+    border-color var(--pvp-animation-duration) ease-out;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+  }
+
+  &--selected {
+    border-color: var(--pvp-accent, #c9a84c);
+    box-shadow: var(--pvp-selection-glow);
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    opacity: var(--pvp-disabled-opacity, 0.4);
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--pvp-accent, #c9a84c);
+    outline-offset: 2px;
+  }
+}
+
+@mixin card-img {
+  display: block;
+  width: 100%;
+  height: clamp(5rem, 20dvh, 9rem);
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: var(--pvp-radius-sm);
+}
+
+@mixin card-img-short {
+  height: clamp(6rem, 28dvh, 11rem);
+}
+
+@mixin card-slot-reduced-motion {
+  .card-slot {
+    transition: none;
+
+    &:hover:not(:disabled),
+    &--selected {
+      transform: none;
+    }
+  }
+}
