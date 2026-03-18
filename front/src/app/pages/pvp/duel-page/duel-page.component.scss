@@ -1,4 +1,5 @@
 @use 'z-layers' as z;
+@use '../../../styles/responsive' as r;
 
 :host {
   position: fixed;
@@ -200,6 +201,24 @@ app-pvp-board-container {
     align-self: flex-end;
     padding-right: 0;
     margin-right: 4px;
+  }
+}
+
+@include r.respond-below(r.$bp-pvp-tiny) {
+  .mini-toolbar {
+    &__item,
+    app-pvp-activation-toggle {
+      width: clamp(36px, 9vw, 44px);
+      height: clamp(36px, 9vw, 44px);
+    }
+
+    &__icon {
+      font-size: 0.95rem;
+    }
+
+    &__label {
+      font-size: 0.5rem;
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 @use '../prompt-btn' as btn;
 @use '../prompt-card' as card;
+@use '../../../../../styles/responsive' as r;
 
 .revealed-cards {
   display: flex;
@@ -161,6 +162,16 @@
 
   .selection-count {
     font-size: 0.6875rem;
+  }
+}
+
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .card-strip {
+    gap: 4px;
+  }
+
+  .zone-group {
+    padding: 4px;
   }
 }
 

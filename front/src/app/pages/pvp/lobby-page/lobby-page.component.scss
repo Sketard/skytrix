@@ -172,3 +172,20 @@
   font-weight: 600;
   border-radius: var(--pvp-radius-lg);
 }
+
+@media (orientation: landscape) and (max-height: 500px) {
+  :host {
+    padding: 12px;
+    max-width: 100%;
+  }
+
+  .lobby-empty {
+    padding: 24px 16px;
+  }
+
+  .lobby-empty-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+  }
+}

@@ -1,4 +1,5 @@
 @use 'z-layers' as z;
+@use '../../../../styles/responsive' as r;
 
 :host {
   display: flex;
@@ -161,6 +162,12 @@
   color: rgba(255, 255, 255, 0.4);
   font-size: 0.75rem;
   grid-column: 1 / -1;
+}
+
+@include r.respond-below(r.$bp-pvp-tiny) {
+  .zone-browser {
+    width: min(calc(var(--pvp-hand-card-height) * 59 / 86 + 13px), 80vw);
+  }
 }
 
 // Mobile landscape (small viewport height): fixed width, full height (parent is row-reverse)

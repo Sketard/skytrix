@@ -76,7 +76,7 @@ public class AuthService {
     public void createAccount(CreateUserDTO userDTO) {
         var user = userMapper.toUser(userDTO);
         userRepository.save(user);
-        log.info("Account created userId={} username={}", user.getId(), user.getUsername());
+        log.info("Account created userId={} username={}", user.getId(), user.getPseudo());
     }
 
     @Transactional

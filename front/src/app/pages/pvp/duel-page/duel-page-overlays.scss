@@ -1,4 +1,5 @@
 @use 'z-layers' as z;
+@use '../../../styles/responsive' as r;
 
 // === Connection Overlays ===
 .connection-overlay {
@@ -19,6 +20,7 @@
   padding: 32px;
   border-radius: 8px;
   background: #16213e;
+  max-width: 90vw;
 
   p {
     font-size: 1.2rem;
@@ -547,6 +549,59 @@
 .phase-announcement--chain .phase-announcement__label {
   color: rgb(255, 220, 100);
   text-shadow: 0 0 16px rgba(255, 200, 60, 0.5);
+}
+
+// === Narrow viewport adjustments ===
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .overlay-content {
+    padding: 20px;
+  }
+
+  .orientation-content {
+    padding: 20px;
+  }
+
+  .rps-overlay__choices {
+    gap: 16px;
+  }
+
+  .rps-overlay__emoji {
+    font-size: 3rem;
+  }
+
+  .disconnect-grace-overlay__content {
+    padding: 20px 24px;
+  }
+
+  .result-overlay__title {
+    font-size: clamp(1.8rem, 8vw, 3rem);
+  }
+
+  .result-overlay__rematch,
+  .result-overlay__leave {
+    min-width: clamp(140px, 50vw, 180px);
+  }
+
+  .blocked-tab-overlay__text {
+    font-size: 1.1rem;
+  }
+
+  .blocked-tab-overlay__btn {
+    min-width: clamp(140px, 50vw, 180px);
+  }
+
+  .phase-announcement__band {
+    padding: 10px 20px;
+  }
+
+  .phase-announcement__prefix,
+  .phase-announcement__separator {
+    font-size: 1rem;
+  }
+
+  .phase-announcement__label {
+    font-size: 1.4rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

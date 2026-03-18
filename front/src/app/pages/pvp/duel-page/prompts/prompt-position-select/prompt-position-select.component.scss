@@ -1,4 +1,5 @@
 @use '../prompt-btn' as btn;
+@use '../../../../../styles/responsive' as r;
 
 .position-grid {
   display: flex;
@@ -99,5 +100,39 @@
 .btn {
   &--primary {
     @include btn.prompt-btn-primary;
+  }
+}
+
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .position-grid {
+    gap: 8px;
+  }
+
+  .position-card {
+    padding: 4px;
+
+    &__slot {
+      width: clamp(60px, 22vw, 105px);
+      height: clamp(60px, 22vw, 105px);
+    }
+
+    &__frame {
+      width: clamp(40px, 15vw, 72px);
+      height: clamp(60px, 22vw, 105px);
+    }
+
+    &--rotated &__frame {
+      width: clamp(60px, 22vw, 105px);
+      height: clamp(40px, 15vw, 72px);
+    }
+
+    &--rotated &__img {
+      width: clamp(40px, 15vw, 72px);
+      height: clamp(60px, 22vw, 105px);
+    }
+
+    &__label {
+      font-size: 0.6rem;
+    }
   }
 }

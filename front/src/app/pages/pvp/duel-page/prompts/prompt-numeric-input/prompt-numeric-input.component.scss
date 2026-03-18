@@ -1,5 +1,6 @@
 @use '../prompt-btn' as btn;
 @use '../prompt-card' as card;
+@use '../../../../../styles/responsive' as r;
 
 .numeric-container {
   display: flex;
@@ -184,6 +185,26 @@
 .btn {
   &--primary {
     @include btn.prompt-btn-primary;
+  }
+}
+
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .stepper-btn {
+    width: clamp(36px, 10vw, 48px);
+    height: clamp(36px, 10vw, 48px);
+    font-size: 1.125rem;
+  }
+
+  .stepper-value {
+    font-size: 1.125rem;
+    min-width: 32px;
+  }
+
+  .option-btn {
+    min-width: clamp(36px, 10vw, 48px);
+    height: clamp(36px, 10vw, 48px);
+    padding: 0 12px;
+    font-size: 1rem;
   }
 }
 

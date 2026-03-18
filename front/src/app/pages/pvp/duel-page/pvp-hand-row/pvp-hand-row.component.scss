@@ -30,7 +30,7 @@
 
     &.hand-card--hovered,
     &.hand-card--selected {
-      transform: translateY(-12px) !important;
+      transform: translateY(clamp(-12px, -2dvh, -6px)) !important;
       transition: transform 0.15s ease-out;
     }
   }

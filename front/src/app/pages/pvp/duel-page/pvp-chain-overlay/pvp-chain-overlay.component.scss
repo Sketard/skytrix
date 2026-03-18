@@ -1,4 +1,5 @@
 @use 'z-layers' as z;
+@use '../../../../styles/responsive' as r;
 
 :host {
   position: fixed;
@@ -318,6 +319,24 @@
 .chain-card--front .chain-badge,
 .chain-card--resolve-exiting .chain-badge {
   font-size: calc(45dvh * 0.20);
+}
+
+// --- Narrow viewport (portrait phones) ---
+// Shift cards inward so they stay visible on narrow screens:
+// back → 70% (from 80%), mid → 15% (from 30%), front → centered horizontally
+
+@include r.respond-below(r.$bp-mobile) {
+  .chain-card--back {
+    left: calc(70% - 20dvh * 59 / 86);
+  }
+
+  .chain-card--mid {
+    left: 15%;
+  }
+
+  .chain-card--front {
+    left: calc(50% - 45dvh * 59 / 86 / 2);
+  }
 }
 
 // --- Reduced motion ---

@@ -14,6 +14,8 @@ $navbar-breakpoint: 768px; // Matched in TS via CDK BreakpointObserver
 $bp-mobile: 576px;
 $bp-tablet: 768px;
 $bp-desktop-sm: 1024px;
+$bp-pvp-narrow: 480px;  // PvP duel page — portrait phones
+$bp-pvp-tiny: 400px;    // PvP duel page — very small phones (≤400px)
 
 // Mobile-first responsive mixins
 @mixin respond-above($bp) {

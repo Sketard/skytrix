@@ -1,3 +1,5 @@
+@use '../../../../../styles/responsive' as r;
+
 .rps-container {
   display: flex;
   flex-direction: column;
@@ -76,6 +78,31 @@
   font-size: 0.75rem;
   color: var(--text-secondary, #9e9e9e);
   opacity: 0.6;
+}
+
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .choices {
+    gap: 8px;
+  }
+
+  .choice-btn {
+    max-width: clamp(60px, 22vw, 120px);
+    min-height: clamp(70px, 22vw, 100px);
+    padding: 10px 8px;
+    gap: 4px;
+  }
+
+  .choice-icon {
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
+  }
+
+  .choice-label {
+    font-size: clamp(0.625rem, 2.5vw, 0.875rem);
+  }
+
+  .choice-key {
+    font-size: 0.625rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

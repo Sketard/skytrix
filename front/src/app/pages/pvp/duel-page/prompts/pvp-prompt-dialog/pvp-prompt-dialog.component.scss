@@ -1,4 +1,5 @@
 @use 'z-layers' as z;
+@use '../../../../../styles/responsive' as r;
 
 :host {
   display: contents;
@@ -142,6 +143,21 @@
 
   .portal-container {
     padding: 4px 10px 10px;
+  }
+}
+
+@include r.respond-below(r.$bp-pvp-narrow) {
+  .prompt-dialog {
+    width: 92vw;
+  }
+
+  .hint-header {
+    padding: 4px 10px 5px;
+    font-size: 0.8rem;
+  }
+
+  .portal-container {
+    padding: 6px 10px 10px;
   }
 }
 
