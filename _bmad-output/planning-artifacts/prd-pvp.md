@@ -1,8 +1,9 @@
 ---
-status: complete
+status: updated-post-implementation
 inputDocuments: ['prd.md', 'research-ygo-duel-engine.md']
 workflowType: 'prd'
 createdDate: '2026-02-24'
+lastUpdated: '2026-03-18'
 classification:
   projectType: web_app
   domain: general
@@ -93,7 +94,7 @@ Turn the raw duel into a complete matchmaking and session management experience.
 13. Surrender at any point during a duel
 14. Disconnection handling with 60-second reconnection grace period
 15. Turn timer: 300-second cumulative pool, +40 seconds per subsequent turn, counts down during active player's decision windows only
-16. Inactivity timeout: 100 seconds without action forfeits the match
+16. Inactivity timeout: 120 seconds without action forfeits the match (with 20-second warning before timeout)
 17. Duel result screen: outcome (victory/defeat/draw), reason (LP 0, surrender, timeout, disconnect, draw condition)
 
 ### PvP-C: Visual Polish (Master Duel Quality)
@@ -110,7 +111,8 @@ Visual feedback and information display to match Yu-Gi-Oh! Master Duel's quality
 
 Enhancements for a more complete PvP experience.
 
-- **AI opponent:** heuristic-based auto-player for solo practice via the PvP engine pipeline
+- **Solo duel via PvP engine:** *(implemented in v1)* — `SoloDuelOrchestratorService` enables single-player testing against oneself using dual WebSocket connections through the PvP duel pipeline. Dev-only `QuickDuel` endpoint bypasses lobby for rapid testing
+- **AI opponent:** heuristic-based auto-player for true solo practice (not yet implemented — currently the player controls both sides)
 - **Spectator mode:** watch ongoing duels
 - **Ranked mode:** Elo-based rating system
 - **Replay system:** record and replay completed duels
@@ -169,17 +171,17 @@ Satisfait de sa nouvelle ligne de jeu, il relance un duel PvP. Cette fois, quand
 ## Web App Technical Context
 
 - **Architecture:** Tri-service — Angular 19 SPA (frontend) + Spring Boot API (backend, existing) + Node.js Duel Server (new, `@n1xx1/ocgcore-wasm`)
-- **Routes:** `/lobby` (PvP room browser, new), `/duel/:roomId` (PvP duel, new)
+- **Routes:** `/pvp` (PvP lobby, lazy-loaded), `/pvp/duel/:roomCode` (PvP duel, lazy-loaded with canDeactivate guard)
 - **Communication:**
   - Frontend <> Duel Server: WebSocket (bidirectional duel messages during active duel)
   - Frontend <> Spring Boot: REST API (auth, matchmaking, deck management)
-  - Spring Boot -> Duel Server: HTTP internal (create duel + relay decklists, anti-cheat)
+  - Spring Boot -> Duel Server: HTTP internal (create duel + relay decklists, anti-cheat; data update: PUT /api/update-data triggers cards.cdb + scripts refresh from ProjectIgnis; POST /api/validate-passcodes for deck passcode double-validation)
 - **Anti-Cheat Principle:** The frontend never sends decklists directly to the Duel Server. Spring Boot validates the deck and relays it server-to-server. The Duel Server is the sole authority for game state — the client receives only information the active player is authorized to see.
 - **Browser Support:** Modern browsers — desktop (Chrome, Firefox, Edge, Safari latest two versions) and mobile (Chrome Android, Safari iOS latest two versions)
-- **Board Layout:** Reuses the solo simulator's board zone components and fixed aspect ratio (1060x772) with proportional scaling. PvP adds both player sides visible. Mobile: landscape-locked display.
+- **Board Layout:** PvP uses a dedicated `PvpBoardContainerComponent` with responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`). Both player sides visible with CSS 3D perspective (`--pvp-perspective-depth: 800px`). Mobile: landscape-locked display.
 - **Performance Targets:** Action-to-update round-trip < 500ms (network included). OCGCore processes actions in <10ms.
 - **Reuses from solo:** Board zone components (adapted for PvP read-only display), card-tooltip/inspector component, card data services, card images (lazy loading for opponent's cards), authentication (JWT), deck management APIs
-- **Dependencies (Duel Server):** `@n1xx1/ocgcore-wasm` (OCGCore WASM, 885KB), `better-sqlite3` (cards.cdb reader), `ws` or `socket.io` (WebSocket server), ProjectIgnis/CardScripts (13,000+ Lua files), ProjectIgnis/BabelCDB (cards.cdb SQLite)
+- **Dependencies (Duel Server):** `@n1xx1/ocgcore-wasm` (OCGCore WASM), `better-sqlite3` (cards.cdb reader), `ws` (WebSocket server), ProjectIgnis/CardScripts (13,000+ Lua files), ProjectIgnis/BabelCDB (cards.cdb SQLite)
 - **Banlist Management:** TCG banlist data stored in the database, updated manually via existing settings page. Banlist updates published ~4 times/year by Konami.
 - **Visual Reference:** Yu-Gi-Oh! Master Duel — board layout, aesthetics, PvP interaction model (click-based prompts, turn timer, animations, chain visualization)
 
@@ -216,7 +218,7 @@ Satisfait de sa nouvelle ligne de jeu, il relance un duel PvP. Cette fois, quand
 - FR18: The player can view card details for any face-up card on the field or in any public zone (graveyard, banished)
 - FR19: The system provides a visual indicator when it is the player's turn to act and what type of response is expected
 - FR20: The system enforces a turn timer with a cumulative time pool: 300 seconds initially, +40 seconds added to the remaining pool at the start of each subsequent turn. The timer counts down only during the active player's decision windows and pauses during chain resolution and opponent's actions
-- FR21: The system enforces an inactivity timeout: if a player performs no action for 100 seconds when a response is required, the system automatically forfeits the match
+- FR21: The system enforces an inactivity timeout: if a player performs no action for 120 seconds when a response is required, the system automatically forfeits the match. A warning is displayed to the player 20 seconds before the timeout expires
 - FR22: The system provides at least one visual feedback per game event in PvP (summon, destroy, activate, flip, LP change, chain link addition/resolution). Minimum: card movement animation + brief highlight. Visual style inspired by Yu-Gi-Oh! Master Duel
 - FR23: PvP interaction is click-based (respond to engine prompts by selecting from presented options) — not drag & drop. This is a distinct interaction paradigm from solo mode
 - FR24: The system displays a duel result screen at the end of a PvP duel showing: outcome (victory, defeat, or draw) and reason (opponent LP reduced to 0, opponent surrendered, opponent timed out, opponent disconnected, draw by simultaneous LP depletion)
@@ -242,7 +244,7 @@ Satisfait de sa nouvelle ligne de jeu, il relance un duel PvP. Cette fois, quand
 ### Security
 
 - NFR6: The duel server is the sole authority for game state — the client receives only information the active player is authorized to see (no opponent hand contents, no face-down card identities, no deck order). Verified by: WebSocket message inspection confirms no private opponent data in payloads
-- NFR7: All player responses are validated by the duel engine — invalid responses (illegal card selections, out-of-turn actions) are rejected without corrupting game state
+- NFR7: All player responses are validated by the duel engine — invalid responses (illegal card selections, out-of-turn actions) are rejected without corrupting game state. The duel server enforces WebSocket rate limiting (30 failed messages per 60 seconds per IP), state sync rate limiting (1 request per 5 seconds per player), a maximum of 5 invalid responses before connection termination, and an anti-bluff delay (200-1500ms random) on instant responses to prevent timing side-channel analysis
 - NFR8: PvP routes and WebSocket connections are protected by existing JWT authentication — unauthenticated users cannot access matchmaking or duels
 
 ### Compatibility

@@ -33,7 +33,7 @@ FR17: The system displays the current chain of effects being resolved, showing e
 FR18: The player can view card details for any face-up card on the field or in any public zone (graveyard, banished)
 FR19: The system provides a visual indicator when it is the player's turn to act and what type of response is expected
 FR20: The system enforces a turn timer with a cumulative time pool: 300 seconds initially, +40 seconds added to the remaining pool at the start of each subsequent turn. The timer counts down only during the active player's decision windows and pauses during chain resolution and opponent's actions
-FR21: The system enforces an inactivity timeout: if a player performs no action for 100 seconds when a response is required, the system automatically forfeits the match
+FR21: The system enforces an inactivity timeout: if a player performs no action for 120 seconds when a response is required, the system automatically forfeits the match
 FR22: The system provides at least one visual feedback per game event in PvP (summon, destroy, activate, flip, LP change, chain link addition/resolution). Minimum: card movement animation + brief highlight. Visual style inspired by Yu-Gi-Oh! Master Duel
 FR23: PvP interaction is click-based (respond to engine prompts by selecting from presented options) — not drag & drop. This is a distinct interaction paradigm from solo mode
 FR24: The system displays a duel result screen at the end of a PvP duel showing: outcome (victory, defeat, or draw) and reason (opponent LP reduced to 0, opponent surrendered, opponent timed out, opponent disconnected, draw by simultaneous LP depletion)
@@ -62,9 +62,9 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - PlayerFieldComponent extraction from solo board.component.ts as Story 0 prerequisite (solo must function identically after)
 - Independent WebSocket DTOs (no shared package between server and client)
 - Docker-based deployment: duel-server container + docker-compose orchestration with Spring Boot + PostgreSQL
-- Room state machine: WAITING → CREATING_DUEL → ACTIVE → ENDED in Spring Boot (5s timeout on CREATING_DUEL → revert to WAITING)
-- Internal HTTP API: Spring Boot → Duel Server (POST /api/duels, POST /api/duels/:id/join, GET /health, GET /status) — Docker network auth
-- Duel server: 7 production source files (server.ts, duel-worker.ts, message-filter.ts, ws-protocol.ts, types.ts, ocg-callbacks.ts, ocg-scripts.ts)
+- Room state machine: WAITING → CREATING_DUEL → ACTIVE → ENDED | CLOSED in Spring Boot (2min timeout on CREATING_DUEL → CLOSED via RoomCleanupScheduler; 3 scheduled tasks: orphaned WAITING >30min, orphaned ACTIVE not on duel server, stuck CREATING_DUEL >2min)
+- Internal HTTP API: Spring Boot → Duel Server (POST /api/duels, GET /api/duels/active, DELETE /api/duels/:duelId, GET /health, GET /status, PUT /api/update-data, POST /api/validate-passcodes) — Docker network auth
+- Duel server: 8 production source files + 2 PoC references (server.ts, duel-worker.ts, message-filter.ts, ws-protocol.ts, types.ts, ocg-callbacks.ts, ocg-scripts.ts, data-updater.ts; PoC: poc-duel.ts, test-core.ts)
 - OCGCore error resilience: try/catch around duelProcess() + 30s watchdog timer. On error → declare draw, notify both players, cleanup
 - Startup health check validates cards.cdb readable + scripts directory non-empty before accepting connections
 - WebSocket payload limit: maxPayload 4096 bytes (prevents JSON payload DoS)
@@ -72,9 +72,9 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - Long-lived JWT (≥ 2h) to cover full duel duration + reconnection window
 - Reconnection via snapshot: duelQueryField() + duelQuery() per card (not message log replay)
 - Implementation dependency graph: Phase 0 (ws-protocol.ts gate) → Phase 1A/1B (parallel server/client) → Phase 2A/2B → Phase 3 (end-to-end)
-- PvP-A0 scope staging: implement only frequent SELECT_* types first (IDLECMD, BATTLECMD, CARD, CHAIN, EFFECTYN, PLACE, POSITION), others fallback to auto-select
+- PvP-A0 scope staging: all 20 SELECT_* prompt types implemented via 9 prompt sub-components (8 in dialog registry + PromptZoneHighlight handled separately) + IDLECMD/BATTLECMD handled by distributed UI
 - Spring Boot additions: RoomController, RoomService, DuelServerClient, Room entity, Flyway migration
-- Angular PvP routes: /pvp (LobbyPage, lazy-loaded, auth guard), /pvp/duel/:roomId (DuelPage, lazy-loaded, auth guard)
+- Angular PvP routes: /pvp (LobbyPage, lazy-loaded, auth guard), /pvp/duel/:roomCode (DuelPage, lazy-loaded, auth guard)
 - Environment config: wsUrl for duel server WebSocket (dev: ws://localhost:3001, prod: wss://domain/ws)
 - Dev setup guide and deployment runbook required before deployment (upgraded from nice-to-have)
 - AGPL-3.0 LICENSE file in duel-server/ root
@@ -89,7 +89,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - Card inspector compact variant (<768px): art 60×87px + name + type + ATK/DEF. Expands on tap
 - Hand row outside CSS perspective container, always visible, overlap at 6+ cards (Master Duel pattern)
 - Prompt sheet states: closed, opening, open, transitioning (swap without close/reopen), collapsed, closing
-- PvpBoardContainerComponent: max-width 1280px, max-height 720px on desktop (centered, black beyond)
+- PvpBoardContainerComponent: responsive sizing (height: 90%; aspect-ratio: 274/215; max-width: 100%) — scales proportionally, centered with black beyond
 - PvpTimerBadgeComponent merges connection state display (normal → "Connecting..." → "Reconnecting..." → "Opponent connecting...")
 - PvpPhaseBadgeComponent: circular badge, tap to expand phase action menu (Battle Phase, Main Phase 2, End Turn)
 - PvpActivationToggleComponent: 3-state cycle (Auto/On/Off), visible own turn only, inside mini-toolbar with surrender button
@@ -98,7 +98,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - Distributed UI for IDLECMD/BATTLECMD: cards glow on field, zone browsers highlight actionable cards. 1 action = direct send, 2+ actions = Card Action Menu (absolute div)
 - Zone browser with browse mode (read-only) and action mode (during IDLECMD — actionable cards highlighted)
 - Chain link visualization: CSS class .pvp-chain-badge (numbered badges, 24px), not a dedicated component
-- 6 prompt sub-components via CDK Portal: PromptYesNoComponent, PromptCardGridComponent, PromptZoneHighlightComponent, PromptOptionListComponent, PromptNumericInputComponent, PromptRpsComponent
+- 9 prompt sub-components via CDK Portal: PromptYesNoComponent, PromptCardGridComponent, PromptZoneHighlightComponent, PromptOptionListComponent, PromptNumericInputComponent, PromptRpsComponent, PromptPositionSelectComponent, PromptSortCardComponent, PromptAnnounceCardComponent
 - 3 visual prompt patterns: Pattern A (Floating Instruction — spatial), Pattern B (Bottom Sheet — selection), Pattern C (Yes/No — compact sheet)
 - Landscape orientation lock on duel route (blocking overlay in portrait — no "Continue anyway")
 - Fullscreen API + screen.orientation.lock('landscape-primary') at duel init (graceful degradation)
@@ -107,7 +107,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - Duel loading screen: player names + LP 8000 vs 8000 + spinner, holds until first board state + critical thumbnails pre-cached
 - PvP design tokens: 25+ --pvp-* CSS custom properties in _design-tokens.scss (perspective, prompts, badges, highlights, timers, transitions, touch targets)
 - Accessibility: LiveAnnouncer for game events/prompts/timer, FocusTrap on prompts, prefers-reduced-motion support (all transitions 0ms), WCAG AA contrast on all PvP tokens
-- Deep link pattern: /pvp/duel/:roomId shareable, redirect to auth if needed, Web Share API on mobile
+- Deep link pattern: /pvp/duel/:roomCode shareable, redirect to auth if needed, Web Share API on mobile
 - Browser back during duel intercepted → surrender confirmation dialog
 - Keyboard shortcuts (desktop): 1-9 for options, Y/N, Esc to cancel, Space to confirm, C for collapse handle
 
@@ -125,7 +125,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 | FR8 | Epic 1 | Automated turn structure |
 | FR9 | Epic 1 | Main Phase actions (contextual menu, distributed UI) |
 | FR10 | Epic 1 | Battle Phase actions (attack menu, phase controls) |
-| FR11 | Epic 1 | Player prompts (all SELECT_* types via 6 sub-components) |
+| FR11 | Epic 1 | Player prompts (all SELECT_* types via 9 sub-components) |
 | FR12 | Epic 1 | Chain resolution delegation to OCGCore |
 | FR13 | Epic 1 | Full game rule enforcement by OCGCore |
 | FR14 | Epic 1 | Two-player board display (CSS 3D perspective) |
@@ -135,7 +135,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 | FR18 | Epic 1 | Card detail inspection (face-up/public zones) |
 | FR19 | Epic 1 | Turn indicator (visual + type of response expected) |
 | FR20 | Epic 3 | Turn timer (chess-clock cumulative pool) |
-| FR21 | Epic 3 | Inactivity timeout (100s forfeit) |
+| FR21 | Epic 3 | Inactivity timeout (120s forfeit) |
 | FR22 | Epic 6 ✅ (partial) + Epic 7 | Visual feedback per game event — chain overlay + basic orchestration (Epic 6); card travel animations, buffer & replay, XYZ material visuals (Epic 7) |
 | FR23 | Epic 1 | Click-based interaction (not drag & drop) |
 | FR24 | Epic 3 | Duel result screen |
@@ -159,7 +159,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 ## Epic List
 
 ### Epic 1: Core Online Duel ✅ COMPLETED
-Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore. Includes duel server scaffold + Docker, OCGCore integration (worker threads), WebSocket protocol + message filter, PlayerFieldComponent extraction (Story 0), board CSS 3D perspective (2 player fields), prompt handling (frequent SELECT_* types: IDLECMD, BATTLECMD, CARD, CHAIN, EFFECTYN, PLACE, POSITION — others fallback to auto-select), turn/phase management, LP tracking, win detection (LP=0 native OCGCore), hand display, card inspector adaptation, activation toggle, Spring Boot deck relay minimal.
+Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore. Includes duel server scaffold + Docker, OCGCore integration (worker threads), WebSocket protocol + message filter, PlayerFieldComponent extraction (Story 0), board CSS 3D perspective (2 player fields), prompt handling (all 20 SELECT_* types via 9 sub-components + distributed UI for IDLECMD/BATTLECMD), turn/phase management, LP tracking, win detection (LP=0 native OCGCore), hand display, card inspector adaptation, activation toggle, Spring Boot deck relay minimal.
 **FRs covered:** FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR18, FR19, FR23, FR25
 
 ### Epic 2: Lobby & Matchmaking ✅ COMPLETED
@@ -167,7 +167,7 @@ Players can create duel rooms from decklists, browse the lobby, join a room with
 **FRs covered:** FR1, FR2, FR3, FR4
 
 ### Epic 3: Session Resilience & Duel Lifecycle ✅ COMPLETED
-The PvP experience handles real-world conditions — surrender, disconnection/reconnection, turn timers, inactivity, and clear duel results with rematch. Includes surrender flow, disconnection handling (60s grace, snapshot reconnection), turn timer (chess-clock 300s + 40s/turn), inactivity timeout (100s), duel result screen (VICTORY/DEFEAT/DRAW + reason), rematch flow, app background recovery, single tab enforcement.
+The PvP experience handles real-world conditions — surrender, disconnection/reconnection, turn timers, inactivity, and clear duel results with rematch. Includes surrender flow, disconnection handling (60s grace, snapshot reconnection), turn timer (chess-clock 300s + 40s/turn), inactivity timeout (120s), duel result screen (VICTORY/DEFEAT/DRAW + reason), rematch flow, app background recovery, single tab enforcement.
 **FRs covered:** FR5, FR6, FR7, FR20, FR21, FR24
 
 ### Epic 5: Tech Debt Cleanup ✅ COMPLETED
@@ -293,7 +293,7 @@ So that I can participate in an online duel without exposing my decklist to the 
 **Then** `Room.java` JPA entity exists with fields: id, roomCode (`String`, unique, 6-char uppercase alphanumeric), player1, player2, status (`WAITING | CREATING_DUEL | ACTIVE | ENDED`), duelServerId, timestamps
 **And** a Flyway migration creates the room table
 **And** `RoomController.java` exposes `POST /api/rooms` (create room with decklistId) and `POST /api/rooms/:id/join` (join with decklistId, triggers duel creation)
-**And** `RoomService.java` implements the room state machine (`WAITING → CREATING_DUEL → ACTIVE → ENDED`) with 5-second timeout on `CREATING_DUEL` → revert to `WAITING`, and 30-minute timeout on `WAITING` → transition to `ENDED` (orphaned waiting room cleanup via scheduled task)
+**And** `RoomService.java` implements the room state machine (`WAITING → CREATING_DUEL → ACTIVE → ENDED | CLOSED`) with `RoomCleanupScheduler`: 2-minute timeout on `CREATING_DUEL` → `CLOSED`, 30-minute timeout on `WAITING` → `CLOSED`, orphaned `ACTIVE` rooms (not on duel server) → `CLOSED`
 **And** `DuelServerClient.java` calls `POST /api/duels` on the duel server with both players' validated decklists (server-to-server, deck data never passes through frontend)
 **And** `POST /api/rooms/:id/join` response includes `wsUrl` + `duelId` for the Angular client
 **And** `/api/rooms/**` routes are protected by existing JWT authentication
@@ -336,7 +336,7 @@ So that I can visually track the game state during a PvP duel.
 **And** `PlayerFieldComponent` is extended with `@Input() side: 'player' | 'opponent'` controlling CSS mirror transform (`rotateZ(180deg)` for opponent) and `pointer-events` (`none` for opponent's zones)
 **And** it composes 2× `PlayerFieldComponent` (own `[side=player, showEmz=false]` + opponent `[side=opponent, showEmz=false]` mirrored)
 **And** a central strip between fields contains `SimZoneComponent` for EMZ-L and EMZ-R, `PvpTimerBadgeComponent` (phase name display only, no timer logic), and `PvpPhaseBadgeComponent` placeholder
-**And** it enforces `max-width: 1280px; max-height: 720px` on desktop (centered, black background beyond)
+**And** it uses responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`) — scales proportionally, centered with black background beyond
 **And** it uses `ChangeDetectionStrategy.OnPush`
 
 **Given** the board container renders
@@ -364,7 +364,7 @@ So that I can visually track the game state during a PvP duel.
 **Then** a `// === PvP tokens ===` section contains all 25+ `--pvp-*` CSS custom properties (perspective, prompts, badges, highlights, timers, transitions, touch targets)
 **And** `prefers-reduced-motion: reduce` sets all PvP transition durations to `0ms`
 
-### Story 1.6: Prompt System (Bottom Sheet + 6 Sub-Components)
+### Story 1.6: Prompt System (Bottom Sheet + 9 Sub-Components)
 
 As a player,
 I want to respond to engine prompts via intuitive bottom-sheet dialogs with full context,
@@ -384,7 +384,17 @@ So that I understand every decision the engine asks me to make and can respond q
 **And** CDK `FocusTrap` is active when sheet is `open`, disabled during `collapsed` state
 **And** keyboard shortcut `C` toggles collapse handle (collapse/expand)
 **And** keyboard shortcut `Space` confirms the active selection (equivalent to tapping confirm button)
-**And** prompt type → sub-component mapping: `SELECT_YESNO | SELECT_EFFECTYN → PromptYesNo`, `SELECT_CARD | SELECT_CHAIN | SELECT_TRIBUTE | SELECT_SUM | SELECT_UNSELECT_CARD → PromptCardGrid`, `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlight`, `SELECT_POSITION | SELECT_OPTION → PromptOptionList`, `ANNOUNCE_NUMBER | SELECT_COUNTER | ANNOUNCE_RACE | ANNOUNCE_ATTRIB | ANNOUNCE_CARD → PromptNumericInput`, `RPS_CHOICE → PromptRps`
+**And** prompt type → sub-component mapping (9 components + distributed UI):
+- `SELECT_YESNO | SELECT_EFFECTYN → PromptYesNoComponent`
+- `SELECT_CARD | SELECT_CHAIN | SELECT_TRIBUTE | SELECT_SUM | SELECT_UNSELECT_CARD → PromptCardGridComponent`
+- `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlightComponent` (Pattern A — no dialog)
+- `SELECT_OPTION | ANNOUNCE_RACE | ANNOUNCE_ATTRIB → PromptOptionListComponent`
+- `ANNOUNCE_NUMBER | SELECT_COUNTER → PromptNumericInputComponent`
+- `RPS_CHOICE → PromptRpsComponent`
+- `SELECT_POSITION → PromptPositionSelectComponent`
+- `SORT_CARD | SORT_CHAIN → PromptSortCardComponent`
+- `ANNOUNCE_CARD → PromptAnnounceCardComponent`
+- `SELECT_IDLECMD | SELECT_BATTLECMD → Distributed UI` (not dialog)
 
 **Given** the prompt sheet exists
 **When** `PromptYesNoComponent` (Pattern C — compact sheet) is implemented
@@ -414,13 +424,13 @@ So that I understand every decision the engine asks me to make and can respond q
 
 **Given** the prompt sheet exists
 **When** `PromptOptionListComponent` (Pattern B — variable height) is implemented
-**Then** it handles `SELECT_POSITION`, `SELECT_OPTION`
+**Then** it handles `SELECT_OPTION`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`
 **And** it displays a vertical list of `mat-button` options with optional icons
 **And** `preferredHeight` is `N × 48px` (falls back to `full` if N > 5)
 
 **Given** the prompt sheet exists
 **When** `PromptNumericInputComponent` (Pattern B — compact) is implemented
-**Then** it handles `ANNOUNCE_NUMBER`, `SELECT_COUNTER`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`
+**Then** it handles `ANNOUNCE_NUMBER`, `SELECT_COUNTER`
 **And** mode `declare`: free input with validation; mode `counter`: stepper (−/+)
 **And** min/max constraints from server message are enforced
 
@@ -430,9 +440,26 @@ So that I understand every decision the engine asks me to make and can respond q
 **And** 30-second timeout → random selection if no choice
 **And** keyboard shortcuts: 1/2/3
 
-**Given** any SELECT_* type not yet fully implemented
-**When** the duel service receives it
-**Then** it auto-selects the first valid option and sends the response automatically (PvP-A0 fallback)
+**Given** the prompt sheet exists
+**When** `PromptPositionSelectComponent` (Pattern B — compact) is implemented
+**Then** it handles `SELECT_POSITION`
+**And** it displays monster position options (ATK/DEF/face-down DEF) as large visual buttons with position icons
+**And** `preferredHeight` is `compact` (`clamp(60px, 20dvh, 100px)`)
+
+**Given** the prompt sheet exists
+**When** `PromptSortCardComponent` (Pattern B — full sheet) is implemented
+**Then** it handles `SORT_CARD` and `SORT_CHAIN`
+**And** it displays cards in a reorderable list (CDK DragDrop for ordering)
+**And** a "Confirm Order" button sends the sorted sequence to the server
+**And** `preferredHeight` is `full` (`max-height: 55dvh`)
+
+**Given** the prompt sheet exists
+**When** `PromptAnnounceCardComponent` (Pattern B — full sheet) is implemented
+**Then** it handles `ANNOUNCE_CARD`
+**And** it displays a searchable text input with autocomplete for card name declaration
+**And** the autocomplete list is filtered from the client-side card database
+**And** a "Confirm" button sends the selected card code to the server
+**And** `preferredHeight` is `full` (`max-height: 55dvh`)
 
 ### Story 1.7: Turn Actions, Phase Controls & Information Display
 
@@ -672,10 +699,11 @@ So that duels progress at a reasonable pace and idle players don't stall the gam
 **Then** the server processes the response and cancels the timeout (player response wins the race condition)
 
 **Given** a player has an active prompt (any SELECT_*)
-**When** 100 seconds pass without any action from that player
+**When** 120 seconds pass without any action from that player
 **Then** the server declares the opponent as winner, reason `inactivity`
 **And** both clients receive `DUEL_END` with outcome + reason `inactivity`
 **And** the inactivity timer resets on every player action (including prompt responses, phase transitions)
+**And** a warning is sent to the inactive player at 100 seconds (20 seconds before timeout) via a `INACTIVITY_WARNING` message, displayed as a prominent snackbar/toast ("You will forfeit in 20 seconds due to inactivity")
 
 ### Story 3.3: Disconnection Handling & Reconnection
 
@@ -856,7 +884,7 @@ So that accidentally refreshing the browser doesn't force me to forfeit.
 **When** `DuelWebSocketService` attempts reconnection
 **Then** it calls `GET /api/duels/:duelId/status` on Spring Boot before opening the WebSocket
 **And** if the response is `ACTIVE`: proceed with WS connection (reconnection flow from Story 3.3 applies)
-**And** if the response is `ENDED` or `NOT_FOUND`: navigate to `/pvp/lobby` with a `mat-snackbar` "This duel has already ended"
+**And** if the response is `ENDED` or `NOT_FOUND`: navigate to `/pvp` with a `mat-snackbar` "This duel has already ended"
 
 **Given** Spring Boot receives `GET /api/duels/:duelId/status`
 **When** the duel exists and is active in the database
@@ -883,6 +911,8 @@ So that deployment confidence is higher and duel loading is faster.
 **And** duel board rendering shows card images without visible loading delay
 
 **Technical debt source:** Epic 1 Story 1-2 (Docker test) + Epic 2 Story 2-4 (thumbnail pre-fetch)
+
+**Note (implemented in v1):** Solo Duel via PvP Engine — `SoloDuelOrchestratorService` enables single-player testing using dual WebSocket connections through the PvP pipeline. `DevRoomController.quickDuel()` provides a dev-only endpoint bypassing the lobby. Originally planned for Phase 2 (AI opponent), the dual-connection approach was implemented as a stepping stone.
 
 ## Epic 6: Chain Overlay Refactoring ✅ COMPLETED
 

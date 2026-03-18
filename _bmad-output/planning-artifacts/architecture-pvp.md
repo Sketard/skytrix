@@ -3,7 +3,8 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 inputDocuments: ['prd-pvp.md', 'architecture.md', 'project-context.md', 'research-ygo-duel-engine.md', 'research-ocgcore-message-protocol.md', 'research-wasm-js-duel-engines.md', 'research-web-ygo-simulators.md', 'ux-design-board-animations.md']
 workflowType: 'architecture'
 lastStep: 8
-status: 'complete'
+status: 'updated-post-implementation'
+lastUpdated: '2026-03-18'
 completedAt: '2026-02-24'
 project_name: 'skytrix'
 user_name: 'Axel'
@@ -49,8 +50,8 @@ The MVP targets PvP between friends (trusted players). This determines which arc
 
 | Tier | Scope | Elements |
 |------|-------|----------|
-| **T1 — MVP (friends)** | The duel works correctly and safely | Worker thread per duel, message filter whitelist (default DROP), snapshot reconnection (`duelQueryField`), OCGCore error handling (watchdog 30s), WebSocket DTOs as protocol boundary, basic FIFO animation queue, one-shot WebSocket auth |
-| **T2 — Public access** | Required if open to untrusted players | Bluff timer (anti timing side-channel), WebSocket rate limiter, MSG_RETRY counter → auto-forfeit, duel-specific token, reconnection limit (3 max or 60s cumulative), deck snapshot anti-race-condition |
+| **T1 — MVP (friends)** | The duel works correctly and safely | Worker thread per duel, message filter whitelist (default DROP), snapshot reconnection (`duelQueryField`), OCGCore error handling (watchdog 30s), WebSocket DTOs as protocol boundary, basic FIFO animation queue, one-shot WebSocket auth, anti-bluff delay (instant auto-responses delayed by random 200-1500ms to prevent timing side-channel analysis) |
+| **T2 — Public access** | Required if open to untrusted players | WebSocket rate limiter, MSG_RETRY counter → auto-forfeit, duel-specific token, reconnection limit (3 max or 60s cumulative), deck snapshot anti-race-condition |
 | **T3 — Phase 2** | Future capabilities | Spectator mode (viewerType enum), AI opponent (PlayerHandler interface), DuelEngine abstraction, state verification heartbeat, triplet versioning CI, fast-forward animation mode |
 
 ### Technical Constraints & Dependencies
@@ -74,7 +75,7 @@ The MVP targets PvP between friends (trusted players). This determines which arc
 - **Anti-cheat / Message filtering (T1):** Every message from OCGCore must be filtered per-player before WebSocket transmission via a whitelist of per-message-type filter functions. Key sanitization rules: `MSG_DRAW` card codes sanitized for opponent, `MSG_SHUFFLE_HAND` card codes sanitized, `MSG_MOVE` from private zone (deck/hand) to private zone sanitized, `MSG_HINT` routed only to the intended player (HINT_EFFECT with card code of hand card = leak if broadcast). SELECT_* messages sent only to the deciding player. **Default policy: DROP + LOG** — any unrecognized message type is never transmitted (fail-safe: prefer missing display over info leak).
 - **Authentication chain (T1):** JWT flows from Angular → Spring Boot (REST) → Duel Server (HTTP internal for duel creation) → WebSocket (connection auth). Three authentication boundaries. WebSocket auth is one-shot at handshake.
 - **Session lifecycle & reconnection (T1):** Duel state survives player disconnection (60s grace). On reconnection, the server sends a full state snapshot via `duelQueryField()` + per-card `duelQuery()`, filtered for the reconnecting player. No message log replay. OCGCore state exists only in the live WASM worker instance.
-- **Component reuse (solo ↔ PvP) (T1):** Board zones, card component, card inspector shared between modes. Data source differs: solo = local signals via BoardStateService, PvP = server-pushed state via WebSocket. The PvP board layout differs fundamentally from solo: two player fields visible (36 zones vs 18), different aspect ratio, opponent's field mirrored. Architecture uses composition: extract a `PlayerFieldComponent` (18 zones) from the solo board. PvP composes two instances (own + opponent mirrored). Solo uses it directly.
+- **Component reuse (solo ↔ PvP) (T1):** Card component and card inspector shared between modes. Data source differs: solo = local signals via BoardStateService, PvP = server-pushed state via WebSocket. The PvP board layout differs fundamentally from solo: two player fields visible (36 zones vs 18), different aspect ratio, opponent's field mirrored. PvP uses a dedicated `PvpBoardContainerComponent` (ADR-3 revised). Shared reuse at `CardComponent`/`CardInspectorComponent` level only — grid layouts are incompatible (solo: 7-col drag-drop, PvP: 6-col click-based with CSS perspective).
 - **Two interaction paradigms (T1):** Solo = drag & drop (CDK DragDrop), PvP = click-based prompts. Same visual components, completely different interaction handlers.
 - **Turn timer & inactivity (T1):** Timer state is server-authoritative. Server pushes timer updates; client displays. Timer pauses during opponent's decisions and chain resolution. Edge case: timeout during mandatory SELECT_* — the server forfeits the match and properly closes the OCGCore duel instance.
 - **Animation orchestration (T1):** OCGCore produces event messages in bursts during chain resolution (10+ messages in <100ms). The client implements a **three-layer animation architecture**: `DuelConnection` (data — enqueues events, manages chain link state), `AnimationOrchestratorService` (timing — dequeues sequentially, controls signal mutations, coordinates async pauses), `PvpChainOverlayComponent` (visual — card cascade, resolve-exit animations, board pause). The orchestrator consumes messages at animation speed, not network speed. Key mechanisms:
@@ -110,7 +111,7 @@ _These insights surfaced during analysis but are too granular for architecture d
 - Message filter: `MSG_CONFIRM_CARDS` reveals specific card codes — route only to the intended player
 - Reconnection snapshot: use `duelQueryField()` for global state + `duelQueryLocation()` per zone with FULL_FLAGS (`OcgQueryFlags.CODE | POSITION | ATTACK | DEFENSE | TYPE | LEVEL | RANK | ATTRIBUTE | RACE | OVERLAY_CARD | COUNTERS | LSCALE | RSCALE | LINK`). Apply message filter per player before sending (hand codes → 0 for opponent, face-down codes → 0 for opponent). See `ocgcore-technical-reference.md` §8 for exact query strategy and `OcgFieldState` structure
 - Scripts update: update `data/` folder manually, restart duel server. New duels use new scripts; in-progress duels keep their loaded scripts.
-- Scope reduction (PvP-A0): for first testable increment, implement only the most frequent SELECT_* types (IDLECMD, BATTLECMD, CARD, CHAIN, EFFECTYN, PLACE, POSITION). Others fallback to auto-select first valid option.
+- ~~Scope reduction (PvP-A0):~~ All 20 SELECT_* types are now implemented via 9 prompt sub-components + distributed UI. No auto-select fallback remains.
 
 ## Starter Template Evaluation
 
@@ -138,12 +139,12 @@ Full-stack brownfield — three technology domains:
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | WebSocket library | `ws` | Raw, lightweight, full control over binary/text frames. No fallback transport needed (modern browsers only). No namespace/room abstraction overhead — duel server manages its own session mapping. |
-| Internal HTTP API | Native `node:http` | 4 routes only (create duel, player join, health, status). No middleware, no body parsing beyond `JSON.parse`. Adding Express/Fastify for 4 routes is over-engineering. |
+| Internal HTTP API | Native `node:http` | 6 routes (create duel, active duels, validate passcodes, update data, health, status). No middleware, no body parsing beyond `JSON.parse`. Adding Express/Fastify for 6 routes is over-engineering. |
 | Runtime | Node.js 22+ LTS, ESM | Required for `worker_threads` stability and `@n1xx1/ocgcore-wasm` ESM support |
 | Language | TypeScript 5.9 strict | Consistent with Angular frontend, type safety for message protocol |
 | Build & Run | `tsx` for development, `tsc` + `node dist/server.js` for production | `tsx` gives fast DX iteration without build step. Production uses compiled JS for performance and no dev dependency. |
 
-**Production Source File Structure (7 files):**
+**Production Source File Structure (8 files + 2 PoC references):**
 
 | File | Role | Responsibility |
 |------|------|---------------|
@@ -154,6 +155,7 @@ Full-stack brownfield — three technology domains:
 | `types.ts` | Internal types | OCGCore enum re-exports, internal constants, worker message types, session state interfaces |
 | `ocg-callbacks.ts` | OCGCore integration | `cardReader` + `scriptReader` sync callbacks for OCGCore. Receives pre-loaded `CardDB` via injection (not global state). |
 | `ocg-scripts.ts` | Data loading | Exports `loadDatabase(dbPath): CardDB` and `loadScripts(scriptDir): ScriptDB`. Reads `cards.cdb` (better-sqlite3) + Lua files at startup. Returns injectable data objects consumed by `ocg-callbacks.ts`. |
+| `data-updater.ts` | Data refresh pipeline | Refreshes `cards.cdb`, Lua scripts, and `strings.conf` from ProjectIgnis repositories. Blocked while duels are active. Triggered via `PUT /api/update-data`. |
 
 **Dependencies (production):**
 
@@ -166,7 +168,7 @@ Full-stack brownfield — three technology domains:
 
 **Note:** PoC code remains as standalone reference. Production duel server is a new entry point (`server.ts`) that reuses the validated OCGCore integration patterns from the PoC.
 
-**Note:** First implementation story scope: scaffold Node.js project (`package.json`, `tsconfig.json`, `patch-package` setup), create the 7 source files with principal imports/exports, and implement `GET /health` → 200 endpoint. Produces a runnable duel server skeleton verifiable in minutes.
+**Note:** First implementation story scope: scaffold Node.js project (`package.json`, `tsconfig.json`, `patch-package` setup), create the 8 production source files with principal imports/exports, and implement `GET /health` → 200 endpoint. Produces a runnable duel server skeleton verifiable in minutes.
 
 ## Core Architectural Decisions
 
@@ -192,7 +194,7 @@ All important decisions made — data architecture, auth chain, protocol format,
 | Room/lobby data | PostgreSQL via Spring Boot | Existing infrastructure, persistence for free (page refresh safe) |
 | Card data (duel server) | `cards.cdb` loaded at startup via `better-sqlite3` | Read-only, pre-loaded in memory for sync callbacks |
 | Duel replay | Hors périmètre | Not MVP. If needed later: store `{seed, decks, playerResponses[]}` in PostgreSQL (~5-20KB/duel) |
-| Room state machine | `WAITING → CREATING_DUEL → ACTIVE → ENDED` | Explicit states in Spring Boot. If `CREATING_DUEL` times out (5s), room reverts to `WAITING` with error message. Prevents players stuck in lobby on handoff failure. |
+| Room state machine | `WAITING → CREATING_DUEL → ACTIVE → ENDED / CLOSED` | Explicit states in Spring Boot. `CREATING_DUEL` timeout: 2min → transition to `CLOSED` via `RoomCleanupScheduler` (3 scheduled tasks: orphaned WAITING rooms >30min, orphaned ACTIVE rooms not on duel server, stuck CREATING_DUEL rooms >2min). Prevents players stuck in lobby on handoff failure. |
 
 ### Authentication & Security
 
@@ -208,6 +210,7 @@ All important decisions made — data architecture, auth chain, protocol format,
 | Response validation | Delegated to OCGCore | Invalid `SELECT_RESPONSE` triggers `MSG_RETRY` from the engine. No server-side pre-validation needed — OCGCore is the authority. |
 | Transport encryption | WSS (TLS) via reverse proxy | Infra prerequisite. Reverse proxy (nginx/traefik) handles TLS termination in front of docker-compose. |
 | SELECT_RESPONSE guard | Main thread ignores responses when no prompt pending | `awaitingResponse[playerId]` flag in session. Prevents spam and out-of-sequence responses. |
+| WebSocket rate limiting | 30 failed messages per 60s per IP, max 5 invalid responses per player before connection termination | State sync: max 1 `REQUEST_STATE_SYNC` per 5s per player. `maxPayload: 4096` bytes enforced at WebSocketServer level. |
 
 ### API & Communication Patterns
 
@@ -217,8 +220,8 @@ All important decisions made — data architecture, auth chain, protocol format,
 |--------|----------|
 | Message format | JSON with type discriminant: `{ "type": "MSG_DRAW", ...data }` |
 | No envelope wrapper | No version, timestamp, or metadata wrapper — YAGNI for MVP |
-| Server → Client | Game events (`MSG_*`), prompts (`SELECT_*`), state updates (`GAME_STATE`, `TIMER_STATE`), lifecycle (`DUEL_END`), session (`RPS_RESULT`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`, `REMATCH_INVITATION`, `REMATCH_CANCELLED`, `WAITING`) |
-| Client → Server | `SELECT_RESPONSE` (prompt answers), `SURRENDER`, `RPS_CHOICE`, `REMATCH_REQUEST`, `REMATCH_RESPONSE` |
+| Server → Client | 57 total message types: 23 game messages (`MSG_*`), 20 prompt messages (`SELECT_*`), 14 system messages (`GAME_STATE`, `TIMER_STATE`, `DUEL_END`, `RPS_RESULT`, `SESSION_TOKEN`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`, `INACTIVITY_WARNING`, `WAITING_RESPONSE`, `REMATCH_INVITATION`, `REMATCH_CANCELLED`, `WAITING`, etc.) |
+| Client → Server | 5 types: `PLAYER_RESPONSE` (prompt answers), `SURRENDER`, `REMATCH_REQUEST`, `REQUEST_STATE_SYNC`, `ACTIVITY_PING` |
 | Heartbeat | Native `ws` ping/pong — no application-level heartbeat messages |
 | Protocol versioning | None for MVP (single developer, single client) |
 | Source of truth | `ws-protocol.ts` (duel server) is the canonical protocol definition. Angular `duel-ws.types.ts` is a manual copy. Server changes first, then client. |
@@ -228,7 +231,9 @@ All important decisions made — data architecture, auth chain, protocol format,
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/duels` | POST | Create duel (receives deck data from Spring Boot) |
-| `/api/duels/:id/join` | POST | Player join notification |
+| `/api/duels/active` | GET | List active duel IDs (used by RoomCleanupScheduler for orphan detection) |
+| `/api/update-data` | PUT | Trigger cards.cdb + scripts + strings.conf refresh from ProjectIgnis (blocked while duels active) |
+| `/api/validate-passcodes` | POST | Check which card passcodes exist in cards.cdb (deck double-validation) |
 | `/health` | GET | Health check (includes startup data integrity verification: cards.cdb readable, scripts directory non-empty) |
 | `/status` | GET | Active duels count, memory usage |
 
@@ -244,9 +249,16 @@ All important decisions made — data architecture, auth chain, protocol format,
 | `animationQueue` | `Signal<GameEvent[]>` | FIFO queue of events consumed by orchestrator |
 | `timerState` | `Signal<TimerState \| null>` | Dedicated timer signal (player, remaining seconds) — decoupled from duelState |
 | `connectionStatus` | `Signal<ConnectionStatus>` | `connected \| reconnecting \| lost \| resynchronized` (resynchronized auto-clears after 3s) |
+| `justReconnected` | `Signal<boolean>` | True after reconnection, suppresses auto-respond until first manual player action (prevents stale auto-responses) |
 | `activeChainLinks` | `Signal<ChainLinkState[]>` | Active chain links (pending entry mechanism — see below) |
 | `chainPhase` | `Signal<'idle' \| 'building' \| 'resolving'>` | Chain lifecycle phase |
 | `hasPendingChainEntry` | `Signal<boolean>` | True when a MSG_CHAINING is stored but not yet committed |
+
+**Reconnection Token Flow:**
+- Server sends `SESSION_TOKEN` message on successful WebSocket connection (contains opaque reconnect token)
+- Client stores reconnect token in `sessionStorage` (survives page refresh, not tab duplication)
+- On reconnection, client sends stored token at handshake for session identification
+- `justReconnected` flag is set to `true` after reconnection to suppress auto-respond logic until the player manually interacts with a prompt
 
 **Chain Phase Transition Timing:**
 - `building` — set **immediately** when first `MSG_CHAINING` arrives (overlay needs this for entry animation)
@@ -281,7 +293,7 @@ visiblePrompt = computed(() => {
 - After 60s reconnection failure → "Duel interrompu" message + navigate to lobby
 
 **Component Reuse (solo ↔ PvP):**
-- `PlayerFieldComponent` extracted from solo board (18 zones). PvP composes two instances (own + opponent mirrored). Already decided in ADR-3.
+- **Revised (ADR-3):** Solo and PvP do NOT share a `PlayerFieldComponent`. PvP uses a dedicated `PvpBoardContainerComponent` with its own grid layout (6-col, EMZ in central strip, CSS perspective, click-based). Solo grid (7-col, EMZ in grid, drag-drop, 1060x608px) is fundamentally incompatible. Shared reuse happens only at the `CardComponent` / `CardInspectorComponent` level (already in `components/`). Story 1-1 (extract PlayerFieldComponent) was skipped.
 
 ### Infrastructure & Deployment
 
@@ -306,7 +318,7 @@ _These items are consciously deferred. They are NOT forgotten — each has a tie
 | WebSocket protocol versioning | — | Single developer, single client. No backward compatibility needed. |
 | Structured JSON logging | — | `console.log` + `docker logs` sufficient for friends-only scale |
 | Shared secret (internal API auth) | T2 | Docker network isolation sufficient while services co-located |
-| Bluff timer (anti timing side-channel) | T2 | Not needed between trusted friends |
+| ~~Bluff timer (anti timing side-channel)~~ | ~~T2~~ | Moved to T1 — implemented as anti-bluff delay (random 200-1500ms on instant auto-responses) |
 | WebSocket rate limiter | T2 | Trusted players, no abuse expected |
 | MSG_RETRY counter → auto-forfeit | T2 | Trust players to respond correctly |
 | Reconnection limit (3 max / 60s cumulative) | T2 | Trust players not to abuse reconnection |
@@ -588,6 +600,7 @@ duel-server/
     ├── types.ts                  # Internal: worker message types, session state, constants
     ├── ocg-callbacks.ts          # cardReader + scriptReader sync callbacks (receives CardDB via injection)
     ├── ocg-scripts.ts            # loadDatabase(dbPath): CardDB, loadScripts(scriptDir): ScriptDB
+    ├── data-updater.ts           # Data refresh pipeline: cards.cdb + scripts + strings.conf from ProjectIgnis
     ├── poc-duel.ts               # PoC reference (not imported by production code)
     └── test-core.ts              # PoC reference (not imported by production code)
 ```
@@ -607,8 +620,7 @@ duel-server/
 ```
 front/src/app/
 ├── pages/
-│   ├── simulator/                        # EXISTING — solo simulator
-│   │   └── board.component.ts            # MODIFY: extract PlayerFieldComponent
+│   ├── simulator/                        # EXISTING — solo simulator (no modifications needed)
 │   │
 │   └── pvp/                              # NEW — PvP feature (lazy-loaded)
 │       ├── lobby/                        # Room list, creation, waiting room
@@ -639,18 +651,16 @@ front/src/app/
 │       │
 │       └── duel-ws.types.ts              # Protocol DTOs (manual copy of ws-protocol.ts, same-commit rule)
 │
-├── components/                           # SHARED — existing
-│   └── player-field/                     # NEW — extracted from simulator board.component
-│       └── player-field.component.ts     # 18 zones layout, reusable by solo + PvP
+├── components/                           # SHARED — existing (CardComponent, CardInspectorComponent reused by PvP)
 │
 ├── core/
 │   ├── model/
 │   │   └── pvp/                          # NEW — PvP domain models
-│   │       ├── room.ts                   # Room, RoomStatus (WAITING | CREATING_DUEL | ACTIVE | ENDED)
+│   │       ├── room.ts                   # Room, RoomStatus (WAITING | CREATING_DUEL | ACTIVE | ENDED | CLOSED)
 │   │       └── duel-state.ts             # DuelState, Prompt, HintContext, TimerState, ConnectionStatus
 │   │
 │   └── services/
-│       └── room.service.ts               # NEW — REST client for room CRUD + pollRoomStatus(roomId): Observable
+│       └── room.service.ts               # NEW — REST client for room CRUD + pollRoomStatus(roomCode): Observable
 │
 └── app.routes.ts                         # MODIFY: add lazy-loaded PvP routes
 ```
@@ -660,13 +670,10 @@ front/src/app/
 | Route | Component | Loading | Guard |
 |-------|-----------|---------|-------|
 | `/pvp` | `LobbyPageComponent` | Lazy (`loadComponent`) | Auth |
-| `/pvp/duel/:roomId` | `DuelPageComponent` | Lazy (`loadComponent`) | Auth |
+| `/pvp/duel/:roomCode` | `DuelPageComponent` | Lazy (`loadComponent`) | Auth |
 
 **Prerequisite Refactoring (Story 0):**
-- Extract `PlayerFieldComponent` from `board.component.ts` (solo simulator) into `components/player-field/`
-- This modifies existing working code — must be its own story with AC: "solo simulator functions identically after extraction"
-- Solo `simulator-page.component.ts` uses `PlayerFieldComponent` directly (1 instance)
-- PvP `pvp-board.component.ts` composes 2 instances (own + opponent mirrored)
+- ~~Extract `PlayerFieldComponent` from `board.component.ts`~~ — Skipped (ADR-3 revised). Solo grid (7-col, drag-drop) is fundamentally incompatible with PvP grid (6-col, click-based, CSS perspective). PvP uses dedicated `PvpBoardContainerComponent`. Shared reuse at `CardComponent`/`CardInspectorComponent` level only.
 
 **Configuration additions:**
 - `environment.ts`: add `wsUrl` for duel server WebSocket (`ws://localhost:3001` dev, `wss://domain/ws` prod)
@@ -691,7 +698,7 @@ back/src/main/java/com/skytrix/
 │   │       ├── RoomDTO.java               # Includes wsUrl + duelId after duel creation
 │   │       └── RoomStatusDTO.java
 │   └── enums/
-│       └── RoomStatus.java                # NEW — WAITING, CREATING_DUEL, ACTIVE, ENDED
+│       └── RoomStatus.java                # NEW — WAITING, CREATING_DUEL, ACTIVE, ENDED, CLOSED
 │
 ├── repository/
 │   └── RoomRepository.java               # NEW — JPA repository
@@ -724,7 +731,8 @@ back/src/main/java/com/skytrix/
 | Call | Target | Purpose |
 |------|--------|---------|
 | `POST /api/duels` | `duel-server:3001` | Create duel (sends both decklists) |
-| `POST /api/duels/:id/join` | `duel-server:3001` | Notify player WebSocket ready |
+| `GET /api/duels/active` | `duel-server:3001` | List active duel IDs (used by RoomCleanupScheduler for orphan detection) |
+| `POST /api/validate-passcodes` | `duel-server:3001` | Check which card passcodes exist in cards.cdb (deck double-validation) |
 | `GET /health` | `duel-server:3001` | Health check |
 
 **Note:** `GET /status` (active duels count, memory usage) is exposed by the duel server for ops/monitoring but not consumed by Spring Boot.
@@ -771,7 +779,7 @@ spring-boot:
 | Boundary | Owner | Consumer | Contract |
 |----------|-------|----------|----------|
 | WebSocket protocol | `ws-protocol.ts` (duel server) | `duel-ws.types.ts` (Angular) | Same-commit update, zero internal imports |
-| Internal HTTP API | Duel server (`server.ts`) | `DuelServerClient.java` (Spring Boot) | 4 routes, JSON, Docker network auth |
+| Internal HTTP API | Duel server (`server.ts`) | `DuelServerClient.java` (Spring Boot) | 6 routes, JSON, Docker network auth |
 | REST API (rooms) | `RoomController.java` | Angular `room.service.ts` | Standard REST + JWT |
 | Worker thread | `server.ts` | `duel-worker.ts` | Typed `postMessage` |
 | Message filter | `message-filter.ts` | Called by `server.ts` | Pure function `(msg, playerId) → msg | null` |
@@ -792,7 +800,7 @@ spring-boot:
 
 ### Implementation Notes
 
-**Story 0 Prerequisite:** Extract `PlayerFieldComponent` before any PvP board work. Solo simulator must pass smoke test after extraction.
+**Story 0 Prerequisite:** ~~Extract `PlayerFieldComponent` before any PvP board work.~~ Skipped (ADR-3 revised) — PvP uses dedicated `PvpBoardContainerComponent`. Shared reuse at `CardComponent`/`CardInspectorComponent` level only.
 
 **Waiting Room Mechanism:** `waiting-room.component.ts` polls `GET /api/rooms/:id` every 2-3s to detect opponent join. Polling is KISS for MVP between friends. SSE or dedicated WebSocket deferred to T2 if needed.
 
@@ -817,7 +825,7 @@ Key compatibility confirmations:
 - 15 enforcement rules documented and cross-referenced
 
 **Structure Alignment:**
-- Duel server: 9 source files with clear single-responsibility boundaries
+- Duel server: 10 source files (8 production + 2 PoC references) with clear single-responsibility boundaries
 - Angular delta: `pages/pvp/` follows existing `pages/` convention (corrected during Step 6 AE)
 - Spring Boot delta: follows existing `controller/service/model/repository` structure
 - Infrastructure: `docker-compose.yml` extension with volume mounts and network isolation
@@ -848,7 +856,7 @@ Key compatibility confirmations:
 | FR18 (Card inspection) | Reuse existing card inspector | Shared `components/` |
 | FR19 (Turn indicator) | `duelState` signal includes phase/turn | `duel-page.component.ts` |
 | FR20 (Turn timer) | `timerState` signal, server-authoritative | `server.ts`, `duel-websocket.service.ts` |
-| FR21 (Inactivity timeout) | Server-side 100s watchdog | `server.ts` |
+| FR21 (Inactivity timeout) | Server-side 120s watchdog. `INACTIVITY_WARNING` sent 20s before timeout. Client sends `ACTIVITY_PING` to reset timer. | `server.ts` |
 | FR22 (Visual feedback) | Card travel animations (PvP-C) + buffer/replay during chain + LP interpolation | `animation-orchestrator.service.ts`, `card-travel.service.ts`, `pvp-board-container.component.ts`, `pvp-lp-badge.component.ts` |
 | FR23 (Click-based interaction) | Prompt components (not drag & drop) | `prompts/*.component.ts` |
 | FR24 (Duel result screen) | Duel result state in `duel-page.component.ts` | `duel-page.component.ts` |
@@ -878,7 +886,7 @@ Key compatibility confirmations:
 - Protocol boundary clearly defined (ADR-2): `ws-protocol.ts` = source of truth, zero internal imports
 
 **Structure Completeness:**
-- Duel server: complete file tree (9 source files + Dockerfile + data/)
+- Duel server: complete file tree (8 production + 2 PoC source files + Dockerfile + data/)
 - Angular delta: complete tree with file-level annotations
 - Spring Boot delta: complete tree with endpoint mapping
 - Infrastructure: docker-compose additions specified
@@ -893,7 +901,7 @@ Key compatibility confirmations:
 
 1. **Message filter whitelist exhaustiveness:** The architecture defines the default DROP policy and key sanitization rules (§Story-Level Notes: MSG_DRAW, MSG_SHUFFLE_HAND, MSG_MOVE, MSG_HINT, MSG_CONFIRM_CARDS). The exhaustive whitelist per MSG_* type (~80+ types) is an implementation-time deliverable, informed by OCGCore message documentation and NEOS/SRVPro reference implementations.
 
-2. **PvP-A0 scope staging:** The Step 6 project tree shows the **final structure** (all 4 prompt components covering all SELECT_* types). PvP-A0 (first testable increment) implements only the most frequent types (IDLECMD, BATTLECMD, CARD, CHAIN, EFFECTYN, PLACE, POSITION) within these same 4 component files. Other types fallback to auto-select. This is scope staging, not a structural change.
+2. **PvP-A0 scope staging:** ~~Originally planned as incremental (frequent types first, others auto-select).~~ All 20 SELECT_* types are now implemented via 9 prompt sub-components + distributed UI (IDLECMD/BATTLECMD). No auto-select fallback remains in v1.
 
 3. **Reconnection testability:** Architecture supports reconnection testing at the protocol level. `server.ts` manages session state (grace period, `awaitingResponse`) independently of WebSocket lifecycle. Test scenarios: (a) disconnect + reconnect within 60s → snapshot sent, (b) disconnect + reconnect after 60s → duel forfeited, (c) both disconnect → worker persists up to 4h.
 
@@ -903,7 +911,7 @@ Key compatibility confirmations:
 
 | Gap | Status | Resolution |
 |-----|--------|------------|
-| Route naming (`/pvp` vs PRD's `/lobby`) | Documented | Architecture uses `/pvp` (lobby) + `/pvp/duel/:roomId`. PRD's `/lobby` was pre-architecture. Architecture takes precedence. |
+| Route naming (`/pvp` vs PRD's `/lobby`) | Documented | Architecture uses `/pvp` (lobby) + `/pvp/duel/:roomCode`. PRD's `/lobby` was pre-architecture. Architecture takes precedence. |
 | Chain visualization component location | Documented | Not a separate component — chain events flow through `animationQueue` signal in `duel-websocket.service.ts`. Visual rendering handled by existing board zone components. |
 | LICENSE file (AGPL-3.0) for duel server | Noted | Must be added to `duel-server/` root. One-time task during scaffold story. |
 
@@ -984,7 +992,7 @@ Key compatibility confirmations:
 - Use the dependency graph (Phase 0 → 1A/1B → 2A/2B → 3) for implementation ordering
 - Respect the 7 critical anti-patterns (no shared mutable state, no ws.send outside server.ts, explicit null, no hardcoded type strings, no immediate board events during chain, no fixed board pause, no leaked floating elements)
 - Refer to FR → Structure mapping for file-level implementation targets
-- PvP-A0 scope: implement frequent SELECT_* types first, others fallback to auto-select
+- All 20 SELECT_* types are implemented via 9 prompt sub-components + distributed UI
 
 **First Implementation Priority:**
 Phase 0 — Define `ws-protocol.ts` (all WebSocket DTO types). This unblocks both server (Phase 1A) and client (Phase 1B) development tracks.

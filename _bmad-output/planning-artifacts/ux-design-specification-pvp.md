@@ -816,7 +816,7 @@ DuelPageComponent (position: fixed; inset: 0; 100dvw × 100dvh)
 │ PvpHandRowComponent [opponent]  (absolute, top, pointer-events:none) │
 │   🂠 🂠 🂠 🂠 🂠  (face-down, overlap at 6+)                          │
 │──────────────────────────────────────────────────────────────────────│
-│ PvpBoardContainerComponent (base layer, CSS perspective, max 1280×720)│
+│ PvpBoardContainerComponent (base layer, CSS perspective, responsive)  │
 │                                                                      │
 │  ┌─────┐┌─────┐┌─────┐┌─────┐┌─────┐            LP: 8000           │
 │  │ ST1 ││ ST2 ││ ST3 ││ ST4 ││ ST5 │  ← Opponent field             │
@@ -874,7 +874,7 @@ z-index stack (highest → lowest):
 
 #### 1. PvpBoardContainerComponent (Tier 1)
 
-**Purpose:** CSS 3D perspective wrapper containing both player fields, the central strip (EMZ + timer + phase badge), and serving as the structural layout host for the entire duel board. Occupies 100% of the viewport, with `max-width: 1280px; max-height: 720px` on desktop (centered with black background beyond — prevents card art stretching beyond source resolution).
+**Purpose:** CSS 3D perspective wrapper containing both player fields, the central strip (EMZ + timer + phase badge), and serving as the structural layout host for the entire duel board. Occupies 100% of the viewport with responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`). Board scales proportionally to fill the viewport without fixed pixel bounds.
 
 **Structure:**
 
@@ -1283,7 +1283,7 @@ A **full-screen non-interactive overlay** that manages the entire chain lifecycl
 
 ### Prompt Sub-Components (CDK Portal)
 
-6 sub-components injected into `PvpPromptDialogComponent` via CDK Portal. Each implements the `PromptSubComponent` interface.
+9 sub-components injected into `PvpPromptDialogComponent` via CDK Portal. Each implements the `PromptSubComponent` interface.
 
 #### Protocol → Sub-Component Mapping Table
 
@@ -1306,16 +1306,16 @@ Same centered floating dialog but with minimal content: MSG_HINT context text + 
 | `SELECT_CHAIN` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Chain response card selection |
 | `SELECT_TRIBUTE` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Tribute material selection, checkmarks on cards |
 | `SELECT_SUM` | PromptCardGridComponent | **B — Floating Dialog** (card strip) | Level/rank sum selection |
-| `SELECT_POSITION` | PromptOptionListComponent | **B — Floating Dialog** (option list) | ATK/DEF/Set options with icons |
+| `SELECT_POSITION` | PromptPositionSelectComponent | **B — Floating Dialog** (position select) | ATK/DEF/Set options with card orientation previews |
 | `SELECT_OPTION` | PromptOptionListComponent | **B — Floating Dialog** (option list) | Generic option selection |
 | `ANNOUNCE_NUMBER` / `SELECT_COUNTER` | PromptNumericInputComponent | **B — Floating Dialog** (numeric input) | Number input with mode declare/counter |
 | `MSG_SELECT_YESNO` (RPS) | PromptRpsComponent | **B — Floating Dialog** (RPS) | Rock/Paper/Scissors with reveal animation |
 | `SELECT_YESNO` | PromptYesNoComponent | **C — Floating Dialog minimal** | Text + 2 buttons only. No card art |
 | `SELECT_EFFECTYN` | PromptYesNoComponent | **C — Floating Dialog minimal** | Optional trigger confirmation |
 | Rematch invitation | PromptYesNoComponent | **C — Floating Dialog minimal** | "Opponent wants a rematch" |
-| `SORT_CARD` / `SORT_CHAIN` | **Auto-select fallback** | N/A | PvP-A0 scope: auto-respond with default order (`null`). Uncommon prompts (Sylvan excavation, simultaneous optional triggers). Full ordering UI deferred to post-MVP |
+| `SORT_CARD` / `SORT_CHAIN` | PromptSortCardComponent | **B — Floating Dialog** (sort cards) | Drag-to-reorder card strip. CDK DragDrop for reordering. Confirm button sends final order |
 | `ANNOUNCE_RACE` / `ANNOUNCE_ATTRIB` | PromptOptionListComponent | **B — Floating Dialog** (option list) | PvP-A0 scope: present engine-provided options as a list. The engine constrains valid choices |
-| `ANNOUNCE_CARD` | **Auto-select fallback** | N/A | PvP-A0 scope: auto-select first valid option. Full card name search/autocomplete UI deferred to post-MVP. Extremely rare prompt (e.g., Prohibition, Psi-Blocker) |
+| `ANNOUNCE_CARD` | PromptAnnounceCardComponent | **B — Floating Dialog** (card search) | Text input with autocomplete dropdown. Searches card database by name. Confirm button sends selected card |
 | `SELECT_BATTLECMD` / `SELECT_IDLECMD` | **Distributed UI** | N/A | Phase transitions → PvpPhaseBadgeComponent. Card actions → `--pvp-actionable-glow` on field/hand cards, PvpZoneBrowserOverlayComponent Action Mode (GY/Banished/ED). Tap card with 1 action → direct. Tap card with 2+ actions → Card Action Menu (absolute div). No dialog |
 
 #### 1. PromptYesNoComponent — Pattern C (Floating Dialog minimal)
@@ -1358,7 +1358,7 @@ Same centered floating dialog but with minimal content: MSG_HINT context text + 
 
 #### 4. PromptOptionListComponent — Pattern B (Floating Dialog with option list)
 
-**Purpose:** Generic list of options. Handles position selection (ATK/DEF with icons), SELECT_OPTION (generic), and any list-based prompt.
+**Purpose:** Generic list of options. Handles SELECT_OPTION (generic), ANNOUNCE_RACE, ANNOUNCE_ATTRIB, and any list-based prompt.
 **Content:** Vertical list of options, each as a `mat-button` with optional icon.
 **Height:** `N × 48px` where N = number of options. Scrollable inside dialog if N > 5.
 
@@ -1377,6 +1377,27 @@ Same centered floating dialog but with minimal content: MSG_HINT context text + 
 **Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to turn order selection (HAND_RES).
 **Accessibility:** Three buttons with `aria-label`. Keyboard: 1/2/3 shortcuts.
 **Timeout:** 30s. If no selection → random choice.
+
+#### 7. PromptPositionSelectComponent — Pattern B (Floating Dialog with position select)
+
+**Purpose:** Monster position selection (ATK, DEF, face-down DEF) with card orientation previews.
+**Content:** Position options displayed as card orientation thumbnails — each option shows the card in the corresponding position (face-up ATK vertical, face-up DEF horizontal, face-down DEF horizontal). Tap to select.
+**Interaction:** Tap position option → immediate selection sent to server. No confirm button needed (single-select, mutually exclusive options).
+**Accessibility:** `aria-label` on each option ("Attack Position", "Defense Position", "Face-down Defense Position"). Keyboard: arrow keys to navigate, `Enter` to select.
+
+#### 8. PromptSortCardComponent — Pattern B (Floating Dialog with sort cards)
+
+**Purpose:** Card ordering for effects that require the player to arrange cards in a specific sequence (e.g., Sylvan excavation, simultaneous optional trigger ordering via SORT_CHAIN).
+**Content:** Horizontal card strip (same sizing as PromptCardGridComponent). Cards are draggable via CDK DragDrop (`cdkDropList` + `cdkDrag`) for reordering. Position numbers displayed on each card.
+**Interaction:** Drag cards to reorder. Confirm button sends final order to server. Desktop: drag with mouse. Mobile: touch drag with CDK's built-in touch support.
+**Accessibility:** `aria-label` on each card includes current position ("Card [name], position [N]"). Keyboard: arrow keys to select card, `Space` to grab, arrow keys to move, `Space` to drop. `LiveAnnouncer`: "Moved [card name] to position [N]".
+
+#### 9. PromptAnnounceCardComponent — Pattern B (Floating Dialog with card search)
+
+**Purpose:** Card name declaration for effects that require naming a specific card (e.g., Prohibition, Psi-Blocker).
+**Content:** Text input field with autocomplete dropdown. Searches the card database by name as the player types. Displays matching results in a scrollable dropdown list (card name + card type icon). Confirm button sends selected card.
+**Interaction:** Type to search → select from dropdown → confirm. Minimum 3 characters to trigger search. Desktop: keyboard input. Mobile: virtual keyboard input.
+**Accessibility:** `aria-label` on input ("Declare a card name"). `role="combobox"` with `aria-expanded`, `aria-activedescendant`. Keyboard: arrow keys to navigate results, `Enter` to select.
 
 ### CardInspectorComponent — PvP Variants
 
@@ -1419,7 +1440,7 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 **PvP-A — Functional Duel (Core):**
 
 - PvpBoardContainerComponent (Tier 1, complex — perspective + central strip + grid)
-- PvpPromptDialogComponent + 6 sub-components (Tier 1, complex — portal, states, collapse)
+- PvpPromptDialogComponent + 9 sub-components (Tier 1, complex — portal, states, collapse)
 - PvpTimerBadgeComponent (Tier 2, medium — chess-clock + connection states)
 - PvpLpBadgeComponent (Tier 2, trivial — display + format)
 - PvpPhaseBadgeComponent (Tier 2, medium — badge + expandable menu)
@@ -1577,6 +1598,7 @@ Cards displayed inside `PromptCardGridComponent` use tap for **selection**. To i
 | Room expired (5min timeout) | `mat-snackbar` + redirect to lobby | 5s then redirect | Medium |
 | Deck validation failed | `mat-snackbar` with error message | 5s, dismissible | Medium |
 | Actions auto-resolved (background) | `mat-snackbar` "N actions auto-resolved while away" | 5s, dismissible | Low |
+| Inactivity warning (20s before forfeit) | `InactivityWarningDialogComponent` with countdown timer | Persistent until action taken or forfeit | **Immediate** (always) |
 
 **Feedback Conflict Rule — Timing Order (not z-index):**
 - Game event animations play on the board (inside perspective). Prompts appear above (outside perspective). No visual conflict — they coexist spatially
@@ -1639,11 +1661,11 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 
 **Route Structure:**
 - `/pvp` — Lobby page (room list, create/join)
-- `/pvp/duel/:roomId` — Duel page (state-driven: waiting room → RPS → duel → result within the same route)
+- `/pvp/duel/:roomCode` — Duel page (state-driven: waiting room → RPS → duel → result within the same route)
 - Browser back during active duel is **intercepted** — displays surrender confirmation dialog instead of navigating
 - No URL changes during gameplay — state transitions (waiting → RPS → duel → result) are component-driven within the same route
 
-**Deep Link Pattern:** `/pvp/duel/:roomId` is shareable. If unauthenticated → redirect to auth → redirect back to room. Web Share API on mobile for room link sharing.
+**Deep Link Pattern:** `/pvp/duel/:roomCode` is shareable. If unauthenticated → redirect to auth → redirect back to room. Web Share API on mobile for room link sharing.
 
 **Result Screen Actions:**
 - "Rematch" (primary) — Request rematch with same decks, new RPS
@@ -1662,6 +1684,7 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 **Modals (blocking, explicit user action required):**
 - Surrender confirmation: `mat-dialog` centered, backdrop blocks all interaction
 - Connection forfeit: `mat-dialog` informing of auto-forfeit
+- Inactivity warning: `InactivityWarningDialogComponent` with countdown timer (20s before forfeit), dismissed by any player action
 
 **Rule:** Use overlays for game flow (prompts, browsing). Use modals only for destructive/irreversible actions (surrender, leave room).
 
@@ -1700,11 +1723,22 @@ Home → Lobby (Create/Join Room) → Waiting Room → RPS → Duel → Result �
 
 **Room Timeout:** 5 minutes inactivity in waiting room → room closes, both players notified via snackbar + redirect to lobby.
 
+**Inactivity Timeout (FR21):** 120 seconds without any player action while a response is required → automatic match forfeit. Server-side watchdog timer resets on every player action (prompt response, phase transition, ACTIVITY_PING). At 100 seconds (20 seconds before timeout), the server sends an `INACTIVITY_WARNING` message → client displays `InactivityWarningDialogComponent` (see below). If the player takes any action before expiry, the warning dismisses and the timer resets. If the timer reaches 0 → forfeit → duel result screen ("Timeout").
+
+**InactivityWarningDialogComponent:**
+- **Purpose:** Modal warning dialog that appears 20 seconds before the inactivity timeout expires, alerting the player to take action or forfeit
+- **Trigger:** `INACTIVITY_WARNING` WebSocket message from server (sent at 100 seconds of inactivity)
+- **Content:** Countdown timer (20 → 0) displayed prominently, warning text: "You will forfeit in [N] seconds due to inactivity"
+- **Visual:** `mat-dialog` centered, backdrop semi-transparent. Countdown uses `--pvp-timer-red` color. Text `font-weight: 700`
+- **Dismissal:** Automatically dismissed when the player takes any action: responding to a prompt, clicking a card, tapping a phase button, or sending an `ACTIVITY_PING`. No explicit dismiss button — the player must interact with the game
+- **Accessibility:** `role="alertdialog"`, `aria-live="assertive"`. `LiveAnnouncer`: "Warning: you will forfeit in 20 seconds due to inactivity". Countdown updates announced every 5 seconds ("15 seconds", "10 seconds", "5 seconds")
+- **Z-index:** Above prompt dialog, below surrender confirmation. If a prompt is active, the warning overlays on top of it — the player can still interact with the prompt underneath (warning has `pointer-events: none` except for its own content area)
+
 ### Platform Patterns
 
 #### Orientation Lock
 
-PvP duel view enforces landscape mode. If the device is in portrait orientation, display a **blocking full-screen overlay**: rotation icon + "Rotate your device to landscape" + actionable instruction: "If rotation is locked, disable it in your Control Center / Quick Settings, then rotate your device." No duel in portrait — no "Continue anyway" fallback (portrait is unusable with 36 zones). The lobby page can function in portrait (text/buttons only). Lock activates only on the `/pvp/duel/:roomId` route. Detection: `matchMedia('(orientation: portrait)')`.
+PvP duel view enforces landscape mode. If the device is in portrait orientation, display a **blocking full-screen overlay**: rotation icon + "Rotate your device to landscape" + actionable instruction: "If rotation is locked, disable it in your Control Center / Quick Settings, then rotate your device." No duel in portrait — no "Continue anyway" fallback (portrait is unusable with 36 zones). The lobby page can function in portrait (text/buttons only). Lock activates only on the `/pvp/duel/:roomCode` route. Detection: `matchMedia('(orientation: portrait)')`.
 
 **Focus Restoration After Orientation Change:** When returning from portrait (overlay disappears), `DuelPageComponent` listens to `orientationchange` and restores focus: if a prompt is active → `focusTrap.focusFirstTappableElement()` on the dialog; if no prompt → focus on board container. This also handles the edge case of rotation during dialog `transitioning` state — `focusFirstTappableElement()` is idempotent and re-syncs the trap with the current DOM.
 
@@ -1803,7 +1837,7 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 **Viewport-Locked Duel View:**
 - Duel view: `position: fixed; inset: 0; width: 100dvw; height: 100dvh; overflow: hidden`. No page scroll. The board IS the viewport
 - Lobby page: normal document flow, scrollable. Standard Angular Material responsive patterns
-- Transition: entering `/pvp/duel/:roomId` route activates viewport lock; leaving restores normal flow
+- Transition: entering `/pvp/duel/:roomCode` route activates viewport lock; leaving restores normal flow
 
 **Fullscreen API + Orientation Lock:**
 - At duel initialization: `document.documentElement.requestFullscreen()` + `screen.orientation.lock('landscape-primary')`
@@ -1818,7 +1852,7 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 - Larger card art in inspector (full variant), more comfortable spacing
 - Same overlay z-index stack, same component tree, same floating dialog prompt pattern
 - No side panel — abandoned in favor of unified overlay layout
-- **Board max dimensions:** `max-width: 1280px; max-height: 720px` on `PvpBoardContainerComponent`, centered in viewport with black background beyond. Prevents card art stretching beyond source resolution on large monitors (card art optimized for ~100-200px rendering). Master Duel uses the same pattern
+- **Board sizing:** `PvpBoardContainerComponent` uses responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`) — scales proportionally to viewport, no fixed pixel bounds. Board is centered with black background beyond
 
 ### Breakpoint Strategy
 
@@ -1993,7 +2027,7 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 - Token-level animation control: `--pvp-animation-duration` respects `prefers-reduced-motion`
 
 **Performance Development:**
-- `ChangeDetectionStrategy.OnPush` on all 8 PvP components + 6 prompt sub-components
+- `ChangeDetectionStrategy.OnPush` on all 8 PvP components + 9 prompt sub-components
 - `will-change` applied via class toggle (add before animation, remove 100ms after completion)
 - Card images: thumbnail by default (`width: 100px`), full art lazy-loaded on inspector open, pre-cache deck card images at duel init
 - WebSocket message batching: accumulate per `requestAnimationFrame`, apply as single state update

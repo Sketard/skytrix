@@ -47,8 +47,8 @@ back/images/
 .cursor/
 .windsurf/
 
-# BMAD agent workflows (not source code)
-_bmad/
+# BMAD ephemeral artifacts (stories, sprints, retros)
+_bmad-output/implementation-artifacts/
 
 # Duel server external data (downloaded at setup, ~100 MB)
 duel-server/data/
