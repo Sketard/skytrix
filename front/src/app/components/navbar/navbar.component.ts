@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -8,15 +8,19 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { MatTooltip } from '@angular/material/tooltip';
 import { filter } from 'rxjs';
 
+import { Role } from '../../core/model/account/user';
+
 class Tab {
   name: string;
   icon: string;
   path: string;
+  requiredRole?: Role;
 
-  constructor(name: string, icon: string, path: string) {
+  constructor(name: string, icon: string, path: string, requiredRole?: Role) {
     this.name = name;
     this.icon = icon;
     this.path = path;
+    this.requiredRole = requiredRole;
   }
 }
 
@@ -34,8 +38,18 @@ export class NavbarComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  public tabs: Array<Tab> = [];
+  private readonly allTabs: Tab[] = [
+    new Tab('Construction de deck', 'folder', '/decks'),
+    new Tab('Recherche de cartes', 'search', '/search'),
+    new Tab('Arène PvP', 'gamepad', '/pvp'),
+    new Tab('Paramètres', 'settings_suggest', '/parameters', 'ADMIN'),
+  ];
+
   public user = this.authService.user;
+  public tabs = computed(() => {
+    const role = this.user()?.role;
+    return this.allTabs.filter(tab => !tab.requiredRole || tab.requiredRole === role);
+  });
   readonly collapsed = this.navbarCollapse.collapsed;
   readonly isMobile = this.navbarCollapse.isMobile;
   readonly drawerOpen = this.navbarCollapse.drawerOpen;
@@ -43,11 +57,6 @@ export class NavbarComponent {
   readonly skipDrawerTransition = signal(false);
 
   constructor() {
-    this.addTab(new Tab('Construction de deck', 'folder', '/decks'));
-    this.addTab(new Tab('Recherche de cartes', 'search', '/search'));
-    this.addTab(new Tab('Arène PvP', 'gamepad', '/pvp'));
-    this.addTab(new Tab('Paramètres', 'settings_suggest', '/parameters'));
-
     const sub = this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
       .subscribe(() => {
@@ -56,10 +65,6 @@ export class NavbarComponent {
         setTimeout(() => this.skipDrawerTransition.set(false), 0);
       });
     this.destroyRef.onDestroy(() => sub.unsubscribe());
-  }
-
-  private addTab(tab: Tab) {
-    this.tabs.push(tab);
   }
 
   toggle(): void {

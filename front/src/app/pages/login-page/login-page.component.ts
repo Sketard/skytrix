@@ -16,7 +16,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { LoginDTO } from '../../core/model/account/login-dto';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
-import { ACCESS_TOKEN, AUTH_HEADER, BEARER_PREFIX, CURRENT_USER_KEY } from '../../core/utilities/auth.constants';
+import { CURRENT_USER_KEY } from '../../core/utilities/auth.constants';
 import { displayError, displaySuccess } from '../../core/utilities/functions';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
@@ -105,29 +105,18 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   public connect(): void {
     this.authService.login(this.loginForm.getRawValue()).subscribe({
       next: (res: HttpResponse<UserDTO>) => {
-        res.headers.keys();
-        const accessToken = res.headers.get(AUTH_HEADER)?.replace(BEARER_PREFIX, '')!;
         this.authService.setUser(res.body!);
+        localStorage.removeItem('accessToken');
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(res.body));
-        localStorage.setItem(ACCESS_TOKEN, accessToken);
         this.ownedCardService.loadAll();
-        this.authFinished(res);
+        if (this.returnUrl) {
+          this.router.navigateByUrl(this.returnUrl);
+        } else {
+          this.router.navigate(['decks']);
+        }
       },
       error: (error: HttpErrorResponse) => displayError(this.snackBar, error),
     });
-  }
-
-  private authFinished(res: HttpResponse<UserDTO | void>): void {
-    res.headers.keys();
-    const accessToken = res.headers.get(AUTH_HEADER)?.replace(BEARER_PREFIX, '');
-    if (accessToken) {
-      localStorage.setItem(ACCESS_TOKEN, accessToken);
-      if (this.returnUrl) {
-        this.router.navigateByUrl(this.returnUrl);
-      } else {
-        this.router.navigate(['decks']);
-      }
-    }
   }
 
   public changeMode(mode: LoginMode, direction: AnimationDirection): void {

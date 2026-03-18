@@ -18,7 +18,8 @@ export class DebugLogService {
     if (text === null) return;
 
     const category = this.categorize(msg.type);
-    this._entries.update(entries => [...entries, { timestamp: Date.now(), category, text }]);
+    const player = this.extractPlayer(msg);
+    this._entries.update(entries => [...entries, { timestamp: Date.now(), category, text, player }]);
   }
 
   logPlayerResponse(promptType: string, data: Record<string, unknown>): void {
@@ -29,6 +30,12 @@ export class DebugLogService {
 
   clearLogs(): void {
     this._entries.set([]);
+  }
+
+  private extractPlayer(msg: ServerMessage): 0 | 1 | undefined {
+    if ('player' in msg && typeof msg.player === 'number') return msg.player as 0 | 1;
+    if ('attackerPlayer' in msg && typeof msg.attackerPlayer === 'number') return msg.attackerPlayer as 0 | 1;
+    return undefined;
   }
 
   private categorize(type: string): 'event' | 'prompt' | 'system' {

@@ -75,15 +75,14 @@ public class SecurityConfig {
 				new AntPathRequestMatcher("/documents/big/{\\d+}", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/documents/small/{\\d+}", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/documents/small/code/{\\d+}", HttpMethod.GET.name()),
-				new AntPathRequestMatcher("/documents/sample/{\\d+}", HttpMethod.GET.name())
+				new AntPathRequestMatcher("/documents/sample", HttpMethod.GET.name()),
+				new AntPathRequestMatcher("/client-logs", HttpMethod.POST.name())
 		);
 
 		var jwtFilteredMatcher = new NegatedRequestMatcher(new OrRequestMatcher(loginUrlMatcher));
 		var jwtFilter = new JWTAuthenticationFilter(jwtFilteredMatcher, authenticationManager(), authFailureHandler);
 
 		jwtService.setRefreshUrlMatcher(refreshUrlMatcher);
-
-		jwtFilter.setJwtService(jwtService);
 
 		http
 				.httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))

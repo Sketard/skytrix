@@ -1,3 +1,7 @@
+:host {
+  user-select: text;
+}
+
 // Dismissable mode: absolute positioned panel
 :host.mode-dismissable {
   position: absolute;

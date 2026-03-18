@@ -7,7 +7,14 @@ export interface DebugLogEntry {
   timestamp: number;
   category: 'event' | 'prompt' | 'response' | 'system';
   text: string;
+  player?: 0 | 1;
 }
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+const SEP = ' \u00b7 '; // middle dot separator
 
 const RPS_LABELS: Record<number, string> = { 1: 'Scissors', 2: 'Rock', 3: 'Paper' };
 
@@ -37,10 +44,20 @@ export const LOCATION_LABELS: Record<number, string> = {
   [LOCATION.EXTRA]: 'EXTRA',
 };
 
+const HINT_PREFIX: Record<number, string> = {
+  1: 'Timing', 2: 'Info', 3: 'Context', 4: 'Opponent chose',
+  5: 'Effect of', 6: 'Race', 7: 'Attribute', 8: 'Effect of', 9: 'Number', 10: 'Effect of',
+  13: 'Effect of', 15: 'Effect of',
+};
+
+const WIN_REASONS: Record<number, string> = { 0: 'LP', 1: 'deck-out', 2: 'effect' };
+
+function p(player: number): string {
+  return `P${player + 1}`;
+}
+
 function zoneLabel(location: number, sequence: number): string {
-  const zoneId = locationToZoneId(location, sequence);
-  if (zoneId) return zoneId;
-  return LOCATION_LABELS[location] ?? `LOC:${location}`;
+  return locationToZoneId(location, sequence) ?? LOCATION_LABELS[location] ?? `LOC:${location}`;
 }
 
 function positionLabel(pos: number): string {
@@ -52,29 +69,45 @@ function positionLabel(pos: number): string {
   return 'face-down ATK';
 }
 
+function cards(n: number): string {
+  return n === 1 ? '1 card' : `${n} cards`;
+}
+
+function zones(n: number): string {
+  return n === 1 ? '1 zone' : `${n} zones`;
+}
+
+function cardName(name: string | undefined): string {
+  return name || '?';
+}
+
+// =============================================================================
+// Server messages
+// =============================================================================
+
 export function formatServerMessage(msg: ServerMessage): string | null {
   switch (msg.type) {
-    // Game events
+    // -- Game events --
     case 'BOARD_STATE':
-      return `Turn ${msg.data.turnCount} — P${msg.data.turnPlayer + 1}, Phase: ${msg.data.phase}`;
+      return `${p(msg.data.turnPlayer)}${SEP}Turn ${msg.data.turnCount}, ${msg.data.phase}`;
     case 'STATE_SYNC':
       return 'State resynchronized';
     case 'MSG_DRAW':
-      return `P${msg.player + 1} drew ${msg.cards.length} card(s)`;
+      return `${p(msg.player)}${SEP}drew ${cards(msg.cards.length)}`;
     case 'MSG_MOVE':
       return (
-        `P${msg.player + 1}: ${msg.cardName || 'Unknown'} ` +
-        `${zoneLabel(msg.fromLocation, msg.fromSequence)} → ${zoneLabel(msg.toLocation, msg.toSequence)} ` +
+        `${p(msg.player)}${SEP}${cardName(msg.cardName)} ` +
+        `${zoneLabel(msg.fromLocation, msg.fromSequence)} \u2192 ${zoneLabel(msg.toLocation, msg.toSequence)} ` +
         `(${positionLabel(msg.toPosition)})`
       );
     case 'MSG_DAMAGE':
-      return `P${msg.player + 1} took ${msg.amount} damage`;
+      return `${p(msg.player)}${SEP}took ${msg.amount} damage`;
     case 'MSG_RECOVER':
-      return `P${msg.player + 1} recovered ${msg.amount} LP`;
+      return `${p(msg.player)}${SEP}recovered ${msg.amount} LP`;
     case 'MSG_PAY_LPCOST':
-      return `P${msg.player + 1} paid ${msg.amount} LP`;
+      return `${p(msg.player)}${SEP}paid ${msg.amount} LP`;
     case 'MSG_CHAINING':
-      return `Chain ${msg.chainIndex + 1}: ${msg.cardName || 'Unknown'} activated by P${msg.player + 1}`;
+      return `${p(msg.player)}${SEP}chain ${msg.chainIndex + 1}: ${cardName(msg.cardName)} activated`;
     case 'MSG_CHAIN_SOLVING':
       return `Resolving chain link ${msg.chainIndex + 1}`;
     case 'MSG_CHAIN_SOLVED':
@@ -82,98 +115,97 @@ export function formatServerMessage(msg: ServerMessage): string | null {
     case 'MSG_CHAIN_END':
       return 'Chain resolved completely';
     case 'MSG_HINT': {
-      const HINT_LABELS: Record<number, string> = {
-        1: 'EVENT', 2: 'MESSAGE', 3: 'SELECTMSG', 4: 'OPSELECTED',
-        5: 'EFFECT', 6: 'RACE', 7: 'ATTRIB', 8: 'CODE', 9: 'NUMBER', 10: 'CARD',
-      };
-      const label = HINT_LABELS[msg.hintType] ?? String(msg.hintType);
-      return `Hint: ${label}(${msg.hintType}), value=${msg.value}, P${msg.player + 1}`;
+      const prefix = HINT_PREFIX[msg.hintType] ?? `hint(${msg.hintType})`;
+      const detail = msg.cardName || msg.hintAction || `value=${msg.value}`;
+      return `${p(msg.player)}${SEP}${prefix}: ${detail}`;
     }
-    case 'MSG_CONFIRM_CARDS':
-      return `P${msg.player + 1} confirmed ${msg.cards.length} card(s)`;
+    case 'MSG_CONFIRM_CARDS': {
+      const names = msg.cards.map((c: { name?: string }) => cardName(c.name)).join(', ');
+      return `${p(msg.player)}${SEP}confirmed: ${names}`;
+    }
     case 'MSG_SHUFFLE_HAND':
-      return `P${msg.player + 1} hand shuffled`;
+      return `${p(msg.player)}${SEP}hand shuffled`;
     case 'MSG_SHUFFLE_DECK':
-      return `P${msg.player + 1} deck shuffled`;
+      return `${p(msg.player)}${SEP}deck shuffled`;
     case 'MSG_FLIP_SUMMONING':
-      return `P${msg.player + 1}: ${msg.cardName || 'Unknown'} flip summoned at ${zoneLabel(msg.location, msg.sequence)}`;
+      return `${p(msg.player)}${SEP}${cardName(msg.cardName)} flip summoned at ${zoneLabel(msg.location, msg.sequence)}`;
     case 'MSG_CHANGE_POS':
       return (
-        `P${msg.player + 1}: ${msg.cardName || 'Unknown'} changed position ` +
-        `(${positionLabel(msg.previousPosition)} → ${positionLabel(msg.currentPosition)})`
+        `${p(msg.player)}${SEP}${cardName(msg.cardName)} ` +
+        `${positionLabel(msg.previousPosition)} \u2192 ${positionLabel(msg.currentPosition)}`
       );
     case 'MSG_SWAP':
-      return `Cards swapped: ${msg.card1.name || 'Unknown'} ↔ ${msg.card2.name || 'Unknown'}`;
+      return `${cardName(msg.card1.name)} \u2194 ${cardName(msg.card2.name)}`;
     case 'MSG_ATTACK':
       return msg.defenderPlayer === null
-        ? `P${msg.attackerPlayer + 1} M${msg.attackerSequence + 1} direct attack`
-        : `P${msg.attackerPlayer + 1} M${msg.attackerSequence + 1} attacks P${msg.defenderPlayer + 1} M${msg.defenderSequence! + 1}`;
+        ? `${p(msg.attackerPlayer)}${SEP}M${msg.attackerSequence + 1} direct attack`
+        : `${p(msg.attackerPlayer)} vs ${p(msg.defenderPlayer)}${SEP}M${msg.attackerSequence + 1} attacks M${msg.defenderSequence! + 1}`;
     case 'MSG_BATTLE':
-      return (
-        `Battle: P${msg.attackerPlayer + 1} (${msg.attackerDamage}) vs ` +
-        `P${msg.defenderPlayer + 1} (${msg.defenderDamage})`
-      );
-    case 'MSG_WIN': {
-      const winReasons: Record<number, string> = { 0: 'LP', 1: 'deck-out', 2: 'effect' };
-      return `P${msg.player + 1} wins! (reason: ${winReasons[msg.reason] ?? msg.reason})`;
-    }
+      return `${p(msg.attackerPlayer)} vs ${p(msg.defenderPlayer)}${SEP}battle ${msg.attackerDamage} vs ${msg.defenderDamage}`;
+    case 'MSG_WIN':
+      return `${p(msg.player)}${SEP}wins (${WIN_REASONS[msg.reason] ?? msg.reason})`;
 
-    // Prompts
+    // -- Prompts --
     case 'SELECT_IDLECMD':
       return (
-        `P${msg.player + 1} prompt: Idle command ` +
-        `(${msg.summons.length} summons, ${msg.specialSummons.length} sps, ${msg.activations.length} activations...)`
+        `${p(msg.player)}${SEP}MP available actions ` +
+        `(${msg.summons.length} summons, ${msg.specialSummons.length} sps, ${msg.activations.length} activations)`
       );
     case 'SELECT_BATTLECMD':
-      return `P${msg.player + 1} prompt: Battle command (${msg.attacks.length} attacks, ${msg.activations.length} activations)`;
+      return `${p(msg.player)}${SEP}BP available actions (${msg.attacks.length} attacks, ${msg.activations.length} activations)`;
     case 'SELECT_CARD':
-      return `P${msg.player + 1} prompt: Select ${msg.min}-${msg.max} card(s) from ${msg.cards.length} options`;
+      return `${p(msg.player)}${SEP}select ${msg.min}-${msg.max} from ${cards(msg.cards.length)}`;
     case 'SELECT_CHAIN':
-      return `P${msg.player + 1} prompt: Chain? (${msg.cards.length} options, forced=${msg.forced})`;
+      return `${p(msg.player)}${SEP}chain? (${cards(msg.cards.length)}, forced=${msg.forced})`;
     case 'SELECT_EFFECTYN':
-      return `P${msg.player + 1} prompt: Activate ${msg.cardName || 'Unknown'} effect?`;
-    case 'SELECT_YESNO':
-      return `P${msg.player + 1} prompt: Yes/No (desc=${msg.description})`;
+      return `${p(msg.player)}${SEP}activate ${cardName(msg.cardName)} effect?`;
+    case 'SELECT_YESNO': {
+      const desc = msg.descriptionText || `desc=${msg.description}`;
+      return `${p(msg.player)}${SEP}yes/no: ${desc}`;
+    }
     case 'SELECT_PLACE':
-      return `P${msg.player + 1} prompt: Select ${msg.count} zone(s)`;
+      return `${p(msg.player)}${SEP}select ${zones(msg.count)}`;
     case 'SELECT_DISFIELD':
-      return `P${msg.player + 1} prompt: Select ${msg.count} field zone(s) to disable`;
+      return `${p(msg.player)}${SEP}disable ${zones(msg.count)}`;
     case 'SELECT_POSITION':
-      return `P${msg.player + 1} prompt: Choose position for ${msg.cardName || 'Unknown'}`;
-    case 'SELECT_OPTION':
-      return `P${msg.player + 1} prompt: Choose from ${msg.options.length} options`;
+      return `${p(msg.player)}${SEP}choose position for ${cardName(msg.cardName)}`;
+    case 'SELECT_OPTION': {
+      const descs = (msg.descriptions as string[])?.filter(Boolean);
+      if (descs?.length) return `${p(msg.player)}${SEP}choose: ${descs.map(d => `"${d}"`).join(' / ')}`;
+      return `${p(msg.player)}${SEP}choose from ${msg.options.length} options`;
+    }
     case 'SELECT_TRIBUTE':
-      return `P${msg.player + 1} prompt: Tribute ${msg.min}-${msg.max} from ${msg.cards.length} cards`;
+      return `${p(msg.player)}${SEP}tribute ${msg.min}-${msg.max} from ${cards(msg.cards.length)}`;
     case 'SELECT_SUM':
-      return `P${msg.player + 1} prompt: Select cards for sum (${msg.mustSelect.length + msg.cards.length} options, ${msg.mustSelect.length} forced)`;
+      return `${p(msg.player)}${SEP}select for sum (${cards(msg.mustSelect.length + msg.cards.length)}, ${msg.mustSelect.length} forced)`;
     case 'SELECT_UNSELECT_CARD':
-      return `P${msg.player + 1} prompt: Select/unselect from ${msg.cards.length} cards`;
+      return `${p(msg.player)}${SEP}select/unselect from ${cards(msg.cards.length)}`;
     case 'SELECT_COUNTER':
-      return `P${msg.player + 1} prompt: Distribute ${msg.count} counters on ${msg.cards.length} cards`;
+      return `${p(msg.player)}${SEP}distribute ${msg.count} counters on ${cards(msg.cards.length)}`;
     case 'SORT_CARD':
-      return `P${msg.player + 1} prompt: Sort ${msg.cards.length} cards (auto-selected)`;
+      return `${p(msg.player)}${SEP}sort ${cards(msg.cards.length)} (auto)`;
     case 'SORT_CHAIN':
-      return `P${msg.player + 1} prompt: Sort chain ${msg.cards.length} cards (auto-selected)`;
+      return `${p(msg.player)}${SEP}sort chain ${cards(msg.cards.length)} (auto)`;
     case 'ANNOUNCE_RACE':
-      return `P${msg.player + 1} prompt: Announce ${msg.count} type(s)`;
+      return `${p(msg.player)}${SEP}announce ${msg.count} type(s)`;
     case 'ANNOUNCE_ATTRIB':
-      return `P${msg.player + 1} prompt: Announce ${msg.count} attribute(s)`;
+      return `${p(msg.player)}${SEP}announce ${msg.count} attribute(s)`;
     case 'ANNOUNCE_CARD':
-      return `P${msg.player + 1} prompt: Announce card (auto-selected)`;
+      return `${p(msg.player)}${SEP}announce card (auto)`;
     case 'ANNOUNCE_NUMBER':
-      return `P${msg.player + 1} prompt: Announce number from ${msg.options.length} options`;
+      return `${p(msg.player)}${SEP}announce number from ${msg.options.length} options`;
     case 'RPS_CHOICE':
-      return `P${msg.player + 1} prompt: Rock-Paper-Scissors`;
+      return `${p(msg.player)}${SEP}rock-paper-scissors`;
 
-    // System messages
+    // -- System --
     case 'DUEL_END':
       return msg.winner !== null
-        ? `Duel ended — Winner: P${msg.winner + 1} (${msg.reason})`
-        : `Duel ended — Draw (${msg.reason})`;
+        ? `Duel ended \u2014 ${p(msg.winner)} wins (${msg.reason})`
+        : `Duel ended \u2014 draw (${msg.reason})`;
     case 'RPS_RESULT':
       return (
-        `RPS result: P1=${RPS_LABELS[msg.player1Choice] ?? '?'}, P2=${RPS_LABELS[msg.player2Choice] ?? '?'} → ` +
-        `${msg.winner !== null ? `Winner: P${msg.winner + 1}` : 'Draw'}`
+        `RPS: ${p(0)}=${RPS_LABELS[msg.player1Choice] ?? '?'}, ${p(1)}=${RPS_LABELS[msg.player2Choice] ?? '?'} \u2192 ` +
+        `${msg.winner !== null ? `${p(msg.winner)} wins` : 'draw'}`
       );
     case 'OPPONENT_DISCONNECTED':
       return 'Opponent disconnected';
@@ -188,7 +220,7 @@ export function formatServerMessage(msg: ServerMessage): string | null {
     case 'WORKER_ERROR':
       return `Worker error: ${msg.message}`;
 
-    // Excluded
+    // -- Excluded --
     case 'TIMER_STATE':
     case 'SESSION_TOKEN':
       return null;
@@ -197,70 +229,74 @@ export function formatServerMessage(msg: ServerMessage): string | null {
   }
 }
 
+// =============================================================================
+// Player responses
+// =============================================================================
+
 export function formatPlayerResponse(promptType: string, data: Record<string, unknown>): string {
   switch (promptType) {
     case 'SELECT_IDLECMD': {
       const action = data['action'] as number;
       const index = data['index'] as number | null;
       const label = IDLE_ACTION_LABELS[action] ?? `Action ${action}`;
-      return `→ Response: ${label} (index ${index})`;
+      return `\u2192 ${label} (index ${index})`;
     }
     case 'SELECT_BATTLECMD': {
       const action = data['action'] as number;
       const index = data['index'] as number | null;
       const label = BATTLE_ACTION_LABELS[action] ?? `Action ${action}`;
-      return `→ Response: ${label} (index ${index})`;
+      return `\u2192 ${label} (index ${index})`;
     }
     case 'SELECT_CARD':
     case 'SELECT_TRIBUTE':
     case 'SELECT_SUM': {
       const indices = data['indices'] as number[] | undefined;
-      return `→ Response: selected ${indices?.length ?? 0} card(s)`;
+      return `\u2192 selected ${cards(indices?.length ?? 0)}`;
     }
     case 'SELECT_CHAIN': {
       const index = data['index'] as number | null;
-      return index !== null ? `→ Response: chain index ${index}` : '→ Response: pass';
+      return index !== null ? `\u2192 chain index ${index}` : '\u2192 pass';
     }
     case 'SELECT_EFFECTYN':
     case 'SELECT_YESNO': {
       const yes = data['yes'] as boolean;
-      return yes ? '→ Response: Yes' : '→ Response: No';
+      return yes ? '\u2192 yes' : '\u2192 no';
     }
     case 'SELECT_PLACE':
     case 'SELECT_DISFIELD': {
       const places = data['places'] as Array<{ player: number; location: number; sequence: number }> | undefined;
-      const zones = places?.map(p => zoneLabel(p.location, p.sequence)).join(', ') ?? '?';
-      return `→ Response: placed at ${zones}`;
+      const zoneList = places?.map(pl => zoneLabel(pl.location, pl.sequence)).join(', ') ?? '?';
+      return `\u2192 placed at ${zoneList}`;
     }
     case 'SELECT_POSITION': {
       const position = data['position'] as number;
-      return `→ Response: ${positionLabel(position)}`;
+      return `\u2192 ${positionLabel(position)}`;
     }
     case 'SELECT_OPTION': {
       const index = data['index'] as number;
-      return `→ Response: option ${index}`;
+      return `\u2192 option ${index}`;
     }
     case 'SELECT_COUNTER':
-      return '→ Response: distributed counters';
+      return '\u2192 distributed counters';
     case 'SELECT_UNSELECT_CARD': {
       const index = data['index'] as number | null;
-      return index !== null ? `→ Response: selected index ${index}` : '→ Response: finished';
+      return index !== null ? `\u2192 selected index ${index}` : '\u2192 finished';
     }
     case 'SORT_CARD':
     case 'SORT_CHAIN':
-      return '→ Response: auto-sorted';
+      return '\u2192 auto-sorted';
     case 'ANNOUNCE_RACE':
     case 'ANNOUNCE_ATTRIB':
     case 'ANNOUNCE_CARD':
     case 'ANNOUNCE_NUMBER': {
       const value = data['value'] as number;
-      return `→ Response: announced ${value}`;
+      return `\u2192 announced ${value}`;
     }
     case 'RPS_CHOICE': {
       const choice = data['choice'] as number;
-      return `→ Response: ${RPS_LABELS[choice] ?? '?'}`;
+      return `\u2192 ${RPS_LABELS[choice] ?? '?'}`;
     }
     default:
-      return `→ Response: ${promptType}`;
+      return `\u2192 ${promptType}`;
   }
 }

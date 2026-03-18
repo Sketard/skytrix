@@ -5,7 +5,7 @@
   [routerLink]="add() ? '/decks/builder' : '/decks/' + deck()!.id">
   @if (!add() && deck()?.urls) {
     <div class="deckBox-preview">
-      @for (url of deck()!.urls; track url) {
+      @for (url of deck()!.urls; track $index) {
         <img class="deckBox-preview-card" [src]="url" alt="" />
       }
     </div>

@@ -350,6 +350,7 @@ export interface SelectYesNoMsg {
   type: 'SELECT_YESNO';
   player: Player;
   description: number;
+  descriptionText?: string;
 }
 
 export interface SelectPlaceMsg {

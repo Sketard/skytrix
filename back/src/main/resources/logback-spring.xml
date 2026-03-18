@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="LOG_DIR" value="${LOG_DIR:-./logs}"/>
+
+    <!-- Console (dev + Docker stdout) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{requestId:-no-req}] [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Application log file (rolling, 7 days) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/back.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/back.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{requestId:-no-req}] [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Client log file (frontend errors received via POST) -->
+    <appender name="CLIENT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/client.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/client.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>100MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Dedicated logger for client-side logs -->
+    <logger name="CLIENT_LOG" level="INFO" additivity="false">
+        <appender-ref ref="CLIENT_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

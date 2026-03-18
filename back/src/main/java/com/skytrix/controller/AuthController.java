@@ -17,12 +17,7 @@ import com.skytrix.model.dto.user.CreateUserDTO;
 import com.skytrix.model.dto.user.ShortUserDTO;
 import com.skytrix.security.AuthService;
 
-import lombok.extern.slf4j.Slf4j;
-
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
-
 @RestController
-@Slf4j
 public class AuthController {
 
 	@Inject
@@ -43,9 +38,8 @@ public class AuthController {
 		if(refreshToken.isEmpty()) {
 			throw new UnauthorizedException("No token provided");
 		}
-
-		var jwtToken = authService.refresh(refreshToken);
-		response.setHeader(AUTHORIZATION, jwtToken);
+		var accessToken = authService.refresh(refreshToken);
+		authService.setAccessCookie(accessToken, response);
 	}
 
 	@PostMapping("/create-account")
@@ -58,8 +52,7 @@ public class AuthController {
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public void logout(HttpServletResponse response) {
 		authService.logout();
-		authService.setResponseRefreshCookie("", 0, response);
+		authService.clearAccessCookie(response);
+		authService.setRefreshCookie("", 0, response);
 	}
-
-
 }

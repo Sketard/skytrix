@@ -83,6 +83,19 @@ const PHASE_MAP: Record<number, Phase> = {
 const MZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5'];
 const SZONE_IDS: ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
 
+const RACE_LABELS: Record<number, string> = {
+  1: 'Warrior', 2: 'Spellcaster', 4: 'Fairy', 8: 'Fiend', 16: 'Zombie',
+  32: 'Machine', 64: 'Aqua', 128: 'Pyro', 256: 'Rock', 512: 'Winged Beast',
+  1024: 'Plant', 2048: 'Insect', 4096: 'Thunder', 8192: 'Dragon', 16384: 'Beast',
+  32768: 'Beast-Warrior', 65536: 'Dinosaur', 131072: 'Fish', 262144: 'Sea Serpent',
+  524288: 'Reptile', 1048576: 'Psychic', 2097152: 'Divine-Beast', 4194304: 'Creator God',
+  8388608: 'Wyrm', 16777216: 'Cyberse',
+};
+
+const ATTRIB_LABELS: Record<number, string> = {
+  1: 'EARTH', 2: 'WATER', 4: 'FIRE', 8: 'WIND', 16: 'LIGHT', 32: 'DARK', 64: 'DIVINE',
+};
+
 
 function getCardName(code: number): string {
   if (!cardDb || !code) return '';
@@ -285,17 +298,29 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       const value = Number(msg.hint);
       let cardName = '';
       let hintAction = '';
-      if (hintType === 10 || hintType === 13 || hintType === 15) {
-        // HINT_EFFECT / HINT_CODE / HINT_CARD: value is always a card code
+      if (hintType === 5 || hintType === 8 || hintType === 10 || hintType === 13 || hintType === 15) {
+        // HINT_EFFECT / HINT_CODE / HINT_CARD: value is a card code
         cardName = getCardName(value);
-      } else if (hintType === 3) {
-        // HINT_SELECTMSG: value is either a system string ID or a card code
+      } else if (hintType === 1 || hintType === 2) {
+        // HINT_EVENT / HINT_MESSAGE: value is a system string ID
+        hintAction = systemStrings.get(value) ?? '';
+      } else if (hintType === 3 || hintType === 4) {
+        // HINT_SELECTMSG / HINT_OPSELECTED: value is a system string ID or a card code
         const sysStr = systemStrings.get(value);
         if (sysStr) {
           hintAction = sysStr;
         } else {
           cardName = getCardName(value);
         }
+      } else if (hintType === 6) {
+        // HINT_RACE: value is a race bitmask
+        hintAction = RACE_LABELS[value] ?? `race:0x${value.toString(16)}`;
+      } else if (hintType === 7) {
+        // HINT_ATTRIB: value is an attribute bitmask
+        hintAction = ATTRIB_LABELS[value] ?? `attr:0x${value.toString(16)}`;
+      } else if (hintType === 9) {
+        // HINT_NUMBER: value is a number
+        hintAction = String(value);
       }
       return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName, hintAction };
     }
@@ -419,8 +444,10 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
       };
 
-    case OcgMessageType.SELECT_YESNO:
-      return { type: 'SELECT_YESNO', player: msg.player as Player, description: Number(msg.description) };
+    case OcgMessageType.SELECT_YESNO: {
+      const desc = Number(msg.description);
+      return { type: 'SELECT_YESNO', player: msg.player as Player, description: desc, descriptionText: getOptionDesc(BigInt(desc)) };
+    }
 
     case OcgMessageType.SELECT_PLACE:
       return {

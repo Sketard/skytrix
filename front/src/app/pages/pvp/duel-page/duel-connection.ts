@@ -98,6 +98,7 @@ export class DuelConnection {
   private wsToken: string | null = null;
   private reconnectToken: string | null = null;
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
+  private sessionTokenTimeout: ReturnType<typeof setTimeout> | null = null;
   private retryTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly wsUrlBase: string;
 
@@ -351,6 +352,9 @@ export class DuelConnection {
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
     }
+    if (this.sessionTokenTimeout) {
+      clearTimeout(this.sessionTokenTimeout);
+    }
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
     }
@@ -389,6 +393,7 @@ export class DuelConnection {
     } else if (this.wsToken) {
       url = `${this.wsUrlBase}?token=${this.wsToken}`;
     } else {
+      this._connectionStatus.set('lost');
       return;
     }
 
@@ -414,6 +419,13 @@ export class DuelConnection {
       if (!this.reconnectToken) {
         this._rematchState.set('idle');
       }
+      // Expect SESSION_TOKEN within 5s after handshake; otherwise force-close and retry.
+      this.sessionTokenTimeout = setTimeout(() => {
+        this.sessionTokenTimeout = null;
+        if (this._connectionStatus() !== 'connected') {
+          this.ws?.close();
+        }
+      }, 5000);
     };
 
     this.ws.onmessage = event => {
@@ -429,6 +441,10 @@ export class DuelConnection {
       if (this.connectionTimeout) {
         clearTimeout(this.connectionTimeout);
         this.connectionTimeout = null;
+      }
+      if (this.sessionTokenTimeout) {
+        clearTimeout(this.sessionTokenTimeout);
+        this.sessionTokenTimeout = null;
       }
       // 4029 = rate limited — no point retrying immediately
       if (event.code === 4029) {
@@ -634,6 +650,10 @@ export class DuelConnection {
 
       case 'SESSION_TOKEN':
         // Server confirmed the session — connection is genuinely alive.
+        if (this.sessionTokenTimeout) {
+          clearTimeout(this.sessionTokenTimeout);
+          this.sessionTokenTimeout = null;
+        }
         this._connectionStatus.set('connected');
         this._retryCount.set(0);
         this.wsToken = null; // no longer needed as fallback

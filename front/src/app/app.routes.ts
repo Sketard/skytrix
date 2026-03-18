@@ -6,6 +6,7 @@ import { ParameterPageComponent } from './pages/parameter-page/parameter-page.co
 import { AuthService } from './services/auth.service';
 import { LoginPageComponent } from './pages/login-page/login-page.component';
 import { SimulatorPageComponent } from './pages/simulator/simulator-page.component';
+import { adminGuard } from './core/guards/admin.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
@@ -16,7 +17,7 @@ export const routes: Routes = [
   { path: 'decks/:id/simulator', component: SimulatorPageComponent, canActivate: [AuthService] },
   { path: 'decks/:id', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'search', component: CardSearchPageComponent, canActivate: [AuthService] },
-  { path: 'parameters', component: ParameterPageComponent, canActivate: [AuthService] },
+  { path: 'parameters', component: ParameterPageComponent, canActivate: [AuthService, adminGuard] },
   {
     path: 'pvp',
     loadComponent: () => import('./pages/pvp/lobby-page/lobby-page.component').then(m => m.LobbyPageComponent),

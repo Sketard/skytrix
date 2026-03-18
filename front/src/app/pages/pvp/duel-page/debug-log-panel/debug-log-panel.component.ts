@@ -70,6 +70,30 @@ export class DebugLogPanelComponent {
     });
   }
 
+  downloadLogs(): void {
+    const entries = this.entries();
+    if (entries.length === 0) return;
+    const lines = entries.map(e => {
+      const time = this.formatTime(e.timestamp);
+      const cat = `[${e.category}]`.padEnd(10);
+      return `${time} ${cat} ${e.text}`;
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `duel-debug-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  highlightPlayers(text: string): string {
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return escaped
+      .replace(/\bP1\b/g, '<span class="dbg-p1">P1</span>')
+      .replace(/\bP2\b/g, '<span class="dbg-p2">P2</span>');
+  }
+
   formatTime(timestamp: number): string {
     const d = new Date(timestamp);
     const h = String(d.getHours()).padStart(2, '0');

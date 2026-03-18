@@ -146,6 +146,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   const method = req.method ?? 'GET';
   const pathname = url.pathname;
+  const requestId = (req.headers['x-request-id'] as string) ?? '-';
+  const start = Date.now();
+
+  res.on('finish', () => {
+    if (pathname !== '/health') {
+      console.log('[%s] %s %s %d — %dms', requestId, method, pathname, res.statusCode, Date.now() - start);
+    }
+  });
 
   // GET /health
   if (method === 'GET' && pathname === '/health') {
@@ -1229,7 +1237,6 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         return;
       }
 
-      console.log(`[TIMER] PLAYER_RESPONSE from player=${playerIndex}, promptType=${msg.promptType}`);
       session.invalidResponseCount[playerIndex] = 0;
       session.awaitingResponse[playerIndex] = false;
       session.lastSentPrompt[playerIndex] = null;

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, HostListener, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, input, output, signal } from '@angular/core';
 import { CardOnField } from '../../duel-ws.types';
 import { getCardImageUrl } from '../../pvp-card.utils';
 
@@ -11,9 +11,10 @@ import { getCardImageUrl } from '../../pvp-card.utils';
 })
 export class PvpHandRowComponent {
   private readonly el = inject(ElementRef<HTMLElement>);
+  private readonly destroyRef = inject(DestroyRef);
   readonly hoveredIndex = signal<number | null>(null);
   readonly selectedIndex = signal<number | null>(null);
-  private readonly isSmallViewport = typeof window !== 'undefined' && window.matchMedia('(max-height: 500px)').matches;
+  private readonly isSmallViewport = signal(false);
 
   readonly side = input.required<'player' | 'opponent'>();
   readonly cards = input<CardOnField[]>([]);
@@ -30,6 +31,12 @@ export class PvpHandRowComponent {
   readonly cardInspectRequest = output<{ cardCode: number }>();
 
   constructor() {
+    const mql = window.matchMedia('(max-height: 500px)');
+    this.isSmallViewport.set(mql.matches);
+    const handler = (e: MediaQueryListEvent) => this.isSmallViewport.set(e.matches);
+    mql.addEventListener('change', handler);
+    this.destroyRef.onDestroy(() => mql.removeEventListener('change', handler));
+
     effect(() => {
       if (this.actionableCardIndices().size === 0) this.selectedIndex.set(null);
     });
@@ -50,7 +57,7 @@ export class PvpHandRowComponent {
     const count = this.cards().length;
     if (count < 2) return null;
     let ratio: number;
-    if (this.isSmallViewport) {
+    if (this.isSmallViewport()) {
       // Mobile: minimal overlap for easy tap targets
       if (count <= 6) ratio = -0.05;
       else ratio = -0.05 - (count - 6) * 0.02;

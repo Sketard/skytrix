@@ -5,7 +5,10 @@
      [attr.aria-hidden]="!open()">
   <div class="debug-panel__header">
     <span class="debug-panel__title">Debug Logs</span>
-    <button class="debug-panel__clear" aria-label="Clear logs" (click)="clearRequested.emit()">
+    <button class="debug-panel__action" aria-label="Download logs" (click)="downloadLogs()">
+      <mat-icon>download</mat-icon>
+    </button>
+    <button class="debug-panel__action" aria-label="Clear logs" (click)="clearRequested.emit()">
       <mat-icon>delete_outline</mat-icon>
     </button>
     <button class="debug-panel__close" aria-label="Close debug panel" (click)="closed.emit()">
@@ -14,10 +17,12 @@
   </div>
   <div class="debug-panel__body" #scrollContainer>
     @for (entry of entries(); track $index) {
-      <div class="debug-panel__entry">
+      <div class="debug-panel__entry"
+           [class.debug-panel__entry--p1]="entry.player === 0"
+           [class.debug-panel__entry--p2]="entry.player === 1">
         <span class="debug-panel__time">{{ formatTime(entry.timestamp) }}</span>
         <span class="debug-panel__dot debug-panel__dot--{{ entry.category }}"></span>
-        <span class="debug-panel__text">{{ entry.text }}</span>
+        <span class="debug-panel__text" [innerHTML]="highlightPlayers(entry.text)"></span>
       </div>
     } @empty {
       <p class="debug-panel__empty">No logs yet</p>

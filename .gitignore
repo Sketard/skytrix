@@ -55,6 +55,9 @@ duel-server/data/
 duel-server/node_modules/
 duel-server/dist/
 
+# Logs (generated at runtime)
+logs/
+
 # OS
 .DS_Store
 Thumbs.db

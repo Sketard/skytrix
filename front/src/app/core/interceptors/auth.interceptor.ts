@@ -1,10 +1,7 @@
-import { HttpErrorResponse, HttpHandlerFn, HttpInterceptorFn, HttpRequest, HttpResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, filter, mergeMap, Observable, Subject, take, tap, throwError } from 'rxjs';
 import {
-  ACCESS_TOKEN,
-  AUTH_HEADER,
-  BEARER_PREFIX,
   INVALID_CREDENTIALS,
   TOKEN_EXPIRED,
 } from '../utilities/auth.constants';
@@ -17,30 +14,13 @@ import { RefreshStep } from '../enums/refresh-step.enum';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   if (isRouteWithRight(req)) {
-    req = addHeader(req);
     return next(req).pipe(catchError(x => handleResponseError(x, req, next, router)));
   }
   return next(req);
 };
 
 const isRouteWithRight = (req: HttpRequest<any>): boolean => {
-  return !['.*/login$', '.*/create-account$', '.*/refresh$', '.*/assets'].some(url => req.url.match(url));
-};
-
-const addHeader = (req: HttpRequest<any>): HttpRequest<any> => {
-  req = req.clone({
-    headers: req.headers.set(AUTH_HEADER, BEARER_PREFIX + localStorage.getItem(ACCESS_TOKEN)),
-  });
-  return req;
-};
-
-const setAccessToken = (response: HttpResponse<any>): void => {
-  response.headers.keys();
-  const authHeader = response.headers.get(AUTH_HEADER);
-  if (authHeader) {
-    const accessToken = authHeader.replace(BEARER_PREFIX, '');
-    localStorage.setItem(ACCESS_TOKEN, accessToken);
-  }
+  return !['.*/login$', '.*/create-account$', '.*/refresh$', '.*/assets', '.*/client-logs$'].some(url => req.url.match(url));
 };
 
 const handleResponseError = (
@@ -51,17 +31,13 @@ const handleResponseError = (
 ): Observable<any> => {
   if (err.status === 401) {
     if (err.error instanceof Blob) {
-      console.log('1');
       return handleBlob401Errors(err, req, next, router);
     }
-    console.log('2');
     return handle401Errors(err, req, next, router);
   }
   if (err.error instanceof Blob) {
-    console.log('3');
     return handleBlobError(err);
   }
-  console.log('4');
   return throwError(err);
 };
 
@@ -73,7 +49,6 @@ const handle401Errors = (
 ): Observable<any> => {
   switch (err.error.message) {
     case TOKEN_EXPIRED:
-      localStorage.removeItem(ACCESS_TOKEN);
       return tryToRefreshToken(req, next, router);
     case INVALID_CREDENTIALS:
       if (!req.url.match('.*/login')) {
@@ -140,7 +115,6 @@ const tryToRefreshToken = (req: HttpRequest<any>, next: HttpHandlerFn, router: R
         if (value === RefreshStep.ERROR) {
           return throwError('Refresh token not valid');
         }
-        req = addHeader(req);
         return next(req);
       })
     );
@@ -150,9 +124,7 @@ const tryToRefreshToken = (req: HttpRequest<any>, next: HttpHandlerFn, router: R
   return authService
     .refreshToken()
     .pipe(
-      mergeMap((data: HttpResponse<any>) => {
-        setAccessToken(data);
-        req = addHeader(req);
+      mergeMap(() => {
         return next(req);
       })
     )

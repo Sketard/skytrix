@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import static com.skytrix.utils.ThreadUtils.processAsynchronously;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.web.bind.annotation.*;
 
 import com.skytrix.service.DuelServerClient;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/parameters")
+@Secured("ROLE_ADMIN")
 public class ParameterController {
 
 	@Inject

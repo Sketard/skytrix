@@ -1,4 +1,4 @@
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, ErrorHandler, importProvidersFrom } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -8,6 +8,7 @@ import { loaderInterceptor } from './core/interceptors/loader-interceptor';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { GlobalErrorHandler } from './core/services/global-error-handler';
 
 export function HttpLoaderFactory(http: HttpClient) {
   return new TranslateHttpLoader(http, './assets/i18n/', '.json');
@@ -15,6 +16,7 @@ export function HttpLoaderFactory(http: HttpClient) {
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: ErrorHandler, useClass: GlobalErrorHandler },
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([loaderInterceptor, authInterceptor])),
     provideAnimationsAsync(),

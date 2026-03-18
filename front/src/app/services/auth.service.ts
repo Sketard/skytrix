@@ -4,7 +4,7 @@ import { Injectable, signal } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
-import { ACCESS_TOKEN, AUTH_HEADER, AUTH_HEADER_PREFIX, CURRENT_USER_KEY } from '../core/utilities/auth.constants';
+import { AUTH_HEADER, AUTH_HEADER_PREFIX, CURRENT_USER_KEY } from '../core/utilities/auth.constants';
 import { LoginDTO } from '../core/model/account/login-dto';
 import { UserDTO } from '../core/model/account/user';
 import { RefreshStep } from '../core/enums/refresh-step.enum';
@@ -40,12 +40,7 @@ export class AuthService {
   canActivate(route?: ActivatedRouteSnapshot, state?: RouterStateSnapshot): boolean {
     const currentUser = localStorage.getItem(CURRENT_USER_KEY);
     if (currentUser) {
-      const isTokenPresent = !!localStorage.getItem(ACCESS_TOKEN);
-
-      if (!isTokenPresent) {
-        this.router.navigate(['/login'], { queryParams: { returnUrl: state?.url } });
-      }
-      return isTokenPresent;
+      return true;
     }
     this.router.navigate(['/login'], { queryParams: { returnUrl: state?.url } });
     return false;
@@ -67,7 +62,7 @@ export class AuthService {
   public resetLogin(): void {
     if (this.isLoggedIn()) {
       this.userState.set(undefined);
-      this.clearAuthDatas();
+      localStorage.removeItem(CURRENT_USER_KEY);
       this.router.navigate(['login']);
     }
   }
@@ -78,11 +73,6 @@ export class AuthService {
 
   public createAccount(form: CreateUserDTO): Observable<void> {
     return this.httpClient.post<void>(`api/create-account`, form).pipe(take(1));
-  }
-
-  public clearAuthDatas(): void {
-    localStorage.removeItem(ACCESS_TOKEN);
-    localStorage.removeItem(CURRENT_USER_KEY);
   }
 
   public isLoggedIn(): boolean {

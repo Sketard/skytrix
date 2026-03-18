@@ -1,5 +1,6 @@
 package com.skytrix.service;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
@@ -12,8 +13,13 @@ import org.springframework.web.client.RestClient;
 import com.skytrix.model.dto.room.DuelCreationResponse;
 import com.skytrix.model.dto.room.DuelDeckDTO;
 
+import org.slf4j.MDC;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.HttpClientErrorException;
+
+import static com.skytrix.security.RequestLoggingFilter.MDC_REQUEST_ID;
+import static com.skytrix.security.RequestLoggingFilter.REQUEST_ID_HEADER;
 
 @Service
 @Slf4j
@@ -32,6 +38,7 @@ public class DuelServerClient {
         this.restClient = RestClient.builder()
                 .baseUrl(duelServerUrl)
                 .requestFactory(factory)
+                .requestInterceptor(this::propagateRequestId)
                 .build();
 
         var longFactory = new SimpleClientHttpRequestFactory();
@@ -40,6 +47,7 @@ public class DuelServerClient {
         this.longTimeoutRestClient = RestClient.builder()
                 .baseUrl(duelServerUrl)
                 .requestFactory(longFactory)
+                .requestInterceptor(this::propagateRequestId)
                 .build();
     }
 
@@ -157,6 +165,16 @@ public class DuelServerClient {
         } catch (Exception e) {
             log.warn("Failed to terminate duel {} on duel server: {}", duelServerId, e.getMessage());
         }
+    }
+
+    private org.springframework.http.client.ClientHttpResponse propagateRequestId(
+            org.springframework.http.HttpRequest request, byte[] body,
+            org.springframework.http.client.ClientHttpRequestExecution execution) throws IOException {
+        var reqId = MDC.get(MDC_REQUEST_ID);
+        if (reqId != null) {
+            request.getHeaders().set(REQUEST_ID_HEADER, reqId);
+        }
+        return execution.execute(request, body);
     }
 
     private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2, boolean skipRps, Boolean skipShuffle, Integer turnTimeSecs) {}

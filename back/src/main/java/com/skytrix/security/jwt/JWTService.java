@@ -23,6 +23,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import com.skytrix.exception.InvalidRefreshTokenException;
 import com.skytrix.exception.TokenExpiredException;
 import com.skytrix.exception.UnauthorizedException;
+import com.skytrix.model.enums.Role;
 import com.skytrix.repository.UserRepository;
 import com.skytrix.security.CustomUserDetails;
 
@@ -48,9 +49,10 @@ public class JWTService {
 
 	private static final String TOKEN_USER_ID = "userId";
 	private static final String TOKEN_REFRESH = "refresh";
+	private static final String TOKEN_ROLE = "role";
 
 	public String generateAccessToken(CustomUserDetails userDetails) {
-		return "Bearer " + generateToken(userDetails, false);
+		return generateToken(userDetails, false);
 	}
 
 	public String generateRefreshToken(CustomUserDetails userDetails) {
@@ -100,6 +102,7 @@ public class JWTService {
 				.issuedAt(new Date())
 				.expiration(new Date(System.currentTimeMillis() + (refresh ? refreshValidityMilliseconds : accessValidityMilliseconds)))
 				.add(TOKEN_USER_ID, userDetails.getId())
+				.add(TOKEN_ROLE, userDetails.getRole().name())
 				.add(TOKEN_REFRESH, refresh)
 				.build();
 
@@ -115,6 +118,7 @@ public class JWTService {
 
 		user.setUsername(body.getSubject());
 		user.setId(userId);
+		user.setRole(Role.valueOf(body.get(TOKEN_ROLE, String.class)));
 		return user;
 	}
 

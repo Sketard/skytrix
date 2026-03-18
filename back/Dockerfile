@@ -12,6 +12,7 @@ RUN mvn package -DskipTests -B
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+RUN apk add --no-cache curl
 COPY --from=builder /app/target/*.jar app.jar
 RUN mkdir -p images/small images/big
 

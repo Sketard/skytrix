@@ -1,9 +1,12 @@
 package com.skytrix.security;
 
-import jakarta.servlet.http.Cookie;
+import java.time.Duration;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,8 +23,6 @@ import com.skytrix.security.jwt.JWTService;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
-
 @Service
 @Slf4j
 public class AuthService {
@@ -30,6 +31,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder encoder;
+    private final Long accessValidityMilliseconds;
     private final Long refreshValidityMilliseconds;
     private final String baseApiPath;
 
@@ -37,12 +39,14 @@ public class AuthService {
                        UserRepository userRepository,
                        UserMapper userMapper,
                        PasswordEncoder encoder,
+                       @Value("${jwt.validity-period}") Long accessValidityMilliseconds,
                        @Value("${jwt.refresh-validity-period}") Long refreshValidityMilliseconds,
                        @Value("${server.servlet.context-path}") String baseApiPath) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.encoder = encoder;
+        this.accessValidityMilliseconds = accessValidityMilliseconds;
         this.refreshValidityMilliseconds = refreshValidityMilliseconds;
         this.baseApiPath = baseApiPath;
     }
@@ -64,26 +68,31 @@ public class AuthService {
     @Transactional
     public JWT login(Authentication authentication) {
         var userDetails = (CustomUserDetails) authentication.getPrincipal();
-		return loginFromCustomUserDetails(userDetails);
+        log.info("Login userId={} username={}", userDetails.getId(), userDetails.getUsername());
+        return loginFromCustomUserDetails(userDetails);
     }
 
     @Transactional
     public void createAccount(CreateUserDTO userDTO) {
         var user = userMapper.toUser(userDTO);
         userRepository.save(user);
+        log.info("Account created userId={} username={}", user.getId(), user.getUsername());
     }
 
     @Transactional
     public void logout() {
         var user = getConnectedUser();
         user.setRefreshToken(null);
+        log.info("Logout userId={}", user.getId());
     }
 
     public String refresh(String refreshToken) {
         try {
             var user = jwtService.getUser(refreshToken);
+            log.info("Token refreshed userId={}", user.getId());
             return jwtService.generateAccessToken(user);
         } catch(Exception e) {
+            log.warn("Refresh token rejected: {}", e.getMessage());
             throw new UnauthorizedException("Unauthorized refresh token request : %s".formatted(e.getMessage()));
         }
     }
@@ -96,18 +105,41 @@ public class AuthService {
     }
 
     public void setResponseTokens(JWT jwt, HttpServletResponse response) {
-        response.setHeader(AUTHORIZATION, jwt.getAccessToken());
-        setResponseRefreshCookie(jwt.getRefreshToken(), (int) (refreshValidityMilliseconds/1000), response);
+        setAccessCookie(jwt.getAccessToken(), response);
+        setRefreshCookie(jwt.getRefreshToken(), (int) (refreshValidityMilliseconds / 1000), response);
     }
 
-    public void setResponseRefreshCookie(String refreskToken, int maxAge, HttpServletResponse response) {
-        var refreshCookie = new Cookie("Refresh", refreskToken);
-        refreshCookie.setHttpOnly(true);
-        refreshCookie.setMaxAge(maxAge);
-        refreshCookie.setSecure(true);
-        refreshCookie.setPath(baseApiPath);
-        response.addCookie(refreshCookie);
+    public void setAccessCookie(String accessToken, HttpServletResponse response) {
+        var cookie = ResponseCookie.from("Access", accessToken)
+                .httpOnly(true)
+                .secure(true)
+                .path(baseApiPath)
+                .sameSite("Strict")
+                .maxAge(Duration.ofMillis(accessValidityMilliseconds))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
 
+    public void clearAccessCookie(HttpServletResponse response) {
+        var cookie = ResponseCookie.from("Access", "")
+                .httpOnly(true)
+                .secure(true)
+                .path(baseApiPath)
+                .sameSite("Strict")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    public void setRefreshCookie(String refreshToken, int maxAge, HttpServletResponse response) {
+        var cookie = ResponseCookie.from("Refresh", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path(baseApiPath)
+                .sameSite("Strict")
+                .maxAge(maxAge)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private void persistRefreshToken(Long userId, String token) {

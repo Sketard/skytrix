@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
 
   # Base de données PostgreSQL
@@ -5,6 +11,7 @@ services:
     image: postgres:16-alpine
     container_name: skytrix-db
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -24,6 +31,7 @@ services:
     build: ./back
     container_name: skytrix-back
     restart: unless-stopped
+    logging: *default-logging
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -33,17 +41,25 @@ services:
       DUEL_SERVER_INTERNAL_KEY: ${INTERNAL_API_KEY}
     volumes:
       - images_data:/app/images
+      - ./logs/back:/app/logs
     networks:
       - skytrix-internal
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Duel Server (WebSocket)
   duel-server:
     build: ./duel-server
     container_name: skytrix-duel-server
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./duel-server/data:/app/data:ro
     environment:
@@ -63,11 +79,13 @@ services:
     build: ./front
     container_name: skytrix-front
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ${TLS_CERT_DIR:-./certs}:/etc/nginx/certs:ro
+      - ./logs/nginx:/var/log/nginx
     networks:
       - skytrix-internal
     depends_on:
