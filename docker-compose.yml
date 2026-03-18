@@ -4,14 +4,20 @@ x-logging: &default-logging
     max-size: "50m"
     max-file: "5"
 
+x-security: &default-security
+  security_opt:
+    - no-new-privileges:true
+  pids_limit: 100
+
 services:
 
-  # Base de données PostgreSQL
+  # Base de données PostgreSQL — réseau isolé, inaccessible depuis front/duel-server
   db:
     image: postgres:16-alpine
     container_name: skytrix-db
     restart: unless-stopped
     logging: *default-logging
+    <<: *default-security
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -19,12 +25,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - skytrix-internal
+      - skytrix-data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    mem_limit: 256m
+    cpus: 0.5
 
   # Backend Spring Boot
   back:
@@ -32,6 +40,7 @@ services:
     container_name: skytrix-back
     restart: unless-stopped
     logging: *default-logging
+    <<: *default-security
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -44,6 +53,7 @@ services:
       - ./logs/back:/app/logs
     networks:
       - skytrix-internal
+      - skytrix-data
     depends_on:
       db:
         condition: service_healthy
@@ -53,6 +63,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    mem_limit: 512m
+    cpus: 1.0
 
   # Duel Server (WebSocket)
   duel-server:
@@ -60,6 +72,7 @@ services:
     container_name: skytrix-duel-server
     restart: unless-stopped
     logging: *default-logging
+    <<: *default-security
     volumes:
       - ./duel-server/data:/app/data:ro
     environment:
@@ -73,6 +86,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    mem_limit: 128m
+    cpus: 0.5
 
   # Frontend Angular servi par Nginx
   front:
@@ -80,20 +95,44 @@ services:
     container_name: skytrix-front
     restart: unless-stopped
     logging: *default-logging
+    <<: *default-security
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ${TLS_CERT_DIR:-./certs}:/etc/nginx/certs:ro
+      - ./certbot-webroot:/var/www/certbot:ro
       - ./logs/nginx:/var/log/nginx
     networks:
       - skytrix-internal
     depends_on:
       - back
+    mem_limit: 64m
+    cpus: 0.25
+
+  # Certbot — renouvellement automatique Let's Encrypt (toutes les 12h)
+  # Émission initiale : docker compose run --rm certbot certonly \
+  #   --webroot -w /var/www/certbot -d ${DOMAIN} \
+  #   --email your@email.com --agree-tos --no-eff-email
+  # Puis définir TLS_CERT_DIR=/etc/letsencrypt/live/${DOMAIN} dans .env
+  certbot:
+    image: certbot/certbot:latest
+    container_name: skytrix-certbot
+    restart: unless-stopped
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - ./certbot-webroot:/var/www/certbot
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
 
 volumes:
   postgres_data:
   images_data:
 
 networks:
+  # Réseau partagé : front ↔ back ↔ duel-server
   skytrix-internal:
+    driver: bridge
+  # Réseau isolé : back ↔ db uniquement (internal=true bloque tout trafic externe)
+  skytrix-data:
+    driver: bridge
+    internal: true
