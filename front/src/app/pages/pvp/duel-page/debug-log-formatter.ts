@@ -196,6 +196,8 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return `${p(msg.player)}${SEP}announce number from ${msg.options.length} options`;
     case 'RPS_CHOICE':
       return `${p(msg.player)}${SEP}rock-paper-scissors`;
+    case 'SELECT_TP':
+      return `${p(msg.player)}${SEP}choose turn order`;
 
     // -- System --
     case 'DUEL_END':
@@ -207,6 +209,8 @@ export function formatServerMessage(msg: ServerMessage): string | null {
         `RPS: ${p(0)}=${RPS_LABELS[msg.player1Choice] ?? '?'}, ${p(1)}=${RPS_LABELS[msg.player2Choice] ?? '?'} \u2192 ` +
         `${msg.winner !== null ? `${p(msg.winner)} wins` : 'draw'}`
       );
+    case 'TP_RESULT':
+      return `Turn order: ${msg.goFirst ? 'You go first' : 'You go second'}`;
     case 'OPPONENT_DISCONNECTED':
       return 'Opponent disconnected';
     case 'OPPONENT_RECONNECTED':
@@ -295,6 +299,10 @@ export function formatPlayerResponse(promptType: string, data: Record<string, un
     case 'RPS_CHOICE': {
       const choice = data['choice'] as number;
       return `\u2192 ${RPS_LABELS[choice] ?? '?'}`;
+    }
+    case 'SELECT_TP': {
+      const goFirst = data['goFirst'] as boolean;
+      return `\u2192 ${goFirst ? 'Go First' : 'Go Second'}`;
     }
     default:
       return `\u2192 ${promptType}`;

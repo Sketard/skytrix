@@ -80,6 +80,7 @@ export interface CardOnField {
   currentRScale?: number;
   baseLScale?: number;
   baseRScale?: number;
+  isLink?: boolean;
   isEffectNegated?: boolean;
   equipTarget?: { controller: 0 | 1; location: number; sequence: number } | null;
 }
@@ -487,6 +488,21 @@ export interface RpsResultMsg {
   winner: Player | null;
 }
 
+export interface SelectTpMsg {
+  type: 'SELECT_TP';
+  player: Player;
+}
+
+export interface TpResultMsg {
+  type: 'TP_RESULT';
+  goFirst: boolean;
+}
+
+export interface DuelStartingMsg {
+  type: 'DUEL_STARTING';
+  playerIndex: Player;
+}
+
 export interface RematchInvitationMsg {
   type: 'REMATCH_INVITATION';
 }
@@ -508,6 +524,13 @@ export interface WorkerErrorMsg {
 export interface StateSyncMsg {
   type: 'STATE_SYNC';
   data: BoardStatePayload;
+}
+
+export interface ChainStateMsg {
+  type: 'CHAIN_STATE';
+  links: ChainingMsg[];
+  phase: 'idle' | 'building' | 'resolving';
+  negatedIndices: number[];
 }
 
 export interface SessionTokenMsg {
@@ -587,7 +610,11 @@ export interface AnnounceResponse {
 }
 
 export interface RpsResponse {
-  choice: number; // 1 = Scissors, 2 = Rock, 3 = Paper
+  choice: number; // 0 = Rock, 1 = Paper, 2 = Scissors (client convention)
+}
+
+export interface TpResponse {
+  goFirst: boolean;
 }
 
 // =============================================================================
@@ -615,7 +642,8 @@ export type SelectPromptType =
   | 'ANNOUNCE_ATTRIB'
   | 'ANNOUNCE_CARD'
   | 'ANNOUNCE_NUMBER'
-  | 'RPS_CHOICE';
+  | 'RPS_CHOICE'
+  | 'SELECT_TP';
 
 export type PlayerResponseMsg =
   | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_IDLECMD'; data: IdleCmdResponse }
@@ -638,7 +666,8 @@ export type PlayerResponseMsg =
   | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_ATTRIB'; data: AnnounceResponse }
   | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_CARD'; data: AnnounceResponse }
   | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_NUMBER'; data: AnnounceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'RPS_CHOICE'; data: RpsResponse };
+  | { type: 'PLAYER_RESPONSE'; promptType: 'RPS_CHOICE'; data: RpsResponse }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_TP'; data: TpResponse };
 
 export interface SurrenderMsg {
   type: 'SURRENDER';
@@ -720,11 +749,15 @@ export type ServerMessage =
   | TimerStateMsg
   | RpsChoiceMsg
   | RpsResultMsg
+  | SelectTpMsg
+  | TpResultMsg
+  | DuelStartingMsg
   | RematchInvitationMsg
   | RematchStartingMsg
   | RematchCancelledMsg
   | WorkerErrorMsg
   | StateSyncMsg
+  | ChainStateMsg
   | SessionTokenMsg
   | OpponentDisconnectedMsg
   | OpponentReconnectedMsg

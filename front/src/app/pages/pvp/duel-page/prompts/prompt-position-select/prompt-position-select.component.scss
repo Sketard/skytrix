@@ -74,7 +74,7 @@
     // Image stays 72×105 (portrait) but we rotate it inside the 105×72 frame
     width: 72px;
     height: 105px;
-    transform: rotate(90deg) translateY(-100%);
+    transform: rotate(-90deg) translateX(-100%);
     transform-origin: top left;
   }
 

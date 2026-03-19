@@ -12,8 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import com.skytrix.mapper.RoomMapper;
 import com.skytrix.model.dto.room.CreateRoomDTO;
+import com.skytrix.model.dto.room.DuelCreationResponse;
 import com.skytrix.model.dto.room.DuelDeckDTO;
 import com.skytrix.model.dto.room.JoinRoomDTO;
 import com.skytrix.model.dto.room.QuickDuelDTO;
@@ -48,6 +52,7 @@ public class RoomService {
     private final AuthService authService;
     private final DuelServerClient duelServerClient;
     private final RoomMapper roomMapper;
+    private final RoomEventService roomEventService;
 
     @Transactional
     public RoomDTO createRoom(CreateRoomDTO dto) {
@@ -93,6 +98,8 @@ public class RoomService {
             var deck1 = extractDeck(deck1Cards);
             var deck2 = extractDeck(deckCards);
             validatePasscodesOrThrow(deck1, deck1Cards, deck2, deckCards);
+
+            // soloMode=false: duel-server handles RPS at app layer before starting OCGCore
             var response = duelServerClient.createDuel(
                     room.getPlayer1().getId().toString(),
                     deck1,
@@ -100,19 +107,21 @@ public class RoomService {
                     deck2
             );
 
-            if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {
-                throw new RestClientException("Invalid duel server response");
-            }
-
-            if (response.getDuelId() == null) {
-                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server returned no duel ID");
-            }
+            validateDuelResponse(response);
 
             room.setDuelServerId(response.getDuelId());
             room.setWsToken1(response.getWsTokens()[0]);
             room.setWsToken2(response.getWsTokens()[1]);
             room.setStatus(RoomStatus.ACTIVE);
             roomRepository.save(room);
+
+            var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    roomEventService.sendRoomReady(room.getRoomCode(), creatorDto);
+                }
+            });
 
             log.info("Room {} joined by user {} — duel {} started", room.getRoomCode(), user.getPseudo(), room.getDuelServerId());
             return roomMapper.toRoomDTO(room, user.getId());
@@ -142,7 +151,7 @@ public class RoomService {
         roomRepository.save(room);
 
         try {
-            // With skipRps=true, OCGCore player 0 always goes first.
+            // Solo mode: OCGCore player 0 always goes first.
             // Swap deck order so the chosen player's deck becomes player 0.
             var firstDeck = extractDeck(p2First ? deckCards2 : deckCards1);
             var secondDeck = extractDeck(p2First ? deckCards1 : deckCards2);
@@ -158,9 +167,7 @@ public class RoomService {
                     dto.getTurnTimeSecs()
             );
 
-            if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {
-                throw new RestClientException("Invalid duel server response");
-            }
+            validateDuelResponse(response);
 
             // Swap wsTokens so token1 always maps to P1's connection, token2 to P2's.
             var token1 = p2First ? response.getWsTokens()[1] : response.getWsTokens()[0];
@@ -217,7 +224,17 @@ public class RoomService {
         }
         room.setStatus(RoomStatus.ENDED);
         roomRepository.save(room);
+        roomEventService.evict(roomCode);
         log.info("Room {} ended by user {}", roomCode, userId);
+    }
+
+    private void validateDuelResponse(DuelCreationResponse response) {
+        if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Invalid duel server response");
+        }
+        if (response.getDuelId() == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Duel server returned no duel ID");
+        }
     }
 
     /**

@@ -8,10 +8,14 @@
         }
         @for (tab of tabs(); track tab.path) {
           <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link"
+             [class.has-ribbon]="tab.path === '/pvp'"
              [matTooltip]="tab.name" [matTooltipDisabled]="!collapsed()">
             <mat-icon [fontIcon]="tab.icon"></mat-icon>
             @if (!collapsed()) {
               <span class="nav-label">{{ tab.name }}</span>
+            }
+            @if (tab.path === '/pvp') {
+              <span class="alpha-ribbon" matTooltip="Fonctionnalité en alpha — bugs possibles">ALPHA</span>
             }
           </a>
         }
@@ -79,9 +83,13 @@
     </div>
     <div class="drawer-content">
       @for (tab of tabs(); track tab.path) {
-        <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link mobile-nav-link">
+        <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link mobile-nav-link"
+           [class.has-ribbon]="tab.path === '/pvp'">
           <mat-icon [fontIcon]="tab.icon"></mat-icon>
           <span class="nav-label">{{ tab.name }}</span>
+          @if (tab.path === '/pvp') {
+            <span class="alpha-ribbon">ALPHA</span>
+          }
         </a>
       }
       <div class="spacer"></div>

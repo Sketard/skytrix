@@ -1,11 +1,26 @@
 @use '../../../../../styles/responsive' as r;
 
-.rps-container {
+.choice-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   padding: 8px 0;
+  animation: choice-enter 250ms ease-out both;
+}
+
+.choice-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.choice-subtitle {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
 }
 
 .timer {
@@ -28,7 +43,6 @@
   justify-content: center;
   gap: 8px;
   flex: 1;
-  max-width: 120px;
   min-height: 100px;
   padding: 16px 12px;
   border: 2px solid rgba(255, 255, 255, 0.15);
@@ -66,7 +80,14 @@
 }
 
 .choice-icon {
-  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  filter: brightness(0) invert(0.9);
+  transition: filter var(--pvp-animation-duration) ease-out;
+
+  .choice-btn--selected & {
+    filter: brightness(0) invert(0.85) sepia(1) saturate(3) hue-rotate(10deg);
+  }
 }
 
 .choice-label {
@@ -75,25 +96,58 @@
 }
 
 .choice-key {
-  font-size: 0.75rem;
-  color: var(--text-secondary, #9e9e9e);
-  opacity: 0.6;
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 5px;
+  font-family: inherit;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.waiting-label {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+  animation: waiting-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes choice-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes waiting-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 @include r.respond-below(r.$bp-pvp-narrow) {
+  .choice-title {
+    font-size: 0.9rem;
+  }
+
+  .choice-subtitle {
+    font-size: 0.7rem;
+  }
+
   .choices {
     gap: 8px;
   }
 
   .choice-btn {
-    max-width: clamp(60px, 22vw, 120px);
     min-height: clamp(70px, 22vw, 100px);
     padding: 10px 8px;
     gap: 4px;
   }
 
   .choice-icon {
-    font-size: clamp(1.5rem, 6vw, 2.5rem);
+    width: clamp(1.5rem, 6vw, 2.5rem);
+    height: clamp(1.5rem, 6vw, 2.5rem);
   }
 
   .choice-label {
@@ -106,6 +160,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .choice-container {
+    animation: none;
+  }
+
   .choice-btn {
     transition: none;
 
@@ -113,5 +171,9 @@
     &--selected {
       transform: none;
     }
+  }
+
+  .waiting-label {
+    animation: none;
   }
 }

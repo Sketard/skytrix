@@ -169,7 +169,7 @@
   transition: translate 150ms ease-out;
 
   &.def-position {
-    transform: rotate(90deg);
+    transform: rotate(-90deg);
   }
 }
 
@@ -181,34 +181,40 @@
   width: auto;
   aspect-ratio: 59 / 86;
   overflow: hidden;
-
-  .card-art { transition: box-shadow 150ms ease-out; }
+  transition: box-shadow 150ms ease-out;
 }
 
 // === Alteration Indicators (Story 8.3) ===
 
-// AC1: ATK/DEF stat badge (bottom-left)
-.stat-badge {
+// Always-on ATK/DEF stats (below card, straddling a few px)
+.monster-stats {
   position: absolute;
-  bottom: 3%;
-  left: 3%;
-  background: var(--pvp-alteration-badge-bg);
-  border-radius: var(--pvp-radius-sm);
-  font-size: var(--pvp-alteration-badge-font-size);
-  font-weight: 700;
-  padding: 3% 5%;
-  line-height: 1;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
   pointer-events: none;
-  z-index: 2;
+  z-index: 4;
   display: flex;
-  gap: 2px;
+  align-items: baseline;
+  gap: 0;
   white-space: nowrap;
-  max-width: 45%;
-  overflow: hidden;
+  color: #fff;
+  font-size: clamp(0.7rem, 1.8dvh, 1.1rem);
+  font-weight: 900;
+  line-height: 1;
+  -webkit-text-stroke: 1px #000;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6);
 
-  &__value--boost { color: var(--pvp-alteration-boost); }
-  &__value--debuff { color: var(--pvp-alteration-debuff); }
-  &__separator { color: rgba(255, 255, 255, 0.5); }
+  &--boost { color: var(--pvp-alteration-boost); }
+  &--debuff { color: var(--pvp-alteration-debuff); }
+  &--dim { color: #ccc; opacity: 0.9; }
+
+  &__sep {
+    color: #fff;
+    margin: 0 1px;
+  }
+
 }
 
 // AC2: Effect negated overlay (center) — inline SVG with currentColor for forced-colors fallback (AC12b)
@@ -528,20 +534,21 @@
 }
 
 // === Actionable Glow (Story 1.7 — IDLECMD / BATTLECMD) ===
+// Shadow on .card-inner (not .card-art) so it isn't clipped by .card-inner's overflow:hidden.
 .zone-card--actionable {
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;
 
-  .card-art { box-shadow: var(--pvp-actionable-glow); }
-  &:hover .card-art { box-shadow: var(--pvp-actionable-glow-hover); }
+  .card-inner { box-shadow: var(--pvp-actionable-glow); }
+  &:hover .card-inner { box-shadow: var(--pvp-actionable-glow-hover); }
 }
 
 .zone-card--actionable-blue {
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;
 
-  .card-art { box-shadow: var(--pvp-actionable-glow-blue); }
-  &:hover .card-art { box-shadow: var(--pvp-actionable-glow-blue-hover); }
+  .card-inner { box-shadow: var(--pvp-actionable-glow-blue); }
+  &:hover .card-inner { box-shadow: var(--pvp-actionable-glow-blue-hover); }
 }
 
 .zone-pile--actionable {
@@ -814,15 +821,18 @@
 
   // AC10: Equip hover — snap instantly (only equip-related properties)
   .zone-card { transition: translate 0s; }
-  .zone-card .card-art { transition: box-shadow 0s; }
+  .zone-card .card-inner { transition: box-shadow 0s; }
 
 }
 
 // AC11: Enhanced contrast — thicker badges
 @media (prefers-contrast: more) {
-  .stat-badge,
   .level-badge {
     border: 1px solid rgba(255, 255, 255, 0.8);
+  }
+
+  .monster-stats {
+    -webkit-text-stroke: 2px #000;
   }
 }
 
@@ -849,7 +859,7 @@
   }
 
   // AC12b: Preserve semantic colors on alteration badges
-  .stat-badge,
+  .monster-stats,
   .level-badge,
   .counter-indicator,
   .alteration-icon {

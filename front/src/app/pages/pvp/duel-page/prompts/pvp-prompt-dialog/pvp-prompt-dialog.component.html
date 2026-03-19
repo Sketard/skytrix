@@ -8,13 +8,15 @@
      aria-modal="true"
      aria-label="Game prompt">
 
-  <button class="collapse-handle"
-          (click)="toggleCollapse()"
-          aria-label="Toggle prompt collapse"
-          type="button">
-    <span class="collapse-arrow"
-          [class.collapse-arrow--up]="dialogState() === 'collapsed'">&#x25BC;</span>
-  </button>
+  @if (prompt() && !passiveMessage()) {
+    <button class="collapse-handle"
+            (click)="toggleCollapse()"
+            aria-label="Toggle prompt collapse"
+            type="button">
+      <span class="collapse-arrow"
+            [class.collapse-arrow--up]="dialogState() === 'collapsed'">&#x25BC;</span>
+    </button>
+  }
 
   @if (hintText() && dialogState() !== 'collapsed') {
     <div class="hint-header"
@@ -27,13 +29,25 @@
     <div class="collapsed-bar" aria-live="polite">Waiting for your response...</div>
   }
 
-  <div class="portal-container"
-       [class.portal-container--disabled]="isBeat1()"
-       [class.portal-container--hidden]="dialogState() === 'collapsed'">
-    <ng-template cdkPortalOutlet></ng-template>
-  </div>
+  @if (passiveMessage(); as msg) {
+    <div class="passive-content"
+         [class.passive-content--waiting]="msg.style === 'waiting'"
+         [class.passive-content--result]="msg.style === 'result'"
+         aria-live="polite">
+      <p class="passive-title">{{ msg.title }}</p>
+      @if (msg.subtitle) {
+        <p class="passive-subtitle">{{ msg.subtitle }}</p>
+      }
+    </div>
+  } @else {
+    <div class="portal-container"
+         [class.portal-container--disabled]="isBeat1()"
+         [class.portal-container--hidden]="dialogState() === 'collapsed'">
+      <ng-template cdkPortalOutlet></ng-template>
+    </div>
+  }
 
-  @if (isSending()) {
+  @if (isSending() && prompt() && !passiveMessage()) {
     <div class="sending-indicator" aria-live="polite">Sending...</div>
   }
 </div>

@@ -128,8 +128,8 @@
       </div>
     }
 
-    <!-- Opponent thinking glow (top edge) -->
-    @if (waitingForOpponent()) {
+    <!-- Opponent thinking glow (top edge — only during active duel, not pre-duel) -->
+    @if (waitingForOpponent() && roomState() === 'active') {
       <div class="opponent-thinking-glow" aria-hidden="true"></div>
     }
 
@@ -142,6 +142,7 @@
                          [hiddenIndices]="animationService.hiddenHandIndices()[1]"
                          [hideAll]="animationService.initialDrawPending()[1]"
                          [chainBadges]="opponentHandChainBadges()"
+                         [revealedCardCodes]="opponentHandRevealedCards()"
                          (cardInspectRequest)="onOpponentHandInspect($event)" />
 
       <!-- Board with CSS 3D perspective -->
@@ -264,9 +265,7 @@
               <span class="mini-toolbar__label">Player</span>
             </button>
           }
-          @if (isOwnTurn()) {
-            <app-pvp-activation-toggle [(mode)]="activationMode" />
-          }
+          <app-pvp-activation-toggle [(mode)]="activationMode" />
           @if (showDebugTools) {
             <button class="mini-toolbar__item"
                     type="button"
@@ -321,19 +320,19 @@
           <h2 class="rps-overlay__title">ROCK PAPER SCISSORS</h2>
           <div class="rps-overlay__choices">
             <div class="rps-overlay__choice">
-              <span class="rps-overlay__emoji">{{ rpsEmoji(rps.player1Choice) }}</span>
+              <img class="rps-overlay__icon" [src]="rpsIcon(rps.player1Choice)" alt="Your choice" aria-hidden="true">
               <span class="rps-overlay__label">You</span>
             </div>
             <span class="rps-overlay__vs">VS</span>
             <div class="rps-overlay__choice">
-              <span class="rps-overlay__emoji">{{ rpsEmoji(rps.player2Choice) }}</span>
+              <img class="rps-overlay__icon" [src]="rpsIcon(rps.player2Choice)" alt="Opponent's choice" aria-hidden="true">
               <span class="rps-overlay__label">Opponent</span>
             </div>
           </div>
           @if (rps.winner === 0) {
-            <p class="rps-overlay__result rps-overlay__result--win">You go first!</p>
+            <p class="rps-overlay__result rps-overlay__result--win">You win!</p>
           } @else if (rps.winner === 1) {
-            <p class="rps-overlay__result rps-overlay__result--lose">Opponent goes first!</p>
+            <p class="rps-overlay__result rps-overlay__result--lose">You lose!</p>
           } @else {
             <p class="rps-overlay__result rps-overlay__result--draw">Draw — playing again...</p>
           }
@@ -357,21 +356,34 @@
 
     <!-- Connection status overlays -->
     @if (isReconnecting()) {
-      <div class="connection-overlay">
-        <div class="overlay-content">
-          <p>Reconnecting...</p>
+      <div class="connection-overlay connection-overlay--reconnecting"
+           role="status" aria-live="polite">
+        <div class="connection-overlay__content">
+          <p class="connection-overlay__title">Reconnecting</p>
+          <mat-progress-spinner mode="indeterminate" [diameter]="36"
+                                aria-label="Reconnecting">
+          </mat-progress-spinner>
         </div>
       </div>
     }
 
     @if (isLost()) {
-      <div class="connection-overlay">
-        <div class="overlay-content">
-          <p>Connection failed</p>
+      <div class="connection-overlay connection-overlay--lost"
+           role="alertdialog" aria-modal="true"
+           aria-label="Connection lost" cdkTrapFocus>
+        <div class="connection-overlay__content">
+          <p class="connection-overlay__title">Connection lost</p>
+          <p class="connection-overlay__subtitle">Unable to reach the server</p>
           @if (canRetry()) {
-            <button class="retry-btn" (click)="retry()">Retry</button>
+            <button class="connection-overlay__retry" (click)="retry()">
+              Retry connection
+            </button>
           }
-          <button class="lobby-btn" (click)="backToLobby()">Back to lobby</button>
+          <button class="connection-overlay__lobby"
+                  [class.connection-overlay__lobby--primary]="!canRetry()"
+                  (click)="backToLobby()">
+            Back to Lobby
+          </button>
         </div>
       </div>
     }
@@ -444,6 +456,7 @@
 
     <!-- Prompt dialog (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
     <app-pvp-prompt-dialog [prompt]="effectivePrompt()"
+                           [passiveMessage]="tpPassiveMessage()"
                            [skipBeat1]="returningFromBackground()"
                            [ownPlayerIndex]="ownPlayerIndex()"
                            [responseOverride]="pilePrompt() ? pileResponseHandler : null"

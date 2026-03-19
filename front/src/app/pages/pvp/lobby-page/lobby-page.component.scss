@@ -49,6 +49,19 @@
   gap: 4px;
 }
 
+.alpha-chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--alpha-badge-bg);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+
 // --- CTA Button ---
 
 .lobby-cta {

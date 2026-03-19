@@ -82,6 +82,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
       return message;
 
     case 'RPS_CHOICE':
+    case 'SELECT_TP':
       if (forPlayer !== message.player) return null;
       return message;
 
@@ -135,6 +136,9 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'OPPONENT_DISCONNECTED':
     case 'OPPONENT_RECONNECTED':
     case 'WAITING_RESPONSE':
+    case 'TP_RESULT':
+    case 'DUEL_STARTING':
+    case 'CHAIN_STATE':
       return message;
 
     // --- Default: DROP unknown types (fail-safe: prefer missing display over info leak) ---
@@ -234,6 +238,7 @@ function sanitizeFaceDownCard(card: CardOnField): CardOnField {
       currentRScale: undefined,
       baseLScale: undefined,
       baseRScale: undefined,
+      isLink: undefined,
       isEffectNegated: undefined,
       equipTarget: undefined,
     };

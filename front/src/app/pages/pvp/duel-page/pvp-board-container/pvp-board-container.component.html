@@ -1,28 +1,26 @@
-<!-- Shared alteration indicator template (Story 8.3) -->
-<ng-template #indicators let-card let-zoneId="zoneId">
-  @if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk
-    || card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
-    <div class="stat-badge" aria-hidden="true">
-      @if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk) {
-        <span [class.stat-badge__value--boost]="card.currentAtk > card.baseAtk"
-              [class.stat-badge__value--debuff]="card.currentAtk < card.baseAtk">{{ formatStat(card.currentAtk) }}</span>
-      }
-      @if (card.currentAtk != null && card.baseAtk != null && card.currentAtk !== card.baseAtk
-        && card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
-        <span class="stat-badge__separator">/</span>
-      }
-      @if (card.currentDef != null && card.baseDef != null && card.currentDef !== card.baseDef) {
-        <span [class.stat-badge__value--boost]="card.currentDef > card.baseDef"
-              [class.stat-badge__value--debuff]="card.currentDef < card.baseDef">{{ formatStat(card.currentDef) }}</span>
+<!-- Always-on ATK/DEF stats (rendered outside card-inner to overflow below card) -->
+<ng-template #monsterStats let-card let-zoneId="zoneId">
+  @if (isStatZone(zoneId) && isFaceUp(card.position) && card.currentAtk != null) {
+    <div class="monster-stats" aria-hidden="true">
+      @if (isLinkMonster(card)) {
+        <span [class.monster-stats--boost]="card.baseAtk != null && card.currentAtk > card.baseAtk"
+              [class.monster-stats--debuff]="card.baseAtk != null && card.currentAtk < card.baseAtk">{{ formatStat(card.currentAtk) }}</span>
+      } @else {
+        <span [class.monster-stats--boost]="card.baseAtk != null && card.currentAtk > card.baseAtk"
+              [class.monster-stats--debuff]="card.baseAtk != null && card.currentAtk < card.baseAtk"
+              [class.monster-stats--dim]="isDefense(card.position)">{{ formatStat(card.currentAtk) }}</span>
+        <span class="monster-stats__sep">/</span>
+        <span [class.monster-stats--boost]="card.currentDef != null && card.baseDef != null && card.currentDef > card.baseDef"
+              [class.monster-stats--debuff]="card.currentDef != null && card.baseDef != null && card.currentDef < card.baseDef"
+              [class.monster-stats--dim]="!isDefense(card.position)">{{ formatStat(card.currentDef) }}</span>
       }
     </div>
   }
-  @if (card.isEffectNegated) {
-    <svg class="negated-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-      <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
-      <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-    </svg>
-  }
+</ng-template>
+
+<!-- Shared alteration indicator template (Story 8.3) -->
+<ng-template #indicators let-card let-zoneId="zoneId">
+  <!-- Level/Rank badge (only when altered) -->
   @if (card.currentLevel != null && card.baseLevel != null && card.currentLevel !== card.baseLevel) {
     <div class="level-badge" aria-hidden="true"
          [class.level-badge--boost]="card.currentLevel > card.baseLevel"
@@ -36,6 +34,12 @@
          [class.level-badge--debuff]="card.currentRank < card.baseRank">
       <img src="assets/images/icons/rank-star.svg" class="level-badge__icon" alt="">{{ card.currentRank }}
     </div>
+  }
+  @if (card.isEffectNegated) {
+    <svg class="negated-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="6"/>
+      <line x1="20" y1="80" x2="80" y2="20" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    </svg>
   }
   @if (card.currentAttribute != null && card.baseAttribute != null && card.currentAttribute !== card.baseAttribute) {
     <img [src]="'assets/images/attributes/' + getAttributeName(card.currentAttribute) + '.svg'"
@@ -149,6 +153,8 @@
               <ng-container [ngTemplateOutlet]="indicators"
                             [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
             </div>
+            <ng-container [ngTemplateOutlet]="monsterStats"
+                          [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
           </div>
         } @else {
           @let ghostCard1 = maskedSourceImages().get(zone.zoneId + '-1');
@@ -253,6 +259,8 @@
               <ng-container [ngTemplateOutlet]="indicators"
                             [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId }"></ng-container>
             </div>
+            <ng-container [ngTemplateOutlet]="monsterStats"
+                          [ngTemplateOutletContext]="{ $implicit: card, zoneId: emz.zoneId }"></ng-container>
           </div>
         } @else {
           <div class="zone-empty"></div>
@@ -408,6 +416,8 @@
               <ng-container [ngTemplateOutlet]="indicators"
                             [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
             </div>
+            <ng-container [ngTemplateOutlet]="monsterStats"
+                          [ngTemplateOutletContext]="{ $implicit: zone.card, zoneId: zone.zoneId }"></ng-container>
           </div>
         } @else {
           @let ghostCard0 = maskedSourceImages().get(zone.zoneId + '-0');

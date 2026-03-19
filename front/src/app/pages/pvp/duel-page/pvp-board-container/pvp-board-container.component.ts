@@ -229,9 +229,19 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   protected readonly equipHighlightedZones = signal(new Set<string>());
 
   private static readonly MONSTER_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5']);
+  private static readonly STAT_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R']);
 
   isMonsterZone(zoneId: ZoneId): boolean {
     return PvpBoardContainerComponent.MONSTER_ZONES.has(zoneId);
+  }
+
+  /** Zones where always-on ATK/DEF + Level/Rank stats should display (monster zones including EMZ) */
+  isStatZone(zoneId: ZoneId): boolean {
+    return PvpBoardContainerComponent.STAT_ZONES.has(zoneId);
+  }
+
+  isLinkMonster(card: CardOnField): boolean {
+    return card.isLink === true;
   }
 
   isMonsterDefense(zone: ZoneRenderData): boolean {

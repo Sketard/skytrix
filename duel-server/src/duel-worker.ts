@@ -675,6 +675,7 @@ function buildBoardState(): ServerMessage {
         const cardType = Number(dbRow['type']);
         const isXyz = (cardType & TYPE_XYZ) !== 0;
         const isLink = (cardType & TYPE_LINK) !== 0;
+        card.isLink = isLink;
         card.baseLevel = (isXyz || isLink) ? 0 : (rawLevel & 0xFF);
         card.baseRank = isXyz ? (rawLevel & 0xFF) : 0;
         card.baseAttribute = Number(dbRow['attribute']);

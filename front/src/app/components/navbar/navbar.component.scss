@@ -38,6 +38,13 @@
         border-left-color: transparent;
       }
     }
+
+    .alpha-ribbon {
+      top: 4px;
+      right: -22px;
+      font-size: 0.45rem;
+      padding: 1px 22px;
+    }
   }
 }
 
@@ -91,6 +98,32 @@
 
 .nav-label {
   transition: opacity 200ms ease;
+}
+
+// --- Alpha ribbon badge ---
+
+.nav-link.has-ribbon {
+  position: relative;
+  overflow: hidden;
+}
+
+.alpha-ribbon {
+  position: absolute;
+  top: 6px;
+  right: -26px;
+  width: 80px;
+  background: var(--alpha-badge-bg);
+  color: #fff;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 0;
+  text-align: center;
+  transform: rotate(45deg);
+  line-height: 1;
+  pointer-events: auto;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .spacer {

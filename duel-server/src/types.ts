@@ -92,6 +92,20 @@ export type WorkerToMainMessage =
   | WorkerRetry;
 
 // =============================================================================
+// Pre-Duel RPS State
+// =============================================================================
+
+export type SessionPhase = 'WAITING_PLAYERS' | 'RPS' | 'CHOOSE_ORDER' | 'TP_RESULT' | 'DUELING';
+
+export interface RpsState {
+  choices: [number | null, number | null];
+  timers: ReturnType<typeof setTimeout>[];
+  round: number;
+}
+
+export const TP_TIMEOUT_MS = 30_000;
+
+// =============================================================================
 // Session State
 // =============================================================================
 

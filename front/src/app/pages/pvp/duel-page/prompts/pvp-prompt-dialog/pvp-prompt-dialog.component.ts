@@ -28,6 +28,12 @@ import { CardInfo } from '../../../duel-ws.types';
 
 export type DialogState = 'closed' | 'opening' | 'open' | 'transitioning' | 'collapsed' | 'closing';
 
+export interface PassiveMessage {
+  title: string;
+  subtitle?: string;
+  style: 'waiting' | 'result';
+}
+
 @Component({
   selector: 'app-pvp-prompt-dialog',
   templateUrl: './pvp-prompt-dialog.component.html',
@@ -43,6 +49,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
   readonly prompt = input<Prompt | null>(null);
+  readonly passiveMessage = input<PassiveMessage | null>(null);
   readonly skipBeat1 = input(false);
   readonly responseOverride = input<((data: unknown) => void) | null>(null);
   readonly ownPlayerIndex = input(0);
@@ -69,9 +76,32 @@ export class PvpPromptDialogComponent implements OnDestroy {
   private preTargetSubscription: { unsubscribe(): void } | null = null;
 
   constructor() {
+    // Consolidated dialog lifecycle: reacts to prompt, passiveMessage, and rpsInProgress changes.
+    // Single effect avoids ordering issues when multiple signals change simultaneously.
     effect(() => {
       const prompt = this.prompt();
-      untracked(() => this.onPromptChange(prompt));
+      const msg = this.passiveMessage();
+      const rpsIp = this.wsService.rpsInProgress();
+      untracked(() => {
+        if (prompt) {
+          this.onPromptChange(prompt);
+        } else if (msg) {
+          this.isSending.set(false);
+          this.hintText.set(null);
+          this.detachComponent();
+          if (this.dialogState() === 'closed' || this.dialogState() === 'closing') {
+            this.clearTimeouts();
+            this.dialogState.set('opening');
+            this.beatTimeout = setTimeout(() => this.dialogState.set('open'), 50);
+          }
+        } else if (!rpsIp && !this.wsService.tpResponseSent()) {
+          // No prompt, no passive message, RPS resolved → close
+          if (this.dialogState() !== 'closed') this.closeDialog(false);
+        } else {
+          // RPS or TP in progress with no prompt/passive — handle null prompt
+          this.onPromptChange(null);
+        }
+      });
     });
 
     effect(() => {
@@ -129,6 +159,9 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
   private onPromptChange(prompt: Prompt | null): void {
     if (!prompt || IGNORED_PROMPT_TYPES.has(prompt.type)) {
+      // Keep dialog open during: RPS waiting, TP response sent, or passive message active
+      if (this.wsService.rpsInProgress() || this.wsService.tpResponseSent() || this.passiveMessage()) return;
+
       if (this.dialogState() !== 'closed') {
         const instant = this.wsService.duelResult() !== null;
         this.closeDialog(instant);
@@ -348,6 +381,8 @@ export class PvpPromptDialogComponent implements OnDestroy {
         return act ? `It is the ${act}.` : null;
       case 'SELECT_YESNO':
         return q || null;
+      case 'SELECT_TP':
+        return `${a('Choose')} your turn order`;
       default:
         return q || null;
     }

@@ -3,8 +3,8 @@ import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join, basename } from 'node:path';
-import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_WARNING_BEFORE_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS } from './types.js';
-import type { WorkerToMainMessage, DuelSession, PlayerSession, Deck, TimerContext } from './types.js';
+import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_WARNING_BEFORE_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS, RPS_TIMEOUT_MS, TP_TIMEOUT_MS } from './types.js';
+import type { WorkerToMainMessage, DuelSession, PlayerSession, Deck, TimerContext, SessionPhase, RpsState } from './types.js';
 import type { ServerMessage, ClientMessage, Player, SelectPromptType } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
 import { validateData, findMissingPasscodes } from './ocg-scripts.js';
@@ -33,7 +33,9 @@ let dataReady = false;
 // =============================================================================
 
 interface ActiveDuelSession extends DuelSession {
-  worker: Worker;
+  phase: SessionPhase;
+  rpsState: RpsState | null;
+  worker: Worker | null;
   workerTerminated: boolean;
   awaitingResponse: [boolean, boolean];
   lastBoardState: ServerMessage | null;
@@ -50,11 +52,15 @@ interface ActiveDuelSession extends DuelSession {
   lastStateSyncAt: [number, number];
   // M1 consolidation — turn timer context (formerly standalone Map)
   timerContext: TimerContext | null;
-  skipRps: boolean;
+  soloMode: boolean;
   skipShuffle: boolean;
   turnTimeSecs: number;
   invalidResponseCount: [number, number];
   promptSentAt: [number, number];
+  // Active chain links — tracked for reconnection state sync
+  activeChainLinks: ServerMessage[];
+  chainPhase: 'idle' | 'building' | 'resolving';
+  negatedChainIndices: Set<number>;
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
@@ -260,7 +266,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       throw err;
     }
 
-    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck }; skipRps?: boolean; skipShuffle?: boolean; turnTimeSecs?: number };
+    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck }; soloMode?: boolean; skipShuffle?: boolean; turnTimeSecs?: number };
     try {
       parsed = JSON.parse(body);
     } catch {
@@ -273,7 +279,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
-    const skipRps = parsed.skipRps === true;
+    const soloMode = parsed.soloMode === true;
     const skipShuffle = parsed.skipShuffle === true;
     const rawTurnTimeSecs = typeof parsed.turnTimeSecs === 'number' ? parsed.turnTimeSecs : 300;
     const turnTimeSecs = Math.min(3600, Math.max(30, Math.round(rawTurnTimeSecs)));
@@ -298,9 +304,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const token0 = randomUUID();
     const token1 = randomUUID();
 
-    // Create DuelSession
+    // Create DuelSession — worker spawn is deferred until RPS/TP is resolved
     const session: ActiveDuelSession = {
       duelId,
+      phase: 'WAITING_PLAYERS',
+      rpsState: null,
       players: [
         { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
         { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
@@ -308,7 +316,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       createdAt: Date.now(),
       startedAt: null,
       endedAt: null,
-      worker: null!,
+      worker: null,
       workerTerminated: false,
       awaitingResponse: [false, false],
       lastBoardState: null,
@@ -323,34 +331,20 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       storedDuelResult: null,
       lastStateSyncAt: [0, 0],
       timerContext: null,
-      skipRps,
+      soloMode,
       skipShuffle,
       turnTimeSecs,
       invalidResponseCount: [0, 0],
       promptSentAt: [0, 0],
+      activeChainLinks: [],
+      chainPhase: 'idle',
+      negatedChainIndices: new Set(),
     };
-
-    // Spawn worker
-    const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
-      workerData: { dataDir: DATA_DIR },
-    });
-
-    session.worker = worker;
-    attachWorkerHandlers(session);
 
     // Store in active duels and pending tokens
     activeDuels.set(duelId, session);
     pendingTokens.set(token0, { duelId, playerIndex: 0 });
     pendingTokens.set(token1, { duelId, playerIndex: 1 });
-
-    // Send INIT_DUEL to worker
-    worker.postMessage({
-      type: 'INIT_DUEL',
-      duelId,
-      decks: [parsed.player1.deck, parsed.player2.deck],
-      skipRps,
-      skipShuffle,
-    });
 
     // H17 — Connection timeout: if no players connect within 60s, clean up
     const CONNECTION_TIMEOUT_MS = 60_000;
@@ -393,7 +387,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 // =============================================================================
 
 function safeTerminateWorker(session: ActiveDuelSession): void {
-  if (!session.workerTerminated) {
+  if (!session.workerTerminated && session.worker) {
     session.workerTerminated = true;
     totalDuelsServed++;
     session.worker.removeAllListeners();
@@ -406,10 +400,11 @@ function safeTerminateWorker(session: ActiveDuelSession): void {
 // =============================================================================
 
 function attachWorkerHandlers(session: ActiveDuelSession): void {
+  if (!session.worker) return;
   session.worker.on('message', (wmsg: WorkerToMainMessage) => {
     handleWorkerMessage(session, wmsg);
   });
-  session.worker.on('exit', (code) => {
+  session.worker!.on('exit', (code) => {
     console.log(`[Duel ${session.duelId}] Worker exited (code: ${code})`);
     // Only count if not already counted by safeTerminateWorker
     if (!session.workerTerminated) {
@@ -421,7 +416,7 @@ function attachWorkerHandlers(session: ActiveDuelSession): void {
     // Unexpected worker exit — full cleanup
     cleanupDuelSession(session);
   });
-  session.worker.on('error', (err: Error) => {
+  session.worker!.on('error', (err: Error) => {
     console.error(`[Duel ${session.duelId}] Worker error:`, err.message);
   });
 }
@@ -452,6 +447,8 @@ function startRematch(session: ActiveDuelSession): void {
     workerData: { dataDir: DATA_DIR },
   });
 
+  session.phase = 'DUELING';
+  session.rpsState = null;
   session.worker = worker;
   session.workerTerminated = false;
   session.awaitingResponse = [false, false];
@@ -466,6 +463,9 @@ function startRematch(session: ActiveDuelSession): void {
   session.lastStateSyncAt = [0, 0];
   session.invalidResponseCount = [0, 0];
   session.promptSentAt = [0, 0];
+  session.activeChainLinks = [];
+  session.chainPhase = 'idle';
+  session.negatedChainIndices = new Set();
 
   clearAllDuelTimers(session);
 
@@ -475,7 +475,7 @@ function startRematch(session: ActiveDuelSession): void {
     type: 'INIT_DUEL',
     duelId: session.duelId,
     decks: session.decks,
-    skipRps: session.skipRps,
+    skipRps: true,
     skipShuffle: session.skipShuffle,
   });
 }
@@ -485,6 +485,194 @@ function rematchExpired(session: ActiveDuelSession): void {
   sendToPlayer(session, 0, { type: 'REMATCH_CANCELLED', reason: 'timeout' });
   sendToPlayer(session, 1, { type: 'REMATCH_CANCELLED', reason: 'timeout' });
   cleanupDuelSession(session);
+}
+
+// =============================================================================
+// Pre-Duel RPS & Turn Player Selection
+// =============================================================================
+
+function clearRpsTimers(session: ActiveDuelSession): void {
+  if (session.rpsState) {
+    for (const t of session.rpsState.timers) clearTimeout(t);
+    session.rpsState.timers = [];
+  }
+}
+
+const MAX_RPS_ROUNDS = 10;
+
+function startRpsPhase(session: ActiveDuelSession, round = 0): void {
+  session.phase = 'RPS';
+  session.rpsState = { choices: [null, null], timers: [], round };
+  session.awaitingResponse = [true, true];
+
+  const rps0: ServerMessage = { type: 'RPS_CHOICE', player: 0 };
+  const rps1: ServerMessage = { type: 'RPS_CHOICE', player: 1 };
+  session.lastSentPrompt = [rps0, rps1];
+  sendToPlayer(session, 0, rps0);
+  sendToPlayer(session, 1, rps1);
+
+  // Timeout: auto-pick random choice for players who don't respond
+  session.rpsState.timers.push(setTimeout(() => {
+    if (session.phase !== 'RPS' || !session.rpsState) return;
+    for (const p of [0, 1] as const) {
+      if (session.rpsState.choices[p] === null) {
+        session.rpsState.choices[p] = Math.floor(Math.random() * 3);
+        session.awaitingResponse[p] = false;
+      }
+    }
+    resolveRps(session);
+  }, RPS_TIMEOUT_MS));
+}
+
+function resolveRps(session: ActiveDuelSession): void {
+  if (!session.rpsState) return;
+  const [c0, c1] = session.rpsState.choices;
+  if (c0 === null || c1 === null) return;
+  const round = session.rpsState.round;
+
+  // Determine winner: 0=Rock, 1=Paper, 2=Scissors
+  let winner: Player | null = null;
+  if (c0 !== c1) {
+    // Rock(0) beats Scissors(2), Scissors(2) beats Paper(1), Paper(1) beats Rock(0)
+    winner = ((c0 + 1) % 3 === c1) ? 0 : 1;
+  } else if (round + 1 >= MAX_RPS_ROUNDS) {
+    // Force random winner after too many draws
+    winner = Math.random() < 0.5 ? 0 : 1;
+  }
+
+  // Send RPS_RESULT (perspective-corrected by filterMessage)
+  const result: ServerMessage = { type: 'RPS_RESULT', player1Choice: c0, player2Choice: c1, winner };
+  for (const p of [0, 1] as const) {
+    const filtered = filterMessage(result, p);
+    if (filtered) sendToPlayer(session, p, filtered);
+  }
+
+  if (winner === null) {
+    // Draw — restart RPS after 2s
+    setTimeout(() => {
+      if (session.phase !== 'RPS') return;
+      startRpsPhase(session, round + 1);
+    }, 2000);
+    return;
+  } else {
+    // Winner chooses turn order after 3s
+    const rpsWinner = winner;
+    setTimeout(() => {
+      if (session.phase !== 'RPS') return;
+      session.phase = 'CHOOSE_ORDER';
+      session.awaitingResponse = [false, false];
+      session.awaitingResponse[rpsWinner] = true;
+      const tpMsg: ServerMessage = { type: 'SELECT_TP', player: rpsWinner };
+      session.lastSentPrompt = [null, null];
+      session.lastSentPrompt[rpsWinner] = tpMsg;
+      sendToPlayer(session, rpsWinner, tpMsg);
+      sendToPlayer(session, rpsWinner === 0 ? 1 : 0, { type: 'WAITING_RESPONSE' });
+
+      // TP timeout: auto-select "Go first" → send TP_RESULT then start
+      if (session.rpsState) {
+        session.rpsState.timers.push(setTimeout(() => {
+          if (session.phase !== 'CHOOSE_ORDER') return;
+          sendToPlayer(session, 0, { type: 'TP_RESULT', goFirst: rpsWinner === 0 });
+          sendToPlayer(session, 1, { type: 'TP_RESULT', goFirst: rpsWinner === 1 });
+          session.phase = 'TP_RESULT';
+          if (session.rpsState) {
+            session.rpsState.timers.push(setTimeout(() => {
+              if (session.phase !== 'TP_RESULT') return;
+              startDuelWithOrder(session, rpsWinner);
+            }, 2500));
+          }
+        }, TP_TIMEOUT_MS));
+      }
+    }, 3000);
+  }
+}
+
+function handlePreDuelResponse(session: ActiveDuelSession, playerIndex: 0 | 1, promptType: string, data: Record<string, unknown>): boolean {
+  if (session.phase === 'RPS' && promptType === 'RPS_CHOICE' && session.rpsState) {
+    const choice = data['choice'] as number;
+    if (typeof choice !== 'number' || choice < 0 || choice > 2) return true; // ignore invalid
+    if (session.rpsState.choices[playerIndex] !== null) return true; // already answered
+
+    session.rpsState.choices[playerIndex] = choice;
+    session.awaitingResponse[playerIndex] = false;
+    session.lastSentPrompt[playerIndex] = null;
+
+    // If both have answered, resolve
+    if (session.rpsState.choices[0] !== null && session.rpsState.choices[1] !== null) {
+      clearRpsTimers(session);
+      resolveRps(session);
+    }
+    return true;
+  }
+
+  if (session.phase === 'CHOOSE_ORDER' && promptType === 'SELECT_TP' && session.rpsState) {
+    clearRpsTimers(session);
+    const goFirst = data['goFirst'] === true;
+    const firstPlayer: 0 | 1 = goFirst ? playerIndex : (playerIndex === 0 ? 1 : 0);
+    session.awaitingResponse[playerIndex] = false;
+    session.lastSentPrompt[playerIndex] = null;
+
+    // Tell both players who goes first, then start duel after delay
+    sendToPlayer(session, 0, { type: 'TP_RESULT', goFirst: firstPlayer === 0 });
+    sendToPlayer(session, 1, { type: 'TP_RESULT', goFirst: firstPlayer === 1 });
+    session.phase = 'TP_RESULT';
+    session.rpsState.timers.push(setTimeout(() => {
+      if (session.phase !== 'TP_RESULT') return;
+      startDuelWithOrder(session, firstPlayer);
+    }, 2500));
+    return true;
+  }
+
+  return false; // not a pre-duel response
+}
+
+function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
+  session.phase = 'DUELING';
+  clearRpsTimers(session);
+  session.rpsState = null;
+
+  // Swap decks and player sessions so firstPlayer becomes OCGCore player 0
+  let decks = session.decks;
+  if (firstPlayer === 1) {
+    decks = [session.decks[1], session.decks[0]];
+    session.decks = decks;
+    // Swap player sessions so players[0] = OCGCore player 0
+    const [p0, p1] = session.players;
+    session.players = [p1, p0];
+    session.players[0].playerIndex = 0;
+    session.players[1].playerIndex = 1;
+    // Update reconnect token mappings
+    for (const p of [0, 1] as const) {
+      const tok = session.players[p].reconnectToken;
+      if (tok) reconnectTokens.set(tok, { duelId: session.duelId, playerIndex: p });
+    }
+  }
+
+  // Tell each player their OCGCore index (after potential swap)
+  sendToPlayer(session, 0, { type: 'DUEL_STARTING', playerIndex: 0 });
+  sendToPlayer(session, 1, { type: 'DUEL_STARTING', playerIndex: 1 });
+
+  // Spawn worker
+  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
+    workerData: { dataDir: DATA_DIR },
+  });
+
+  session.worker = worker;
+  session.workerTerminated = false;
+  session.awaitingResponse = [false, false];
+  session.lastSentPrompt = [null, null];
+  session.lastSentHint = [null, null];
+  session.startedAt = Date.now();
+
+  attachWorkerHandlers(session);
+
+  worker.postMessage({
+    type: 'INIT_DUEL',
+    duelId: session.duelId,
+    decks,
+    skipRps: true, // Always skip OCGCore's RPS — we handle it at app layer
+    skipShuffle: session.skipShuffle,
+  });
 }
 
 // =============================================================================
@@ -567,6 +755,21 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
     sendToPlayer(session, 0, endMsg);
     sendToPlayer(session, 1, endMsg);
     handleDuelEnd(session);
+  }
+
+  // Track active chain state for reconnection
+  if (message.type === 'MSG_CHAINING') {
+    if (session.chainPhase === 'idle') session.chainPhase = 'building';
+    session.activeChainLinks.push(message);
+  } else if (message.type === 'MSG_CHAIN_SOLVING') {
+    session.chainPhase = 'resolving';
+  } else if (message.type === 'MSG_CHAIN_END') {
+    session.activeChainLinks = [];
+    session.chainPhase = 'idle';
+    session.negatedChainIndices = new Set();
+  } else if (message.type === 'MSG_CHAIN_NEGATED') {
+    const negIdx = (message as { chainIndex: number }).chainIndex;
+    session.negatedChainIndices.add(negIdx);
   }
 
   // Store last BOARD_STATE for late-connecting players
@@ -846,6 +1049,10 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
   session.lastSentPrompt = [null, null];
   session.lastSentHint = [null, null];
 
+  // Clear pre-duel RPS timeout
+  clearRpsTimers(session);
+  session.rpsState = null;
+
   // Clear rematch timeout
   if (session.rematchTimeout) {
     clearTimeout(session.rematchTimeout);
@@ -1089,24 +1296,26 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     // Send state snapshot (DRY — used by both reconnection and REQUEST_STATE_SYNC)
     sendStateSnapshot(session, playerIndex);
 
-    // Story 3.3 — Reconnection: notify opponent + re-send pending prompt
+    // Story 3.3 — Reconnection: notify opponent
     if (reconnect) {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       sendToPlayer(session, opponentIndex, { type: 'OPPONENT_RECONNECTED' });
-
-      // Re-send cached hint + prompt if player had a pending selection
-      if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
-        if (session.lastSentHint[playerIndex]) {
-          sendToPlayer(session, playerIndex, session.lastSentHint[playerIndex]!);
-        }
-        sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
-      }
     }
+
+    resendPendingPrompt(session, playerIndex);
   }
 
-  // Check if both players are connected
+  // Check if both players are connected — trigger pre-duel RPS
   if (session.players[0].connected && session.players[1].connected) {
     console.log(`[Duel ${session.duelId}] Both players connected`);
+    if (session.phase === 'WAITING_PLAYERS') {
+      if (session.soloMode) {
+        // Solo mode: backend already placed the first player at index 0
+        startDuelWithOrder(session, 0);
+      } else {
+        startRpsPhase(session);
+      }
+    }
   }
 
   // WebSocket message handling
@@ -1150,12 +1359,35 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   });
 });
 
+/** Re-send cached hint + prompt if the player has a pending selection. */
+function resendPendingPrompt(session: ActiveDuelSession, playerIndex: 0 | 1): void {
+  if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
+    if (session.lastSentHint[playerIndex]) {
+      sendToPlayer(session, playerIndex, session.lastSentHint[playerIndex]!);
+    }
+    sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
+  }
+}
+
 // Story 5.2 — DRY: reusable state snapshot for reconnection + REQUEST_STATE_SYNC
 function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void {
+  // Re-send OCGCore player index (lost on page refresh)
+  if (session.phase === 'DUELING') {
+    sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex } as ServerMessage);
+  }
   if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
     const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
     const filtered = filterMessage(stateSync, playerIndex);
     if (filtered) sendToPlayer(session, playerIndex, filtered);
+  }
+  // Re-send active chain links so the client can restore reveal state
+  if (session.activeChainLinks.length > 0) {
+    sendToPlayer(session, playerIndex, {
+      type: 'CHAIN_STATE',
+      links: session.activeChainLinks,
+      phase: session.chainPhase,
+      negatedIndices: [...session.negatedChainIndices],
+    } as ServerMessage);
   }
   sendTimerStateToPlayer(session, playerIndex);
 }
@@ -1245,6 +1477,11 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         return;
       }
 
+      // Pre-duel RPS/TP — handled by application layer, not forwarded to worker
+      if (session.phase !== 'DUELING') {
+        if (handlePreDuelResponse(session, playerIndex, msg.promptType, msg.data as unknown as Record<string, unknown>)) return;
+      }
+
       session.invalidResponseCount[playerIndex] = 0;
       session.awaitingResponse[playerIndex] = false;
       session.lastSentPrompt[playerIndex] = null;
@@ -1255,7 +1492,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       clearInactivityTimer(session, playerIndex as Player);
 
       const forwardToWorker = () => {
-        if (session.endedAt) return;
+        if (session.endedAt || !session.worker) return;
         session.worker.postMessage({
           type: 'PLAYER_RESPONSE',
           playerIndex,
@@ -1265,9 +1502,10 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       };
 
       // Bluff timer: if response arrived suspiciously fast, delay forwarding
-      // to prevent the opponent from inferring "no traps" from instant responses
+      // to prevent the opponent from inferring "no traps" from instant responses.
+      // Skip in solo duels — no opponent to bluff.
       const elapsed = Date.now() - session.promptSentAt[playerIndex];
-      if (elapsed < BLUFF_DELAY_MAX_MS) {
+      if (!session.soloMode && elapsed < BLUFF_DELAY_MAX_MS) {
         const delay = BLUFF_DELAY_MIN_MS + Math.random() * (BLUFF_DELAY_MAX_MS - BLUFF_DELAY_MIN_MS);
         setTimeout(forwardToWorker, Math.max(0, delay - elapsed));
       } else {
@@ -1315,13 +1553,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       session.lastStateSyncAt[playerIndex] = now;
 
       sendStateSnapshot(session, playerIndex);
-      // Re-send pending hint + prompt if player has one
-      if (session.awaitingResponse[playerIndex] && session.lastSentPrompt[playerIndex]) {
-        if (session.lastSentHint[playerIndex]) {
-          sendToPlayer(session, playerIndex, session.lastSentHint[playerIndex]!);
-        }
-        sendToPlayer(session, playerIndex, session.lastSentPrompt[playerIndex]!);
-      }
+      resendPendingPrompt(session, playerIndex);
       break;
     }
   }

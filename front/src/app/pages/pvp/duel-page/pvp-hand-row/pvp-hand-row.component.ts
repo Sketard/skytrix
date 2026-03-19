@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, input, output, signal } from '@angular/core';
 import { CardOnField } from '../../duel-ws.types';
-import { getCardImageUrl } from '../../pvp-card.utils';
+import { getCardImageUrlByCode } from '../../pvp-card.utils';
 
 @Component({
   selector: 'app-pvp-hand-row',
@@ -26,6 +26,8 @@ export class PvpHandRowComponent {
   readonly hideAll = input(false);
   /** Chain link badges: hand card index → chain link number. */
   readonly chainBadges = input<Map<number, number>>(new Map());
+  /** Revealed card codes for opponent hand cards activated in chain: sequence → cardCode. */
+  readonly revealedCardCodes = input<Map<number, number>>(new Map());
 
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();
@@ -84,7 +86,7 @@ export class PvpHandRowComponent {
     return `rotate(${angle}deg) translateY(${y}px)`;
   }
 
-  readonly getCardImageUrl = getCardImageUrl;
+  readonly getCardImageUrlByCode = getCardImageUrlByCode;
 
   isPlayerSide(): boolean {
     return this.side() === 'player';

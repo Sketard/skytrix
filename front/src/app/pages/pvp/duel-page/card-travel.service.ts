@@ -8,7 +8,7 @@ export interface TravelOptions {
   impactGlowColor?: string;
   /** Where to land inside a wide container: 'center' (default) or 'right'. */
   destAlign?: 'center' | 'right';
-  /** Extra rotateZ (degrees) applied at landing — e.g. 90 for defense position. */
+  /** Extra rotateZ (degrees) applied at landing — e.g. -90 for defense position. */
   destRotateZ?: number;
   /** Base rotateZ applied throughout the entire travel — e.g. 180 for opponent cards. */
   baseRotateZ?: number;
@@ -150,13 +150,13 @@ export class CardTravelService implements OnDestroy {
     if (options.landingStyle === 'soft' && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
       this.addTimer(window.setTimeout(() => {
-        this.absorptionEffect(rawDestRect, glowColor, duration);
+        this.zoneImpactEffect(rawDestRect, glowColor, duration);
       }, duration * 0.70));
     }
     if (options.landingStyle === 'banish' && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
       this.addTimer(window.setTimeout(() => {
-        this.dimensionalRiftEffect(rawDestRect, glowColor, duration);
+        this.zoneImpactEffect(rawDestRect, glowColor, duration);
       }, duration * 0.70));
     }
 
@@ -259,7 +259,7 @@ export class CardTravelService implements OnDestroy {
     const endRY = flipReverse ? 0 : (flip ? 180 : 0);
 
     // baseRotateZ is applied throughout (for opponent cards: constant 180°).
-    // destRotateZ is applied on top at landing (for defense position: +90°).
+    // destRotateZ is applied on top at landing (for defense position: -90°).
     const rzBase = base ? ` rotateZ(${base}deg)` : '';
     const rz = (base + destRotateZ) ? ` rotateZ(${base + destRotateZ}deg)` : '';
     const rzHalf = (base + destRotateZ * 0.5) ? ` rotateZ(${base + destRotateZ * 0.5}deg)` : '';
@@ -317,10 +317,10 @@ export class CardTravelService implements OnDestroy {
     };
 
     if (options.landingStyle === 'soft') {
-      // GY: standard landing (absorption effect handles the visual)
+      // GY: standard landing (zoneImpactEffect handles the visual)
       keyframes.push(landEnd);
     } else if (options.landingStyle === 'banish') {
-      // Banish: standard landing (dimensionalRiftEffect handles the visual)
+      // Banish: standard landing (zoneImpactEffect handles the visual)
       keyframes.push(landEnd);
     } else if (options.landingStyle === 'slam') {
       // Card grows during travel and lands at final size — no post-travel scale
@@ -353,48 +353,8 @@ export class CardTravelService implements OnDestroy {
     );
   }
 
-  /** Banish zone effect: radial glow contraction + dark sink overlay (2 DOM elements). */
-  private dimensionalRiftEffect(rect: DOMRect, color: string, duration = 400): void {
-    if (this._reducedMotion) return;
-    const pad = 4;
-
-    // 1. Radial glow that contracts into the zone center
-    const glow = document.createElement('div');
-    glow.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
-      left:${rect.left - pad}px; top:${rect.top - pad}px;
-      width:${rect.width + pad * 2}px; height:${rect.height + pad * 2}px;
-      border-radius:4px;
-      background:radial-gradient(circle, ${color} 0%, transparent 70%);
-    `;
-    this._container.appendChild(glow);
-    glow.animate([
-      { opacity: 0, transform: 'scale(1.3)' },
-      { opacity: 0.8, transform: 'scale(1)', offset: 0.4 },
-      { opacity: 0, transform: 'scale(0.85)' },
-    ], { duration: duration * 0.6, easing: 'ease-in-out', fill: 'forwards' })
-      .finished.then(() => glow.remove());
-
-    // 2. Brief dark overlay simulating the card sinking in
-    const sink = document.createElement('div');
-    sink.style.cssText = `
-      position:fixed; pointer-events:none; z-index:900;
-      left:${rect.left}px; top:${rect.top}px;
-      width:${rect.width}px; height:${rect.height}px;
-      border-radius:4px;
-      background:rgba(0,0,0,0.5);
-    `;
-    this._container.appendChild(sink);
-    sink.animate([
-      { opacity: 0 },
-      { opacity: 1, offset: 0.35 },
-      { opacity: 0 },
-    ], { duration: duration * 0.55, easing: 'ease-in', fill: 'forwards' })
-      .finished.then(() => sink.remove());
-  }
-
-  /** GY absorption: radial glow contraction + dark sink overlay (2 DOM elements). */
-  private absorptionEffect(rect: DOMRect, color: string, duration = 400): void {
+  /** Radial glow contraction + dark sink overlay — shared by GY absorption and banish rift. */
+  private zoneImpactEffect(rect: DOMRect, color: string, duration = 400): void {
     if (this._reducedMotion) return;
     const pad = 4;
 

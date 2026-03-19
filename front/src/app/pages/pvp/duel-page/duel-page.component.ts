@@ -8,9 +8,9 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { displaySuccess, displayError } from '../../../core/utilities/functions';
-import { AuthService } from '../../../services/auth.service';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
@@ -56,7 +56,7 @@ import './prompts/prompt-registry';
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptDialogComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
     MatButton, MatIcon, MatProgressSpinner,
-    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
+    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, CdkTrapFocus,
     DebugLogPanelComponent,
     PvpChainOverlayComponent,
   ],
@@ -73,7 +73,6 @@ export class DuelPageComponent implements OnInit {
   readonly wsService = inject(DuelWebSocketService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
-  private readonly authService = inject(AuthService);
   private readonly navbarCollapse = inject(NavbarCollapseService);
   private readonly dialog = inject(MatDialog);
   private readonly cardDataCache = inject(CardDataCacheService);
@@ -105,8 +104,9 @@ export class DuelPageComponent implements OnInit {
   readonly isLost = computed(() => this.connectionStatus() === 'lost');
   readonly isReconnecting = computed(() => this.connectionStatus() === 'reconnecting');
 
+  private static readonly MAX_RETRIES = 3;
   private readonly retryCount = signal(0);
-  readonly canRetry = computed(() => this.retryCount() < 3 && this.wsService.canRetry());
+  readonly canRetry = computed(() => this.retryCount() < DuelPageComponent.MAX_RETRIES && this.wsService.canRetry());
 
   // Story 2.3 — Board ready when first BOARD_STATE arrives (both players populated with LP)
   readonly boardReady = computed(() => this.duelState().players.length === 2 && this.duelState().players[0].lp > 0);
@@ -253,6 +253,26 @@ export class DuelPageComponent implements OnInit {
   // Server-driven: true when opponent has a pending prompt
   readonly waitingForOpponent = this.wsService.waitingForOpponent;
 
+  // TP passive message: shown in prompt dialog during turn-order phase
+  readonly tpPassiveMessage = computed(() => {
+    const tpResult = this.wsService.tpResult();
+    if (tpResult) return {
+      title: tpResult.goFirst ? 'You go first!' : 'You go second!',
+      subtitle: 'The duel will begin shortly',
+      style: 'result' as const,
+    };
+    // Pre-duel waiting (loser waits for winner to choose TP)
+    const waiting = this.wsService.waitingForOpponent();
+    const preDuel = this.wsService.ocgPlayerIndex() === null;
+    const noPrompt = !this.wsService.pendingPrompt();
+    const noRps = !this.wsService.rpsResult() && !this.wsService.rpsInProgress();
+    if (waiting && preDuel && noPrompt && noRps) return {
+      title: 'Opponent is choosing turn order...',
+      style: 'waiting' as const,
+    };
+    return null;
+  });
+
   // [C2 fix] Has active blocking prompt — excludes IDLECMD/BATTLECMD (distributed UI, not blocking)
   // Story 4.2 — uses visiblePrompt for drain coordination
   readonly hasActivePrompt = computed(() => {
@@ -268,10 +288,7 @@ export class DuelPageComponent implements OnInit {
   // render from the correct perspective after switching players.
   readonly ownPlayerIndex = computed(() => {
     if (this.isSoloMode()) return this.orchestrator.activePlayerIndex();
-    const r = this.room();
-    const userId = this.authService.user()?.id;
-    if (!r || !userId) return 0;
-    return userId === r.player1.id ? 0 : 1;
+    return this.wsService.ocgPlayerIndex() ?? 0;
   });
 
   /** Chain badges for hand cards: sequence index → chain link number (player side). */
@@ -288,19 +305,25 @@ export class DuelPageComponent implements OnInit {
     return map;
   });
 
-  /** Chain badges for hand cards: sequence index → chain link number (opponent side). */
-  readonly opponentHandChainBadges = computed(() => {
+  /** Chain badges + revealed card codes for opponent hand cards in chain. Single pass over links. */
+  private readonly opponentHandChainData = computed(() => {
     const links = this.wsService.activeChainLinks();
     const ownIdx = this.ownPlayerIndex();
-    const map = new Map<number, number>();
-    if (links.length < 2 && this.wsService.chainPhase() !== 'resolving') return map;
+    const showBadges = links.length >= 2 || this.wsService.chainPhase() === 'resolving';
+    const badges = new Map<number, number>();
+    const revealed = new Map<number, number>();
     for (const link of links) {
       if (link.location !== LOCATION.HAND || link.player === ownIdx) continue;
-      const chainNum = link.chainIndex + 1;
-      if (!map.has(link.sequence) || map.get(link.sequence)! < chainNum) map.set(link.sequence, chainNum);
+      if (showBadges) {
+        const chainNum = link.chainIndex + 1;
+        if (!badges.has(link.sequence) || badges.get(link.sequence)! < chainNum) badges.set(link.sequence, chainNum);
+      }
+      if (link.cardCode) revealed.set(link.sequence, link.cardCode);
     }
-    return map;
+    return { badges, revealed };
   });
+  readonly opponentHandChainBadges = computed(() => this.opponentHandChainData().badges);
+  readonly opponentHandRevealedCards = computed(() => this.opponentHandChainData().revealed);
 
   // Story 3.4 — Duel result display with reason mapping
   readonly resultOutcome = computed(() => {
@@ -896,6 +919,7 @@ export class DuelPageComponent implements OnInit {
   }
 
   private endRoomIfNeeded(): void {
+    if (this.wsService.duelResult()) return;
     const code = this.roomCode();
     if (code) {
       this.http.post(`/api/rooms/${code}/end`, {}).subscribe();
@@ -1242,11 +1266,15 @@ export class DuelPageComponent implements OnInit {
     }
   }
 
-  // Story 2.3 — Map RPS choice value to emoji
-  readonly RPS_EMOJIS = ['\u270A', '\u270B', '\u270C\uFE0F'] as const;
+  // Story 2.3 — Map RPS choice value to SVG icon path
+  readonly RPS_ICONS = [
+    'assets/images/icons/rps-rock.svg',
+    'assets/images/icons/rps-paper.svg',
+    'assets/images/icons/rps-scissors.svg',
+  ] as const;
 
-  rpsEmoji(choice: number): string {
-    return this.RPS_EMOJIS[choice] ?? '\u2753';
+  rpsIcon(choice: number): string {
+    return this.RPS_ICONS[choice] ?? '';
   }
 
   // ---------------------------------------------------------------------------

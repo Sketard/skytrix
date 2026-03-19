@@ -5,6 +5,7 @@
      (mouseleave)="onContainerMouseLeave()">
   @for (card of cards(); track $index) {
     @let chainNum = chainBadges().get($index);
+    @let revealedCode = revealedCardCodes().get($index);
     <div class="hand-card"
          [attr.data-card-code]="card.cardCode"
          [class.hand-card--hovered]="hoveredIndex() === $index"
@@ -16,8 +17,9 @@
          [style.transform]="fanTransform($index)"
          [style.visibility]="(hideAll() || hiddenIndices().has($index)) ? 'hidden' : null"
          (click)="onCardTap($index, $event)">
-      @if ((isPlayerSide() || chainNum) && card.cardCode && card.cardCode !== 0) {
-        <img [src]="getCardImageUrl(card)"
+      @let effectiveCode = isPlayerSide() ? card.cardCode : revealedCode;
+      @if (effectiveCode) {
+        <img [src]="getCardImageUrlByCode(effectiveCode)"
              [alt]="card.name ?? 'Card'"
              class="hand-card-art"
              (error)="$any($event.target).src='assets/images/card_back.jpg'">

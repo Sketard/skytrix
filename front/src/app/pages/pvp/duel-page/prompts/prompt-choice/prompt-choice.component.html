@@ -1,0 +1,26 @@
+<div class="choice-container">
+  <h2 class="choice-title">{{ config.title }}</h2>
+  <p class="choice-subtitle">{{ config.subtitle }}</p>
+
+  <div class="timer" role="timer" aria-live="polite" aria-atomic="true">{{ secondsLeft() }}s</div>
+
+  <div class="choices">
+    @for (choice of config.choices; track choice.value) {
+      <button class="choice-btn"
+              [class.choice-btn--selected]="selected() === choice.value"
+              [style.max-width]="config.maxWidth"
+              (click)="selectChoice(choice.value)"
+              [disabled]="answered"
+              [attr.aria-label]="choice.label"
+              type="button">
+        <img class="choice-icon" [src]="choice.icon" [alt]="choice.label" aria-hidden="true">
+        <span class="choice-label">{{ choice.label }}</span>
+        <kbd class="choice-key">{{ choice.key }}</kbd>
+      </button>
+    }
+  </div>
+
+  @if (answered) {
+    <p class="waiting-label" aria-live="polite">{{ config.waitingLabel }}</p>
+  }
+</div>

@@ -48,12 +48,16 @@ export class DuelWebSocketService implements OnDestroy {
   readonly duelResult = computed(() => this._activeConnection().duelResult());
   readonly rpsResult = computed(() => this._activeConnection().rpsResult());
   readonly rpsInProgress = computed(() => this._activeConnection().rpsInProgress());
+  readonly ocgPlayerIndex = computed(() => this._activeConnection().ocgPlayerIndex());
   readonly rematchState = computed(() => this._activeConnection().rematchState());
   readonly rematchStarting = computed(() => this._activeConnection().rematchStarting());
   readonly inactivityWarning = computed(() => this._activeConnection().inactivityWarning());
   readonly waitingForOpponent = computed(() => this._activeConnection().waitingForOpponent());
+  readonly tpResult = computed(() => this._activeConnection().tpResult());
+  readonly tpResponseSent = computed(() => this._activeConnection().tpResponseSent());
 
   readonly canRetry = computed(() => this._activeConnection().canRetry());
+  readonly totalAutoRetries = computed(() => this._activeConnection().totalAutoRetries());
   readonly justReconnected = computed(() => this._activeConnection().justReconnected());
 
   // --- Delegated methods ---

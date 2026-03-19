@@ -811,7 +811,7 @@ export class AnimationOrchestratorService {
       this.announceEvent('Card summoned', msg.player);
       const summonP = this.cardTravelService.travel(src, dstKey, cardImage, {
         duration: travelDuration,
-        destRotateZ: isMonsterDefense ? 90 : undefined,
+        destRotateZ: isMonsterDefense ? -90 : undefined,
         showBack: isSet, baseRotateZ,
         landingStyle: 'slam',
       });

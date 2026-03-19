@@ -20,6 +20,7 @@ import {
   AnnounceCardMsg,
   AnnounceNumberMsg,
   RpsChoiceMsg,
+  SelectTpMsg,
 } from '../duel-ws.types';
 
 export type Prompt =
@@ -43,4 +44,5 @@ export type Prompt =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  | RpsChoiceMsg;
+  | RpsChoiceMsg
+  | SelectTpMsg;

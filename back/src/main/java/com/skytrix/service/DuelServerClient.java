@@ -55,15 +55,15 @@ public class DuelServerClient {
         return createDuel(player1Id, deck1, player2Id, deck2, false);
     }
 
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean skipRps) {
-        return createDuel(player1Id, deck1, player2Id, deck2, skipRps, false);
+    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean soloMode) {
+        return createDuel(player1Id, deck1, player2Id, deck2, soloMode, false);
     }
 
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean skipRps, boolean skipShuffle) {
-        return createDuel(player1Id, deck1, player2Id, deck2, skipRps, skipShuffle, null);
+    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean soloMode, boolean skipShuffle) {
+        return createDuel(player1Id, deck1, player2Id, deck2, soloMode, skipShuffle, null);
     }
 
-    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean skipRps, boolean skipShuffle, Integer turnTimeSecs) {
+    public DuelCreationResponse createDuel(String player1Id, DuelDeckDTO deck1, String player2Id, DuelDeckDTO deck2, boolean soloMode, boolean skipShuffle, Integer turnTimeSecs) {
         return restClient.post()
                 .uri("/api/duels")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ public class DuelServerClient {
                 .body(new CreateDuelRequest(
                         new DuelPlayer(player1Id, deck1),
                         new DuelPlayer(player2Id, deck2),
-                        skipRps,
+                        soloMode,
                         skipShuffle,
                         turnTimeSecs
                 ))
@@ -177,7 +177,7 @@ public class DuelServerClient {
         return execution.execute(request, body);
     }
 
-    private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2, boolean skipRps, Boolean skipShuffle, Integer turnTimeSecs) {}
+    private record CreateDuelRequest(DuelPlayer player1, DuelPlayer player2, boolean soloMode, boolean skipShuffle, Integer turnTimeSecs) {}
     private record DuelPlayer(String id, DuelDeckDTO deck) {}
     private record ActiveDuelsResponse(List<String> duelIds) {}
     private record ValidatePasscodesRequest(List<Integer> passcodes) {}

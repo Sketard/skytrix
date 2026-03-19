@@ -2,7 +2,7 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, interval, Subject, switchMap, takeUntil } from 'rxjs';
+import { EMPTY, Subject, switchMap, takeUntil, timeout } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Clipboard } from '@angular/cdk/clipboard';
@@ -115,14 +115,14 @@ export class RoomStateMachineService {
       case 'WAITING':
         if (isParticipant) {
           this.roomState.set('waiting');
-          this.startPolling(room.roomCode);
+          this.startSseSubscription(room.roomCode);
         } else {
           this.openDeckPickerForJoin(room.roomCode);
         }
         break;
       case 'CREATING_DUEL':
         this.roomState.set('creating-duel');
-        this.startPolling(room.roomCode);
+        this.startSseSubscription(room.roomCode);
         break;
       case 'ACTIVE':
         this.connectWhenReady(room);
@@ -189,41 +189,34 @@ export class RoomStateMachineService {
   }
 
   // ---------------------------------------------------------------------------
-  // Polling
+  // SSE subscription (replaces polling)
   // ---------------------------------------------------------------------------
 
-  private startPolling(roomCode: string): void {
+  private startSseSubscription(roomCode: string): void {
     this.stopPolling$.next();
-    let consecutiveErrors = 0;
 
-    interval(3000).pipe(
+    this.roomApiService.subscribeToRoomEvents(roomCode).pipe(
+      timeout(5 * 60 * 1000), // 5 min — fallback to GET if SSE never delivers
       takeUntil(this.stopPolling$),
       takeUntilDestroyed(this.destroyRef),
-      switchMap(() => this.roomApiService.getRoom(roomCode).pipe(
-        catchError(() => {
-          consecutiveErrors++;
-          if (consecutiveErrors >= 3) {
-            this.stopPolling$.next();
-            this.roomState.set('error');
-          }
-          return EMPTY;
-        }),
-      )),
-    ).subscribe(room => {
-      consecutiveErrors = 0;
-      this.room.set(room);
-      if (room.status === 'WAITING') {
-        this.roomState.set('waiting');
-      } else if (room.status === 'CREATING_DUEL') {
-        this.roomState.set('creating-duel');
-      } else if (room.status === 'ACTIVE') {
-        this.stopPolling$.next();
-        this.connectWhenReady(room);
-      } else if (room.status === 'ENDED') {
-        this.stopPolling$.next();
-        displayError(this.snackBar, 'Room not found or already ended');
-        this.router.navigate(['/pvp']);
-      }
+    ).subscribe({
+      next: room => {
+        this.room.set(room);
+        if (room.status === 'ACTIVE') {
+          this.connectWhenReady(room);
+        }
+      },
+      error: () => {
+        this.roomApiService.getRoom(roomCode).pipe(
+          takeUntilDestroyed(this.destroyRef),
+        ).subscribe({
+          next: room => {
+            this.room.set(room);
+            this.handleRoomStatus(room);
+          },
+          error: () => this.roomState.set('error'),
+        });
+      },
     });
   }
 
