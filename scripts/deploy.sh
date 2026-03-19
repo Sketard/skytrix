@@ -105,18 +105,13 @@ GIT_RESULT=$(remote "
   if [ \"\$LOCAL\" = \"\$REMOTE\" ]; then
     echo 'UP_TO_DATE'
   else
-    git pull --ff-only origin master 2>&1 || { echo 'PULL_FAILED'; exit 1; }
+    git reset --hard origin/master 2>&1
     echo 'UPDATED'
   fi
-")
+") || fail "Git sync failed on VPS"
 
-if [[ "$GIT_RESULT" == *"PULL_FAILED"* ]]; then
-  fail "git pull --ff-only failed (diverged history?). Fix manually on VPS."
-elif [[ "$GIT_RESULT" == *"UP_TO_DATE"* ]]; then
-  warn "Already up to date"
-  read -p "No changes to deploy. Continue anyway? [y/N] " -n 1 -r
-  echo
-  [[ ! $REPLY =~ ^[Yy]$ ]] && { echo "Aborted."; exit 0; }
+if [[ "$GIT_RESULT" == *"UP_TO_DATE"* ]]; then
+  warn "Already up to date — continuing with rebuild"
 else
   log "Code updated"
 fi
