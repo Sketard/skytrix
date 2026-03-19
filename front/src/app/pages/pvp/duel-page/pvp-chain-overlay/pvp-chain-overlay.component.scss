@@ -39,6 +39,7 @@
 
 .chain-card {
   position: absolute;
+  opacity: 0; // Invisible until a position class (--front/--mid/--back) overrides
   border-radius: 8px;
   overflow: visible;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
@@ -158,6 +159,7 @@
   height: 45dvh;
   width: calc(45dvh * 59 / 86);
   z-index: 4;
+  opacity: 1;
 
   @media (prefers-reduced-motion: no-preference) {
     animation: chain-resolve-exit var(--chain-resolve-exit, 600ms) ease-in forwards;
@@ -221,6 +223,7 @@
   height: 45dvh;
   width: calc(45dvh * 59 / 86);
   z-index: 4;
+  opacity: 1;
 
   @media (prefers-reduced-motion: no-preference) {
     animation: chain-negated-exit var(--chain-resolve-exit, 600ms) ease-in forwards;
@@ -263,6 +266,7 @@
   height: 20dvh;
   width: calc(20dvh * 59 / 86);
   z-index: 0;
+  opacity: 0.8;
 
   @media (prefers-reduced-motion: no-preference) {
     animation: chain-overflow-exit var(--chain-overflow-duration, 600ms) ease-out forwards;

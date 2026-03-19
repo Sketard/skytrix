@@ -53,8 +53,6 @@
   <div class="actions">
     @if (promptData?.type === 'SELECT_SUM') {
       <span class="selection-count" aria-live="polite">{{ selectedSum }} / {{ sumTarget }} needed</span>
-    } @else if (isToggleMode && canFinish) {
-      <span class="selection-count selection-count--ready" aria-live="polite">✓ Materials ready — confirm or add more</span>
     } @else if (isMultiSelect && !isToggleMode) {
       <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
     }
