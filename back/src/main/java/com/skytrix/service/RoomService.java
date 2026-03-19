@@ -61,6 +61,7 @@ public class RoomService {
         room.setStatus(RoomStatus.WAITING);
 
         roomRepository.save(room);
+        log.info("Room created: {} by user {}", room.getRoomCode(), user.getPseudo());
         return roomMapper.toRoomDTO(room, user.getId());
     }
 
@@ -113,6 +114,7 @@ public class RoomService {
             room.setStatus(RoomStatus.ACTIVE);
             roomRepository.save(room);
 
+            log.info("Room {} joined by user {} — duel {} started", room.getRoomCode(), user.getPseudo(), room.getDuelServerId());
             return roomMapper.toRoomDTO(room, user.getId());
         } catch (RestClientException e) {
             room.setStatus(RoomStatus.WAITING);
@@ -170,6 +172,7 @@ public class RoomService {
             room.setStatus(RoomStatus.ACTIVE);
             roomRepository.save(room);
 
+            log.info("Quick duel room {} created — duel {}", room.getRoomCode(), room.getDuelServerId());
             var result = new QuickDuelResponseDTO();
             result.setRoomCode(room.getRoomCode());
             result.setWsToken1(token1);
@@ -214,6 +217,7 @@ public class RoomService {
         }
         room.setStatus(RoomStatus.ENDED);
         roomRepository.save(room);
+        log.info("Room {} ended by user {}", roomCode, userId);
     }
 
     /**

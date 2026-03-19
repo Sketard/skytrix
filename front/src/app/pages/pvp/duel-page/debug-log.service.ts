@@ -5,7 +5,7 @@ import type { ServerMessage } from '../duel-ws.types';
 
 @Injectable()
 export class DebugLogService {
-  private readonly enabled = !environment.production;
+  private readonly enabled = environment.debugTools;
 
   private readonly _entries = signal<DebugLogEntry[]>([]);
   readonly entries = this._entries.asReadonly();

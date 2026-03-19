@@ -2,7 +2,6 @@ package com.skytrix.controller;
 
 import jakarta.validation.Valid;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,7 +15,6 @@ import com.skytrix.service.RoomService;
 
 import lombok.RequiredArgsConstructor;
 
-@Profile("!prod")
 @RestController
 @RequestMapping("/rooms")
 @RequiredArgsConstructor

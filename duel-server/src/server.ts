@@ -525,6 +525,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
           if (session.invalidResponseCount[p] >= MAX_INVALID_RESPONSES) {
             const winner: Player = p === 0 ? 1 : 0;
             const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
+            console.log(`[Duel ${session.duelId}] DUEL_END winner=${winner} reason=too_many_invalid_responses`);
             sendToPlayer(session, 0, endMsg);
             sendToPlayer(session, 1, endMsg);
             handleDuelEnd(session);
@@ -541,6 +542,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
     case 'WORKER_ERROR': {
       console.error(`[Duel ${wmsg.duelId}] Worker error: ${wmsg.error}`);
       const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: `Engine error: ${wmsg.error}` };
+      console.log(`[Duel ${session.duelId}] DUEL_END winner=null reason=engine_error`);
       sendToPlayer(session, 0, errorMsg);
       sendToPlayer(session, 1, errorMsg);
       handleDuelEnd(session);
@@ -553,6 +555,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
 function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): void {
   // Detect natural DUEL_END from worker (LP=0, deck-out, etc.)
   if (message.type === 'DUEL_END') {
+    console.log(`[Duel ${session.duelId}] DUEL_END winner=${message.winner} reason=worker`);
     handleDuelEnd(session);
   }
 
@@ -560,6 +563,7 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
   // The worker sends MSG_WIN (not DUEL_END) for LP=0, deck-out, Exodia, etc.
   if (message.type === 'MSG_WIN') {
     const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
+    console.log(`[Duel ${session.duelId}] DUEL_END winner=${message.player} reason=win`);
     sendToPlayer(session, 0, endMsg);
     sendToPlayer(session, 1, endMsg);
     handleDuelEnd(session);
@@ -681,6 +685,7 @@ function startTurnTimer(session: ActiveDuelSession): void {
       const winner: Player = loser === 0 ? 1 : 0;
       session.awaitingResponse[loser] = false;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'timeout' };
+      console.log(`[Duel ${session.duelId}] DUEL_END winner=${winner} reason=timeout (player ${loser} pool depleted)`);
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
@@ -790,6 +795,7 @@ function startInactivityTimer(session: ActiveDuelSession, player: Player): void 
         const winner: Player = player === 0 ? 1 : 0;
         session.awaitingResponse[player] = false;
         const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
+        console.log(`[Duel ${session.duelId}] DUEL_END winner=${winner} reason=inactivity (player ${player})`);
         sendToPlayer(session, 0, endMsg);
         sendToPlayer(session, 1, endMsg);
         handleDuelEnd(session);
@@ -1174,6 +1180,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
         // Neither player reconnected — end as draw
         if (!session.players[0].connected && !session.players[1].connected && !session.endedAt) {
           const endMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'draw_both_disconnect' };
+          console.log(`[Duel ${session.duelId}] DUEL_END winner=null reason=draw_both_disconnect`);
           session.storedDuelResult = endMsg;
           handleDuelEnd(session);
           // Don't terminate worker — preserve for 4h
@@ -1197,6 +1204,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
     if (!session.players[playerIndex].connected && !session.endedAt) {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'disconnect' };
+      console.log(`[Duel ${session.duelId}] DUEL_END winner=${opponentIndex} reason=disconnect (player ${playerIndex})`);
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
@@ -1261,7 +1269,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       const elapsed = Date.now() - session.promptSentAt[playerIndex];
       if (elapsed < BLUFF_DELAY_MAX_MS) {
         const delay = BLUFF_DELAY_MIN_MS + Math.random() * (BLUFF_DELAY_MAX_MS - BLUFF_DELAY_MIN_MS);
-        setTimeout(forwardToWorker, delay - elapsed);
+        setTimeout(forwardToWorker, Math.max(0, delay - elapsed));
       } else {
         forwardToWorker();
       }
@@ -1271,6 +1279,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
     case 'SURRENDER': {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'surrender' };
+      console.log(`[Duel ${session.duelId}] DUEL_END winner=${opponentIndex} reason=surrender (player ${playerIndex})`);
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);

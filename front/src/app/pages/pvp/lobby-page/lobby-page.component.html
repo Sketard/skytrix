@@ -11,7 +11,7 @@
               [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
       </button>
-      @if (!isProduction) {
+      @if (showDebugTools) {
         <button mat-icon-button
                 aria-label="Duel rapide - mode debug"
                 [disabled]="creatingRoom()"

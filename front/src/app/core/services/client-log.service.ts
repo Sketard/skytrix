@@ -89,6 +89,7 @@ export class ClientLogService implements OnDestroy {
   private stringify(...args: unknown[]): string {
     return args.map(a => {
       if (a === null || a === undefined) return String(a);
+      if (a instanceof Error) return `${a.name}: ${a.message}`;
       if (typeof a !== 'object') return String(a);
       try {
         return JSON.stringify(a);

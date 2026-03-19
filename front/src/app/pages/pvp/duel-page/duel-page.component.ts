@@ -82,7 +82,7 @@ export class DuelPageComponent implements OnInit {
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
-  readonly isProduction = environment.production;
+  readonly showDebugTools = environment.debugTools;
   readonly isSoloMode = signal(false);
 
   // --- Extracted services ---
@@ -896,10 +896,9 @@ export class DuelPageComponent implements OnInit {
   }
 
   private endRoomIfNeeded(): void {
-    if (this.roomService.roomId) {
-      this.http.post(`/api/rooms/${this.roomService.roomId}/end`, {}).subscribe();
-    } else if (this.isSoloMode() && this.roomCode()) {
-      this.http.post(`/api/rooms/${this.roomCode()}/end`, {}).subscribe();
+    const code = this.roomCode();
+    if (code) {
+      this.http.post(`/api/rooms/${code}/end`, {}).subscribe();
     }
   }
 

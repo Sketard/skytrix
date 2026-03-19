@@ -267,7 +267,7 @@
           @if (isOwnTurn()) {
             <app-pvp-activation-toggle [(mode)]="activationMode" />
           }
-          @if (!isProduction) {
+          @if (showDebugTools) {
             <button class="mini-toolbar__item"
                     type="button"
                     aria-label="Toggle debug logs"
@@ -452,7 +452,7 @@
                            (preTargetCards)="onPreTargetCards($event)" />
 
     <!-- Debug Log Panel (dev only) -->
-    @if (!isProduction) {
+    @if (showDebugTools) {
       <app-debug-log-panel [entries]="debugLog.entries()"
                             [open]="debugLog.panelOpen()"
                             (closed)="debugLog.panelOpen.set(false)"

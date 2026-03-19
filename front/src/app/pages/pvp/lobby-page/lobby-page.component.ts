@@ -34,7 +34,7 @@ export class LobbyPageComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly joiningRoomCode = signal<string | null>(null);
   readonly creatingRoom = signal(false);
-  readonly isProduction = environment.production;
+  readonly showDebugTools = environment.debugTools;
 
   private readonly dialogConfig = {
     width: 'min(520px, 85dvw)',

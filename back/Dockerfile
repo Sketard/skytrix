@@ -17,4 +17,4 @@ COPY --from=builder /app/target/*.jar app.jar
 RUN mkdir -p images/small images/big
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
