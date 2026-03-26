@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skytrix Solver — UX Design Direction</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root {
+    /* Material Dark Theme */
+    --bg-primary: #121212;
+    --bg-surface: #1e1e1e;
+    --bg-surface-variant: #2c2c2c;
+    --bg-elevated: #333333;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --text-disabled: #666666;
+    --primary: #7c4dff;
+    --primary-light: #b388ff;
+    --accent: #69f0ae;
+    --warn: #ff5252;
+    --divider: #333333;
+    --border: #444444;
+
+    /* Interruption chip families */
+    --chip-negate: #7e57c2;
+    --chip-negate-text: #fff;
+    --chip-removal: #ef6c00;
+    --chip-removal-text: #fff;
+    --chip-control: #00897b;
+    --chip-control-text: #fff;
+    --chip-disable: #ffa000;
+    --chip-disable-text: #1a1a1a;
+    --chip-hand: #757575;
+    --chip-hand-text: #fff;
+
+    /* Card art sizing */
+    --card-thumb-sm-w: 32px;
+    --card-thumb-sm-h: 46px;
+    --card-thumb-md-w: 56px;
+    --card-thumb-md-h: 82px;
+
+    /* Layout */
+    --sidebar-width: 280px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --tree-indent: 24px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Roboto', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* === STATE TABS === */
+  .state-tabs {
+    display: flex;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--divider);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 48px;
+  }
+  .state-tab {
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .state-tab:hover { color: var(--text-primary); background: var(--bg-surface-variant); }
+  .state-tab.active { color: var(--primary-light); border-bottom-color: var(--primary-light); }
+
+  .state-panel { display: none; }
+  .state-panel.active { display: flex; }
+
+  /* === MAIN LAYOUT === */
+  .solver-layout {
+    margin-top: 48px;
+    height: calc(100vh - 48px);
+    display: flex;
+  }
+
+  /* === SIDEBAR === */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--divider);
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .sidebar-section-title {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  /* Hand selector grid */
+  .hand-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--spacing-xs);
+  }
+  .hand-card {
+    width: 100%;
+    aspect-ratio: 59/86;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .hand-card.selected { border-color: var(--primary-light); box-shadow: 0 0 8px rgba(124,77,255,0.4); }
+  .hand-card:hover { border-color: var(--text-disabled); }
+  .hand-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 2px;
+  }
+  .hand-card .check-overlay {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: var(--primary);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .hand-card.selected .check-overlay { display: flex; }
+  .hand-card .check-overlay .material-icons { font-size: 12px; color: #fff; }
+  .hand-counter {
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: var(--spacing-xs);
+  }
+  .hand-counter span { color: var(--primary-light); font-weight: 500; }
+
+  /* Card placeholder colors */
+  .card-color-1 { background: linear-gradient(135deg, #4a148c, #7b1fa2); }
+  .card-color-2 { background: linear-gradient(135deg, #1b5e20, #388e3c); }
+  .card-color-3 { background: linear-gradient(135deg, #b71c1c, #d32f2f); }
+  .card-color-4 { background: linear-gradient(135deg, #0d47a1, #1976d2); }
+  .card-color-5 { background: linear-gradient(135deg, #e65100, #ef6c00); }
+  .card-color-6 { background: linear-gradient(135deg, #263238, #455a64); }
+  .card-color-7 { background: linear-gradient(135deg, #4e342e, #6d4c41); }
+  .card-color-8 { background: linear-gradient(135deg, #1a237e, #303f9f); }
+  .card-color-9 { background: linear-gradient(135deg, #006064, #00838f); }
+  .card-color-10 { background: linear-gradient(135deg, #880e4f, #ad1457); }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-primary:disabled { background: var(--text-disabled); cursor: not-allowed; }
+  .btn-outlined { background: transparent; color: var(--text-primary); border: 1px solid var(--border); }
+  .btn-outlined:hover { background: var(--bg-surface-variant); }
+  .btn-cancel { background: transparent; color: var(--warn); border: 1px solid var(--warn); }
+  .btn-cancel:hover { background: rgba(255,82,82,0.1); }
+  .btn-small { padding: 4px 12px; font-size: 12px; }
+  .btn-icon { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; border-radius: 50%; }
+  .btn-icon:hover { background: var(--bg-surface-variant); color: var(--text-primary); }
+
+  .btn-row { display: flex; gap: var(--spacing-sm); }
+  .btn-fill-random { width: 100%; margin-top: var(--spacing-xs); }
+
+  /* Toggle group */
+  .toggle-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .toggle-option {
+    flex: 1;
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    transition: all 0.15s;
+  }
+  .toggle-option.active { background: var(--primary); color: #fff; }
+  .toggle-option:hover:not(.active) { background: var(--bg-surface-variant); }
+
+  /* Checkboxes */
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 6px 0;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .checkbox-row .material-icons { font-size: 20px; color: var(--primary-light); }
+  .checkbox-row .card-mini {
+    width: 24px;
+    height: 35px;
+    border-radius: 2px;
+  }
+
+  /* === RESULT AREA === */
+  .result-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  /* Pinned results bar */
+  .pinned-bar {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    min-height: 0;
+  }
+  .pinned-card {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .pinned-card .pinned-score { font-weight: 700; font-size: 16px; color: var(--primary-light); }
+  .pinned-card .pinned-detail { color: var(--text-secondary); }
+  .pinned-card .pinned-cards {
+    display: flex;
+    gap: 2px;
+  }
+  .pinned-card .pinned-card-art {
+    width: 20px;
+    height: 29px;
+    border-radius: 2px;
+  }
+
+  /* Hero block */
+  .hero-block {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    background: var(--bg-surface);
+    border-radius: 8px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    gap: var(--spacing-lg);
+  }
+  .hero-left {}
+  .hero-score {
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: -1px;
+    line-height: 1.2;
+  }
+  .hero-score .score-number { font-weight: 700; }
+  .hero-score .score-separator { color: var(--text-disabled); margin: 0 8px; }
+  .hero-score .score-label { font-size: 20px; font-weight: 400; }
+  .hero-minimax {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .hero-minimax span { color: var(--accent); font-weight: 500; }
+  .hero-breakdown {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+  .hero-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+  .hero-pin-btn {
+    align-self: flex-start;
+  }
+
+  /* End board cards */
+  .endboard-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .endboard-card-art {
+    width: var(--card-thumb-md-w);
+    height: var(--card-thumb-md-h);
+    border-radius: 3px;
+  }
+  .endboard-badge {
+    position: absolute;
+    bottom: 18px;
+    right: -2px;
+    font-size: 9px;
+    font-weight: 500;
+    padding: 1px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    background: rgba(0,0,0,0.7);
+  }
+  .endboard-name {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Interruption chips */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .chip-negate { background: var(--chip-negate); color: var(--chip-negate-text); }
+  .chip-removal { background: var(--chip-removal); color: var(--chip-removal-text); }
+  .chip-control { background: var(--chip-control); color: var(--chip-control-text); }
+  .chip-disable { background: var(--chip-disable); color: var(--chip-disable-text); }
+  .chip-hand { background: var(--chip-hand); color: var(--chip-hand-text); }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: var(--spacing-sm) 0;
+    scrollbar-width: thin;
+  }
+  .breadcrumb::-webkit-scrollbar { height: 4px; }
+  .breadcrumb::-webkit-scrollbar-track { background: transparent; }
+  .breadcrumb::-webkit-scrollbar-thumb { background: var(--text-disabled); border-radius: 2px; }
+  .breadcrumb-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 4px 10px 4px 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .breadcrumb-step:hover { border-color: var(--primary-light); background: var(--bg-surface-variant); }
+  .breadcrumb-step .step-art {
+    width: var(--card-thumb-sm-w);
+    height: var(--card-thumb-sm-h);
+    border-radius: 3px;
+  }
+  .breadcrumb-step .step-label { font-size: 12px; color: var(--text-primary); font-weight: 400; }
+  .breadcrumb-chevron {
+    color: var(--text-disabled);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Breadcrumb tooltip */
+  .breadcrumb-step .tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    white-space: normal;
+    width: 240px;
+    z-index: 10;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .breadcrumb-step { position: relative; }
+  .breadcrumb-step:hover .tooltip { display: block; }
+
+  /* Decision tree */
+  .tree { margin-top: var(--spacing-sm); }
+  .tree-section-title {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+  }
+  .tree-node {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 13px;
+  }
+  .tree-node:hover { background: var(--bg-surface-variant); }
+  .tree-node .expand-icon { color: var(--text-disabled); font-size: 18px; width: 18px; }
+  .tree-node .node-art {
+    width: var(--card-thumb-sm-w);
+    height: var(--card-thumb-sm-h);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .tree-node .node-annotation { flex: 1; color: var(--text-primary); }
+  .tree-node .node-score {
+    font-weight: 700;
+    color: var(--primary-light);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .tree-node.recommended { background: rgba(124,77,255,0.08); }
+  .tree-node.recommended .node-annotation { font-weight: 500; }
+  .tree-node .handtrap-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .tree-node .handtrap-label .handtrap-art {
+    width: 16px;
+    height: 23px;
+    border-radius: 2px;
+  }
+  .tree-node.collapsed { color: var(--text-disabled); }
+  .tree-node.collapsed .node-annotation { color: var(--text-disabled); }
+  .tree-children { margin-left: var(--tree-indent); }
+  .pruned-note {
+    font-size: 11px;
+    color: var(--text-disabled);
+    font-style: italic;
+    padding: 4px 8px;
+    margin-left: var(--tree-indent);
+  }
+
+  /* === SOLVING STATE === */
+  .solving-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+  }
+  .progress-container { width: 100%; max-width: 500px; }
+  .progress-bar-track {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-surface-variant);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--primary-light);
+    border-radius: 2px;
+    width: 65%;
+    animation: progress-pulse 2s ease-in-out infinite;
+  }
+  @keyframes progress-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+  .progress-message {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: var(--spacing-sm);
+  }
+  .progress-stats {
+    display: flex;
+    gap: var(--spacing-lg);
+    justify-content: center;
+  }
+  .stat-item {
+    text-align: center;
+  }
+  .stat-value { font-size: 24px; font-weight: 300; color: var(--text-primary); }
+  .stat-label { font-size: 11px; color: var(--text-disabled); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  /* === IDLE STATE === */
+  .idle-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    color: var(--text-disabled);
+  }
+  .idle-area .material-icons { font-size: 64px; }
+  .idle-area p { font-size: 14px; }
+
+  /* === BRICK STATE === */
+  .brick-block {
+    background: var(--bg-surface);
+    border-radius: 8px;
+    padding: var(--spacing-lg);
+    text-align: center;
+  }
+  .brick-block .material-icons { font-size: 48px; color: var(--text-disabled); margin-bottom: var(--spacing-sm); }
+  .brick-block .brick-title { font-size: 18px; font-weight: 500; margin-bottom: var(--spacing-sm); }
+  .brick-block .brick-subtitle { font-size: 14px; color: var(--text-secondary); }
+  .brick-block .brick-ref { font-size: 13px; color: var(--text-disabled); margin-top: var(--spacing-sm); }
+
+  /* === RESPONSIVE NOTE === */
+  .note-bar {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-align: center;
+    padding: 6px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    border-top: 1px solid var(--divider);
+  }
+</style>
+</head>
+<body>
+
+<!-- State tabs -->
+<div class="state-tabs">
+  <div class="state-tab active" onclick="showState('idle')">1. Idle</div>
+  <div class="state-tab" onclick="showState('configuring')">2. Configuring</div>
+  <div class="state-tab" onclick="showState('solving')">3. Solving</div>
+  <div class="state-tab" onclick="showState('result-goldfish')">4. Result (Goldfish)</div>
+  <div class="state-tab" onclick="showState('result-adversarial')">5. Result (Adversarial)</div>
+  <div class="state-tab" onclick="showState('brick')">6. Brick</div>
+  <div class="state-tab" onclick="showState('no-resilient')">7. No Resilient Line</div>
+</div>
+
+<!-- ==================== STATE 1: IDLE ==================== -->
+<div id="state-idle" class="state-panel active">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-1"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-8"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>0</span> / 5 selected</div>
+        <button class="btn btn-outlined btn-small btn-fill-random">Fill Random</button>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option active">Goldfish</button>
+          <button class="toggle-option">Adversarial</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Speed</div>
+        <div class="toggle-group">
+          <button class="toggle-option active">Fast</button>
+          <button class="toggle-option">Optimal</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" disabled style="width:100%; margin-top: 8px;">Solve</button>
+    </div>
+
+    <div class="idle-area">
+      <span class="material-icons">psychology</span>
+      <p>Select 5 cards to analyze, then click Solve</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATE 2: CONFIGURING ==================== -->
+<div id="state-configuring" class="state-panel">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-1 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-8"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>5</span> / 5 selected</div>
+        <button class="btn btn-outlined btn-small btn-fill-random">Fill Random</button>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Goldfish</button>
+          <button class="toggle-option active">Adversarial</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Speed</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Fast</button>
+          <button class="toggle-option active">Optimal</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Handtraps</div>
+        <div class="checkbox-row"><span class="material-icons">check_box</span> <div class="card-mini card-color-3"></div> Ash Blossom</div>
+        <div class="checkbox-row"><span class="material-icons">check_box</span> <div class="card-mini card-color-8"></div> Nibiru</div>
+        <div class="checkbox-row"><span class="material-icons">check_box_outline_blank</span> <div class="card-mini card-color-9"></div> Effect Veiler</div>
+        <div class="checkbox-row"><span class="material-icons">check_box_outline_blank</span> <div class="card-mini card-color-6"></div> Maxx "C"</div>
+        <div class="checkbox-row"><span class="material-icons">check_box_outline_blank</span> <div class="card-mini card-color-4"></div> Infinite Imperm.</div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%; margin-top: 8px;">Solve</button>
+    </div>
+
+    <div class="idle-area">
+      <span class="material-icons">psychology</span>
+      <p>Ready — 5 cards selected, Adversarial + Optimal</p>
+      <p style="font-size:12px; color: var(--text-disabled);">Handtraps: Ash Blossom, Nibiru</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATE 3: SOLVING ==================== -->
+<div id="state-solving" class="state-panel">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-1 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-8"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>5</span> / 5 selected</div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Goldfish</button>
+          <button class="toggle-option active">Adversarial</button>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Speed</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Fast</button>
+          <button class="toggle-option active">Optimal</button>
+        </div>
+      </div>
+      <button class="btn btn-cancel" style="width:100%; margin-top: 8px;">Cancel</button>
+    </div>
+
+    <div class="solving-area">
+      <div class="progress-container">
+        <div class="progress-bar-track"><div class="progress-bar-fill"></div></div>
+        <div class="progress-message">Exploring combo lines...</div>
+      </div>
+      <div class="progress-stats">
+        <div class="stat-item"><div class="stat-value">12,847</div><div class="stat-label">Nodes explored</div></div>
+        <div class="stat-item"><div class="stat-value">28</div><div class="stat-label">Best score</div></div>
+        <div class="stat-item"><div class="stat-value">23.4s</div><div class="stat-label">Elapsed</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATE 4: RESULT (GOLDFISH) ==================== -->
+<div id="state-result-goldfish" class="state-panel">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-1 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-8"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>5</span> / 5 selected</div>
+        <button class="btn btn-outlined btn-small btn-fill-random">Fill Random</button>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option active">Goldfish</button>
+          <button class="toggle-option">Adversarial</button>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Speed</div>
+        <div class="toggle-group">
+          <button class="toggle-option active">Fast</button>
+          <button class="toggle-option">Optimal</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top: 8px;">Solve</button>
+    </div>
+
+    <div class="result-area">
+      <!-- Hero + End Board fused -->
+      <div class="hero-block">
+        <div class="hero-left">
+          <div class="hero-score">
+            <span class="score-number">35</span>
+            <span class="score-separator">—</span>
+            <span class="score-label">3 interruptions</span>
+          </div>
+          <div class="hero-breakdown">
+            <span class="chip chip-negate">omni-negate ×1</span>
+            <span class="chip chip-negate">omni-negate ×1</span>
+            <span class="chip chip-removal">destruction ×1</span>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="endboard-card">
+            <div class="endboard-card-art card-color-4"></div>
+            <div class="endboard-badge" style="color: var(--chip-negate);">negate ×1</div>
+            <div class="endboard-name">Mirrorjade</div>
+          </div>
+          <div class="endboard-card">
+            <div class="endboard-card-art card-color-8"></div>
+            <div class="endboard-badge" style="color: var(--chip-negate);">negate ×1</div>
+            <div class="endboard-name">Baronne</div>
+          </div>
+          <div class="endboard-card">
+            <div class="endboard-card-art card-color-3"></div>
+            <div class="endboard-badge" style="color: var(--chip-removal);">destr. ×1</div>
+            <div class="endboard-name">Branded in Red</div>
+          </div>
+          <button class="btn btn-icon hero-pin-btn" title="Pin result"><span class="material-icons">push_pin</span></button>
+        </div>
+      </div>
+
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-1"></div>
+          <span class="step-label">NS Aleister</span>
+          <div class="tooltip">Normal Summon Aleister the Invoker — search Invocation from deck to hand</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-2"></div>
+          <span class="step-label">Branded Fusion</span>
+          <div class="tooltip">Activate Branded Fusion — send Fallen of Albaz + Lubellion from deck to GY</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-5"></div>
+          <span class="step-label">FS Lubellion</span>
+          <div class="tooltip">Fusion Summon Lubellion the Searing Dragon — using materials sent by Branded Fusion</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-5"></div>
+          <span class="step-label">Lubellion eff.</span>
+          <div class="tooltip">Activate Lubellion effect — banish Fallen of Albaz from GY, Fusion Summon Mirrorjade</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-4"></div>
+          <span class="step-label">FS Mirrorjade</span>
+          <div class="tooltip">Fusion Summon Mirrorjade the Iceblade Dragon — omni-negate on field</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-1"></div>
+          <span class="step-label">Invocation</span>
+          <div class="tooltip">Activate Invocation — banish Aleister from field + material from GY → Fusion Summon Mechaba</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-8"></div>
+          <span class="step-label">Synchro Baronne</span>
+          <div class="tooltip">Synchro Summon Baronne de Fleur — omni-negate + destruction once per turn</div>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-3"></div>
+          <span class="step-label">Set Branded in Red</span>
+          <div class="tooltip">Set Branded in Red — trap, can Fusion Summon during opponent's turn using materials from field/GY</div>
+        </div>
+      </div>
+
+      <!-- Decision Tree -->
+      <div class="tree">
+        <div class="tree-section-title">Decision Tree</div>
+
+        <div class="tree-node recommended">
+          <span class="material-icons expand-icon">expand_more</span>
+          <div class="node-art card-color-1"></div>
+          <span class="node-annotation">Normal Summon Aleister the Invoker</span>
+          <span class="node-score">35</span>
+        </div>
+        <div class="tree-children">
+          <div class="tree-node recommended">
+            <span class="material-icons expand-icon">expand_more</span>
+            <div class="node-art card-color-2"></div>
+            <span class="node-annotation">Activate Branded Fusion</span>
+            <span class="node-score">35</span>
+          </div>
+          <div class="tree-children">
+            <div class="tree-node recommended">
+              <span class="material-icons expand-icon">expand_more</span>
+              <div class="node-art card-color-5"></div>
+              <span class="node-annotation">Fusion Summon Lubellion → eff. → FS Mirrorjade</span>
+              <span class="node-score">35</span>
+            </div>
+            <div class="tree-node collapsed">
+              <span class="material-icons expand-icon">chevron_right</span>
+              <div class="node-art card-color-4"></div>
+              <span class="node-annotation">Fusion Summon Mirrorjade directly</span>
+              <span class="node-score" style="color: var(--text-secondary);">32</span>
+            </div>
+            <div class="pruned-note">... and 4 other branches</div>
+          </div>
+
+          <div class="tree-node collapsed">
+            <span class="material-icons expand-icon">chevron_right</span>
+            <div class="node-art card-color-7"></div>
+            <span class="node-annotation">Activate Super Polymerization</span>
+            <span class="node-score" style="color: var(--text-secondary);">22</span>
+          </div>
+        </div>
+
+        <div class="tree-node collapsed">
+          <span class="material-icons expand-icon">chevron_right</span>
+          <div class="node-art card-color-2"></div>
+          <span class="node-annotation">Activate Branded Fusion (without NS)</span>
+          <span class="node-score" style="color: var(--text-secondary);">28</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATE 5: RESULT (ADVERSARIAL) ==================== -->
+<div id="state-result-adversarial" class="state-panel">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-1 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-8"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>5</span> / 5 selected</div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Goldfish</button>
+          <button class="toggle-option active">Adversarial</button>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Speed</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Fast</button>
+          <button class="toggle-option active">Optimal</button>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Handtraps</div>
+        <div class="checkbox-row"><span class="material-icons">check_box</span> <div class="card-mini card-color-3"></div> Ash Blossom</div>
+        <div class="checkbox-row"><span class="material-icons">check_box</span> <div class="card-mini card-color-8"></div> Nibiru</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top: 8px;">Solve</button>
+    </div>
+
+    <div class="result-area">
+      <!-- Pinned results bar -->
+      <div class="pinned-bar">
+        <div class="pinned-card">
+          <span class="pinned-score">35</span>
+          <span class="pinned-detail">Goldfish · Fast</span>
+          <div class="pinned-cards">
+            <div class="pinned-card-art card-color-4"></div>
+            <div class="pinned-card-art card-color-8"></div>
+            <div class="pinned-card-art card-color-3"></div>
+          </div>
+          <button class="btn-icon" title="Unpin"><span class="material-icons" style="font-size:16px;">close</span></button>
+        </div>
+      </div>
+
+      <!-- Hero + End Board (adversarial: 2 lines) -->
+      <div class="hero-block" style="flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+          <div class="hero-left">
+            <div class="hero-score">
+              <span class="score-number">35</span>
+              <span class="score-separator">—</span>
+              <span class="score-label">3 interruptions</span>
+            </div>
+            <div class="hero-minimax">Resilience (worst-case): <span>8</span></div>
+            <div class="hero-breakdown">
+              <span class="chip chip-negate">omni-negate ×1</span>
+              <span class="chip chip-negate">omni-negate ×1</span>
+              <span class="chip chip-removal">destruction ×1</span>
+            </div>
+          </div>
+          <button class="btn btn-icon hero-pin-btn" title="Pin result"><span class="material-icons">push_pin</span></button>
+        </div>
+        <div style="display: flex; gap: 12px; width: 100%; padding-top: 8px; border-top: 1px solid var(--divider);">
+          <div class="endboard-card">
+            <div class="endboard-card-art card-color-4"></div>
+            <div class="endboard-badge" style="color: var(--chip-negate);">negate ×1</div>
+            <div class="endboard-name">Mirrorjade</div>
+          </div>
+          <div class="endboard-card">
+            <div class="endboard-card-art card-color-8"></div>
+            <div class="endboard-badge" style="color: var(--chip-negate);">negate ×1</div>
+            <div class="endboard-name">Baronne</div>
+          </div>
+          <div class="endboard-card">
+            <div class="endboard-card-art card-color-3"></div>
+            <div class="endboard-badge" style="color: var(--chip-removal);">destr. ×1</div>
+            <div class="endboard-name">Branded in Red</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-1"></div>
+          <span class="step-label">NS Aleister</span>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-2"></div>
+          <span class="step-label">Branded Fusion</span>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-5"></div>
+          <span class="step-label">FS Lubellion</span>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-4"></div>
+          <span class="step-label">FS Mirrorjade</span>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-8"></div>
+          <span class="step-label">Synchro Baronne</span>
+        </div>
+        <span class="material-icons breadcrumb-chevron">chevron_right</span>
+        <div class="breadcrumb-step">
+          <div class="step-art card-color-3"></div>
+          <span class="step-label">Set Branded in Red</span>
+        </div>
+      </div>
+
+      <!-- Decision Tree with handtrap branches -->
+      <div class="tree">
+        <div class="tree-section-title">Decision Tree</div>
+
+        <div class="tree-node recommended">
+          <span class="material-icons expand-icon">expand_more</span>
+          <div class="node-art card-color-1"></div>
+          <span class="node-annotation">Normal Summon Aleister the Invoker</span>
+          <span class="node-score">35</span>
+        </div>
+        <div class="tree-children">
+          <div class="tree-node recommended">
+            <span class="material-icons expand-icon">expand_more</span>
+            <div class="node-art card-color-2"></div>
+            <span class="node-annotation">Activate Branded Fusion</span>
+            <span class="node-score">35</span>
+          </div>
+          <div class="tree-children">
+            <!-- Handtrap branch: Ash on Branded Fusion -->
+            <div class="tree-node">
+              <span class="material-icons expand-icon">chevron_right</span>
+              <span class="handtrap-label"><div class="handtrap-art card-color-3"></div> If Ash Blossom</span>
+              <span class="node-annotation" style="color: var(--text-secondary);">→ pivot to Lubellion line</span>
+              <span class="node-score" style="color: var(--text-secondary);">22</span>
+            </div>
+
+            <div class="tree-node recommended">
+              <span class="material-icons expand-icon">expand_more</span>
+              <div class="node-art card-color-5"></div>
+              <span class="node-annotation">Fusion Summon Lubellion → eff. → FS Mirrorjade</span>
+              <span class="node-score">35</span>
+            </div>
+            <div class="tree-children">
+              <!-- Handtrap branch: Nibiru at 5th summon -->
+              <div class="tree-node">
+                <span class="material-icons expand-icon">chevron_right</span>
+                <span class="handtrap-label"><div class="handtrap-art card-color-8"></div> If Nibiru (5th summon)</span>
+                <span class="node-annotation" style="color: var(--text-secondary);">→ 1 token remaining</span>
+                <span class="node-score" style="color: var(--text-secondary);">8</span>
+              </div>
+
+              <div class="tree-node recommended">
+                <span class="material-icons expand-icon">chevron_right</span>
+                <div class="node-art card-color-8"></div>
+                <span class="node-annotation">Synchro Summon Baronne de Fleur</span>
+                <span class="node-score">35</span>
+              </div>
+            </div>
+
+            <div class="tree-node collapsed">
+              <span class="material-icons expand-icon">chevron_right</span>
+              <div class="node-art card-color-4"></div>
+              <span class="node-annotation">Fusion Summon Mirrorjade directly</span>
+              <span class="node-score" style="color: var(--text-secondary);">32</span>
+            </div>
+            <div class="pruned-note">... and 4 other branches</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATE 6: BRICK ==================== -->
+<div id="state-brick" class="state-panel">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-6 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-1"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>5</span> / 5 selected</div>
+        <button class="btn btn-outlined btn-small btn-fill-random">Fill Random</button>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option active">Goldfish</button>
+          <button class="toggle-option">Adversarial</button>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Speed</div>
+        <div class="toggle-group">
+          <button class="toggle-option active">Fast</button>
+          <button class="toggle-option">Optimal</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top: 8px;">Solve</button>
+    </div>
+
+    <div class="result-area" style="justify-content: center; align-items: center;">
+      <div class="brick-block">
+        <span class="material-icons">block</span>
+        <div class="brick-title">No viable combo</div>
+        <div class="brick-subtitle">This hand has no path to a board with at least 1 interruption.</div>
+        <div class="brick-ref" style="margin-top: 16px;">Try a different hand configuration.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATE 7: NO RESILIENT LINE ==================== -->
+<div id="state-no-resilient" class="state-panel">
+  <div class="solver-layout">
+    <div class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Hand Selection</div>
+        <div class="hand-grid">
+          <div class="hand-card card-color-1 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-2 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-3 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-5 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-7 selected"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-4"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-6"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-8"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-9"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+          <div class="hand-card card-color-10"><span class="check-overlay"><span class="material-icons">check</span></span></div>
+        </div>
+        <div class="hand-counter"><span>5</span> / 5 selected</div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Mode</div>
+        <div class="toggle-group">
+          <button class="toggle-option">Goldfish</button>
+          <button class="toggle-option active">Adversarial</button>
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Handtraps</div>
+        <div class="checkbox-row"><span class="material-icons">check_box</span> <div class="card-mini card-color-3"></div> Ash Blossom</div>
+        <div class="checkbox-row"><span class="material-icons">check_box</span> <div class="card-mini card-color-8"></div> Nibiru</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top: 8px;">Solve</button>
+    </div>
+
+    <div class="result-area" style="justify-content: center; align-items: center;">
+      <div class="brick-block">
+        <span class="material-icons">shield</span>
+        <div class="brick-title">No resilient line found</div>
+        <div class="brick-subtitle">All combo paths are broken by the selected handtraps (Ash Blossom, Nibiru).</div>
+        <div class="brick-ref">Goldfish score: <strong style="color: var(--primary-light);">35</strong> — the deck combos, but doesn't survive disruption with this hand.</div>
+        <div class="brick-ref" style="margin-top: 8px;">Consider adding protection cards or testing with fewer handtraps.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note-bar">
+  skytrix Combo Path Solver — UX Design Direction Mockup · Desktop-first · Angular Material 19 + CDK Tree · Placeholder card arts (colored blocks)
+</div>
+
+<script>
+function showState(stateId) {
+  document.querySelectorAll('.state-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.state-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('state-' + stateId).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
