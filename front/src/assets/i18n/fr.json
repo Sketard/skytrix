@@ -18,5 +18,508 @@
     "TRAP": "Piège",
     "TOKEN": "Jeton",
     "SKILL": "Compétence"
+  },
+  "card_attribute": {
+    "EARTH": "Terre",
+    "WATER": "Eau",
+    "WIND": "Vent",
+    "DARK": "Ténèbres",
+    "LIGHT": "Lumière",
+    "FIRE": "Feu",
+    "DIVINE": "Divin"
+  },
+  "card_race": {
+    "DRAGON": "Dragon",
+    "AQUA": "Aqua",
+    "NORMAL": "Normal",
+    "REPTILE": "Reptile",
+    "SEA_SERPENT": "Serpent de mer",
+    "CYBERSE": "Cyberse",
+    "CREATOR_GOD": "Dieu Créateur",
+    "ROCK": "Rocher",
+    "ILLUSION": "Illusion",
+    "CONTINUOUS": "Continue",
+    "SPELLCASTER": "Magicien",
+    "WYRM": "Wyrm",
+    "PLANT": "Plante",
+    "ZOMBIE": "Zombie",
+    "COUNTER": "Contre",
+    "FIELD": "Terrain",
+    "MACHINE": "Machine",
+    "THUNDER": "Tonnerre",
+    "WINGED_BEAST": "Bête Ailée",
+    "EQUIP": "Équipement",
+    "PYRO": "Pyro",
+    "BEAST": "Bête",
+    "RITUAL": "Rituel",
+    "FISH": "Poisson",
+    "FAIRY": "Fée",
+    "PSYCHIC": "Psychique",
+    "INSECT": "Insecte",
+    "DINOSAUR": "Dinosaure",
+    "BEAST_WARRIOR": "Bête-Guerrier",
+    "WARRIOR": "Guerrier",
+    "QUICK_PLAY": "Jeu-Rapide",
+    "FIEND": "Démon",
+    "DIVINE_BEAST": "Bête Divine",
+    "OTHER": "Autre"
+  },
+  "card_ban": {
+    "0": "Interdit",
+    "1": "Limité",
+    "2": "Semi-Limité"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "back": "Retour",
+    "delete": "Supprimer",
+    "save": "Sauvegarder",
+    "update": "Mettre à jour",
+    "resizePanel": "Ajuster la taille du panneau"
+  },
+  "error": {
+    "UNKNOWN": "Une erreur est survenue",
+    "UNAUTHORIZED": "Non autorisé",
+    "ACCESS_DENIED": "Accès refusé",
+    "SERVICE_UNAVAILABLE": "Service temporairement indisponible",
+    "INTERNAL_ERROR": "Une erreur inattendue est survenue",
+    "INVALID_DECK_FORMAT": "Le deck doit avoir un main et extra deck",
+    "INVALID_DECK_CONTENT": "Le deck contient des cartes invalides",
+    "INVALID_DECK": "Deck invalide",
+    "INVALID_DECK_SELECT": "Deck invalide, veuillez en choisir un autre",
+    "DUEL_NOT_FOUND": "Duel introuvable",
+    "NOT_FOUND": "Introuvable",
+    "PAYLOAD_TOO_LARGE": "Contenu trop volumineux",
+    "INVALID_JSON": "Format de requête invalide",
+    "INVALID_PASSCODES": "Liste de cartes invalide",
+    "SERVER_NOT_READY": "Serveur non prêt",
+    "UPDATE_BLOCKED_ACTIVE_DUELS": "Mise à jour impossible pendant des duels actifs",
+    "TOKEN_REFRESH_FAILED": "Session expirée, veuillez vous reconnecter",
+    "INVALID_PAGINATION": "Paramètres de pagination invalides",
+    "ROOM_REFRESH_FAILED": "Échec du rafraîchissement des rooms",
+    "ROOM_LOAD_FAILED": "Impossible de charger les rooms",
+    "ROOM_CREATE_FAILED": "Impossible de créer la room",
+    "QUICK_DUEL_FAILED": "Impossible de lancer le duel rapide",
+    "ROOM_FULL": "Cette room est complète",
+    "ROOM_JOIN_FAILED": "Impossible de rejoindre la room",
+    "ROOM_NOT_FOUND": "Room introuvable ou déjà terminée",
+    "ROOM_CLOSED": "Cette room a été fermée",
+    "TOO_MANY_ATTEMPTS": "Trop de tentatives échouées",
+    "DUEL_CONNECT_FAILED": "Impossible de se connecter au duel",
+    "PROXY_GENERATION_FAILED": "Erreur lors de la génération des proxies",
+    "DECK_MAIN_INVALID": "Main Deck invalide : {{count}} cartes ({{min}}–{{max}} requises)",
+    "DECK_EXTRA_INVALID": "Extra Deck invalide : {{count}} cartes ({{max}} max)",
+    "DECK_SIDE_INVALID": "Side Deck invalide : {{count}} cartes ({{max}} max)",
+    "DECK_LOAD_FAILED": "Impossible de charger les decks",
+    "REPLAY_WATCHDOG_TIMEOUT": "Le moteur de replay a expiré",
+    "REPLAY_INIT_FAILED": "Échec d'initialisation du replay",
+    "REPLAY_MAX_ITERATIONS": "Limite de calcul du replay atteinte",
+    "REPLAY_COMPUTATION_ERROR": "Échec du calcul du replay",
+    "REPLAY_DIVERGED_RETRY": "Données de replay incompatibles avec le moteur",
+    "REPLAY_DIVERGED_NO_RESPONSES": "Données de replay incomplètes",
+    "REPLAY_DIVERGED_NO_RESULT": "Le replay s'est terminé de manière inattendue",
+    "REPLAY_DIVERGED_UNEXPECTED": "État de replay inattendu",
+    "SOLO_SESSION_EXPIRED": "Session duel solo expirée",
+    "CONNECTION_LOST_LOBBY": "Connexion perdue — retour au lobby",
+    "ROOM_EXPIRED": "Room expirée"
+  },
+  "success": {
+    "LINK_COPIED": "Lien copié !",
+    "ACCOUNT_CREATED": "Compte créé avec succès",
+    "DECK_SAVED": "Deck sauvegardé",
+    "DECK_DELETED": "Deck supprimé",
+    "DECK_EXPORTED": "Deck exporté",
+    "DECK_IMPORTED": "Deck importé avec succès",
+    "PROXIES_GENERATED": "Proxies générés",
+    "NO_MISSING_IMAGES": "Aucune image manquante",
+    "IMAGE_SYNC_DONE": "Terminé : {{success}} réussis, {{failed}} échoués",
+    "CARDS_UPDATED": "Cartes mises à jour avec succès",
+    "BANLIST_UPDATED": "Banlist mises à jour avec succès",
+    "CONNECTION_RESTORED": "Connexion rétablie",
+    "OPPONENT_RECONNECTED": "Adversaire reconnecté"
+  },
+  "deckList": {
+    "deleteTitle": "Supprimer le deck",
+    "deleteConfirm": "Voulez-vous vraiment supprimer \"{{name}}\" ?",
+    "empty": "Aucun deck pour le moment",
+    "createDeck": "Créer un deck"
+  },
+  "duel": {
+    "leaveRoom": "Quitter la room",
+    "waiting": {
+      "title": "EN ATTENTE DE L'ADVERSAIRE",
+      "subtitle": "En attente de l'adversaire...",
+      "yourDeck": "Votre Deck :",
+      "share": "Partager",
+      "copyLink": "Copier le lien"
+    },
+    "preparing": {
+      "title": "PRÉPARATION DU DUEL...",
+      "opponentJoined": "Adversaire connecté ! Préparation du duel...",
+      "loading": "Chargement de la room...",
+      "takingLong": "Plus long que prévu..."
+    },
+    "connection": {
+      "lost": "Connexion perdue. Impossible de joindre le serveur.",
+      "backToLobby": "Retour au lobby",
+      "reconnecting": "Reconnexion",
+      "lostTitle": "Connexion perdue",
+      "lostSubtitle": "Impossible de joindre le serveur",
+      "retry": "Réessayer la connexion",
+      "connecting": "Connexion au duel..."
+    },
+    "opponent": {
+      "disconnected": "Adversaire déconnecté",
+      "waitingReconnect": "En attente de reconnexion...",
+      "leave": "Quitter"
+    },
+    "tabConflict": {
+      "title": "Duel actif dans un autre onglet",
+      "takeControl": "Reprendre ici"
+    },
+    "rps": {
+      "title": "PIERRE FEUILLE CISEAUX",
+      "subtitle": "Le gagnant choisit l'ordre",
+      "waitingOpponent": "En attente de l'adversaire...",
+      "you": "Vous",
+      "opponent": "Adversaire",
+      "vs": "VS",
+      "youWin": "Vous gagnez !",
+      "youLose": "Vous perdez !",
+      "draw": "Égalité — on rejoue...",
+      "rock": "Pierre",
+      "paper": "Feuille",
+      "scissors": "Ciseaux"
+    },
+    "turnOrder": {
+      "title": "ORDRE DE JEU",
+      "subtitle": "Vous avez gagné — choisissez votre position",
+      "waiting": "En attente de confirmation...",
+      "goFirst": "Jouer en premier",
+      "goSecond": "Jouer en second"
+    },
+    "result": {
+      "victory": "VICTOIRE",
+      "defeat": "DÉFAITE",
+      "draw": "ÉGALITÉ",
+      "backToDeck": "Retour au deck",
+      "startingNew": "Nouveau duel en cours..."
+    },
+    "surrender": {
+      "title": "Abandonner le duel ?",
+      "warning": "Cela comptera comme une défaite.",
+      "confirm": "Abandonner"
+    },
+    "misc": {
+      "rotateLandscape": "Tournez votre appareil en paysage",
+      "exit": "Quitter",
+      "player": "Joueur",
+      "debug": "Debug",
+      "chainResolution": "Résolution de chaîne",
+      "selectCard": "Choisir une carte",
+      "selectEffect": "Choisir un effet",
+      "effect": "Effet {{n}}"
+    },
+    "loading": {
+      "lp": "8000 LP",
+      "vs": "VS"
+    },
+    "reason": {
+      "win": { "winner": "Les LP de l'adversaire réduits à 0", "loser": "Vos LP réduits à 0" },
+      "surrender": { "winner": "L'adversaire a abandonné", "loser": "Vous avez abandonné" },
+      "timeout": { "winner": "L'adversaire a dépassé le temps", "loser": "Vous avez dépassé le temps" },
+      "inactivity": { "winner": "L'adversaire était inactif", "loser": "Vous étiez inactif" },
+      "disconnect": { "winner": "L'adversaire s'est déconnecté", "loser": "Vous vous êtes déconnecté" },
+      "draw_both_disconnect": { "winner": "Les deux joueurs se sont déconnectés", "loser": "Les deux joueurs se sont déconnectés" },
+      "worker_error": { "winner": "Erreur moteur", "loser": "Erreur moteur" },
+      "too_many_invalid_responses": { "winner": "Erreur moteur", "loser": "Erreur moteur" },
+      "unknown": "Erreur inattendue"
+    },
+    "inactivity": {
+      "title": "Êtes-vous toujours là ?",
+      "warning": "Vous perdrez par inactivité si vous ne répondez pas.",
+      "confirm": "Je suis là"
+    },
+    "a11y": {
+      "autoResolvedSingle": "Une action a été résolue automatiquement en votre absence",
+      "autoResolvedPlural": "{{count}} actions ont été résolues automatiquement en votre absence",
+      "boardRefreshed": "État du plateau rafraîchi",
+      "activeOtherTab": "Duel actif dans un autre onglet",
+      "secondsRemaining": "{{t}} secondes restantes",
+      "yourTurn": "Votre tour",
+      "opponentTurn": "Tour de l'adversaire",
+      "connectionRestored": "Connexion rétablie",
+      "chainResolved": "Chaîne résolue",
+      "opponentPhase": "Adversaire — {{phase}}"
+    },
+    "phase": {
+      "turn": "Tour {{n}}",
+      "battlePhase": "Phase de combat",
+      "endTurn": "Fin du tour",
+      "mainPhase2": "Main Phase 2"
+    },
+    "prompt": {
+      "revealedCards": "Cartes révélées",
+      "noValidTargets": "Aucune cible valide",
+      "sumProgress": "{{selected}} / {{target}} requis",
+      "selectCounters": "Sélectionner les compteurs",
+      "searchCardName": "Rechercher un nom de carte...",
+      "searching": "Recherche...",
+      "typeAtLeast": "Tapez au moins 2 caractères",
+      "waitingResponse": "En attente de votre réponse...",
+      "sending": "Envoi..."
+    },
+    "zoneBrowser": {
+      "collapse": "Réduire",
+      "expand": "Développer",
+      "cardCount": "{{count}} cartes",
+      "empty": "Vide"
+    },
+    "share": {
+      "text": "Affronte-moi sur skytrix ! Rejoins avec le code : {{roomCode}} ou clique : {{url}}"
+    }
+  },
+  "lobby": {
+    "title": "Arène PvP",
+    "alpha": "ALPHA",
+    "createRoom": "Créer une Room",
+    "emptyError": "Impossible de charger les rooms",
+    "emptyTitle": "Aucun duel en attente",
+    "emptySubtitle": "Crée une room et invite un ami !",
+    "waitingOpponent": "En attente d'un adversaire...",
+    "join": "Rejoindre"
+  },
+  "deckPicker": {
+    "title": {
+      "create": "Choisis ton deck",
+      "join": "Choisis ton deck pour rejoindre",
+      "quickDuel": "Duel rapide"
+    },
+    "confirm": {
+      "create": "Créer la room",
+      "join": "Rejoindre",
+      "quickDuel": "Lancer le duel"
+    },
+    "decks": "Decks",
+    "player1": "Joueur 1",
+    "player2": "Joueur 2",
+    "mirrorHint": "Miroir du Joueur 1",
+    "firstPlayer": "Premier joueur",
+    "randomHand": "Main aléatoire",
+    "turnTime": "Temps par tour (secondes)",
+    "loadError": "Impossible de charger les decks",
+    "emptyTitle": "Aucun deck disponible",
+    "emptyHint": "Crée un deck dans le Deck Builder pour commencer.",
+    "goToDeckBuilder": "Aller au Deck Builder"
+  },
+  "login": {
+    "username": "Pseudo",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "createAccount": "Créer un compte",
+    "signIn": "Se connecter",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "back": "Retour",
+    "createButton": "Créer le compte"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "database": "Base de données",
+    "updateCards": "Mettre à jour les cartes",
+    "updateCardsDesc": "Synchronise depuis YGOProDeck",
+    "images": "Images",
+    "originalImages": "Images originales",
+    "originalImagesDesc": "Télécharge les images des cartes",
+    "resume": "Reprendre",
+    "pause": "Pause",
+    "translatedImages": "Images traduites",
+    "translatedImagesDesc": "Télécharge les versions TCG traduites",
+    "duelServer": "Serveur de duel",
+    "updateDuelData": "Mettre à jour les données de duel",
+    "updateDuelDataDesc": "Télécharge cards.cdb et scripts Lua depuis ProjectIgnis",
+    "updating": "Mise à jour en cours...",
+    "rules": "Règles",
+    "updateBanlist": "Mettre à jour la banlist",
+    "updateBanlistDesc": "Synchronise les listes de cartes interdites/limitées",
+    "neverSynced": "Jamais synchronisé"
+  },
+  "deckBuilder": {
+    "namePlaceholder": "Nom du deck...",
+    "actions": "Actions du deck",
+    "searchCard": "Rechercher une carte",
+    "generateProxies": "Générer les proxies",
+    "exportStandard": "Export standard",
+    "exportCardmarket": "Export Cardmarket",
+    "import": "Importer",
+    "testHand": "Tester une main",
+    "simulator": "Simulateur",
+    "pvpDuel": "Duel PvP",
+    "deckPreview": "Aperçu du deck",
+    "filterPanel": "Panneau de filtres",
+    "searchPanel": "Panneau de recherche de cartes",
+    "creatingRoom": "Création de la room...",
+    "removeFromDeck": "Retirer du deck",
+    "addToDeck": "Ajouter au deck",
+    "handTest": {
+      "shuffle": "Mélanger",
+      "goSecond": "Aller deuxième"
+    },
+    "viewer": {
+      "main": "MAIN",
+      "extra": "EXTRA",
+      "side": "SIDE"
+    }
+  },
+  "nav": {
+    "alphaWarning": "Fonctionnalité en alpha — bugs possibles",
+    "logout": "Se déconnecter",
+    "expand": "Développer la navigation",
+    "collapse": "Réduire la navigation",
+    "tab": {
+      "deckBuilder": "Construction de deck",
+      "cardSearch": "Recherche de cartes",
+      "pvpArena": "Arène PvP",
+      "replayPvp": "Replay PVP",
+      "settings": "Paramètres"
+    }
+  },
+  "search": {
+    "placeholder": "Entrez un nom..."
+  },
+  "cardSearcher": {
+    "grid": "Grille",
+    "list": "Liste",
+    "favorites": "Favoris"
+  },
+  "cardFilters": {
+    "cardType": "Type de carte",
+    "attribute": "Attribut",
+    "min": "Min.",
+    "max": "Max."
+  },
+  "cardInspector": {
+    "owned": "Possédées"
+  },
+  "cardList": {
+    "emptyMessage": "Aucun résultat trouvé",
+    "emptyCta": "Effacer les filtres"
+  },
+  "deckBox": {
+    "addDeck": "Ajouter un deck",
+    "newDeck": "Nouveau deck"
+  },
+  "simulator": {
+    "undo": "Annuler (Ctrl+Z)",
+    "redo": "Rétablir (Ctrl+Y)",
+    "reset": "Réinitialiser",
+    "resetTitle": "Réinitialiser le plateau ?",
+    "resetMessage": "Cela effacera l'historique et distribuera une nouvelle main.",
+    "flipFaceDown": "Mettre face verso",
+    "changeToDef": "Passer en DEF",
+    "changeToAtk": "Passer en ATK",
+    "flipUpAtk": "Retourner face recto (ATK)",
+    "flipUpDef": "Retourner face recto (DEF)",
+    "shuffle": "Mélanger",
+    "search": "Chercher",
+    "mill": "Envoyer au cimetière ({{n}})",
+    "reveal": "Révéler ({{n}})",
+    "filterPlaceholder": "Filtrer..."
+  },
+  "a11y": {
+    "roomCode": "Code de la room",
+    "shareRoomCode": "Partager le code de la room",
+    "copyRoomLink": "Copier le lien de la room",
+    "connectionError": "Erreur de connexion",
+    "cardActions": "Actions de carte",
+    "toggleDebugLogs": "Afficher/masquer les logs de debug",
+    "switchPlayer": "Passer à {{player}}",
+    "loadingReplay": "Chargement du replay",
+    "mainNavigation": "Navigation principale",
+    "appHeader": "En-tête de l'application",
+    "openNav": "Ouvrir la navigation",
+    "closeNav": "Fermer la navigation",
+    "navMenu": "Menu de navigation",
+    "downloadLogs": "Télécharger les logs",
+    "clearLogs": "Effacer les logs",
+    "closeDebugPanel": "Fermer le panneau de debug",
+    "deleteDeck": "Supprimer {{name}}",
+    "favorite": "Favori",
+    "activationToggle": "Bascule d'activation",
+    "closeMaterialPeek": "Fermer l'aperçu des matériels",
+    "dragActivated": "Glisser activé",
+    "refreshRooms": "Rafraîchir la liste des rooms",
+    "quickDuelDebug": "Duel rapide - mode debug",
+    "createRoom": "Créer une room"
+  },
+  "replay": {
+    "matchHistory": {
+      "title": "Historique des matchs",
+      "deckName": "Deck",
+      "opponent": "Adversaire",
+      "turns": "Tours",
+      "result": "Résultat",
+      "date": "Date",
+      "empty": "Aucun replay disponible. Terminez un duel PvP pour le voir ici.",
+      "openReplay": "Ouvrir le replay",
+      "victory": "Victoire",
+      "defeat": "Défaite",
+      "draw": "Égalité",
+      "timeout": "Timeout",
+      "disconnect": "Déconnexion",
+      "surrender": "Abandon",
+      "opponentTimeout": "Victoire (timeout adversaire)",
+      "opponentDisconnect": "Victoire (déconnexion adversaire)",
+      "opponentSurrender": "Victoire (abandon adversaire)",
+      "delete": "Supprimer le replay",
+      "deleteConfirm": "Voulez-vous vraiment supprimer définitivement ce replay ?",
+      "deleteSuccess": "Replay supprimé"
+    },
+    "paginator": {
+      "itemsPerPage": "Éléments par page :",
+      "nextPage": "Page suivante",
+      "previousPage": "Page précédente",
+      "firstPage": "Première page",
+      "lastPage": "Dernière page",
+      "of": "sur"
+    },
+    "viewer": {
+      "loading": "Chargement du replay...",
+      "loadingProgress": "Chargement du replay... Tour {{current}}/{{total}}",
+      "divergenceWarning": "Ce replay a été enregistré avec une version différente du script/moteur — les résultats peuvent différer du duel original",
+      "error": "Erreur de replay",
+      "connectionLost": "Connexion perdue — la navigation continue, le fork est désactivé",
+      "forkDismissHint": "Fermer pour annuler le fork",
+      "continue": "Continuer",
+      "forkError": "Échec du fork — veuillez réessayer",
+      "forkIndicator": "Solo — Fork depuis le tour {{turn}}, événement {{idx}}"
+    },
+    "transport": {
+      "skipStart": "Aller au début",
+      "stepBack": "Reculer",
+      "play": "Lecture",
+      "pause": "Pause",
+      "stepForward": "Avancer",
+      "skipEnd": "Aller à la fin",
+      "fork": "Bifurquer",
+      "returnToReplay": "Retour au replay",
+      "enableAnimations": "Activer les animations",
+      "disableAnimations": "Désactiver les animations",
+      "showDecisions": "Activer les décisions",
+      "skipDecisions": "Désactiver les décisions",
+      "viewAsPlayer1": "Passer sur la vue P1",
+      "viewAsPlayer2": "Passer sur la vue P2"
+    },
+    "timeline": {
+      "setup": "Mise en place",
+      "turn": "Tour {{n}}",
+      "events": "{{count}} événements"
+    },
+    "debug": {
+      "title": "Logs de débogage",
+      "emptyState": "Aucun log pour le moment"
+    }
   }
 }

@@ -3,12 +3,12 @@
     <div class="material-peek-panel" role="complementary" aria-label="XYZ overlay materials">
       <div class="peek-header">
         <h3 class="peek-title">{{ overlayTitle() }}</h3>
-        <button class="peek-close" (click)="close()" aria-label="Close material peek">
+        <button class="peek-close" (click)="close()" [attr.aria-label]="'a11y.closeMaterialPeek' | translate">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
-      <div class="peek-subtitle">{{ xyzName() }}</div>
+      <div class="peek-subtitle">{{ xyz.card.card | cardName }}</div>
 
       <div cdkDropList
            [cdkDropListData]="peekState()?.zoneId"
@@ -23,9 +23,9 @@
                (cdkDragEnded)="onDragEnded()"
                (click)="onCardClicked(material)">
             <img [src]="material.image.smallUrl"
-                 [alt]="material.card.card.name"
+                 [alt]="material.card.card | cardName"
                  class="material-image" />
-            <span class="material-name">{{ material.card.card.name }}</span>
+            <span class="material-name">{{ material.card.card | cardName }}</span>
             <mat-icon class="drag-handle">drag_indicator</mat-icon>
           </div>
         }

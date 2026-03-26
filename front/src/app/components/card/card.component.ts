@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { SharedCardData } from '../../core/model/shared-card-data';
+import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
 
 @Component({
   selector: 'app-card',
   templateUrl: './card.component.html',
   styleUrl: './card.component.scss',
   standalone: true,
+  imports: [CardNamePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CardComponent {

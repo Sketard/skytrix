@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnDestroy, sign
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ParameterService } from '../../services/parameter.service';
 import { MatButton, MatIconButton } from '@angular/material/button';
-import { displayError, displaySuccess } from '../../core/utilities/functions';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { NotificationService } from '../../core/services/notification.service';
 import { MatCard } from '@angular/material/card';
 import { MatDivider } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +10,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatProgressBar } from '@angular/material/progress-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatTooltip } from '@angular/material/tooltip';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Subscription, interval } from 'rxjs';
 import { TaskState } from '../../core/model/sync-status';
 
@@ -18,7 +18,7 @@ type LoadingKey = 'cards' | 'images' | 'tcgImages' | 'banlist' | 'duelData';
 
 @Component({
   selector: 'app-parameter-page',
-  imports: [MatButton, MatIconButton, MatCard, MatDivider, MatIconModule, MatProgressSpinner, MatProgressBar, MatTooltip],
+  imports: [MatButton, MatIconButton, MatCard, MatDivider, MatIconModule, MatProgressSpinner, MatProgressBar, MatTooltip, TranslatePipe],
   templateUrl: './parameter-page.component.html',
   styleUrl: './parameter-page.component.scss',
   standalone: true,
@@ -30,9 +30,11 @@ export class ParameterPageComponent implements OnDestroy {
   readonly loading = signal<Record<LoadingKey, boolean>>({ cards: false, images: false, tcgImages: false, banlist: false, duelData: false });
   readonly taskStates = signal<Record<string, TaskState>>({});
 
+  private readonly notify = inject(NotificationService);
+  private readonly translateService = inject(TranslateService);
+
   constructor(
     private readonly supportService: ParameterService,
-    private readonly snackBar: MatSnackBar
   ) {}
 
   ngOnDestroy(): void {
@@ -62,12 +64,12 @@ export class ParameterPageComponent implements OnDestroy {
           } else if (this.loading()[loadingKey] && state.status === 'IDLE') {
             this.setLoading(loadingKey, false);
             if (state.error) {
-              displayError(this.snackBar, state.error);
+              this.notify.error(state.error);
             } else if (state.total > 0) {
               localStorage.setItem(`sync_${key}_lastDate`, new Date().toISOString());
-              displaySuccess(this.snackBar, `Terminé: ${state.processed} réussis, ${state.failed} échoués`);
+              this.notify.success('success.IMAGE_SYNC_DONE', { success: state.processed, failed: state.failed });
             } else {
-              displaySuccess(this.snackBar, 'Aucune image manquante');
+              this.notify.success('success.NO_MISSING_IMAGES');
             }
           }
         }
@@ -110,39 +112,38 @@ export class ParameterPageComponent implements OnDestroy {
 
   lastSync(key: string): string {
     const raw = localStorage.getItem(`sync_${key}_lastDate`);
-    if (!raw) return 'Jamais synchronisé';
+    if (!raw) return this.translateService.instant('settings.neverSynced');
     const date = new Date(raw);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    if (diffSec < 60) return 'il y a quelques secondes';
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `il y a ${diffMin} minute${diffMin > 1 ? 's' : ''}`;
-    const diffH = Math.floor(diffMin / 60);
-    if (diffH < 24) return `il y a ${diffH} heure${diffH > 1 ? 's' : ''}`;
-    const diffD = Math.floor(diffH / 24);
-    return `il y a ${diffD} jour${diffD > 1 ? 's' : ''}`;
+    const diff = Date.now() - date.getTime();
+    const rtf = new Intl.RelativeTimeFormat(this.translateService.currentLang, { numeric: 'auto' });
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 60) return rtf.format(-seconds, 'second');
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return rtf.format(-minutes, 'minute');
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return rtf.format(-hours, 'hour');
+    return rtf.format(-Math.floor(hours / 24), 'day');
   }
 
   private setLoading(key: LoadingKey, value: boolean): void {
     this.loading.update(l => ({ ...l, [key]: value }));
   }
 
-  private onSuccess(key: string, message: string): void {
+  private onSuccess(key: string, i18nKey: string): void {
     localStorage.setItem(`sync_${key}_lastDate`, new Date().toISOString());
     this.setLoading(key as LoadingKey, false);
-    displaySuccess(this.snackBar, message);
+    this.notify.success(i18nKey);
   }
 
   private onError(key: LoadingKey, error: HttpErrorResponse | string): void {
     this.setLoading(key, false);
-    displayError(this.snackBar, error);
+    this.notify.error(error);
   }
 
   public fetchDatabaseCards() {
     this.setLoading('cards', true);
     this.supportService.fetchDatabaseCards().subscribe({
-      next: () => this.onSuccess('cards', 'Cartes mises à jour avec succès'),
+      next: () => this.onSuccess('cards', 'success.CARDS_UPDATED'),
       error: (error: HttpErrorResponse) => this.onError('cards', error),
     });
   }
@@ -166,7 +167,7 @@ export class ParameterPageComponent implements OnDestroy {
   public fetchDatabaseBanlist() {
     this.setLoading('banlist', true);
     this.supportService.fetchDatabaseBanlist().subscribe({
-      next: () => this.onSuccess('banlist', 'Banlist mises à jour avec succès'),
+      next: () => this.onSuccess('banlist', 'success.BANLIST_UPDATED'),
       error: (error: HttpErrorResponse) => this.onError('banlist', error),
     });
   }

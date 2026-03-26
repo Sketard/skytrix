@@ -5,16 +5,16 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../components/confirm-dialog/confirm-dialog.component';
 import { ShortDeck } from '../../../../core/model/short-deck';
 import { EmptyStateComponent } from '../../../../components/empty-state/empty-state.component';
-import { displaySuccess, displayError } from '../../../../core/utilities/functions';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'deck-list',
-  imports: [CommonModule, DeckBoxComponent, MatIconModule, MatButtonModule, EmptyStateComponent],
+  imports: [CommonModule, DeckBoxComponent, MatIconModule, MatButtonModule, EmptyStateComponent, TranslatePipe],
   templateUrl: './deck-list.component.html',
   styleUrl: './deck-list.component.scss',
   standalone: true,
@@ -23,7 +23,8 @@ import { displaySuccess, displayError } from '../../../../core/utilities/functio
 export class DeckListComponent {
   readonly deckBuildService = inject(DeckBuildService);
   private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notify = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
 
   constructor() {
     this.deckBuildService.fetchDecks();
@@ -31,7 +32,13 @@ export class DeckListComponent {
 
   confirmDelete(deck: ShortDeck) {
     const dialogRef = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
-      data: { title: 'Supprimer le deck', message: `Voulez-vous vraiment supprimer "${deck.name}" ?`, confirmLabel: 'Supprimer' },
+      data: {
+        title: this.translate.instant('deckList.deleteTitle'),
+        message: this.translate.instant('deckList.deleteConfirm', { name: deck.name }),
+        confirmLabel: this.translate.instant('common.delete'),
+      },
+      width: '320px',
+      panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--danger'],
       autoFocus: false,
     });
 
@@ -39,8 +46,8 @@ export class DeckListComponent {
       if (confirmed) {
         this.deckBuildService.deleteById(
           deck.id!,
-          () => displaySuccess(this.snackBar, 'Deck supprimé'),
-          (err) => displayError(this.snackBar, err)
+          () => this.notify.success('success.DECK_DELETED'),
+          (err) => this.notify.error(err)
         );
       }
     });

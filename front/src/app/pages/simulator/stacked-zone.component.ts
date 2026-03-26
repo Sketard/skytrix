@@ -7,6 +7,7 @@ import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { createGlowEffect } from './glow-effect';
 import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CardComponent } from '../../components/card/card.component';
 
 @Component({
@@ -15,7 +16,7 @@ import { CardComponent } from '../../components/card/card.component';
   styleUrl: './stacked-zone.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatIconModule, MatMenuModule, CardComponent],
+  imports: [DragDropModule, MatIconModule, MatMenuModule, CardComponent, TranslatePipe],
 })
 export class SimStackedZoneComponent {
   readonly zoneId = input.required<ZoneId>();

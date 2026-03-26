@@ -6,8 +6,7 @@ import {
   TOKEN_EXPIRED,
 } from '../utilities/auth.constants';
 import { Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { displayError } from '../utilities/functions';
+import { NotificationService } from '../services/notification.service';
 import { AuthService } from '../../services/auth.service';
 import { RefreshStep } from '../enums/refresh-step.enum';
 
@@ -79,7 +78,7 @@ const handleBlob401Errors = (
 };
 
 const handleBlobError = (err: HttpErrorResponse, blobSubject?: Subject<any>): Observable<any> => {
-  const snackBar = inject(MatSnackBar);
+  const notify = inject(NotificationService);
   const reader: FileReader = new FileReader();
   const obs = new Observable((observer: any) => {
     reader.onloadend = e => {
@@ -96,7 +95,7 @@ const handleBlobError = (err: HttpErrorResponse, blobSubject?: Subject<any>): Ob
       if (blobSubject) {
         blobSubject.next(errorMessage);
       } else {
-        displayError(snackBar, messageObject.message);
+        notify.error(messageObject.message);
       }
       observer.complete();
     };

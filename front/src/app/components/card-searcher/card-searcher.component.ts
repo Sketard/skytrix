@@ -12,6 +12,7 @@ import { FormGroup } from '@angular/forms';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { CardFilterDTO } from '../../core/model/dto/card-filter-dto';
 import { CardDetail } from '../../core/model/card-detail';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-card-searcher',
@@ -24,6 +25,7 @@ import { CardDetail } from '../../core/model/card-detail';
     MatIconButton,
     MatTooltip,
     SearchBarComponent,
+    TranslatePipe,
   ],
   templateUrl: './card-searcher.component.html',
   styleUrl: './card-searcher.component.scss',

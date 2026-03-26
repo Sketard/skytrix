@@ -1,29 +1,37 @@
 <!-- Desktop sidebar mode -->
 @if (!isMobile()) {
-  <nav class="navbar-sidebar" [class.collapsed]="collapsed()" role="navigation" aria-label="Main navigation">
+  <nav class="navbar-sidebar" [class.collapsed]="collapsed()" role="navigation" [attr.aria-label]="'a11y.mainNavigation' | translate">
     <div class="navbar-inner">
       <div class="navbar-content">
         @if (!collapsed()) {
           <img class="logo" src="/assets/images/logo-full.png" alt="logo" />
         }
         @for (tab of tabs(); track tab.path) {
-          <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link"
+          <a [routerLink]="tab.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link"
              [class.has-ribbon]="tab.path === '/pvp'"
-             [matTooltip]="tab.name" [matTooltipDisabled]="!collapsed()">
+             [matTooltip]="tab.name | translate" [matTooltipDisabled]="!collapsed()">
             <mat-icon [fontIcon]="tab.icon"></mat-icon>
             @if (!collapsed()) {
-              <span class="nav-label">{{ tab.name }}</span>
+              <span class="nav-label">{{ tab.name | translate }}</span>
             }
             @if (tab.path === '/pvp') {
-              <span class="alpha-ribbon" matTooltip="Fonctionnalité en alpha — bugs possibles">ALPHA</span>
+              <span class="alpha-ribbon" [matTooltip]="'nav.alphaWarning' | translate">ALPHA</span>
             }
           </a>
         }
         <div class="spacer"></div>
         @if (!collapsed()) {
+          <div class="lang-switcher">
+            <button mat-icon-button (click)="setLanguage('fr')" [class.active]="currentLang() === 'fr'" aria-label="Français">
+              <img src="assets/images/icons/flag-fr.svg" alt="FR" width="20" height="20">
+            </button>
+            <button mat-icon-button (click)="setLanguage('en')" [class.active]="currentLang() === 'en'" aria-label="English">
+              <img src="assets/images/icons/flag-en.svg" alt="EN" width="20" height="20">
+            </button>
+          </div>
           <div class="user-section">
             <span class="user-pseudo">{{ user()?.pseudo }}</span>
-            <button mat-flat-button (click)="logout()">Se déconnecter</button>
+            <button mat-flat-button (click)="logout()">{{ 'nav.logout' | translate }}</button>
           </div>
         }
       </div>
@@ -31,7 +39,7 @@
 
     <button class="collapse-toggle"
             (click)="toggle()"
-            [attr.aria-label]="collapsed() ? 'Expand navigation' : 'Collapse navigation'"
+            [attr.aria-label]="collapsed() ? ('nav.expand' | translate) : ('nav.collapse' | translate)"
             [attr.aria-expanded]="!collapsed()">
       <mat-icon>{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
     </button>
@@ -41,11 +49,11 @@
 <!-- Mobile top bar + drawer mode -->
 @if (isMobile()) {
   @if (!shouldHideTopBar()) {
-    <header class="mobile-top-bar" aria-label="Application header">
+    <header class="mobile-top-bar" [attr.aria-label]="'a11y.appHeader' | translate">
       <button mat-icon-button
               class="hamburger-btn"
               (click)="openDrawer()"
-              aria-label="Open navigation"
+              [attr.aria-label]="'a11y.openNav' | translate"
               [attr.aria-expanded]="drawerOpen()">
         <mat-icon>menu</mat-icon>
       </button>
@@ -65,7 +73,7 @@
        [class.open]="drawerOpen()"
        [class.no-animate]="skipDrawerTransition()"
        role="dialog"
-       aria-label="Navigation menu"
+       [attr.aria-label]="'a11y.navMenu' | translate"
        [attr.aria-modal]="drawerOpen() || null"
        [cdkTrapFocus]="drawerOpen()"
        cdkTrapFocusAutoCapture>
@@ -77,25 +85,33 @@
       <button mat-icon-button
               class="drawer-close-btn"
               (click)="closeDrawer()"
-              aria-label="Close navigation">
+              [attr.aria-label]="'a11y.closeNav' | translate">
         <mat-icon>close</mat-icon>
       </button>
     </div>
     <div class="drawer-content">
       @for (tab of tabs(); track tab.path) {
-        <a [routerLink]="tab.path" routerLinkActive="active" class="nav-link mobile-nav-link"
+        <a [routerLink]="tab.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link mobile-nav-link"
            [class.has-ribbon]="tab.path === '/pvp'">
           <mat-icon [fontIcon]="tab.icon"></mat-icon>
-          <span class="nav-label">{{ tab.name }}</span>
+          <span class="nav-label">{{ tab.name | translate }}</span>
           @if (tab.path === '/pvp') {
             <span class="alpha-ribbon">ALPHA</span>
           }
         </a>
       }
       <div class="spacer"></div>
+      <div class="lang-switcher">
+        <button mat-icon-button (click)="setLanguage('fr')" [class.active]="currentLang() === 'fr'" aria-label="Français">
+          <img src="assets/images/icons/flag-fr.svg" alt="FR" width="20" height="20">
+        </button>
+        <button mat-icon-button (click)="setLanguage('en')" [class.active]="currentLang() === 'en'" aria-label="English">
+          <img src="assets/images/icons/flag-en.svg" alt="EN" width="20" height="20">
+        </button>
+      </div>
       <div class="user-section">
         <span class="user-pseudo">{{ user()?.pseudo }}</span>
-        <button mat-flat-button (click)="logout()">Se déconnecter</button>
+        <button mat-flat-button (click)="logout()">{{ 'nav.logout' | translate }}</button>
       </div>
     </div>
   </nav>

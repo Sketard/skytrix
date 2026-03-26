@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { BoardStateService } from './board-state.service';
 import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
 import { CardComponent } from '../../components/card/card.component';
+import { TranslatePipe } from '@ngx-translate/core';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { BottomSheetComponent } from '../../components/bottom-sheet/bottom-sheet.component';
 
@@ -13,7 +14,7 @@ import { BottomSheetComponent } from '../../components/bottom-sheet/bottom-sheet
   styleUrl: './pile-overlay.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatIconModule, CardComponent, BottomSheetComponent],
+  imports: [DragDropModule, MatIconModule, CardComponent, BottomSheetComponent, TranslatePipe],
   host: {
     'role': 'dialog',
     '[attr.aria-modal]': 'isOpen()',

@@ -2,7 +2,7 @@
   <mat-icon>{{ data.icon }}</mat-icon>
   <span class="snackbar-message">{{ data.message }}</span>
   @if (data.type === 'error') {
-    <button mat-icon-button (click)="snackBarRef.dismiss()" aria-label="Fermer">
+    <button mat-icon-button (click)="snackBarRef.dismiss()" [attr.aria-label]="'common.close' | translate">
       <mat-icon>close</mat-icon>
     </button>
   }

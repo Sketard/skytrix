@@ -14,6 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { EmptyStateComponent } from '../empty-state/empty-state.component';
 import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
 
 @Component({
   selector: 'card-list',
@@ -27,6 +29,8 @@ import { LongPressDragDirective } from '../../core/directives/long-press-drag.di
     MatProgressSpinner,
     EmptyStateComponent,
     LongPressDragDirective,
+    TranslatePipe,
+    CardNamePipe,
   ],
   templateUrl: './card-list.component.html',
   styleUrl: './card-list.component.scss',
@@ -46,8 +50,9 @@ export class CardListComponent implements OnDestroy {
   readonly displayType = CardDisplayType;
   private dragging = false;
 
-  readonly emptyMessage = 'Aucun résultat trouvé';
-  readonly emptyCta = 'Effacer les filtres';
+  private readonly translateService = inject(TranslateService);
+  readonly emptyMessage = this.translateService.instant('cardList.emptyMessage');
+  readonly emptyCta = this.translateService.instant('cardList.emptyCta');
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private scrollContainer: HTMLElement | null = null;

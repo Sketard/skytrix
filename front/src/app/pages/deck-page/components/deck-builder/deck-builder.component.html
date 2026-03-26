@@ -8,7 +8,7 @@
             <input
               #deckNameInput
               matInput
-              placeholder="Nom du deck..."
+              [placeholder]="'deckBuilder.namePlaceholder' | translate"
               [(ngModel)]="deckBuildService.deck().name"
               (blur)="stopEditingName()"
               (keydown)="onNameKeydown($event)" />
@@ -20,23 +20,23 @@
             (click)="startEditingName()"
             (keydown.enter)="startEditingName()"
             (keydown.space)="startEditingName(); $event.preventDefault()">
-            {{ deckBuildService.deck().name || 'Nom du deck...' }}
+            {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
           </span>
         }
-        <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
+        <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" [attr.aria-label]="'common.save' | translate">
           <mat-icon>save</mat-icon>
           @if (isDirty() && !deckBuildService.deckEmpty()) {
             <span class="dirty-dot"></span>
           }
         </button>
-        <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
+        <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [attr.aria-label]="'deckBuilder.actions' | translate">
           <mat-icon>more_vert</mat-icon>
         </button>
       </div>
       <button
         mat-icon-button
         class="deckBuilder-searchToggle"
-        aria-label="Rechercher une carte"
+        [attr.aria-label]="'deckBuilder.searchCard' | translate"
         (click)="toggleSearchPanel()">
         <mat-icon>search</mat-icon>
       </button>
@@ -51,7 +51,7 @@
               <input
                 #deckNameInputDesktop
                 matInput
-                placeholder="Nom du deck..."
+                [placeholder]="'deckBuilder.namePlaceholder' | translate"
                 [(ngModel)]="deckBuildService.deck().name"
                 (blur)="stopEditingName()"
                 (keydown)="onNameKeydown($event)" />
@@ -63,51 +63,51 @@
               (click)="startEditingName()"
               (keydown.enter)="startEditingName()"
               (keydown.space)="startEditingName(); $event.preventDefault()">
-              {{ deckBuildService.deck().name || 'Nom du deck...' }}
+              {{ deckBuildService.deck().name || ('deckBuilder.namePlaceholder' | translate) }}
             </span>
           }
-          <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" aria-label="Sauvegarder">
+          <button mat-icon-button [disabled]="deckBuildService.deckEmpty()" (click)="save()" [attr.aria-label]="'common.save' | translate">
             <mat-icon>save</mat-icon>
             @if (isDirty() && !deckBuildService.deckEmpty()) {
               <span class="dirty-dot"></span>
             }
           </button>
-          <button mat-icon-button [matMenuTriggerFor]="actionsMenu" aria-label="Actions du deck">
+          <button mat-icon-button [matMenuTriggerFor]="actionsMenu" [attr.aria-label]="'deckBuilder.actions' | translate">
             <mat-icon>more_vert</mat-icon>
           </button>
           <mat-menu #actionsMenu="matMenu">
             <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="createProxies()">
               <mat-icon>print</mat-icon>
-              <span>Générer les proxies</span>
+              <span>{{ 'deckBuilder.generateProxies' | translate }}</span>
             </button>
             <button mat-menu-item (click)="export(ExportMode.CLASSIC)">
               <mat-icon>cloud_download</mat-icon>
-              <span>Export standard</span>
+              <span>{{ 'deckBuilder.exportStandard' | translate }}</span>
             </button>
             <button mat-menu-item (click)="export(ExportMode.MARKET)">
               <mat-icon>cloud_download</mat-icon>
-              <span>Export Cardmarket</span>
+              <span>{{ 'deckBuilder.exportCardmarket' | translate }}</span>
             </button>
             <button mat-menu-item (click)="openImportFile()">
               <mat-icon>cloud_upload</mat-icon>
-              <span>Importer</span>
+              <span>{{ 'deckBuilder.import' | translate }}</span>
             </button>
             <button mat-menu-item (click)="toggleTestHand()">
               <mat-icon>back_hand</mat-icon>
-              <span>Tester une main</span>
+              <span>{{ 'deckBuilder.testHand' | translate }}</span>
             </button>
             <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToSimulator()">
               <mat-icon>sports_esports</mat-icon>
-              <span>Simulateur</span>
+              <span>{{ 'deckBuilder.simulator' | translate }}</span>
             </button>
             <button mat-menu-item [disabled]="!deckBuildService.deck().id" (click)="navigateToPvp()">
               <mat-icon>sports_kabaddi</mat-icon>
-              <span>Duel PvP</span>
+              <span>{{ 'deckBuilder.pvpDuel' | translate }}</span>
             </button>
           </mat-menu>
         </div>
         <div class="deckBuilder-side-header-row">
-          <span class="deckBuilder-side-header-row-label">Aperçu du deck</span>
+          <span class="deckBuilder-side-header-row-label">{{ 'deckBuilder.deckPreview' | translate }}</span>
           <deck-card-zone
             [cardDetails]="deckBuildService.deck().images"
             [slotNumber]="3"
@@ -129,7 +129,7 @@
   <app-bottom-sheet
     class="deckBuilder-externalFilters"
     [opened]="externalFiltersOpened()"
-    [ariaLabel]="'Panneau de filtres'"
+    [ariaLabel]="'deckBuilder.filterPanel' | translate"
     (closed)="externalFiltersOpened.set(false)">
     <app-card-filters
       [searchService]="deckBuildService">
@@ -140,7 +140,7 @@
   <app-bottom-sheet
     [opened]="searchPanelOpened() && isMobilePortrait()"
     [cardDragActive]="isCardDragActive()"
-    [ariaLabel]="'Panneau de recherche de cartes'"
+    [ariaLabel]="'deckBuilder.searchPanel' | translate"
     [requestedSnap]="filtersRequestedSnap()"
     (closed)="searchPanelOpened.set(false)">
     <app-card-searcher
@@ -163,9 +163,9 @@
 
   <!-- PvP room creation loading overlay -->
   @if (pvpLoading()) {
-    <div class="deckBuilder-pvpLoading" role="status" aria-label="Creating room">
+    <div class="deckBuilder-pvpLoading" role="status" [attr.aria-label]="'deckBuilder.creatingRoom' | translate">
       <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
-      <p>Creating room...</p>
+      <p>{{ 'deckBuilder.creatingRoom' | translate }}</p>
     </div>
   }
 
@@ -178,11 +178,11 @@
     (favoriteChange)="onFavoriteChange()"
     (dismissed)="dismissInspector()">
     <div class="inspector-actions" (click)="$event.stopPropagation()">
-      <button mat-icon-button (click)="removeSelectedCardFromDeck()" title="Retirer du deck">
+      <button mat-icon-button (click)="removeSelectedCardFromDeck()" [title]="'deckBuilder.removeFromDeck' | translate">
         <mat-icon>remove</mat-icon>
       </button>
       <span class="inspector-actions-count">{{ selectedCardCount() }}</span>
-      <button mat-icon-button (click)="addSelectedCardToDeck()" title="Ajouter au deck">
+      <button mat-icon-button (click)="addSelectedCardToDeck()" [title]="'deckBuilder.addToDeck' | translate">
         <mat-icon>add</mat-icon>
       </button>
     </div>

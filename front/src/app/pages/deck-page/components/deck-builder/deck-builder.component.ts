@@ -16,8 +16,8 @@ import { MatIconButton } from '@angular/material/button';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { ExportDTO } from '../../../../core/model/dto/export-dto';
 import { ExportService } from '../../../../services/export.service';
-import { downloadDocument, displaySuccess, displayError } from '../../../../core/utilities/functions';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { downloadDocument } from '../../../../core/utilities/functions';
+import { NotificationService } from '../../../../core/services/notification.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DeckDTO } from '../../../../core/model/dto/deck-dto';
 import { ExportMode } from '../../../../core/enums/export.mode.enum';
@@ -33,6 +33,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { RoomApiService } from '../../../pvp/room-api.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-deck-builder',
@@ -53,6 +54,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
     CardInspectorComponent,
     BottomSheetComponent,
     MatProgressSpinner,
+    TranslatePipe,
   ],
   templateUrl: './deck-builder.component.html',
   styleUrl: './deck-builder.component.scss',
@@ -109,7 +111,7 @@ export class DeckBuilderComponent implements OnDestroy {
   readonly useExternalFilters = computed(() => this.isLandscapeSplit() || this.isCompactHeight());
   readonly isCardDragActive = this.deckBuildService.cardDragActive;
   readonly isDirty = this.deckBuildService.isDirty;
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notify = inject(NotificationService);
   private readonly ownedCardService = inject(OwnedCardService);
   private readonly roomApiService = inject(RoomApiService);
   readonly pvpLoading = signal(false);
@@ -230,12 +232,12 @@ export class DeckBuilderComponent implements OnDestroy {
     const isNew = !this.deckBuildService.deck().id;
     this.deckBuildService.save(
       () => {
-        displaySuccess(this.snackBar, 'Deck sauvegardé');
+        this.notify.success('success.DECK_SAVED');
         if (isNew) {
           this.router.navigate(['/decks', this.deckBuildService.deck().id], { replaceUrl: true });
         }
       },
-      (err) => displayError(this.snackBar, err)
+      (err) => this.notify.error(err)
     );
   }
 
@@ -254,9 +256,9 @@ export class DeckBuilderComponent implements OnDestroy {
         )
       );
       await this.generatePDF(images);
-      displaySuccess(this.snackBar, 'Proxies générés');
+      this.notify.success('success.PROXIES_GENERATED');
     } catch {
-      displayError(this.snackBar, 'Erreur lors de la génération des proxies');
+      this.notify.error('error.PROXY_GENERATION_FAILED');
     }
   }
 
@@ -309,7 +311,7 @@ export class DeckBuilderComponent implements OnDestroy {
     const dto = new ExportDTO(deck, mode);
     this.exportService.exportDeckList(dto).subscribe(blob => {
       downloadDocument(blob.body, `${deck.name}.txt`, 'text/html');
-      displaySuccess(this.snackBar, 'Deck exporté');
+      this.notify.success('success.DECK_EXPORTED');
     });
   }
 
@@ -325,9 +327,9 @@ export class DeckBuilderComponent implements OnDestroy {
     this.exportService.importDeckList(file).subscribe({
       next: (deck: DeckDTO) => {
         this.deckBuildService.initDeck(new Deck(deck));
-        displaySuccess(this.snackBar, 'Deck importé avec succès');
+        this.notify.success('success.DECK_IMPORTED');
       },
-      error: (err: HttpErrorResponse) => displayError(this.snackBar, err),
+      error: (err: HttpErrorResponse) => this.notify.error(err),
     });
     (document.getElementById('importDeckInput') as HTMLInputElement).value = '';
   }
@@ -363,15 +365,15 @@ export class DeckBuilderComponent implements OnDestroy {
     const sideCount = deck.sideDeck.filter(s => s.index !== -1).length;
 
     if (mainCount < 40 || mainCount > 60) {
-      displayError(this.snackBar, `Main Deck invalide : ${mainCount} cartes (40–60 requises)`);
+      this.notify.error('error.DECK_MAIN_INVALID', { count: mainCount, min: 40, max: 60 });
       return;
     }
     if (extraCount > 15) {
-      displayError(this.snackBar, `Extra Deck invalide : ${extraCount} cartes (0–15 max)`);
+      this.notify.error('error.DECK_EXTRA_INVALID', { count: extraCount, max: 15 });
       return;
     }
     if (sideCount > 15) {
-      displayError(this.snackBar, `Side Deck invalide : ${sideCount} cartes (0–15 max)`);
+      this.notify.error('error.DECK_SIDE_INVALID', { count: sideCount, max: 15 });
       return;
     }
 
@@ -383,7 +385,7 @@ export class DeckBuilderComponent implements OnDestroy {
       },
       error: (err: HttpErrorResponse) => {
         this.pvpLoading.set(false);
-        displayError(this.snackBar, err);
+        this.notify.error(err);
       },
     });
   }

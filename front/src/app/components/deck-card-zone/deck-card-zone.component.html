@@ -37,7 +37,7 @@
           </app-card>
           @if (cardDetail.card.card.banInfo < 3) {
             <div class="ban-badge">
-              <div>{{ cardDetail.card.card.banInfo }}</div>
+              <div>{{ 'card_ban.' + cardDetail.card.card.banInfo | translate }}</div>
             </div>
           }
         }

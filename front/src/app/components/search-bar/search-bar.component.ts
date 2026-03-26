@@ -7,12 +7,13 @@ import { MatIconButton } from '@angular/material/button';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { map, of, switchMap } from 'rxjs';
 import { AsyncPipe } from '@angular/common';
+import { TranslatePipe } from '@ngx-translate/core';
 import { countValidValues } from '../../core/utilities/functions';
 import { SearchServiceCore } from '../../services/search-service-core.service';
 
 @Component({
   selector: 'search-bar',
-  imports: [AsyncPipe, ReactiveFormsModule, MatInputModule, MatFormFieldModule, MatIconModule, MatIconButton],
+  imports: [AsyncPipe, ReactiveFormsModule, MatInputModule, MatFormFieldModule, MatIconModule, MatIconButton, TranslatePipe],
   templateUrl: './search-bar.component.html',
   styleUrl: './search-bar.component.scss',
   standalone: true,

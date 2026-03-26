@@ -9,56 +9,56 @@
         <form [formGroup]="loginForm" (ngSubmit)="connect()">
           <div class="loginPage-form-inputs">
             <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
-              <mat-label>Pseudo</mat-label>
+              <mat-label>{{ 'login.username' | translate }}</mat-label>
               <input required matInput type="text" formControlName="pseudo" />
             </mat-form-field>
             <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
               <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
                         (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
-              <mat-label>Mot de passe</mat-label>
+              <mat-label>{{ 'login.password' | translate }}</mat-label>
               <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
             </mat-form-field>
           </div>
           <div class="loginPage-form-buttons">
             <a (click)="changeMode(modes.CREATE_ACCOUNT, directions.LR)" class="loginPage-form-buttons-forgotten">
-              Créer un compte
+              {{ 'login.createAccount' | translate }}
             </a>
             <button mat-flat-button type="submit" [disabled]="!loginForm.valid">
-              Se connecter
+              {{ 'login.signIn' | translate }}
             </button>
           </div>
         </form>
       }
       @case (modes.CREATE_ACCOUNT) {
         <form [formGroup]="createAccountForm" (ngSubmit)="createAccount()">
-          <h2>Créer un compte</h2>
+          <h2>{{ 'login.createAccount' | translate }}</h2>
           <div class="loginPage-form-inputs">
             <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
-              <mat-label>Pseudo</mat-label>
+              <mat-label>{{ 'login.username' | translate }}</mat-label>
               <input required matInput type="text" formControlName="pseudo" />
             </mat-form-field>
             <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
               <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
                         (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
-              <mat-label>Mot de passe</mat-label>
+              <mat-label>{{ 'login.password' | translate }}</mat-label>
               <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" />
             </mat-form-field>
             <mat-form-field class="loginPage-form-inputs-field" appearance="outline">
               <mat-icon matSuffix [fontIcon]="hidePassword ? 'visibility_off' : 'visibility'"
                         (click)="hidePassword = !hidePassword" (keypress)="hidePassword = !hidePassword"></mat-icon>
-              <mat-label>Confirmer le mot de passe</mat-label>
+              <mat-label>{{ 'login.confirmPassword' | translate }}</mat-label>
               <input required matInput [type]="hidePassword ? 'password' : 'text'" formControlName="confirmPassword" />
             </mat-form-field>
             @if (createAccountForm.hasError('passwordMismatch') && createAccountForm.controls.confirmPassword.dirty) {
-              <p class="loginPage-form-inputs-error">Les mots de passe ne correspondent pas.</p>
+              <p class="loginPage-form-inputs-error">{{ 'login.passwordMismatch' | translate }}</p>
             }
           </div>
           <div class="loginPage-form-buttons">
             <a (click)="changeMode(modes.LOGIN, directions.RL)" class="loginPage-form-buttons-forgotten">
-              Retour
+              {{ 'login.back' | translate }}
             </a>
             <button mat-flat-button type="submit" [disabled]="!createAccountForm.valid">
-              Créer le compte
+              {{ 'login.createButton' | translate }}
             </button>
           </div>
         </form>

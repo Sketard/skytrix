@@ -19,12 +19,14 @@ import { SharedCardInspectorData, toSharedCardInspectorData } from '../../core/m
 import { CardDetail } from '../../core/model/card-detail';
 import { CardDisplayType } from '../../core/enums/card-display-type';
 import { OwnedCardService } from '../../services/owned-card.service';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'card-search-page',
   imports: [
     CardSearcherComponent, CardInspectorComponent, MatIconButton, MatIcon, BottomSheetComponent,
     SearchBarComponent, CardFiltersComponent, CardListComponent, MatButtonToggle, MatButtonToggleGroup, MatTooltip,
+    TranslatePipe,
   ],
   templateUrl: './card-search-page.component.html',
   styleUrl: './card-search-page.component.scss',

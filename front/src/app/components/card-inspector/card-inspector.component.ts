@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener,
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
+import { CardNamePipe, CardDescPipe } from '../../core/pipes/card-i18n.pipe';
 import { SharedCardInspectorData } from '../../core/model/shared-card-data';
 
 @Component({
@@ -9,7 +11,7 @@ import { SharedCardInspectorData } from '../../core/model/shared-card-data';
   templateUrl: './card-inspector.component.html',
   styleUrl: './card-inspector.component.scss',
   standalone: true,
-  imports: [NgTemplateOutlet, MatIcon, MatIconButton],
+  imports: [NgTemplateOutlet, MatIcon, MatIconButton, TranslatePipe, CardNamePipe, CardDescPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     'role': 'complementary',

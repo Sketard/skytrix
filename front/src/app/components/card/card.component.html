@@ -5,7 +5,7 @@
     <img src="assets/images/card_back.jpg" alt="Card back" class="card-image">
   } @else {
     <img [src]="card().imageUrl"
-         [alt]="card().name"
+         [alt]="card() | cardName"
          (error)="$any($event.target).src='assets/images/card_back.jpg'"
          class="card-image">
   }

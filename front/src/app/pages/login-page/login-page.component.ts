@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -12,16 +12,16 @@ import { UserDTO } from '../../core/model/account/user';
 import { Subject } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { TypedForm } from '../../core/model/commons/typed-form';
 import { LoginDTO } from '../../core/model/account/login-dto';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { CURRENT_USER_KEY } from '../../core/utilities/auth.constants';
-import { displayError, displaySuccess } from '../../core/utilities/functions';
+import { NotificationService } from '../../core/services/notification.service';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput, MatLabel } from '@angular/material/input';
 import { MatButton } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CreateUserDTO } from '../../core/model/account/create-user-dto';
 import { OwnedCardService } from '../../services/owned-card.service';
 
@@ -45,6 +45,7 @@ enum AnimationDirection {
     MatLabel,
     MatSuffix,
     MatButton,
+    TranslatePipe,
   ],
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
@@ -67,11 +68,12 @@ export class LoginPageComponent implements OnInit, OnDestroy {
 
   private readonly returnUrl: string | null;
 
+  private readonly notify = inject(NotificationService);
+
   constructor(
     private readonly router: Router,
     private readonly route: ActivatedRoute,
     public authService: AuthService,
-    private readonly snackBar: MatSnackBar,
     private readonly ownedCardService: OwnedCardService
   ) {
     const url = this.route.snapshot.queryParams['returnUrl'];
@@ -95,10 +97,10 @@ export class LoginPageComponent implements OnInit, OnDestroy {
   public createAccount(): void {
     this.authService.createAccount(this.createAccountForm.getRawValue()).subscribe({
       next: () => {
-        displaySuccess(this.snackBar, 'Compte créer avec succès');
+        this.notify.success('success.ACCOUNT_CREATED');
         this.mode.set(LoginMode.LOGIN);
       },
-      error: (error: HttpErrorResponse) => displayError(this.snackBar, error),
+      error: (error: HttpErrorResponse) => this.notify.error(error),
     });
   }
 
@@ -115,7 +117,7 @@ export class LoginPageComponent implements OnInit, OnDestroy {
           this.router.navigate(['decks']);
         }
       },
-      error: (error: HttpErrorResponse) => displayError(this.snackBar, error),
+      error: (error: HttpErrorResponse) => this.notify.error(error),
     });
   }
 

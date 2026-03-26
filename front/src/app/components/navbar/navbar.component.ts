@@ -6,6 +6,7 @@ import { MatButton, MatIconButton } from '@angular/material/button';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 import { A11yModule } from '@angular/cdk/a11y';
 import { MatTooltip } from '@angular/material/tooltip';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { filter } from 'rxjs';
 
 import { Role } from '../../core/model/account/user';
@@ -26,7 +27,7 @@ class Tab {
 
 @Component({
   selector: 'navbar',
-  imports: [MatIconModule, RouterLinkActive, RouterLink, MatButton, MatIconButton, A11yModule, MatTooltip],
+  imports: [MatIconModule, RouterLinkActive, RouterLink, MatButton, MatIconButton, A11yModule, MatTooltip, TranslatePipe],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.scss',
   standalone: true,
@@ -37,12 +38,16 @@ export class NavbarComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
+
+  readonly currentLang = signal(this.translate.currentLang || 'fr');
 
   private readonly allTabs: Tab[] = [
-    new Tab('Construction de deck', 'folder', '/decks'),
-    new Tab('Recherche de cartes', 'search', '/search'),
-    new Tab('Arène PvP', 'gamepad', '/pvp'),
-    new Tab('Paramètres', 'settings_suggest', '/parameters', 'ADMIN'),
+    new Tab('nav.tab.deckBuilder', 'folder', '/decks'),
+    new Tab('nav.tab.cardSearch', 'search', '/search'),
+    new Tab('nav.tab.pvpArena', 'gamepad', '/pvp'),
+    new Tab('nav.tab.replayPvp', 'play_circle', '/pvp/history', 'ADMIN'),
+    new Tab('nav.tab.settings', 'settings_suggest', '/parameters', 'ADMIN'),
   ];
 
   public user = this.authService.user;
@@ -88,5 +93,11 @@ export class NavbarComponent {
 
   public logout() {
     this.authService.logout();
+  }
+
+  setLanguage(lang: string): void {
+    this.translate.use(lang);
+    this.currentLang.set(lang);
+    localStorage.setItem('lang', lang);
   }
 }

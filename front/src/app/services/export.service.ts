@@ -1,19 +1,16 @@
-import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { catchError, Observable, take } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { catchError, Observable, take, throwError } from 'rxjs';
 import { ExportDTO } from '../core/model/dto/export-dto';
 import { DeckDTO } from '../core/model/dto/deck-dto';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { parseErrorBlob } from '../core/utilities/functions';
+import { NotificationService } from '../core/services/notification.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ExportService {
-  constructor(
-    private readonly httpClient: HttpClient,
-    private readonly snackBar: MatSnackBar
-  ) {}
+  private readonly httpClient = inject(HttpClient);
+  private readonly notify = inject(NotificationService);
 
   public exportDeckList(dto: ExportDTO): Observable<HttpResponse<Blob>> {
     return this.httpClient
@@ -23,7 +20,10 @@ export class ExportService {
       })
       .pipe(
         take(1),
-        catchError(error => parseErrorBlob(error, this.snackBar))
+        catchError((error: HttpErrorResponse) => {
+          this.notify.error(error);
+          return throwError(() => error);
+        })
       );
   }
 

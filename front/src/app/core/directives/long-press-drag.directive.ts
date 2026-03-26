@@ -1,6 +1,7 @@
 import { Directive, DestroyRef, ElementRef, NgZone, inject, input } from '@angular/core';
 import { CdkDrag } from '@angular/cdk/drag-drop';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { TranslateService } from '@ngx-translate/core';
 import { Subscription, take } from 'rxjs';
 
 @Directive({
@@ -14,6 +15,7 @@ export class LongPressDragDirective {
   private readonly el = inject(ElementRef<HTMLElement>);
   private readonly ngZone = inject(NgZone);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly cdkDrag = inject(CdkDrag, { optional: true });
 
@@ -185,7 +187,7 @@ export class LongPressDragDirective {
       navigator.vibrate(50);
     }
 
-    this.liveAnnouncer.announce('Drag activated', 'assertive');
+    this.liveAnnouncer.announce(this.translate.instant('a11y.dragActivated'), 'assertive');
 
     // Dispatch synthetic TouchEvent — CDK listens on touchstart, not pointerdown.
     // Uses the real touch identifier captured in onTouchStart so CDK can correlate

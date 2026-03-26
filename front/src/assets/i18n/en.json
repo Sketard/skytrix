@@ -1,0 +1,525 @@
+{
+  "card_type": {
+    "FUSION": "Fusion",
+    "SYNCHRO": "Synchro",
+    "XYZ": "XYZ",
+    "LINK": "Link",
+    "MONSTER": "Monster",
+    "RITUAL": "Ritual",
+    "PENDULUM": "Pendulum",
+    "TOON": "Toon",
+    "TUNER": "Tuner",
+    "UNION": "Union",
+    "GEMINI": "Gemini",
+    "FLIP": "Flip",
+    "EFFECT": "Effect",
+    "NORMAL": "Normal",
+    "SPELL": "Spell",
+    "TRAP": "Trap",
+    "TOKEN": "Token",
+    "SKILL": "Skill"
+  },
+  "card_attribute": {
+    "EARTH": "Earth",
+    "WATER": "Water",
+    "WIND": "Wind",
+    "DARK": "Dark",
+    "LIGHT": "Light",
+    "FIRE": "Fire",
+    "DIVINE": "Divine"
+  },
+  "card_race": {
+    "DRAGON": "Dragon",
+    "AQUA": "Aqua",
+    "NORMAL": "Normal",
+    "REPTILE": "Reptile",
+    "SEA_SERPENT": "Sea Serpent",
+    "CYBERSE": "Cyberse",
+    "CREATOR_GOD": "Creator God",
+    "ROCK": "Rock",
+    "ILLUSION": "Illusion",
+    "CONTINUOUS": "Continuous",
+    "SPELLCASTER": "Spellcaster",
+    "WYRM": "Wyrm",
+    "PLANT": "Plant",
+    "ZOMBIE": "Zombie",
+    "COUNTER": "Counter",
+    "FIELD": "Field",
+    "MACHINE": "Machine",
+    "THUNDER": "Thunder",
+    "WINGED_BEAST": "Winged Beast",
+    "EQUIP": "Equip",
+    "PYRO": "Pyro",
+    "BEAST": "Beast",
+    "RITUAL": "Ritual",
+    "FISH": "Fish",
+    "FAIRY": "Fairy",
+    "PSYCHIC": "Psychic",
+    "INSECT": "Insect",
+    "DINOSAUR": "Dinosaur",
+    "BEAST_WARRIOR": "Beast-Warrior",
+    "WARRIOR": "Warrior",
+    "QUICK_PLAY": "Quick-Play",
+    "FIEND": "Fiend",
+    "DIVINE_BEAST": "Divine-Beast",
+    "OTHER": "Other"
+  },
+  "card_ban": {
+    "0": "Forbidden",
+    "1": "Limited",
+    "2": "Semi-Limited"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "retry": "Retry",
+    "back": "Back",
+    "delete": "Delete",
+    "save": "Save",
+    "update": "Update",
+    "resizePanel": "Resize panel"
+  },
+  "error": {
+    "UNKNOWN": "An error occurred",
+    "UNAUTHORIZED": "Unauthorized",
+    "ACCESS_DENIED": "Access denied",
+    "SERVICE_UNAVAILABLE": "Service temporarily unavailable",
+    "INTERNAL_ERROR": "An unexpected error occurred",
+    "INVALID_DECK_FORMAT": "Deck must have a main and extra deck",
+    "INVALID_DECK_CONTENT": "Deck contains invalid cards",
+    "INVALID_DECK": "Invalid deck",
+    "INVALID_DECK_SELECT": "Invalid deck, please select another",
+    "DUEL_NOT_FOUND": "Duel not found",
+    "NOT_FOUND": "Not found",
+    "PAYLOAD_TOO_LARGE": "Payload too large",
+    "INVALID_JSON": "Invalid request format",
+    "INVALID_PASSCODES": "Invalid card list",
+    "SERVER_NOT_READY": "Server not ready",
+    "UPDATE_BLOCKED_ACTIVE_DUELS": "Cannot update while duels are active",
+    "TOKEN_REFRESH_FAILED": "Session expired, please log in again",
+    "INVALID_PAGINATION": "Invalid pagination parameters",
+    "ROOM_REFRESH_FAILED": "Failed to refresh rooms",
+    "ROOM_LOAD_FAILED": "Unable to load rooms",
+    "ROOM_CREATE_FAILED": "Unable to create room",
+    "QUICK_DUEL_FAILED": "Unable to start quick duel",
+    "ROOM_FULL": "This room is full",
+    "ROOM_JOIN_FAILED": "Unable to join room",
+    "ROOM_NOT_FOUND": "Room not found or already ended",
+    "ROOM_CLOSED": "This room has been closed",
+    "TOO_MANY_ATTEMPTS": "Too many failed attempts",
+    "DUEL_CONNECT_FAILED": "Unable to connect to duel",
+    "PROXY_GENERATION_FAILED": "Error generating proxies",
+    "DECK_MAIN_INVALID": "Invalid Main Deck: {{count}} cards ({{min}}–{{max}} required)",
+    "DECK_EXTRA_INVALID": "Invalid Extra Deck: {{count}} cards ({{max}} max)",
+    "DECK_SIDE_INVALID": "Invalid Side Deck: {{count}} cards ({{max}} max)",
+    "DECK_LOAD_FAILED": "Unable to load decks",
+    "REPLAY_WATCHDOG_TIMEOUT": "Replay engine timed out",
+    "REPLAY_INIT_FAILED": "Failed to initialize replay",
+    "REPLAY_MAX_ITERATIONS": "Replay computation limit reached",
+    "REPLAY_COMPUTATION_ERROR": "Replay computation failed",
+    "REPLAY_DIVERGED_RETRY": "Replay data incompatible with engine",
+    "REPLAY_DIVERGED_NO_RESPONSES": "Replay data incomplete",
+    "REPLAY_DIVERGED_NO_RESULT": "Replay ended unexpectedly",
+    "REPLAY_DIVERGED_UNEXPECTED": "Unexpected replay state",
+    "SOLO_SESSION_EXPIRED": "Solo duel session expired",
+    "CONNECTION_LOST_LOBBY": "Connection lost — returning to lobby",
+    "ROOM_EXPIRED": "Room expired"
+  },
+  "success": {
+    "LINK_COPIED": "Link copied!",
+    "ACCOUNT_CREATED": "Account created successfully",
+    "DECK_SAVED": "Deck saved",
+    "DECK_DELETED": "Deck deleted",
+    "DECK_EXPORTED": "Deck exported",
+    "DECK_IMPORTED": "Deck imported successfully",
+    "PROXIES_GENERATED": "Proxies generated",
+    "NO_MISSING_IMAGES": "No missing images",
+    "IMAGE_SYNC_DONE": "Done: {{success}} successful, {{failed}} failed",
+    "CARDS_UPDATED": "Cards updated successfully",
+    "BANLIST_UPDATED": "Banlist updated successfully",
+    "CONNECTION_RESTORED": "Connection restored",
+    "OPPONENT_RECONNECTED": "Opponent reconnected"
+  },
+  "deckList": {
+    "deleteTitle": "Delete deck",
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
+    "empty": "No decks yet",
+    "createDeck": "Create a deck"
+  },
+  "duel": {
+    "leaveRoom": "Leave Room",
+    "waiting": {
+      "title": "WAITING FOR OPPONENT",
+      "subtitle": "Waiting for opponent...",
+      "yourDeck": "Your Deck:",
+      "share": "Share",
+      "copyLink": "Copy Link"
+    },
+    "preparing": {
+      "title": "PREPARING DUEL...",
+      "opponentJoined": "Opponent joined! Setting up duel...",
+      "loading": "Loading room...",
+      "takingLong": "Taking longer than expected..."
+    },
+    "connection": {
+      "lost": "Connection lost. Unable to reach server.",
+      "backToLobby": "Back to Lobby",
+      "reconnecting": "Reconnecting",
+      "lostTitle": "Connection lost",
+      "lostSubtitle": "Unable to reach the server",
+      "retry": "Retry connection",
+      "connecting": "Connecting to duel..."
+    },
+    "opponent": {
+      "disconnected": "Opponent disconnected",
+      "waitingReconnect": "Waiting for reconnection...",
+      "leave": "Leave"
+    },
+    "tabConflict": {
+      "title": "Duel active in another tab",
+      "takeControl": "Take control here"
+    },
+    "rps": {
+      "title": "ROCK PAPER SCISSORS",
+      "subtitle": "Winner picks turn order",
+      "waitingOpponent": "Waiting for opponent...",
+      "you": "You",
+      "opponent": "Opponent",
+      "vs": "VS",
+      "youWin": "You win!",
+      "youLose": "You lose!",
+      "draw": "Draw — playing again...",
+      "rock": "Rock",
+      "paper": "Paper",
+      "scissors": "Scissors"
+    },
+    "turnOrder": {
+      "title": "TURN ORDER",
+      "subtitle": "You won — choose your position",
+      "waiting": "Waiting for confirmation...",
+      "goFirst": "Go First",
+      "goSecond": "Go Second"
+    },
+    "result": {
+      "victory": "VICTORY",
+      "defeat": "DEFEAT",
+      "draw": "DRAW",
+      "backToDeck": "Back to Deck",
+      "startingNew": "Starting new duel..."
+    },
+    "surrender": {
+      "title": "Abandon the duel?",
+      "warning": "This will count as a loss.",
+      "confirm": "Surrender"
+    },
+    "misc": {
+      "rotateLandscape": "Rotate your device to landscape",
+      "exit": "Exit",
+      "player": "Player",
+      "debug": "Debug",
+      "chainResolution": "Chain Resolution",
+      "selectCard": "Select a card",
+      "selectEffect": "Select an effect",
+      "effect": "Effect {{n}}"
+    },
+    "loading": {
+      "lp": "8000 LP",
+      "vs": "VS"
+    },
+    "reason": {
+      "win": { "winner": "Opponent's LP reduced to 0", "loser": "Your LP reduced to 0" },
+      "surrender": { "winner": "Opponent surrendered", "loser": "You surrendered" },
+      "timeout": { "winner": "Opponent timed out", "loser": "You timed out" },
+      "inactivity": { "winner": "Opponent was inactive", "loser": "You were inactive" },
+      "disconnect": { "winner": "Opponent disconnected", "loser": "You disconnected" },
+      "draw_both_disconnect": { "winner": "Both players disconnected", "loser": "Both players disconnected" },
+      "worker_error": { "winner": "Engine error", "loser": "Engine error" },
+      "too_many_invalid_responses": { "winner": "Engine error", "loser": "Engine error" },
+      "unknown": "Unexpected error"
+    },
+    "inactivity": {
+      "title": "Are you still there?",
+      "warning": "You will forfeit due to inactivity if you don't respond.",
+      "confirm": "I'm here"
+    },
+    "a11y": {
+      "autoResolvedSingle": "An action was auto-resolved while away",
+      "autoResolvedPlural": "{{count}} actions were auto-resolved while away",
+      "boardRefreshed": "Board state refreshed",
+      "activeOtherTab": "Duel active in another tab",
+      "secondsRemaining": "{{t}} seconds remaining",
+      "yourTurn": "Your turn",
+      "opponentTurn": "Opponent's turn",
+      "connectionRestored": "Connection restored",
+      "chainResolved": "Chain resolved",
+      "opponentPhase": "Opponent — {{phase}}"
+    },
+    "phase": {
+      "turn": "Turn {{n}}",
+      "battlePhase": "Battle Phase",
+      "endTurn": "End Turn",
+      "mainPhase2": "Main Phase 2"
+    },
+    "prompt": {
+      "revealedCards": "Revealed cards",
+      "noValidTargets": "No valid targets",
+      "sumProgress": "{{selected}} / {{target}} needed",
+      "selectCounters": "Select counters",
+      "searchCardName": "Search card name...",
+      "searching": "Searching...",
+      "typeAtLeast": "Type at least 2 characters",
+      "waitingResponse": "Waiting for your response...",
+      "sending": "Sending..."
+    },
+    "zoneBrowser": {
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "cardCount": "{{count}} cards",
+      "empty": "Empty"
+    },
+    "share": {
+      "text": "Duel me on skytrix! Join with code: {{roomCode}} or tap: {{url}}"
+    }
+  },
+  "lobby": {
+    "title": "PvP Arena",
+    "alpha": "ALPHA",
+    "createRoom": "Create a Room",
+    "emptyError": "Unable to load rooms",
+    "emptyTitle": "No duels waiting",
+    "emptySubtitle": "Create a room and invite a friend!",
+    "waitingOpponent": "Waiting for an opponent...",
+    "join": "Join"
+  },
+  "deckPicker": {
+    "title": {
+      "create": "Choose your deck",
+      "join": "Choose your deck to join",
+      "quickDuel": "Quick duel"
+    },
+    "confirm": {
+      "create": "Create room",
+      "join": "Join",
+      "quickDuel": "Start duel"
+    },
+    "decks": "Decks",
+    "player1": "Player 1",
+    "player2": "Player 2",
+    "mirrorHint": "Mirror Player 1",
+    "firstPlayer": "First player",
+    "randomHand": "Random hand",
+    "turnTime": "Turn time (seconds)",
+    "loadError": "Unable to load decks",
+    "emptyTitle": "No decks available",
+    "emptyHint": "Create a deck in Deck Builder to get started.",
+    "goToDeckBuilder": "Go to Deck Builder"
+  },
+  "login": {
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "createAccount": "Create an account",
+    "signIn": "Sign in",
+    "passwordMismatch": "Passwords do not match.",
+    "back": "Back",
+    "createButton": "Create account"
+  },
+  "settings": {
+    "title": "Settings",
+    "database": "Database",
+    "updateCards": "Update cards",
+    "updateCardsDesc": "Sync from YGOProDeck",
+    "images": "Images",
+    "originalImages": "Original images",
+    "originalImagesDesc": "Download card images",
+    "resume": "Resume",
+    "pause": "Pause",
+    "translatedImages": "Translated images",
+    "translatedImagesDesc": "Download translated TCG versions",
+    "duelServer": "Duel server",
+    "updateDuelData": "Update duel data",
+    "updateDuelDataDesc": "Download cards.cdb and Lua scripts from ProjectIgnis",
+    "updating": "Updating...",
+    "rules": "Rules",
+    "updateBanlist": "Update banlist",
+    "updateBanlistDesc": "Sync banned/limited card lists",
+    "neverSynced": "Never synced"
+  },
+  "deckBuilder": {
+    "namePlaceholder": "Deck name...",
+    "actions": "Deck actions",
+    "searchCard": "Search a card",
+    "generateProxies": "Generate proxies",
+    "exportStandard": "Standard export",
+    "exportCardmarket": "Cardmarket export",
+    "import": "Import",
+    "testHand": "Test hand",
+    "simulator": "Simulator",
+    "pvpDuel": "PvP Duel",
+    "deckPreview": "Deck preview",
+    "filterPanel": "Filter panel",
+    "searchPanel": "Card search panel",
+    "creatingRoom": "Creating room...",
+    "removeFromDeck": "Remove from deck",
+    "addToDeck": "Add to deck",
+    "handTest": {
+      "shuffle": "Shuffle",
+      "goSecond": "Go second"
+    },
+    "viewer": {
+      "main": "MAIN",
+      "extra": "EXTRA",
+      "side": "SIDE"
+    }
+  },
+  "nav": {
+    "alphaWarning": "Feature in alpha — bugs possible",
+    "logout": "Log out",
+    "expand": "Expand navigation",
+    "collapse": "Collapse navigation",
+    "tab": {
+      "deckBuilder": "Deck Builder",
+      "cardSearch": "Card Search",
+      "pvpArena": "PvP Arena",
+      "replayPvp": "PVP Replay",
+      "settings": "Settings"
+    }
+  },
+  "search": {
+    "placeholder": "Enter a name..."
+  },
+  "cardSearcher": {
+    "grid": "Grid",
+    "list": "List",
+    "favorites": "Favorites"
+  },
+  "cardFilters": {
+    "cardType": "Card type",
+    "attribute": "Attribute",
+    "min": "Min.",
+    "max": "Max."
+  },
+  "cardInspector": {
+    "owned": "Owned"
+  },
+  "cardList": {
+    "emptyMessage": "No results found",
+    "emptyCta": "Clear filters"
+  },
+  "deckBox": {
+    "addDeck": "Add a deck",
+    "newDeck": "New deck"
+  },
+  "simulator": {
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Y)",
+    "reset": "Reset",
+    "resetTitle": "Reset the board?",
+    "resetMessage": "This will clear undo history and deal a new hand.",
+    "flipFaceDown": "Flip face-down",
+    "changeToDef": "Change to DEF",
+    "changeToAtk": "Change to ATK",
+    "flipUpAtk": "Flip face-up (ATK)",
+    "flipUpDef": "Flip face-up (DEF)",
+    "shuffle": "Shuffle",
+    "search": "Search",
+    "mill": "Mill ({{n}})",
+    "reveal": "Reveal ({{n}})",
+    "filterPlaceholder": "Filter..."
+  },
+  "a11y": {
+    "roomCode": "Room code",
+    "shareRoomCode": "Share room code",
+    "copyRoomLink": "Copy room link to clipboard",
+    "connectionError": "Connection error",
+    "cardActions": "Card actions",
+    "toggleDebugLogs": "Toggle debug logs",
+    "switchPlayer": "Switch to {{player}}",
+    "loadingReplay": "Loading replay",
+    "mainNavigation": "Main navigation",
+    "appHeader": "Application header",
+    "openNav": "Open navigation",
+    "closeNav": "Close navigation",
+    "navMenu": "Navigation menu",
+    "downloadLogs": "Download logs",
+    "clearLogs": "Clear logs",
+    "closeDebugPanel": "Close debug panel",
+    "deleteDeck": "Delete {{name}}",
+    "favorite": "Favorite",
+    "activationToggle": "Activation toggle",
+    "closeMaterialPeek": "Close material peek",
+    "dragActivated": "Drag activated",
+    "refreshRooms": "Refresh room list",
+    "quickDuelDebug": "Quick duel - debug mode",
+    "createRoom": "Create a room"
+  },
+  "replay": {
+    "matchHistory": {
+      "title": "Match History",
+      "deckName": "Deck",
+      "opponent": "Opponent",
+      "turns": "Turns",
+      "result": "Result",
+      "date": "Date",
+      "empty": "No replays yet. Complete a PvP duel to see it here.",
+      "openReplay": "Open replay",
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "draw": "Draw",
+      "timeout": "Timeout",
+      "disconnect": "Disconnect",
+      "surrender": "Surrender",
+      "opponentTimeout": "Win (opponent timeout)",
+      "opponentDisconnect": "Win (opponent disconnect)",
+      "opponentSurrender": "Win (opponent surrender)",
+      "delete": "Delete replay",
+      "deleteConfirm": "Are you sure you want to permanently delete this replay?",
+      "deleteSuccess": "Replay deleted"
+    },
+    "paginator": {
+      "itemsPerPage": "Items per page:",
+      "nextPage": "Next page",
+      "previousPage": "Previous page",
+      "firstPage": "First page",
+      "lastPage": "Last page",
+      "of": "of"
+    },
+    "viewer": {
+      "loading": "Loading replay...",
+      "loadingProgress": "Loading replay... Turn {{current}}/{{total}}",
+      "divergenceWarning": "This replay was recorded with a different script/engine version — results may differ from the original duel",
+      "error": "Replay error",
+      "connectionLost": "Connection lost — navigation continues, fork disabled",
+      "forkDismissHint": "Dismiss to cancel fork",
+      "continue": "Continue",
+      "forkError": "Fork failed — please try again",
+      "forkIndicator": "Solo — Forked from Turn {{turn}}, Event {{idx}}"
+    },
+    "transport": {
+      "skipStart": "Skip to start",
+      "stepBack": "Step back",
+      "play": "Play",
+      "pause": "Pause",
+      "stepForward": "Step forward",
+      "skipEnd": "Skip to end",
+      "fork": "Fork",
+      "returnToReplay": "Return to replay",
+      "enableAnimations": "Enable animations",
+      "disableAnimations": "Disable animations",
+      "showDecisions": "Enable decisions",
+      "skipDecisions": "Disable decisions",
+      "viewAsPlayer1": "Switch to P1 view",
+      "viewAsPlayer2": "Switch to P2 view"
+    },
+    "timeline": {
+      "setup": "Setup",
+      "turn": "Turn {{n}}",
+      "events": "{{count}} events"
+    },
+    "debug": {
+      "title": "Debug Logs",
+      "emptyState": "No logs yet"
+    }
+  }
+}

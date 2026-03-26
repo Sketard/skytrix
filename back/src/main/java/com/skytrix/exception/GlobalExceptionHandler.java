@@ -24,46 +24,49 @@ public class GlobalExceptionHandler {
 		} else {
 			log.warn("[{}] {}", ex.getStatusCode(), ex.getReason());
 		}
-		return buildResponse(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getReason());
+		return buildResponse(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getStatusCode().is4xxClientError() ? "BAD_REQUEST" : "INTERNAL_ERROR", ex.getReason());
 	}
 
 	@ExceptionHandler(UnauthorizedException.class)
 	public ResponseEntity<Map<String, String>> handleUnauthorized(UnauthorizedException ex) {
 		log.warn("[401] {}", ex.getMessage());
-		return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		return buildResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage());
 	}
 
 	@ExceptionHandler(InternalServerError.class)
 	public ResponseEntity<Map<String, String>> handleInternalServerError(InternalServerError ex) {
 		log.error("[500] {}", ex.getMessage(), ex);
-		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", ex.getMessage());
 	}
 
 	@ExceptionHandler(RestClientException.class)
 	public ResponseEntity<Map<String, String>> handleRestClient(RestClientException ex) {
 		log.error("[503] Duel server communication error: {}", ex.getMessage(), ex);
-		return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable");
+		return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", "Service temporarily unavailable");
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
 		log.warn("[403] {}", ex.getMessage());
-		return buildResponse(HttpStatus.FORBIDDEN, "Access denied");
+		return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access denied");
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException ex) {
 		log.warn("[400] Validation failed: {}", ex.getMessage());
-		return buildResponse(HttpStatus.BAD_REQUEST, "Invalid request");
+		return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid request");
 	}
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, String>> handleUnexpected(Exception ex) {
 		log.error("[500] Unexpected error", ex);
-		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred");
 	}
 
-	private ResponseEntity<Map<String, String>> buildResponse(HttpStatus status, String message) {
-		return ResponseEntity.status(status).body(Map.of("message", message != null ? message : status.getReasonPhrase()));
+	private ResponseEntity<Map<String, String>> buildResponse(HttpStatus status, String code, String message) {
+		return ResponseEntity.status(status).body(Map.of(
+			"code", code,
+			"message", message != null ? message : status.getReasonPhrase()
+		));
 	}
 }

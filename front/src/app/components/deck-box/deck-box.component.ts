@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
 import { ShortDeck } from '../../core/model/short-deck';
 
 @Component({
   selector: 'deck-box',
-  imports: [MatIconModule, RouterLink],
+  imports: [MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './deck-box.component.html',
   styleUrl: './deck-box.component.scss',
   standalone: true,

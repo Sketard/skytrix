@@ -19,6 +19,7 @@
   transition: opacity 150ms ease;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 
   &.visible {
     opacity: 1;
