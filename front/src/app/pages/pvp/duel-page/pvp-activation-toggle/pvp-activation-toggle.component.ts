@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, model } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export type ActivationMode = 'auto' | 'on' | 'off';
 
@@ -23,6 +24,7 @@ const MODE_ICONS: Record<ActivationMode, string> = {
   styleUrl: './pvp-activation-toggle.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TranslatePipe],
 })
 export class PvpActivationToggleComponent {
   private readonly liveAnnouncer = inject(LiveAnnouncer);

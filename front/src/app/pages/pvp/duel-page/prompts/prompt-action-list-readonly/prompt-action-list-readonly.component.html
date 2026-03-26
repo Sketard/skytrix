@@ -1,0 +1,8 @@
+@if (actionSummary) {
+  <div class="action-summary">
+    <span class="action-label">{{ actionSummary.label }}</span>
+    @if (actionSummary.cardName) {
+      <span class="action-card-name">&ldquo;{{ actionSummary.cardName }}&rdquo;</span>
+    }
+  </div>
+}

@@ -8,9 +8,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import com.skytrix.model.enums.RoomStatus;
 import com.skytrix.repository.RoomRepository;
 import com.skytrix.service.DuelServerClient;
+import com.skytrix.service.ReplayService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,10 @@ public class RoomCleanupScheduler {
 
     private final RoomRepository roomRepository;
     private final DuelServerClient duelServerClient;
+    private final ReplayService replayService;
+
+    @Value("${replay.retention-days:30}")
+    private int replayRetentionDays;
 
     @Scheduled(fixedRate = 300_000)
     @Transactional
@@ -74,6 +81,14 @@ public class RoomCleanupScheduler {
 
         if (!stuckRooms.isEmpty()) {
             log.info("Cleaned up {} stuck CREATING_DUEL rooms", stuckRooms.size());
+        }
+    }
+
+    @Scheduled(fixedRate = 3_600_000)
+    public void cleanupExpiredReplays() {
+        var deleted = replayService.purgeExpiredReplays(replayRetentionDays);
+        if (deleted > 0) {
+            log.info("Purged {} expired replays (retention: {} days)", deleted, replayRetentionDays);
         }
     }
 }

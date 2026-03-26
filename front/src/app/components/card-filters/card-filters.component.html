@@ -3,7 +3,7 @@
     <div class="cardFilters-filter">
       <app-multiselect-autocomplete-filter
         [form]="localForm.controls.types"
-        [inputLabel]="'Type de carte'"
+        [inputLabel]="'cardFilters.cardType'"
         [options$]="types | stringArrayToShortResourceArray : 'card_type.' | toObservable">
       </app-multiselect-autocomplete-filter>
     </div>
@@ -26,7 +26,7 @@
     <div class="cardFilters-filter">
       <app-toggle-icon-filter
         [form]="localForm.controls.attribute" [toggleIcons]="toggleIcons"
-        [inputLabel]="'Attribut'">
+        [inputLabel]="'cardFilters.attribute'">
       </app-toggle-icon-filter>
     </div>
   </div>

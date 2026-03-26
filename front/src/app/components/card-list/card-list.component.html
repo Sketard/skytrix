@@ -21,7 +21,7 @@
         <app-card [card]="toSharedCardData(cd)" />
         @if (cd.card.banInfo < 3) {
           <div class="ban-badge">
-            <div>{{ cd.card.banInfo }}</div>
+            <div>{{ 'card_ban.' + cd.card.banInfo | translate }}</div>
           </div>
         }
         @if (deckBuildMode()) {
@@ -34,18 +34,18 @@
       </div>
       @if (displayMode() === displayType.LIST) {
         <div class="card-info">
-          <strong>{{ cd.card.name }}</strong>
+          <strong>{{ cd.card | cardName }}</strong>
           <div class="card-info-icons">
             @if (cd.card.hasAttributeIcon) {
               <span class="card-info-icons-icon">
-                <img [src]="'assets/images/attributes/' + cd.card.attribute + '.svg'" [alt]="cd.card.attribute" />{{ cd.card.attribute }}
+                <img [src]="'assets/images/attributes/' + cd.card.attribute + '.svg'" [alt]="'card_attribute.' + cd.card.attribute | translate" />{{ 'card_attribute.' + cd.card.attribute | translate }}
               </span>
             }
             <span class="card-info-icons-icon">
               @if (cd.card.isMonster) {
-                <img [src]="'assets/images/races/' + cd.card.race + '.webp'" [alt]="cd.card.race" />
+                <img [src]="'assets/images/races/' + cd.card.race + '.webp'" [alt]="'card_race.' + cd.card.race | translate" />
               }
-              {{ cd.card.race }}
+              {{ 'card_race.' + cd.card.race | translate }}
             </span>
           </div>
           <div>
@@ -53,7 +53,7 @@
             @if (cd.card.hasDefense) {
               / <span>{{ cd.card.displayDef }}</span>
             } @else if (cd.card.isLink) {
-              / Lien <span>{{ cd.card.linkval }}</span>
+              / {{ 'card_type.LINK' | translate }} <span>{{ cd.card.linkval }}</span>
             }
           </div>
         </div>

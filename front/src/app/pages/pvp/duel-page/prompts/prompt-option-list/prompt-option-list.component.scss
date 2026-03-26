@@ -81,3 +81,15 @@
     @include btn.prompt-btn-primary;
   }
 }
+
+:host(.read-only) {
+  pointer-events: none;
+  .option-btn--selected { @include btn.replay-chosen-pulse; }
+  .option-btn:not(.option-btn--selected) { @include btn.replay-not-chosen; }
+}
+
+@keyframes replay-chosen-pulse {
+  0%   { box-shadow: 0 0 0 rgba(201, 168, 76, 0); }
+  40%  { box-shadow: 0 0 20px 6px rgba(201, 168, 76, 0.8); }
+  100% { box-shadow: 0 0 8px 2px rgba(201, 168, 76, 0.3); }
+}

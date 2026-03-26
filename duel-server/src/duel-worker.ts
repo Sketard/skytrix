@@ -15,21 +15,24 @@ import type {
   OcgCardLoc,
   OcgCardLocPos,
 } from '@n1xx1/ocgcore-wasm';
-import { loadDatabase, loadScripts, loadSystemStrings, STARTUP_SCRIPTS } from './ocg-scripts.js';
+import { loadDatabase, loadScripts, loadSystemStrings, getScriptsHash, getOcgcoreVersion, setScriptsHash, setOcgcoreVersion, STARTUP_SCRIPTS } from './ocg-scripts.js';
 import { createCardReader, createScriptReader } from './ocg-callbacks.js';
 import { WATCHDOG_TIMEOUT_MS } from './types.js';
-import type { MainToWorkerMessage } from './types.js';
+import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
+import { filterMessage } from './message-filter.js';
 import type {
   ServerMessage,
+  BoardStateMsg,
   Player,
   Phase,
   CardInfo,
   PlaceOption,
-  BoardStatePayload,
   PlayerBoardState,
   BoardZone,
   CardOnField,
   Position,
+  PreComputedState,
+  DecisionMoment,
 } from './ws-protocol.js';
 import { LOCATION, POSITION } from './ws-protocol.js';
 import type { ZoneId } from './ws-protocol.js';
@@ -59,6 +62,15 @@ let systemStrings: Map<number, string> = new Map();
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
 let lastAnnounceNumberOptions: number[] = [];
+
+// Replay capture state
+let capturedResponses: CapturedResponse[] = [];
+let duelSeed: bigint[] = [];
+let capturedDecks: [Deck, Deck] = [{ main: [], extra: [] }, { main: [], extra: [] }];
+let playerUsernames: [string, string] = ['', ''];
+let deckNames: [string, string] = ['', ''];
+let duelResult: string | null = null;
+let replayEmitted = false;
 
 // =============================================================================
 // Constants & Helpers
@@ -125,6 +137,9 @@ function getOptionDesc(optionCode: bigint): string {
   if (!row) return '';
   return row[`str${strIndex + 1}`] || '';
 }
+
+/** Returns the description text if fully resolved, or empty string if it still contains unresolved '%' placeholders. */
+function resolvedDescOrEmpty(desc: string): string { return desc.includes('%') ? '' : desc; }
 
 function toCardInfo(c: OcgCardLoc | OcgCardLocPos): CardInfo {
   const info: CardInfo = { cardCode: c.code, name: getCardName(c.code), player: c.controller, location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION], sequence: c.sequence };
@@ -222,7 +237,29 @@ function shuffleArray<T>(arr: T[]): T[] {
 // OcgMessage → ServerMessage Transformation
 // =============================================================================
 
+const LOC_NAME: Record<number, string> = {
+  [LOCATION.DECK]: 'DECK', [LOCATION.HAND]: 'HAND', [LOCATION.MZONE]: 'MZONE',
+  [LOCATION.SZONE]: 'SZONE', [LOCATION.GRAVE]: 'GY', [LOCATION.BANISHED]: 'BANISHED',
+  [LOCATION.EXTRA]: 'EXTRA', [LOCATION.OVERLAY]: 'OVERLAY',
+};
+function locName(loc: number): string { return LOC_NAME[loc] ?? `0x${loc.toString(16)}`; }
+
 function transformMessage(msg: OcgMessage): ServerMessage | null {
+  if (msg.type === OcgMessageType.MOVE) {
+    const m = msg as any;
+    console.log('[DBG:OCG-ORDER] MOVE %s (%d) %s/seq%d → %s/seq%d  player=%d',
+      getCardName(m.card), m.card,
+      locName(m.from.location), m.from.sequence,
+      locName(m.to.location), m.to.sequence,
+      m.from.controller);
+  } else if (msg.type === OcgMessageType.CHAINING) {
+    const m = msg as any;
+    console.log('[DBG:OCG-ORDER] CHAINING %s (%d) at %s/seq%d  chain_size=%d',
+      getCardName(m.code), m.code, locName(m.location), m.sequence, m.chain_size);
+  } else {
+    console.log('[DBG:OCG-ORDER] type=%s (%d) player=%s',
+      OcgMessageType[msg.type] ?? 'UNKNOWN', msg.type, (msg as any).player ?? '?');
+  }
   switch (msg.type) {
     // --- State tracking only (no DTO) ---
     case OcgMessageType.START:
@@ -438,15 +475,19 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
     }
 
-    case OcgMessageType.SELECT_EFFECTYN:
+    case OcgMessageType.SELECT_EFFECTYN: {
+      const effectDesc = getOptionDesc(msg.description as bigint);
       return {
         type: 'SELECT_EFFECTYN', player: msg.player as Player,
         cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
+        descriptionText: resolvedDescOrEmpty(effectDesc),
       };
+    }
 
     case OcgMessageType.SELECT_YESNO: {
       const desc = Number(msg.description);
-      return { type: 'SELECT_YESNO', player: msg.player as Player, description: desc, descriptionText: getOptionDesc(BigInt(desc)) };
+      const yesNoDesc = getOptionDesc(BigInt(desc));
+      return { type: 'SELECT_YESNO', player: msg.player as Player, description: desc, descriptionText: resolvedDescOrEmpty(yesNoDesc) };
     }
 
     case OcgMessageType.SELECT_PLACE:
@@ -853,6 +894,40 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
 }
 
 // =============================================================================
+// Replay Capture
+// =============================================================================
+
+function capturedSetResponse(d: OcgDuelHandle, response: unknown): void {
+  console.log('[Replay Capture] Response #%d: %o', capturedResponses.length, response);
+  capturedResponses.push({ data: response, timestamp: new Date().toISOString() });
+  core!.duelSetResponse(d, response as never);
+}
+
+function emitReplayData(): void {
+  if (replayEmitted) return;
+  replayEmitted = true;
+  console.log('[Replay Capture] Emitting replay data: %d responses, result=%s', capturedResponses.length, duelResult);
+  port.postMessage({
+    type: 'WORKER_REPLAY_DATA',
+    duelId,
+    payload: {
+      seed: duelSeed.map(s => s.toString()),
+      decks: capturedDecks,
+      playerResponses: capturedResponses,
+      metadata: {
+        playerUsernames,
+        deckNames,
+        turnCount,
+        result: duelResult,
+        date: new Date().toISOString(),
+        scriptsHash: getScriptsHash(),
+        ocgcoreVersion: getOcgcoreVersion(),
+      },
+    },
+  });
+}
+
+// =============================================================================
 // Duel Loop
 // =============================================================================
 
@@ -887,6 +962,7 @@ function runDuelLoop(): void {
     console.log('[WORKER] duelGetMessage count=%d', messages.length);
 
     let hasRetry = false;
+    let hasCostMoves = false;
     for (const msg of messages) {
       // Track state for BOARD_STATE construction
       updateState(msg);
@@ -901,9 +977,15 @@ function runDuelLoop(): void {
       // skipRps auto-respond: when OCGCore asks for RPS, respond immediately
       if (skipRpsFlag && msg.type === OcgMessageType.ROCK_PAPER_SCISSORS) {
         const playerIndex = msg.player as number;
-        core.duelSetResponse(duel, { type: 20, value: playerIndex === 0 ? 1 : 3 } as never);
+        capturedSetResponse(duel, { type: 20, value: playerIndex === 0 ? 1 : 3 });
         skipRpsAutoResponded = true;
         continue;
+      }
+
+      // Replay: track duel result from OCGCore messages (skip in fork mode — no replay capture)
+      if (msg.type === OcgMessageType.WIN && !forkMode) {
+        const p = msg.player as number;
+        duelResult = p === 0 ? 'VICTORY' : p === 1 ? 'DEFEAT' : 'DRAW';
       }
 
       // DEBUG: Log every OCGCore message
@@ -916,7 +998,28 @@ function runDuelLoop(): void {
           console.log('[WORKER][MOVE] card=%s (%d) from=loc%d/seq%d → to=loc%d/seq%d',
             dto.cardName, dto.cardCode, dto.fromLocation, dto.fromSequence,
             dto.toLocation, dto.toSequence);
+          hasCostMoves = true;
         }
+        // Emit intermediate BOARD_STATE before chain resolution starts so the client
+        // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
+        // blocks applyPendingBoardState().
+        if (dto.type === 'MSG_CHAIN_SOLVING' && hasCostMoves) {
+          console.log('[SEQ] ──── BOARD_STATE (intermediate, before chain solving) ────');
+          port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
+          hasCostMoves = false;
+        }
+        console.log('[SEQ] EMIT type=%-20s status=%-8s | %s',
+          dto.type,
+          status === OcgProcessResult.CONTINUE ? 'CONTINUE' : status === OcgProcessResult.WAITING ? 'WAITING' : 'END',
+          dto.type === 'MSG_MOVE' ? `${dto.cardName} loc${dto.fromLocation}/seq${dto.fromSequence} → loc${dto.toLocation}/seq${dto.toSequence}` :
+          dto.type === 'MSG_DRAW' ? `player=${dto.player} count=${dto.cards.length}` :
+          dto.type === 'MSG_CONFIRM_CARDS' ? `player=${dto.player} cards=[${dto.cards.map((c: {cardCode: number}) => c.cardCode).join(',')}]` :
+          dto.type === 'MSG_SHUFFLE_HAND' ? `player=${dto.player}` :
+          dto.type === 'MSG_SHUFFLE_DECK' ? `player=${dto.player}` :
+          dto.type === 'MSG_CHAINING' ? `chain=${dto.chainIndex} card=${dto.cardCode}` :
+          dto.type === 'MSG_CHAIN_SOLVING' ? `chain=${dto.chainIndex}` :
+          dto.type === 'MSG_CHAIN_SOLVED' ? `chain=${dto.chainIndex}` :
+          '');
         port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
       } else {
         console.warn('[WORKER] transformMessage returned null for type=%s (%d)', OcgMessageType[msg.type] ?? 'UNKNOWN', msg.type);
@@ -929,6 +1032,7 @@ function runDuelLoop(): void {
     }
 
     if (status === OcgProcessResult.END) {
+      if (!forkMode) emitReplayData();
       cleanup();
       return;
     }
@@ -939,11 +1043,83 @@ function runDuelLoop(): void {
         continue;
       }
       // Player prompt — send BOARD_STATE snapshot then wait
+      console.log('[SEQ] ──── BOARD_STATE (final, before prompt) ────');
       port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
       return;
     }
     // OcgProcessResult.CONTINUE → loop again
   }
+}
+
+// =============================================================================
+// Shared OCG Engine Init (DRY: used by initDuel, initReplay, initFork)
+// =============================================================================
+
+interface OcgInitResult {
+  newCore: OcgCoreSync;
+  handle: OcgDuelHandle;
+  db: import('./types.js').CardDB;
+  strings: Map<number, string>;
+}
+
+async function initOcgEngine(
+  seed: [bigint, bigint, bigint, bigint],
+  logPrefix: string,
+): Promise<OcgInitResult | null> {
+  const dbPath = join(dataDir, 'cards.cdb');
+  const scriptsDir = join(dataDir, 'scripts_full');
+
+  const newCore = await createCore({ sync: true });
+  const db = loadDatabase(dbPath);
+  const strings = loadSystemStrings(join(dataDir, 'strings.conf'));
+  const scripts = loadScripts(scriptsDir);
+  const cardReader = createCardReader(db);
+  const scriptReader = createScriptReader(scripts);
+
+  const handle = newCore.createDuel({
+    flags: OcgDuelMode.MODE_MR5,
+    seed,
+    team1: { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 },
+    team2: { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 },
+    cardReader,
+    scriptReader,
+    errorHandler: (_type, text) => {
+      if (!text.includes('script not found')) console.error(`[${logPrefix}] [OCG] ${text}`);
+    },
+  });
+
+  if (!handle) return null;
+
+  for (const name of STARTUP_SCRIPTS) {
+    const content = scripts.startupScripts.get(name);
+    if (content) newCore.loadScript(handle, name, content);
+  }
+
+  return { newCore, handle, db, strings };
+}
+
+function loadDeckToOcg(c: OcgCoreSync, d: OcgDuelHandle, deck: Deck, team: 0 | 1, shuffle: boolean): Deck {
+  const mainCards = shuffle ? shuffleArray(deck.main) : deck.main;
+  for (const code of mainCards) {
+    c.duelNewCard(d, {
+      code, team, duelist: 0, controller: team,
+      location: OcgLocation.DECK, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
+    });
+  }
+  for (const code of deck.extra) {
+    c.duelNewCard(d, {
+      code, team, duelist: 0, controller: team,
+      location: OcgLocation.EXTRA, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
+    });
+  }
+  return { main: [...mainCards], extra: [...deck.extra] };
+}
+
+function resetDuelState(): void {
+  lp = [8000, 8000];
+  turnPlayer = 0;
+  turnCount = 0;
+  phase = 'DRAW';
 }
 
 // =============================================================================
@@ -956,74 +1132,37 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
   skipShuffleFlag = msg.skipShuffle === true;
   const [deck0, deck1] = msg.decks;
 
-  const dbPath = join(dataDir, 'cards.cdb');
-  const scriptsDir = join(dataDir, 'scripts_full');
+  // Inject pre-computed metadata from main thread (avoids re-reading 22k scripts in worker)
+  setScriptsHash(msg.scriptsHash);
+  setOcgcoreVersion(msg.ocgcoreVersion);
 
-  // 1. Initialize OCGCore WASM
-  core = await createCore({ sync: true });
+  // Replay: capture metadata from INIT_DUEL
+  playerUsernames = msg.playerUsernames;
+  deckNames = msg.deckNames;
+  capturedResponses = [];
+  duelResult = null;
+  replayEmitted = false;
 
-  // 2. Load data
-  const db = loadDatabase(dbPath);
-  cardDb = db;
-  systemStrings = loadSystemStrings(join(dataDir, 'strings.conf'));
-  const scripts = loadScripts(scriptsDir);
-  const cardReader = createCardReader(db);
-  const scriptReader = createScriptReader(scripts);
+  const seed = generateSeed();
+  duelSeed = [...seed];
 
-  // 3. Create duel instance
-  const handle = core.createDuel({
-    flags: OcgDuelMode.MODE_MR5,
-    seed: generateSeed(),
-    team1: { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 },
-    team2: { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 },
-    cardReader,
-    scriptReader,
-    errorHandler: (_type, text) => {
-      if (!text.includes('script not found')) console.error(`[OCG] ${text}`);
-    },
-  });
-
-  if (!handle) {
+  const result = await initOcgEngine(seed, 'WORKER');
+  if (!result) {
     port.postMessage({ type: 'WORKER_ERROR', duelId, error: 'Failed to create duel instance' });
     return;
   }
-  duel = handle;
+  core = result.newCore;
+  duel = result.handle;
+  cardDb = result.db;
+  systemStrings = result.strings;
 
-  // 4. Load startup scripts
-  for (const name of STARTUP_SCRIPTS) {
-    const content = scripts.startupScripts.get(name);
-    if (content) core.loadScript(duel, name, content);
-  }
+  const loadedDeck0 = loadDeckToOcg(core, duel, deck0, 0, !skipShuffleFlag);
+  const loadedDeck1 = loadDeckToOcg(core, duel, deck1, 1, !skipShuffleFlag);
+  capturedDecks = [loadedDeck0, loadedDeck1];
 
-  // 5. Load player decks
-  function loadDeck(deck: { main: number[]; extra: number[] }, team: 0 | 1): void {
-    const mainCards = skipShuffleFlag ? deck.main : shuffleArray(deck.main);
-    for (const code of mainCards) {
-      core!.duelNewCard(duel!, {
-        code, team, duelist: 0, controller: team,
-        location: OcgLocation.DECK, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
-      });
-    }
-    for (const code of deck.extra) {
-      core!.duelNewCard(duel!, {
-        code, team, duelist: 0, controller: team,
-        location: OcgLocation.EXTRA, sequence: 0, position: OcgPosition.FACEDOWN_ATTACK,
-      });
-    }
-  }
-  loadDeck(deck0, 0);
-  loadDeck(deck1, 1);
-
-  // 6. Start duel
-  lp = [8000, 8000];
-  turnPlayer = 0;
-  turnCount = 0;
-  phase = 'DRAW';
-
+  resetDuelState();
   core.startDuel(duel);
   port.postMessage({ type: 'WORKER_DUEL_CREATED', duelId });
-
-  // 7. Start the duel loop
   runDuelLoop();
 }
 
@@ -1043,6 +1182,580 @@ function cleanup(): void {
 }
 
 // =============================================================================
+// Replay Pre-Computation
+// =============================================================================
+
+const SELECT_MESSAGE_TYPES = new Set([
+  OcgMessageType.SELECT_IDLECMD,
+  OcgMessageType.SELECT_BATTLECMD,
+  OcgMessageType.SELECT_CARD,
+  OcgMessageType.SELECT_CHAIN,
+  OcgMessageType.SELECT_EFFECTYN,
+  OcgMessageType.SELECT_YESNO,
+  OcgMessageType.SELECT_PLACE,
+  OcgMessageType.SELECT_DISFIELD,
+  OcgMessageType.SELECT_POSITION,
+  OcgMessageType.SELECT_OPTION,
+  OcgMessageType.SELECT_TRIBUTE,
+  OcgMessageType.SELECT_SUM,
+  OcgMessageType.SELECT_UNSELECT_CARD,
+  OcgMessageType.SELECT_COUNTER,
+  OcgMessageType.SORT_CARD,
+  OcgMessageType.SORT_CHAIN,
+  OcgMessageType.ANNOUNCE_RACE,
+  OcgMessageType.ANNOUNCE_ATTRIB,
+  OcgMessageType.ANNOUNCE_CARD,
+  OcgMessageType.ANNOUNCE_NUMBER,
+  OcgMessageType.ROCK_PAPER_SCISSORS,
+]);
+
+const TRANSITION_BOUNDARY_PROMPTS = new Set([
+  OcgMessageType.SELECT_IDLECMD,
+  OcgMessageType.SELECT_BATTLECMD,
+]);
+
+const PHASE_LABELS: Record<number, string> = {
+  1: 'Draw Phase', 2: 'Standby Phase', 4: 'Main Phase 1', 8: 'Battle Start',
+  16: 'Battle Step', 32: 'Damage Step', 64: 'Damage Calc',
+  128: 'Battle Phase', 256: 'Main Phase 2', 512: 'End Phase',
+};
+
+// OCGCore reason bitmask flags (from card_data.h)
+const REASON_DESTROY   = 0x1;
+const REASON_RELEASE   = 0x2;
+const REASON_FUSION    = 0x8;
+const REASON_RITUAL    = 0x10;
+const REASON_SYNCHRO   = 0x20;
+const REASON_XYZ       = 0x40;
+const REASON_LINK      = 0x80;
+const REASON_DISCARD   = 0x400;
+const REASON_SUMMON    = 0x800;
+const REASON_SPSUMMON  = 0x1000;
+
+function describeMoveLabel(from: number, to: number, reason: number, cardName: string): string {
+  // Summon to Monster Zone
+  if (to === LOCATION.MZONE) {
+    if (reason & REASON_SUMMON)    return `Normal Summon: ${cardName}`;
+    if (reason & REASON_FUSION)    return `Fusion Summon: ${cardName}`;
+    if (reason & REASON_RITUAL)    return `Ritual Summon: ${cardName}`;
+    if (reason & REASON_SYNCHRO)   return `Synchro Summon: ${cardName}`;
+    if (reason & REASON_XYZ)       return `XYZ Summon: ${cardName}`;
+    if (reason & REASON_LINK)      return `Link Summon: ${cardName}`;
+    if (reason & REASON_SPSUMMON)  return `Special Summon: ${cardName}`;
+    return `Summon: ${cardName}`;
+  }
+  // To graveyard
+  if (to === LOCATION.GRAVE) {
+    if (reason & REASON_DESTROY)  return `Destroy: ${cardName}`;
+    if (reason & REASON_RELEASE)  return `Tribute: ${cardName}`;
+    if (reason & REASON_DISCARD)  return `Discard: ${cardName}`;
+    return `Send to GY: ${cardName}`;
+  }
+  if (to === LOCATION.BANISHED)                    return `Banish: ${cardName}`;
+  if (to === LOCATION.HAND && from !== LOCATION.DECK) return `Return to hand: ${cardName}`;
+  if (to === LOCATION.DECK)                        return `Return to Deck: ${cardName}`;
+  if (to === LOCATION.OVERLAY)                     return `Attach: ${cardName}`;
+  if (to === LOCATION.SZONE)                       return `Set: ${cardName}`;
+  return `Move: ${cardName}`;
+}
+
+function generateLabel(events: ServerMessage[]): string {
+  for (const e of events) {
+    switch (e.type) {
+      case 'MSG_MOVE': return describeMoveLabel(e.fromLocation, e.toLocation, e.reason, e.cardName);
+      case 'MSG_DRAW': return `Draw: ${e.cards.length} card(s)`;
+      case 'MSG_DAMAGE': return `Damage: Player ${e.player + 1} -${e.amount}`;
+      case 'MSG_CHAINING': return `Activate: ${e.cardName}`;
+      case 'MSG_FLIP_SUMMONING': return `Flip Summon: ${e.cardName}`;
+      case 'MSG_SET': return `Set: card`;
+      case 'MSG_ATTACK':
+        return e.defenderPlayer !== null
+          ? `Attack: P${e.attackerPlayer + 1} M${e.attackerSequence + 1} → P${e.defenderPlayer + 1} M${e.defenderSequence! + 1}`
+          : `Direct Attack: P${e.attackerPlayer + 1} M${e.attackerSequence + 1}`;
+      case 'MSG_RECOVER': return `Recover: Player ${e.player + 1} +${e.amount}`;
+      default: break;
+    }
+  }
+  // Skip non-visual event types — find the first meaningful game event
+  const SKIP_TYPES = new Set(['WAITING_RESPONSE', 'MSG_CHAIN_END', 'MSG_CHAIN_SOLVING', 'MSG_CHAIN_SOLVED', 'MSG_HINT', 'MSG_CONFIRM_CARDS']);
+  for (const e of events) {
+    if (!e.type.startsWith('SELECT_') && !SKIP_TYPES.has(e.type)) {
+      return e.type;
+    }
+  }
+  return '';
+}
+
+/** Strip chainIndex from single-link chains; prefix label with CL{n} for multi-link chains. */
+function finalizeChainGroups(states: PreComputedState[]): void {
+  let i = 0;
+  while (i < states.length) {
+    if (states[i].chainIndex == null) { i++; continue; }
+    // Find the contiguous run of chain-linked states
+    const start = i;
+    while (i < states.length && states[i].chainIndex != null) i++;
+    if (i - start <= 1) {
+      // Single-link chain — remove chainIndex, keep plain label
+      delete states[start].chainIndex;
+    } else {
+      // Multi-link chain — prefix labels with CL{n}
+      for (let j = start; j < i; j++) {
+        states[j].label = `CL${states[j].chainIndex! + 1}: ${states[j].label}`;
+      }
+    }
+  }
+}
+
+function emitTurnBatch(replayDuelId: string, turnNum: number, states: PreComputedState[]): void {
+  if (states.length === 0) return;
+  const MAX_BATCH_BYTES = 512 * 1024;
+  const serialized = JSON.stringify(states);
+  if (serialized.length > MAX_BATCH_BYTES) {
+    // Sub-batch: start with groups of 50, validate each chunk individually
+    for (let i = 0; i < states.length;) {
+      let end = Math.min(i + 50, states.length);
+      let chunk = states.slice(i, end);
+      // If a chunk still exceeds the limit, halve it until it fits
+      while (chunk.length > 1 && JSON.stringify(chunk).length > MAX_BATCH_BYTES) {
+        end = i + Math.ceil(chunk.length / 2);
+        chunk = states.slice(i, end);
+      }
+      port.postMessage({
+        type: 'WORKER_REPLAY_BOARD_STATES',
+        duelId: replayDuelId,
+        turnNumber: turnNum,
+        states: chunk,
+      });
+      i = end;
+    }
+  } else {
+    port.postMessage({
+      type: 'WORKER_REPLAY_BOARD_STATES',
+      duelId: replayDuelId,
+      turnNumber: turnNum,
+      states,
+    });
+  }
+}
+
+async function initReplay(msg: InitReplayMessage): Promise<void> {
+  duelId = msg.duelId;
+  skipRpsFlag = true;
+  skipShuffleFlag = true;
+
+  const seed = msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint];
+  const result = await initOcgEngine(seed, `Replay ${msg.duelId}`);
+  if (!result) {
+    port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_INIT_FAILED', message: 'Failed to create duel instance' });
+    return;
+  }
+  core = result.newCore;
+  duel = result.handle;
+  cardDb = result.db;
+  systemStrings = result.strings;
+
+  loadDeckToOcg(core, duel, msg.decks[0], 0, false);
+  loadDeckToOcg(core, duel, msg.decks[1], 1, false);
+
+  resetDuelState();
+  core.startDuel(duel);
+  runReplayPreComputation(msg);
+}
+
+function flushState(
+  turnStates: PreComputedState[],
+  events: ServerMessage[],
+  decisions: DecisionMoment[],
+  label: string,
+  responseIndex: number,
+  chainIndex?: number,
+): void {
+  // Skip empty states (only SELECT_*/WAITING_RESPONSE, no visual events)
+  if (!label) return;
+  const boardState = (buildBoardState() as BoardStateMsg).data;
+  turnStates.push({
+    boardState,
+    events: [...events],
+    label,
+    responseCount: responseIndex,
+    ...(decisions.length > 0 ? { decisions: [...decisions] } : {}),
+    ...(chainIndex != null ? { chainIndex } : {}),
+  });
+}
+
+function runReplayPreComputation(msg: InitReplayMessage): void {
+  if (!core || !duel) return;
+
+  let responseIndex = 0;
+  let currentTurn = 0; // Turn 0 = "Setup"
+  let turnStates: PreComputedState[] = [];
+  let events: ServerMessage[] = [];
+  let currentDecisions: DecisionMoment[] = [];
+  let lastHint: { hintType: number; value: number; cardName: string; hintAction: string } | null = null;
+  let lastConfirmedCards: CardInfo[] | null = null;
+  let hasWinOrDraw = false;
+  let activeChainIndex: number | null = null; // Track current chain link depth
+  const MAX_ITERATIONS = 100_000; // CPU-spin guard — well above any real duel
+  let iterations = 0;
+
+  console.log('[Replay %s] Starting pre-computation with %d responses', duelId, msg.playerResponses.length);
+
+  while (true) {
+    if (++iterations > MAX_ITERATIONS) {
+      console.error('[Replay %s] Max iterations reached (%d) — aborting', duelId, MAX_ITERATIONS);
+      port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_MAX_ITERATIONS', message: 'Pre-computation exceeded maximum iterations' });
+      cleanup();
+      return;
+    }
+
+    let status: number;
+    try {
+      status = core.duelProcess(duel);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Replay %s] duelProcess threw: %s', duelId, message);
+      port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_COMPUTATION_ERROR', message: `Pre-computation error: ${message}` });
+      cleanup();
+      return;
+    }
+
+    const messages = core.duelGetMessage(duel);
+
+    for (const rawMsg of messages) {
+      // Explicit MSG_RETRY detection (AC#4)
+      if (rawMsg.type === OcgMessageType.RETRY) {
+        console.error('[Replay %s] MSG_RETRY encountered at response index %d — divergence', duelId, responseIndex);
+        port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_RETRY', message: 'Replay diverged: MSG_RETRY encountered (script/core version mismatch)' });
+        cleanup();
+        return;
+      }
+
+      // Flush accumulated events BEFORE phase update so boardState captures the old phase
+      if (rawMsg.type === OcgMessageType.NEW_PHASE) {
+        if (events.length > 0 || currentDecisions.length > 0) {
+          flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+          events = [];
+          currentDecisions = [];
+        }
+      }
+
+      // Track state for buildBoardState()
+      updateState(rawMsg);
+
+      // Track win/draw for end-of-duel verification
+      if (rawMsg.type === OcgMessageType.WIN || rawMsg.type === OcgMessageType.DRAW) {
+        hasWinOrDraw = true;
+      }
+
+      // Track turn changes — flush accumulated decisions before emitting turn batch
+      if (rawMsg.type === OcgMessageType.NEW_TURN) {
+        if (events.length > 0 || currentDecisions.length > 0) {
+          flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+          events = [];
+          currentDecisions = [];
+        }
+        // Emit completed turn batch BEFORE incrementing
+        finalizeChainGroups(turnStates);
+        emitTurnBatch(duelId, currentTurn, turnStates);
+        currentTurn++;
+        turnStates = [];
+        console.log('[Replay %s] Turn %d started', duelId, currentTurn);
+      }
+
+      // Translate via message pipeline + omniscient filter
+      const translated = transformMessage(rawMsg);
+      if (translated) {
+        const filtered = filterMessage(translated, 0 as Player, true); // omniscient
+        if (filtered) {
+          // Track hint/confirmedCards accumulators (metadata, not pushed to events)
+          if (filtered.type === 'MSG_HINT') {
+            lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName, hintAction: filtered.hintAction };
+          } else if (filtered.type === 'MSG_CONFIRM_CARDS') {
+            lastConfirmedCards = filtered.cards;
+            events.push(filtered); // Also push to events so the front-end can animate the reveal
+          } else if (filtered.type !== 'SELECT_IDLECMD' && filtered.type !== 'SELECT_BATTLECMD') {
+            // Flush before each chain activation so each effect gets its own timeline entry
+            if (filtered.type === 'MSG_CHAINING') {
+              if (events.length > 0) {
+                flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined);
+                events = [];
+                currentDecisions = [];
+              }
+              activeChainIndex = filtered.chainIndex;
+            } else if (filtered.type === 'MSG_CHAIN_END') {
+              // Flush the last chain link's events BEFORE clearing activeChainIndex,
+              // so the final link keeps its chainIndex for timeline grouping.
+              if (events.length > 0) {
+                flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex, activeChainIndex ?? undefined);
+                events = [];
+                currentDecisions = [];
+              }
+              activeChainIndex = null;
+              // Flush MSG_CHAIN_END as its own state WITHOUT chainIndex.
+              // This acts as a separator between consecutive chains in the timeline.
+              // The front-end hides it (HIDDEN_LABELS in subEventSegments).
+              events.push(filtered);
+              flushState(turnStates, events, currentDecisions, 'MSG_CHAIN_END', responseIndex);
+              events = [];
+              currentDecisions = [];
+              continue; // already pushed+flushed — skip the push below
+            }
+            events.push(filtered);
+          }
+        }
+      }
+
+      // Always create a state entry for the new phase (ensures every phase appears in timeline)
+      if (rawMsg.type === OcgMessageType.NEW_PHASE) {
+        const phaseLabel = PHASE_LABELS[rawMsg.phase as number] ?? 'Phase Change';
+        flushState(turnStates, events, currentDecisions, phaseLabel, responseIndex);
+        events = [];
+        currentDecisions = [];
+      }
+
+      // Feed responses at select prompts
+      if (SELECT_MESSAGE_TYPES.has(rawMsg.type)) {
+        console.log('[Replay %s] SELECT prompt #%d: type=%s (%d), player=%s, total_responses=%d',
+          duelId, responseIndex, OcgMessageType[rawMsg.type] ?? 'UNKNOWN', rawMsg.type,
+          (rawMsg as any).player, msg.playerResponses.length);
+
+        if (responseIndex >= msg.playerResponses.length) {
+          // Surrender/disconnect/timeout: running out of responses is expected — duel was interrupted mid-prompt
+          const interruptResults = new Set(['SURRENDER', 'DISCONNECT', 'TIMEOUT']);
+          if (msg.metadata.result && interruptResults.has(msg.metadata.result)) {
+            console.log('[Replay %s] End of recorded responses at index %d (result=%s) — treating as replay end', duelId, responseIndex, msg.metadata.result);
+            // Emit remaining events as final state
+            if (events.length > 0 || currentDecisions.length > 0) {
+              flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+            }
+            finalizeChainGroups(turnStates);
+            emitTurnBatch(duelId, currentTurn, turnStates);
+            port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
+            cleanup();
+            return;
+          }
+
+          const detail = `ran out at index ${responseIndex}/${msg.playerResponses.length}, SELECT type=${OcgMessageType[rawMsg.type] ?? rawMsg.type}, player=${(rawMsg as any).player}, iteration=${iterations}, turn=${currentTurn}`;
+          console.error('[Replay %s] Divergence: %s', duelId, detail);
+          port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESPONSES', message: `Replay diverged: ${detail}` });
+          cleanup();
+          return;
+        }
+
+        const response = msg.playerResponses[responseIndex];
+        const isBoundary = TRANSITION_BOUNDARY_PROMPTS.has(rawMsg.type);
+
+        if (isBoundary) {
+          // Boundary prompt: flush accumulated events + decisions, then feed response
+          if (events.length > 0 || currentDecisions.length > 0) {
+            flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+            events = [];
+            currentDecisions = [];
+          }
+        } else {
+          // Intermediate prompt: accumulate decision with hint/confirmedCards context.
+          // Capture a board state snapshot BEFORE feeding the response — this matches
+          // the BOARD_STATE the live PvP client receives when status === WAITING.
+          const prompt = events[events.length - 1]; // The SELECT_* translated message
+          const snapshotData = (buildBoardState() as BoardStateMsg).data;
+          const snapshot = filterMessage({ type: 'BOARD_STATE', data: snapshotData } as ServerMessage, 0 as Player, true);
+          const decision: DecisionMoment = {
+            prompt,
+            response: { data: response.data, ...(response.timestamp ? { timestamp: response.timestamp } : {}) },
+            player: (rawMsg as any).player as Player,
+            ...(lastHint ? { hint: lastHint } : {}),
+            ...(lastConfirmedCards ? { confirmedCards: lastConfirmedCards } : {}),
+            boardState: (snapshot as BoardStateMsg).data,
+          };
+          currentDecisions.push(decision);
+          // Consume hint/confirmedCards after use
+          lastHint = null;
+          lastConfirmedCards = null;
+        }
+
+        console.log('[Replay %s] Feeding response #%d: %o', duelId, responseIndex, response.data);
+        core.duelSetResponse(duel, response.data as never);
+        responseIndex++;
+      }
+    }
+
+    if (status === OcgProcessResult.END) {
+      // Capture any remaining events (MSG_WIN, final damage, etc.) into a final state
+      if (events.length > 0 || currentDecisions.length > 0) {
+        flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+      }
+      // Emit final turn batch
+      finalizeChainGroups(turnStates);
+      emitTurnBatch(duelId, currentTurn, turnStates);
+
+      // Verify duel ended normally (Task 3.5: END without MSG_WIN/MSG_DRAW = divergence)
+      if (!hasWinOrDraw) {
+        console.error('[Replay %s] duelProcess returned END without MSG_WIN or MSG_DRAW — possible divergence', duelId);
+        port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESULT', message: 'Replay diverged: duel ended without a win or draw result' });
+        cleanup();
+        return;
+      }
+
+      console.log('[Replay %s] Pre-computation complete: %d turns, %d responses consumed', duelId, currentTurn + 1, responseIndex);
+      port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
+      cleanup();
+      return;
+    }
+
+    // WAITING without a select prompt means MSG_RETRY or unexpected state
+    if (status === OcgProcessResult.WAITING && responseIndex > 0) {
+      const hasSelect = messages.some(m => SELECT_MESSAGE_TYPES.has(m.type));
+      if (!hasSelect) {
+        console.error('[Replay %s] WAITING but no select message — possible divergence', duelId);
+        port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_UNEXPECTED', message: 'Replay diverged: unexpected WAITING state without select prompt' });
+        cleanup();
+        return;
+      }
+    }
+
+    // OcgProcessResult.CONTINUE → loop again
+  }
+}
+
+// =============================================================================
+// Fork Reconstruction
+// =============================================================================
+
+let forkMode = false;
+let forkPendingSelect: OcgMessage | null = null;
+
+async function initFork(msg: InitForkMessage): Promise<void> {
+  duelId = msg.duelId;
+  skipRpsFlag = true;
+  skipShuffleFlag = true;
+
+  // Inject pre-computed metadata from main thread (same as initDuel)
+  setScriptsHash(msg.scriptsHash);
+  setOcgcoreVersion(msg.ocgcoreVersion);
+
+  const seed = msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint];
+  const result = await initOcgEngine(seed, `Fork ${msg.duelId}`);
+  if (!result) {
+    port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_INIT_FAILED', message: 'Failed to create duel instance' });
+    return;
+  }
+  core = result.newCore;
+  duel = result.handle;
+  cardDb = result.db;
+  systemStrings = result.strings;
+
+  loadDeckToOcg(core, duel, msg.decks[0], 0, false);
+  loadDeckToOcg(core, duel, msg.decks[1], 1, false);
+
+  resetDuelState();
+  core.startDuel(duel);
+  runForkReconstruction(msg);
+}
+
+function runForkReconstruction(msg: InitForkMessage): void {
+  if (!core || !duel) return;
+
+  let responseIndex = 0;
+  const MAX_ITERATIONS = 100_000;
+  let iterations = 0;
+
+  console.log('[Fork %s] Starting reconstruction with %d target responses', duelId, msg.targetResponseCount);
+
+  while (true) {
+    if (++iterations > MAX_ITERATIONS) {
+      console.error('[Fork %s] Max iterations reached (%d) — aborting', duelId, MAX_ITERATIONS);
+      port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_MAX_ITERATIONS', message: 'Fork reconstruction exceeded maximum iterations' });
+      cleanup();
+      return;
+    }
+
+    let status: number;
+    try {
+      status = core.duelProcess(duel);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Fork %s] duelProcess threw: %s', duelId, message);
+      port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_COMPUTATION_ERROR', message: `Fork reconstruction error: ${message}` });
+      cleanup();
+      return;
+    }
+
+    const messages = core.duelGetMessage(duel);
+
+    for (const rawMsg of messages) {
+      if (rawMsg.type === OcgMessageType.RETRY) {
+        console.error('[Fork %s] MSG_RETRY at response index %d — divergence', duelId, responseIndex);
+        port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_RETRY', message: 'Fork diverged: MSG_RETRY encountered' });
+        cleanup();
+        return;
+      }
+
+      updateState(rawMsg);
+
+      if (SELECT_MESSAGE_TYPES.has(rawMsg.type)) {
+        if (responseIndex >= msg.targetResponseCount) {
+          // Reached fork point — WASM is waiting for player input
+          console.log('[Fork %s] Reached fork point at response %d', duelId, responseIndex);
+          forkPendingSelect = rawMsg;
+          performSanityCheck(msg.expectedState);
+          return;
+        }
+
+        if (responseIndex >= msg.playerResponses.length) {
+          console.error('[Fork %s] Ran out of responses at index %d', duelId, responseIndex);
+          port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESPONSES', message: 'Fork diverged: ran out of recorded responses' });
+          cleanup();
+          return;
+        }
+
+        core.duelSetResponse(duel, msg.playerResponses[responseIndex].data as never);
+        responseIndex++;
+      }
+    }
+
+    if (status === OcgProcessResult.END) {
+      console.error('[Fork %s] Duel ended before reaching fork point (response %d/%d)', duelId, responseIndex, msg.targetResponseCount);
+      port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESULT', message: 'Fork failed: duel ended before reaching target response count' });
+      cleanup();
+      return;
+    }
+  }
+}
+
+function performSanityCheck(expectedState: InitForkMessage['expectedState']): void {
+  const actualLp: [number, number] = [lp[0], lp[1]];
+  const actualTurn = turnCount;
+  const actualPhase = PHASE_MAP_REVERSE[phase];
+  if (actualPhase === undefined) {
+    console.warn('[Fork %s] Unknown phase "%s" during sanity check — defaulting to 0', duelId, phase);
+  }
+
+  const mismatches: string[] = [];
+  if (expectedState.lp[0] !== actualLp[0] || expectedState.lp[1] !== actualLp[1]) {
+    mismatches.push(`LP mismatch: expected [${expectedState.lp}] got [${actualLp}]`);
+  }
+  if (expectedState.turnNumber !== actualTurn) {
+    mismatches.push(`Turn mismatch: expected ${expectedState.turnNumber} got ${actualTurn}`);
+  }
+  if (expectedState.phase !== actualPhase) {
+    mismatches.push(`Phase mismatch: expected ${expectedState.phase} got ${actualPhase}`);
+  }
+
+  const match = mismatches.length === 0;
+  const details = match ? undefined : mismatches.join('; ');
+
+  console.log('[Fork %s] Sanity check: %s%s', duelId, match ? 'PASS' : 'MISMATCH', details ? ` — ${details}` : '');
+
+  forkMode = true;
+  port.postMessage({ type: 'WORKER_FORK_READY', duelId, sanityResult: { match, details } });
+  // Worker stays alive — waiting for PLAYER_RESPONSE messages in solo mode
+}
+
+const PHASE_MAP_REVERSE: Record<Phase, number> = Object.fromEntries(
+  Object.entries(PHASE_MAP).map(([k, v]) => [v, Number(k)]),
+) as Record<Phase, number>;
+
+// =============================================================================
 // Message Handler
 // =============================================================================
 
@@ -1054,6 +1767,43 @@ port.on('message', (msg: MainToWorkerMessage) => {
         error: err instanceof Error ? err.message : String(err),
       });
     });
+  } else if (msg.type === 'INIT_REPLAY') {
+    initReplay(msg).catch(err => {
+      port.postMessage({
+        type: 'WORKER_REPLAY_ERROR', duelId,
+        code: 'REPLAY_COMPUTATION_ERROR',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    });
+  } else if (msg.type === 'INIT_FORK') {
+    initFork(msg).catch(err => {
+      port.postMessage({
+        type: 'WORKER_FORK_ERROR', duelId,
+        code: 'REPLAY_COMPUTATION_ERROR',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    });
+  } else if (msg.type === 'FORK_RESUME') {
+    // Both clients connected — emit current board state + pending SELECT prompt
+    if (forkMode && core && duel) {
+      port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
+      if (forkPendingSelect) {
+        const dto = transformMessage(forkPendingSelect);
+        if (dto) {
+          port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
+        }
+        forkPendingSelect = null;
+      }
+    }
+  } else if (msg.type === 'EMIT_REPLAY_DATA') {
+    // Main thread requests replay data (disconnect/timeout/surrender — worker doesn't know the result)
+    try {
+      emitReplayData();
+      cleanup();
+    } catch (err) {
+      console.error('[WORKER] emitReplayData failed:', err instanceof Error ? err.message : err);
+      port.postMessage({ type: 'WORKER_ERROR', duelId, error: `emitReplayData failed: ${err instanceof Error ? err.message : err}` });
+    }
   } else if (msg.type === 'PLAYER_RESPONSE') {
     if (!core || !duel) {
       console.error('Received PLAYER_RESPONSE but no active duel');
@@ -1062,7 +1812,11 @@ port.on('message', (msg: MainToWorkerMessage) => {
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
     console.log('[WORKER] transformResponse promptType=%s response=%o', msg.promptType, response);
     if (response) {
-      core.duelSetResponse(duel, response as never);
+      if (forkMode) {
+        core!.duelSetResponse(duel, response as never);
+      } else {
+        capturedSetResponse(duel, response);
+      }
       console.log('[WORKER] duelSetResponse done, calling runDuelLoop...');
       runDuelLoop();
       console.log('[WORKER] runDuelLoop returned');

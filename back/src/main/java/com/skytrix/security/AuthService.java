@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.skytrix.exception.UnauthorizedException;
+import com.skytrix.model.enums.Role;
 import com.skytrix.mapper.UserMapper;
 import com.skytrix.model.dto.user.CreateUserDTO;
 import com.skytrix.model.entity.User;
@@ -52,13 +53,19 @@ public class AuthService {
     }
 
     public Long getConnectedUserId() {
-        var userDetail = (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return userDetail.getId();
+        return getConnectedUserDetails().getId();
+    }
+
+    public boolean isAdmin() {
+        return getConnectedUserDetails().getRole() == Role.ADMIN;
     }
 
     public User getConnectedUser() {
-        var userDetail = (CustomUserDetails) getAuthentication().getPrincipal();
-        return userRepository.findById(userDetail.getId()).orElseThrow();
+        return userRepository.findById(getConnectedUserId()).orElseThrow();
+    }
+
+    private CustomUserDetails getConnectedUserDetails() {
+        return (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     public Authentication getAuthentication() {

@@ -1,18 +1,18 @@
 @if (revealedCards.length > 0) {
   <div class="revealed-cards">
-    <div class="revealed-cards__label">Revealed cards</div>
+    <div class="revealed-cards__label">{{ 'duel.prompt.revealedCards' | translate }}</div>
     <div class="revealed-cards__list">
       @for (card of revealedCards; track card.cardCode + '-' + card.sequence) {
         <img class="revealed-cards__img"
              [src]="getCardImageUrl(card)"
-             [title]="card.name"
-             alt="{{ card.name }}" />
+             [title]="card | cardName"
+             [alt]="card | cardName" />
       }
     </div>
   </div>
 }
 @if (displayEntries.length === 0) {
-  <div class="empty-state">No valid targets</div>
+  <div class="empty-state">{{ 'duel.prompt.noValidTargets' | translate }}</div>
 } @else {
 <div class="card-strip__inner">
   <div class="card-strip">
@@ -26,14 +26,9 @@
             <button class="card-slot"
                     [class.card-slot--selected]="isSelected(entry.originalIndex)"
                     (click)="toggleCard(entry.originalIndex)"
-                    (pointerdown)="onCardPointerDown(entry.card.cardCode, $event)"
-                    (pointerup)="onCardPointerUp()"
-                    (pointermove)="onCardPointerMove($event)"
-                    (pointercancel)="onCardPointerUp()"
-                    (contextmenu)="onContextMenu($event)"
-                    [disabled]="answered"
+                    [disabled]="answered && !readOnly"
                     type="button"
-                    [attr.aria-label]="entry.card.name"
+                    [attr.aria-label]="entry.card | cardName"
                     [attr.aria-pressed]="isSelected(entry.originalIndex)">
               <img class="card-img"
                    [src]="getCardImageUrl(entry.card)"
@@ -52,7 +47,7 @@
 
   <div class="actions">
     @if (promptData?.type === 'SELECT_SUM') {
-      <span class="selection-count" aria-live="polite">{{ selectedSum }} / {{ sumTarget }} needed</span>
+      <span class="selection-count" aria-live="polite">{{ 'duel.prompt.sumProgress' | translate:{selected: selectedSum, target: sumTarget} }}</span>
     } @else if (isMultiSelect && !isToggleMode) {
       <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
     }
@@ -61,7 +56,7 @@
               (click)="cancel()"
               [disabled]="answered"
               type="button">
-        Cancel
+        {{ 'common.cancel' | translate }}
       </button>
     }
     <button class="btn btn--primary prompt-confirm-btn"
@@ -69,7 +64,7 @@
             (click)="confirm()"
             [disabled]="!isConfirmEnabled || answered"
             type="button">
-      Confirm
+      {{ 'common.confirm' | translate }}
     </button>
   </div>
 }

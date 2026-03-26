@@ -1,7 +1,52 @@
 import Database from 'better-sqlite3';
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import type { CardDB, ScriptDB } from './types.js';
+
+// =============================================================================
+// Scripts Hash — cached at startup for replay metadata
+// =============================================================================
+
+let cachedScriptsHash: string | null = null;
+
+export function initScriptsHash(scriptDir: string): void {
+  if (cachedScriptsHash) return;
+  const hash = createHash('sha256');
+  const entries = readdirSync(scriptDir, { recursive: true }) as string[];
+  const files = entries.filter(f => f.endsWith('.lua')).sort();
+  for (const file of files) {
+    hash.update(readFileSync(join(scriptDir, file)));
+  }
+  cachedScriptsHash = hash.digest('hex');
+  console.log(`[Scripts] Scripts hash computed: ${cachedScriptsHash.slice(0, 12)}...`);
+}
+
+export function getScriptsHash(): string {
+  if (!cachedScriptsHash) throw new Error('Scripts hash not initialized — call initScriptsHash() or setScriptsHash() first');
+  return cachedScriptsHash;
+}
+
+export function setScriptsHash(hash: string): void {
+  cachedScriptsHash = hash;
+}
+
+export function setOcgcoreVersion(version: string): void {
+  cachedOcgcoreVersion = version;
+}
+
+// =============================================================================
+// OCGCore Version — cached at import time
+// =============================================================================
+
+const require = createRequire(import.meta.url);
+const pkgPath = join(require.resolve('@n1xx1/ocgcore-wasm'), '..', 'package.json');
+let cachedOcgcoreVersion: string = (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string }).version;
+
+export function getOcgcoreVersion(): string {
+  return cachedOcgcoreVersion;
+}
 
 // =============================================================================
 // Startup Scripts — 20 Lua files loaded before startDuel()

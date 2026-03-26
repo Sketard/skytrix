@@ -24,10 +24,22 @@ export const routes: Routes = [
     canActivate: [AuthService],
   },
   {
+    path: 'pvp/history',
+    loadComponent: () =>
+      import('./pages/match-history-page/match-history-page.component').then(m => m.MatchHistoryPageComponent),
+    canActivate: [AuthService, adminGuard],
+  },
+  {
+    path: 'pvp/replay/:replayId',
+    loadComponent: () => import('./pages/pvp/replay/replay-page.component').then(m => m.ReplayPageComponent),
+    canActivate: [AuthService, adminGuard],
+  },
+  {
     path: 'pvp/duel/:roomCode',
     loadComponent: () => import('./pages/pvp/duel-page/duel-page.component').then(m => m.DuelPageComponent),
     canActivate: [AuthService],
     canDeactivate: [(component: import('./pages/pvp/duel-page/duel-page.component').DuelPageComponent) => {
+      if (component.forkReplayId) return true; // Fork duels are disposable — no surrender prompt
       if (component.roomState() !== 'active') return true;
       if (component.wsService.duelResult()) return true;
       if (component.connectionStatus() === 'lost') return true;

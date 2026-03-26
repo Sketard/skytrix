@@ -10,10 +10,14 @@ export interface TravelOptions {
   destAlign?: 'center' | 'right';
   /** Extra rotateZ (degrees) applied at landing — e.g. -90 for defense position. */
   destRotateZ?: number;
+  /** Extra rotateZ (degrees) applied at departure and eased out — e.g. -90 for a card leaving defense position. */
+  srcRotateZ?: number;
   /** Base rotateZ applied throughout the entire travel — e.g. 180 for opponent cards. */
   baseRotateZ?: number;
   /** Landing style: 'slam' for field summon, 'soft' for GY (absorption), 'banish' for banish zone (rift), 'default' for micro-bounce. */
   landingStyle?: 'default' | 'slam' | 'soft' | 'banish';
+  /** Zone key tag stored on the float for later filtering (e.g. 'HAND-0', 'GY-1'). */
+  dstZoneKey?: string;
 }
 
 @Injectable()
@@ -53,7 +57,24 @@ export class CardTravelService implements OnDestroy {
       : destination;
     if (!sourceEl || !destEl) return Promise.resolve();
 
-    const sourceRect = this.toCardRect(sourceEl.getBoundingClientRect());
+    // When srcRotateZ is set the source card is visually rotated (e.g. defense position).
+    // getBoundingClientRect() returns the AABB which has swapped width/height.
+    // Strip the transform momentarily to read the true un-rotated rect.
+    const srcRotateZ = options.srcRotateZ ?? 0;
+    let rawSourceRect: DOMRect;
+    if (srcRotateZ && sourceEl instanceof HTMLElement) {
+      const savedTransform = sourceEl.style.transform;
+      const savedTransition = sourceEl.style.transition;
+      sourceEl.style.transition = 'none';
+      sourceEl.style.transform = 'none';
+      rawSourceRect = sourceEl.getBoundingClientRect();
+      sourceEl.style.transform = savedTransform;
+      void sourceEl.offsetHeight;
+      sourceEl.style.transition = savedTransition;
+    } else {
+      rawSourceRect = sourceEl.getBoundingClientRect();
+    }
+    const sourceRect = this.toCardRect(rawSourceRect);
 
     // Detect destination fan rotation BEFORE reading its rect.
     // When rotated, getBoundingClientRect() returns the AABB (axis-aligned bounding box)
@@ -102,6 +123,8 @@ export class CardTravelService implements OnDestroy {
       : cardDestRect;
     const duration = options.duration ?? 400;
     const floatingEl = this.createFloatingElement(sourceRect, cardImage, options);
+    const dstKey = options.dstZoneKey ?? (typeof destination === 'string' ? destination : null);
+    if (dstKey) floatingEl.dataset['dstKey'] = dstKey;
     this._container.appendChild(floatingEl);
 
     // Flip: swap img src at the 90° midpoint (edge-on, visually invisible swap)
@@ -182,6 +205,35 @@ export class CardTravelService implements OnDestroy {
     return last;
   }
 
+  /**
+   * Remove and return the first landed float whose dstKey starts with the given prefix.
+   * Without a prefix, pops the first landed float (FIFO).
+   */
+  popLandedFloat(dstPrefix?: string): HTMLElement | null {
+    for (const el of this._landed) {
+      if (!dstPrefix || (el.dataset['dstKey']?.startsWith(dstPrefix))) {
+        this._landed.delete(el);
+        return el;
+      }
+    }
+    return null;
+  }
+
+  /** Re-add a previously popped float to the landed set for deferred cleanup. */
+  returnToLanded(el: HTMLDivElement): void {
+    this._landed.add(el);
+  }
+
+  /** Remove all landed floats whose dstKey starts with the given prefix, or all if no prefix. */
+  clearLandedByDstPrefix(prefix?: string): void {
+    for (const el of this._landed) {
+      if (!prefix || (el.dataset['dstKey']?.startsWith(prefix))) {
+        el.remove();
+        this._landed.delete(el);
+      }
+    }
+  }
+
   /** Remove all travel elements whose animations have finished. */
   clearLandedTravels(): void {
     for (const el of this._landed) {
@@ -242,8 +294,11 @@ export class CardTravelService implements OnDestroy {
   }
 
   private buildKeyframes(fromRect: DOMRect, destRect: DOMRect, options: TravelOptions, destRotateZ = 0, destTranslateY = 0): Keyframe[] {
-    const dx = destRect.left + (destRect.width - fromRect.width) / 2 - fromRect.left;
-    const dy = destRect.top + (destRect.height - fromRect.height) / 2 - fromRect.top + destTranslateY;
+    // Scale factor so the float matches the destination size at landing.
+    const fs = destRect.width > 0 && fromRect.width > 0 ? destRect.width / fromRect.width : 1;
+    // Translate center-to-center (scale is applied around transform-origin:center)
+    const dx = (destRect.left + destRect.width / 2) - (fromRect.left + fromRect.width / 2);
+    const dy = (destRect.top + destRect.height / 2) - (fromRect.top + fromRect.height / 2) + destTranslateY;
     const flip = options.flipDuringTravel ?? false;
     const base = options.baseRotateZ ?? 0;
 
@@ -260,21 +315,29 @@ export class CardTravelService implements OnDestroy {
 
     // baseRotateZ is applied throughout (for opponent cards: constant 180°).
     // destRotateZ is applied on top at landing (for defense position: -90°).
-    const rzBase = base ? ` rotateZ(${base}deg)` : '';
+    // srcRotateZ is applied at departure and eased out (for leaving defense position: -90°).
+    const src = options.srcRotateZ ?? 0;
+    const rzStart = (base + src) ? ` rotateZ(${base + src}deg)` : '';
     const rz = (base + destRotateZ) ? ` rotateZ(${base + destRotateZ}deg)` : '';
-    const rzHalf = (base + destRotateZ * 0.5) ? ` rotateZ(${base + destRotateZ * 0.5}deg)` : '';
+    const rzHalf = (base + (src + destRotateZ) * 0.5) ? ` rotateZ(${base + (src + destRotateZ) * 0.5}deg)` : '';
+
+    // Interpolated scale: starts at 1 (source size), ends at fs (destination size).
+    // The lift/land phases add a slight overshoot (+15%/+5%) for visual weight.
+    const midS = (1 + fs) / 2; // halfway scale
+    const liftS = 1.15;        // overshoot at lift
+    const preS = fs * 1.15;    // overshoot near destination
 
     const keyframes: Keyframe[] = [
       // 0% — start
       {
         offset: 0,
-        transform: `translate(0, 0) scale(1) rotateY(${startRY}deg)${rzBase}`,
+        transform: `translate(0, 0) scale(1) rotateY(${startRY}deg)${rzStart}`,
         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
       },
       // 15% — lifted
       {
         offset: 0.15,
-        transform: `translate(0, 0) scale(1.15) rotateY(${startRY}deg)${rzBase}`,
+        transform: `translate(0, 0) scale(${liftS}) rotateY(${startRY}deg)${rzStart}`,
         boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
       },
     ];
@@ -284,12 +347,12 @@ export class CardTravelService implements OnDestroy {
       keyframes.push(
         {
           offset: 0.45,
-          transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(1) rotateY(90deg)${rzHalf}`,
+          transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(${midS}) rotateY(90deg)${rzHalf}`,
           boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
         },
         {
           offset: 0.75,
-          transform: `translate(${dx}px, ${dy}px) scale(1.15) rotateY(${endRY}deg)${rz}`,
+          transform: `translate(${dx}px, ${dy}px) scale(${preS}) rotateY(${endRY}deg)${rz}`,
           boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
         },
       );
@@ -298,12 +361,12 @@ export class CardTravelService implements OnDestroy {
       keyframes.push(
         {
           offset: 0.45,
-          transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(1) rotateY(8deg)${rzHalf}`,
+          transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(${midS}) rotateY(8deg)${rzHalf}`,
           boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
         },
         {
           offset: 0.75,
-          transform: `translate(${dx}px, ${dy}px) scale(1.15) rotateY(0deg)${rz}`,
+          transform: `translate(${dx}px, ${dy}px) scale(${preS}) rotateY(0deg)${rz}`,
           boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
         },
       );
@@ -312,23 +375,18 @@ export class CardTravelService implements OnDestroy {
     const land = `translate(${dx}px, ${dy}px)`;
     const landEnd: Keyframe = {
       offset: 1,
-      transform: `${land} scale(1) rotateY(${endRY}deg)${rz}`,
+      transform: `${land} scale(${fs}) rotateY(${endRY}deg)${rz}`,
       boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
     };
 
-    if (options.landingStyle === 'soft') {
-      // GY: standard landing (zoneImpactEffect handles the visual)
-      keyframes.push(landEnd);
-    } else if (options.landingStyle === 'banish') {
-      // Banish: standard landing (zoneImpactEffect handles the visual)
+    if (options.landingStyle === 'soft' || options.landingStyle === 'banish') {
       keyframes.push(landEnd);
     } else if (options.landingStyle === 'slam') {
-      // Card grows during travel and lands at final size — no post-travel scale
       keyframes.push(landEnd);
     } else {
       // Default: micro-bounce
       keyframes.push(
-        { offset: 0.88, transform: `${land} scale(1.05) rotateY(${endRY}deg)${rz}`, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' },
+        { offset: 0.88, transform: `${land} scale(${fs * 1.05}) rotateY(${endRY}deg)${rz}`, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' },
         landEnd,
       );
     }

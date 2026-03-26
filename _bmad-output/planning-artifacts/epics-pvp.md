@@ -64,7 +64,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - Docker-based deployment: duel-server container + docker-compose orchestration with Spring Boot + PostgreSQL
 - Room state machine: WAITING → CREATING_DUEL → ACTIVE → ENDED | CLOSED in Spring Boot (2min timeout on CREATING_DUEL → CLOSED via RoomCleanupScheduler; 3 scheduled tasks: orphaned WAITING >30min, orphaned ACTIVE not on duel server, stuck CREATING_DUEL >2min)
 - Internal HTTP API: Spring Boot → Duel Server (POST /api/duels, GET /api/duels/active, DELETE /api/duels/:duelId, GET /health, GET /status, PUT /api/update-data, POST /api/validate-passcodes) — Docker network auth
-- Duel server: 8 production source files + 2 PoC references (server.ts, duel-worker.ts, message-filter.ts, ws-protocol.ts, types.ts, ocg-callbacks.ts, ocg-scripts.ts, data-updater.ts; PoC: poc-duel.ts, test-core.ts)
+- Duel server: 8 production source files + 3 PoC references + 2 test files (server.ts, duel-worker.ts, message-filter.ts, ws-protocol.ts, types.ts, ocg-callbacks.ts, ocg-scripts.ts, data-updater.ts; PoC: poc-duel.ts, poc-replay.ts, solver-poc.ts; test: test-core.ts, test-snapshot.ts)
 - OCGCore error resilience: try/catch around duelProcess() + 30s watchdog timer. On error → declare draw, notify both players, cleanup
 - Startup health check validates cards.cdb readable + scripts directory non-empty before accepting connections
 - WebSocket payload limit: maxPayload 4096 bytes (prevents JSON payload DoS)
@@ -72,7 +72,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - Long-lived JWT (≥ 2h) to cover full duel duration + reconnection window
 - Reconnection via snapshot: duelQueryField() + duelQuery() per card (not message log replay)
 - Implementation dependency graph: Phase 0 (ws-protocol.ts gate) → Phase 1A/1B (parallel server/client) → Phase 2A/2B → Phase 3 (end-to-end)
-- PvP-A0 scope staging: all 20 SELECT_* prompt types implemented via 9 prompt sub-components (8 in dialog registry + PromptZoneHighlight handled separately) + IDLECMD/BATTLECMD handled by distributed UI
+- PvP-A0 scope staging: all 20 SELECT_* prompt types implemented via 10 prompt sub-components (9 in dialog registry + PromptZoneHighlight handled separately + PromptActionListReadonly for IDLECMD/BATTLECMD fallback) + IDLECMD/BATTLECMD handled by distributed UI
 - Spring Boot additions: RoomController, RoomService, DuelServerClient, Room entity, Flyway migration
 - Angular PvP routes: /pvp (LobbyPage, lazy-loaded, auth guard), /pvp/duel/:roomCode (DuelPage, lazy-loaded, auth guard)
 - Environment config: wsUrl for duel server WebSocket (dev: ws://localhost:3001, prod: wss://domain/ws)
@@ -93,12 +93,12 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 - PvpTimerBadgeComponent merges connection state display (normal → "Connecting..." → "Reconnecting..." → "Opponent connecting...")
 - PvpPhaseBadgeComponent: circular badge, tap to expand phase action menu (Battle Phase, Main Phase 2, End Turn)
 - PvpActivationToggleComponent: 3-state cycle (Auto/On/Off), visible own turn only, inside mini-toolbar with surrender button
-- PvpDuelResultOverlayComponent: VICTORY/DEFEAT/DRAW + reason + Rematch/Leave Room/Back to Deck
+- Duel result UI (inline in DuelPageComponent, not a separate PvpDuelResultOverlayComponent): VICTORY/DEFEAT/DRAW + reason + Rematch/Leave Room/Back to Deck
 - Rematch flow: same decks, new RPS, no side decking in MVP. Rematch only while both on result screen. 5-min room timeout
 - Distributed UI for IDLECMD/BATTLECMD: cards glow on field, zone browsers highlight actionable cards. 1 action = direct send, 2+ actions = Card Action Menu (absolute div)
 - Zone browser with browse mode (read-only) and action mode (during IDLECMD — actionable cards highlighted)
 - Chain link visualization: CSS class .pvp-chain-badge (numbered badges, 24px), not a dedicated component
-- 9 prompt sub-components via CDK Portal: PromptYesNoComponent, PromptCardGridComponent, PromptZoneHighlightComponent, PromptOptionListComponent, PromptNumericInputComponent, PromptRpsComponent, PromptPositionSelectComponent, PromptSortCardComponent, PromptAnnounceCardComponent
+- 10 prompt sub-components: PromptYesNoComponent, PromptCardGridComponent, PromptZoneHighlightComponent, PromptOptionListComponent, PromptNumericInputComponent, PromptChoiceComponent (handles RPS via RPS_CONFIG), PromptPositionSelectComponent, PromptSortCardComponent, PromptAnnounceCardComponent, PromptActionListReadonlyComponent (IDLECMD/BATTLECMD readonly fallback)
 - 3 visual prompt patterns: Pattern A (Floating Instruction — spatial), Pattern B (Bottom Sheet — selection), Pattern C (Yes/No — compact sheet)
 - Landscape orientation lock on duel route (blocking overlay in portrait — no "Continue anyway")
 - Fullscreen API + screen.orientation.lock('landscape-primary') at duel init (graceful degradation)
@@ -125,7 +125,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 | FR8 | Epic 1 | Automated turn structure |
 | FR9 | Epic 1 | Main Phase actions (contextual menu, distributed UI) |
 | FR10 | Epic 1 | Battle Phase actions (attack menu, phase controls) |
-| FR11 | Epic 1 | Player prompts (all SELECT_* types via 9 sub-components) |
+| FR11 | Epic 1 | Player prompts (all SELECT_* types via 10 sub-components) |
 | FR12 | Epic 1 | Chain resolution delegation to OCGCore |
 | FR13 | Epic 1 | Full game rule enforcement by OCGCore |
 | FR14 | Epic 1 | Two-player board display (CSS 3D perspective) |
@@ -159,7 +159,7 @@ NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license require
 ## Epic List
 
 ### Epic 1: Core Online Duel ✅ COMPLETED
-Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore. Includes duel server scaffold + Docker, OCGCore integration (worker threads), WebSocket protocol + message filter, PlayerFieldComponent extraction (Story 0), board CSS 3D perspective (2 player fields), prompt handling (all 20 SELECT_* types via 9 sub-components + distributed UI for IDLECMD/BATTLECMD), turn/phase management, LP tracking, win detection (LP=0 native OCGCore), hand display, card inspector adaptation, activation toggle, Spring Boot deck relay minimal.
+Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore. Includes duel server scaffold + Docker, OCGCore integration (worker threads), WebSocket protocol + message filter, PlayerFieldComponent extraction (Story 0), board CSS 3D perspective (2 player fields), prompt handling (all 20 SELECT_* types via 10 sub-components + distributed UI for IDLECMD/BATTLECMD), turn/phase management, LP tracking, win detection (LP=0 native OCGCore), hand display, card inspector adaptation, activation toggle, Spring Boot deck relay minimal.
 **FRs covered:** FR8, FR9, FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR18, FR19, FR23, FR25
 
 ### Epic 2: Lobby & Matchmaking ✅ COMPLETED
@@ -170,6 +170,8 @@ Players can create duel rooms from decklists, browse the lobby, join a room with
 The PvP experience handles real-world conditions — surrender, disconnection/reconnection, turn timers, inactivity, and clear duel results with rematch. Includes surrender flow, disconnection handling (60s grace, snapshot reconnection), turn timer (chess-clock 300s + 40s/turn), inactivity timeout (120s), duel result screen (VICTORY/DEFEAT/DRAW + reason), rematch flow, app background recovery, single tab enforcement.
 **FRs covered:** FR5, FR6, FR7, FR20, FR21, FR24
 
+### ~~Epic 4~~ *(skipped — numbering gap from scope revision during planning)*
+
 ### Epic 5: Tech Debt Cleanup ✅ COMPLETED
 Technical debt accumulated across Epics 1–4 is resolved: card inspector PvP placeholder, reconnection edge cases (3-3b), room management fixes (RoomDTO deck ID, orphaned room cleanup), infrastructure improvements (Docker integration test, thumbnail pre-fetch).
 **FRs covered:** Debt resolution — no new FRs
@@ -178,7 +180,7 @@ Technical debt accumulated across Epics 1–4 is resolved: card inspector PvP pl
 Chain visualization refactored from simple on-card CSS badges to a dedicated full-screen overlay component matching Master Duel's chain cascade animation. Includes PvpChainOverlayComponent, AnimationOrchestratorService, async overlay contract, board-change detection, and acceleration features.
 **FRs covered:** FR17, FR22 (partial — chain visualization and basic animation orchestration)
 
-### Epic 7: Board Animations & Card Travel
+### Epic 7: Board Animations & Card Travel ✅ COMPLETED
 Board animations replace in-place glow effects with spatial card travel between zones, with buffer & replay during chain resolution, and visual enhancements for XYZ materials.
 **FRs covered:** FR22 (completion — card travel animations)
 
@@ -217,7 +219,7 @@ So that server and client development can proceed in parallel against a frozen p
 **Given** the duel-server/ project does not exist
 **When** the scaffold is created
 **Then** `duel-server/` contains: `package.json` (dependencies: `@n1xx1/ocgcore-wasm`, `ws`, `better-sqlite3`, `patch-package`), `tsconfig.json` (strict, ESM, outDir: dist/), `patches/` directory with `@n1xx1+ocgcore-wasm` ESM fix
-**And** `src/ws-protocol.ts` defines all WebSocket DTO types as union discriminated types (`SCREAMING_SNAKE_CASE` message types, `camelCase` fields, explicit `null` for absent values, zero internal imports). Message categories: **Server→Client game**: `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SWAP`, `MSG_ATTACK`, `MSG_BATTLE`, `MSG_WIN`. **Server→Client prompts**: `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_COUNTER`, `SORT_CARD`, `SORT_CHAIN`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. **Server→Client system**: `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `REMATCH_CANCELLED`, `WORKER_ERROR`, `STATE_SYNC`. **Client→Server**: `PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`
+**And** `src/ws-protocol.ts` defines all WebSocket DTO types as union discriminated types (`SCREAMING_SNAKE_CASE` message types, `camelCase` fields, explicit `null` for absent values, zero internal imports). Message categories: **Server→Client game (19)**: `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_CHAIN_NEGATED`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_SHUFFLE_DECK`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SET`, `MSG_SWAP`. **Server→Client attack/battle (3)**: `MSG_BECOME_TARGET`, `MSG_ATTACK`, `MSG_BATTLE`. **Server→Client end (1)**: `MSG_WIN`. **Server→Client prompts (20)**: `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_COUNTER`, `SORT_CARD`, `SORT_CHAIN`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. **Server→Client system (18)**: `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `SELECT_TP`, `TP_RESULT`, `DUEL_STARTING`, `SESSION_TOKEN`, `STATE_SYNC`, `CHAIN_STATE`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`, `INACTIVITY_WARNING`, `WAITING_RESPONSE`, `REMATCH_INVITATION`, `REMATCH_STARTING`, `REMATCH_CANCELLED`, `WORKER_ERROR`. **Client→Server (5)**: `PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`, `REQUEST_STATE_SYNC`, `ACTIVITY_PING`
 **And** `src/types.ts` defines internal types (worker message types, session state interfaces, constants)
 **And** `src/server.ts` creates a `ws.WebSocketServer({ maxPayload: 4096 })` + `node:http` server responding to `GET /health` → 200 and `GET /status` → JSON
 **And** `duel-server/LICENSE` contains AGPL-3.0 text
@@ -304,7 +306,7 @@ So that I can participate in an online duel without exposing my decklist to the 
 **Then** `app.routes.ts` includes lazy-loaded routes: `/pvp` → `LobbyPageComponent` (placeholder), `/pvp/duel/:roomCode` → `DuelPageComponent`, both with auth guard
 **And** `DuelPageComponent` is `position: fixed; inset: 0` and scopes `DuelWebSocketService` as a component-level provider
 **And** `DuelWebSocketService` establishes a WebSocket connection to `wsUrl` with JWT token at handshake
-**And** it exposes 6 signals: `duelState: Signal<DuelState>`, `pendingPrompt: Signal<Prompt | null>`, `hintContext: Signal<HintContext>`, `animationQueue: Signal<GameEvent[]>`, `timerState: Signal<TimerState | null>`, `connectionStatus: Signal<ConnectionStatus>`
+**And** it exposes 25 signals including core: `duelState: Signal<DuelState>`, `pendingPrompt: Signal<Prompt | null>`, `hintContext: Signal<HintContext>`, `animationQueue: Signal<GameEvent[]>`, `timerState: Signal<TimerState | null>`, `connectionStatus: Signal<ConnectionStatus>`, plus session/lifecycle signals: `opponentDisconnected`, `disconnectGraceSec`, `duelResult`, `rpsResult`, `rpsInProgress`, `ocgPlayerIndex`, `rematchState`, `rematchStarting`, `inactivityWarning`, `waitingForOpponent`, `tpResult`, `tpResponseSent`, `canRetry`, `totalAutoRetries`, `justReconnected`, `activeChainLinks`, `chainPhase`, `hasPendingChainEntry`
 **And** Angular signal types mirror ws-protocol.ts DTOs: `DuelState` = `BOARD_STATE` payload (zones map + hand cards + LP + current phase + turn player), `Prompt` = any `SELECT_*` payload, `HintContext` = `MSG_HINT` payload, `TimerState` = `TIMER_STATE` payload, `GameEvent` = any `MSG_*` that triggers animation (MSG_MOVE, MSG_CHAINING, MSG_DAMAGE, etc.), `ConnectionStatus` = `'connected' | 'reconnecting' | 'lost'` (client-only enum)
 **And** `connectionStatus` transitions through `connected | reconnecting | lost`
 **And** `environment.ts` includes `wsUrl` (`ws://localhost:3001` dev, `wss://domain/ws` prod)
@@ -333,15 +335,14 @@ So that I can visually track the game state during a PvP duel.
 **Given** DuelWebSocketService provides `duelState` signal (Story 1.4)
 **When** `PvpBoardContainerComponent` is implemented
 **Then** it applies CSS `perspective` (`--pvp-perspective-depth: 800px`) and `rotateX` (`--pvp-rotate-x-angle: 15deg`) on the board container
-**And** `PlayerFieldComponent` is extended with `@Input() side: 'player' | 'opponent'` controlling CSS mirror transform (`rotateZ(180deg)` for opponent) and `pointer-events` (`none` for opponent's zones)
-**And** it composes 2× `PlayerFieldComponent` (own `[side=player, showEmz=false]` + opponent `[side=opponent, showEmz=false]` mirrored)
+**And** `PvpBoardContainerComponent` renders both player field zone layouts with CSS mirror transform (`rotateZ(180deg)` for opponent) and `pointer-events` (`none` for opponent's zones)
 **And** a central strip between fields contains `SimZoneComponent` for EMZ-L and EMZ-R, `PvpTimerBadgeComponent` (phase name display only, no timer logic), and `PvpPhaseBadgeComponent` placeholder
 **And** it uses responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`) — scales proportionally, centered with black background beyond
 **And** it uses `ChangeDetectionStrategy.OnPush`
 
 **Given** the board container renders
 **When** `PvpLpBadgeComponent` is implemented
-**Then** it displays LP for both players, injected via `<ng-content>` into `PlayerFieldComponent` grid area
+**Then** it displays LP for both players, rendered within the player field zone grid of `PvpBoardContainerComponent`
 **And** it formats LP: standard for ≤9999 ("8000"), compact for ≥10000 ("12.5k")
 **And** it has `role="status"` and `aria-live="polite"`
 
@@ -390,7 +391,7 @@ So that I understand every decision the engine asks me to make and can respond q
 - `SELECT_PLACE | SELECT_DISFIELD → PromptZoneHighlightComponent` (Pattern A — no dialog)
 - `SELECT_OPTION | ANNOUNCE_RACE | ANNOUNCE_ATTRIB → PromptOptionListComponent`
 - `ANNOUNCE_NUMBER | SELECT_COUNTER → PromptNumericInputComponent`
-- `RPS_CHOICE → PromptRpsComponent`
+- `RPS_CHOICE → PromptChoiceComponent (RPS via RPS_CONFIG)`
 - `SELECT_POSITION → PromptPositionSelectComponent`
 - `SORT_CARD | SORT_CHAIN → PromptSortCardComponent`
 - `ANNOUNCE_CARD → PromptAnnounceCardComponent`
@@ -435,7 +436,7 @@ So that I understand every decision the engine asks me to make and can respond q
 **And** min/max constraints from server message are enforced
 
 **Given** the prompt sheet exists
-**When** `PromptRpsComponent` (Pattern B — full) is implemented
+**When** `PromptChoiceComponent (RPS via RPS_CONFIG)` (Pattern B — full) is implemented
 **Then** it displays three large tap zones for Rock, Paper, Scissors
 **And** 30-second timeout → random selection if no choice
 **And** keyboard shortcuts: 1/2/3
@@ -539,7 +540,7 @@ So that I can invite a friend to duel with my prepared deck.
 **When** they tap "Duel PvP"
 **Then** the system validates the deck (TCG format, TCG banlist compliance, 40-60 main deck, 0-15 extra deck, 0-15 side deck)
 **And** if validation fails: `mat-snackbar` with error reason + link to deckbuilder
-**And** if validation passes: `POST /api/rooms` with decklistId → room created with status `WAITING` and a 6-char room code generated by `RoomService.java` via `UUID.randomUUID().toString().substring(0,6).toUpperCase()` (no external dependency, URL-safe, non-sequential — not the DB id)
+**And** if validation passes: `POST /api/rooms` with decklistId → room created with status `WAITING` and a 6-char room code generated by `RoomService.java` using a custom 32-character charset (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789` — excludes I/O/0/1 for visual disambiguation), URL-safe, non-sequential — not the DB id
 **And** the player is navigated to `/pvp/duel/:roomCode` (waiting room state, deep links use room code not DB id)
 
 **Given** the room is created
@@ -547,7 +548,7 @@ So that I can invite a friend to duel with my prepared deck.
 **Then** a 4-6 character room code is displayed prominently
 **And** a "Copy Link" button copies the deep link (`skytrix.app/pvp/XXXX`) to clipboard with `mat-snackbar` confirmation
 **And** a `mat-progress-spinner` + "Waiting for opponent..." is displayed
-**And** the component polls `GET /api/rooms/:id` every 2-3 seconds to detect opponent join
+**And** the component subscribes to `GET /api/rooms/{roomCode}/events` via SSE (`RoomApiService.subscribeToRoomEvents()`) to detect opponent join in real-time
 
 ### Story 2.2: Room Browsing & Joining
 
@@ -587,14 +588,14 @@ So that we can fairly determine who plays first.
 
 **Given** both players are in the room (polling detects opponent join or player just joined)
 **When** WebSocket connections are established for both players
-**Then** RPS logic runs in `server.ts` (pre-OCGCore, before worker spawn): server sends `RPS_CHOICE` prompt to both clients simultaneously via `PromptRpsComponent` (Story 1.6)
+**Then** RPS logic runs in `server.ts` (pre-OCGCore, before worker spawn): server sends `RPS_CHOICE` prompt to both clients simultaneously via `PromptChoiceComponent (RPS via RPS_CONFIG)` (Story 1.6)
 **And** each player selects Rock, Paper, or Scissors within 30 seconds
 **And** if timeout: system selects randomly for the timed-out player
 
 **Given** both RPS selections are received
 **When** `server.ts` resolves RPS
 **Then** server sends `RPS_RESULT` to both clients (both choices + winner ID) for simultaneous reveal animation
-**And** the winner receives a turn order prompt via `HAND_RES`: "Go First" / "Go Second" (`PromptOptionListComponent`)
+**And** the winner receives a turn order prompt via `SELECT_TP`: "Go First" / "Go Second" (`PromptOptionListComponent`)
 **And** if draw: RPS repeats (new `RPS_CHOICE` sent)
 
 **Given** turn order is decided
@@ -729,7 +730,7 @@ So that temporary network issues don't automatically forfeit my match.
 **Given** reconnection succeeds within 60 seconds
 **When** the WebSocket is re-established
 **Then** the server sends a full game state snapshot (via `duelQueryField()` + `duelQuery()` per card — not message log replay)
-**And** the client hydrates all 6 signals from the snapshot
+**And** the client resets connection state (duelState, activeChainLinks, chainPhase, animationQueue, pendingPrompt, hintContext, justReconnected, lastConfirmedCards, rematchStarting, pendingBoardState) from the snapshot
 **And** the turn timer resumes from where it was paused
 **And** `connectionStatus` transitions to `connected`
 **And** if a prompt was pending at disconnect: it is re-sent to the player
@@ -768,7 +769,7 @@ So that I know the outcome and can quickly play again.
 
 **Given** the duel ends (any reason: LP=0, surrender, timeout, inactivity, disconnect)
 **When** the client receives `DUEL_END` message
-**Then** `PvpDuelResultOverlayComponent` renders as a full-screen overlay over the board
+**Then** the duel result UI renders as a full-screen overlay over the board (inline in `DuelPageComponent`)
 **And** it displays: outcome text "VICTORY" / "DEFEAT" / "DRAW" (large, centered) + reason text ("Opponent surrendered", "Opponent timed out", "Opponent LP reduced to 0", "Opponent disconnected", "Simultaneous LP depletion")
 **And** the outcome text uses color coding: victory = `--pvp-victory`, defeat = `--pvp-defeat`, draw = `--pvp-draw`
 **And** `LiveAnnouncer` announces the result for accessibility

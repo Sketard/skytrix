@@ -54,3 +54,14 @@
     background: rgba(255, 255, 255, 0.18);
   }
 }
+
+// Replay read-only: golden pulse on the chosen option, dim the rest.
+// Same visual language as zone-chosen-glow on the board.
+@mixin replay-chosen-pulse {
+  animation: replay-chosen-pulse 800ms ease-out 1 forwards;
+  opacity: 1;
+}
+
+@mixin replay-not-chosen {
+  opacity: 0.35;
+}

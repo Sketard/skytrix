@@ -7,6 +7,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { ShortDeck } from '../../../core/model/short-deck';
 
@@ -17,15 +18,15 @@ interface DeckPickerDialogData {
 }
 
 const TITLES: Record<DeckPickerContext, string> = {
-  create: 'Choisis ton deck',
-  join: 'Choisis ton deck pour rejoindre',
-  quickDuel: 'Duel rapide',
+  create: 'deckPicker.title.create',
+  join: 'deckPicker.title.join',
+  quickDuel: 'deckPicker.title.quickDuel',
 };
 
 const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
-  create: 'Créer la room',
-  join: 'Rejoindre',
-  quickDuel: 'Lancer le duel',
+  create: 'deckPicker.confirm.create',
+  join: 'deckPicker.confirm.join',
+  quickDuel: 'deckPicker.confirm.quickDuel',
 };
 
 @Component({
@@ -35,37 +36,37 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
   imports: [
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton,
     MatProgressSpinner, MatIcon, RouterLink, MatButtonToggle, MatButtonToggleGroup, MatSlideToggle,
-    FormsModule,
+    FormsModule, TranslatePipe,
   ],
   template: `
-    <h2 mat-dialog-title>{{ title }}</h2>
+    <h2 mat-dialog-title>{{ title | translate }}</h2>
     <mat-dialog-content>
       @if (isQuickDuel()) {
         <div class="qd-section">
-          <span class="qd-label">Decks</span>
+          <span class="qd-label">{{ 'deckPicker.decks' | translate }}</span>
           <mat-button-toggle-group [value]="activeSlot()" (change)="onSlotChange($event.value)"
                                    class="slot-toggle">
-            <mat-button-toggle value="p1">Joueur 1</mat-button-toggle>
-            <mat-button-toggle value="p2">Joueur 2</mat-button-toggle>
+            <mat-button-toggle value="p1">{{ 'deckPicker.player1' | translate }}</mat-button-toggle>
+            <mat-button-toggle value="p2">{{ 'deckPicker.player2' | translate }}</mat-button-toggle>
           </mat-button-toggle-group>
           @if (activeSlot() === 'p2' && selectedId2() === null) {
-            <p class="mirror-hint">Miroir du Joueur 1</p>
+            <p class="mirror-hint">{{ 'deckPicker.mirrorHint' | translate }}</p>
           }
         </div>
         <div class="qd-section">
-          <span class="qd-label">Premier joueur</span>
+          <span class="qd-label">{{ 'deckPicker.firstPlayer' | translate }}</span>
           <mat-button-toggle-group [value]="firstPlayer()" (change)="firstPlayer.set($event.value)"
                                    class="slot-toggle">
-            <mat-button-toggle value="p1">Joueur 1</mat-button-toggle>
-            <mat-button-toggle value="p2">Joueur 2</mat-button-toggle>
+            <mat-button-toggle value="p1">{{ 'deckPicker.player1' | translate }}</mat-button-toggle>
+            <mat-button-toggle value="p2">{{ 'deckPicker.player2' | translate }}</mat-button-toggle>
           </mat-button-toggle-group>
         </div>
         <div class="qd-section qd-section--row">
-          <span class="qd-label">Main aléatoire</span>
+          <span class="qd-label">{{ 'deckPicker.randomHand' | translate }}</span>
           <mat-slide-toggle [checked]="randomHand()" (change)="randomHand.set($event.checked)"></mat-slide-toggle>
         </div>
         <div class="qd-section qd-section--row">
-          <span class="qd-label">Temps par tour (secondes)</span>
+          <span class="qd-label">{{ 'deckPicker.turnTime' | translate }}</span>
           <input class="qd-time-input"
                  type="number"
                  min="30"
@@ -81,17 +82,17 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
         </div>
       } @else if (fetchError()) {
         <div class="picker-message">
-          <p>Impossible de charger les decks</p>
-          <button mat-button (click)="loadDecks()">Réessayer</button>
+          <p>{{ 'deckPicker.loadError' | translate }}</p>
+          <button mat-button (click)="loadDecks()">{{ 'common.retry' | translate }}</button>
         </div>
       } @else if (decks().length === 0) {
         <div class="picker-message">
-          <p>Aucun deck disponible</p>
-          <p class="picker-hint">Crée un deck dans le Deck Builder pour commencer.</p>
-          <a [routerLink]="['/decks']" mat-button (click)="dialogRef.close()">Aller au Deck Builder</a>
+          <p>{{ 'deckPicker.emptyTitle' | translate }}</p>
+          <p class="picker-hint">{{ 'deckPicker.emptyHint' | translate }}</p>
+          <a [routerLink]="['/decks']" mat-button (click)="dialogRef.close()">{{ 'deckPicker.goToDeckBuilder' | translate }}</a>
         </div>
       } @else {
-        <div class="deck-list" role="listbox" aria-label="Liste des decks">
+        <div class="deck-list" role="listbox" [attr.aria-label]="'deckPicker.decks' | translate">
           @for (deck of decks(); track deck.id) {
             <button class="deck-item"
                     role="option"
@@ -113,12 +114,12 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Annuler</button>
+      <button mat-button mat-dialog-close>{{ 'common.cancel' | translate }}</button>
       <button mat-raised-button
               class="confirm-btn"
               [disabled]="selectedId() === null"
               (click)="confirm()">
-        {{ confirmLabel }}
+        {{ confirmLabel | translate }}
       </button>
     </mat-dialog-actions>
   `,
@@ -282,6 +283,7 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
 export class DeckPickerDialogComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<DeckPickerDialogComponent>);
   private readonly deckBuildService = inject(DeckBuildService);
+  private readonly translate = inject(TranslateService);
   private readonly data: DeckPickerDialogData | null = inject(MAT_DIALOG_DATA, { optional: true });
 
   readonly context = computed<DeckPickerContext>(() => this.data?.context ?? 'create');

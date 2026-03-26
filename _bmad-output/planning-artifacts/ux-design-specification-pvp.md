@@ -42,7 +42,7 @@ MVP scope: PvP between friends (trusted players) in 3 incremental sub-phases —
 
 ### Key Design Challenges
 
-1. **Mobile-First Board with CSS 3D Perspective** — The PvP board displays two complete player fields (2× 18 zones = 36 zones) plus LP, timer, phase indicator, and prompt UI — all on a mobile landscape viewport (~844×390px). Master Duel uses Unity 3D perspective to compress the opponent's far field. skytrix achieves the same effect with CSS `perspective` + `transform: rotateX()` on the board container (~10 lines of CSS). The opponent's field naturally foreshortens (appears smaller/recessed) while the player's own field (bottom, closest to "camera") stays full-size and thumb-friendly. This is feasible because PvP is click-based — no CDK DragDrop compatibility concern inside a CSS perspective transform. The solo simulator remains 2D flat (drag & drop). **CSS perspective is PvP-A scope (structural layout decision), not PvP-C polish** — without it, the board is unusable on mobile (Dueling Nexus lesson). **Perspective Container Rule:** Only board zones (the two player fields) live inside the CSS perspective container. Player hand, prompts, card inspector, timer badge, and phase badge are all fixed-position overlays OUTSIDE the perspective. LP badges are the exception — they live INSIDE the perspective container (projected via `ng-content` into `PlayerFieldComponent` for grid alignment) but are styled to remain readable despite the 3D transform — they must remain flat, readable, and thumb-accessible regardless of the 3D transform.
+1. **Mobile-First Board with CSS 3D Perspective** — The PvP board displays two complete player fields (2× 18 zones = 36 zones) plus LP, timer, phase indicator, and prompt UI — all on a mobile landscape viewport (~844×390px). Master Duel uses Unity 3D perspective to compress the opponent's far field. skytrix achieves the same effect with CSS `perspective` + `transform: rotateX()` on the board container (~10 lines of CSS). The opponent's field naturally foreshortens (appears smaller/recessed) while the player's own field (bottom, closest to "camera") stays full-size and thumb-friendly. This is feasible because PvP is click-based — no CDK DragDrop compatibility concern inside a CSS perspective transform. The solo simulator remains 2D flat (drag & drop). **CSS perspective is PvP-A scope (structural layout decision), not PvP-C polish** — without it, the board is unusable on mobile (Dueling Nexus lesson). **Perspective Container Rule:** Only board zones (the two player fields) live inside the CSS perspective container. Player hand, prompts, card inspector, timer badge, and phase badge are all fixed-position overlays OUTSIDE the perspective. LP badges are the exception — they live INSIDE the perspective container (within the player field zone grid of `PvpBoardContainerComponent`) but are styled to remain readable despite the 3D transform — they must remain flat, readable, and thumb-accessible regardless of the 3D transform.
 
 2. **Touch-First Prompt UX for 20 SELECT_\* Types** — OCGCore sends ~20 distinct prompt types requiring ~8-10 UI components: card grid selection, yes/no dialogs, zone highlight, position picker, option lists, ordering interfaces, declaration pickers, counters, phase action menus, and RPS. All must be designed first for touch interaction on mobile: 44px+ touch targets, thumb-reachable positioning, readable card art at small sizes. MSG_HINT context (which effect is asking) must be displayed without consuming precious screen space. Desktop adapts the mobile-first layout, not the reverse. **Floating Dialog Pattern:** Prompts use a centered floating dialog (50% viewport width) overlaid on the board — matching Master Duel's compact prompt style. The board remains fully visible around the dialog, preserving spatial context. On desktop, right-click anywhere dismisses/cancels the active prompt.
 
@@ -272,7 +272,7 @@ PvP tokens are namespaced as `--pvp-*` within the existing `_design-tokens.scss`
 ### Implementation Approach
 
 1. **No new dependencies** — PvP uses Angular Material, CDK overlays, and standard CSS. No Three.js, no animation libraries, no new packages
-2. **Shared component library** — Card rendering, card inspector, zone components are shared between solo and PvP via `PlayerFieldComponent` extraction (architecture Story 0). **Story 0 is a blocking prerequisite** — without it, PvP cannot reuse zone components and would require duplication, doubling maintenance
+2. **Shared component library** — Card rendering, card inspector, zone components are shared between solo and PvP at the `CardComponent`/`CardInspectorComponent` level. `PvpBoardContainerComponent` renders the full 2-player board with its own grid layout (6-col, CSS perspective)
 3. **PvP-specific components** — Prompt dialog, badge overlays (LP/timer/phase), activation toggle, chain overlay, duel result overlay. These are PvP-only Angular components
 4. **Design tokens in CSS custom properties** — All PvP-specific values as `--pvp-*` custom properties in the `// === PvP tokens ===` section of `_design-tokens.scss`
 
@@ -281,7 +281,7 @@ PvP tokens are namespaced as `--pvp-*` within the existing `_design-tokens.scss`
 - **No theme switching in MVP** — Master Duel Classic (dark theme) is the only theme. No light/dark toggle
 - **No user-configurable visual options** — Fixed layout, fixed colors, fixed animations
 - **Token-driven tuning** — Perspective angle, transition durations, and badge sizes are CSS custom properties, adjustable during development without code changes
-- **Desktop adaptation via inverted responsive strategy** — Solo uses Track A = desktop (primary), Track B = mobile (secondary). PvP inverts this: Track A = mobile landscape (primary), Track B = desktop (secondary). The shared `PlayerFieldComponent` supports both priority orders via a host CSS class (`pvp-mode` / `solo-mode`) that controls which responsive track is primary
+- **Desktop adaptation via inverted responsive strategy** — Solo uses Track A = desktop (primary), Track B = mobile (secondary). PvP inverts this: Track A = mobile landscape (primary), Track B = desktop (secondary). `PvpBoardContainerComponent` supports responsive sizing via CSS custom properties and viewport units
 
 ## 2. Core User Experience — Defining Experience
 
@@ -769,7 +769,7 @@ flowchart TD
 
 **Shared Components (extracted via Story 0 from solo simulator):**
 
-- `PlayerFieldComponent` — Board zone layout for one player's field (reused ×2 for both players inside perspective container). PvP adaptation: `@Input() showEmz: boolean = true` — `true` for solo (EMZ in field grid), `false` for PvP (EMZ rendered in central strip between fields). Supports `<ng-content>` projection for PvP-specific elements (LP badge in grid row ED/MD)
+- `PvpBoardContainerComponent` — Board layout for both player fields within a single perspective container (6-col grid, CSS perspective). EMZ rendered in central strip between fields. Supports zone element registry for card travel animations, `readOnly` / `preview` input modes for replay
 - `CardComponent` — Card rendering (face-up art, face-down back, overlay materials for XYZ). PvP reuses solo CardComponent rendering: ATK position = vertical, DEF position = horizontal (rotated 90°), face-down = card back. PvP uses thumbnails by default (lazy full art loading). Tap own face-up card → `CardInspectorComponent`. Tap opponent face-up card → `CardInspectorComponent` (read-only). Tap face-down card → nothing (hidden info)
 - `CardInspectorComponent` — Card detail panel with 2 PvP variants (see Custom Components below)
 
@@ -788,14 +788,14 @@ flowchart TD
 ```
 DuelPageComponent (position: fixed; inset: 0; 100dvw × 100dvh)
 ├── PvpBoardContainerComponent (100%, perspective wrapper)
-│   ├── PlayerFieldComponent [side=opponent, showEmz=false]
+│   ├── Opponent field zone layout
 │   │   └── <ng-content>: PvpLpBadgeComponent [side=opponent] (grid area: lp)
 │   ├── Central Strip (CSS grid row between fields)
 │   │   ├── SimZoneComponent [EMZ-L]
 │   │   ├── PvpTimerBadgeComponent (chess-clock + connection state)
 │   │   ├── SimZoneComponent [EMZ-R]
 │   │   └── PvpPhaseBadgeComponent (circular badge, tap → expand)
-│   └── PlayerFieldComponent [side=player, showEmz=false]
+│   └── Player field zone layout
 │       └── <ng-content>: PvpLpBadgeComponent [side=player] (grid area: lp)
 ├── PvpHandRowComponent [side=opponent] (position: absolute, top, pointer-events: none)
 ├── PvpHandRowComponent [side=player] (position: absolute, bottom)
@@ -806,7 +806,7 @@ DuelPageComponent (position: fixed; inset: 0; 100dvw × 100dvh)
 ├── PvpPromptDialogComponent (position: absolute, centered on board, z-index overlay)
 ├── PvpChainOverlayComponent (overlay, pointer-events: none — visual animation only)
 ├── PvpZoneBrowserOverlayComponent (overlay)
-└── PvpDuelResultOverlayComponent (overlay, highest z-index during duel end)
+└── Duel Result UI (inline in DuelPageComponent — highest z-index during duel end)
 ```
 
 **Viewport Layout Diagram (mobile landscape ~844×390px):**
@@ -845,7 +845,7 @@ Overlays (not shown — appear contextually):
   • PvpZoneBrowserOverlayComponent — full overlay for GY/Banished/ED browsing
   • Card Action Menu — absolute div at tapped card position
   • Floating Instruction — centered text, pointer-events: none (Pattern A)
-  • PvpDuelResultOverlayComponent — full viewport at duel end
+  • Duel Result UI (inline in DuelPageComponent) — full viewport at duel end
 
 Non-visible zones (tap pill on board to browse):
   Deck (count only) | GY | Banished | Extra Deck → PvpZoneBrowserOverlayComponent
@@ -855,17 +855,19 @@ Non-visible zones (tap pill on board to browse):
 
 ```
 z-index stack (highest → lowest):
-1. PvpDuelResultOverlayComponent (during duel end only)
+1. Duel Result UI (during duel end only — inline in DuelPageComponent)
 2. PvpPromptDialogComponent (active prompt — Patterns B/C, no backdrop)
 3. mat-dialog (surrender confirmation)
-4. CardInspectorComponent (temporary z-index bump on re-expand)
-5. Card Action Menu (absolute-positioned div, appears on card tap during IDLECMD)
-6. Floating Instruction text (Pattern A — pointer-events: none)
-7. PvpHandRowComponent [side=player]
-8. PvpPhaseBadgeComponent expanded menu
-9. PvpTimerBadgeComponent / PvpLpBadgeComponent / Mini-toolbar (surrender + toggle)
-10. PvpHandRowComponent [side=opponent] (pointer-events: none, visual only)
-11. PvpBoardContainerComponent (base layer, 100%)
+4. TransportBarComponent ($z-pvp-transport-bar: 60 — replay mode only)
+5. TimelineBarComponent ($z-pvp-timeline: 55 — replay mode only)
+6. CardInspectorComponent (temporary z-index bump on re-expand)
+7. Card Action Menu (absolute-positioned div, appears on card tap during IDLECMD)
+8. Floating Instruction text (Pattern A — pointer-events: none)
+9. PvpHandRowComponent [side=player]
+10. PvpPhaseBadgeComponent expanded menu
+11. PvpTimerBadgeComponent / PvpLpBadgeComponent / Mini-toolbar (surrender + toggle)
+12. PvpHandRowComponent [side=opponent] (pointer-events: none, visual only)
+13. PvpBoardContainerComponent (base layer, 100%)
 ```
 
 **No backdrop:** The board remains fully visible during prompts (Master Duel pattern). Board interactions are disabled by prompt state (not by a visual barrier). The player sees the full gamestate while deciding.
@@ -881,10 +883,10 @@ z-index stack (highest → lowest):
 ```
 PvpBoardContainerComponent grid:
   ┌──────────────────────────────────────────────────────────────┐
-  │  PlayerFieldComponent [opponent] (perspective, foreshortened)│
+  │  Opponent field (perspective, foreshortened)                 │
   │  (includes PvpLpBadgeComponent via ng-content, grid area lp) │
   ├──[EMZ-L]────[Timer]────[EMZ-R]──[Phase Badge]───────────────┤  ← Central strip
-  │  PlayerFieldComponent [player] (perspective, close)          │
+  │  Player field (perspective, close)                           │
   │  (includes PvpLpBadgeComponent via ng-content, grid area lp) │
   └──────────────────────────────────────────────────────────────┘
 ```
@@ -996,17 +998,17 @@ Dialog height is `auto` — determined by sub-component content (context text + 
 
 #### 4. PvpLpBadgeComponent (Tier 2)
 
-**Purpose:** Life Points display badge positioned within the `PlayerFieldComponent` grid, in the ED/MD row next to the Extra Deck zone.
+**Purpose:** Life Points display badge positioned within the player field zone grid (rendered by `PvpBoardContainerComponent`), in the ED/MD row next to the Extra Deck zone.
 
 **Grid Integration:**
 ```
-PlayerFieldComponent grid-template-areas:
+Player field zone grid-template-areas (managed by PvpBoardContainerComponent):
   "st1    st2   st3   st4   st5   field"
   "mz1    mz2   mz3   mz4   mz5   gy"
   "ed     lp    .     .     md    banish"
 ```
 
-Injected via `<ng-content>` from `PvpBoardContainerComponent` into `PlayerFieldComponent`.
+Rendered within the player field zone layout of `PvpBoardContainerComponent`.
 
 **Display:** `@Input() side: 'player' | 'opponent'`. Shows LP value with format: standard for ≤9999 ("8000"), compact for ≥10000 ("12.5k").
 
@@ -1122,9 +1124,9 @@ Phase transitions extracted from `SELECT_BATTLECMD` / `SELECT_IDLECMD` engine pr
 
 ---
 
-#### 8. PvpDuelResultOverlayComponent (Tier 3)
+#### 8. Duel Result UI *(inline in DuelPageComponent)* (Tier 3)
 
-**Purpose:** Full-screen overlay displaying duel outcome with rematch/leave/back-to-deck options.
+**Purpose:** Full-screen overlay displaying duel outcome with rematch/leave/back-to-deck options. Rendered inline in `DuelPageComponent` template (not a separate component).
 
 **Content:**
 - Result text: "VICTORY" / "DEFEAT" / "DRAW" (large, centered)
@@ -1283,7 +1285,7 @@ A **full-screen non-interactive overlay** that manages the entire chain lifecycl
 
 ### Prompt Sub-Components (CDK Portal)
 
-9 sub-components injected into `PvpPromptDialogComponent` via CDK Portal. Each implements the `PromptSubComponent` interface.
+10 sub-components injected into `PvpPromptDialogComponent` via CDK Portal (9 standard + `PromptActionListReadonlyComponent` for IDLECMD/BATTLECMD readonly fallback). Each implements the `PromptSubComponent` interface.
 
 #### Protocol → Sub-Component Mapping Table
 
@@ -1309,7 +1311,7 @@ Same centered floating dialog but with minimal content: MSG_HINT context text + 
 | `SELECT_POSITION` | PromptPositionSelectComponent | **B — Floating Dialog** (position select) | ATK/DEF/Set options with card orientation previews |
 | `SELECT_OPTION` | PromptOptionListComponent | **B — Floating Dialog** (option list) | Generic option selection |
 | `ANNOUNCE_NUMBER` / `SELECT_COUNTER` | PromptNumericInputComponent | **B — Floating Dialog** (numeric input) | Number input with mode declare/counter |
-| `MSG_SELECT_YESNO` (RPS) | PromptRpsComponent | **B — Floating Dialog** (RPS) | Rock/Paper/Scissors with reveal animation |
+| `RPS_CHOICE` | PromptChoiceComponent (RPS via RPS_CONFIG) | **B — Floating Dialog** (RPS) | Rock/Paper/Scissors with reveal animation |
 | `SELECT_YESNO` | PromptYesNoComponent | **C — Floating Dialog minimal** | Text + 2 buttons only. No card art |
 | `SELECT_EFFECTYN` | PromptYesNoComponent | **C — Floating Dialog minimal** | Optional trigger confirmation |
 | Rematch invitation | PromptYesNoComponent | **C — Floating Dialog minimal** | "Opponent wants a rematch" |
@@ -1371,10 +1373,10 @@ Same centered floating dialog but with minimal content: MSG_HINT context text + 
 
 **Content:** Label + input field + validation feedback. Min/max constraints from server message.
 
-#### 6. PromptRpsComponent — Pattern B (Floating Dialog with RPS)
+#### 6. PromptChoiceComponent (handles RPS via RPS_CONFIG) — Pattern B (Floating Dialog with RPS)
 
-**Purpose:** Rock/Paper/Scissors selection with reveal animation.
-**Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to turn order selection (HAND_RES).
+**Purpose:** Rock/Paper/Scissors selection with reveal animation. Implemented as a generic `PromptChoiceComponent` with configurable `ChoiceConfig<T>` — `RPS_CONFIG` provides the RPS-specific layout.
+**Content:** Three large tap zones. After both players choose → simultaneous reveal animation → result text → winner proceeds to turn order selection (`SELECT_TP`).
 **Accessibility:** Three buttons with `aria-label`. Keyboard: 1/2/3 shortcuts.
 **Timeout:** 30s. If no selection → random choice.
 
@@ -1440,7 +1442,7 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 **PvP-A — Functional Duel (Core):**
 
 - PvpBoardContainerComponent (Tier 1, complex — perspective + central strip + grid)
-- PvpPromptDialogComponent + 9 sub-components (Tier 1, complex — portal, states, collapse)
+- PvpPromptDialogComponent + 10 sub-components (Tier 1, complex — portal, states, collapse)
 - PvpTimerBadgeComponent (Tier 2, medium — chess-clock + connection states)
 - PvpLpBadgeComponent (Tier 2, trivial — display + format)
 - PvpPhaseBadgeComponent (Tier 2, medium — badge + expandable menu)
@@ -1450,7 +1452,7 @@ The shared `CardInspectorComponent` has 2 variants for PvP. Variant switching vi
 
 **PvP-B — Lobby & Session Management:**
 
-- PvpDuelResultOverlayComponent (Tier 3, medium — result + rematch flow)
+- Duel Result UI in DuelPageComponent (Tier 3, medium — result + rematch flow)
 - PvpZoneBrowserOverlayComponent (Tier 3, medium)
 - Lobby page (uses mat-* components, no new custom components)
 
@@ -1511,17 +1513,19 @@ No Beat 1/Beat 2, no FocusTrap, no backdrop. `LiveAnnouncer` announces instructi
 
 ```
 z-index stack (highest → lowest):
-1. PvpDuelResultOverlayComponent (during duel end only)
+1. Duel Result UI (during duel end only — inline in DuelPageComponent)
 2. PvpPromptDialogComponent (active prompt — Patterns B/C, no backdrop)
 3. mat-dialog (surrender confirmation)
-4. CardInspectorComponent (temporary z-index bump on re-expand)
-5. Card Action Menu (absolute-positioned div during IDLECMD)
-6. Floating Instruction text (Pattern A — pointer-events: none)
-7. PvpHandRowComponent [side=player]
-8. PvpPhaseBadgeComponent expanded menu
-9. PvpTimerBadgeComponent / PvpLpBadgeComponent / Mini-toolbar (surrender + toggle)
-10. PvpHandRowComponent [side=opponent] (pointer-events: none)
-11. PvpBoardContainerComponent (base layer, 100%)
+4. TransportBarComponent ($z-pvp-transport-bar: 60 — replay mode only)
+5. TimelineBarComponent ($z-pvp-timeline: 55 — replay mode only)
+6. CardInspectorComponent (temporary z-index bump on re-expand)
+7. Card Action Menu (absolute-positioned div during IDLECMD)
+8. Floating Instruction text (Pattern A — pointer-events: none)
+9. PvpHandRowComponent [side=player]
+10. PvpPhaseBadgeComponent expanded menu
+11. PvpTimerBadgeComponent / PvpLpBadgeComponent / Mini-toolbar (surrender + toggle)
+12. PvpHandRowComponent [side=opponent] (pointer-events: none)
+13. PvpBoardContainerComponent (base layer, 100%)
 ```
 
 When a new prompt arrives: inspector transitions to compact (not closed — see Inspector During Prompt), zone browser closes, phase menu collapses. For Pattern B/C: dialog opens or swaps content. For Pattern A: floating instruction appears, no dialog. No two interactive overlays coexist.
@@ -2027,7 +2031,7 @@ Tokens introduced or referenced by UX Patterns (to be added to `_design-tokens.s
 - Token-level animation control: `--pvp-animation-duration` respects `prefers-reduced-motion`
 
 **Performance Development:**
-- `ChangeDetectionStrategy.OnPush` on all 8 PvP components + 9 prompt sub-components
+- `ChangeDetectionStrategy.OnPush` on all 8 PvP components + 10 prompt sub-components
 - `will-change` applied via class toggle (add before animation, remove 100ms after completion)
 - Card images: thumbnail by default (`width: 100px`), full art lazy-loaded on inspector open, pre-cache deck card images at duel init
 - WebSocket message batching: accumulate per `requestAnimationFrame`, apply as single state update

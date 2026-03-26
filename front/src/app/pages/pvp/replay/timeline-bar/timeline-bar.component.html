@@ -1,0 +1,120 @@
+<div class="timeline-bar"
+     #timelineBar
+     role="slider"
+     [attr.aria-valuemin]="0"
+     [attr.aria-valuemax]="totalEvents()"
+     [attr.aria-valuenow]="currentIndex()"
+     aria-label="Duel timeline"
+     tabindex="0">
+
+  <!-- Turn segments track -->
+  <div class="track"
+       #track
+       [class.zoom-l2]="zoomLevel() === 2"
+       [class.zoom-l3]="zoomLevel() === 3"
+       [style.--max-events]="maxEventCount()"
+       (mousedown)="onMouseDown($event)"
+       (touchstart)="onTouchStart($event)"
+       (wheel)="onWheel($event)">
+
+    @for (turn of turns(); track turn.turnNumber) {
+      <div class="turn-segment"
+           [class.current]="isCurrentTurn(turn)"
+           [class.not-computed]="!isComputed(turn)"
+           (click)="onTurnClick(turn); $event.stopPropagation()"
+           (mouseenter)="onTurnMouseEnter($event, turn)"
+           (mousemove)="onTurnMouseMove($event)"
+           (mouseleave)="onTurnMouseLeave()">
+
+        <span class="turn-label">
+          @if (turn.turnNumber === 0) {
+            {{ 'replay.timeline.setup' | translate }}
+          } @else {
+            {{ 'replay.timeline.turn' | translate: { n: turn.turnNumber } }}
+          }
+        </span>
+
+        <div class="sub-events">
+          @for (seg of subEventSegments(turn); track $index) {
+            @if (seg.type === 'chain') {
+              <div class="chain-group">
+                @for (idx of seg.indices; track idx) {
+                  <div class="sub-event"
+                       [class.current]="idx === currentIndex()"
+                       [class.not-computed]="idx > computedUpTo()"
+                       (mousedown)="$event.stopPropagation()"
+                       (mouseenter)="onSubEventMouseEnter($event, idx)"
+                       (click)="onSubEventClick(idx, $event)">
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="sub-event"
+                   [class.current]="seg.idx === currentIndex()"
+                   [class.not-computed]="seg.idx > computedUpTo()"
+                   (mousedown)="$event.stopPropagation()"
+                   (mouseenter)="onSubEventMouseEnter($event, seg.idx)"
+                   (click)="onSubEventClick(seg.idx, $event)">
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Playhead — positioned via direct DOM write in afterRender -->
+    <div class="playhead"></div>
+  </div>
+
+</div>
+
+<!-- Hover preview popover — outside .timeline-bar to avoid overflow-y clipping -->
+<div class="hover-popover"
+     [class.visible]="previewVisible() && isDesktop()"
+     [style.left.px]="hoverX()">
+  @if (hoveredBeyondComputed()) {
+    <!-- Text-only summary for not-yet-computed turns -->
+    @if (hoveredTurnInfo(); as turnInfo) {
+      <div class="hover-text-only">
+        {{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}
+        · {{ 'replay.timeline.events' | translate: { count: turnInfo.eventCount } }}
+        @if (hoveredLabel(); as label) {
+          <div class="hover-label">{{ label }}</div>
+        }
+      </div>
+    }
+  } @else {
+    <!-- Board preview -->
+    <div class="preview-board">
+      <app-pvp-board-container [preview]="true" [readOnly]="true"
+                               [duelState]="hoveredState()"
+                               [ownPlayerIndex]="ownPlayerIndex()"
+                               [displayedPhase]="hoveredState().phase"
+                               [displayedTurnPlayer]="hoveredState().turnPlayer"
+                               [displayedTurnCount]="hoveredState().turnCount"
+                               [timerState]="null"
+                               [highlightedZones]="emptySet"
+                               [actionablePrompt]="null"
+                               [opponentDisconnected]="false"
+                               [animatingZone]="null"
+                               [animatingLp]="null"
+                               [activeChainLinks]="emptyArray"
+                               [chainPhase]="'idle'"
+                               [maskedZoneKeys]="emptyStringSet"
+                               [maskedPileImages]="emptyMap"
+                               [maskedSourceImages]="emptyCardMap"
+                               [targetedZoneKeys]="emptyStringSet"
+                               [preTargetZoneKeys]="emptyStringSet"
+                               [revealedZoneKeys]="emptyStringSet" />
+    </div>
+    @if (hoveredTurnInfo(); as turnInfo) {
+      <div class="hover-info">
+        {{ 'replay.timeline.turn' | translate: { n: turnInfo.turnNumber } }}
+        · LP: {{ turnInfo.p1LP }} / {{ turnInfo.p2LP }}
+        @if (hoveredLabel(); as label) {
+          <div class="hover-label">{{ label }}</div>
+        }
+      </div>
+    }
+  }
+</div>

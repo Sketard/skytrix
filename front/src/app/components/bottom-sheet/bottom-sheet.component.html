@@ -14,7 +14,7 @@
 
   <div class="bottom-sheet-handle"
     role="slider"
-    aria-label="Ajuster la taille du panneau"
+    [attr.aria-label]="'common.resizePanel' | translate"
     aria-orientation="vertical"
     tabindex="0"
     (pointerdown)="onPointerDown($event)"

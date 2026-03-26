@@ -36,19 +36,19 @@
     <mat-menu #deckMenu="matMenu">
       <button mat-menu-item (click)="onShuffle()">
         <mat-icon>shuffle</mat-icon>
-        <span>Shuffle</span>
+        <span>{{ 'simulator.shuffle' | translate }}</span>
       </button>
       <button mat-menu-item (click)="onSearch()">
         <mat-icon>search</mat-icon>
-        <span>Search</span>
+        <span>{{ 'simulator.search' | translate }}</span>
       </button>
       <button mat-menu-item (click)="onMill()">
         <mat-icon>archive</mat-icon>
-        <span>Mill (N)</span>
+        <span>{{ 'simulator.mill' | translate:{n: 'N'} }}</span>
       </button>
       <button mat-menu-item (click)="onReveal()">
         <mat-icon>visibility</mat-icon>
-        <span>Reveal (N)</span>
+        <span>{{ 'simulator.reveal' | translate:{n: 'N'} }}</span>
       </button>
     </mat-menu>
   }

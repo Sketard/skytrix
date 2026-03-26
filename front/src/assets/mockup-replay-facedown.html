@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Replay Face-Down Card — UX Mockup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: system-ui, sans-serif;
+      color: #e0e0e0;
+      gap: 40px;
+    }
+
+    h1 { font-size: 1.2rem; font-weight: 400; opacity: 0.7; }
+
+    .showcase {
+      display: flex;
+      gap: 60px;
+      align-items: flex-start;
+    }
+
+    .demo-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .demo-group label {
+      font-size: 0.85rem;
+      opacity: 0.5;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* --- Card container --- */
+    .card-slot {
+      position: relative;
+      width: 120px;
+      height: 175px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    /* Base layer: card back */
+    .card-slot .card-back {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 6px;
+    }
+
+    /* Overlay layer: revealed vignette */
+    @keyframes xray-pulse {
+      0%, 100% { opacity: 0.30; }
+      50% { opacity: 0.50; }
+    }
+    .card-slot .card-reveal {
+      position: absolute;
+      inset: 0;
+      border-radius: 6px;
+      overflow: hidden;
+      animation: xray-pulse 3s ease-in-out infinite;
+      mask-image: radial-gradient(ellipse 70% 70% at center, black 0%, black 55%, transparent 95%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 70% at center, black 0%, black 55%, transparent 95%);
+    }
+    .card-slot .card-reveal img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
+    /* --- Controls --- */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+      background: rgba(255,255,255,0.05);
+      padding: 20px 30px;
+      border-radius: 10px;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    .controls input[type="range"] {
+      width: 200px;
+      accent-color: #c9a84c;
+    }
+    .controls input[type="text"] {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      color: #fff;
+      padding: 6px 10px;
+      width: 140px;
+      font-size: 0.9rem;
+    }
+    .controls button {
+      background: #c9a84c;
+      color: #1a1a2e;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Mockup — Replay : carte face cachée avec vision "rayon X"</h1>
+
+  <div class="showcase">
+    <!-- Normal face-down (reference) -->
+    <div class="demo-group">
+      <label>Normal (face cachée)</label>
+      <div class="card-slot">
+        <img class="card-back" src="../assets/images/card_back.jpg" alt="Card back">
+      </div>
+    </div>
+
+    <!-- Replay: X-ray effect -->
+    <div class="demo-group">
+      <label>Replay (rayon X)</label>
+      <div class="card-slot" id="replay-card">
+        <img class="card-back" src="../assets/images/card_back.jpg" alt="Card back">
+        <div class="card-reveal" id="reveal-overlay">
+          <img id="reveal-img" src="http://localhost:8080/api/documents/small/code/89631139" alt="Revealed card">
+        </div>
+      </div>
+    </div>
+
+    <!-- Face-up (reference) -->
+    <div class="demo-group">
+      <label>Face visible (référence)</label>
+      <div class="card-slot">
+        <img class="card-back" id="faceup-img" src="http://localhost:8080/api/documents/small/code/89631139" alt="Card face">
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label>
+      Opacité : <span id="opacity-val">55%</span>
+      <input type="range" id="opacity-slider" min="20" max="80" value="55">
+    </label>
+    <label>
+      Card code :
+      <input type="text" id="card-code" value="89631139" placeholder="ex: 46986414">
+      <button id="load-btn">Charger</button>
+    </label>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('reveal-overlay');
+    const revealImg = document.getElementById('reveal-img');
+    const faceupImg = document.getElementById('faceup-img');
+    const slider = document.getElementById('opacity-slider');
+    const opacityVal = document.getElementById('opacity-val');
+    const cardCodeInput = document.getElementById('card-code');
+    const loadBtn = document.getElementById('load-btn');
+
+    slider.addEventListener('input', () => {
+      const v = slider.value / 100;
+      overlay.style.opacity = v;
+      opacityVal.textContent = slider.value + '%';
+    });
+
+    loadBtn.addEventListener('click', () => {
+      const code = cardCodeInput.value.trim();
+      if (code) {
+        const url = 'http://localhost:8080/api/documents/small/code/' + code;
+        revealImg.src = url;
+        faceupImg.src = url;
+      }
+    });
+
+    cardCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') loadBtn.click();
+    });
+  </script>
+
+</body>
+</html>

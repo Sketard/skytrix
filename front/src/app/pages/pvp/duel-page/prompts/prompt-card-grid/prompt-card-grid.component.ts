@@ -2,13 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostBinding,
   HostListener,
-  OnDestroy,
   signal,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { CardInfo, CardLocation, LOCATION, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
+import { TranslatePipe } from '@ngx-translate/core';
+import { CardNamePipe } from '../../../../../core/pipes/card-i18n.pipe';
 import { getCardImageUrlByCode, isFaceUp } from '../../../pvp-card.utils';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 
@@ -40,11 +42,14 @@ function cardKey(c: CardInfo): string {
   styleUrl: './prompt-card-grid.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TranslatePipe, CardNamePipe],
 })
-export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt>, OnDestroy {
+export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt> {
   promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
   longPressInspect = new EventEmitter<{ cardCode: number }>();
   preTargetCards = new EventEmitter<CardInfo[]>();
   excludedCards: CardInfo[] = [];
@@ -57,13 +62,24 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   /** For SELECT_UNSELECT_CARD: the card index the user just toggled (delta to send to engine), or null if confirming as-is. */
   readonly toggledIndex = signal<number | null>(null);
   answered = false;
-  private longPressTimeout: ReturnType<typeof setTimeout> | null = null;
-  private longPressStartPos: { x: number; y: number } | null = null;
-  private longPressFired = false;
 
   ngOnInit(): void {
     console.log('[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
       this.promptData?.type, this.cards.length, this.excludedCards.length, this.displayEntries.length);
+
+    if (this.readOnly && this.preSelectedResponse != null) {
+      const r = this.preSelectedResponse as Record<string, unknown>;
+      // Server sends "indicies" (legacy typo) — accept both spellings
+      const arr = (r['indices'] ?? r['indicies']) as number[] | undefined;
+      if (Array.isArray(arr)) {
+        this.selectedIndices.set(new Set<number>(arr));
+      } else if (r['index'] != null && (r['index'] as number) >= 0) {
+        this.selectedIndices.set(new Set<number>([r['index'] as number]));
+      }
+      this.answered = true;
+      return;
+    }
+
     // Pre-highlight cards already in the engine's material group (unselect_cards section).
     if (this.promptData?.type === 'SELECT_UNSELECT_CARD') {
       const p = this.promptData as SelectUnselectCardMsg;
@@ -72,10 +88,6 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       for (let i = selectCount; i < p.cards.length; i++) preSelected.add(i);
       this.selectedIndices.set(preSelected);
     }
-  }
-
-  ngOnDestroy(): void {
-    this.cancelLongPress();
   }
 
   get cards(): CardInfo[] {
@@ -246,17 +258,13 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   toggleCard(index: number): void {
     if (this.answered) return;
-    // H1 fix: Skip selection if long-press just fired (click event follows touchend)
-    if (this.longPressFired) {
-      this.longPressFired = false;
-      return;
-    }
 
-    // Inspect card on every click (shows image + description like in deck builder)
     const cardCode = this.cards[index]?.cardCode;
     if (cardCode) {
       this.longPressInspect.emit({ cardCode });
     }
+
+    if (this.readOnly) return;
 
     if (this.promptData?.type === 'SELECT_SUM') {
       const p = this.promptData as SelectSumMsg;
@@ -360,47 +368,9 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     }
   }
 
-  // L2 fix: Consistent pointer event model (pointerdown instead of touchstart)
-  onCardPointerDown(cardCode: number, event: PointerEvent): void {
-    this.cancelLongPress();
-    this.longPressFired = false;
-    this.longPressStartPos = { x: event.clientX, y: event.clientY };
-    this.longPressTimeout = setTimeout(() => {
-      if (cardCode) {
-        this.longPressFired = true;
-        this.longPressInspect.emit({ cardCode });
-      }
-    }, 500);
-  }
-
-  onCardPointerUp(): void {
-    this.cancelLongPress();
-  }
-
-  onCardPointerMove(event: PointerEvent): void {
-    if (!this.longPressStartPos || !this.longPressTimeout) return;
-    const dx = event.clientX - this.longPressStartPos.x;
-    const dy = event.clientY - this.longPressStartPos.y;
-    if (dx * dx + dy * dy > 100) { // 10px threshold squared
-      this.cancelLongPress();
-    }
-  }
-
-  onContextMenu(event: Event): void {
-    this.cancelLongPress();
-    event.preventDefault();
-  }
-
-  private cancelLongPress(): void {
-    if (this.longPressTimeout) {
-      clearTimeout(this.longPressTimeout);
-      this.longPressTimeout = null;
-    }
-    this.longPressStartPos = null;
-  }
-
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     if (event.key === 'Enter') {
       event.preventDefault();
       this.confirm();

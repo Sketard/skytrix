@@ -29,7 +29,7 @@
         <div class="search-input-wrapper">
           <input class="search-input"
                  type="text"
-                 placeholder="Filter..."
+                 [placeholder]="'simulator.filterPlaceholder' | translate"
                  aria-label="Filter cards"
                  [value]="filterText()"
                  (input)="onFilterInput($event)"
@@ -89,7 +89,7 @@
       <div class="search-input-wrapper">
         <input class="search-input"
                type="text"
-               placeholder="Filter..."
+               [placeholder]="'simulator.filterPlaceholder' | translate"
                aria-label="Filter cards"
                [value]="filterText()"
                (input)="onFilterInput($event)"

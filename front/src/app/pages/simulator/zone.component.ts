@@ -7,6 +7,7 @@ import { CommandStackService } from './command-stack.service';
 import { createGlowEffect } from './glow-effect';
 import { CardInstance, ZoneId, ZONE_CONFIG, toSharedCardData } from './simulator.models';
 import { CardType } from '../../core/enums/card-type.enum';
+import { TranslatePipe } from '@ngx-translate/core';
 import { CardComponent } from '../../components/card/card.component';
 
 @Component({
@@ -15,7 +16,7 @@ import { CardComponent } from '../../components/card/card.component';
   styleUrl: './zone.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, CardComponent, MatMenuModule, MatIconModule],
+  imports: [DragDropModule, CardComponent, MatMenuModule, MatIconModule, TranslatePipe],
 })
 export class SimZoneComponent {
   readonly zoneId = input.required<ZoneId>();

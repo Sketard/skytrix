@@ -1,4 +1,4 @@
-import { BoardStatePayload, CardLocation } from '../duel-ws.types';
+import type { BoardStatePayload, CardLocation, CardOnField, ZoneId } from '../duel-ws.types';
 
 export type DuelState = BoardStatePayload;
 
@@ -23,3 +23,10 @@ export const EMPTY_DUEL_STATE: DuelState = {
     { lp: 8000, deckCount: 0, extraCount: 0, zones: [] },
   ],
 };
+
+// Shared inert defaults for board container inputs (replay + timeline preview)
+export const EMPTY_ZONE_SET = new Set<ZoneId>();
+export const EMPTY_STRING_SET: ReadonlySet<string> = new Set<string>();
+export const EMPTY_ARRAY: never[] = [];
+export const EMPTY_MAP: ReadonlyMap<string, string | null> = new Map();
+export const EMPTY_CARD_MAP: ReadonlyMap<string, CardOnField> = new Map();

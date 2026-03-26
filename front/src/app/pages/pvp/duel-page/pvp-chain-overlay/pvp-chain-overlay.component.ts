@@ -12,7 +12,7 @@ import {
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import type { ChainLinkState } from '../../types';
 import { getCardImageUrlByCode } from '../../pvp-card.utils';
-import { DuelWebSocketService } from '../duel-web-socket.service';
+import { ANIMATION_DATA_SOURCE } from '../animation-data-source';
 import { AnimationOrchestratorService } from '../animation-orchestrator.service';
 
 export interface VisibleCard {
@@ -76,13 +76,13 @@ export interface ExitingCardState {
 export class PvpChainOverlayComponent {
   readonly promptActive = input(false);
 
-  private readonly wsService = inject(DuelWebSocketService);
+  private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly orchestrator = inject(AnimationOrchestratorService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
-  readonly activeChainLinks = this.wsService.activeChainLinks;
-  readonly phase = this.wsService.chainPhase;
+  readonly activeChainLinks = this.dataSource.activeChainLinks;
+  readonly phase = this.dataSource.chainPhase;
 
   /** Whether the overlay backdrop + cards are visible */
   readonly overlayVisible = signal(false);

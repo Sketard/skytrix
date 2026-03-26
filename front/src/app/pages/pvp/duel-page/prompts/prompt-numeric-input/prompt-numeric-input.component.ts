@@ -2,12 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostBinding,
   HostListener,
+  OnInit,
   signal,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { AnnounceNumberMsg, SelectCounterMsg } from '../../../duel-ws.types';
+import { TranslatePipe } from '@ngx-translate/core';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 type NumericPrompt = AnnounceNumberMsg | SelectCounterMsg;
@@ -18,17 +21,28 @@ type NumericPrompt = AnnounceNumberMsg | SelectCounterMsg;
   styleUrl: './prompt-numeric-input.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [TranslatePipe],
 })
-export class PromptNumericInputComponent implements PromptSubComponent<NumericPrompt> {
+export class PromptNumericInputComponent implements PromptSubComponent<NumericPrompt>, OnInit {
   private _promptData: NumericPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
 
   readonly getCardImageUrl = getCardImageUrlByCode;
   readonly value = signal(0);
   readonly cardCounts = signal<number[]>([]);
   answered = false;
+
+  ngOnInit(): void {
+    if (this.readOnly && this.preSelectedResponse != null) {
+      const r = this.preSelectedResponse as Record<string, unknown>;
+      if (r['value'] != null) this.value.set(r['value'] as number);
+      if (Array.isArray(r['counts'])) this.cardCounts.set(r['counts'] as number[]);
+      this.answered = true;
+    }
+  }
 
   get promptData(): NumericPrompt | null { return this._promptData; }
   set promptData(v: NumericPrompt | null) {
@@ -114,6 +128,7 @@ export class PromptNumericInputComponent implements PromptSubComponent<NumericPr
 
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     if (!this.isCounterMode) return;
     if (event.key === 'Enter') {
       event.preventDefault();

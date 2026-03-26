@@ -11,6 +11,8 @@ import {
 } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
+import { CardNamePipe } from '../../core/pipes/card-i18n.pipe';
 import { BoardStateService } from './board-state.service';
 import { CardInstance } from './simulator.models';
 
@@ -20,7 +22,7 @@ import { CardInstance } from './simulator.models';
   styleUrl: './xyz-material-peek.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatIconModule],
+  imports: [DragDropModule, MatIconModule, TranslatePipe, CardNamePipe],
   host: {},
 })
 export class SimXyzMaterialPeekComponent {

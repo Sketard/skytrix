@@ -2,9 +2,9 @@
   <div class="handTest-header">
     <button mat-flat-button (click)="retry()">
       <mat-icon>shuffle</mat-icon>
-      Mélanger
+      {{ 'deckBuilder.handTest.shuffle' | translate }}
     </button>
-    <mat-slide-toggle color="primary" [(ngModel)]="goSecond">Aller deuxième</mat-slide-toggle>
+    <mat-slide-toggle color="primary" [(ngModel)]="goSecond">{{ 'deckBuilder.handTest.goSecond' | translate }}</mat-slide-toggle>
   </div>
 
   <div class="handTest-cards">

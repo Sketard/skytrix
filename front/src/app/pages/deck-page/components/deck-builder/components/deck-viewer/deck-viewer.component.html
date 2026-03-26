@@ -1,7 +1,7 @@
 <div class="deckViewer">
   <div class="deckViewer-part">
     <div class="deckViewer-part-header">
-      <span>MAIN</span>
+      <span>{{ 'deckBuilder.viewer.main' | translate }}</span>
       <span class="deckViewer-part-header-count" [class.illegal]="deckBuildService.mainCardNumber() < 40 || deckBuildService.mainCardNumber() > 60">
         [{{ deckBuildService.mainCardNumber() }}]
       </span>
@@ -13,7 +13,7 @@
   </div>
   <div class="deckViewer-part extra">
     <div class="deckViewer-part-header">
-      <span>EXTRA</span>
+      <span>{{ 'deckBuilder.viewer.extra' | translate }}</span>
       <span class="deckViewer-part-header-count">
         [{{ deckBuildService.extraCardNumber() }}]
       </span>
@@ -26,7 +26,7 @@
   </div>
   <div class="deckViewer-part side">
     <div class="deckViewer-part-header">
-      <span>SIDE</span>
+      <span>{{ 'deckBuilder.viewer.side' | translate }}</span>
       <span class="deckViewer-part-header-count">
         [{{ deckBuildService.sideCardNumber() }}]
       </span>

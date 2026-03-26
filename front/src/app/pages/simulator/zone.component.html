@@ -37,21 +37,21 @@
       @if (isFaceUpAtk() || isFaceUpDef()) {
         <button mat-menu-item (click)="onFlipFaceDown()">
           <mat-icon>flip_to_back</mat-icon>
-          <span>Flip face-down</span>
+          <span>{{ 'simulator.flipFaceDown' | translate }}</span>
         </button>
         <button mat-menu-item (click)="onTogglePosition()">
           <mat-icon>screen_rotation</mat-icon>
-          <span>{{ isFaceUpAtk() ? 'Change to DEF' : 'Change to ATK' }}</span>
+          <span>{{ isFaceUpAtk() ? ('simulator.changeToDef' | translate) : ('simulator.changeToAtk' | translate) }}</span>
         </button>
       }
       @if (isFaceDown()) {
         <button mat-menu-item (click)="onFlipFaceUp('ATK')">
           <mat-icon>flip_to_front</mat-icon>
-          <span>Flip face-up (ATK)</span>
+          <span>{{ 'simulator.flipUpAtk' | translate }}</span>
         </button>
         <button mat-menu-item (click)="onFlipFaceUp('DEF')">
           <mat-icon>flip_to_front</mat-icon>
-          <span>Flip face-up (DEF)</span>
+          <span>{{ 'simulator.flipUpDef' | translate }}</span>
         </button>
       }
     </mat-menu>

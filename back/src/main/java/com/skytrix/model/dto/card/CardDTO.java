@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -14,6 +15,14 @@ public class CardDTO {
     private Long id;
     private String name;
     private String description;
+    private Map<String, TranslationEntry> translations;
+
+    @Data
+    @NoArgsConstructor
+    public static class TranslationEntry {
+        private String name;
+        private String description;
+    }
     private long passcode;
     private List<Type> types;
     private String frameType;

@@ -1,7 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import type { SharedCardInspectorData } from '../../../core/model/shared-card-data';
 import { CardDataCacheService, CARD_BACK_PLACEHOLDER, UNKNOWN_CARD_PLACEHOLDER } from './card-data-cache.service';
-import { getCardImageUrlByCode } from '../pvp-card.utils';
 
 /**
  * Manages card inspection state: loading card data with generation-based
@@ -37,20 +36,7 @@ export class CardInspectionService {
       return;
     }
 
-    // Show image immediately while loading text details
-    this.inspectedCard.set({
-      name: '',
-      imageUrl: getCardImageUrlByCode(cardCode),
-      isMonster: false,
-      isLink: false,
-      hasDefense: false,
-      displayAtk: '',
-      displayDef: '',
-      description: '',
-    });
-
     const data = await this.cardDataCache.getCardData(cardCode);
-    // L3 fix: Discard stale response if a newer inspection was triggered
     if (this.inspectGeneration === gen) {
       this.inspectedCard.set(data);
     }

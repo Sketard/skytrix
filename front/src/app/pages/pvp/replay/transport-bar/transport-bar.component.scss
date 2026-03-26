@@ -1,0 +1,73 @@
+@use 'responsive' as r;
+
+:host {
+  display: block;
+}
+
+.transport-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--surface-nav);
+
+  button {
+    color: #fff;
+  }
+}
+
+.separator {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 4px;
+}
+
+.toggle-btn {
+  &.active {
+    opacity: 1;
+    color: var(--accent, #69f0ae) !important;
+  }
+
+  &.inactive {
+    opacity: 0.4;
+    color: rgba(255, 255, 255, 0.35) !important;
+
+    mat-icon {
+      text-decoration: line-through;
+    }
+  }
+}
+
+.perspective-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+
+  .player-label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+.position-label {
+  position: absolute;
+  left: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 35%;
+}
+
+// Mobile: 44px touch targets
+@include r.respond-below(r.$bp-tablet) {
+  .transport-bar button {
+    @include r.touch-target-min;
+  }
+}

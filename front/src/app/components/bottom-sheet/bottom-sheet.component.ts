@@ -13,12 +13,14 @@ import {
   untracked,
 } from '@angular/core';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-bottom-sheet',
   templateUrl: './bottom-sheet.component.html',
   styleUrl: './bottom-sheet.component.scss',
   standalone: true,
+  imports: [TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:keydown.escape)': 'onEscapeKey()',
@@ -28,7 +30,7 @@ import { NavbarCollapseService } from '../../services/navbar-collapse.service';
 export class BottomSheetComponent implements OnInit, OnDestroy {
   readonly opened = input(false);
   readonly cardDragActive = input(false);
-  readonly ariaLabel = input('Panneau de recherche de cartes');
+  readonly ariaLabel = input('');
   readonly requestedSnap = input<'half' | 'full' | 'collapsed' | null>(null);
   readonly contained = input(false);
   readonly containerHeight = input<number | null>(null);

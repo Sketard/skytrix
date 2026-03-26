@@ -7,10 +7,10 @@
           <mat-button-toggle-group
             hideSingleSelectionIndicator
             (change)="setDisplayMode($event.source.value)">
-            <mat-button-toggle [value]="displayType.GRID" [checked]="displayMode() === displayType.GRID" matTooltip="Grille" aria-label="Grille">
+            <mat-button-toggle [value]="displayType.GRID" [checked]="displayMode() === displayType.GRID" [matTooltip]="'cardSearcher.grid' | translate" [attr.aria-label]="'cardSearcher.grid' | translate">
               <mat-icon>view_module</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle [value]="displayType.LIST" [checked]="displayMode() === displayType.LIST" matTooltip="Liste" aria-label="Liste">
+            <mat-button-toggle [value]="displayType.LIST" [checked]="displayMode() === displayType.LIST" [matTooltip]="'cardSearcher.list' | translate" [attr.aria-label]="'cardSearcher.list' | translate">
               <mat-icon>view_headline</mat-icon>
             </mat-button-toggle>
           </mat-button-toggle-group>
@@ -19,7 +19,7 @@
             class="favorite-toggle"
             [class.active]="favoriteFilter()"
             (click)="toggleFavoriteFilter()"
-            matTooltip="Favoris" aria-label="Favoris">
+            [matTooltip]="'cardSearcher.favorites' | translate" [attr.aria-label]="'cardSearcher.favorites' | translate">
             <mat-icon>{{ favoriteFilter() ? 'star' : 'star_border' }}</mat-icon>
           </button>
         </div>

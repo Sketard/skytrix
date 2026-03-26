@@ -14,9 +14,13 @@ import com.skytrix.model.entity.CardDeckIndex;
 import com.skytrix.model.entity.CardImage;
 import com.skytrix.model.entity.CardSet;
 import com.skytrix.model.entity.ImageIndex;
+import com.skytrix.model.entity.Translation;
 import com.skytrix.model.enums.Language;
 import com.skytrix.model.enums.Type;
 import com.skytrix.repository.CardRepository;
+
+import java.util.HashMap;
+import java.util.Map;
 import com.skytrix.security.AuthService;
 import com.skytrix.utils.RouteUtils;
 import jakarta.inject.Inject;
@@ -80,7 +84,23 @@ public abstract class CardMapper {
 
     @Mapping(target = "name", source = "source.name")
     @Mapping(target = "description", source = "source.description")
+    @Mapping(target = "translations", ignore = true)
     public abstract CardDTO toCardDTO(Card source);
+
+    @AfterMapping
+    public void toCardDTOAfterMapping(@MappingTarget CardDTO target, Card source) {
+        Map<String, CardDTO.TranslationEntry> translations = new HashMap<>();
+        for (Language lang : Language.values()) {
+            Translation t = source.getTranslation(lang);
+            if (t != null) {
+                var entry = new CardDTO.TranslationEntry();
+                entry.setName(t.getName());
+                entry.setDescription(t.getDescription());
+                translations.put(lang.name().toLowerCase(), entry);
+            }
+        }
+        target.setTranslations(translations);
+    }
 
     public CardDetailedDTO toCardDetailedDTO(Card source) {
         var target = new CardDetailedDTO();

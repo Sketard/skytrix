@@ -3,11 +3,11 @@ import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Subject, switchMap, takeUntil, timeout } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { displaySuccess, displayError } from '../../../core/utilities/functions';
-import { RoomDTO, SHARE_TEXT_TEMPLATE } from '../room.types';
+import { TranslateService } from '@ngx-translate/core';
+import { NotificationService } from '../../../core/services/notification.service';
+import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
@@ -26,7 +26,8 @@ export type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' |
 export class RoomStateMachineService {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notify = inject(NotificationService);
+  private readonly translate = inject(TranslateService);
   private readonly clipboard = inject(Clipboard);
   private readonly dialog = inject(MatDialog);
   private readonly roomApiService = inject(RoomApiService);
@@ -98,10 +99,7 @@ export class RoomStateMachineService {
         this.handleRoomStatus(room);
       },
       error: (err: HttpErrorResponse) => {
-        const message = err.status === 404
-          ? 'Room not found or already ended'
-          : 'Unable to reach server';
-        displayError(this.snackBar, message);
+        this.notify.error(err.status === 404 ? 'error.ROOM_NOT_FOUND' : 'error.DUEL_CONNECT_FAILED');
         this.router.navigate(['/pvp']);
       },
     });
@@ -128,11 +126,11 @@ export class RoomStateMachineService {
         this.connectWhenReady(room);
         break;
       case 'ENDED':
-        displayError(this.snackBar, 'Room not found or already ended');
+        this.notify.error('error.ROOM_NOT_FOUND');
         this.router.navigate(['/pvp']);
         break;
       case 'CLOSED':
-        displayError(this.snackBar, 'This room has been closed');
+        this.notify.error('error.ROOM_CLOSED');
         this.router.navigate(['/pvp']);
         break;
     }
@@ -140,7 +138,7 @@ export class RoomStateMachineService {
 
   private openDeckPickerForJoin(roomCode: string, attempt = 0): void {
     if (attempt >= 3) {
-      displayError(this.snackBar, 'Too many failed attempts');
+      this.notify.error('error.TOO_MANY_ATTEMPTS');
       this.router.navigate(['/pvp']);
       return;
     }
@@ -163,13 +161,13 @@ export class RoomStateMachineService {
       },
       error: (err: HttpErrorResponse) => {
         if (err.status === 409) {
-          displayError(this.snackBar, 'Room is full');
+          this.notify.error('error.ROOM_FULL');
           this.router.navigate(['/pvp']);
         } else if (err.status === 422) {
-          displayError(this.snackBar, 'Invalid deck, please select another');
+          this.notify.error('error.INVALID_DECK_SELECT');
           this.openDeckPickerForJoin(roomCode, attempt + 1);
         } else {
-          displayError(this.snackBar, 'Failed to join room');
+          this.notify.error('error.ROOM_JOIN_FAILED');
           this.router.navigate(['/pvp']);
         }
       },
@@ -183,7 +181,7 @@ export class RoomStateMachineService {
       this.tabGuard.broadcast();
       this.wsService.connect(room.wsToken);
     } else {
-      displayError(this.snackBar, 'Unable to connect to duel');
+      this.notify.error('error.DUEL_CONNECT_FAILED');
       this.router.navigate(['/pvp']);
     }
   }
@@ -245,16 +243,17 @@ export class RoomStateMachineService {
     if (!code) return;
     const url = `${window.location.origin}/pvp/duel/${code}`;
     this.clipboard.copy(url);
-    displaySuccess(this.snackBar, 'Link copied!', 3000);
+    this.notify.success('success.LINK_COPIED', undefined, 3000);
   }
 
   shareRoom(): void {
     const code = this.room()?.roomCode;
     if (!code) return;
     const baseUrl = window.location.origin;
+    const url = `${baseUrl}/pvp/duel/${code}`;
     navigator.share({
       title: 'skytrix PvP Duel',
-      text: SHARE_TEXT_TEMPLATE(code, baseUrl),
+      text: this.translate.instant('duel.share.text', { roomCode: code, url }),
     }).catch(() => this.copyRoomLink());
   }
 

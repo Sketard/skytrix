@@ -1,13 +1,36 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { Worker } from 'node:worker_threads';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
-import { resolve, join, basename } from 'node:path';
-import { MAX_PAYLOAD_SIZE, RECONNECT_GRACE_MS, TURN_TIME_POOL_MS, TURN_TIME_INCREMENT_MS, INACTIVITY_TIMEOUT_MS, INACTIVITY_WARNING_BEFORE_MS, INACTIVITY_RACE_WINDOW_MS, BOTH_DISCONNECTED_CLEANUP_MS, STATE_SYNC_RATE_LIMIT_MS, RPS_TIMEOUT_MS, TP_TIMEOUT_MS } from './types.js';
-import type { WorkerToMainMessage, DuelSession, PlayerSession, Deck, TimerContext, SessionPhase, RpsState } from './types.js';
-import type { ServerMessage, ClientMessage, Player, SelectPromptType } from './ws-protocol.js';
+import { resolve, join } from 'node:path';
+import {
+  MAX_PAYLOAD_SIZE,
+  RECONNECT_GRACE_MS,
+  TURN_TIME_INCREMENT_MS,
+  INACTIVITY_TIMEOUT_MS,
+  INACTIVITY_WARNING_BEFORE_MS,
+  INACTIVITY_RACE_WINDOW_MS,
+  BOTH_DISCONNECTED_CLEANUP_MS,
+  STATE_SYNC_RATE_LIMIT_MS,
+  RPS_TIMEOUT_MS,
+  TP_TIMEOUT_MS,
+  REPLAY_WORKER_WATCHDOG_MS,
+  REPLAY_CACHE_TTL_MS,
+  MAX_REPLAY_WORKERS,
+} from './types.js';
+import type {
+  WorkerToMainMessage,
+  DuelSession,
+  Deck,
+  TimerContext,
+  SessionPhase,
+  RpsState,
+  WorkerReplayPayload,
+  ReplayMetadata,
+} from './types.js';
+import type { ServerMessage, ClientMessage, Player } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
-import { validateData, findMissingPasscodes } from './ocg-scripts.js';
+import { validateData, findMissingPasscodes, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import { updateData } from './data-updater.js';
 
 // =============================================================================
@@ -17,12 +40,13 @@ import { updateData } from './data-updater.js';
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
 const DATA_DIR = resolve(process.env['DATA_DIR'] ?? join(import.meta.dirname!, '../data'));
 const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
+const SPRING_BOOT_API_URL = process.env['SPRING_BOOT_API_URL'] ?? 'http://localhost:8080/api';
+const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? (IS_PRODUCTION ? '' : 'dev-internal-key');
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const WS_RATE_LIMIT_WINDOW_MS = 60_000;
 const WS_RATE_LIMIT_MAX = 30;
 const MAX_INVALID_RESPONSES = 5;
-const BLUFF_DELAY_MIN_MS = 200;
-const BLUFF_DELAY_MAX_MS = 1500;
+const MAX_REPLAY_CACHE_ENTRIES = 50;
 
 const startTime = Date.now();
 let totalDuelsServed = 0;
@@ -61,6 +85,11 @@ interface ActiveDuelSession extends DuelSession {
   activeChainLinks: ServerMessage[];
   chainPhase: 'idle' | 'building' | 'resolving';
   negatedChainIndices: Set<number>;
+  // Replay: player metadata
+  playerUsernames: [string, string];
+  deckNames: [string, string];
+  pendingReplayResult: string | null;
+  forkConnectionTimeout: ReturnType<typeof setTimeout> | null;
 }
 
 const activeDuels = new Map<string, ActiveDuelSession>();
@@ -68,6 +97,26 @@ const pendingTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
 const reconnectTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
 // M1: gracePeriodTimers, timerContexts, inactivityTimers, raceWindowTimers
 // consolidated into ActiveDuelSession.timerContext and PlayerSession per-player timers.
+
+// =============================================================================
+// Replay State
+// =============================================================================
+
+type ReplayConnectionState = 'loading' | 'ready' | 'fork_pending' | 'fork_warning' | 'transitioning' | 'closed';
+
+interface ReplayConnection {
+  ws: WebSocket;
+  replayId: string;
+  userId: string;
+  worker: Worker | null;
+  watchdogTimer: ReturnType<typeof setTimeout> | null;
+  state: ReplayConnectionState;
+}
+
+const replayCache = new Map<string, { data: WorkerReplayPayload; playerIds: [string, string]; timer: ReturnType<typeof setTimeout> }>();
+let replayWorkerCount = 0;
+const replayQueue: Array<() => void> = [];
+const activeReplayConnections = new Map<WebSocket, ReplayConnection>();
 
 // Track WebSocket liveness for heartbeat
 interface AliveWebSocket extends WebSocket {
@@ -86,6 +135,7 @@ if (!dataReady) {
   console.error(`[Startup] Data validation failed: ${validation.reason}`);
 } else {
   console.log('[Startup] Data validation passed');
+  initScriptsHash(scriptsDir);
 }
 
 // =============================================================================
@@ -99,10 +149,12 @@ function json(res: ServerResponse, status: number, body: unknown): void {
 }
 
 function validateInternalAuth(req: IncomingMessage, res: ServerResponse): boolean {
-  const expected = process.env['INTERNAL_API_KEY'] || 'dev-internal-key';
+  const expected = INTERNAL_API_KEY;
   const received = req.headers['x-internal-key'];
-  if (received !== expected) {
-    json(res, 401, { error: 'Unauthorized' });
+  const receivedBuf = Buffer.from(String(received ?? ''), 'utf-8');
+  const expectedBuf = Buffer.from(expected, 'utf-8');
+  if (receivedBuf.length !== expectedBuf.length || !timingSafeEqual(receivedBuf, expectedBuf)) {
+    json(res, 401, { code: 'UNAUTHORIZED', error: 'Unauthorized' });
     return false;
   }
   return true;
@@ -193,7 +245,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     if (!validateInternalAuth(req, res)) return;
 
     if (activeDuels.size > 0) {
-      json(res, 409, { error: 'Cannot update while duels are active', activeDuels: activeDuels.size });
+      json(res, 409, { code: 'UPDATE_BLOCKED_ACTIVE_DUELS', error: 'Cannot update while duels are active', activeDuels: activeDuels.size });
       return;
     }
 
@@ -213,7 +265,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (method === 'POST' && pathname === '/api/validate-passcodes') {
     if (!validateInternalAuth(req, res)) return;
     if (!dataReady) {
-      json(res, 503, { error: 'Server not ready — data validation failed' });
+      json(res, 503, { code: 'SERVER_NOT_READY', error: 'Server not ready — data validation failed' });
       return;
     }
 
@@ -222,7 +274,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       body = await readBody(req);
     } catch (err) {
       if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
-        json(res, 413, { error: 'Payload too large' });
+        json(res, 413, { code: 'PAYLOAD_TOO_LARGE', error: 'Payload too large' });
         return;
       }
       throw err;
@@ -232,12 +284,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     try {
       parsed = JSON.parse(body);
     } catch {
-      json(res, 400, { error: 'Invalid JSON' });
+      json(res, 400, { code: 'INVALID_JSON', error: 'Invalid JSON' });
       return;
     }
 
     if (!Array.isArray(parsed.passcodes) || !parsed.passcodes.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0)) {
-      json(res, 400, { error: 'passcodes must be an array of positive integers' });
+      json(res, 400, { code: 'INVALID_PASSCODES', error: 'passcodes must be an array of positive integers' });
       return;
     }
 
@@ -251,7 +303,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (method === 'POST' && pathname === '/api/duels') {
     if (!validateInternalAuth(req, res)) return;
     if (!dataReady) {
-      json(res, 503, { error: 'Server not ready — data validation failed' });
+      json(res, 503, { code: 'SERVER_NOT_READY', error: 'Server not ready — data validation failed' });
       return;
     }
 
@@ -260,22 +312,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       body = await readBody(req);
     } catch (err) {
       if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
-        json(res, 413, { error: 'Payload too large' });
+        json(res, 413, { code: 'PAYLOAD_TOO_LARGE', error: 'Payload too large' });
         return;
       }
       throw err;
     }
 
-    let parsed: { player1: { id: string; deck: Deck }; player2: { id: string; deck: Deck }; soloMode?: boolean; skipShuffle?: boolean; turnTimeSecs?: number };
+    let parsed: { player1: { id: string; deck: Deck; username?: string; deckName?: string }; player2: { id: string; deck: Deck; username?: string; deckName?: string }; soloMode?: boolean; skipShuffle?: boolean; turnTimeSecs?: number };
     try {
       parsed = JSON.parse(body);
     } catch {
-      json(res, 400, { error: 'Invalid JSON' });
+      json(res, 400, { code: 'INVALID_JSON', error: 'Invalid JSON' });
       return;
     }
 
     if (!parsed.player1?.id || !parsed.player2?.id || !parsed.player1?.deck || !parsed.player2?.deck) {
-      json(res, 400, { error: 'Missing required fields: player1, player2 with id and deck' });
+      json(res, 400, { code: 'INVALID_DECK_FORMAT', error: 'Missing required fields: player1, player2 with id and deck' });
       return;
     }
 
@@ -286,16 +338,16 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
     // Validate deck arrays (M2: prevent worker crash on malformed input)
     if (!Array.isArray(parsed.player1.deck?.main) || !Array.isArray(parsed.player1.deck?.extra) ||
-        !Array.isArray(parsed.player2.deck?.main) || !Array.isArray(parsed.player2.deck?.extra)) {
-      json(res, 400, { error: 'Deck must have main and extra arrays' });
+      !Array.isArray(parsed.player2.deck?.main) || !Array.isArray(parsed.player2.deck?.extra)) {
+      json(res, 400, { code: 'INVALID_DECK_FORMAT', error: 'Deck must have main and extra arrays' });
       return;
     }
 
     // Deep deck validation (M3: ensure all entries are positive integers)
     for (const deck of [parsed.player1.deck, parsed.player2.deck]) {
       if (!deck.main.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0) ||
-          !deck.extra.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0)) {
-        json(res, 400, { error: 'Deck arrays must contain positive integers' });
+        !deck.extra.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0)) {
+        json(res, 400, { code: 'INVALID_DECK_CONTENT', error: 'Deck arrays must contain positive integers' });
         return;
       }
     }
@@ -339,6 +391,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       activeChainLinks: [],
       chainPhase: 'idle',
       negatedChainIndices: new Set(),
+      playerUsernames: [parsed.player1.username ?? parsed.player1.id, parsed.player2.username ?? parsed.player2.id],
+      deckNames: [parsed.player1.deckName ?? 'Deck', parsed.player2.deckName ?? 'Deck'],
+      pendingReplayResult: null,
+      forkConnectionTimeout: null,
     };
 
     // Store in active duels and pending tokens
@@ -368,7 +424,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const deleteDuelId = parts[2];
     const session = activeDuels.get(deleteDuelId);
     if (!session) {
-      json(res, 404, { error: 'Duel not found' });
+      json(res, 404, { code: 'DUEL_NOT_FOUND', error: 'Duel not found' });
       return;
     }
     console.log(`[${deleteDuelId}] Duel terminated via API`);
@@ -379,7 +435,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   // 404
-  json(res, 404, { error: 'Not Found' });
+  json(res, 404, { code: 'NOT_FOUND', error: 'Not Found' });
 }
 
 // =============================================================================
@@ -424,7 +480,69 @@ function attachWorkerHandlers(session: ActiveDuelSession): void {
 function handleDuelEnd(session: ActiveDuelSession): void {
   session.endedAt = Date.now();
   clearAllDuelTimers(session);
-  session.rematchTimeout = setTimeout(() => rematchExpired(session), 5 * 60 * 1000);
+  // M14 — Solo sessions have no rematch flow
+  if (!session.soloMode) {
+    session.rematchTimeout = setTimeout(() => rematchExpired(session), 5 * 60 * 1000);
+  }
+}
+
+function requestReplayFromWorker(session: ActiveDuelSession, resultOverride: string): void {
+  if (!session.worker || session.workerTerminated) return;
+  session.pendingReplayResult = resultOverride;
+  session.worker.postMessage({ type: 'EMIT_REPLAY_DATA' });
+}
+
+async function persistReplay(session: ActiveDuelSession, payload: import('./types.js').WorkerReplayPayload): Promise<void> {
+  const metadata = session.pendingReplayResult
+    ? { ...payload.metadata, result: session.pendingReplayResult }
+    : payload.metadata;
+  session.pendingReplayResult = null;
+
+  const player1Id = Number(session.players[0].playerId);
+  const player2Id = Number(session.players[1].playerId);
+  if (!Number.isFinite(player1Id) || !Number.isFinite(player2Id)) {
+    console.error(`[Duel ${session.duelId}] Replay persist aborted: invalid player IDs (p1=${session.players[0].playerId}, p2=${session.players[1].playerId})`);
+    return;
+  }
+
+  const body = {
+    player1Id,
+    player2Id,
+    metadata,
+    replayData: {
+      seed: payload.seed,
+      decks: payload.decks,
+      playerResponses: payload.playerResponses,
+    },
+  };
+
+  const maxRetries = 3;
+  const jsonBody = JSON.stringify(body);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(`${SPRING_BOOT_API_URL}/replays`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Internal-Key': INTERNAL_API_KEY },
+        body: jsonBody,
+      });
+      if (response.ok) {
+        const data = await response.json() as { id: string };
+        console.log(`[Duel ${session.duelId}] Replay persisted: ${data.id}`);
+        return;
+      }
+      const errBody = await response.text().catch(() => '');
+      console.error(`[Duel ${session.duelId}] Replay persist failed (attempt ${attempt}/${maxRetries}): HTTP ${response.status} — ${errBody}`);
+    } catch (err) {
+      console.error(`[Duel ${session.duelId}] Replay persist error (attempt ${attempt}/${maxRetries}):`, err instanceof Error ? err.message : err);
+    }
+
+    if (attempt < maxRetries) {
+      const delay = Math.pow(3, attempt - 1) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  console.error(`[Duel ${session.duelId}] All ${maxRetries} persist attempts failed — replay data lost`);
 }
 
 // =============================================================================
@@ -475,6 +593,8 @@ function startRematch(session: ActiveDuelSession): void {
     type: 'INIT_DUEL',
     duelId: session.duelId,
     decks: session.decks,
+    playerUsernames: session.playerUsernames,
+    deckNames: session.deckNames,
     skipRps: true,
     skipShuffle: session.skipShuffle,
   });
@@ -555,7 +675,7 @@ function resolveRps(session: ActiveDuelSession): void {
     }, 2000);
     return;
   } else {
-    // Winner chooses turn order after 3s
+    // Winner chooses turn order after 1.5s
     const rpsWinner = winner;
     setTimeout(() => {
       if (session.phase !== 'RPS') return;
@@ -579,11 +699,11 @@ function resolveRps(session: ActiveDuelSession): void {
             session.rpsState.timers.push(setTimeout(() => {
               if (session.phase !== 'TP_RESULT') return;
               startDuelWithOrder(session, rpsWinner);
-            }, 2500));
+            }, 1000));
           }
         }, TP_TIMEOUT_MS));
       }
-    }, 3000);
+    }, 1500);
   }
 }
 
@@ -619,7 +739,7 @@ function handlePreDuelResponse(session: ActiveDuelSession, playerIndex: 0 | 1, p
     session.rpsState.timers.push(setTimeout(() => {
       if (session.phase !== 'TP_RESULT') return;
       startDuelWithOrder(session, firstPlayer);
-    }, 2500));
+    }, 1000));
     return true;
   }
 
@@ -670,8 +790,12 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
     type: 'INIT_DUEL',
     duelId: session.duelId,
     decks,
+    playerUsernames: session.playerUsernames,
+    deckNames: session.deckNames,
     skipRps: true, // Always skip OCGCore's RPS — we handle it at app layer
     skipShuffle: session.skipShuffle,
+    scriptsHash: getScriptsHash(),
+    ocgcoreVersion: getOcgcoreVersion(),
   });
 }
 
@@ -717,7 +841,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
             sendToPlayer(session, 0, endMsg);
             sendToPlayer(session, 1, endMsg);
             handleDuelEnd(session);
-            safeTerminateWorker(session);
+            requestReplayFromWorker(session, p === 0 ? 'TIMEOUT' : 'VICTORY');
             return;
           }
 
@@ -729,12 +853,20 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
 
     case 'WORKER_ERROR': {
       console.error(`[Duel ${wmsg.duelId}] Worker error: ${wmsg.error}`);
-      const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: `Engine error: ${wmsg.error}` };
+      const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'worker_error' };
       console.log(`[Duel ${session.duelId}] DUEL_END winner=null reason=engine_error`);
       sendToPlayer(session, 0, errorMsg);
       sendToPlayer(session, 1, errorMsg);
       handleDuelEnd(session);
       safeTerminateWorker(session);
+      break;
+    }
+
+    case 'WORKER_REPLAY_DATA': {
+      console.log(`[Duel ${wmsg.duelId}] Received WORKER_REPLAY_DATA (${wmsg.payload.playerResponses.length} responses)`);
+      persistReplay(session, wmsg.payload).finally(() => {
+        safeTerminateWorker(session);
+      });
       break;
     }
   }
@@ -892,7 +1024,7 @@ function startTurnTimer(session: ActiveDuelSession): void {
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      safeTerminateWorker(session);
+      requestReplayFromWorker(session, loser === 0 ? 'TIMEOUT' : 'VICTORY');
     }
   }, 250);
 }
@@ -1002,7 +1134,7 @@ function startInactivityTimer(session: ActiveDuelSession, player: Player): void 
         sendToPlayer(session, 0, endMsg);
         sendToPlayer(session, 1, endMsg);
         handleDuelEnd(session);
-        safeTerminateWorker(session);
+        requestReplayFromWorker(session, player === 0 ? 'TIMEOUT' : 'VICTORY');
       }, INACTIVITY_RACE_WINDOW_MS);
     }, INACTIVITY_WARNING_BEFORE_MS);
   }, warningDelay);
@@ -1059,6 +1191,12 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
     session.rematchTimeout = null;
   }
 
+  // H2 — Clear fork connection timeout
+  if (session.forkConnectionTimeout) {
+    clearTimeout(session.forkConnectionTimeout);
+    session.forkConnectionTimeout = null;
+  }
+
   // Story 5.2 — Clear both-disconnect timers
   if (session.combinedGraceTimer) {
     clearTimeout(session.combinedGraceTimer);
@@ -1113,7 +1251,7 @@ const server = createServer((req, res) => {
   handleRequest(req, res).catch((err) => {
     console.error('[HTTP] Unhandled error:', err);
     if (!res.headersSent) {
-      json(res, 500, { error: 'Internal Server Error' });
+      json(res, 500, { code: 'INTERNAL_ERROR', error: 'Internal Server Error' });
     }
   });
 });
@@ -1171,6 +1309,20 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   }
 
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+
+  // Replay mode branch — separate flow from PvP duels
+  const mode = url.searchParams.get('mode');
+  if (mode === 'replay') {
+    const replayId = url.searchParams.get('replayId');
+    const jwt = url.searchParams.get('token');
+    if (!replayId || !jwt) {
+      ws.close(4001, 'Missing replayId or token');
+      return;
+    }
+    handleReplayConnection(ws, jwt, replayId, ip);
+    return;
+  }
+
   const token = url.searchParams.get('token');
   const reconnect = url.searchParams.get('reconnect');
 
@@ -1248,6 +1400,12 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   session.players[playerIndex].connected = true;
   session.players[playerIndex].disconnectedAt = null;
 
+  // H2 — Clear fork connection timeout on first connect
+  if (session.forkConnectionTimeout) {
+    clearTimeout(session.forkConnectionTimeout);
+    session.forkConnectionTimeout = null;
+  }
+
   // Issue reconnect token
   const newReconnectToken = randomUUID();
   // Invalidate previous reconnect token if any
@@ -1305,7 +1463,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     resendPendingPrompt(session, playerIndex);
   }
 
-  // Check if both players are connected — trigger pre-duel RPS
+  // Check if both players are connected — trigger pre-duel RPS or fork resume
   if (session.players[0].connected && session.players[1].connected) {
     console.log(`[Duel ${session.duelId}] Both players connected`);
     if (session.phase === 'WAITING_PLAYERS') {
@@ -1315,6 +1473,13 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       } else {
         startRpsPhase(session);
       }
+    } else if (session.phase === 'DUELING' && session.duelId.startsWith('fork-')) {
+      // Fork session: worker already reconstructed the duel, tell it to emit state + prompt
+      if (session.forkConnectionTimeout) {
+        clearTimeout(session.forkConnectionTimeout);
+        session.forkConnectionTimeout = null;
+      }
+      session.worker?.postMessage({ type: 'FORK_RESUME' });
     }
   }
 
@@ -1415,7 +1580,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
           console.log(`[Duel ${session.duelId}] DUEL_END winner=null reason=draw_both_disconnect`);
           session.storedDuelResult = endMsg;
           handleDuelEnd(session);
-          // Don't terminate worker — preserve for 4h
+          requestReplayFromWorker(session, 'DISCONNECT');
           session.preservationTimer = setTimeout(() => {
             session.preservationTimer = null;
             cleanupDuelSession(session);
@@ -1440,7 +1605,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      safeTerminateWorker(session);
+      requestReplayFromWorker(session, playerIndex === 0 ? 'DISCONNECT' : 'VICTORY');
     }
   }, RECONNECT_GRACE_MS);
 }
@@ -1501,16 +1666,8 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
         });
       };
 
-      // Bluff timer: if response arrived suspiciously fast, delay forwarding
-      // to prevent the opponent from inferring "no traps" from instant responses.
-      // Skip in solo duels — no opponent to bluff.
-      const elapsed = Date.now() - session.promptSentAt[playerIndex];
-      if (!session.soloMode && elapsed < BLUFF_DELAY_MAX_MS) {
-        const delay = BLUFF_DELAY_MIN_MS + Math.random() * (BLUFF_DELAY_MAX_MS - BLUFF_DELAY_MIN_MS);
-        setTimeout(forwardToWorker, Math.max(0, delay - elapsed));
-      } else {
-        forwardToWorker();
-      }
+      // Bluff timer disabled — forward immediately.
+      forwardToWorker();
       break;
     }
 
@@ -1521,7 +1678,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      safeTerminateWorker(session);
+      requestReplayFromWorker(session, playerIndex === 0 ? 'SURRENDER' : 'VICTORY');
       break;
     }
 
@@ -1576,6 +1733,642 @@ const heartbeatTimer = setInterval(() => {
 }, HEARTBEAT_INTERVAL_MS);
 
 // =============================================================================
+// Replay Connection Handling
+// =============================================================================
+
+async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: string, ip: string): Promise<void> {
+  // Decode JWT to extract userId (same pattern as existing auth — JWT payload is base64 middle segment)
+  let userId: string;
+  try {
+    const parts = jwt.split('.');
+    if (parts.length !== 3) throw new Error('Invalid JWT format');
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    userId = String(payload.sub ?? payload.userId ?? payload.id ?? '');
+    if (!userId) throw new Error('No user ID in JWT');
+  } catch (err) {
+    console.error('[Replay] JWT decode error:', err instanceof Error ? err.message : err);
+    recordFailedWsAttempt(ip);
+    ws.close(4001, 'Invalid token');
+    return;
+  }
+
+  console.log('[Replay %s] Connection from userId=%s', replayId, userId);
+
+  // Fetch replay data from Spring Boot
+  let replayData!: WorkerReplayPayload;
+  const cached = replayCache.get(replayId);
+  if (cached) {
+    // Auth check even on cache hit
+    if (cached.playerIds[0] !== userId && cached.playerIds[1] !== userId) {
+      console.error('[Replay %s] Auth failed (cached): userId=%s not in [%s, %s]', replayId, userId, cached.playerIds[0], cached.playerIds[1]);
+      recordFailedWsAttempt(ip);
+      ws.close(4003, 'Not authorized');
+      return;
+    }
+    replayData = cached.data;
+    // LRU: refresh TTL and move to end of insertion order
+    clearTimeout(cached.timer);
+    replayCache.delete(replayId);
+    const refreshedTimer = setTimeout(() => { replayCache.delete(replayId); }, REPLAY_CACHE_TTL_MS);
+    replayCache.set(replayId, { data: cached.data, playerIds: cached.playerIds, timer: refreshedTimer });
+    console.log('[Replay %s] Using cached replay data (TTL refreshed)', replayId);
+  } else {
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${SPRING_BOOT_API_URL}/internal/replays/${replayId}`, {
+          headers: { 'X-Internal-Key': INTERNAL_API_KEY },
+        });
+        if (response.status === 404) {
+          console.error('[Replay %s] Replay not found (HTTP 404)', replayId);
+          recordFailedWsAttempt(ip);
+          ws.close(4004, 'Replay not found');
+          return;
+        }
+        if (!response.ok) {
+          console.error('[Replay %s] Spring Boot returned HTTP %d (attempt %d/%d)', replayId, response.status, attempt, maxRetries);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(3, attempt - 1) * 1000));
+            continue;
+          }
+          ws.close(4500, 'Internal error');
+          return;
+        }
+        const body = await response.json() as { replayData: Omit<WorkerReplayPayload, 'metadata'>; metadata: ReplayMetadata; player1Id: number; player2Id: number };
+
+        // Auth check: verify userId is player1 or player2
+        const p1 = String(body.player1Id);
+        const p2 = String(body.player2Id);
+        if (p1 !== userId && p2 !== userId) {
+          console.error('[Replay %s] Auth failed: userId=%s not in [%s, %s]', replayId, userId, body.player1Id, body.player2Id);
+          recordFailedWsAttempt(ip);
+          ws.close(4003, 'Not authorized');
+          return;
+        }
+
+        replayData = { ...body.replayData, metadata: body.metadata };
+
+        // Evict oldest entry if cache is full
+        if (replayCache.size >= MAX_REPLAY_CACHE_ENTRIES) {
+          const oldestKey = replayCache.keys().next().value!;
+          const oldest = replayCache.get(oldestKey)!;
+          clearTimeout(oldest.timer);
+          replayCache.delete(oldestKey);
+        }
+
+        // Cache with TTL (includes playerIds for auth on cache hit)
+        const timer = setTimeout(() => { replayCache.delete(replayId); }, REPLAY_CACHE_TTL_MS);
+        replayCache.set(replayId, { data: replayData, playerIds: [p1, p2], timer });
+        break;
+      } catch (err) {
+        console.error('[Replay %s] Fetch error (attempt %d/%d):', replayId, attempt, maxRetries, err instanceof Error ? err.message : err);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(3, attempt - 1) * 1000));
+          continue;
+        }
+        ws.close(4500, 'Internal error');
+        return;
+      }
+    }
+    if (!replayData) return;
+  }
+
+  // Check WS still open after async fetch
+  if (ws.readyState !== WebSocket.OPEN) return;
+
+  // Send REPLAY_METADATA
+  const divergenceWarning = replayData.metadata.scriptsHash !== getScriptsHash()
+    || replayData.metadata.ocgcoreVersion !== getOcgcoreVersion();
+  ws.send(JSON.stringify({
+    type: 'REPLAY_METADATA',
+    playerUsernames: replayData.metadata.playerUsernames,
+    deckNames: replayData.metadata.deckNames,
+    turnCount: replayData.metadata.turnCount,
+    result: replayData.metadata.result,
+    divergenceWarning,
+    totalResponses: replayData.playerResponses.length,
+  }));
+
+  // Mark as alive for heartbeat (shared with duel connections via wss.clients)
+  (ws as AliveWebSocket).isAlive = true;
+  ws.on('pong', () => { (ws as AliveWebSocket).isAlive = true; });
+
+  // Track this connection
+  const conn: ReplayConnection = { ws, replayId, userId, worker: null, watchdogTimer: null, state: 'loading' };
+  activeReplayConnections.set(ws, conn);
+
+  // Start replay worker (or queue)
+  const startFn = () => createReplayWorker(conn, replayData);
+  tryStartReplayWorker(startFn);
+
+  // WS message handler for fork commands
+  ws.on('message', (raw) => {
+    let parsed: { type: string;[key: string]: unknown };
+    try {
+      parsed = JSON.parse(String(raw));
+    } catch {
+      return;
+    }
+
+    if (parsed.type === 'REPLAY_FORK') {
+      handleReplayFork(conn, replayData, parsed as { type: 'REPLAY_FORK'; responseCount: number; expectedState: { lp: [number, number]; turnNumber: number; phase: number } });
+    } else if (parsed.type === 'REPLAY_FORK_CONTINUE') {
+      handleReplayForkContinue(conn);
+    } else if (parsed.type === 'REPLAY_FORK_CANCEL') {
+      handleReplayForkCancel(conn);
+    }
+  });
+
+  // WS close/error handlers for replay
+  ws.on('close', () => {
+    console.log('[Replay %s] Client disconnected', replayId);
+    cleanupReplayConnection(conn);
+  });
+  ws.on('error', (err) => {
+    console.error('[Replay %s] WS error:', replayId, err.message);
+    cleanupReplayConnection(conn);
+  });
+}
+
+function tryStartReplayWorker(startFn: () => void): void {
+  if (replayWorkerCount < MAX_REPLAY_WORKERS) {
+    replayWorkerCount++;
+    startFn();
+  } else {
+    replayQueue.push(startFn);
+  }
+}
+
+function onReplayWorkerDone(): void {
+  replayWorkerCount--;
+  if (replayQueue.length > 0) {
+    replayWorkerCount++;
+    const next = replayQueue.shift()!;
+    next();
+  }
+}
+
+function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayload): void {
+  const replayDuelId = `replay-${conn.replayId}-${Date.now()}`;
+  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
+    workerData: { dataDir: DATA_DIR },
+  });
+  conn.worker = worker;
+
+  // Inactivity watchdog — reset on each WORKER_REPLAY_BOARD_STATES
+  function resetWatchdog(): void {
+    if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
+    conn.watchdogTimer = setTimeout(() => {
+      console.error('[Replay %s] Watchdog timeout — terminating worker', conn.replayId);
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Pre-computation timed out (30s inactivity)' }));
+      }
+      cleanupReplayConnection(conn);
+    }, REPLAY_WORKER_WATCHDOG_MS);
+  }
+  resetWatchdog();
+
+  worker.on('message', (wmsg: WorkerToMainMessage) => {
+    if (wmsg.type === 'WORKER_REPLAY_BOARD_STATES') {
+      resetWatchdog();
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.send(JSON.stringify({
+          type: 'REPLAY_BOARD_STATES',
+          turnNumber: wmsg.turnNumber,
+          states: wmsg.states,
+        }));
+      }
+    } else if (wmsg.type === 'WORKER_REPLAY_COMPLETE') {
+      console.log('[Replay %s] Pre-computation complete', conn.replayId);
+      conn.state = 'ready';
+      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
+      worker.removeAllListeners();
+      worker.terminate();
+      conn.worker = null;
+      onReplayWorkerDone();
+    } else if (wmsg.type === 'WORKER_REPLAY_ERROR') {
+      console.error('[Replay %s] Worker error: %s', conn.replayId, wmsg.message);
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
+      }
+      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
+      worker.removeAllListeners();
+      worker.terminate();
+      conn.worker = null;
+      // Evict stale cache entry to prevent reuse of failed replay data
+      const cached = replayCache.get(conn.replayId);
+      if (cached) {
+        clearTimeout(cached.timer);
+        replayCache.delete(conn.replayId);
+      }
+      onReplayWorkerDone();
+    }
+  });
+
+  worker.on('exit', (code) => {
+    console.log('[Replay %s] Worker exited (code: %d)', conn.replayId, code);
+    if (conn.worker === worker) {
+      conn.worker = null;
+      onReplayWorkerDone();
+    }
+  });
+
+  worker.on('error', (err: Error) => {
+    console.error('[Replay %s] Worker error:', conn.replayId, err.message);
+  });
+
+  // Send INIT_REPLAY to worker
+  worker.postMessage({
+    type: 'INIT_REPLAY',
+    duelId: replayDuelId,
+    seed: replayData.seed,
+    decks: replayData.decks,
+    playerResponses: replayData.playerResponses,
+    metadata: replayData.metadata,
+  });
+}
+
+// =============================================================================
+// Fork Handling
+// =============================================================================
+
+// Pending fork state: stored on the ReplayConnection when waiting for client decision after divergence warning
+const pendingForkWorkers = new Map<ReplayConnection, { worker: Worker; replayData: WorkerReplayPayload; forkDuelId: string }>();
+
+function handleReplayFork(
+  conn: ReplayConnection,
+  replayData: WorkerReplayPayload,
+  msg: { type: 'REPLAY_FORK'; responseCount: number; expectedState: { lp: [number, number]; turnNumber: number; phase: number } },
+): void {
+  // Guard: only allow fork from loading/ready states
+  if (conn.state !== 'loading' && conn.state !== 'ready') {
+    console.warn('[Fork %s] Ignoring REPLAY_FORK in state "%s"', conn.replayId, conn.state);
+    return;
+  }
+
+  // Validate responseCount
+  if (typeof msg.responseCount !== 'number' || !Number.isInteger(msg.responseCount) || msg.responseCount < 0 || msg.responseCount > replayData.playerResponses.length) {
+    if (conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Invalid responseCount' }));
+    }
+    return;
+  }
+
+  // Validate expectedState fields
+  const es = msg.expectedState;
+  if (!es || !Array.isArray(es.lp) || es.lp.length !== 2
+    || typeof es.lp[0] !== 'number' || typeof es.lp[1] !== 'number'
+    || typeof es.turnNumber !== 'number' || typeof es.phase !== 'number') {
+    if (conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Invalid expectedState' }));
+    }
+    return;
+  }
+
+  // Auth re-check (defense in depth)
+  const cached = replayCache.get(conn.replayId);
+  if (cached && cached.playerIds[0] !== conn.userId && cached.playerIds[1] !== conn.userId) {
+    if (conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Not authorized' }));
+    }
+    return;
+  }
+
+  // Double fork guard: terminate previous fork/pre-computation worker if still running (AC#5)
+  const hadWorker = !!conn.worker;
+  if (conn.worker) {
+    console.log('[Fork %s] Terminating previous worker before starting fork', conn.replayId);
+    conn.worker.removeAllListeners();
+    conn.worker.terminate();
+    conn.worker = null;
+    // Don't call onReplayWorkerDone() — we're reusing this slot for the fork worker
+  }
+
+  // Also clean up any pending fork worker
+  const pending = pendingForkWorkers.get(conn);
+  if (pending) {
+    pending.worker.removeAllListeners();
+    pending.worker.terminate();
+    pendingForkWorkers.delete(conn);
+    onReplayWorkerDone();
+  }
+
+  conn.state = 'fork_pending';
+
+  // Create fork worker: reuse existing slot if we had a worker, otherwise queue normally
+  if (hadWorker) {
+    createForkWorker(conn, replayData, msg.responseCount, msg.expectedState);
+  } else {
+    tryStartReplayWorker(() => createForkWorker(conn, replayData, msg.responseCount, msg.expectedState));
+  }
+}
+
+function createForkWorker(
+  conn: ReplayConnection,
+  replayData: WorkerReplayPayload,
+  targetResponseCount: number,
+  expectedState: { lp: [number, number]; turnNumber: number; phase: number },
+): void {
+  const forkDuelId = `fork-${conn.replayId}-${Date.now()}`;
+  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
+    workerData: { dataDir: DATA_DIR },
+  });
+  conn.worker = worker;
+
+  // Watchdog: 30s timeout
+  if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
+  conn.watchdogTimer = setTimeout(() => {
+    console.error('[Fork %s] Watchdog timeout — terminating fork worker', conn.replayId);
+    if (conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Fork reconstruction timed out (30s)' }));
+    }
+    worker.removeAllListeners();
+    worker.terminate();
+    conn.worker = null;
+    conn.watchdogTimer = null;
+    conn.state = 'ready';
+    onReplayWorkerDone();
+  }, REPLAY_WORKER_WATCHDOG_MS);
+
+  worker.on('message', (wmsg: WorkerToMainMessage) => {
+    if (wmsg.type === 'WORKER_FORK_READY') {
+      // Clear watchdog
+      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
+
+      if (!wmsg.sanityResult.match) {
+        // Divergence warning — send to client, keep worker alive pending decision
+        conn.state = 'fork_warning';
+        console.log('[Fork %s] Sanity mismatch: %s', conn.replayId, wmsg.sanityResult.details);
+        pendingForkWorkers.set(conn, { worker, replayData, forkDuelId });
+        if (conn.ws.readyState === WebSocket.OPEN) {
+          conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: 'FORK_DIVERGENCE_WARNING', message: wmsg.sanityResult.details ?? '' }));
+        }
+      } else {
+        // Sanity OK — transition to solo session
+        conn.state = 'transitioning';
+        transitionForkToSolo(conn, worker, forkDuelId, replayData);
+      }
+    } else if (wmsg.type === 'WORKER_FORK_ERROR') {
+      console.error('[Fork %s] Worker error: %s', conn.replayId, wmsg.message);
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
+      }
+      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
+      worker.removeAllListeners();
+      worker.terminate();
+      conn.worker = null;
+      conn.state = 'ready';
+      onReplayWorkerDone();
+    }
+  });
+
+  worker.on('exit', (code) => {
+    console.log('[Fork %s] Worker exited (code: %d)', conn.replayId, code);
+    if (conn.worker === worker) {
+      conn.worker = null;
+      onReplayWorkerDone();
+    }
+  });
+
+  worker.on('error', (err: Error) => {
+    console.error('[Fork %s] Worker error:', conn.replayId, err.message);
+  });
+
+  // Send INIT_FORK to worker
+  worker.postMessage({
+    type: 'INIT_FORK',
+    duelId: forkDuelId,
+    seed: replayData.seed,
+    decks: replayData.decks,
+    playerResponses: replayData.playerResponses,
+    targetResponseCount,
+    expectedState,
+    scriptsHash: getScriptsHash(),
+    ocgcoreVersion: getOcgcoreVersion(),
+  });
+}
+
+function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId: string, replayData: WorkerReplayPayload): void {
+  const token1 = randomUUID();
+  const token2 = randomUUID();
+
+  // Create ActiveDuelSession for the fork (solo mode)
+  const session: ActiveDuelSession = {
+    duelId: forkDuelId,
+    phase: 'DUELING',
+    rpsState: null,
+    players: [
+      { playerId: conn.userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
+      { playerId: conn.userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
+    ],
+    createdAt: Date.now(),
+    startedAt: Date.now(),
+    endedAt: null,
+    worker,
+    workerTerminated: false,
+    awaitingResponse: [false, false],
+    lastBoardState: null,
+    lastSentPrompt: [null, null],
+    lastSentHint: [null, null],
+    decks: replayData.decks,
+    rematchRequested: [false, false],
+    rematchTimeout: null,
+    preservationTimer: null,
+    bothDisconnected: false,
+    combinedGraceTimer: null,
+    storedDuelResult: null,
+    lastStateSyncAt: [0, 0],
+    timerContext: null,
+    soloMode: true,
+    skipShuffle: true,
+    turnTimeSecs: 300,
+    invalidResponseCount: [0, 0],
+    promptSentAt: [0, 0],
+    activeChainLinks: [],
+    chainPhase: 'idle',
+    negatedChainIndices: new Set(),
+    playerUsernames: replayData.metadata.playerUsernames,
+    deckNames: replayData.metadata.deckNames,
+    pendingReplayResult: null,
+    forkConnectionTimeout: null,
+  };
+
+  activeDuels.set(forkDuelId, session);
+  pendingTokens.set(token1, { duelId: forkDuelId, playerIndex: 0 });
+  pendingTokens.set(token2, { duelId: forkDuelId, playerIndex: 1 });
+
+  // H2 — Clean up if no client connects within 30s
+  session.forkConnectionTimeout = setTimeout(() => {
+    if (!session.players[0].connected && !session.players[1].connected) {
+      console.log('[ForkSolo %s] No client connected within timeout — cleaning up', forkDuelId);
+      safeTerminateWorker(session);
+      cleanupDuelSession(session);
+    }
+  }, 30_000);
+
+  // Detach worker from replay connection (it's now owned by ActiveDuelSession)
+  conn.worker = null;
+  // Release the replay worker slot — the worker lives on in the solo session
+  // but is no longer a replay worker. Without this, replayWorkerCount leaks +1
+  // per fork, eventually blocking all future replay pre-computations.
+  onReplayWorkerDone();
+
+  // Remove WS event listeners BEFORE close to prevent double cleanup
+  // (close handler would call cleanupReplayConnection without preserveCache, evicting the cache)
+  conn.ws.removeAllListeners('close');
+  conn.ws.removeAllListeners('error');
+  conn.ws.removeAllListeners('message');
+
+  // M16 — Send REPLAY_FORK_READY with tokens, close after message is flushed (AC#3)
+  if (conn.ws.readyState === WebSocket.OPEN) {
+    conn.ws.send(JSON.stringify({ type: 'REPLAY_FORK_READY', token1, token2 }), () => {
+      conn.ws.close();
+    });
+  }
+
+  // Clean up replay connection but PRESERVE cache (needed for return/re-fork)
+  cleanupReplayConnection(conn, true);
+
+  // Re-wire the fork worker's message handler to route through the ActiveDuelSession
+  worker.removeAllListeners('message');
+  worker.removeAllListeners('exit');
+  worker.removeAllListeners('error');
+  setupForkWorkerHandlers(session, worker);
+
+  console.log('[Fork %s] Transitioned to solo session, duelId=%s', conn.replayId, forkDuelId);
+}
+
+function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): void {
+  worker.on('message', (wmsg: WorkerToMainMessage) => {
+    if (wmsg.type === 'WORKER_MESSAGE') {
+      const message = wmsg.message;
+
+      // Detect natural game end via MSG_WIN — generate DUEL_END for clients (same as broadcastMessage)
+      if (message.type === 'MSG_WIN') {
+        const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
+        console.log('[ForkSolo %s] DUEL_END winner=%d reason=win', session.duelId, message.player);
+        sendToPlayer(session, 0, endMsg);
+        sendToPlayer(session, 1, endMsg);
+        handleDuelEnd(session);
+      }
+
+      // Store last BOARD_STATE for reconnection
+      if (message.type === 'BOARD_STATE') {
+        session.lastBoardState = message;
+      }
+
+      // Track SELECT prompts for awaiting response + cache for reconnection
+      if (isSelectMessage(message)) {
+        const targetPlayer = (message as { player: Player }).player;
+        session.awaitingResponse[targetPlayer] = true;
+      }
+
+      // Apply message filter (omniscient) and send per player
+      for (const [idx, ps] of session.players.entries()) {
+        if (ps.ws?.readyState === WebSocket.OPEN) {
+          const filtered = filterMessage(message, idx as 0 | 1, true);
+          if (filtered) {
+            // Cache filtered SELECT prompt for re-send on reconnection
+            if (isSelectMessage(message) && (message as { player: Player }).player === idx) {
+              session.lastSentPrompt[idx] = filtered;
+            }
+            if (message.type === 'MSG_HINT') {
+              session.lastSentHint[idx] = filtered;
+            }
+            ps.ws.send(JSON.stringify(filtered));
+          }
+        }
+      }
+    } else if (wmsg.type === 'WORKER_ERROR') {
+      console.error('[ForkSolo %s] Worker error: %s', session.duelId, wmsg.error);
+    } else if (wmsg.type === 'WORKER_RETRY') {
+      // Re-send last prompt to the relevant player
+      for (const [idx, ps] of session.players.entries()) {
+        if (session.lastSentPrompt[idx] && ps.ws?.readyState === WebSocket.OPEN) {
+          ps.ws.send(JSON.stringify(session.lastSentPrompt[idx]));
+        }
+      }
+    }
+  });
+
+  worker.on('exit', (code) => {
+    console.log('[ForkSolo %s] Worker exited (code: %d)', session.duelId, code);
+    session.workerTerminated = true;
+  });
+
+  worker.on('error', (err: Error) => {
+    console.error('[ForkSolo %s] Worker error:', session.duelId, err.message);
+  });
+}
+
+function handleReplayForkContinue(conn: ReplayConnection): void {
+  if (conn.state !== 'fork_warning') {
+    console.warn('[Fork %s] Ignoring REPLAY_FORK_CONTINUE in state "%s"', conn.replayId, conn.state);
+    return;
+  }
+  const pending = pendingForkWorkers.get(conn);
+  if (!pending) return;
+  pendingForkWorkers.delete(conn);
+
+  conn.state = 'transitioning';
+  transitionForkToSolo(conn, pending.worker, pending.forkDuelId, pending.replayData);
+}
+
+function handleReplayForkCancel(conn: ReplayConnection): void {
+  if (conn.state !== 'fork_warning') {
+    console.warn('[Fork %s] Ignoring REPLAY_FORK_CANCEL in state "%s"', conn.replayId, conn.state);
+    return;
+  }
+  const pending = pendingForkWorkers.get(conn);
+  if (!pending) return;
+
+  pending.worker.removeAllListeners();
+  pending.worker.terminate();
+  pendingForkWorkers.delete(conn);
+  onReplayWorkerDone();
+  conn.state = 'ready';
+  // Replay WS stays open — client is still in replay mode
+}
+
+function cleanupReplayConnection(conn: ReplayConnection, preserveCache = false): void {
+  conn.state = 'closed';
+
+  // Cancel watchdog
+  if (conn.watchdogTimer) {
+    clearTimeout(conn.watchdogTimer);
+    conn.watchdogTimer = null;
+  }
+
+  // Terminate worker if still active
+  if (conn.worker) {
+    conn.worker.removeAllListeners();
+    conn.worker.terminate();
+    conn.worker = null;
+    onReplayWorkerDone();
+  }
+
+  // Evict cache entry (unless preserving for fork return)
+  if (!preserveCache) {
+    const cached = replayCache.get(conn.replayId);
+    if (cached) {
+      clearTimeout(cached.timer);
+      replayCache.delete(conn.replayId);
+    }
+  }
+
+  // Clean up any pending fork worker
+  const pending = pendingForkWorkers.get(conn);
+  if (pending) {
+    pending.worker.removeAllListeners();
+    pending.worker.terminate();
+    pendingForkWorkers.delete(conn);
+    onReplayWorkerDone();
+  }
+
+  activeReplayConnections.delete(conn.ws);
+}
+
+// =============================================================================
 // Graceful Shutdown
 // =============================================================================
 
@@ -1584,10 +2377,25 @@ function shutdown(): void {
 
   clearInterval(heartbeatTimer);
 
-  // Terminate all active workers
+  // Terminate all active duel workers
   for (const session of activeDuels.values()) {
     safeTerminateWorker(session);
   }
+
+  // Clean up active replay connections
+  for (const conn of activeReplayConnections.values()) {
+    cleanupReplayConnection(conn);
+  }
+
+  // Terminate pending fork workers
+  for (const [conn, pending] of pendingForkWorkers) {
+    pending.worker.removeAllListeners();
+    pending.worker.terminate();
+    pendingForkWorkers.delete(conn);
+  }
+
+  // Clear replay queue
+  replayQueue.length = 0;
 
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
@@ -1614,6 +2422,14 @@ process.on('SIGINT', shutdown);
 // =============================================================================
 // Start
 // =============================================================================
+
+if (!process.env['INTERNAL_API_KEY']) {
+  if (IS_PRODUCTION) {
+    console.error('[Config] INTERNAL_API_KEY not set in production — internal API auth and replay persistence will fail');
+  } else {
+    console.warn('[Config] INTERNAL_API_KEY not set — using dev default key');
+  }
+}
 
 server.listen(PORT, () => {
   console.log(`Duel server listening on port ${PORT}`);

@@ -1,0 +1,98 @@
+@use 'z-layers' as z;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+
+.replay-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: #b0b0b0;
+
+  p {
+    font-size: 14px;
+  }
+}
+
+.replay-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  outline: none;
+  --pvp-hand-card-height: 12dvh;
+
+  .board-area {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+
+    .hand-opponent {
+      position: absolute;
+      top: calc(-1 * var(--pvp-hand-card-height) * 0.5);
+      left: 0;
+      right: 0;
+      z-index: z.$z-pvp-hand;
+      pointer-events: none;
+      padding: 0 max(8px, env(safe-area-inset-right, 8px)) 0 max(8px, env(safe-area-inset-left, 8px));
+    }
+
+    .hand-player {
+      position: absolute;
+      bottom: calc(-1 * var(--pvp-hand-card-height) * 0.35);
+      left: 0;
+      right: 0;
+      z-index: z.$z-pvp-hand;
+      pointer-events: none;
+      padding: 0 max(8px, env(safe-area-inset-right, 8px)) 0 max(8px, env(safe-area-inset-left, 8px));
+    }
+
+    app-pvp-board-container {
+      flex: 1;
+      min-height: 0;
+      z-index: z.$z-pvp-board;
+    }
+
+    .right-sidebar {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: z.$z-pvp-zone-browser;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      pointer-events: none;
+
+      > * {
+        pointer-events: auto;
+      }
+    }
+
+    // Overlays, chain overlay and prompt dialogs must not participate in flex layout.
+    // Without this, they take implicit height and starve the board container.
+    app-pvp-duel-overlays,
+    app-pvp-chain-overlay,
+    app-pvp-prompt-dialog {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: z.$z-pvp-phase-announcement;
+    }
+  }
+
+  app-timeline-bar,
+  app-transport-bar {
+    position: relative;
+    z-index: z.$z-pvp-card-travel + 1; // above traveling card floats (900)
+  }
+}

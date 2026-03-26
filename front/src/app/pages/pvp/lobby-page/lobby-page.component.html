@@ -2,19 +2,19 @@
   <div class="lobby-header">
     <h1>
       <mat-icon class="lobby-title-icon">gamepad</mat-icon>
-      Arène PvP
-      <span class="alpha-chip">ALPHA</span>
+      {{ 'lobby.title' | translate }}
+      <span class="alpha-chip">{{ 'lobby.alpha' | translate }}</span>
     </h1>
     <div class="lobby-header-actions">
       <button mat-icon-button
-              aria-label="Rafraîchir la liste des rooms"
+              [attr.aria-label]="'a11y.refreshRooms' | translate"
               (click)="fetchRooms()"
               [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
       </button>
       @if (showDebugTools) {
         <button mat-icon-button
-                aria-label="Duel rapide - mode debug"
+                [attr.aria-label]="'a11y.quickDuelDebug' | translate"
                 [disabled]="creatingRoom()"
                 (click)="quickDuel()">
           <mat-icon>bolt</mat-icon>
@@ -25,11 +25,11 @@
 
   <button mat-raised-button
           class="lobby-cta"
-          aria-label="Créer une room"
+          [attr.aria-label]="'a11y.createRoom' | translate"
           [disabled]="creatingRoom()"
           (click)="createRoom()">
     <mat-icon>add</mat-icon>
-    Créer une Room
+    {{ 'lobby.createRoom' | translate }}
   </button>
 
   @if (loading() && rooms().length === 0) {
@@ -39,20 +39,20 @@
   } @else if (error()) {
     <div class="lobby-empty">
       <mat-icon class="lobby-empty-icon">wifi_off</mat-icon>
-      <p class="lobby-empty-title">Impossible de charger les rooms</p>
-      <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">Réessayer</button>
+      <p class="lobby-empty-title">{{ 'lobby.emptyError' | translate }}</p>
+      <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">{{ 'common.retry' | translate }}</button>
     </div>
   } @else if (rooms().length === 0) {
     <div class="lobby-empty">
       <mat-icon class="lobby-empty-icon">gamepad</mat-icon>
-      <p class="lobby-empty-title">Aucun duel en attente</p>
-      <p class="lobby-empty-subtitle">Crée une room et invite un ami !</p>
+      <p class="lobby-empty-title">{{ 'lobby.emptyTitle' | translate }}</p>
+      <p class="lobby-empty-subtitle">{{ 'lobby.emptySubtitle' | translate }}</p>
       <button mat-raised-button
               class="lobby-cta-secondary"
               [disabled]="creatingRoom()"
               (click)="createRoom()">
         <mat-icon>add</mat-icon>
-        Créer une Room
+        {{ 'lobby.createRoom' | translate }}
       </button>
     </div>
   } @else {
@@ -61,9 +61,9 @@
         <div class="room-card">
           <div class="room-info">
             <span class="room-creator">{{ room.player1.pseudo }}</span>
-            <span class="room-time">{{ getRelativeTime(room.createdAt) }}</span>
+            <span class="room-time">{{ room.createdAt | relativeTime }}</span>
           </div>
-          <p class="room-status">En attente d'un adversaire...</p>
+          <p class="room-status">{{ 'lobby.waitingOpponent' | translate }}</p>
           <button mat-raised-button
                   class="room-join-btn"
                   [disabled]="joiningRoomCode() !== null"
@@ -71,7 +71,7 @@
             @if (joiningRoomCode() === room.roomCode) {
               <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
             } @else {
-              Rejoindre
+              {{ 'lobby.join' | translate }}
             }
           </button>
         </div>

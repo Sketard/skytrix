@@ -3,15 +3,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { BoardStateService } from './board-state.service';
 import { CommandStackService } from './command-stack.service';
 import { NavbarCollapseService } from '../../services/navbar-collapse.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-sim-control-bar',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe],
   templateUrl: './control-bar.component.html',
   styleUrl: './control-bar.component.scss',
   host: {
@@ -25,6 +29,8 @@ export class SimControlBarComponent {
   private readonly boardState = inject(BoardStateService);
   private readonly commandStack = inject(CommandStackService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
   private readonly navbarCollapse = inject(NavbarCollapseService);
   private readonly elRef = inject(ElementRef);
 
@@ -84,8 +90,29 @@ export class SimControlBarComponent {
     this.router.navigate(id > 0 ? ['/decks', id] : ['/decks']);
   }
 
-  onReset(): void {
-    const confirmed = confirm('Reset the board? This will clear undo history and deal a new hand.');
+  async onReset(): Promise<void> {
+    const [title, message, confirmLabel, cancelLabel] = await firstValueFrom(
+      this.translate.get([
+        'simulator.resetTitle',
+        'simulator.resetMessage',
+        'common.confirm',
+        'common.cancel',
+      ]),
+    ).then(t => [
+      t['simulator.resetTitle'],
+      t['simulator.resetMessage'],
+      t['common.confirm'],
+      t['common.cancel'],
+    ]);
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: { title, message, confirmLabel, cancelLabel } as ConfirmDialogData,
+      width: '320px',
+      panelClass: ['pvp-dialog-panel'],
+      autoFocus: false,
+    });
+
+    const confirmed = await firstValueFrom(ref.afterClosed());
     if (!confirmed) return;
 
     try {

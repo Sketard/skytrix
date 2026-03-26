@@ -8,7 +8,7 @@
           <button
             mat-icon-button
             class="deckPage-deck-remove"
-            [attr.aria-label]="'Supprimer ' + deck.name"
+            [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
             (click)="confirmDelete(deck); $event.stopPropagation()">
             <mat-icon fontIcon="delete"></mat-icon>
           </button>
@@ -16,6 +16,6 @@
       }
     </div>
   } @else {
-    <app-empty-state message="Aucun deck pour le moment" ctaLabel="Créer un deck" ctaLink="/decks/builder"></app-empty-state>
+    <app-empty-state [message]="'deckList.empty' | translate" [ctaLabel]="'deckList.createDeck' | translate" ctaLink="/decks/builder"></app-empty-state>
   }
 }

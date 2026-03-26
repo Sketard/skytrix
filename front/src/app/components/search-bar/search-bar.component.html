@@ -2,7 +2,7 @@
   <div class="searchBar-field">
     <mat-form-field class="searchBar-input" appearance="outline">
       <mat-icon matPrefix fontIcon="search"></mat-icon>
-      <input matInput [formControl]="form()" placeholder="Entrez un nom..." />
+      <input matInput [formControl]="form()" [placeholder]="'search.placeholder' | translate" />
     </mat-form-field>
     @if (form().value) {
       <button mat-icon-button class="searchBar-clear mat-elevation-z0" (click)="clearFormControl()">

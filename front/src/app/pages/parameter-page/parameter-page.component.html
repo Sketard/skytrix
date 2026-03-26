@@ -1,20 +1,20 @@
 <div class="parameters">
-  <h2>Paramètres</h2>
+  <h2>{{ 'settings.title' | translate }}</h2>
 
   <section>
-    <h3><mat-icon>storage</mat-icon> Base de données</h3>
+    <h3><mat-icon>storage</mat-icon> {{ 'settings.database' | translate }}</h3>
     <mat-card>
       <div class="parameters-action">
         <div class="parameters-action-info">
-          <span class="parameters-action-title">Mettre à jour les cartes</span>
-          <span class="parameters-action-desc">Synchronise depuis YGOProDeck</span>
+          <span class="parameters-action-title">{{ 'settings.updateCards' | translate }}</span>
+          <span class="parameters-action-desc">{{ 'settings.updateCardsDesc' | translate }}</span>
           <span class="parameters-action-date">{{ lastSync('cards') }}</span>
         </div>
         <button mat-flat-button (click)="fetchDatabaseCards()" [disabled]="loading().cards">
           @if (loading().cards) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
-            Mettre à jour
+            {{ 'common.update' | translate }}
           }
         </button>
       </div>
@@ -22,17 +22,17 @@
   </section>
 
   <section>
-    <h3><mat-icon>image</mat-icon> Images</h3>
+    <h3><mat-icon>image</mat-icon> {{ 'settings.images' | translate }}</h3>
     <mat-card>
       <div class="parameters-action">
         <div class="parameters-action-info">
-          <span class="parameters-action-title">Images originales</span>
-          <span class="parameters-action-desc">Télécharge les images des cartes</span>
+          <span class="parameters-action-title">{{ 'settings.originalImages' | translate }}</span>
+          <span class="parameters-action-desc">{{ 'settings.originalImagesDesc' | translate }}</span>
           <span class="parameters-action-date">{{ lastSync('images') }}</span>
         </div>
         <div class="parameters-action-controls">
           @if (isTracked('images')) {
-            <button mat-icon-button (click)="togglePause('images')" [matTooltip]="isPaused('images') ? 'Reprendre' : 'Pause'">
+            <button mat-icon-button (click)="togglePause('images')" [matTooltip]="isPaused('images') ? ('settings.resume' | translate) : ('settings.pause' | translate)">
               <mat-icon>{{ isPaused('images') ? 'play_arrow' : 'pause' }}</mat-icon>
             </button>
           }
@@ -40,7 +40,7 @@
             @if (loading().images && !isTracked('images')) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
-              Mettre à jour
+              {{ 'common.update' | translate }}
             }
           </button>
         </div>
@@ -54,13 +54,13 @@
       <mat-divider></mat-divider>
       <div class="parameters-action">
         <div class="parameters-action-info">
-          <span class="parameters-action-title">Images traduites</span>
-          <span class="parameters-action-desc">Télécharge les versions TCG traduites</span>
+          <span class="parameters-action-title">{{ 'settings.translatedImages' | translate }}</span>
+          <span class="parameters-action-desc">{{ 'settings.translatedImagesDesc' | translate }}</span>
           <span class="parameters-action-date">{{ lastSync('tcgImages') }}</span>
         </div>
         <div class="parameters-action-controls">
           @if (isTracked('tcgImages')) {
-            <button mat-icon-button (click)="togglePause('tcgImages')" [matTooltip]="isPaused('tcgImages') ? 'Reprendre' : 'Pause'">
+            <button mat-icon-button (click)="togglePause('tcgImages')" [matTooltip]="isPaused('tcgImages') ? ('settings.resume' | translate) : ('settings.pause' | translate)">
               <mat-icon>{{ isPaused('tcgImages') ? 'play_arrow' : 'pause' }}</mat-icon>
             </button>
           }
@@ -68,7 +68,7 @@
             @if (loading().tcgImages && !isTracked('tcgImages')) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
-              Mettre à jour
+              {{ 'common.update' | translate }}
             }
           </button>
         </div>
@@ -83,45 +83,45 @@
   </section>
 
   <section>
-    <h3><mat-icon>sports_esports</mat-icon> Serveur de duel</h3>
+    <h3><mat-icon>sports_esports</mat-icon> {{ 'settings.duelServer' | translate }}</h3>
     <mat-card>
       <div class="parameters-action">
         <div class="parameters-action-info">
-          <span class="parameters-action-title">Mettre à jour les données de duel</span>
-          <span class="parameters-action-desc">Télécharge cards.cdb et scripts Lua depuis ProjectIgnis</span>
+          <span class="parameters-action-title">{{ 'settings.updateDuelData' | translate }}</span>
+          <span class="parameters-action-desc">{{ 'settings.updateDuelDataDesc' | translate }}</span>
           <span class="parameters-action-date">{{ lastSync('duelData') }}</span>
         </div>
         <button mat-flat-button (click)="updateDuelData()" [disabled]="loading().duelData">
           @if (loading().duelData && !isTracked('duelData')) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
-            Mettre à jour
+            {{ 'common.update' | translate }}
           }
         </button>
       </div>
       @if (isTracked('duelData')) {
         <div class="parameters-progress">
           <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          <span class="parameters-progress-label">Mise à jour en cours...</span>
+          <span class="parameters-progress-label">{{ 'settings.updating' | translate }}</span>
         </div>
       }
     </mat-card>
   </section>
 
   <section>
-    <h3><mat-icon>gavel</mat-icon> Règles</h3>
+    <h3><mat-icon>gavel</mat-icon> {{ 'settings.rules' | translate }}</h3>
     <mat-card>
       <div class="parameters-action">
         <div class="parameters-action-info">
-          <span class="parameters-action-title">Mettre à jour la banlist</span>
-          <span class="parameters-action-desc">Synchronise les listes de cartes interdites/limitées</span>
+          <span class="parameters-action-title">{{ 'settings.updateBanlist' | translate }}</span>
+          <span class="parameters-action-desc">{{ 'settings.updateBanlistDesc' | translate }}</span>
           <span class="parameters-action-date">{{ lastSync('banlist') }}</span>
         </div>
         <button mat-flat-button (click)="fetchDatabaseBanlist()" [disabled]="loading().banlist">
           @if (loading().banlist) {
             <mat-spinner diameter="20"></mat-spinner>
           } @else {
-            Mettre à jour
+            {{ 'common.update' | translate }}
           }
         </button>
       </div>

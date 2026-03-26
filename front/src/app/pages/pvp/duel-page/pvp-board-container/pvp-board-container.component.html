@@ -73,7 +73,8 @@
     @for (zone of opponentZones(); track zone.zoneId) {
       <div class="zone"
            [attr.data-zone]="zone.zoneId + '-1'"
-           [class.zone--highlighted]="isHighlighted(zone.zoneId)"
+           [class.zone--highlighted]="isHighlighted(zone.zoneId + '-1')"
+           [class.zone--chosen]="isChosenZone(zone.zoneId + '-1')"
            [class.zone--banished]="zone.zoneId === 'BANISHED'"
            [style.grid-area]="zone.gridArea">
         @if (zone.renderMode === 'deck') {
@@ -136,11 +137,16 @@
             <div class="card-inner">
               @if (isFaceUp(zone.card.position)) {
                 <img [src]="getCardImageUrl(zone.card)"
-                     [alt]="zone.card.name ?? 'Card'"
+                     [alt]="(zone.card | cardName) || 'Card'"
                      class="card-art"
                      (error)="$any($event.target).src='assets/images/card_back.jpg'">
               } @else {
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+                @if (revealedZoneKeys().has(zone.zoneId + '-1')) {
+                  <div class="xray-overlay">
+                    <img [src]="getCardImageUrl(zone.card)" [alt]="(zone.card | cardName) || 'Card'" class="card-art">
+                  </div>
+                }
               }
               @if (zone.card.overlayMaterials.length > 0) {
                 <div class="xyz-indicator">
@@ -174,12 +180,13 @@
             <div class="zone-empty"></div>
           }
         }
-        @if (isHighlighted(zone.zoneId)) {
+        @if (isHighlighted(zone.zoneId + '-1')) {
           <button class="zone-highlight-badge zone-highlight-badge--opponent"
-                  (click)="onHighlightedZoneClick(zone.zoneId)"
+                  [class.zone-highlight-badge--readonly]="readOnly()"
+                  (click)="onHighlightedZoneClick(zone.zoneId + '-1')"
                   [attr.aria-label]="'Zone ' + zone.zoneId"
                   type="button">
-            {{ highlightBadgeMap().get(zone.zoneId) }}
+            {{ highlightBadgeMap().get(zone.zoneId + '-1') }}
           </button>
         }
       </div>
@@ -191,7 +198,8 @@
     <!-- Opponent Banished (col 1, aligned with opponent GY above) -->
     <div class="zone zone--banished zone--banished-opponent"
          data-zone="BANISHED-1"
-         [class.zone--highlighted]="isHighlighted('BANISHED')"
+         [class.zone--highlighted]="isHighlighted('BANISHED-1')"
+         [class.zone--chosen]="isChosenZone('BANISHED-1')"
          (click)="onZonePillClick($event, 'BANISHED', 1)">
       <div class="zone-pile"
            [class.zone-pile--depth-1]="opponentBanishedCount() >= 3 && opponentBanishedCount() < 10"
@@ -218,7 +226,8 @@
     @for (emz of emzConfigs(); track emz.zoneId) {
       <div class="emz" [attr.data-zone]="emz.zoneId + '-0'" [class]="emz.cssClass"
            [class.emz--opponent]="emz.isOpponent"
-           [class.zone--highlighted]="isHighlighted(emz.zoneId)">
+           [class.zone--highlighted]="isHighlighted(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
+           [class.zone--chosen]="isChosenZone(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))">
         @if (emz.zone; as card) {
           <div class="zone-card"
                [class.zone-card--actionable]="activateZoneIds().has(emz.zoneId)"
@@ -242,11 +251,16 @@
             <div class="card-inner">
               @if (isFaceUp(card.position)) {
                 <img [src]="getCardImageUrl(card)"
-                     [alt]="card.name ?? 'Card'"
+                     [alt]="(card | cardName) || 'Card'"
                      class="card-art"
                      (error)="$any($event.target).src='assets/images/card_back.jpg'">
               } @else {
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+                @if (revealedZoneKeys().has(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))) {
+                  <div class="xray-overlay">
+                    <img [src]="getCardImageUrl(card)" [alt]="(card | cardName) || 'Card'" class="card-art">
+                  </div>
+                }
               }
               @if (card.overlayMaterials.length > 0) {
                 <div class="xyz-indicator">
@@ -265,12 +279,13 @@
         } @else {
           <div class="zone-empty"></div>
         }
-        @if (isHighlighted(emz.zoneId)) {
+        @if (isHighlighted(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))) {
           <button class="zone-highlight-badge"
-                  (click)="onHighlightedZoneClick(emz.zoneId)"
+                  [class.zone-highlight-badge--readonly]="readOnly()"
+                  (click)="onHighlightedZoneClick(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
                   [attr.aria-label]="'Zone ' + emz.zoneId"
                   type="button">
-            {{ highlightBadgeMap().get(emz.zoneId) }}
+            {{ highlightBadgeMap().get(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0')) }}
           </button>
         }
       </div>
@@ -283,14 +298,15 @@
                            [turnPlayer]="turnPlayer()"
                            [turnCount]="turnCount()"
                            [isOwnTurn]="turnPlayer() === 0"
-                           [actionablePrompt]="actionablePrompt()"
-                           (phaseAction)="actionResponse.emit($event)" />
+                           [actionablePrompt]="readOnly() ? null : actionablePrompt()"
+                           (phaseAction)="onPhaseAction($event)" />
     </div>
 
     <!-- Player Banished (col 7, aligned with player GY below) -->
     <div class="zone zone--banished zone--banished-player"
          data-zone="BANISHED-0"
-         [class.zone--highlighted]="isHighlighted('BANISHED')"
+         [class.zone--highlighted]="isHighlighted('BANISHED-0')"
+         [class.zone--chosen]="isChosenZone('BANISHED-0')"
          (click)="onZonePillClick($event, 'BANISHED', 0)">
       <div class="zone-pile"
            [class.zone-pile--depth-1]="playerBanishedCount() >= 3 && playerBanishedCount() < 10"
@@ -314,12 +330,13 @@
           <div class="chain-badge" [class.chain-badge--double]="chainNum >= 10">{{ chainNum }}</div>
         }
       </div>
-      @if (isHighlighted('BANISHED')) {
+      @if (isHighlighted('BANISHED-0')) {
         <button class="zone-highlight-badge"
-                (click)="onHighlightedZoneClick('BANISHED')"
-                aria-label="Zone BANISHED"
+                [class.zone-highlight-badge--readonly]="readOnly()"
+                (click)="onHighlightedZoneClick('BANISHED-0')"
+                aria-label="Banished zone"
                 type="button">
-          {{ highlightBadgeMap().get('BANISHED') }}
+          {{ highlightBadgeMap().get('BANISHED-0') }}
         </button>
       }
     </div>
@@ -330,7 +347,8 @@
     @for (zone of playerZones(); track zone.zoneId) {
       <div class="zone"
            [attr.data-zone]="zone.zoneId + '-0'"
-           [class.zone--highlighted]="isHighlighted(zone.zoneId)"
+           [class.zone--highlighted]="isHighlighted(zone.zoneId + '-0')"
+           [class.zone--chosen]="isChosenZone(zone.zoneId + '-0')"
            [class.zone--banished]="zone.zoneId === 'BANISHED'"
            [style.grid-area]="zone.gridArea">
         @if (zone.renderMode === 'deck') {
@@ -399,11 +417,16 @@
             <div class="card-inner">
               @if (isFaceUp(zone.card.position)) {
                 <img [src]="getCardImageUrl(zone.card)"
-                     [alt]="zone.card.name ?? 'Card'"
+                     [alt]="(zone.card | cardName) || 'Card'"
                      class="card-art"
                      (error)="$any($event.target).src='assets/images/card_back.jpg'">
               } @else {
                 <img src="assets/images/card_back.jpg" alt="Face-down card" class="card-art">
+                @if (revealedZoneKeys().has(zone.zoneId + '-0')) {
+                  <div class="xray-overlay">
+                    <img [src]="getCardImageUrl(zone.card)" [alt]="(zone.card | cardName) || 'Card'" class="card-art">
+                  </div>
+                }
               }
               @if (zone.card.overlayMaterials.length > 0) {
                 <div class="xyz-indicator">
@@ -437,12 +460,13 @@
             <div class="zone-empty"></div>
           }
         }
-        @if (isHighlighted(zone.zoneId)) {
+        @if (isHighlighted(zone.zoneId + '-0')) {
           <button class="zone-highlight-badge"
-                  (click)="onHighlightedZoneClick(zone.zoneId)"
+                  [class.zone-highlight-badge--readonly]="readOnly()"
+                  (click)="onHighlightedZoneClick(zone.zoneId + '-0')"
                   [attr.aria-label]="'Zone ' + zone.zoneId"
                   type="button">
-            {{ highlightBadgeMap().get(zone.zoneId) }}
+            {{ highlightBadgeMap().get(zone.zoneId + '-0') }}
           </button>
         }
       </div>

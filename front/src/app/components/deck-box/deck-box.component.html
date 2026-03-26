@@ -1,7 +1,7 @@
 <div
   class="deckBox"
   [class.deckBox--add]="add()"
-  [title]="deck()?.name || 'Ajouter un deck'"
+  [title]="deck()?.name || ('deckBox.addDeck' | translate)"
   [routerLink]="add() ? '/decks/builder' : '/decks/' + deck()!.id">
   @if (!add() && deck()?.urls) {
     <div class="deckBox-preview">
@@ -15,7 +15,7 @@
   } @else {
     <div class="deckBox-addContent">
       <mat-icon class="deckBox-add">library_add</mat-icon>
-      <span class="deckBox-addLabel">Nouveau deck</span>
+      <span class="deckBox-addLabel">{{ 'deckBox.newDeck' | translate }}</span>
     </div>
   }
   <div class="deckBox-name">

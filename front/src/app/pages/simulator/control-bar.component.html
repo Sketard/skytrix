@@ -2,8 +2,8 @@
 @if (!isMobile()) {
   <div class="control-bar" role="toolbar" aria-label="Session controls">
     <button mat-icon-button
-            aria-label="Retour au constructeur de deck"
-            matTooltip="Retour"
+            [attr.aria-label]="'common.back' | translate"
+            [matTooltip]="'common.back' | translate"
             (click)="onBack()">
       <mat-icon>arrow_back</mat-icon>
     </button>
@@ -13,8 +13,8 @@
     <button mat-icon-button
             [disabled]="!canUndo()"
             [attr.aria-disabled]="!canUndo()"
-            aria-label="Undo"
-            matTooltip="Undo (Ctrl+Z)"
+            [attr.aria-label]="'simulator.undo' | translate"
+            [matTooltip]="'simulator.undo' | translate"
             (click)="onUndo()">
       <mat-icon>undo</mat-icon>
     </button>
@@ -22,8 +22,8 @@
     <button mat-icon-button
             [disabled]="!canRedo()"
             [attr.aria-disabled]="!canRedo()"
-            aria-label="Redo"
-            matTooltip="Redo (Ctrl+Y)"
+            [attr.aria-label]="'simulator.redo' | translate"
+            [matTooltip]="'simulator.redo' | translate"
             (click)="onRedo()">
       <mat-icon>redo</mat-icon>
     </button>
@@ -31,8 +31,8 @@
     <div class="separator"></div>
 
     <button mat-icon-button
-            aria-label="Reset board"
-            matTooltip="Reset"
+            [attr.aria-label]="'simulator.reset' | translate"
+            [matTooltip]="'simulator.reset' | translate"
             (click)="onReset()">
       <mat-icon>refresh</mat-icon>
     </button>
@@ -47,16 +47,16 @@
 <!-- Mobile: collapsible FAB -->
 @if (isMobile()) {
   <div class="fab-actions" [class.open]="isExpanded()" role="toolbar" aria-label="Session controls">
-    <button mat-icon-button class="fab-action" aria-label="Retour" (click)="onBack()">
+    <button mat-icon-button class="fab-action" [attr.aria-label]="'common.back' | translate" (click)="onBack()">
       <mat-icon>arrow_back</mat-icon>
     </button>
-    <button mat-icon-button class="fab-action" aria-label="Reset board" (click)="onReset()">
+    <button mat-icon-button class="fab-action" [attr.aria-label]="'simulator.reset' | translate" (click)="onReset()">
       <mat-icon>refresh</mat-icon>
     </button>
-    <button mat-icon-button class="fab-action" [disabled]="!canRedo()" aria-label="Redo" (click)="onRedo()">
+    <button mat-icon-button class="fab-action" [disabled]="!canRedo()" [attr.aria-label]="'simulator.redo' | translate" (click)="onRedo()">
       <mat-icon>redo</mat-icon>
     </button>
-    <button mat-icon-button class="fab-action" [disabled]="!canUndo()" aria-label="Undo" (click)="onUndo()">
+    <button mat-icon-button class="fab-action" [disabled]="!canUndo()" [attr.aria-label]="'simulator.undo' | translate" (click)="onUndo()">
       <mat-icon>undo</mat-icon>
     </button>
   </div>

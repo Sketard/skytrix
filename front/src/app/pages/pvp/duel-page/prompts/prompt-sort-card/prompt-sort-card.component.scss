@@ -73,6 +73,10 @@
   }
 }
 
+:host(.read-only) {
+  .actions { pointer-events: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   @include card.card-slot-reduced-motion;
 }
