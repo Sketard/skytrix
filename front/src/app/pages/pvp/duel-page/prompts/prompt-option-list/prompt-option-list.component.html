@@ -1,6 +1,6 @@
 @if (promptData?.type === 'SELECT_OPTION' && revealedCards.length > 0) {
   <div class="revealed-cards">
-    <div class="revealed-cards__label">Revealed cards</div>
+    <div class="revealed-cards__label">{{ 'duel.prompt.revealedCards' | translate }}</div>
     <div class="revealed-cards__list">
       @for (card of revealedCards; track card.cardCode + '-' + card.sequence) {
         <img class="revealed-cards__img"
@@ -33,6 +33,6 @@
           (click)="confirm()"
           [disabled]="selectedIndex() === null || answered"
           type="button">
-    Confirm
+    {{ 'common.confirm' | translate }}
   </button>
 </div>

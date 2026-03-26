@@ -526,80 +526,6 @@
   }
 }
 
-// === Phase Announcement Overlay ===
-.phase-announcement {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  pointer-events: none;
-  z-index: z.$z-pvp-phase-announcement;
-  animation: phase-announce-in 200ms ease-out both;
-
-  &__band {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 40px;
-    background: rgba(0, 0, 0, 0.6);
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  }
-
-  &__prefix {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  &__separator {
-    font-size: 1.4rem;
-    color: rgba(255, 255, 255, 0.3);
-  }
-
-  &__label {
-    font-size: 2rem;
-    font-weight: 900;
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
-  }
-
-  // Opponent variant — subtle red tint
-  &--opponent &__band {
-    background: rgba(80, 10, 10, 0.6);
-    border-top-color: rgba(200, 60, 60, 0.25);
-    border-bottom-color: rgba(200, 60, 60, 0.25);
-  }
-}
-
-@keyframes phase-announce-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-// Chain resolution variant — golden tint
-.phase-announcement--chain .phase-announcement__band {
-  background: rgba(60, 40, 0, 0.7);
-  border-top-color: rgba(255, 200, 60, 0.35);
-  border-bottom-color: rgba(255, 200, 60, 0.35);
-}
-
-.phase-announcement--chain .phase-announcement__label {
-  color: rgb(255, 220, 100);
-  text-shadow: 0 0 16px rgba(255, 200, 60, 0.5);
-}
-
 // === Narrow viewport adjustments ===
 @include r.respond-below(r.$bp-pvp-narrow) {
   .connection-overlay__content {
@@ -640,22 +566,4 @@
     min-width: clamp(140px, 50vw, 180px);
   }
 
-  .phase-announcement__band {
-    padding: 10px 20px;
-  }
-
-  .phase-announcement__prefix,
-  .phase-announcement__separator {
-    font-size: 1rem;
-  }
-
-  .phase-announcement__label {
-    font-size: 1.4rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .phase-announcement {
-    animation: none;
-  }
 }

@@ -2,13 +2,16 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostBinding,
   HostListener,
+  OnInit,
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { CardInfo, POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
+import { TranslatePipe } from '@ngx-translate/core';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 interface OptionItem {
@@ -25,18 +28,44 @@ type OptionListPrompt = SelectPositionMsg | SelectOptionMsg | AnnounceRaceMsg | 
   styleUrl: './prompt-option-list.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, TranslatePipe],
 })
-export class PromptOptionListComponent implements PromptSubComponent<OptionListPrompt> {
+export class PromptOptionListComponent implements PromptSubComponent<OptionListPrompt>, OnInit {
   promptData: OptionListPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
   revealedCards: CardInfo[] = [];
 
   readonly getCardImageUrl = getCardImageUrlByCode;
 
   readonly selectedIndex = signal<number | null>(null);
   answered = false;
+
+  ngOnInit(): void {
+    if (this.readOnly && this.preSelectedResponse != null) {
+      const r = this.preSelectedResponse as Record<string, unknown>;
+      if (r['position'] != null) {
+        // SELECT_POSITION: find index by position value
+        const pos = r['position'] as number;
+        if (this.promptData?.type === 'SELECT_POSITION') {
+          const idx = this.promptData.positions.indexOf(pos);
+          if (idx >= 0) this.selectedIndex.set(idx);
+        }
+      } else if (r['value'] != null) {
+        // ANNOUNCE_RACE/ANNOUNCE_ATTRIB: find index by value
+        const val = r['value'] as number;
+        if (this.promptData?.type === 'ANNOUNCE_RACE' || this.promptData?.type === 'ANNOUNCE_ATTRIB') {
+          const idx = this.promptData.available.indexOf(val);
+          if (idx >= 0) this.selectedIndex.set(idx);
+        }
+      } else if (r['index'] != null) {
+        this.selectedIndex.set(r['index'] as number);
+      }
+      this.answered = true;
+    }
+  }
 
   get options(): OptionItem[] {
     if (!this.promptData) return [];
@@ -99,6 +128,7 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
 
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     const current = this.selectedIndex() ?? -1;
     const max = this.options.length - 1;
 

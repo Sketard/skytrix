@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, input, output, signal, untracked } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { TranslateService } from '@ngx-translate/core';
 import { Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg } from '../../duel-ws.types';
 import { BATTLE_ACTION, IDLE_ACTION } from '../idle-action-codes';
 import { setupClickOutsideListener } from '../click-outside.utils';
@@ -33,6 +34,7 @@ export class PvpPhaseBadgeComponent {
   private readonly el = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly translate = inject(TranslateService);
 
   readonly phase = input.required<Phase>();
   readonly turnPlayer = input.required<Player>();
@@ -43,7 +45,7 @@ export class PvpPhaseBadgeComponent {
   readonly phaseAction = output<{ action: number; index: null }>();
 
   readonly abbreviation = computed(() => PHASE_ABBR[this.phase()] ?? 'DP');
-  readonly turnLabel = computed(() => `Tour ${this.turnCount()}`);
+  readonly turnLabel = computed(() => this.translate.instant('duel.phase.turn', { n: this.turnCount() }));
   readonly menuExpanded = signal(false);
 
   readonly availableTransitions = computed((): PhaseTransition[] => {
@@ -52,11 +54,11 @@ export class PvpPhaseBadgeComponent {
 
     const transitions: PhaseTransition[] = [];
     if (prompt.type === 'SELECT_IDLECMD') {
-      if (prompt.canBattlePhase) transitions.push({ label: 'Battle Phase', actionCode: IDLE_ACTION.BATTLE_PHASE });
-      if (prompt.canEndPhase) transitions.push({ label: 'End Turn', actionCode: IDLE_ACTION.END_TURN });
+      if (prompt.canBattlePhase) transitions.push({ label: this.translate.instant('duel.phase.battlePhase'), actionCode: IDLE_ACTION.BATTLE_PHASE });
+      if (prompt.canEndPhase) transitions.push({ label: this.translate.instant('duel.phase.endTurn'), actionCode: IDLE_ACTION.END_TURN });
     } else if (prompt.type === 'SELECT_BATTLECMD') {
-      if (prompt.canMainPhase2) transitions.push({ label: 'Main Phase 2', actionCode: BATTLE_ACTION.MAIN_PHASE_2 });
-      if (prompt.canEndPhase) transitions.push({ label: 'End Turn', actionCode: BATTLE_ACTION.END_TURN });
+      if (prompt.canMainPhase2) transitions.push({ label: this.translate.instant('duel.phase.mainPhase2'), actionCode: BATTLE_ACTION.MAIN_PHASE_2 });
+      if (prompt.canEndPhase) transitions.push({ label: this.translate.instant('duel.phase.endTurn'), actionCode: BATTLE_ACTION.END_TURN });
     }
     return transitions;
   });

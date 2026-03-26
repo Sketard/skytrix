@@ -14,6 +14,8 @@ export interface PromptSubComponent<T extends Prompt = Prompt> {
   promptData: T | null;
   hintContext: HintContext | null;
   response: EventEmitter<unknown>;
+  readOnly: boolean;
+  preSelectedResponse: unknown;
 }
 
 // Prompt types explicitly ignored by the dialog

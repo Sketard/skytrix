@@ -208,6 +208,9 @@
   }
 }
 
+:host(.read-only) {
+  pointer-events: none;
+}
 @media (max-height: 500px) {
   .multi-counter__img {
     @include card.card-img-short;

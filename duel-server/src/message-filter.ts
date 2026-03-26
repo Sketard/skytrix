@@ -15,19 +15,21 @@ const PRIVATE_LOCATIONS: Set<number> = new Set([LOCATION.DECK, LOCATION.HAND, LO
  * Filters a ServerMessage for a specific player. Returns the filtered message
  * or null if the message should not be sent to this player.
  * Pure function — no side effects except console.error for unknown types.
+ *
+ * @param omniscient When true, skips routing drops (SELECT_*, MSG_HINT type 10,
+ *   MSG_CONFIRM_CARDS are returned instead of null) and field sanitization
+ *   (card codes, hand contents, face-down stats preserved). Perspective
+ *   transformations (RPS_RESULT swap, BOARD_STATE player remapping) still apply.
+ *   Default DROP for unknown message types is NOT bypassed.
+ *   Used by replay pre-computation (Story 3.3) to produce omniscient view.
  */
-export function filterMessage(message: ServerMessage, forPlayer: Player): ServerMessage | null {
+export function filterMessage(message: ServerMessage, forPlayer: Player, omniscient = false): ServerMessage | null {
   switch (message.type) {
-    // --- Sanitized game messages ---
+    // --- Sanitized game messages (omniscient: skip field nulling) ---
 
     case 'MSG_DRAW':
-      if (forPlayer !== message.player) {
-        return { ...message, cards: message.cards.map(() => null) };
-      }
-      return message;
-
     case 'MSG_SHUFFLE_HAND':
-      if (forPlayer !== message.player) {
+      if (!omniscient && forPlayer !== message.player) {
         return { ...message, cards: message.cards.map(() => null) };
       }
       return message;
@@ -38,25 +40,24 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'MSG_MOVE': {
       const isFromPrivate = PRIVATE_LOCATIONS.has(message.fromLocation);
       const isToPrivate = PRIVATE_LOCATIONS.has(message.toLocation);
-      if ((isFromPrivate || isToPrivate) && forPlayer !== message.player) {
+      if (!omniscient && (isFromPrivate || isToPrivate) && forPlayer !== message.player) {
         return { ...message, cardCode: 0, cardName: '' };
       }
       return message;
     }
 
-    // --- Routed to intended player only ---
+    // --- Routed to intended player only (omniscient: never drop) ---
 
     case 'MSG_HINT':
       // hintType 10 = HINT_EFFECT: leaks card codes via effect activation hints
-      if (message.hintType === 10 && forPlayer !== message.player) return null;
+      if (!omniscient && message.hintType === 10 && forPlayer !== message.player) return null;
       // hintType 3 = HINT_SELECTMSG: card name is fine for both players
       return message;
 
     case 'MSG_CONFIRM_CARDS':
-      if (forPlayer !== message.player) return null;
       return message;
 
-    // --- SELECT_* (20 types) + RPS_CHOICE: routed to deciding player only ---
+    // --- SELECT_* (20 types) + RPS_CHOICE: routed to deciding player only (omniscient: never drop) ---
 
     case 'SELECT_IDLECMD':
     case 'SELECT_BATTLECMD':
@@ -78,12 +79,12 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     case 'ANNOUNCE_ATTRIB':
     case 'ANNOUNCE_CARD':
     case 'ANNOUNCE_NUMBER':
-      if (forPlayer !== message.player) return null;
+      if (!omniscient && forPlayer !== message.player) return null;
       return message;
 
     case 'RPS_CHOICE':
     case 'SELECT_TP':
-      if (forPlayer !== message.player) return null;
+      if (!omniscient && forPlayer !== message.player) return null;
       return message;
 
     // --- RPS_RESULT: perspective-corrected (swap choices + winner for player 1) ---
@@ -101,10 +102,10 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
     // --- BOARD_STATE / STATE_SYNC: deep copy with opponent info sanitized ---
 
     case 'BOARD_STATE':
-      return { type: 'BOARD_STATE', data: sanitizeBoardState(message.data, forPlayer) };
+      return { type: 'BOARD_STATE', data: sanitizeBoardState(message.data, forPlayer, omniscient) };
 
     case 'STATE_SYNC':
-      return { type: 'STATE_SYNC', data: sanitizeBoardState(message.data, forPlayer) };
+      return { type: 'STATE_SYNC', data: sanitizeBoardState(message.data, forPlayer, omniscient) };
 
     // --- Passthrough: broadcast to both players unfiltered ---
 
@@ -153,10 +154,10 @@ export function filterMessage(message: ServerMessage, forPlayer: Player): Server
 // Board State Sanitization
 // =============================================================================
 
-function sanitizeBoardState(data: BoardStatePayload, forPlayer: Player): BoardStatePayload {
+function sanitizeBoardState(data: BoardStatePayload, forPlayer: Player, omniscient: boolean): BoardStatePayload {
   const opponentIndex: Player = forPlayer === 0 ? 1 : 0;
 
-  // Swap players so [0] = recipient (self), [1] = sanitized opponent.
+  // Swap players so [0] = recipient (self), [1] = opponent (sanitized unless omniscient).
   // Remap turnPlayer from absolute OCGCore index to relative (0 = self, 1 = opponent).
   // TODO: Story 4.2 — MSG_* `player` fields still use absolute OCGCore indices.
   return {
@@ -165,7 +166,7 @@ function sanitizeBoardState(data: BoardStatePayload, forPlayer: Player): BoardSt
     phase: data.phase,
     players: [
       data.players[forPlayer],
-      sanitizeOpponentBoard(data.players[opponentIndex]),
+      omniscient ? data.players[opponentIndex] : sanitizeOpponentBoard(data.players[opponentIndex]),
     ],
   };
 }

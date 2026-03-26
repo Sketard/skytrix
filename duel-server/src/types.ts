@@ -1,4 +1,4 @@
-import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player } from './ws-protocol.js';
+import type { ServerMessage, PlayerResponseMsg, SelectPromptType, Player, PreComputedState, ForkSanityFields } from './ws-protocol.js';
 import type Database from 'better-sqlite3';
 
 // =============================================================================
@@ -16,6 +16,9 @@ export const INACTIVITY_WARNING_BEFORE_MS = 20_000;
 export const INACTIVITY_RACE_WINDOW_MS = 500;
 export const BOTH_DISCONNECTED_CLEANUP_MS = 4 * 60 * 60 * 1000; // 4 hours
 export const STATE_SYNC_RATE_LIMIT_MS = 5_000;
+export const REPLAY_WORKER_WATCHDOG_MS = 30_000;
+export const REPLAY_CACHE_TTL_MS = 600_000; // 10 min
+export const MAX_REPLAY_WORKERS = 3;
 
 // =============================================================================
 // Data Layer Types
@@ -34,6 +37,12 @@ export interface ScriptDB {
 }
 
 // =============================================================================
+// Worker Mode
+// =============================================================================
+
+export type WorkerMode = 'pvp' | 'replay' | 'solo';
+
+// =============================================================================
 // Main -> Worker Thread Messages
 // =============================================================================
 
@@ -46,8 +55,16 @@ export interface InitDuelMessage {
   type: 'INIT_DUEL';
   duelId: string;
   decks: [Deck, Deck];
+  playerUsernames: [string, string];
+  deckNames: [string, string];
   skipRps?: boolean;
   skipShuffle?: boolean;
+  scriptsHash: string;
+  ocgcoreVersion: string;
+}
+
+export interface EmitReplayDataMessage {
+  type: 'EMIT_REPLAY_DATA';
 }
 
 export interface PlayerResponseMessage {
@@ -57,7 +74,34 @@ export interface PlayerResponseMessage {
   data: PlayerResponseMsg['data'];
 }
 
-export type MainToWorkerMessage = InitDuelMessage | PlayerResponseMessage;
+export interface InitReplayMessage {
+  type: 'INIT_REPLAY';
+  duelId: string;
+  seed: string[];
+  decks: [Deck, Deck];
+  playerResponses: CapturedResponse[];
+  metadata: ReplayMetadata;
+}
+
+export type { ForkSanityFields } from './ws-protocol.js';
+
+export interface InitForkMessage {
+  type: 'INIT_FORK';
+  duelId: string;
+  seed: string[];
+  decks: [Deck, Deck];
+  playerResponses: CapturedResponse[];
+  targetResponseCount: number;
+  expectedState: ForkSanityFields;
+  scriptsHash: string;
+  ocgcoreVersion: string;
+}
+
+export interface ForkResumeMessage {
+  type: 'FORK_RESUME';
+}
+
+export type MainToWorkerMessage = InitDuelMessage | PlayerResponseMessage | EmitReplayDataMessage | InitReplayMessage | InitForkMessage | ForkResumeMessage;
 
 // =============================================================================
 // Worker -> Main Thread Messages
@@ -85,11 +129,77 @@ export interface WorkerRetry {
   duelId: string;
 }
 
+export interface CapturedResponse {
+  data: unknown;
+  timestamp?: string;
+}
+
+export interface ReplayMetadata {
+  playerUsernames: [string, string];
+  deckNames: [string, string];
+  turnCount: number;
+  result: string | null;
+  date: string;
+  scriptsHash: string;
+  ocgcoreVersion: string;
+}
+
+export interface WorkerReplayPayload {
+  seed: string[];
+  decks: [Deck, Deck];
+  playerResponses: CapturedResponse[];
+  metadata: ReplayMetadata;
+}
+
+export interface WorkerReplayData {
+  type: 'WORKER_REPLAY_DATA';
+  duelId: string;
+  payload: WorkerReplayPayload;
+}
+
+export interface WorkerReplayBoardStates {
+  type: 'WORKER_REPLAY_BOARD_STATES';
+  duelId: string;
+  turnNumber: number;
+  states: PreComputedState[];
+}
+
+export interface WorkerReplayComplete {
+  type: 'WORKER_REPLAY_COMPLETE';
+  duelId: string;
+}
+
+export interface WorkerReplayError {
+  type: 'WORKER_REPLAY_ERROR';
+  duelId: string;
+  code: string;
+  message: string;
+}
+
+export interface WorkerForkReady {
+  type: 'WORKER_FORK_READY';
+  duelId: string;
+  sanityResult: { match: boolean; details?: string };
+}
+
+export interface WorkerForkError {
+  type: 'WORKER_FORK_ERROR';
+  duelId: string;
+  code: string;
+  message: string;
+}
+
 export type WorkerToMainMessage =
   | WorkerDuelCreated
   | WorkerMessage
   | WorkerError
-  | WorkerRetry;
+  | WorkerRetry
+  | WorkerReplayData
+  | WorkerReplayBoardStates
+  | WorkerReplayComplete
+  | WorkerReplayError
+  | WorkerForkReady
+  | WorkerForkError;
 
 // =============================================================================
 // Pre-Duel RPS State

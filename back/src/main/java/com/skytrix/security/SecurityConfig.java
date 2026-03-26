@@ -77,7 +77,9 @@ public class SecurityConfig {
 				new AntPathRequestMatcher("/documents/small/code/{\\d+}", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/documents/sample", HttpMethod.GET.name()),
 				new AntPathRequestMatcher("/client-logs", HttpMethod.POST.name()),
-				new AntPathRequestMatcher("/actuator/health")
+				new AntPathRequestMatcher("/actuator/health"),
+				new AntPathRequestMatcher("/replays", HttpMethod.POST.name()),
+				new AntPathRequestMatcher("/internal/replays/**")
 		);
 
 		var jwtFilteredMatcher = new NegatedRequestMatcher(new OrRequestMatcher(loginUrlMatcher));

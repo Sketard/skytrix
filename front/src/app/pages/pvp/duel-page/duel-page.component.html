@@ -1,35 +1,35 @@
 <div class="duel-container">
   <!-- Story 2.1 — Waiting Room State -->
   @if (roomState() === 'waiting') {
-    <div class="waiting-room" role="region" aria-label="Waiting for opponent">
-      <h1 class="waiting-room__title">WAITING FOR OPPONENT</h1>
+    <div class="waiting-room" role="region" [attr.aria-label]="'duel.waiting.title' | translate">
+      <h1 class="waiting-room__title">{{ 'duel.waiting.title' | translate }}</h1>
 
       @if (room(); as r) {
-        <p class="waiting-room__deck-name">Your Deck: {{ deckName() || r.player1.pseudo }}</p>
-        <p class="waiting-room__code" aria-label="Room code">{{ r.roomCode }}</p>
+        <p class="waiting-room__deck-name">{{ 'duel.waiting.yourDeck' | translate }} {{ deckName() || r.player1.pseudo }}</p>
+        <p class="waiting-room__code" [attr.aria-label]="'a11y.roomCode' | translate">{{ r.roomCode }}</p>
       }
 
       <div class="waiting-room__actions">
         @if (canShare) {
           <button mat-button
                   class="waiting-room__btn"
-                  aria-label="Share room code"
+                  [attr.aria-label]="'a11y.shareRoomCode' | translate"
                   (click)="shareRoom()">
             <mat-icon>share</mat-icon>
-            Share
+            {{ 'duel.waiting.share' | translate }}
           </button>
         }
         <button mat-button
                 class="waiting-room__btn"
-                aria-label="Copy room link to clipboard"
+                [attr.aria-label]="'a11y.copyRoomLink' | translate"
                 (click)="copyRoomLink()">
           <mat-icon>content_copy</mat-icon>
-          Copy Link
+          {{ 'duel.waiting.copyLink' | translate }}
         </button>
       </div>
 
-      <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Waiting for opponent"></mat-progress-spinner>
-      <p class="waiting-room__status">Waiting for opponent...</p>
+      <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.waiting.subtitle' | translate"></mat-progress-spinner>
+      <p class="waiting-room__status">{{ 'duel.waiting.subtitle' | translate }}</p>
 
       @if (countdown(); as cd) {
         <p class="waiting-room__timer"
@@ -43,65 +43,65 @@
 
       <button mat-button
               class="waiting-room__leave"
-              aria-label="Leave room"
+              [attr.aria-label]="'duel.leaveRoom' | translate"
               (click)="leaveRoom()">
-        Leave Room
+        {{ 'duel.leaveRoom' | translate }}
       </button>
     </div>
   }
 
   <!-- Story 2.1 — Creating Duel Transitional State -->
   @if (roomState() === 'creating-duel') {
-    <div class="waiting-room" role="region" aria-label="Preparing duel">
-      <h1 class="waiting-room__title">PREPARING DUEL...</h1>
-      <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Preparing duel"></mat-progress-spinner>
-      <p class="waiting-room__status">Opponent joined! Setting up duel...</p>
+    <div class="waiting-room" role="region" [attr.aria-label]="'duel.preparing.title' | translate">
+      <h1 class="waiting-room__title">{{ 'duel.preparing.title' | translate }}</h1>
+      <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.preparing.title' | translate"></mat-progress-spinner>
+      <p class="waiting-room__status">{{ 'duel.preparing.opponentJoined' | translate }}</p>
     </div>
   }
 
   <!-- Story 2.1 — Loading State -->
   @if (roomState() === 'loading') {
-    <div class="waiting-room" role="region" aria-label="Loading room">
-      <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Loading"></mat-progress-spinner>
-      <p class="waiting-room__status">Loading room...</p>
+    <div class="waiting-room" role="region" [attr.aria-label]="'duel.preparing.loading' | translate">
+      <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.preparing.loading' | translate"></mat-progress-spinner>
+      <p class="waiting-room__status">{{ 'duel.preparing.loading' | translate }}</p>
     </div>
   }
 
   <!-- Story 2.1 — Error State -->
   @if (roomState() === 'error') {
-    <div class="waiting-room" role="region" aria-label="Connection error">
+    <div class="waiting-room" role="region" [attr.aria-label]="'a11y.connectionError' | translate">
       <mat-icon class="waiting-room__error-icon">error_outline</mat-icon>
-      <p class="waiting-room__status">Connection lost. Unable to reach server.</p>
+      <p class="waiting-room__status">{{ 'duel.connection.lost' | translate }}</p>
       <button mat-button
               class="waiting-room__leave"
-              aria-label="Back to lobby"
+              [attr.aria-label]="'duel.connection.backToLobby' | translate"
               (click)="leaveRoom()">
-        Back to Lobby
+        {{ 'duel.connection.backToLobby' | translate }}
       </button>
     </div>
   }
 
   <!-- Story 2.4 — Duel Loading Screen -->
   @if (roomState() === 'duel-loading') {
-    <div class="duel-loading" role="region" aria-label="Preparing duel">
-      <h1 class="duel-loading__title">PREPARING DUEL...</h1>
+    <div class="duel-loading" role="region" [attr.aria-label]="'duel.preparing.title' | translate">
+      <h1 class="duel-loading__title">{{ 'duel.preparing.title' | translate }}</h1>
       @if (room(); as r) {
         <div class="duel-loading__players">
           <div class="duel-loading__player">
             <span class="duel-loading__name">{{ r.player1.pseudo }}</span>
-            <span class="duel-loading__lp">8000 LP</span>
+            <span class="duel-loading__lp">{{ 'duel.loading.lp' | translate }}</span>
           </div>
-          <span class="duel-loading__vs">VS</span>
+          <span class="duel-loading__vs">{{ 'duel.loading.vs' | translate }}</span>
           <div class="duel-loading__player">
             <span class="duel-loading__name">{{ r.player2?.pseudo }}</span>
-            <span class="duel-loading__lp">8000 LP</span>
+            <span class="duel-loading__lp">{{ 'duel.loading.lp' | translate }}</span>
           </div>
         </div>
       }
-      <mat-progress-spinner mode="indeterminate" [diameter]="64" aria-label="Loading duel"></mat-progress-spinner>
+      <mat-progress-spinner mode="indeterminate" [diameter]="64" [attr.aria-label]="'duel.preparing.loading' | translate"></mat-progress-spinner>
       @if (loadingTimeout()) {
-        <p class="duel-loading__timeout">Taking longer than expected...</p>
-        <button mat-button class="duel-loading__lobby-btn" (click)="backToLobby()">Return to Lobby</button>
+        <p class="duel-loading__timeout">{{ 'duel.preparing.takingLong' | translate }}</p>
+        <button mat-button class="duel-loading__lobby-btn" (click)="backToLobby()">{{ 'duel.connection.backToLobby' | translate }}</button>
       }
     </div>
   }
@@ -110,28 +110,29 @@
   @if (roomState() === 'active' || roomState() === 'connecting') {
     <!-- Orientation lock overlay (portrait blocking) -->
     @if (isPortrait()) {
-      <div class="orientation-overlay" role="alertdialog" aria-modal="true" aria-label="Rotate your device to landscape">
+      <div class="orientation-overlay" role="alertdialog" aria-modal="true" [attr.aria-label]="'duel.misc.rotateLandscape' | translate">
         <div class="orientation-content">
           <svg class="rotate-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
             <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 9.17l6.36-6.36 12.02 12.02-6.36 6.38zm-7.31.29C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/>
           </svg>
-          <p>Rotate your device to landscape</p>
+          <p>{{ 'duel.misc.rotateLandscape' | translate }}</p>
         </div>
       </div>
     }
 
     <!-- Story 2.3 — "Connecting to duel..." fallback (before RPS_CHOICE arrives) -->
     @if (roomState() === 'connecting' && !wsService.pendingPrompt() && !wsService.rpsResult() && !wsService.rpsInProgress()) {
-      <div class="connecting-fallback" role="region" aria-label="Connecting to duel" aria-live="polite">
-        <mat-progress-spinner mode="indeterminate" diameter="48" aria-label="Connecting"></mat-progress-spinner>
-        <p>Connecting to duel...</p>
+      <div class="connecting-fallback" role="region" [attr.aria-label]="'duel.connection.connecting' | translate" aria-live="polite">
+        <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.connection.connecting' | translate"></mat-progress-spinner>
+        <p>{{ 'duel.connection.connecting' | translate }}</p>
       </div>
     }
 
-    <!-- Opponent thinking glow (top edge — only during active duel, not pre-duel) -->
-    @if (waitingForOpponent() && roomState() === 'active') {
-      <div class="opponent-thinking-glow" aria-hidden="true"></div>
-    }
+    <!-- Duel overlays (opponent thinking glow, phase/chain announcements) -->
+    <app-pvp-duel-overlays
+      [phaseAnnouncement]="phaseService.announcement()"
+      [chainResolutionAnnounce]="animationService.chainResolutionAnnounce()"
+      [opponentThinking]="waitingForOpponent() && roomState() === 'active'" />
 
     <!-- Board + hands + toolbar — only visible when duel is active (not during RPS) -->
     @if (roomState() === 'active') {
@@ -157,9 +158,9 @@
                                [animatingLp]="animatingLpPlayer()"
                                [activeChainLinks]="wsService.activeChainLinks()"
                                [chainPhase]="wsService.chainPhase()"
-                               [displayedPhase]="displayedPhase()"
-                               [displayedTurnPlayer]="displayedTurnPlayer()"
-                               [displayedTurnCount]="displayedTurnCount()"
+                               [displayedPhase]="phaseService.displayedPhase()"
+                               [displayedTurnPlayer]="phaseService.displayedTurnPlayer()"
+                               [displayedTurnCount]="phaseService.displayedTurnCount()"
                                (zoneSelected)="onZoneSelected($event)"
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
@@ -169,6 +170,7 @@
                                [maskedSourceImages]="animationService.maskedSourceImages()"
                                [targetedZoneKeys]="animationService.targetedZoneKeys()"
                                [preTargetZoneKeys]="preTargetZoneKeys()"
+                               [revealedZoneKeys]="revealedZoneKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Player Hand (bottom, face-up, outside perspective) -->
@@ -187,7 +189,7 @@
       @if (actionablePrompt() && menuState(); as menu) {
         <div class="card-action-menu"
              role="menu"
-             aria-label="Card actions"
+             [attr.aria-label]="'a11y.cardActions' | translate"
              [style.top.px]="menu.top"
              [style.left.px]="menu.left"
              (keydown)="onMenuKeydown($event)">
@@ -195,10 +197,10 @@
             <div class="card-action-menu__sub-header">
               <button class="card-action-menu__back" type="button"
                       (click)="effectSubMenu.set(null); $event.stopPropagation()"
-                      aria-label="Retour">
-                ← Retour
+                      [attr.aria-label]="'common.back' | translate">
+                ← {{ 'common.back' | translate }}
               </button>
-              <span class="card-action-menu__sub-title">{{ sub[0].cardName ? 'Choisir une carte' : 'Choisir un effet' }}</span>
+              <span class="card-action-menu__sub-title">{{ sub[0].cardName ? ('duel.misc.selectCard' | translate) : ('duel.misc.selectEffect' | translate) }}</span>
             </div>
             @for (action of sub; track $index) {
               <button class="card-action-menu__item card-action-menu__item--effect"
@@ -208,7 +210,7 @@
                 @if (action.cardName) {
                   <span class="card-action-menu__effect-num">{{ action.cardName }}</span>
                 } @else {
-                  <span class="card-action-menu__effect-num">Effet {{ $index + 1 }}</span>
+                  <span class="card-action-menu__effect-num">{{ 'duel.misc.effect' | translate : { n: $index + 1 } }}</span>
                 }
                 @if (action.description) {
                   <span class="card-action-menu__effect-desc">{{ action.description }}</span>
@@ -251,30 +253,30 @@
              [class.mini-toolbar--dimmed]="hasActivePrompt() && promptSheetExpanded()">
           <button class="mini-toolbar__item"
                   type="button"
-                  aria-label="Surrender"
+                  [attr.aria-label]="'duel.surrender.confirm' | translate"
                   (click)="onSurrenderClick()">
             <mat-icon class="mini-toolbar__icon">flag</mat-icon>
-            <span class="mini-toolbar__label">Exit</span>
+            <span class="mini-toolbar__label">{{ 'duel.misc.exit' | translate }}</span>
           </button>
           @if (isSoloMode()) {
             <button class="mini-toolbar__item"
                     type="button"
-                    [attr.aria-label]="'Switch to ' + (orchestrator.activePlayerIndex() === 0 ? 'P2' : 'P1')"
+                    [attr.aria-label]="'a11y.switchPlayer' | translate : { player: orchestrator.activePlayerIndex() === 0 ? 'P2' : 'P1' }"
                     (click)="switchPlayerWithTransition()">
               <span class="mini-toolbar__icon mini-toolbar__icon--text">{{ orchestrator.activePlayerIndex() === 0 ? 'P1' : 'P2' }}</span>
-              <span class="mini-toolbar__label">Player</span>
+              <span class="mini-toolbar__label">{{ 'duel.misc.player' | translate }}</span>
             </button>
           }
           <app-pvp-activation-toggle [(mode)]="activationMode" />
           @if (showDebugTools) {
             <button class="mini-toolbar__item"
                     type="button"
-                    aria-label="Toggle debug logs"
+                    [attr.aria-label]="'a11y.toggleDebugLogs' | translate"
                     [attr.aria-expanded]="debugLog.panelOpen()"
                     aria-controls="debug-log-panel"
                     (click)="debugLog.panelOpen.set(!debugLog.panelOpen())">
               <mat-icon class="mini-toolbar__icon">bug_report</mat-icon>
-              <span class="mini-toolbar__label">Debug</span>
+              <span class="mini-toolbar__label">{{ 'duel.misc.debug' | translate }}</span>
             </button>
           }
         </div>
@@ -285,56 +287,30 @@
         <app-prompt-zone-highlight [instruction]="zoneInstruction()" />
       }
 
-      <!-- Phase announcement overlay -->
-      @if (phaseAnnouncement(); as pa) {
-        <div class="phase-announcement"
-             [class.phase-announcement--opponent]="pa.isOpponent"
-             role="status"
-             aria-live="polite"
-             aria-atomic="true">
-          <div class="phase-announcement__band">
-            @if (pa.isOpponent) {
-              <span class="phase-announcement__prefix">Opponent</span>
-              <span class="phase-announcement__separator">—</span>
-            }
-            <span class="phase-announcement__label">{{ pa.label }}</span>
-          </div>
-        </div>
-      }
-
-      <!-- Chain resolution announcement -->
-      @if (animationService.chainResolutionAnnounce()) {
-        <div class="phase-announcement phase-announcement--chain"
-             role="status" aria-live="polite" aria-atomic="true">
-          <div class="phase-announcement__band">
-            <span class="phase-announcement__label">Chain Resolution</span>
-          </div>
-        </div>
-      }
     }
 
     <!-- Story 2.3 — RPS Result Overlay -->
     @if (wsService.rpsResult(); as rps) {
       <div class="rps-overlay" role="status" aria-live="polite">
         <div class="rps-overlay__content">
-          <h2 class="rps-overlay__title">ROCK PAPER SCISSORS</h2>
+          <h2 class="rps-overlay__title">{{ 'duel.rps.title' | translate }}</h2>
           <div class="rps-overlay__choices">
             <div class="rps-overlay__choice">
               <img class="rps-overlay__icon" [src]="rpsIcon(rps.player1Choice)" alt="Your choice" aria-hidden="true">
-              <span class="rps-overlay__label">You</span>
+              <span class="rps-overlay__label">{{ 'duel.rps.you' | translate }}</span>
             </div>
-            <span class="rps-overlay__vs">VS</span>
+            <span class="rps-overlay__vs">{{ 'duel.rps.vs' | translate }}</span>
             <div class="rps-overlay__choice">
               <img class="rps-overlay__icon" [src]="rpsIcon(rps.player2Choice)" alt="Opponent's choice" aria-hidden="true">
-              <span class="rps-overlay__label">Opponent</span>
+              <span class="rps-overlay__label">{{ 'duel.rps.opponent' | translate }}</span>
             </div>
           </div>
           @if (rps.winner === 0) {
-            <p class="rps-overlay__result rps-overlay__result--win">You win!</p>
+            <p class="rps-overlay__result rps-overlay__result--win">{{ 'duel.rps.youWin' | translate }}</p>
           } @else if (rps.winner === 1) {
-            <p class="rps-overlay__result rps-overlay__result--lose">You lose!</p>
+            <p class="rps-overlay__result rps-overlay__result--lose">{{ 'duel.rps.youLose' | translate }}</p>
           } @else {
-            <p class="rps-overlay__result rps-overlay__result--draw">Draw — playing again...</p>
+            <p class="rps-overlay__result rps-overlay__result--draw">{{ 'duel.rps.draw' | translate }}</p>
           }
         </div>
       </div>
@@ -342,13 +318,13 @@
 
     <!-- Story 5.2 — Blocked tab overlay (single-tab enforcement) -->
     @if (tabGuard.isBlocked()) {
-      <div class="blocked-tab-overlay" role="alertdialog" aria-modal="true" aria-label="Duel active in another tab">
+      <div class="blocked-tab-overlay" role="alertdialog" aria-modal="true" [attr.aria-label]="'duel.tabConflict.title' | translate">
         <div class="blocked-tab-overlay__content">
-          <p class="blocked-tab-overlay__text">Duel active in another tab</p>
+          <p class="blocked-tab-overlay__text">{{ 'duel.tabConflict.title' | translate }}</p>
           <button mat-raised-button
                   class="blocked-tab-overlay__btn"
                   (click)="tabGuard.takeControl()">
-            Take control here
+            {{ 'duel.tabConflict.takeControl' | translate }}
           </button>
         </div>
       </div>
@@ -359,9 +335,9 @@
       <div class="connection-overlay connection-overlay--reconnecting"
            role="status" aria-live="polite">
         <div class="connection-overlay__content">
-          <p class="connection-overlay__title">Reconnecting</p>
+          <p class="connection-overlay__title">{{ 'duel.connection.reconnecting' | translate }}</p>
           <mat-progress-spinner mode="indeterminate" [diameter]="36"
-                                aria-label="Reconnecting">
+                                [attr.aria-label]="'duel.connection.reconnecting' | translate">
           </mat-progress-spinner>
         </div>
       </div>
@@ -370,19 +346,19 @@
     @if (isLost()) {
       <div class="connection-overlay connection-overlay--lost"
            role="alertdialog" aria-modal="true"
-           aria-label="Connection lost" cdkTrapFocus>
+           [attr.aria-label]="'duel.connection.lostTitle' | translate" cdkTrapFocus>
         <div class="connection-overlay__content">
-          <p class="connection-overlay__title">Connection lost</p>
-          <p class="connection-overlay__subtitle">Unable to reach the server</p>
+          <p class="connection-overlay__title">{{ 'duel.connection.lostTitle' | translate }}</p>
+          <p class="connection-overlay__subtitle">{{ 'duel.connection.lostSubtitle' | translate }}</p>
           @if (canRetry()) {
             <button class="connection-overlay__retry" (click)="retry()">
-              Retry connection
+              {{ 'duel.connection.retry' | translate }}
             </button>
           }
           <button class="connection-overlay__lobby"
                   [class.connection-overlay__lobby--primary]="!canRetry()"
                   (click)="backToLobby()">
-            Back to Lobby
+            {{ 'duel.connection.backToLobby' | translate }}
           </button>
         </div>
       </div>
@@ -394,8 +370,8 @@
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {
       <div class="rematch-starting-overlay" role="status" aria-live="polite">
-        <mat-progress-spinner mode="indeterminate" [diameter]="48" aria-label="Starting new duel"></mat-progress-spinner>
-        <p>Starting new duel...</p>
+        <mat-progress-spinner mode="indeterminate" [diameter]="48" [attr.aria-label]="'duel.result.startingNew' | translate"></mat-progress-spinner>
+        <p>{{ 'duel.result.startingNew' | translate }}</p>
       </div>
     }
 
@@ -403,13 +379,13 @@
     @if (wsService.opponentDisconnected() && !wsService.duelResult()) {
       <div class="disconnect-grace-overlay" role="status" aria-live="polite">
         <div class="disconnect-grace-overlay__content">
-          <p class="disconnect-grace-overlay__title">Opponent disconnected</p>
-          <p class="disconnect-grace-overlay__subtitle">Waiting for reconnection...</p>
+          <p class="disconnect-grace-overlay__title">{{ 'duel.opponent.disconnected' | translate }}</p>
+          <p class="disconnect-grace-overlay__subtitle">{{ 'duel.opponent.waitingReconnect' | translate }}</p>
           <div class="disconnect-grace-overlay__bar-track">
             <div class="disconnect-grace-overlay__bar"
                  [style.animation-duration]="wsService.disconnectGraceSec() + 's'"></div>
           </div>
-          <button class="disconnect-grace-overlay__leave" (click)="backToLobby()">Leave</button>
+          <button class="disconnect-grace-overlay__leave" (click)="backToLobby()">{{ 'duel.opponent.leave' | translate }}</button>
         </div>
       </div>
     }
@@ -426,9 +402,9 @@
         <div class="result-overlay__content">
           <h1 class="result-overlay__title">
             @switch (result.outcome) {
-              @case ('victory') { VICTORY }
-              @case ('defeat') { DEFEAT }
-              @case ('draw') { DRAW }
+              @case ('victory') { {{ 'duel.result.victory' | translate }} }
+              @case ('defeat') { {{ 'duel.result.defeat' | translate }} }
+              @case ('draw') { {{ 'duel.result.draw' | translate }} }
             }
           </h1>
           <p class="result-overlay__reason">{{ result.reason }}</p>
@@ -443,11 +419,11 @@
             <button mat-stroked-button
                     class="result-overlay__leave"
                     (click)="backToLobby()">
-              Leave Room
+              {{ 'duel.leaveRoom' | translate }}
             </button>
             <button class="result-overlay__deck-link"
                     (click)="backToDeck()">
-              Back to Deck
+              {{ 'duel.result.backToDeck' | translate }}
             </button>
           </div>
         </div>
@@ -475,11 +451,11 @@
 
   <!-- Story 3.1 — Surrender Confirmation Dialog Template -->
   <ng-template #surrenderDialog>
-    <h2 mat-dialog-title>Abandon the duel?</h2>
-    <mat-dialog-content>This will count as a loss.</mat-dialog-content>
+    <h2 mat-dialog-title>{{ 'duel.surrender.title' | translate }}</h2>
+    <mat-dialog-content>{{ 'duel.surrender.warning' | translate }}</mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-stroked-button [mat-dialog-close]="false">Cancel</button>
-      <button mat-flat-button [mat-dialog-close]="true">Surrender</button>
+      <button mat-stroked-button [mat-dialog-close]="false">{{ 'common.cancel' | translate }}</button>
+      <button mat-flat-button [mat-dialog-close]="true">{{ 'duel.surrender.confirm' | translate }}</button>
     </mat-dialog-actions>
   </ng-template>
 </div>

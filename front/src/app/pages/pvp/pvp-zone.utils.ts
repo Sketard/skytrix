@@ -1,4 +1,4 @@
-import { LOCATION, type CardLocation, ZoneId } from './duel-ws.types';
+import { LOCATION, type CardLocation, type ZoneId, type BoardZone, type CardOnField } from './duel-ws.types';
 
 /**
  * Maps an OCGCore (location, sequence) pair to a board ZoneId.
@@ -38,4 +38,16 @@ export function locationToZoneKey(location: CardLocation, sequence: number, rela
     }
     default: return `UNKNOWN-${relativePlayer}`;
   }
+}
+
+const PILE_ZONES: ReadonlySet<ZoneId> = new Set(['GY', 'BANISHED', 'EXTRA']);
+
+/**
+ * Extracts the cards for a zone pill click.
+ * Pile zones (GY, Banished, Extra) are reversed so the top-of-pile card appears first.
+ */
+export function getZonePillCards(zones: BoardZone[], zoneId: ZoneId): CardOnField[] {
+  const zone = zones.find(z => z.zoneId === zoneId);
+  const cards = zone?.cards ?? [];
+  return PILE_ZONES.has(zoneId) ? [...cards].reverse() : cards;
 }

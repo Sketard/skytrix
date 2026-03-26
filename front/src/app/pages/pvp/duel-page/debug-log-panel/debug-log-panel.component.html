@@ -1,17 +1,20 @@
 <div class="debug-panel"
      id="debug-log-panel"
      [class.debug-panel--open]="open()"
+     [class.debug-panel--replay]="replayMode()"
      [attr.inert]="open() ? null : true"
      [attr.aria-hidden]="!open()">
   <div class="debug-panel__header">
-    <span class="debug-panel__title">Debug Logs</span>
-    <button class="debug-panel__action" aria-label="Download logs" (click)="downloadLogs()">
+    <span class="debug-panel__title">{{ 'replay.debug.title' | translate }}</span>
+    <button class="debug-panel__action" [attr.aria-label]="'a11y.downloadLogs' | translate" (click)="downloadLogs()">
       <mat-icon>download</mat-icon>
     </button>
-    <button class="debug-panel__action" aria-label="Clear logs" (click)="clearRequested.emit()">
-      <mat-icon>delete_outline</mat-icon>
-    </button>
-    <button class="debug-panel__close" aria-label="Close debug panel" (click)="closed.emit()">
+    @if (!replayMode()) {
+      <button class="debug-panel__action" [attr.aria-label]="'a11y.clearLogs' | translate" (click)="clearRequested.emit()">
+        <mat-icon>delete_outline</mat-icon>
+      </button>
+    }
+    <button class="debug-panel__close" [attr.aria-label]="'a11y.closeDebugPanel' | translate" (click)="closed.emit()">
       <mat-icon>close</mat-icon>
     </button>
   </div>
@@ -19,13 +22,18 @@
     @for (entry of entries(); track $index) {
       <div class="debug-panel__entry"
            [class.debug-panel__entry--p1]="entry.player === 0"
-           [class.debug-panel__entry--p2]="entry.player === 1">
-        <span class="debug-panel__time">{{ formatTime(entry.timestamp) }}</span>
+           [class.debug-panel__entry--p2]="entry.player === 1"
+           [class.debug-panel__entry--active]="replayMode() && activeIndex() === entry.eventIndex"
+           [class.debug-panel__entry--disabled]="replayMode() && entry.eventIndex !== undefined && entry.eventIndex > computedUpTo()"
+           (click)="onEntryClick(entry)">
+        @if (!replayMode()) {
+          <span class="debug-panel__time">{{ formatTime(entry.timestamp) }}</span>
+        }
         <span class="debug-panel__dot debug-panel__dot--{{ entry.category }}"></span>
         <span class="debug-panel__text" [innerHTML]="highlightPlayers(entry.text)"></span>
       </div>
     } @empty {
-      <p class="debug-panel__empty">No logs yet</p>
+      <p class="debug-panel__empty">{{ 'replay.debug.emptyState' | translate }}</p>
     }
   </div>
 </div>

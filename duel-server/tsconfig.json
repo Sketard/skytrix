@@ -11,5 +11,5 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/poc-duel.ts", "src/test-core.ts"]
+  "exclude": ["src/poc-duel.ts", "src/test-core.ts", "src/test-snapshot.ts", "src/solver-poc.ts"]
 }

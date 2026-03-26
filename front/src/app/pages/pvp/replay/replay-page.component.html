@@ -1,0 +1,131 @@
+@if (loading()) {
+  <div class="replay-loading" role="region" [attr.aria-label]="'a11y.loadingReplay' | translate" aria-live="polite">
+    <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'a11y.loadingReplay' | translate"></mat-progress-spinner>
+    <p>{{ progressText() }}</p>
+  </div>
+} @else {
+  <div class="replay-viewer" (keydown)="onKeydown($event)" tabindex="0">
+    <div class="board-area">
+      <!-- Opponent Hand (top, omniscient — all cards visible) -->
+      <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
+                         side="opponent"
+                         [cards]="opponentHand()"
+                         [hiddenIndices]="orchestrator.hiddenHandIndices()[1]"
+                         [chainBadges]="opponentHandChainBadges()"
+                         [revealedCardCodes]="opponentHandRevealedCodes()"
+                         [replayMode]="true"
+                         (cardInspectRequest)="onCardInspectRequest($event)" />
+
+      <!-- Duel overlays (phase announcements, chain resolution) -->
+      <app-pvp-duel-overlays
+        [phaseAnnouncement]="phaseService.announcement()"
+        [chainResolutionAnnounce]="orchestrator.chainResolutionAnnounce()"
+        [opponentThinking]="false" />
+
+      <!-- Board -->
+      <app-pvp-board-container [readOnly]="true"
+                               [duelState]="activeDuelState()"
+                               [ownPlayerIndex]="perspectiveIndex()"
+                               [displayedPhase]="currentState()?.boardState?.phase ?? null"
+                               [displayedTurnPlayer]="replayDisplayedTurnPlayer()"
+                               [displayedTurnCount]="currentState()?.boardState?.turnCount ?? null"
+                               [timerState]="null"
+                               [highlightedZones]="replayHighlightedZones()"
+                               [chosenZone]="replayChosenZone()"
+                               [actionablePrompt]="null"
+                               [opponentDisconnected]="false"
+                               [animatingZone]="orchestrator.animatingZone()"
+                               [animatingLp]="orchestrator.animatingLpPlayer()"
+                               [activeChainLinks]="adapter.activeChainLinks()"
+                               [chainPhase]="adapter.chainPhase()"
+                               [maskedZoneKeys]="orchestrator.maskedZoneKeys()"
+                               [maskedPileImages]="orchestrator.maskedPileImages()"
+                               [maskedSourceImages]="orchestrator.maskedSourceImages()"
+                               [targetedZoneKeys]="orchestrator.targetedZoneKeys()"
+                               [preTargetZoneKeys]="emptyStringSet"
+                               [revealedZoneKeys]="revealedZoneKeys()"
+                               (cardInspectRequest)="onCardInspectRequest($event)"
+                               (zonePillRequest)="onZonePillRequest($event)" />
+
+      <!-- Zone Browser Overlay (right-aligned, full height) -->
+      @if (zoneBrowserState(); as zb) {
+        <div class="right-sidebar">
+          <app-pvp-zone-browser-overlay [zoneId]="zb.zoneId"
+                                         [cards]="zb.cards"
+                                         [playerIndex]="zb.playerIndex"
+                                         [openId]="zb.openId"
+                                         (inspectCard)="onCardInspectRequest({ cardCode: $event })"
+                                         (closed)="closeZoneBrowser($event)" />
+        </div>
+      }
+
+      <!-- Player Hand (bottom, omniscient) -->
+      <app-pvp-hand-row class="hand-player" data-zone="HAND-0"
+                         side="player"
+                         [cards]="playerHand()"
+                         [hiddenIndices]="orchestrator.hiddenHandIndices()[0]"
+                         [chainBadges]="playerHandChainBadges()"
+                         (cardInspectRequest)="onCardInspectRequest($event)" />
+
+      <!-- Chain Overlay -->
+      <app-pvp-chain-overlay [promptActive]="adapter.activePrompt() !== null" />
+
+      <!-- Prompt Dialog for Replay Decision Mode -->
+      @if (promptMode() === 'decision' && adapter.activePrompt(); as prompt) {
+        <app-pvp-prompt-dialog [prompt]="prompt"
+                                [passiveMessage]="null"
+                                [skipBeat1]="true"
+                                [readOnly]="true"
+                                [preSelectedResponse]="adapter.activeResponse()"
+                                [ownPlayerIndex]="adapter.activePlayer()"
+                                [hintContext]="adapter.activeHint()"
+                                [confirmedCards]="adapter.activeConfirmedCards()"
+                                (longPressInspect)="onCardInspectRequest($event)" />
+      }
+    </div>
+
+    <!-- Timeline Bar -->
+    <app-timeline-bar [turns]="turns()"
+                       [currentIndex]="currentIndex()"
+                       [computedUpTo]="computedUpTo()"
+                       [totalEvents]="totalEvents()"
+                       [boardStates]="boardStates()"
+                       [ownPlayerIndex]="perspectiveIndex()"
+                       (seekTo)="onSeek($event)"
+                       (scrubbing)="onScrub($event)" />
+
+    <!-- Transport Bar -->
+    <app-transport-bar [isPlaying]="isPlaying()"
+                        [forking]="fork.forking()"
+                        [positionLabel]="positionLabel()"
+                        [animationsEnabled]="animationsEnabled()"
+                        [promptMode]="promptMode()"
+                        [perspectiveIndex]="perspectiveIndex()"
+                        (skipStart)="onSkipStart()"
+                        (stepBack)="onStepBack()"
+                        (playPause)="onPlayPause()"
+                        (stepForward)="onStepForward()"
+                        (skipEnd)="onSkipEnd()"
+                        (fork)="onFork()"
+                        (toggleAnimations)="onToggleAnimations()"
+                        (togglePromptMode)="onTogglePromptMode()"
+                        (togglePerspective)="onTogglePerspective()" />
+
+    <!-- Debug Log Panel -->
+    <app-debug-log-panel [entries]="debugLogEntries()"
+                          [open]="debugPanelOpen()"
+                          [replayMode]="true"
+                          [activeIndex]="currentIndex()"
+                          [computedUpTo]="computedUpTo()"
+                          (closed)="debugPanelOpen.set(false)"
+                          (seekToEvent)="onSeek($event)" />
+
+    <!-- Card Inspector -->
+    @if (inspectedCard(); as card) {
+      <app-pvp-card-inspector-wrapper [card]="card"
+                                       [promptActive]="false"
+                                       [initialForceExpanded]="inspectorForceExpanded()"
+                                       (dismissed)="closeInspector()" />
+    }
+  </div>
+}

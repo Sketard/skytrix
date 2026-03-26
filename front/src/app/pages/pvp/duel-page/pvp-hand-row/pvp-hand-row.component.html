@@ -13,11 +13,11 @@
          [class.hand-card--actionable]="activateCardIndices().has($index)"
          [class.hand-card--actionable-blue]="!activateCardIndices().has($index) && actionableCardIndices().has($index)"
          [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
-         [style.z-index]="chainNum ? (1000 + chainNum) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index)"
+         [style.z-index]="(chainNum || revealedCode) ? (1000 + (chainNum ?? 0)) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index)"
          [style.transform]="fanTransform($index)"
          [style.visibility]="(hideAll() || hiddenIndices().has($index)) ? 'hidden' : null"
          (click)="onCardTap($index, $event)">
-      @let effectiveCode = isPlayerSide() ? card.cardCode : revealedCode;
+      @let effectiveCode = isPlayerSide() || replayMode() ? card.cardCode : revealedCode;
       @if (effectiveCode) {
         <img [src]="getCardImageUrlByCode(effectiveCode)"
              [alt]="card.name ?? 'Card'"

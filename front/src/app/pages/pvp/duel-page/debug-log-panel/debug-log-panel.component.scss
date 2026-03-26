@@ -70,6 +70,24 @@
 
     &--p1 { border-left: 3px solid #64b5f6; padding-left: 6px; }
     &--p2 { border-left: 3px solid #ef5350; padding-left: 6px; }
+
+    &--active {
+      background: rgba(201, 168, 76, 0.1);
+
+      &:not(.debug-panel__entry--p1):not(.debug-panel__entry--p2) {
+        border-left: 3px solid var(--pvp-accent, #C9A84C);
+        padding-left: 6px;
+      }
+    }
+
+    &--disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+  }
+
+  &--replay &__entry {
+    cursor: pointer;
   }
 
   &__time {

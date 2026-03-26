@@ -1,4 +1,4 @@
-import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, effect, inject, Injector, input, output, signal } from '@angular/core';
+import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, input, output, signal } from '@angular/core';
 import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
@@ -10,6 +10,7 @@ import { CardTravelService } from '../card-travel.service';
 import { formatStat, getAttributeName, getRaceName, totalCounters } from '../../pvp-alteration.utils';
 import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
 import { NgTemplateOutlet } from '@angular/common';
+import { CardNamePipe } from '../../../../core/pipes/card-i18n.pipe';
 
 /** Zone IDs that appear in the player/opponent field grid (not EMZ, not HAND) */
 const FIELD_ZONE_IDS: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'GY', 'EXTRA', 'DECK'];
@@ -37,12 +38,16 @@ interface ZoneRenderData {
   styleUrl: './pvp-board-container.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent, NgTemplateOutlet],
+  imports: [PvpLpBadgeComponent, PvpTimerBadgeComponent, PvpPhaseBadgeComponent, NgTemplateOutlet, CardNamePipe],
 })
 export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly injector = inject(Injector);
+  private readonly elementRef = inject(ElementRef);
   private readonly cardTravelService = inject(CardTravelService);
   private readonly zoneElements = new Map<string, HTMLElement>();
+
+  /** When true, this instance is a miniature preview — skip zone resolver registration. */
+  readonly preview = input(false);
 
   /** Only rebuild zone map when players appear/disappear, not on every state update */
   private readonly hasOpponent = computed(() => this.duelState().players[1] != null);
@@ -51,19 +56,13 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     // Dynamic rebuild: re-query zone elements when opponent field first renders
     effect(() => {
       this.hasOpponent(); // track only player presence changes
+      if (this.preview()) return;
       afterNextRender(() => this.rebuildZoneMap(), { injector: this.injector });
-    });
-    effect(() => {
-      const badges = this.chainBadges();
-      if (badges.size > 0) {
-        console.log('[DBG:BADGE] chainBadges non-empty (%d entries): %o', badges.size, [...badges.entries()]);
-      } else {
-        console.log('[DBG:BADGE] chainBadges cleared (size=0)');
-      }
     });
   }
 
   ngAfterViewInit(): void {
+    if (this.preview()) return;
     this.rebuildZoneMap();
     this.cardTravelService.registerZoneResolver(this.getZoneElement.bind(this));
   }
@@ -74,17 +73,24 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   private rebuildZoneMap(): void {
     this.zoneElements.clear();
-    const elements = document.querySelectorAll<HTMLElement>('[data-zone]');
+    // Scope the query to the closest layout ancestor (board-area / duel-container)
+    // instead of the entire document, to avoid capturing zones from preview
+    // miniatures or other board instances.
+    const host = this.elementRef.nativeElement as HTMLElement;
+    const scope = host.parentElement ?? host;
+    const elements = scope.querySelectorAll<HTMLElement>('[data-zone]');
     elements.forEach(el => {
       const key = el.getAttribute('data-zone');
       if (key) this.zoneElements.set(key, el);
     });
   }
 
+  readonly readOnly = input<boolean>(false);
   readonly duelState = input.required<DuelState>();
   readonly timerState = input<TimerStateMsg | null>(null);
   readonly ownPlayerIndex = input<Player>(0);
-  readonly highlightedZones = input<Set<ZoneId>>(new Set());
+  readonly highlightedZones = input<Set<string>>(new Set());
+  readonly chosenZone = input<string | null>(null);
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
   readonly opponentDisconnected = input(false);
   readonly animatingZone = input<{ zoneId: string; animationType: 'flip' | 'activate'; relativePlayerIndex: number } | null>(null);
@@ -94,7 +100,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly displayedPhase = input<Phase | null>(null);
   readonly displayedTurnPlayer = input<Player | null>(null);
   readonly displayedTurnCount = input<number | null>(null);
-  readonly zoneSelected = output<ZoneId>();
+  readonly zoneSelected = output<string>();
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number }>();
@@ -104,11 +110,13 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly maskedSourceImages = input<ReadonlyMap<string, CardOnField>>(new Map());
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
 
   readonly playerZones = computed(() => this.buildFieldZones(0));
   readonly opponentZones = computed(() => this.buildFieldZones(1));
 
   readonly actionableCards = computed((): ActionableCardsMap => {
+    if (this.readOnly()) return new Map();
     const prompt = this.actionablePrompt();
     if (!prompt) return new Map();
     return prompt.type === 'SELECT_IDLECMD'
@@ -117,6 +125,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   });
 
   readonly activateZoneIds = computed((): Set<ZoneId> => {
+    if (this.readOnly()) return new Set();
     const map = this.actionableCards();
     const prompt = this.actionablePrompt();
     if (map.size === 0 || !prompt) return new Set();
@@ -133,6 +142,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   });
 
   readonly nonActivateZoneIds = computed((): Set<ZoneId> => {
+    if (this.readOnly()) return new Set();
     const map = this.actionableCards();
     const prompt = this.actionablePrompt();
     if (map.size === 0 || !prompt) return new Set();
@@ -248,27 +258,34 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     return this.isMonsterZone(zone.zoneId) && isDefense(zone.card!.position);
   }
 
-  isHighlighted(zoneId: ZoneId): boolean {
-    return this.highlightedZones().has(zoneId);
+  isHighlighted(zoneKey: string): boolean {
+    if (this.readOnly() && !this.chosenZone()) return false;
+    return this.highlightedZones().has(zoneKey);
+  }
+
+  isChosenZone(zoneKey: string): boolean {
+    return this.chosenZone() === zoneKey;
   }
 
   protected readonly highlightBadgeMap = computed(() => {
-    const map = new Map<ZoneId, number>();
+    const map = new Map<string, number>();
     let i = 1;
-    for (const zoneId of this.highlightedZones()) {
-      map.set(zoneId, i++);
+    for (const zoneKey of this.highlightedZones()) {
+      map.set(zoneKey, i++);
     }
     return map;
   });
 
-  onHighlightedZoneClick(zoneId: ZoneId): void {
-    if (this.isHighlighted(zoneId)) {
-      this.zoneSelected.emit(zoneId);
+  onHighlightedZoneClick(zoneKey: string): void {
+    if (this.readOnly()) return;
+    if (this.isHighlighted(zoneKey)) {
+      this.zoneSelected.emit(zoneKey);
     }
   }
 
   onZonePillClick(event: MouseEvent, zoneId: ZoneId, playerIndex: number): void {
     this.zonePillRequest.emit({ zoneId, playerIndex });
+    if (this.readOnly()) return;
     // If player's own pile has actionable cards, also open the action menu
     if (playerIndex === 0) {
       const actions = this.getActionsForZone(zoneId);
@@ -286,6 +303,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     if (zone.card?.cardCode) {
       this.cardInspectRequest.emit({ cardCode: zone.card.cardCode });
     }
+    if (this.readOnly()) return;
     const actions = this.getActionsForZone(zone.zoneId);
     if (actions.length > 0) {
       this.menuRequest.emit({
@@ -423,6 +441,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     if (card.cardCode) {
       this.cardInspectRequest.emit({ cardCode: card.cardCode });
     }
+    if (this.readOnly()) return;
     const actions = this.getActionsForZone(zoneId);
     if (actions.length > 0) {
       this.menuRequest.emit({ zoneId, element: event.currentTarget as HTMLElement, actions });
@@ -433,6 +452,11 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     if (card.cardCode) {
       this.cardInspectRequest.emit({ cardCode: card.cardCode });
     }
+  }
+
+  onPhaseAction(event: { action: number; index: number | null }): void {
+    if (this.readOnly()) return;
+    this.actionResponse.emit(event);
   }
 
   onEquipHover(zoneKey: string): void {

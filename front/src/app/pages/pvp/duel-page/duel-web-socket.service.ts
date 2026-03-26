@@ -2,11 +2,12 @@ import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection, ResponseData } from './duel-connection';
 import { DebugLogService } from './debug-log.service';
+import type { AnimationDataSource } from './animation-data-source';
 
 export { ResponseData } from './duel-connection';
 
 @Injectable()
-export class DuelWebSocketService implements OnDestroy {
+export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private readonly debugLog = inject(DebugLogService);
 
   private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true);

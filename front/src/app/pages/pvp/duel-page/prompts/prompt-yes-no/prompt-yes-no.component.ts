@@ -2,7 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostBinding,
   HostListener,
+  OnInit,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
@@ -17,12 +19,23 @@ type YesNoPrompt = SelectYesNoMsg | SelectEffectYnMsg;
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PromptYesNoComponent implements PromptSubComponent<YesNoPrompt> {
+export class PromptYesNoComponent implements PromptSubComponent<YesNoPrompt>, OnInit {
   promptData: YesNoPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
 
   answered = false;
+  preSelectedYes: boolean | null = null;
+
+  ngOnInit(): void {
+    if (this.readOnly && this.preSelectedResponse != null) {
+      const r = this.preSelectedResponse as { yes: boolean };
+      this.preSelectedYes = r.yes;
+      this.answered = true;
+    }
+  }
 
   get isEffectYn(): boolean {
     return this.promptData?.type === 'SELECT_EFFECTYN';
@@ -50,6 +63,7 @@ export class PromptYesNoComponent implements PromptSubComponent<YesNoPrompt> {
 
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     if (event.key === 'Enter') {
       event.preventDefault();
       this.selectPrimary();

@@ -6,9 +6,10 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { displayError, relativeTime } from '../../../core/utilities/functions';
+import { NotificationService } from '../../../core/services/notification.service';
+import { TranslatePipe } from '@ngx-translate/core';
+import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
 import { environment } from '../../../../environments/environment';
 import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
@@ -20,13 +21,13 @@ import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dial
   styleUrl: './lobby-page.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButton, MatIconButton, MatIcon, MatProgressSpinner],
+  imports: [MatButton, MatIconButton, MatIcon, MatProgressSpinner, RelativeTimePipe, TranslatePipe],
 })
 export class LobbyPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly roomApi = inject(RoomApiService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notify = inject(NotificationService);
   private readonly dialog = inject(MatDialog);
 
   readonly rooms = signal<RoomDTO[]>([]);
@@ -57,9 +58,9 @@ export class LobbyPageComponent implements OnInit {
       error: () => {
         this.loading.set(false);
         if (this.rooms().length > 0) {
-          displayError(this.snackBar, 'Echec du rafraichissement');
+          this.notify.error('error.ROOM_REFRESH_FAILED');
         } else {
-          this.error.set('Impossible de charger les rooms');
+          this.error.set('error.ROOM_LOAD_FAILED');
         }
       },
     });
@@ -95,12 +96,7 @@ export class LobbyPageComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           this.creatingRoom.set(false);
-          if (err.status === 422) {
-            const reason = err.error?.message ?? err.error?.error ?? 'Deck invalide';
-            displayError(this.snackBar, reason);
-          } else {
-            displayError(this.snackBar, 'Impossible de creer la room');
-          }
+          this.notify.error(err.status === 422 ? err : 'error.ROOM_CREATE_FAILED');
         },
       });
     });
@@ -125,19 +121,10 @@ export class LobbyPageComponent implements OnInit {
         },
         error: (err: HttpErrorResponse) => {
           this.creatingRoom.set(false);
-          if (err.status === 422) {
-            const reason = err.error?.message ?? err.error?.error ?? 'Deck invalide';
-            displayError(this.snackBar, reason);
-          } else {
-            displayError(this.snackBar, 'Impossible de lancer le duel rapide');
-          }
+          this.notify.error(err.status === 422 ? err : 'error.QUICK_DUEL_FAILED');
         },
       });
     });
-  }
-
-  getRelativeTime(date: string): string {
-    return relativeTime(date);
   }
 
   joinRoom(room: RoomDTO): void {
@@ -158,13 +145,12 @@ export class LobbyPageComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.joiningRoomCode.set(null);
           if (err.status === 409) {
-            displayError(this.snackBar, 'Cette room est complete');
+            this.notify.error('error.ROOM_FULL');
             this.rooms.update(list => list.filter(r => r.roomCode !== room.roomCode));
           } else if (err.status === 422) {
-            const reason = err.error?.message ?? err.error?.error ?? 'Deck invalide';
-            displayError(this.snackBar, reason);
+            this.notify.error(err);
           } else {
-            displayError(this.snackBar, 'Impossible de rejoindre la room');
+            this.notify.error('error.ROOM_JOIN_FAILED');
           }
         },
       });

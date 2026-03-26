@@ -4,7 +4,7 @@
             [class.card-slot--assigned]="getRank($index) !== null"
             [class.card-slot--last]="isLastAssigned($index)"
             (click)="toggleCard($index)"
-            [disabled]="answered"
+            [disabled]="answered && !readOnly"
             type="button"
             [attr.aria-label]="card.name">
       <img class="card-img"
@@ -24,13 +24,13 @@
             (click)="reset()"
             [disabled]="answered"
             type="button">
-      Reset
+      {{ 'simulator.reset' | translate }}
     </button>
   }
   <button class="btn btn--primary prompt-confirm-btn"
           (click)="confirm()"
           [disabled]="!isComplete || answered"
           type="button">
-    Confirm
+    {{ 'common.confirm' | translate }}
   </button>
 </div>

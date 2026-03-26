@@ -28,6 +28,8 @@ export class PvpHandRowComponent {
   readonly chainBadges = input<Map<number, number>>(new Map());
   /** Revealed card codes for opponent hand cards activated in chain: sequence → cardCode. */
   readonly revealedCardCodes = input<Map<number, number>>(new Map());
+  /** Whether this hand is in replay mode (applies .revealed-in-replay marker to opponent cards). */
+  readonly replayMode = input(false);
 
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();

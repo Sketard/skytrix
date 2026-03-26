@@ -10,7 +10,7 @@
     <button class="zone-browser__expand-tab"
             type="button"
             (click)="toggleExpanded($event)"
-            [attr.aria-label]="expanded() ? 'Collapse' : 'Expand'">
+            [attr.aria-label]="(expanded() ? 'duel.zoneBrowser.collapse' : 'duel.zoneBrowser.expand') | translate">
       {{ expanded() ? '⊟' : '⊞' }}
     </button>
 
@@ -23,7 +23,7 @@
 
     @if (isOpponentExtra()) {
       <div class="zone-browser__facedown-count">
-        {{ cards().length }} cards
+        {{ 'duel.zoneBrowser.cardCount' | translate:{count: cards().length} }}
       </div>
     } @else {
       <div class="zone-browser__grid">
@@ -38,7 +38,7 @@
           </button>
         }
         @if (cards().length === 0) {
-          <div class="zone-browser__empty">Empty</div>
+          <div class="zone-browser__empty">{{ 'duel.zoneBrowser.empty' | translate }}</div>
         }
       </div>
     }

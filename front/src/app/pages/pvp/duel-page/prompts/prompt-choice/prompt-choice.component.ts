@@ -2,11 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostBinding,
   HostListener,
   OnDestroy,
   OnInit,
   signal,
 } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { Prompt } from '../../../types/prompt.types';
@@ -30,13 +32,13 @@ export interface ChoiceConfig<T = unknown> {
 }
 
 const RPS_CONFIG: ChoiceConfig<number> = {
-  title: 'ROCK PAPER SCISSORS',
-  subtitle: 'Winner picks turn order',
-  waitingLabel: 'Waiting for opponent...',
+  title: 'duel.rps.title',
+  subtitle: 'duel.rps.subtitle',
+  waitingLabel: 'duel.rps.waitingOpponent',
   choices: [
-    { value: 0, label: 'Rock', icon: 'assets/images/icons/rps-rock.svg', key: '1' },
-    { value: 1, label: 'Paper', icon: 'assets/images/icons/rps-paper.svg', key: '2' },
-    { value: 2, label: 'Scissors', icon: 'assets/images/icons/rps-scissors.svg', key: '3' },
+    { value: 0, label: 'duel.rps.rock', icon: 'assets/images/icons/rps-rock.svg', key: '1' },
+    { value: 1, label: 'duel.rps.paper', icon: 'assets/images/icons/rps-paper.svg', key: '2' },
+    { value: 2, label: 'duel.rps.scissors', icon: 'assets/images/icons/rps-scissors.svg', key: '3' },
   ],
   timeoutSeconds: 30,
   defaultValue: -1, // sentinel — triggers random pick
@@ -45,12 +47,12 @@ const RPS_CONFIG: ChoiceConfig<number> = {
 };
 
 const TP_CONFIG: ChoiceConfig<boolean> = {
-  title: 'TURN ORDER',
-  subtitle: 'You won — choose your position',
-  waitingLabel: 'Waiting for confirmation...',
+  title: 'duel.turnOrder.title',
+  subtitle: 'duel.turnOrder.subtitle',
+  waitingLabel: 'duel.turnOrder.waiting',
   choices: [
-    { value: true, label: 'Go First', icon: 'assets/images/icons/tp-first.svg', key: '1' },
-    { value: false, label: 'Go Second', icon: 'assets/images/icons/tp-second.svg', key: '2' },
+    { value: true, label: 'duel.turnOrder.goFirst', icon: 'assets/images/icons/tp-first.svg', key: '1' },
+    { value: false, label: 'duel.turnOrder.goSecond', icon: 'assets/images/icons/tp-second.svg', key: '2' },
   ],
   timeoutSeconds: 30,
   defaultValue: true,
@@ -69,11 +71,14 @@ export const CHOICE_CONFIGS: Record<string, ChoiceConfig> = {
   styleUrl: './prompt-choice.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TranslatePipe],
 })
 export class PromptChoiceComponent implements PromptSubComponent, OnInit, OnDestroy {
   promptData: Prompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
 
   config!: ChoiceConfig;
   readonly selected = signal<unknown>(null);
@@ -87,6 +92,16 @@ export class PromptChoiceComponent implements PromptSubComponent, OnInit, OnDest
     this.config = CHOICE_CONFIGS[type] ?? CHOICE_CONFIGS['RPS_CHOICE'];
     this.secondsLeft.set(this.config.timeoutSeconds);
     this.keyMap = Object.fromEntries(this.config.choices.map(c => [c.key, c.value]));
+
+    if (this.readOnly) {
+      if (this.preSelectedResponse != null) {
+        const r = this.preSelectedResponse as Record<string, unknown>;
+        const value = r[this.config.responseKey];
+        this.selected.set(value);
+        this.answered = true;
+      }
+      return; // skip timer in readOnly
+    }
 
     this.timerInterval = setInterval(() => {
       this.secondsLeft.update(s => Math.max(0, s - 1));
@@ -111,6 +126,7 @@ export class PromptChoiceComponent implements PromptSubComponent, OnInit, OnDest
 
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     const value = this.keyMap[event.key];
     if (value !== undefined) {
       event.preventDefault();

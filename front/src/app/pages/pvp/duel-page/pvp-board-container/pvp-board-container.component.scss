@@ -109,6 +109,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  z-index: z.$z-pvp-card-action-menu;
 }
 
 // === Zone Cell ===
@@ -182,6 +183,16 @@
   aspect-ratio: 59 / 86;
   overflow: hidden;
   transition: box-shadow 150ms ease-out;
+
+  .xray-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    animation: xray-pulse 3s ease-in-out infinite;
+    mask-image: radial-gradient(ellipse 70% 70% at center, black 0%, black 55%, transparent 95%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at center, black 0%, black 55%, transparent 95%);
+  }
 }
 
 // === Alteration Indicators (Story 8.3) ===
@@ -341,6 +352,24 @@
   height: 100%;
 }
 
+// Shared pseudo-element base for pile depth layers
+%pile-layer {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: var(--pvp-radius-sm);
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+// Actionable glow mixin (shared by zone-card and zone-pile)
+@mixin actionable-glow($glow, $glow-hover) {
+  box-shadow: $glow;
+  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
+  cursor: pointer;
+  &:hover { box-shadow: $glow-hover; }
+}
+
 // === Zone Pile (GY, Banished, Extra, Deck) ===
 .zone-pile {
   width: 100%;
@@ -363,12 +392,7 @@
 
     &::before,
     &::after {
-      content: '';
-      position: absolute;
-      inset: 2px;
-      border-radius: var(--pvp-radius-sm);
-      background: #2a2a3e;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      @extend %pile-layer;
     }
 
     &::before {
@@ -386,12 +410,7 @@
   &--depth-1,
   &--depth-2 {
     &::after {
-      content: '';
-      position: absolute;
-      inset: 2px;
-      border-radius: var(--pvp-radius-sm);
-      background: #2a2a3e;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      @extend %pile-layer;
       transform: translate(calc(var(--pvp-pile-stack-offset) / 2), calc(-1 * var(--pvp-pile-stack-offset) / 2));
       z-index: -1;
     }
@@ -399,34 +418,14 @@
 
   &--depth-2 {
     &::before {
-      content: '';
-      position: absolute;
-      inset: 2px;
-      border-radius: var(--pvp-radius-sm);
-      background: #2a2a3e;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      @extend %pile-layer;
       transform: translate(var(--pvp-pile-stack-offset), calc(-1 * var(--pvp-pile-stack-offset)));
       z-index: -2;
     }
   }
 
-  &--actionable {
-    box-shadow: var(--pvp-actionable-glow);
-    animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
-
-    &:hover {
-      box-shadow: var(--pvp-actionable-glow-hover);
-    }
-  }
-
-  &--actionable-blue {
-    box-shadow: var(--pvp-actionable-glow-blue);
-    animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
-
-    &:hover {
-      box-shadow: var(--pvp-actionable-glow-blue-hover);
-    }
-  }
+  &--actionable { @include actionable-glow(var(--pvp-actionable-glow), var(--pvp-actionable-glow-hover)); }
+  &--actionable-blue { @include actionable-glow(var(--pvp-actionable-glow-blue), var(--pvp-actionable-glow-blue-hover)); }
 }
 
 
@@ -447,7 +446,10 @@
     border-radius: var(--pvp-radius-sm);
   }
 
-  &[data-count='1']::before {
+  // All counts share the same first-layer offset
+  &[data-count='1']::before,
+  &[data-count='2']::before,
+  &[data-count='3']::before {
     transform: translate(1.5%, 3%);
   }
 
@@ -455,18 +457,7 @@
     content: none;
   }
 
-  &[data-count='2']::before {
-    transform: translate(1.5%, 3%);
-  }
-
-  &[data-count='2']::after {
-    transform: translate(3%, 6%);
-  }
-
-  &[data-count='3']::before {
-    transform: translate(1.5%, 3%);
-  }
-
+  &[data-count='2']::after,
   &[data-count='3']::after {
     transform: translate(3%, 6%);
   }
@@ -533,43 +524,25 @@
   to   { opacity: 1;   transform: translate(-50%, -50%) scale(1.1); }
 }
 
+// === Replay X-ray Overlay (face-down card reveal) ===
+@keyframes xray-pulse {
+  0%, 100% { opacity: 0.30; }
+  50% { opacity: 0.50; }
+}
+
 // === Actionable Glow (Story 1.7 — IDLECMD / BATTLECMD) ===
 // Shadow on .card-inner (not .card-art) so it isn't clipped by .card-inner's overflow:hidden.
-.zone-card--actionable {
+// Mixin for card variant — glow on .card-inner, not the host element.
+@mixin actionable-card-glow($glow, $glow-hover) {
   animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
   cursor: pointer;
-
-  .card-inner { box-shadow: var(--pvp-actionable-glow); }
-  &:hover .card-inner { box-shadow: var(--pvp-actionable-glow-hover); }
+  .card-inner { box-shadow: $glow; }
+  &:hover .card-inner { box-shadow: $glow-hover; }
 }
 
-.zone-card--actionable-blue {
-  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
-  cursor: pointer;
-
-  .card-inner { box-shadow: var(--pvp-actionable-glow-blue); }
-  &:hover .card-inner { box-shadow: var(--pvp-actionable-glow-blue-hover); }
-}
-
-.zone-pile--actionable {
-  box-shadow: var(--pvp-actionable-glow);
-  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
-  cursor: pointer;
-
-  &:hover {
-    box-shadow: var(--pvp-actionable-glow-hover);
-  }
-}
-
-.zone-pile--actionable-blue {
-  box-shadow: var(--pvp-actionable-glow-blue);
-  animation: pvp-actionable-pulse 1.5s ease-in-out infinite;
-  cursor: pointer;
-
-  &:hover {
-    box-shadow: var(--pvp-actionable-glow-blue-hover);
-  }
-}
+.zone-card--actionable { @include actionable-card-glow(var(--pvp-actionable-glow), var(--pvp-actionable-glow-hover)); }
+.zone-card--actionable-blue { @include actionable-card-glow(var(--pvp-actionable-glow-blue), var(--pvp-actionable-glow-blue-hover)); }
+// NOTE: .zone-pile--actionable / --actionable-blue are defined inside .zone-pile above via @include actionable-glow
 
 // === Pre-Target Pulse (subtle pulse while selecting in prompt) ===
 .zone-card--pre-target {
@@ -596,7 +569,11 @@
   &::before {
     content: '';
     position: absolute;
-    inset: 5%;
+    aspect-ratio: 1;
+    width: 90%;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
     z-index: 10;
     border: 2px solid rgba(255, 60, 60, 0.8);
     border-radius: 50%;
@@ -608,7 +585,11 @@
   &::after {
     content: '';
     position: absolute;
-    inset: 5%;
+    aspect-ratio: 1;
+    width: 90%;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
     z-index: 10;
     background:
       // Horizontal line
@@ -644,6 +625,26 @@
   box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4);
 }
 
+.zone--chosen {
+  animation: zone-chosen-glow 800ms ease-out 1 forwards;
+}
+
+// Keyframes combine the inset glow from .zone--highlighted with the outer chosen pulse
+@keyframes zone-chosen-glow {
+
+  0% {
+    box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4), 0 0 0 rgba(201, 168, 76, 0);
+  }
+
+  40% {
+    box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4), 0 0 20px 6px rgba(201, 168, 76, 0.8);
+  }
+
+  100% {
+    box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4), 0 0 8px 2px rgba(201, 168, 76, 0.3);
+  }
+}
+
 .zone-highlight-badge {
   position: absolute;
   top: 50%;
@@ -669,6 +670,12 @@
 
   &:hover {
     transform: translate(-50%, -50%) scale(1.15);
+  }
+
+  &--readonly {
+    cursor: default;
+    pointer-events: none;
+    animation: none;
   }
 
   // Brighter badge on opponent's field to compensate for perspective foreshortening
@@ -812,6 +819,11 @@
 
   .pvp-xyz-detach .xyz-material-stack::before {
     animation: none;
+  }
+
+  .xray-overlay {
+    animation: none;
+    opacity: 0.40;
   }
 
   .xyz-material-stack::before,

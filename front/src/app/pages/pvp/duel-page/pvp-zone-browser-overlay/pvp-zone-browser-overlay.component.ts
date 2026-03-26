@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, inject, input, output, signal } from '@angular/core';
 import { CardOnField, ZoneId } from '../../duel-ws.types';
 import { getCardImageUrlByCode } from '../../pvp-card.utils';
+import { TranslatePipe } from '@ngx-translate/core';
 import { setupClickOutsideListener } from '../click-outside.utils';
 
 const ZONE_SHORT_LABELS: Partial<Record<ZoneId, string>> = {
@@ -24,6 +25,7 @@ const ZONE_ICON_PATHS: Partial<Record<ZoneId, string>> = {
   styleUrl: './pvp-zone-browser-overlay.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TranslatePipe],
 })
 export class PvpZoneBrowserOverlayComponent {
   private readonly el = inject(ElementRef);

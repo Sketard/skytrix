@@ -23,6 +23,12 @@ export type Phase =
   | 'MAIN2'
   | 'END';
 
+export const PHASE_TO_NUM: Record<Phase, number> = {
+  DRAW: 1, STANDBY: 2, MAIN1: 4, BATTLE_START: 8,
+  BATTLE_STEP: 16, DAMAGE: 32, DAMAGE_CALC: 64,
+  BATTLE: 128, MAIN2: 256, END: 512,
+};
+
 // Card position bitmask values (independent of OCGCore OcgPosition)
 export const POSITION = {
   FACEUP_ATTACK: 0x1,
@@ -345,6 +351,7 @@ export interface SelectEffectYnMsg {
   cardCode: number;
   cardName: string;
   description: number;
+  descriptionText?: string;
 }
 
 export interface SelectYesNoMsg {
@@ -462,7 +469,15 @@ export interface AnnounceNumberMsg {
 // Server -> Client: System Messages (10)
 // =============================================================================
 
-export type DuelEndReason = 'surrender' | 'disconnect' | 'timeout' | 'inactivity' | 'draw_both_disconnect' | (string & {});
+export type DuelEndReason =
+  | 'win'
+  | 'surrender'
+  | 'disconnect'
+  | 'timeout'
+  | 'inactivity'
+  | 'draw_both_disconnect'
+  | 'too_many_invalid_responses'
+  | 'worker_error';
 
 export interface DuelEndMsg {
   type: 'DUEL_END';
@@ -695,6 +710,90 @@ export interface WaitingResponseMsg {
 }
 
 // =============================================================================
+// Replay Messages (5 types: 2 client→server, 3 server→client)
+// =============================================================================
+
+// --- Shared Replay Sub-Types ---
+
+export interface DecisionMoment {
+  prompt: ServerMessage;
+  response: { data: unknown; timestamp?: string };
+  player: Player;
+  hint?: { hintType: number; value: number; cardName: string; hintAction: string };
+  confirmedCards?: CardInfo[];
+  /** Board state snapshot taken before the player's response was fed.
+   *  Matches the BOARD_STATE the live PvP client would have received. */
+  boardState?: BoardStatePayload;
+}
+
+export interface PreComputedState {
+  boardState: BoardStatePayload;
+  events: ServerMessage[];
+  label: string;
+  responseCount: number;
+  decisions?: DecisionMoment[];
+  /** Chain link index (0-based) when this state is part of a chain resolution. */
+  chainIndex?: number;
+}
+
+// --- Client → Server ---
+
+export interface ReplayLoadMsg {
+  type: 'REPLAY_LOAD';
+  replayId: string;
+}
+
+export interface ForkSanityFields {
+  lp: [number, number];
+  turnNumber: number;
+  phase: number;
+}
+
+export interface ReplayForkMsg {
+  type: 'REPLAY_FORK';
+  responseCount: number;
+  expectedState: ForkSanityFields;
+}
+
+export interface ReplayForkContinueMsg {
+  type: 'REPLAY_FORK_CONTINUE';
+}
+
+export interface ReplayForkCancelMsg {
+  type: 'REPLAY_FORK_CANCEL';
+}
+
+// --- Server → Client ---
+
+export interface ReplayForkReadyMsg {
+  type: 'REPLAY_FORK_READY';
+  token1: string;
+  token2: string;
+}
+
+export interface ReplayBoardStatesMsg {
+  type: 'REPLAY_BOARD_STATES';
+  turnNumber: number;
+  states: PreComputedState[];
+}
+
+export interface ReplayMetadataMsg {
+  type: 'REPLAY_METADATA';
+  playerUsernames: [string, string];
+  deckNames: [string, string];
+  turnCount: number;
+  result: string | null;
+  divergenceWarning: boolean;
+  totalResponses: number;
+}
+
+export interface ReplayErrorMsg {
+  type: 'REPLAY_ERROR';
+  code: string;
+  message: string;
+}
+
+// =============================================================================
 // Union Type Exports
 // =============================================================================
 
@@ -744,7 +843,7 @@ export type ServerMessage =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  // System messages (11)
+  // System messages (18)
   | DuelEndMsg
   | TimerStateMsg
   | RpsChoiceMsg
@@ -762,11 +861,21 @@ export type ServerMessage =
   | OpponentDisconnectedMsg
   | OpponentReconnectedMsg
   | InactivityWarningMsg
-  | WaitingResponseMsg;
+  | WaitingResponseMsg
+  // Replay messages (4)
+  | ReplayBoardStatesMsg
+  | ReplayMetadataMsg
+  | ReplayErrorMsg
+  | ReplayForkReadyMsg;
 
 export type ClientMessage =
   | PlayerResponseMsg
   | SurrenderMsg
   | RematchRequestMsg
   | RequestStateSyncMsg
-  | ActivityPingMsg;
+  | ActivityPingMsg
+  // Replay messages (4)
+  | ReplayLoadMsg
+  | ReplayForkMsg
+  | ReplayForkContinueMsg
+  | ReplayForkCancelMsg;

@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  pointer-events: none;
+}
+
+.action-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary, #9e9e9e);
+}
+
+.action-label {
+  color: var(--pvp-accent, #c9a84c);
+}
+
+.action-card-name {
+  color: var(--text-primary, #eaeaea);
+}

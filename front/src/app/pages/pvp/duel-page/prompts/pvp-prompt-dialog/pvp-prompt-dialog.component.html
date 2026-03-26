@@ -11,7 +11,7 @@
   @if (prompt() && !passiveMessage()) {
     <button class="collapse-handle"
             (click)="toggleCollapse()"
-            aria-label="Toggle prompt collapse"
+            [attr.aria-label]="'duel.prompt.waitingResponse' | translate"
             type="button">
       <span class="collapse-arrow"
             [class.collapse-arrow--up]="dialogState() === 'collapsed'">&#x25BC;</span>
@@ -26,7 +26,7 @@
   }
 
   @if (dialogState() === 'collapsed') {
-    <div class="collapsed-bar" aria-live="polite">Waiting for your response...</div>
+    <div class="collapsed-bar" aria-live="polite">{{ 'duel.prompt.waitingResponse' | translate }}</div>
   }
 
   @if (passiveMessage(); as msg) {
@@ -48,6 +48,6 @@
   }
 
   @if (isSending() && prompt() && !passiveMessage()) {
-    <div class="sending-indicator" aria-live="polite">Sending...</div>
+    <div class="sending-indicator" aria-live="polite">{{ 'duel.prompt.sending' | translate }}</div>
   }
 </div>

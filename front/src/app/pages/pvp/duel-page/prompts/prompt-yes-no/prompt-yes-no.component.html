@@ -1,12 +1,14 @@
 <div class="yes-no-container">
   <div class="buttons">
     <button class="btn btn--secondary"
+            [class.btn--selected]="preSelectedYes === false"
             (click)="selectSecondary()"
             [disabled]="answered"
             type="button">
       {{ secondaryLabel }}
     </button>
     <button class="btn btn--primary prompt-confirm-btn"
+            [class.btn--selected]="preSelectedYes === true"
             (click)="selectPrimary()"
             [disabled]="answered"
             type="button">

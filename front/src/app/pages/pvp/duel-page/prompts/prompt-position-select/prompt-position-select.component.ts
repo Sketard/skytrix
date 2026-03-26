@@ -2,12 +2,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostBinding,
   HostListener,
+  OnInit,
   signal,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { POSITION, SelectPositionMsg } from '../../../duel-ws.types';
+import { TranslatePipe } from '@ngx-translate/core';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 interface PositionOption {
@@ -24,15 +27,28 @@ interface PositionOption {
   styleUrl: './prompt-position-select.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [TranslatePipe],
 })
-export class PromptPositionSelectComponent implements PromptSubComponent<SelectPositionMsg> {
+export class PromptPositionSelectComponent implements PromptSubComponent<SelectPositionMsg>, OnInit {
   promptData: SelectPositionMsg | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
 
   readonly selectedIndex = signal<number | null>(null);
   answered = false;
+
+  ngOnInit(): void {
+    if (this.readOnly && this.preSelectedResponse != null) {
+      const r = this.preSelectedResponse as { position: number };
+      if (this.promptData) {
+        const idx = this.promptData.positions.indexOf(r.position);
+        if (idx >= 0) this.selectedIndex.set(idx);
+      }
+      this.answered = true;
+    }
+  }
 
   get options(): PositionOption[] {
     if (!this.promptData) return [];
@@ -73,6 +89,7 @@ export class PromptPositionSelectComponent implements PromptSubComponent<SelectP
 
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     const current = this.selectedIndex() ?? -1;
     const max = this.options.length - 1;
 

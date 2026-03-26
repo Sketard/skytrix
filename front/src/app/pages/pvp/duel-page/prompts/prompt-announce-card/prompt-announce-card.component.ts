@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   EventEmitter,
+  HostBinding,
   HostListener,
   OnInit,
   ViewChild,
@@ -16,6 +17,7 @@ import { debounceTime, switchMap, takeUntil } from 'rxjs/operators';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { AnnounceCardMsg } from '../../../duel-ws.types';
+import { TranslatePipe } from '@ngx-translate/core';
 import { getCardImageUrlByCode } from '../../../pvp-card.utils';
 
 interface CardNameEntry {
@@ -29,11 +31,14 @@ interface CardNameEntry {
   styleUrl: './prompt-announce-card.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TranslatePipe],
 })
 export class PromptAnnounceCardComponent implements PromptSubComponent<AnnounceCardMsg>, OnInit {
   promptData: AnnounceCardMsg | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
+  @HostBinding('class.read-only') readOnly = false;
+  preSelectedResponse: unknown = undefined;
   answered = false;
 
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
@@ -54,6 +59,13 @@ export class PromptAnnounceCardComponent implements PromptSubComponent<AnnounceC
       this.destroy$.next();
       this.destroy$.complete();
     });
+
+    if (this.readOnly && this.preSelectedResponse != null) {
+      const r = this.preSelectedResponse as { value: number };
+      this.selectedEntry.set({ code: r.value, name: '' });
+      this.answered = true;
+      return;
+    }
 
     this.searchSubject.pipe(
       debounceTime(300),
@@ -97,6 +109,7 @@ export class PromptAnnounceCardComponent implements PromptSubComponent<AnnounceC
 
   @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
+    if (this.readOnly) return;
     const isInputFocused = (event.target as HTMLElement).tagName === 'INPUT';
     const list = this.results();
 

@@ -30,9 +30,10 @@ export class PromptZoneHighlightComponent implements OnInit {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
   instruction = input<string>('Select a zone');
+  /** In replay read-only mode, highlights the zone that was selected. */
+  selectedZone = input<string | null>(null);
 
   ngOnInit(): void {
     this.liveAnnouncer.announce(this.instruction(), 'assertive');
   }
-
 }

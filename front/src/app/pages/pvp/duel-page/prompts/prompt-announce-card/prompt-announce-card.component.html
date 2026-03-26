@@ -2,7 +2,7 @@
   <input #searchInput
          class="search-input"
          type="text"
-         placeholder="Search card name..."
+         [placeholder]="'duel.prompt.searchCardName' | translate"
          (input)="onSearchInput($event)"
          [disabled]="answered"
          autocomplete="off" />
@@ -10,9 +10,9 @@
 
 <div class="card-strip__inner" role="listbox">
   @if (isSearching()) {
-    <div class="empty-state">Searching...</div>
+    <div class="empty-state">{{ 'duel.prompt.searching' | translate }}</div>
   } @else if (results().length === 0) {
-    <div class="empty-state">Type at least 2 characters</div>
+    <div class="empty-state">{{ 'duel.prompt.typeAtLeast' | translate }}</div>
   } @else {
     <div class="card-strip">
       @for (entry of results(); track entry.code) {
@@ -39,6 +39,6 @@
           (click)="confirm()"
           [disabled]="!selectedEntry() || answered"
           type="button">
-    Confirm
+    {{ 'common.confirm' | translate }}
   </button>
 </div>

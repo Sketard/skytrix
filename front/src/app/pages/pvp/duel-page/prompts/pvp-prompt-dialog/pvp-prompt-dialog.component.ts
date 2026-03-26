@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 import { CdkPortalOutlet, ComponentPortal } from '@angular/cdk/portal';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
+import { TranslatePipe } from '@ngx-translate/core';
 import { DuelWebSocketService, ResponseData } from '../../duel-web-socket.service';
 import {
   AUTO_SELECT_PROMPT_TYPES,
@@ -23,8 +24,14 @@ import {
   PROMPT_COMPONENT_MAP,
   PromptSubComponent,
 } from '../prompt.types';
-import { Prompt } from '../../../types';
-import { CardInfo } from '../../../duel-ws.types';
+import { Prompt, HintContext } from '../../../types';
+import { CardInfo, LOCATION } from '../../../duel-ws.types';
+import { PromptActionListReadonlyComponent } from '../prompt-action-list-readonly/prompt-action-list-readonly.component';
+import '../prompt-registry'; // side-effect: populates PROMPT_COMPONENT_MAP
+
+function isExcavatedCard(c: CardInfo): boolean {
+  return c.location === LOCATION.DECK || c.location === LOCATION.EXTRA;
+}
 
 export type DialogState = 'closed' | 'opening' | 'open' | 'transitioning' | 'collapsed' | 'closing';
 
@@ -40,7 +47,7 @@ export interface PassiveMessage {
   styleUrl: './pvp-prompt-dialog.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkPortalOutlet, CdkTrapFocus],
+  imports: [CdkPortalOutlet, CdkTrapFocus, TranslatePipe],
 })
 export class PvpPromptDialogComponent implements OnDestroy {
   private readonly wsService = inject(DuelWebSocketService);
@@ -53,6 +60,14 @@ export class PvpPromptDialogComponent implements OnDestroy {
   readonly skipBeat1 = input(false);
   readonly responseOverride = input<((data: unknown) => void) | null>(null);
   readonly ownPlayerIndex = input(0);
+  /** Replay mode: override hint context (replaces wsService.hintContext()). */
+  readonly hintContext = input<HintContext | null>(null);
+  /** Replay mode: override confirmed/excavated cards (replaces wsService.lastConfirmedCards). */
+  readonly confirmedCards = input<CardInfo[] | null>(null);
+  /** Replay mode: marks all sub-components as non-interactive. */
+  readonly readOnly = input(false);
+  /** Replay mode: the response that was chosen (highlights the selected option). */
+  readonly preSelectedResponse = input<unknown>(undefined);
 
   readonly dialogState = signal<DialogState>('closed');
   readonly hintText = signal<string | null>(null);
@@ -134,6 +149,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   // Desktop: right-click = cancel/no
   @HostListener('document:contextmenu', ['$event'])
   handleContextMenu(event: MouseEvent): void {
+    if (this.readOnly()) return;
     const s = this.dialogState();
     if (s !== 'open' && s !== 'opening' && s !== 'transitioning') return;
     event.preventDefault();
@@ -158,7 +174,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   // --- Private ---
 
   private onPromptChange(prompt: Prompt | null): void {
-    if (!prompt || IGNORED_PROMPT_TYPES.has(prompt.type)) {
+    if (!prompt || (IGNORED_PROMPT_TYPES.has(prompt.type) && !this.readOnly())) {
       // Keep dialog open during: RPS waiting, TP response sent, or passive message active
       if (this.wsService.rpsInProgress() || this.wsService.tpResponseSent() || this.passiveMessage()) return;
 
@@ -166,6 +182,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
         const instant = this.wsService.duelResult() !== null;
         this.closeDialog(instant);
       }
+      return;
+    }
+
+    // In readOnly mode, IDLECMD/BATTLECMD use a dedicated read-only renderer
+    if (IGNORED_PROMPT_TYPES.has(prompt.type) && this.readOnly()) {
+      this.openForPrompt(prompt, PromptActionListReadonlyComponent);
       return;
     }
 
@@ -183,7 +205,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   }
 
   private openForPrompt(prompt: Prompt, componentType: Type<PromptSubComponent>): void {
-    const hint = this.wsService.hintContext();
+    const hint = this.hintContext() ?? this.wsService.hintContext();
     const hasHint = hint.hintType !== 0;
     const wasOpen = this.dialogState() !== 'closed' && this.dialogState() !== 'closing';
 
@@ -196,7 +218,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
     // Fallback to the prompt's own cardName (e.g. SELECT_EFFECTYN, SELECT_YESNO carry it directly).
     // For SELECT_OPTION with no card context, use the last revealed card (excavated monster) if available.
     const promptCardName = 'cardName' in prompt ? (prompt as { cardName: string }).cardName : '';
-    const confirmedCards = this.wsService.lastConfirmedCards;
+    const confirmedCards = (this.confirmedCards() ?? this.wsService.lastConfirmedCards).filter(isExcavatedCard);
     const lastConfirmedName = prompt.type === 'SELECT_OPTION' && confirmedCards.length > 0
       ? confirmedCards[confirmedCards.length - 1].name
       : '';
@@ -210,7 +232,8 @@ export class PvpPromptDialogComponent implements OnDestroy {
       || prompt.type === 'SELECT_UNSELECT_CARD' || prompt.type === 'SELECT_COUNTER';
     const hintAction = hasHint && (hint.hintType !== 3 || isCardSelectionPrompt) ? hint.hintAction : '';
     const hintTimingLabel = prompt.type === 'SELECT_CHAIN' ? (prompt as { hintTimingLabel: string }).hintTimingLabel : '';
-    this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel));
+    const descriptionText = 'descriptionText' in prompt ? (prompt as { descriptionText?: string }).descriptionText ?? '' : '';
+    this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel, descriptionText));
 
     if (wasOpen) {
       this.dialogState.set('transitioning');
@@ -243,14 +266,16 @@ export class PvpPromptDialogComponent implements OnDestroy {
     const ref = this.portalOutlet.attach(portal);
 
     ref.instance.promptData = prompt;
-    ref.instance.hintContext = this.wsService.hintContext();
+    ref.instance.hintContext = this.hintContext() ?? this.wsService.hintContext();
+    ref.instance.readOnly = this.readOnly();
+    ref.instance.preSelectedResponse = this.preSelectedResponse();
 
     const instance = ref.instance;
     if ('excludedCards' in instance) {
       (instance as unknown as { excludedCards: unknown[] }).excludedCards = this.wsService.lastSelectedCards;
     }
     if ('revealedCards' in instance) {
-      (instance as unknown as { revealedCards: unknown[] }).revealedCards = this.wsService.lastConfirmedCards;
+      (instance as unknown as { revealedCards: unknown[] }).revealedCards = (this.confirmedCards() ?? this.wsService.lastConfirmedCards).filter(isExcavatedCard);
     }
     if ('ownPlayerIndex' in instance) {
       (instance as unknown as { ownPlayerIndex: number }).ownPlayerIndex = this.ownPlayerIndex();
@@ -335,7 +360,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
     );
   }
 
-  private buildHintText(promptType: string, cardName: string, hintAction: string, hintTimingLabel = ''): string | null {
+  private buildHintText(promptType: string, cardName: string, hintAction: string, hintTimingLabel = '', descriptionText = ''): string | null {
     const q = cardName ? `<span class="hint-card-name">\u201C${cardName}\u201D</span>` : '';
     const act = hintAction ? this.highlightKeywords(hintAction) : '';
     const a = (verb: string) => `<span class="hint-action">${verb}</span>`;
@@ -351,10 +376,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
         if (q) return tl ? `${tl}. ${q} is activated. ${chain}` : `${q} is activated. ${chain}`;
         return tl ? `${tl}. ${chain}` : chain;
       }
-      case 'SELECT_EFFECTYN':
+      case 'SELECT_EFFECTYN': {
+        const desc = descriptionText ? ` \u2014 ${descriptionText}` : '';
         return q
-          ? `${a('Activate')} effect of ${q}?`
-          : `${a('Activate')} effect?`;
+          ? `${a('Activate')} effect of ${q}${desc}?`
+          : `${a('Activate')} effect${desc}?`;
+      }
       case 'SELECT_CARD':
       case 'SELECT_TRIBUTE':
       case 'SELECT_SUM':
@@ -380,7 +407,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
       case 'SELECT_BATTLECMD':
         return act ? `It is the ${act}.` : null;
       case 'SELECT_YESNO':
-        return q || null;
+        return descriptionText ? (q ? `${q} \u2014 ${descriptionText}` : descriptionText) : q || null;
       case 'SELECT_TP':
         return `${a('Choose')} your turn order`;
       default:
