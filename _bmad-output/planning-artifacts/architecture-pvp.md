@@ -4,17 +4,23 @@ inputDocuments: ['prd-pvp.md', 'architecture.md', 'project-context.md', 'researc
 workflowType: 'architecture'
 lastStep: 8
 status: 'updated-post-implementation'
-lastUpdated: '2026-03-18'
+lastUpdated: '2026-03-26'
 completedAt: '2026-02-24'
 project_name: 'skytrix'
 user_name: 'Axel'
 date: '2026-02-24'
-lastEdited: '2026-03-10'
+lastEdited: '2026-03-26'
 editHistory:
   - date: '2026-03-10'
     changes: 'Integrated animation orchestration architecture (3-layer chain system, async overlay contract, pending chain entry) and PvP-C board animations (card travel, buffer/replay, CardTravelService, XYZ material visuals, Beat-based parallel replay, acceleration features)'
   - date: '2026-03-12'
     changes: 'Replaced animation orchestration detail section with summary + link to animation-architecture-pvp.md (new dedicated document). Removed obsolete AC5 and animatingZone Set<string> signal.'
+  - date: '2026-03-26'
+    changes: 'Post-implementation alignment: fixed ConnectionStatus (removed phantom resynchronized state), expanded DuelConnection signals from 10 to 24, updated WS message types to complete inventory (game 19 + attack 3 + end 1 + prompt 22 + system 18 + replay 8), renamed PromptRpsComponent to PromptChoiceComponent, updated duel server file count (8 prod + 3 PoC + 2 test), marked replay storage as implemented'
+  - date: '2026-03-26'
+    changes: 'Cleanup pass: fixed system/prompt classification (RPS_CHOICE+SELECT_TP moved to system per code, 20 prompts + 18 system), signal count 24→25 (+timerStatePerPlayer), prompt sub-components 9→10 (+PromptActionListReadonly), removed all PlayerFieldComponent references (Story 1.1 skipped), removed all PvpDuelResultOverlayComponent references (inline in DuelPageComponent), updated prompt file structure to match actual 10 sub-component dirs'
+  - date: '2026-03-26'
+    changes: 'Doc-code alignment: lobby subcomponents → monolithic lobby-page, waiting room polling → SSE via RoomEventService, added 5 undocumented DuelPageComponent-scoped services (CardDataCacheService, CardInspectionService, RoomStateMachineService, PhaseAnnouncementService, DuelTabGuardService), added SSE boundary to API table, fixed FR mapping references'
 ---
 
 # Architecture Decision Document — PvP (Online Automated Duels)
@@ -111,7 +117,7 @@ _These insights surfaced during analysis but are too granular for architecture d
 - Message filter: `MSG_CONFIRM_CARDS` reveals specific card codes — route only to the intended player
 - Reconnection snapshot: use `duelQueryField()` for global state + `duelQueryLocation()` per zone with FULL_FLAGS (`OcgQueryFlags.CODE | POSITION | ATTACK | DEFENSE | TYPE | LEVEL | RANK | ATTRIBUTE | RACE | OVERLAY_CARD | COUNTERS | LSCALE | RSCALE | LINK`). Apply message filter per player before sending (hand codes → 0 for opponent, face-down codes → 0 for opponent). See `ocgcore-technical-reference.md` §8 for exact query strategy and `OcgFieldState` structure
 - Scripts update: update `data/` folder manually, restart duel server. New duels use new scripts; in-progress duels keep their loaded scripts.
-- ~~Scope reduction (PvP-A0):~~ All 20 SELECT_* types are now implemented via 9 prompt sub-components + distributed UI. No auto-select fallback remains.
+- ~~Scope reduction (PvP-A0):~~ All 20 SELECT_* types are now implemented via 10 prompt sub-components + distributed UI. No auto-select fallback remains.
 
 ## Starter Template Evaluation
 
@@ -144,7 +150,7 @@ Full-stack brownfield — three technology domains:
 | Language | TypeScript 5.9 strict | Consistent with Angular frontend, type safety for message protocol |
 | Build & Run | `tsx` for development, `tsc` + `node dist/server.js` for production | `tsx` gives fast DX iteration without build step. Production uses compiled JS for performance and no dev dependency. |
 
-**Production Source File Structure (8 files + 2 PoC references):**
+**Production Source File Structure (8 files + 3 PoC references + 2 test files):**
 
 | File | Role | Responsibility |
 |------|------|---------------|
@@ -193,7 +199,7 @@ All important decisions made — data architecture, auth chain, protocol format,
 | Duel state | In-memory (OCGCore WASM worker) | Technical constraint — OCGCore has no save/restore. State exists only in the live WASM instance. |
 | Room/lobby data | PostgreSQL via Spring Boot | Existing infrastructure, persistence for free (page refresh safe) |
 | Card data (duel server) | `cards.cdb` loaded at startup via `better-sqlite3` | Read-only, pre-loaded in memory for sync callbacks |
-| Duel replay | Hors périmètre | Not MVP. If needed later: store `{seed, decks, playerResponses[]}` in PostgreSQL (~5-20KB/duel) |
+| Duel replay | *(Implemented)* PostgreSQL JSONB via Spring Boot (`replay` table) | See [architecture-replay.md](architecture-replay.md). Stores `{seed, decks, playerResponses[]}` (~32KB/duel) |
 | Room state machine | `WAITING → CREATING_DUEL → ACTIVE → ENDED / CLOSED` | Explicit states in Spring Boot. `CREATING_DUEL` timeout: 2min → transition to `CLOSED` via `RoomCleanupScheduler` (3 scheduled tasks: orphaned WAITING rooms >30min, orphaned ACTIVE rooms not on duel server, stuck CREATING_DUEL rooms >2min). Prevents players stuck in lobby on handoff failure. |
 
 ### Authentication & Security
@@ -220,8 +226,8 @@ All important decisions made — data architecture, auth chain, protocol format,
 |--------|----------|
 | Message format | JSON with type discriminant: `{ "type": "MSG_DRAW", ...data }` |
 | No envelope wrapper | No version, timestamp, or metadata wrapper — YAGNI for MVP |
-| Server → Client | 57 total message types: 23 game messages (`MSG_*`), 20 prompt messages (`SELECT_*`), 14 system messages (`GAME_STATE`, `TIMER_STATE`, `DUEL_END`, `RPS_RESULT`, `SESSION_TOKEN`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`, `INACTIVITY_WARNING`, `WAITING_RESPONSE`, `REMATCH_INVITATION`, `REMATCH_CANCELLED`, `WAITING`, etc.) |
-| Client → Server | 5 types: `PLAYER_RESPONSE` (prompt answers), `SURRENDER`, `REMATCH_REQUEST`, `REQUEST_STATE_SYNC`, `ACTIVITY_PING` |
+| Server → Client | Game messages (19): `BOARD_STATE`, `MSG_MOVE`, `MSG_DRAW`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_CHAINING`, `MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`, `MSG_CHAIN_NEGATED`, `MSG_HINT`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_HAND`, `MSG_SHUFFLE_DECK`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SET`, `MSG_SWAP`. Attack/battle (3): `MSG_BECOME_TARGET`, `MSG_ATTACK`, `MSG_BATTLE`. End (1): `MSG_WIN`. Prompt messages (20): `SELECT_IDLECMD`, `SELECT_BATTLECMD`, `SELECT_CARD`, `SELECT_CHAIN`, `SELECT_EFFECTYN`, `SELECT_YESNO`, `SELECT_PLACE`, `SELECT_DISFIELD`, `SELECT_POSITION`, `SELECT_OPTION`, `SELECT_TRIBUTE`, `SELECT_SUM`, `SELECT_UNSELECT_CARD`, `SELECT_COUNTER`, `SORT_CARD`, `SORT_CHAIN`, `ANNOUNCE_RACE`, `ANNOUNCE_ATTRIB`, `ANNOUNCE_CARD`, `ANNOUNCE_NUMBER`. System messages (18): `DUEL_END`, `TIMER_STATE`, `RPS_CHOICE`, `RPS_RESULT`, `SELECT_TP`, `TP_RESULT`, `DUEL_STARTING`, `SESSION_TOKEN`, `STATE_SYNC`, `CHAIN_STATE`, `OPPONENT_DISCONNECTED`, `OPPONENT_RECONNECTED`, `INACTIVITY_WARNING`, `WAITING_RESPONSE`, `REMATCH_INVITATION`, `REMATCH_STARTING`, `REMATCH_CANCELLED`, `WORKER_ERROR`. Replay (4 server→client): `REPLAY_BOARD_STATES`, `REPLAY_METADATA`, `REPLAY_ERROR`, `REPLAY_FORK_READY` |
+| Client → Server | PvP (5): `PLAYER_RESPONSE` (prompt answers), `SURRENDER`, `REMATCH_REQUEST`, `REQUEST_STATE_SYNC`, `ACTIVITY_PING`. Replay (4): `REPLAY_LOAD`, `REPLAY_FORK`, `REPLAY_FORK_CONTINUE`, `REPLAY_FORK_CANCEL` |
 | Heartbeat | Native `ws` ping/pong — no application-level heartbeat messages |
 | Protocol versioning | None for MVP (single developer, single client) |
 | Source of truth | `ws-protocol.ts` (duel server) is the canonical protocol definition. Angular `duel-ws.types.ts` is a manual copy. Server changes first, then client. |
@@ -248,11 +254,26 @@ All important decisions made — data architecture, auth chain, protocol format,
 | `hintContext` | `Signal<HintContext>` | Current MSG_HINT context (which effect is asking, what the prompt means) |
 | `animationQueue` | `Signal<GameEvent[]>` | FIFO queue of events consumed by orchestrator |
 | `timerState` | `Signal<TimerState \| null>` | Dedicated timer signal (player, remaining seconds) — decoupled from duelState |
-| `connectionStatus` | `Signal<ConnectionStatus>` | `connected \| reconnecting \| lost \| resynchronized` (resynchronized auto-clears after 3s) |
+| `connectionStatus` | `Signal<ConnectionStatus>` | `connected \| reconnecting \| lost` |
 | `justReconnected` | `Signal<boolean>` | True after reconnection, suppresses auto-respond until first manual player action (prevents stale auto-responses) |
 | `activeChainLinks` | `Signal<ChainLinkState[]>` | Active chain links (pending entry mechanism — see below) |
 | `chainPhase` | `Signal<'idle' \| 'building' \| 'resolving'>` | Chain lifecycle phase |
 | `hasPendingChainEntry` | `Signal<boolean>` | True when a MSG_CHAINING is stored but not yet committed |
+| `opponentDisconnected` | `Signal<boolean>` | True when opponent has disconnected (grace period active) |
+| `disconnectGraceSec` | `Signal<number>` | Remaining seconds in opponent disconnect grace period |
+| `duelResult` | `Signal<DuelEndMsg \| null>` | Duel end result (winner, reason) |
+| `rpsResult` | `Signal<RpsResultMsg \| null>` | Rock-Paper-Scissors outcome |
+| `rpsInProgress` | `Signal<boolean>` | True during RPS phase |
+| `ocgPlayerIndex` | `Signal<number>` | Player's OCGCore index (0 or 1) |
+| `rematchState` | `Signal<RematchState>` | Current rematch negotiation state |
+| `rematchStarting` | `Signal<boolean>` | True when rematch is about to begin |
+| `inactivityWarning` | `Signal<InactivityWarningMsg \| null>` | Active inactivity warning with remaining seconds |
+| `waitingForOpponent` | `Signal<boolean>` | True when waiting for opponent's response |
+| `tpResult` | `Signal<TpResultMsg \| null>` | Turn player selection result |
+| `tpResponseSent` | `Signal<boolean>` | True after TP selection response sent |
+| `canRetry` | `Signal<boolean>` | Whether reconnection retry is available |
+| `totalAutoRetries` | `Signal<number>` | Total automatic reconnection retries attempted |
+| `timerStatePerPlayer` | `Signal<[TimerStateMsg \| null, TimerStateMsg \| null]>` | Per-player timer state tuple (absolute indices, consumed by duel page for display) |
 
 **Reconnection Token Flow:**
 - Server sends `SESSION_TOKEN` message on successful WebSocket connection (contains opaque reconnect token)
@@ -314,7 +335,7 @@ _These items are consciously deferred. They are NOT forgotten — each has a tie
 
 | Item | Tier | Rationale for deferral |
 |------|------|----------------------|
-| Duel replay storage | — | Hors périmètre. Deterministic replay possible later via `{seed, decks, responses[]}` |
+| Duel replay storage | — | *(Implemented — see [architecture-replay.md](architecture-replay.md))* Stores `{seed, decks, playerResponses[]}` in PostgreSQL JSONB |
 | WebSocket protocol versioning | — | Single developer, single client. No backward compatibility needed. |
 | Structured JSON logging | — | `console.log` + `docker logs` sufficient for friends-only scale |
 | Shared secret (internal API auth) | T2 | Docker network isolation sufficient while services co-located |
@@ -401,20 +422,35 @@ These patterns cover **only the new duel server (Node.js)** and the **PvP-specif
 
 ```
 pages/pvp/
-├── lobby/                          # Room list, creation (+ deck picker), waiting room (polling)
+├── lobby-page/                     # Room list, creation (+ deck picker dialog), SSE-based opponent join detection
 ├── duel-page/
 │   ├── duel-page.component.ts         # Container (scopes services), manages duel result state, wires effects
-│   ├── duel-connection.ts              # Data layer: WebSocket handling, 10 signals, pending chain entry, animationQueue
+│   ├── duel-connection.ts              # Data layer: WebSocket handling, 25 signals, pending chain entry, animationQueue
 │   ├── animation-orchestrator.service.ts # Timing layer: dequeue loop, buffer/replay, async overlay contract, acceleration
 │   ├── card-travel.service.ts          # NEW (PvP-C): floating elements, Web Animations API, zone rect resolution
+│   ├── card-data-cache.service.ts     # Card metadata cache for display
+│   ├── card-inspection.service.ts     # Card inspector popup lifecycle
+│   ├── room-state-machine.service.ts  # Room lifecycle state machine (loading → waiting → active → error)
+│   ├── phase-announcement.service.ts  # Phase transition screen reader announcements
+│   ├── duel-tab-guard.service.ts      # Multi-tab prevention via BroadcastChannel API
+│   ├── debug-log.service.ts           # Server message logging for debugging
 │   ├── pvp-board-container/            # Board layout: 2× player fields, zone element registry, XYZ indicators
 │   ├── pvp-chain-overlay/              # Visual layer: card cascade, resolve-exit, board pause
 │   ├── pvp-lp-badge/                   # LP counter with rAF interpolation
-│   └── prompts/                        # SELECT_* prompt components (3 types MVP)
-│       ├── card-select-prompt.component.ts  # CARD, TRIBUTE, SUM, UNSELECT_CARD
-│       ├── zone-select-prompt.component.ts  # PLACE, DISFIELD
-│       └── choice-prompt.component.ts       # EFFECTYN, YESNO, POSITION, OPTION, CHAIN, RPS
-└── duel-ws.types.ts                # Protocol DTOs (copy of ws-protocol.ts)
+│   ├── pvp-duel-overlays/             # Phase announcement, opponent thinking overlays
+│   └── prompts/                        # SELECT_* prompt components (10 sub-components)
+│       ├── pvp-prompt-dialog/              # Modal container (dialog states, collapse/expand)
+│       ├── prompt-yes-no/                  # EFFECTYN, YESNO
+│       ├── prompt-card-grid/               # CARD, TRIBUTE, SUM, UNSELECT_CARD, CHAIN, COUNTER
+│       ├── prompt-choice/                  # RPS (via RPS_CONFIG), generic choices
+│       ├── prompt-zone-highlight/          # PLACE, DISFIELD (spatial overlay)
+│       ├── prompt-option-list/             # OPTION, SELECT_TP
+│       ├── prompt-numeric-input/           # COUNTER, ANNOUNCE_NUMBER
+│       ├── prompt-position-select/         # POSITION (card orientation previews)
+│       ├── prompt-sort-card/               # SORT_CARD, SORT_CHAIN
+│       ├── prompt-announce-card/           # ANNOUNCE_CARD, ANNOUNCE_RACE, ANNOUNCE_ATTRIB
+│       └── prompt-action-list-readonly/    # IDLECMD/BATTLECMD readonly fallback
+├── duel-ws.types.ts                # Protocol DTOs (copy of ws-protocol.ts)
 ```
 
 ### Format Patterns
@@ -536,7 +572,7 @@ The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()`
 
 **Loading States:**
 - Angular lobby: standard loading spinner during room fetch/creation
-- Angular duel: `connectionStatus` signal drives the UI (`connected | reconnecting | lost | resynchronized`)
+- Angular duel: `connectionStatus` signal drives the UI (`connected | reconnecting | lost`)
 - No global loading state — each context manages its own
 
 **Logging (MVP):**
@@ -602,7 +638,10 @@ duel-server/
     ├── ocg-scripts.ts            # loadDatabase(dbPath): CardDB, loadScripts(scriptDir): ScriptDB
     ├── data-updater.ts           # Data refresh pipeline: cards.cdb + scripts + strings.conf from ProjectIgnis
     ├── poc-duel.ts               # PoC reference (not imported by production code)
-    └── test-core.ts              # PoC reference (not imported by production code)
+    ├── poc-replay.ts             # PoC reference: replay validation
+    ├── solver-poc.ts             # PoC reference: solver experiments
+    ├── test-core.ts              # Test file (not imported by production code)
+    └── test-snapshot.ts          # Test file: snapshot testing
 ```
 
 **Build & Run:**
@@ -623,15 +662,13 @@ front/src/app/
 │   ├── simulator/                        # EXISTING — solo simulator (no modifications needed)
 │   │
 │   └── pvp/                              # NEW — PvP feature (lazy-loaded)
-│       ├── lobby/                        # Room list, creation, waiting room
-│       │   ├── lobby-page.component.ts
-│       │   ├── room-list.component.ts
-│       │   ├── room-create.component.ts  # Includes deck picker (select from user's decks)
-│       │   └── waiting-room.component.ts # Polls GET /api/rooms/:id for opponent join status
+│       ├── lobby-page/                   # Room list, creation, waiting room (monolithic component)
+│       │   ├── lobby-page.component.ts   # Handles room listing, creation (includes deck picker), join, and quick duel
+│       │   └── deck-picker-dialog.component.ts # Deck selection dialog for room creation
 │       │
 │       ├── duel-page/
 │       │   ├── duel-page.component.ts         # Container (scopes services), manages duel result state, wires effects
-│       │   ├── duel-connection.ts              # Data layer: WebSocket handling, 10 signals, pending chain entry, animationQueue
+│       │   ├── duel-connection.ts              # Data layer: WebSocket handling, 25 signals, pending chain entry, animationQueue
 │       │   ├── animation-orchestrator.service.ts # Timing layer: dequeue loop, buffer/replay, async overlay contract, acceleration
 │       │   ├── card-travel.service.ts          # NEW (PvP-C): floating elements, Web Animations API, zone rect resolution
 │       │   ├── pvp-board-container/            # Board layout: 2× player fields, zone element registry, XYZ indicators
@@ -784,25 +821,33 @@ spring-boot:
 | Worker thread | `server.ts` | `duel-worker.ts` | Typed `postMessage` |
 | Message filter | `message-filter.ts` | Called by `server.ts` | Pure function `(msg, playerId) → msg | null` |
 | Duel end notification | Angular receives `DUEL_END` | `POST /api/rooms/:id/end` → Spring Boot | Client-mediated (KISS, avoids duel server → Spring Boot callback) |
-| WebSocket URL handoff | Spring Boot `POST /api/rooms/:id/join` response | Angular `waiting-room` → `duel-page` | Response includes `wsUrl` + `duelId` |
+| WebSocket URL handoff | Spring Boot `POST /api/rooms/:id/join` response | Angular lobby → duel-page | Response includes `wsUrl` + `duelId` |
+| Room status SSE | `GET /api/rooms/{roomCode}/events` | Angular `RoomApiService` → `RoomEventService` (Spring Boot) | SSE stream pushes `room-ready` event on opponent join |
 
 ### FR → Structure Mapping
 
 | FR Category | Primary Files |
 |-------------|---------------|
-| FR1-7: Matchmaking & Sessions | `RoomController.java`, `RoomService.java`, `Room.java`, `lobby-page.component.ts`, `room.service.ts`, `waiting-room.component.ts` |
+| FR1-7: Matchmaking & Sessions | `RoomController.java`, `RoomService.java`, `RoomEventService.java`, `Room.java`, `lobby-page.component.ts`, `room-api.service.ts`, `RoomStateMachineService` |
 | FR8-10: Turn & Phase Management | `duel-worker.ts` (OCGCore delegation), `duel-page.component.ts` |
 | FR11-13: Player Prompts | `prompts/*.component.ts` (3 types), `duel-connection.ts` (hintContext + pendingPrompt) |
 | FR14-24: Board Display & Info | `pvp-board-container.component.ts`, `player-field.component.ts`, `duel-connection.ts` (animationQueue), `animation-orchestrator.service.ts`, `card-travel.service.ts` (PvP-C), `pvp-chain-overlay.component.ts`, `pvp-lp-badge.component.ts` |
 | NFR1-2: Network & Latency | `server.ts` (WebSocket), `duel-websocket.service.ts` (connectionStatus) |
-| NFR4-5: Reconnection | `server.ts` (grace period), `duel-websocket.service.ts` (resynchronized) |
+| NFR4-5: Reconnection | `server.ts` (grace period), `duel-websocket.service.ts` (justReconnected) |
 | NFR6-8: Security | `message-filter.ts`, `SecurityConfig.java`, `server.ts` (maxPayload, awaitingResponse) |
 
 ### Implementation Notes
 
 **Story 0 Prerequisite:** ~~Extract `PlayerFieldComponent` before any PvP board work.~~ Skipped (ADR-3 revised) — PvP uses dedicated `PvpBoardContainerComponent`. Shared reuse at `CardComponent`/`CardInspectorComponent` level only.
 
-**Waiting Room Mechanism:** `waiting-room.component.ts` polls `GET /api/rooms/:id` every 2-3s to detect opponent join. Polling is KISS for MVP between friends. SSE or dedicated WebSocket deferred to T2 if needed.
+**Room Status Mechanism:** Lobby polls `GET /api/rooms` every 10s for room list updates. Opponent join is detected via Server-Sent Events (`GET /api/rooms/{roomCode}/events` SSE endpoint via `RoomEventService`). The `RoomApiService.subscribeToRoomEvents()` method uses `EventSource` to receive `room-ready` events pushed by the server when player 2 joins.
+
+**Component-Scoped Services (DuelPageComponent):** In addition to the services listed above, the following services are scoped to `DuelPageComponent` and not documented elsewhere:
+- `CardDataCacheService` — caches card metadata for display
+- `CardInspectionService` — manages card inspector popup lifecycle
+- `RoomStateMachineService` — encapsulates room lifecycle (fetch, poll, join, countdown, WS handoff) with state machine (`loading → waiting → creating-duel → connecting → duel-loading → active → error`)
+- `PhaseAnnouncementService` — announces phase transitions via screen reader (accessibility)
+- `DuelTabGuardService` — prevents multiple browser tabs from controlling the same duel via BroadcastChannel API
 
 ## Architecture Validation Results
 
@@ -838,7 +883,7 @@ Key compatibility confirmations:
 |----|----------------------|---------------|
 | FR1 (Room creation) | Spring Boot REST + Angular lobby | `RoomController.java`, `lobby-page.component.ts` |
 | FR2 (Deck validation) | Spring Boot validates before room entry | `RoomService.java` |
-| FR3 (Browse/join rooms) | REST API + lobby page | `RoomController.java`, `room-list.component.ts` |
+| FR3 (Browse/join rooms) | REST API + lobby page | `RoomController.java`, `lobby-page.component.ts` |
 | FR4 (Auto-start) | Spring Boot triggers duel creation on join | `RoomService.java`, `DuelServerClient.java` |
 | FR5 (Surrender) | WebSocket `SURRENDER` message type | `ws-protocol.ts`, `server.ts` |
 | FR6 (Disconnection) | 60s grace period, snapshot reconnection | `server.ts` (session mgmt), `duel-websocket.service.ts` |
@@ -901,7 +946,7 @@ Key compatibility confirmations:
 
 1. **Message filter whitelist exhaustiveness:** The architecture defines the default DROP policy and key sanitization rules (§Story-Level Notes: MSG_DRAW, MSG_SHUFFLE_HAND, MSG_MOVE, MSG_HINT, MSG_CONFIRM_CARDS). The exhaustive whitelist per MSG_* type (~80+ types) is an implementation-time deliverable, informed by OCGCore message documentation and NEOS/SRVPro reference implementations.
 
-2. **PvP-A0 scope staging:** ~~Originally planned as incremental (frequent types first, others auto-select).~~ All 20 SELECT_* types are now implemented via 9 prompt sub-components + distributed UI (IDLECMD/BATTLECMD). No auto-select fallback remains in v1.
+2. **PvP-A0 scope staging:** ~~Originally planned as incremental (frequent types first, others auto-select).~~ All 20 SELECT_* types are now implemented via 10 prompt sub-components + distributed UI (IDLECMD/BATTLECMD). No auto-select fallback remains in v1.
 
 3. **Reconnection testability:** Architecture supports reconnection testing at the protocol level. `server.ts` manages session state (grace period, `awaitingResponse`) independently of WebSocket lifecycle. Test scenarios: (a) disconnect + reconnect within 60s → snapshot sent, (b) disconnect + reconnect after 60s → duel forfeited, (c) both disconnect → worker persists up to 4h.
 
@@ -992,7 +1037,7 @@ Key compatibility confirmations:
 - Use the dependency graph (Phase 0 → 1A/1B → 2A/2B → 3) for implementation ordering
 - Respect the 7 critical anti-patterns (no shared mutable state, no ws.send outside server.ts, explicit null, no hardcoded type strings, no immediate board events during chain, no fixed board pause, no leaked floating elements)
 - Refer to FR → Structure mapping for file-level implementation targets
-- All 20 SELECT_* types are implemented via 9 prompt sub-components + distributed UI
+- All 20 SELECT_* types are implemented via 10 prompt sub-components + distributed UI
 
 **First Implementation Priority:**
 Phase 0 — Define `ws-protocol.ts` (all WebSocket DTO types). This unblocks both server (Phase 1A) and client (Phase 1B) development tracks.

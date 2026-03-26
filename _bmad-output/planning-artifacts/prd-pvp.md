@@ -3,7 +3,7 @@ status: updated-post-implementation
 inputDocuments: ['prd.md', 'research-ygo-duel-engine.md']
 workflowType: 'prd'
 createdDate: '2026-02-24'
-lastUpdated: '2026-03-18'
+lastUpdated: '2026-03-26'
 classification:
   projectType: web_app
   domain: general
@@ -115,7 +115,7 @@ Enhancements for a more complete PvP experience.
 - **AI opponent:** heuristic-based auto-player for true solo practice (not yet implemented — currently the player controls both sides)
 - **Spectator mode:** watch ongoing duels
 - **Ranked mode:** Elo-based rating system
-- **Replay system:** record and replay completed duels
+- **Replay system:** *(implemented in v1)* — record and replay completed PvP duels with pre-computed client-side navigation, omniscient view, timeline scrubbing, and reversible fork to Quick Duel Solo. See [prd-replay.md](prd-replay.md)
 
 ### Risk Mitigation Strategy
 
