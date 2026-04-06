@@ -14,120 +14,25 @@ This document provides the complete epic and story breakdown for skytrix, decomp
 
 ### Functional Requirements
 
-- FR1: The player can launch a simulation from any existing decklist
-- FR2: The system loads main deck cards into the main deck zone and extra deck cards into the extra deck zone
-- FR3: The player can shuffle the main deck
-- FR4: The system draws an initial hand of 5 cards from the top of the shuffled deck
-- FR5: The player can shuffle the deck at any point during the simulation
-- FR6: The player can move a card from any zone to any other zone via drag & drop
-- FR7: The player can reorder cards within the hand zone
-- FR8: The system enforces zone capacity (single-card zones accept only one card; no card replacement — player must clear zone first)
-- FR9: All 18 physical game zones are available: hand, monster (1-5), spell/trap (1-5 — ST1/ST5 double as Pendulum L/R per Master Rule 5), Extra Monster (L/R), field spell, graveyard, banish, extra deck, main deck
-- FR10: The player can see visual feedback on drop zones during drag (cyan highlight on valid zones, no reaction on occupied/invalid zones)
-- FR11: The player can draw one or more cards from the top of the deck to the hand
-- FR12: The player can summon or set a card from hand to a monster zone
-- FR13: The player can activate a card (move from hand to a spell/trap zone or field spell zone)
-- FR14: The player can send any card on the board or in hand to the graveyard
-- FR15: The player can banish any card on the board, in hand, or in the graveyard
-- FR16: The player can return any card from any zone to the hand
-- FR17: The player can return any card from any zone to the top or bottom of the deck
-- FR18: The player can search the deck (view all cards) and pick a specific card to add to hand or another zone
-- FR19: The player can mill a specified number of cards (send top N from deck to graveyard)
-- FR20: The player can reveal/excavate the top N cards of the deck in a popup overlay for inspection, then return them or move them to other zones
-- FR21: The system prevents drawing when the deck is empty and provides visual feedback
-- FR22: The player can view the full contents of any stacked zone (deck, graveyard, banish, extra deck) in an overlay
-- FR23: The player can select and move a specific card from any stacked zone to another zone
-- FR24: The player can see the card count for each stacked zone without opening it
-- FR25: The player can set a card face-down (displaying card back) via right-click context menu
-- FR26: The player can flip a face-down card face-up via right-click context menu
-- FR27: The player can toggle a monster's battle position (ATK/DEF) via right-click context menu
-- FR28: The player can view card details (enlarged image and effect text) by hovering over any card via the SimCardInspectorComponent side panel. Face-down cards: inspector shows full card details (solo context — player knows all own cards). Face-down is a positional state, not an information barrier.
-- FR29: The player can undo the last action performed (board state only — does not restore UI state like overlays)
-- FR30: The player can redo a previously undone action
-- FR31: The player can undo/redo batch operations as a single unit (e.g., mill 3 undoes all 3 card moves at once)
-- FR32: The player can perform common actions via keyboard shortcuts (Ctrl+Z undo, Ctrl+Y redo, Escape close overlay). No keyboard shortcut for Reset.
-- FR33: The player can reset the entire board to the initial state (re-shuffle and re-draw) via button with confirmation
-- FR34: The simulator is accessible only to authenticated users from the deck detail page
+See prd.md for full FR definitions (34 FRs across 6 categories).
 
-### NonFunctional Requirements
+### Non-Functional Requirements
 
-- NFR1: Drag & drop interactions render within a single animation frame (<16ms) with no visible jank
-- NFR2: Board state updates (card moved, flipped, position toggled) reflect visually within 100ms
-- NFR3: Board reset completes in under 1 second including re-shuffle and re-draw
-- NFR4: The simulator remains responsive with a full board state (20+ cards across zones)
-- NFR5: Card inspector panel appears within 200ms of hover (with 50ms debounce on hoveredCard signal)
-- NFR6: Zone overlays (deck search, graveyard view) open within 300ms regardless of card count
-- NFR7: The simulator route is protected by existing authentication — unauthenticated users cannot access it
-- NFR8: No card data or simulation state is transmitted to the backend — all processing remains client-side
-- NFR9: The application functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions) and modern mobile browsers (Chrome Android, Safari iOS — latest two versions). The simulator locks to landscape orientation on mobile devices.
-- NFR10: The simulator integrates with the existing skytrix build and deployment pipeline without additional configuration
-- NFR11: Deck management pages (deck list, deck detail, deck builder) are usable on viewports from 375px width (mobile portrait) to 2560px+ (ultrawide desktop) without horizontal scrolling
-- NFR12: All interactive elements meet minimum touch target size of 44×44px on mobile viewports
+See prd.md for full NFR definitions (12 NFRs across 4 categories).
 
 ### Additional Requirements
 
-**From Architecture:**
-- Brownfield project — no starter template, extend existing Angular 19 SPA
-- 18 physical zones with ZoneId enum (ST1/ST5 double as Pendulum L/R)
-- Hybrid zone-centric data model: `Record<ZoneId, CardInstance[]>`
-- 6 delta-based command types + CompositeCommand for undo/redo
-- 2 services only: BoardStateService (state + computed) + CommandStackService (actions + undo/redo)
-- Services scoped to SimulatorPageComponent via `providers` (not `providedIn: 'root'`)
-- Zero direct board state mutation — all changes through CommandStackService canonical action flow
-- Component selectors with `app-sim-` prefix
-- Route `/decks/:id/simulator` in `app.routes.ts`
-- Complete directory structure under `pages/simulator/`
-- Debug panel dev-only behind `isDevMode()`
-- Reset is NOT a command — clears both stacks, reinitializes board
+Key constraints not captured in individual story ACs:
 
-**From UX Design Specification (revised 2026-02-12):**
-- SimCardInspectorComponent: hover-triggered fixed side panel (dark theme, scrollable effect text, no deck-building buttons)
-- Face-down cards: inspector shows **full card details** (solo context — player knows all own cards). Face-down is a positional state, not an information barrier
-- Card State Toggle: right-click `mat-menu` on board cards (Flip face-down, Change to DEF/ATK — dynamic items based on current state)
-- Context menu on Deck/ED: `mat-menu` (Shuffle, Search / View)
-- `event.preventDefault()` on `contextmenu` event on the **entire board** in **all builds** (including `isDevMode()`). Native browser context menu never shown on the board. Navbar retains native context menu
-- Gold glow feedback: CSS `@keyframes` + `.zone--just-dropped` class (pure CSS, no Angular signal)
-- Pile overlay auto-close: opening new overlay closes current one (max 1 visible)
-- Pile overlay stays open during drag-from-overlay (closes after drop if user navigates away)
-- Empty stacked zone click: opens empty overlay with "No cards in [zone name]" message
-- Empty hand: dashed border only, no placeholder text
-- `hoveredCard` signal with 50ms debounce in BoardStateService
-- `isDragging` global signal suppresses inspector/pills/overlays during drag
-- Inspector repositioning: computed signal moves panel to left when pile overlay is on right — fixed side panel at all viewport sizes
-- `cdkDragPreviewContainer: 'global'` for correct z-index when dragging from overlays
-- No card replacement on occupied single-card zones — must clear zone first
-- Undo scope: board state only (not UI state like overlays/inspector)
-- No keyboard shortcut for Reset — button only (Ctrl+Shift+R conflicts with browser)
-- **Fixed 16:9 aspect ratio layout** with `transform: scale()` proportional scaling — no breakpoints, no responsive layout changes. Board never scrolls, never changes grid structure, never hides zones. Scale factor = `min(availableWidth / boardWidth, availableHeight / boardHeight)`. Centered with letterboxing
-- Board rescales dynamically on navbar toggle (available viewport space changes)
-- **Collapsible navbar (vertical sidebar):** chevron toggle at navbar border (← collapse, → expand), collapsed by default on simulator page only, ~32px **width** thin bar when collapsed (no logo, no links — just toggle control). Expanded by default on all other pages. Ephemeral state (not persisted)
-- Mobile (post-MVP): landscape-locked, same 16:9 scaling model, tap-to-place designed separately
-- Deck zone: card-back image when `count > 0` (never appears visually empty)
-- **Extra Deck overlay:** all cards displayed **face-up**, no grouping, no eye icon (solo context — ED contents known to owner)
-- **ED "View" mode:** right-click ED → "View" opens pile overlay in browse mode (all cards face-up)
-- **No auto-shuffle:** deck search does NOT auto-shuffle on close — shuffling is the player's manual responsibility (right-click Deck → Shuffle)
-- `prefers-reduced-motion` support (disable glow, scale, CDK drag transitions)
-- Dev-only reduced-motion toggle in SimControlBarComponent
-- Visual regression tests: Playwright screenshots at 3 viewport widths (1280, 1100, 800)
-- Dual-accent color system: Cyan #00d4ff (interaction) + Gold #d4a017 (status)
-- Master Duel Classic visual direction (dark atmospheric board)
-- XYZ overlay material mechanics: borders peeking, click for pill, drag to detach
-- Overlay z-index hierarchy: drag preview > context menus > pile overlays > inspector > board
-- `cdkDropListGroup` on SimBoardComponent root — all drop lists as children
+- **State discipline:** Zero direct board state mutation — all changes flow through CommandStackService's canonical action flow. Services scoped to SimulatorPageComponent via `providers`. Reset is NOT a command (clears stacks, reinitializes board).
+- **Board layout:** Fixed 16:9 aspect ratio with `transform: scale()` proportional scaling. No breakpoints, no responsive layout changes on the board itself. Collapsible navbar (collapsed by default on simulator) with board rescaling on toggle.
+- **Drag & drop:** `cdkDropListGroup` on board root, `cdkDragPreviewContainer: 'global'` for overlay z-index. `isDragging` signal suppresses inspector/pills/overlays. No card replacement on occupied zones. Overlay z-index hierarchy: drag preview > context menus > pile overlays > inspector > board.
+- **Face-down semantics:** Positional state only — inspector shows full details, ED overlay shows all cards face-up. Deck/ED zones display card-back when `count > 0`.
+- **Context menu:** `preventDefault` on entire board in all builds. `mat-menu` for card state toggles (face-down, ATK/DEF) and zone actions (Shuffle, Search, View).
+- **Responsive strategy:** Track A (canvas scaling via ScalingContainerDirective) for card pages; Track B (mobile-first CSS) for content pages. Navbar switches to hamburger/drawer at 768px. Shared SCSS: `_responsive.scss` (breakpoints), `_canvas-scaling.scss` (scaling mixins).
+- **Component extraction:** CardComponent and CardInspectorComponent extracted to shared `components/` post-Epic 6. Harmonization analysis required before extraction. Multi-mode inspector activation via input.
 
-**From Sprint Change Proposal (2026-02-12) — Responsive & Shared Components:**
-- Responsive two-track strategy: Track A (fixed canvas scaling) for card manipulation pages (simulator, deck builder, card search); Track B (mobile-first responsive CSS) for content pages (deck list, settings, login)
-- ScalingContainerDirective: shared autonomous directive extracted from simulator's BoardComponent scaling logic, provides canvas scaling for any Track A page. Measures parent container via ResizeObserver, applies `transform: scale()`. Parent must have explicit height.
-- Shared component extraction: CardComponent (`app-sim-card` → `app-card`) and CardInspectorComponent (`app-sim-card-inspector` → `app-card-inspector`) extracted from simulator to `components/` for cross-page reuse
-- CardInspectorComponent multi-mode: hover-triggered for simulator, click-triggered or permanently visible for deck builder — mode is an input, not hardcoded
-- Harmonization analysis required before extraction: compare existing deck builder card/inspector components with simulator versions, verify selector collision risk (`app-card`), define unified contract
-- Simulator must not regress after extraction — manual testing validates
-- Navbar responsive: CDK BreakpointObserver at 768px threshold. Desktop (>768px) = collapsible sidebar (existing). Mobile (≤768px) = hamburger icon button in fixed top bar, navbar slides in as drawer overlay
-- On Track A pages (mobile): fixed top bar reduces available vertical space — canvas parent must account for header height (`calc(100vh - var(--mobile-header-height))`)
-- Shared SCSS infrastructure: `_canvas-scaling.scss` (Track A scaling mixins), `_responsive.scss` (breakpoint variables, responsive mixins)
-- Breakpoint source of truth: `$navbar-breakpoint: 768px` in `_responsive.scss`, matched in TS via CDK BreakpointObserver
-- Login and Settings pages are simple (form-centric) — can be grouped in a single story
-- Deck list page requires fluid grid responsive layout (1→2→3-4 columns by breakpoint)
+See architecture.md and ux-design-specification.md for full details.
 
 ### FR Coverage Map
 

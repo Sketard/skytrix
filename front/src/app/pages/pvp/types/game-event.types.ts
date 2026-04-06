@@ -12,11 +12,19 @@ import {
   ChainEndMsg,
   FlipSummoningMsg,
   ChangePosMsg,
+  SetMsg,
   SwapMsg,
   BecomeTargetMsg,
   AttackMsg,
   BattleMsg,
   ConfirmCardsMsg,
+  TossCoinMsg,
+  TossDiceMsg,
+  EquipMsg,
+  AddCounterMsg,
+  RemoveCounterMsg,
+  ShuffleSetCardMsg,
+  SwapGraveDeckMsg,
 } from '../duel-ws.types';
 
 export type GameEvent =
@@ -33,8 +41,16 @@ export type GameEvent =
   | ChainEndMsg
   | FlipSummoningMsg
   | ChangePosMsg
+  | SetMsg
   | SwapMsg
   | BecomeTargetMsg
   | AttackMsg
   | BattleMsg
-  | ConfirmCardsMsg;
+  | ConfirmCardsMsg
+  | TossCoinMsg
+  | TossDiceMsg
+  | EquipMsg
+  | AddCounterMsg
+  | RemoveCounterMsg
+  | ShuffleSetCardMsg
+  | SwapGraveDeckMsg;

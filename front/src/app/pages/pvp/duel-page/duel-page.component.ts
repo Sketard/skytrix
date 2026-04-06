@@ -1,22 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, Injector, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, OnInit, signal, TemplateRef, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, filter, firstValueFrom, map, Observable, of, switchMap, take, timeout } from 'rxjs';
+import { catchError, filter, map, Observable, of, switchMap, take, timeout } from 'rxjs';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
 import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { NotificationService } from '../../../core/services/notification.service';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
-import { type ConnectionStatus, EMPTY_STRING_SET } from '../types';
-import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectCardMsg, SelectChainMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
+import { EMPTY_STRING_SET } from '../types';
+import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectCardMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
-import type { DeckDTO } from '../../../core/model/dto/deck-dto';
 import { buildFaceDownZoneKeys, getCardImageUrlByCode } from '../pvp-card.utils';
 import { locationToZoneId, locationToZoneKey, getZonePillCards } from '../pvp-zone.utils';
 import { CardDataCacheService } from './card-data-cache.service';
@@ -33,12 +31,25 @@ import { PhaseAnnouncementService } from './phase-announcement.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { CardTravelService } from './card-travel.service';
+import { DuelContext } from './duel-context';
+import { DuelLogger } from './duel-logger';
+import { BattleAnimationTracker } from './battle-animation-tracker';
+import { LpAnimationTracker } from './lp-animation-tracker';
+import { ChainResolutionManager } from './chain-resolution-manager';
+import { DrawSequenceManager } from './draw-sequence-manager';
+import { MoveAnimationRouter } from './move-animation-router';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
+import { DuelConnectionEffectsService } from './duel-connection-effects.service';
+import { SoloModeEffectsService } from './solo-mode-effects.service';
+import { DuelPromptEffectsService } from './duel-prompt-effects.service';
+import { DuelA11yEffectsService } from './duel-a11y-effects.service';
+import { DuelLoadingEffectsService } from './duel-loading-effects.service';
+import { DuelAnimationBridgeService } from './duel-animation-bridge.service';
+import { DuelToastService } from './duel-toast.service';
 import { DebugLogService } from './debug-log.service';
 import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.component';
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
-import { InactivityWarningDialogComponent } from './inactivity-warning-dialog.component';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -52,8 +63,11 @@ import { environment } from '../../../../environments/environment';
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
+    DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
+    ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter,
     AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
-    DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService,
+    DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
+    DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
     { provide: ANIMATION_DATA_SOURCE, useExisting: DuelWebSocketService },
   ],
   imports: [
@@ -79,13 +93,11 @@ export class DuelPageComponent implements OnInit {
   readonly wsService = inject(DuelWebSocketService);
   private readonly notify = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly navbarCollapse = inject(NavbarCollapseService);
   private readonly dialog = inject(MatDialog);
   private readonly cardDataCache = inject(CardDataCacheService);
   readonly tabGuard = inject(DuelTabGuardService);
   readonly debugLog = inject(DebugLogService);
-  private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   readonly orchestrator = inject(SoloDuelOrchestratorService);
   readonly showDebugTools = environment.debugTools;
@@ -94,11 +106,21 @@ export class DuelPageComponent implements OnInit {
   forkSeekTo = 0;
 
   // --- Extracted services ---
+  private readonly duelCtx = inject(DuelContext);
   readonly animationService = inject(AnimationOrchestratorService);
+  readonly chainManager = inject(ChainResolutionManager);
+  readonly drawManager = inject(DrawSequenceManager);
   private readonly cardTravelService = inject(CardTravelService);
   readonly roomService = inject(RoomStateMachineService);
   readonly cardInspection = inject(CardInspectionService);
   readonly phaseService = inject(PhaseAnnouncementService);
+  readonly toastService = inject(DuelToastService);
+  private readonly connEffects = inject(DuelConnectionEffectsService);
+  private readonly soloEffects = inject(SoloModeEffectsService);
+  private readonly promptEffects = inject(DuelPromptEffectsService);
+  private readonly a11yEffects = inject(DuelA11yEffectsService);
+  private readonly loadingEffects = inject(DuelLoadingEffectsService);
+  private readonly animBridge = inject(DuelAnimationBridgeService);
 
   readonly roomCode = toSignal(this.route.paramMap.pipe(map(params => params.get('roomCode') ?? '')), {
     initialValue: '',
@@ -119,17 +141,17 @@ export class DuelPageComponent implements OnInit {
   readonly canRetry = computed(() => this.retryCount() < DuelPageComponent.MAX_RETRIES && this.wsService.canRetry());
 
   // Story 2.3 — Board ready when first BOARD_STATE arrives (both players populated with LP)
-  readonly boardReady = computed(() => this.duelState().players.length === 2 && this.duelState().players[0].lp > 0);
+  readonly boardReady = computed(() => this.logicalState().players.length === 2 && this.logicalState().players[0].lp > 0);
 
   // Story 2.4 — Duel loading: thumbnails pre-cached (or all settled with fallback)
   readonly thumbnailsReady = signal(false);
   readonly duelLoadingReady = computed(() => this.boardReady() && this.thumbnailsReady());
   readonly loadingTimeout = signal(false);
-  private loadingTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
   readonly isPortrait = signal(false);
 
-  readonly duelState = this.wsService.duelState;
+  readonly renderedState = computed(() => this.wsService.renderedBoardState.renderedState());
+  readonly logicalState = computed(() => this.wsService.renderedBoardState.logicalState());
   readonly timerState = this.wsService.timerState;
 
   // In solo mode, show the active player's own timer instead of the last received timer
@@ -141,17 +163,14 @@ export class DuelPageComponent implements OnInit {
     return conns[activeIdx].timerStatePerPlayer()[activeIdx] ?? this.timerState();
   });
 
-  readonly playerHand = computed(() => [
-    ...this.getHandCards(0), ...this.animationService.handGhostCards()[0],
-  ]);
-  readonly opponentHand = computed(() => [
-    ...this.getHandCards(1), ...this.animationService.handGhostCards()[1],
-  ]);
+  readonly playerHand = computed(() => this.getHandCards(0));
+  readonly opponentHand = computed(() => this.getHandCards(1));
 
   // Delegate animation signals to service
   readonly isAnimating = this.animationService.isAnimating;
   readonly animatingZone = this.animationService.animatingZone;
-  readonly animatingLpPlayer = this.animationService.animatingLpPlayer;
+  private readonly lpTracker = inject(LpAnimationTracker);
+  readonly animatingLpPlayer = this.lpTracker.animatingLpPlayer;
 
   // Delegate card inspection signals to service
   readonly inspectedCard = this.cardInspection.inspectedCard;
@@ -230,7 +249,7 @@ export class DuelPageComponent implements OnInit {
   });
 
   // Story 1.7 — Own turn detection
-  readonly isOwnTurn = computed(() => this.duelState().turnPlayer === 0);
+  readonly isOwnTurn = computed(() => this.renderedState().turnPlayer === 0);
 
   // Story 1.7 — Hand actionable indices (all actions, for click behavior)
   readonly playerActionableHandIndices = computed((): Set<number> => {
@@ -297,9 +316,6 @@ export class DuelPageComponent implements OnInit {
     return p !== null && p.type !== 'SELECT_IDLECMD' && p.type !== 'SELECT_BATTLECMD';
   });
 
-  private rpsAutoDismissTimeout: ReturnType<typeof setTimeout> | null = null;
-  private prefetchStarted = false;
-
   // Story 3.1 — Own player index (0 = player1, 1 = player2)
   // In solo mode, tracks the active connection's player index so the board and badges
   // render from the correct perspective after switching players.
@@ -328,7 +344,7 @@ export class DuelPageComponent implements OnInit {
 
   /** X-ray overlay keys for face-down cards owned by the current player (player always at index 0). */
   readonly revealedZoneKeys = computed<ReadonlySet<string>>(() => {
-    const keys = buildFaceDownZoneKeys(this.duelState().players, [0]);
+    const keys = buildFaceDownZoneKeys(this.logicalState().players, [0]);
     return keys.size ? keys : EMPTY_STRING_SET;
   });
 
@@ -418,31 +434,11 @@ export class DuelPageComponent implements OnInit {
 
   private teardownMenuListener: () => void = () => {};
 
-  // Story 3.3 — Connection snackbar tracking
-  private previousConnectionStatus: ConnectionStatus | null = null;
-  private previousOpponentDisconnected: boolean | null = null;
-
-  // Story 3.2 — Timer announcement tracking
-  private announcedThresholds = new Set<number>();
-  private lastAnnouncedTurnPlayer: number | null = null;
-
-  // Inactivity warning dialog tracking
-  private inactivityDialogRef: import('@angular/material/dialog').MatDialogRef<unknown> | null = null;
-
-  // Phase announcement — delegated to PhaseAnnouncementService
-  private lastAnnouncedPhase: string | null = null;
 
   // Task 16 — Board flip transition for solo player switch
   readonly switching = signal(false);
   private switchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Story 5.2 — Background tab recovery
-  readonly returningFromBackground = signal(false);
-  private lastKnownTurnCount = 0;
-  private awaitingStateSyncAfterBackground = false;
-
-  // Story 4.1 — Chain resolved announcement tracking
-  private previousChainLinksCount = 0;
 
   // Story 4.2 — Prompt drain: gate prompt display behind animation queue drain
   // During chain building with pending cost, let cost prompts through immediately
@@ -451,10 +447,10 @@ export class DuelPageComponent implements OnInit {
   // plays before SELECT_CHAIN appears.
   readonly visiblePrompt = computed(() => {
     const animating = this.isAnimating();
-    const chainEntryAnim = this.animationService.chainEntryAnimating();
+    const chainEntryAnim = this.chainManager.chainEntryAnimating();
     const prompt = this.wsService.pendingPrompt();
     const queuePending = this.wsService.animationQueue().length > 0;
-    const chainPromptGate = this.animationService.chainPromptGateActive();
+    const chainPromptGate = this.chainManager.chainPromptGateActive();
     const blocked = animating || chainEntryAnim || queuePending || chainPromptGate;
     if (!blocked) return prompt;
     // During chain building with pending cost → let cost prompts through,
@@ -469,14 +465,10 @@ export class DuelPageComponent implements OnInit {
   constructor() {
     // --- Initialize extracted services ---
     this.roomService.init({ wsService: this.wsService, tabGuard: this.tabGuard });
-    this.animationService.init({
-      dataSource: this.wsService,
-      liveAnnouncer: this.liveAnnouncer,
-      cardTravelService: this.cardTravelService,
+    this.duelCtx.configure({
       ownPlayerIndex: () => this.ownPlayerIndex(),
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
       isBoardActive: () => this.roomState() === 'active',
-      injector: this.injector,
     });
     this.cardTravelService.registerContainer(this.elementRef.nativeElement);
     this.cardInspection.init(this.cardDataCache);
@@ -485,11 +477,11 @@ export class DuelPageComponent implements OnInit {
       // On reconnect (STATE_SYNC), skip the duel-loading phase — thumbnails were
       // already loaded in the previous session; no need to show the loading screen again.
       this.thumbnailsReady.set(true);
-      // Silence the phase announcement that would otherwise fire when duelState is
+      // Silence the phase announcement that would otherwise fire when logicalState is
       // restored by STATE_SYNC. This runs synchronously before Angular effects (microtasks),
       // so lastAnnouncedPhase is already set when the phase effect fires.
-      const s = this.wsService.duelState();
-      if (s.phase) this.lastAnnouncedPhase = `${s.turnPlayer}-${s.phase}`;
+      const s = this.wsService.renderedBoardState.logicalState();
+      this.animBridge.silenceCurrentPhase(s.phase, s.turnPlayer);
     };
 
     // --- Bootstrap room ---
@@ -509,15 +501,7 @@ export class DuelPageComponent implements OnInit {
       } else {
         this.orchestrator.init(wsToken1, wsToken2);
         this.roomService.forceState('connecting');
-
-        effect(() => {
-          if (this.orchestrator.connectionLost()) {
-            untracked(() => {
-              this.notify.error('error.CONNECTION_LOST_LOBBY');
-              this.router.navigate(['/pvp']);
-            });
-          }
-        });
+        this.soloEffects.initFork();
       }
     } else if (isSolo && code) {
       this.isSoloMode.set(true);
@@ -537,36 +521,7 @@ export class DuelPageComponent implements OnInit {
         this.orchestrator.init(wsToken1, wsToken2);
         if (restoredPlayer === 1) this.orchestrator.switchPlayer();
         this.roomService.forceState('connecting');
-
-        // Persist active player index so refresh restores the same view
-        effect(() => {
-          const activePlayer = this.orchestrator.activePlayerIndex();
-          untracked(() => {
-            try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, wsToken2, activePlayer })); } catch {}
-          });
-        });
-
-        // Watch for connection loss in solo mode
-        effect(() => {
-          if (this.orchestrator.connectionLost()) {
-            untracked(() => {
-              this.notify.error('error.CONNECTION_LOST_LOBBY');
-              this.router.navigate(['/pvp']);
-            });
-          }
-        });
-
-        // Handle rematch reset in solo mode — re-set roomState and thumbnailsReady
-        // Uses orchestrator.rematchReset counter to avoid race with Effect 2's signal reset
-        effect(() => {
-          const count = this.orchestrator.rematchReset();
-          if (count > 0) {
-            untracked(() => {
-              this.roomService.forceState('active');
-              this.thumbnailsReady.set(true);
-            });
-          }
-        });
+        this.soloEffects.initSolo({ soloTokensKey, wsToken1, wsToken2, roomService: this.roomService, thumbnailsReady: this.thumbnailsReady });
       }
     } else if (code) {
       this.roomService.deckName.set(history.state?.deckName ?? '');
@@ -583,8 +538,6 @@ export class DuelPageComponent implements OnInit {
       if (isSolo && code) {
         try { sessionStorage.removeItem(`solo-duel-tokens-${code}`); } catch {}
       }
-      if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
-      if (this.loadingTimeoutRef) clearTimeout(this.loadingTimeoutRef);
       if (this.switchTimer) clearTimeout(this.switchTimer);
       this.phaseService.clear();
       this.cardDataCache.clearCache();
@@ -596,12 +549,8 @@ export class DuelPageComponent implements OnInit {
         // No-op on hide — timestamp not needed (grace period is server-side)
       } else {
         // Tab became visible — check connection and request state sync
-        this.returningFromBackground.set(true);
-        setTimeout(() => { this.returningFromBackground.set(false); }, 500);
-
         if (this.wsService.connectionStatus() === 'connected' && this.roomState() === 'active') {
-          this.lastKnownTurnCount = this.duelState().turnCount;
-          this.awaitingStateSyncAfterBackground = true;
+          this.a11yEffects.markAwaitingStateSync(this.logicalState().turnCount);
           this.wsService.sendRequestStateSync();
         }
       }
@@ -609,308 +558,37 @@ export class DuelPageComponent implements OnInit {
     document.addEventListener('visibilitychange', visibilityHandler);
     this.destroyRef.onDestroy(() => document.removeEventListener('visibilitychange', visibilityHandler));
 
-    // Story 5.2 — STATE_SYNC auto-resolved snackbar + "Board state refreshed" announcer
-    effect(() => {
-      const state = this.duelState();
-      untracked(() => {
-        if (!this.awaitingStateSyncAfterBackground) return;
-        this.awaitingStateSyncAfterBackground = false;
-        if (this.lastKnownTurnCount > 0 && state.turnCount > this.lastKnownTurnCount) {
-          const turns = state.turnCount - this.lastKnownTurnCount;
-          const msg = turns > 1
-            ? this.translate.instant('duel.a11y.autoResolvedPlural', { count: turns })
-            : this.translate.instant('duel.a11y.autoResolvedSingle');
-          this.notify.success(msg, undefined, 5000);
-          this.liveAnnouncer.announce(msg);
-        }
-        this.liveAnnouncer.announce(this.translate.instant('duel.a11y.boardRefreshed'));
-        this.lastKnownTurnCount = state.turnCount;
-      });
+    // A11y effects (extracted to DuelA11yEffectsService)
+    this.a11yEffects.initEffects({
+      logicalState: this.logicalState,
+      resultOutcome: this.resultOutcome,
+      displayedTimerState: this.displayedTimerState,
+      ownPlayerIndex: this.ownPlayerIndex,
     });
 
-    // Story 5.2 — Tab guard blocked state announcement + auto-focus button
-    effect(() => {
-      const blocked = this.tabGuard.isBlocked();
-      if (blocked) {
-        untracked(() => {
-          this.liveAnnouncer.announce(this.translate.instant('duel.a11y.activeOtherTab'));
-          setTimeout(() => {
-            const btn = document.querySelector<HTMLButtonElement>('.blocked-tab-overlay__btn');
-            btn?.focus();
-          });
-        });
-      }
+    // Animation bridge effects (extracted to DuelAnimationBridgeService)
+    this.animBridge.initEffects({
+      logicalState: this.logicalState,
+      isAnimating: this.isAnimating,
+      roomState: this.roomState,
     });
 
-    // Story 5.1 — Clear card data cache and animation state on rematch
-    effect(() => {
-      const starting = this.wsService.rematchStarting();
-      if (starting) {
-        untracked(() => {
-          this.cardDataCache.clearCache();
-          this.debugLog.clearLogs();
-          this.animationService.onStateSync();
-        });
-      }
+    // Prompt effects (extracted to DuelPromptEffectsService)
+    this.promptEffects.initEffects({ activationMode: this.activationMode });
+
+    // Loading effects (extracted to DuelLoadingEffectsService)
+    this.loadingEffects.initEffects({
+      boardReady: this.boardReady,
+      duelLoadingReady: this.duelLoadingReady,
+      roomState: this.roomState,
+      thumbnailsReady: this.thumbnailsReady,
+      loadingTimeout: this.loadingTimeout,
     });
 
-    // Phase announcement overlay — show on every phase change
-    effect(() => {
-      const state = this.duelState();
-      const phase = state.phase;
-      const turnPlayer = state.turnPlayer;
-      const turnCount = state.turnCount;
-      untracked(() => {
-        // Skip if board not active yet (init, connecting, duel-loading) — prevents
-        // EMPTY_DUEL_STATE (phase='DRAW') and STATE_SYNC restore from triggering announcements
-        if (this.roomState() !== 'active') return;
-        const key = `${turnPlayer}-${phase}`;
-        if (!phase || key === this.lastAnnouncedPhase) return;
-        this.lastAnnouncedPhase = key;
-
-        const isOpponent = turnPlayer !== 0;
-        const label = this.phaseService.phaseDisplayName(phase);
-        this.phaseService.show(label, isOpponent, phase, turnPlayer, turnCount);
-      });
-    });
-
-    // Story 2.1 — Countdown timer tick + expiration (delegates to roomService)
-    effect(() => {
-      const state = this.roomState();
-      untracked(() => {
-        if (state === 'waiting' || state === 'creating-duel') {
-          this.roomService.startCountdown();
-        } else {
-          this.roomService.stopCountdown();
-        }
-      });
-    });
-
-    effect(() => {
-      const cd = this.countdown();
-      if (cd?.expired) {
-        untracked(() => {
-          this.notify.error('error.ROOM_EXPIRED');
-          this.roomService.leaveRoom();
-        });
-      }
-    });
-
-    // [H4 fix] Activation toggle auto-respond effect (off + auto modes)
-    effect(() => {
-      const mode = this.activationMode();
-      const prompt = this.wsService.pendingPrompt();
-      if (!prompt || mode === 'on') return;
-
-      untracked(() => {
-        // After a STATE_SYNC (reconnect), suppress auto-respond until the game resumes
-        // (first BOARD_STATE). Ensures prompts re-sent by the server are shown to the user.
-        if (this.wsService.justReconnected()) return;
-
-        const isOptionalEffectYn = prompt.type === 'SELECT_EFFECTYN';
-        const isOptionalChain = prompt.type === 'SELECT_CHAIN' && !(prompt as SelectChainMsg).forced;
-        if (!isOptionalEffectYn && !isOptionalChain) return;
-
-        let shouldAutoRespond = false;
-
-        if (mode === 'off') {
-          shouldAutoRespond = true;
-        } else if (mode === 'auto') {
-          const hint = this.wsService.hintContext();
-          shouldAutoRespond = hint.hintType === 0;
-        }
-
-        if (!shouldAutoRespond) return;
-
-        if (isOptionalEffectYn) {
-          this.wsService.sendResponse('SELECT_EFFECTYN', { yes: false });
-        } else if (isOptionalChain) {
-          this.wsService.sendResponse('SELECT_CHAIN', { index: null });
-        }
-      });
-    });
-
-    // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE
-    effect(() => {
-      const ready = this.boardReady();
-      const rpsVisible = this.wsService.rpsResult();
-      if (ready && !rpsVisible && this.roomState() === 'connecting') {
-        untracked(() => this.roomState.set('duel-loading'));
-      }
-    });
-
-    // Story 2.4 — When entering 'duel-loading', start thumbnail pre-fetch + 15s timeout
-    effect(() => {
-      const state = this.roomState();
-      if (state === 'duel-loading' && !this.prefetchStarted) {
-        untracked(() => {
-          this.prefetchStarted = true;
-          this.preFetchDeckThumbnails();
-          this.loadingTimeoutRef = setTimeout(() => {
-            if (this.roomState() === 'duel-loading') {
-              this.loadingTimeout.set(true);
-            }
-          }, 15000);
-        });
-      }
-    });
-
-    // Story 2.4 — Transition 'duel-loading' -> 'active' when loading ready
-    effect(() => {
-      const ready = this.duelLoadingReady();
-      if (ready && this.roomState() === 'duel-loading') {
-        untracked(() => {
-          if (this.loadingTimeoutRef) {
-            clearTimeout(this.loadingTimeoutRef);
-            this.loadingTimeoutRef = null;
-          }
-          this.roomState.set('active');
-          this.wsService.setBoardActive(true);
-        });
-      }
-    });
-
-    // Story 2.3 — RPS result auto-dismiss (3s winner, 2s draw)
-    effect(() => {
-      const rps = this.wsService.rpsResult();
-      if (!rps) return;
-      untracked(() => {
-        if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
-        const duration = rps.winner !== null ? 3000 : 2000;
-        this.rpsAutoDismissTimeout = setTimeout(() => this.wsService.clearRpsResult(), duration);
-      });
-    });
-
-    // Story 3.4 — LiveAnnouncer announces duel result
-    effect(() => {
-      const result = this.resultOutcome();
-      if (!result) return;
-      untracked(() => {
-        const outcomeKey = `duel.result.${result.outcome}`;
-        this.liveAnnouncer.announce(`${this.translate.instant(outcomeKey)} — ${result.reason}`);
-      });
-    });
-
-    // Story 3.2 — LiveAnnouncer timer warnings at 60s, 30s, 10s (own timer only)
-    effect(() => {
-      const ts = this.displayedTimerState();
-      if (!ts) return;
-      untracked(() => {
-        if (ts.player !== this.ownPlayerIndex()) return;
-
-        const totalSec = Math.floor(ts.remainingMs / 1000);
-        const thresholds = [60, 30, 10];
-        for (const t of thresholds) {
-          if (totalSec < t && !this.announcedThresholds.has(t)) {
-            this.announcedThresholds.add(t);
-          }
-        }
-        for (const t of thresholds) {
-          if (totalSec <= t && !this.announcedThresholds.has(t)) {
-            this.announcedThresholds.add(t);
-            this.liveAnnouncer.announce(this.translate.instant('duel.a11y.secondsRemaining', { t }));
-            break;
-          }
-        }
-      });
-    });
-
-    // Story 3.2 — Announce turn changes
-    effect(() => {
-      const turnPlayer = this.duelState().turnPlayer;
-      untracked(() => {
-        if (this.lastAnnouncedTurnPlayer === null) {
-          this.lastAnnouncedTurnPlayer = turnPlayer;
-          return;
-        }
-        if (turnPlayer !== this.lastAnnouncedTurnPlayer) {
-          this.lastAnnouncedTurnPlayer = turnPlayer;
-          this.announcedThresholds.clear();
-          const msg = this.translate.instant(turnPlayer === 0 ? 'duel.a11y.yourTurn' : 'duel.a11y.opponentTurn');
-          this.liveAnnouncer.announce(msg);
-        }
-      });
-    });
-
-    // Inactivity warning — open/close dialog on INACTIVITY_WARNING signal
-    effect(() => {
-      const warning = this.wsService.inactivityWarning();
-      untracked(() => {
-        if (warning && !this.inactivityDialogRef) {
-          this.inactivityDialogRef = this.dialog.open(InactivityWarningDialogComponent, {
-            disableClose: true,
-            width: '320px',
-            panelClass: ['pvp-dialog-panel', 'pvp-dialog-panel--warning'],
-          });
-          this.inactivityDialogRef.afterClosed().subscribe(() => {
-            if (this.inactivityDialogRef) {
-              this.inactivityDialogRef = null;
-              this.wsService.sendActivityPing();
-            }
-          });
-        } else if (!warning && this.inactivityDialogRef) {
-          this.inactivityDialogRef.close();
-          this.inactivityDialogRef = null;
-        }
-      });
-    });
-
-    // Story 3.3 — "Connection restored" snackbar on reconnection
-    effect(() => {
-      const current = this.wsService.connectionStatus();
-      const prev = this.previousConnectionStatus;
-      untracked(() => {
-        if (prev === 'reconnecting' && current === 'connected') {
-          this.notify.success('success.CONNECTION_RESTORED');
-          this.liveAnnouncer.announce(this.translate.instant('duel.a11y.connectionRestored'));
-        }
-        this.previousConnectionStatus = current;
-      });
-    });
-
-    // Story 3.3 — "Opponent reconnected" snackbar
-    effect(() => {
-      const current = this.wsService.opponentDisconnected();
-      const prev = this.previousOpponentDisconnected;
-      untracked(() => {
-        if (prev === true && current === false && !this.wsService.duelResult()) {
-          this.notify.success('success.OPPONENT_RECONNECTED');
-        }
-        this.previousOpponentDisconnected = current;
-      });
-    });
-
-    // Story 4.1 — LiveAnnouncer: "Chain resolved" when chain links go from non-empty -> empty
-    effect(() => {
-      const links = this.wsService.activeChainLinks();
-      untracked(() => {
-        if (links.length === 0 && this.previousChainLinksCount > 0) {
-          this.liveAnnouncer.announce(this.translate.instant('duel.a11y.chainResolved'));
-        }
-        this.previousChainLinksCount = links.length;
-      });
-    });
+    // Story 3.3 — Connection effects (extracted to DuelConnectionEffectsService)
+    this.connEffects.initEffects();
 
 
-    // Story 4.2 — Animation queue watcher: delegate to animation service
-    effect(() => {
-      const queue = this.wsService.animationQueue();
-      untracked(() => {
-        if (queue.length > 0) {
-          this.animationService.startProcessingIfIdle();
-        }
-      });
-    });
-
-    // Story 4.2 — Reset tracked LP when BOARD_STATE arrives (authoritative sync)
-    effect(() => {
-      const state = this.duelState();
-      untracked(() => {
-        if (state.players.length === 2 && !this.isAnimating()) {
-          this.animationService.syncTrackedLp(state.players[0].lp, state.players[1].lp);
-        }
-      });
-    });
   }
 
   ngOnInit(): void {
@@ -1147,7 +825,7 @@ export class DuelPageComponent implements OnInit {
   onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number }): void {
     if (this.hasActivePrompt()) return;
 
-    const player = this.duelState().players[event.playerIndex];
+    const player = this.logicalState().players[event.playerIndex];
     if (!player) return;
     this._zoneBrowserClickGuard = true;
     setTimeout(() => this._zoneBrowserClickGuard = false, 0);
@@ -1350,59 +1028,10 @@ export class DuelPageComponent implements OnInit {
 
 
   private getHandCards(playerIndex: number): CardOnField[] {
-    const player = this.duelState().players[playerIndex];
+    const player = this.renderedState().players[playerIndex];
     if (!player) return [];
     const handZone = player.zones.find((z: BoardZone) => z.zoneId === 'HAND');
     return handZone?.cards ?? [];
-  }
-
-  /** Pre-load a list of card images into the browser cache. Resolves when all are attempted. */
-  private async preloadImages(codes: number[]): Promise<void> {
-    const promises = codes.map(code => new Promise<void>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve();
-      img.onerror = () => resolve();
-      img.src = getCardImageUrlByCode(code);
-    }));
-    await Promise.allSettled(promises);
-  }
-
-  // Story 5.4 — Pre-fetch ALL own deck card thumbnails (main + extra) via deck API
-  private async preFetchDeckThumbnails(): Promise<void> {
-    const decklistId = this.room()?.decklistId;
-    if (!decklistId) {
-      this.preFetchVisibleThumbnails().then(() => this.thumbnailsReady.set(true));
-      return;
-    }
-
-    try {
-      const deck = await firstValueFrom(this.http.get<DeckDTO>(`/api/decks/${decklistId}`));
-      const allCodes = [...new Set([
-        ...deck.mainDeck.map(entry => entry.card.card.passcode),
-        ...deck.extraDeck.map(entry => entry.card.card.passcode),
-      ].filter((code): code is number => !!code && code > 0))];
-
-      await this.preloadImages(allCodes);
-    } catch {
-      await this.preFetchVisibleThumbnails();
-    }
-
-    this.thumbnailsReady.set(true);
-  }
-
-  // Fallback: pre-fetch all visible card thumbnails from current board state
-  private async preFetchVisibleThumbnails(): Promise<void> {
-    const codes = new Set<number>();
-    for (const player of this.duelState().players) {
-      for (const zone of player.zones) {
-        for (const card of zone.cards) {
-          if (card.cardCode) codes.add(card.cardCode);
-        }
-      }
-    }
-    if (codes.size > 0) {
-      await this.preloadImages([...codes]);
-    }
   }
 
   private initOrientationLock(): void {

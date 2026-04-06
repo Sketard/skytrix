@@ -123,6 +123,13 @@ export function filterMessage(message: ServerMessage, forPlayer: Player, omnisci
     case 'MSG_BECOME_TARGET':
     case 'MSG_ATTACK':
     case 'MSG_BATTLE':
+    case 'MSG_TOSS_COIN':
+    case 'MSG_TOSS_DICE':
+    case 'MSG_EQUIP':
+    case 'MSG_ADD_COUNTER':
+    case 'MSG_REMOVE_COUNTER':
+    case 'MSG_SHUFFLE_SET_CARD':
+    case 'MSG_SWAP_GRAVE_DECK':
     case 'MSG_WIN':
     case 'DUEL_END':
     case 'TIMER_STATE':

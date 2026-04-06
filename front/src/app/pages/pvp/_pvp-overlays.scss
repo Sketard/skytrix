@@ -118,12 +118,56 @@
   }
 }
 
+// === Game Toast (coin flip, dice roll) ===
+.duel-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: z.$z-pvp-chain-overlay + 1;
+  pointer-events: none;
+  animation: duel-toast-in 0.3s ease-out;
+}
+
+.duel-toast__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.duel-toast__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.duel-toast__line {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #eee;
+}
+
+@keyframes duel-toast-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .opponent-thinking-glow {
     animation: none;
   }
 
   .phase-announcement {
+    animation: none;
+  }
+
+  .duel-toast {
     animation: none;
   }
 }

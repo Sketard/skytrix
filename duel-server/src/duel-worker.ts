@@ -18,6 +18,7 @@ import type {
 import { loadDatabase, loadScripts, loadSystemStrings, getScriptsHash, getOcgcoreVersion, setScriptsHash, setOcgcoreVersion, STARTUP_SCRIPTS } from './ocg-scripts.js';
 import { createCardReader, createScriptReader } from './ocg-callbacks.js';
 import { WATCHDOG_TIMEOUT_MS } from './types.js';
+import * as logger from './logger.js';
 import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
 import { filterMessage } from './message-filter.js';
 import type {
@@ -53,6 +54,7 @@ const { dataDir } = workerData as { dataDir: string };
 let core: OcgCoreSync | null = null;
 let duel: OcgDuelHandle | null = null;
 let duelId = '';
+let dlog = logger.forDuel('(pre-init)');
 let turnPlayer: Player = 0;
 let turnCount = 0;
 let phase: Phase = 'DRAW';
@@ -247,18 +249,12 @@ function locName(loc: number): string { return LOC_NAME[loc] ?? `0x${loc.toStrin
 function transformMessage(msg: OcgMessage): ServerMessage | null {
   if (msg.type === OcgMessageType.MOVE) {
     const m = msg as any;
-    console.log('[DBG:OCG-ORDER] MOVE %s (%d) %s/seq%d → %s/seq%d  player=%d',
-      getCardName(m.card), m.card,
-      locName(m.from.location), m.from.sequence,
-      locName(m.to.location), m.to.sequence,
-      m.from.controller);
+    dlog.debug('OCG-ORDER MOVE', { card: getCardName(m.card), code: m.card, from: `${locName(m.from.location)}/seq${m.from.sequence}`, to: `${locName(m.to.location)}/seq${m.to.sequence}`, player: m.from.controller });
   } else if (msg.type === OcgMessageType.CHAINING) {
     const m = msg as any;
-    console.log('[DBG:OCG-ORDER] CHAINING %s (%d) at %s/seq%d  chain_size=%d',
-      getCardName(m.code), m.code, locName(m.location), m.sequence, m.chain_size);
+    dlog.debug('OCG-ORDER CHAINING', { card: getCardName(m.code), code: m.code, loc: `${locName(m.location)}/seq${m.sequence}`, chainSize: m.chain_size });
   } else {
-    console.log('[DBG:OCG-ORDER] type=%s (%d) player=%s',
-      OcgMessageType[msg.type] ?? 'UNKNOWN', msg.type, (msg as any).player ?? '?');
+    dlog.debug('OCG-ORDER', { type: OcgMessageType[msg.type] ?? 'UNKNOWN', typeId: msg.type, player: (msg as any).player ?? '?' });
   }
   switch (msg.type) {
     // --- State tracking only (no DTO) ---
@@ -313,21 +309,20 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.CHAIN_SOLVING:
-      console.log('[DBG:WORKER] CHAIN_SOLVING → MSG_CHAIN_SOLVING chainIndex=%d', msg.chain_size - 1);
+      dlog.debug('CHAIN_SOLVING → MSG_CHAIN_SOLVING', { chainIndex: msg.chain_size - 1 });
       return { type: 'MSG_CHAIN_SOLVING', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.CHAIN_SOLVED:
-      console.log('[DBG:WORKER] CHAIN_SOLVED → MSG_CHAIN_SOLVED chainIndex=%d', msg.chain_size - 1);
+      dlog.debug('CHAIN_SOLVED → MSG_CHAIN_SOLVED', { chainIndex: msg.chain_size - 1 });
       return { type: 'MSG_CHAIN_SOLVED', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.CHAIN_END:
-      console.log('[DBG:WORKER] CHAIN_END → MSG_CHAIN_END');
+      dlog.debug('CHAIN_END → MSG_CHAIN_END');
       return { type: 'MSG_CHAIN_END' };
 
     case OcgMessageType.CHAIN_NEGATED:
     case OcgMessageType.CHAIN_DISABLED:
-      console.log('[DBG:WORKER] %s → MSG_CHAIN_NEGATED chainIndex=%d (chain_size=%d)',
-        OcgMessageType[msg.type], msg.chain_size - 1, msg.chain_size);
+      dlog.debug('MSG_CHAIN_NEGATED', { ocgType: OcgMessageType[msg.type], chainIndex: msg.chain_size - 1 });
       return { type: 'MSG_CHAIN_NEGATED', chainIndex: msg.chain_size - 1 };
 
     case OcgMessageType.HINT: {
@@ -431,6 +426,52 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
     }
 
+    case OcgMessageType.TOSS_COIN:
+      return { type: 'MSG_TOSS_COIN', player: msg.player as Player, results: msg.results };
+
+    case OcgMessageType.TOSS_DICE:
+      return { type: 'MSG_TOSS_DICE', player: msg.player as Player, results: msg.results };
+
+    case OcgMessageType.EQUIP:
+      return {
+        type: 'MSG_EQUIP',
+        equipPlayer: msg.card.controller as Player,
+        equipLocation: msg.card.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+        equipSequence: msg.card.sequence,
+        targetPlayer: msg.target.controller as Player,
+        targetLocation: msg.target.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+        targetSequence: msg.target.sequence,
+      };
+
+    case OcgMessageType.ADD_COUNTER:
+      return {
+        type: 'MSG_ADD_COUNTER', counterType: msg.counter_type, player: msg.controller as Player,
+        location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+        sequence: msg.sequence, count: msg.count,
+      };
+
+    case OcgMessageType.REMOVE_COUNTER:
+      return {
+        type: 'MSG_REMOVE_COUNTER', counterType: msg.counter_type, player: msg.controller as Player,
+        location: msg.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+        sequence: msg.sequence, count: msg.count,
+      };
+
+    case OcgMessageType.SHUFFLE_SET_CARD:
+      return {
+        type: 'MSG_SHUFFLE_SET_CARD',
+        cards: msg.cards.map(c => ({
+          fromPlayer: c.from.controller as Player,
+          fromSequence: c.from.sequence,
+          toPlayer: c.to.controller as Player,
+          toSequence: c.to.sequence,
+          location: c.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+        })),
+      };
+
+    case OcgMessageType.SWAP_GRAVE_DECK:
+      return { type: 'MSG_SWAP_GRAVE_DECK', player: msg.player as Player };
+
     case OcgMessageType.WIN:
       return { type: 'MSG_WIN', player: msg.player as Player, reason: msg.reason };
 
@@ -511,8 +552,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.SELECT_OPTION: {
       const rawOptions = msg.options.map(Number);
       const descriptions = msg.options.map(o => getOptionDesc(BigInt(o)));
-      console.log('[WORKER][SELECT_OPTION] raw options=%o decoded=%o descriptions=%o',
-        msg.options.map(String), rawOptions.map(o => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF, hex: '0x' + o.toString(16) })), descriptions);
+      dlog.debug('SELECT_OPTION', { raw: msg.options.map(String), decoded: rawOptions.map(o => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF })), descriptions });
       return {
         type: 'SELECT_OPTION', player: msg.player as Player,
         options: rawOptions, descriptions,
@@ -520,8 +560,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     }
 
     case OcgMessageType.SELECT_TRIBUTE:
-      console.log('[WORKER][SELECT_TRIBUTE] raw selects=%o min=%d max=%d can_cancel=%s',
-        msg.selects, msg.min, msg.max, msg.can_cancel);
+      dlog.debug('SELECT_TRIBUTE', { selects: msg.selects.length, min: msg.min, max: msg.max, cancelable: msg.can_cancel });
       return {
         type: 'SELECT_TRIBUTE', player: msg.player as Player,
         min: msg.min, max: msg.max,
@@ -538,10 +577,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SELECT_UNSELECT_CARD:
-      console.log('[WORKER][SELECT_UNSELECT_CARD] select=%d unselect=%d can_finish=%s selectable=%o selected=%o',
-        msg.select_cards.length, msg.unselect_cards.length, msg.can_finish,
-        msg.select_cards.map(c => `code=${c.code} loc=${c.location} seq=${c.sequence}`),
-        msg.unselect_cards.map(c => `code=${c.code} loc=${c.location} seq=${c.sequence}`));
+      dlog.debug('SELECT_UNSELECT_CARD', { select: msg.select_cards.length, unselect: msg.unselect_cards.length, canFinish: msg.can_finish });
       return {
         type: 'SELECT_UNSELECT_CARD', player: msg.player as Player,
         cards: [...msg.select_cards, ...msg.unselect_cards].map(toCardInfo),
@@ -598,7 +634,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.RETRY:
-      console.warn('[WORKER] OCGCore sent RETRY — previous response was invalid');
+      dlog.warn('OCGCore sent RETRY — previous response was invalid');
       return null;
 
     // --- All other OCGCore messages: silently ignored ---
@@ -724,7 +760,7 @@ function buildBoardState(): ServerMessage {
         card.baseLScale = (rawLevel >> 16) & 0xFF;
         card.baseRScale = (rawLevel >> 24) & 0xFF;
       } else {
-        console.warn('[WORKER] No DB row for card code=%d — base alteration fields unavailable', code);
+        dlog.warn('No DB row for card — base alteration fields unavailable', { cardCode: code });
       }
 
       // Effect negation from STATUS bitmask (AC4)
@@ -742,7 +778,7 @@ function buildBoardState(): ServerMessage {
             sequence: ec.sequence,
           };
         } else {
-          console.warn('[WORKER] Unexpected EQUIP_CARD format: %o', ec);
+          dlog.warn('Unexpected EQUIP_CARD format', { equipCard: ec });
           card.equipTarget = null;
         }
       } else {
@@ -888,7 +924,7 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
     case 'RPS_CHOICE':
       return { type: 20, value: (data['choice'] as number) + 1 }; // Client sends 0-2, OCGCore expects 1-3
     default:
-      console.error(`Unknown promptType: ${promptType}`);
+      dlog.error('Unknown promptType', { promptType });
       return null;
   }
 }
@@ -898,7 +934,7 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
 // =============================================================================
 
 function capturedSetResponse(d: OcgDuelHandle, response: unknown): void {
-  console.log('[Replay Capture] Response #%d: %o', capturedResponses.length, response);
+  dlog.debug('Replay capture response', { index: capturedResponses.length });
   capturedResponses.push({ data: response, timestamp: new Date().toISOString() });
   core!.duelSetResponse(d, response as never);
 }
@@ -906,7 +942,7 @@ function capturedSetResponse(d: OcgDuelHandle, response: unknown): void {
 function emitReplayData(): void {
   if (replayEmitted) return;
   replayEmitted = true;
-  console.log('[Replay Capture] Emitting replay data: %d responses, result=%s', capturedResponses.length, duelResult);
+  dlog.log('Emitting replay data', { responses: capturedResponses.length, result: duelResult });
   port.postMessage({
     type: 'WORKER_REPLAY_DATA',
     duelId,
@@ -939,9 +975,12 @@ function runDuelLoop(): void {
 
     // Watchdog timer
     const watchdog = setTimeout(() => {
+      dlog.error('Watchdog timeout — saving partial replay before exit', { timeoutMs: WATCHDOG_TIMEOUT_MS });
+      if (!forkMode) emitReplayData();
       port.postMessage({ type: 'WORKER_ERROR', duelId, error: 'Watchdog timeout (30s)' });
       cleanup();
-      process.exit(1);
+      // Give the MessagePort enough time to drain before killing the process
+      setTimeout(() => process.exit(1), 1000);
     }, WATCHDOG_TIMEOUT_MS);
 
     let status: number;
@@ -950,16 +989,16 @@ function runDuelLoop(): void {
     } catch (err) {
       clearTimeout(watchdog);
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[WORKER] duelProcess threw:', message);
+      dlog.error('duelProcess threw', { error: message });
       port.postMessage({ type: 'WORKER_ERROR', duelId, error: message });
       cleanup();
       return;
     }
     clearTimeout(watchdog);
 
-    console.log('[WORKER] duelProcess status=%d (0=END, 1=WAITING, 2=CONTINUE)', status);
+    dlog.debug('duelProcess', { status, statusLabel: status === OcgProcessResult.CONTINUE ? 'CONTINUE' : status === OcgProcessResult.WAITING ? 'WAITING' : 'END' });
     const messages = core.duelGetMessage(duel);
-    console.log('[WORKER] duelGetMessage count=%d', messages.length);
+    dlog.debug('duelGetMessage', { count: messages.length });
 
     let hasRetry = false;
     let hasCostMoves = false;
@@ -969,7 +1008,7 @@ function runDuelLoop(): void {
 
       // RETRY: OCGCore rejected the previous response — flag for re-prompt
       if (msg.type === OcgMessageType.RETRY) {
-        console.warn('[WORKER] RETRY received — OCGCore rejected previous response');
+        dlog.warn('RETRY received — OCGCore rejected previous response');
         hasRetry = true;
         continue;
       }
@@ -989,40 +1028,27 @@ function runDuelLoop(): void {
       }
 
       // DEBUG: Log every OCGCore message
-      console.log('[WORKER][MSG] %s raw=%o', OcgMessageType[msg.type] ?? msg.type, msg);
+      dlog.debug('OCG message', { type: OcgMessageType[msg.type] ?? msg.type });
 
       // Transform and forward
       const dto = transformMessage(msg);
       if (dto) {
         if (dto.type === 'MSG_MOVE') {
-          console.log('[WORKER][MOVE] card=%s (%d) from=loc%d/seq%d → to=loc%d/seq%d',
-            dto.cardName, dto.cardCode, dto.fromLocation, dto.fromSequence,
-            dto.toLocation, dto.toSequence);
+          dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });
           hasCostMoves = true;
         }
         // Emit intermediate BOARD_STATE before chain resolution starts so the client
         // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
         // blocks applyPendingBoardState().
         if (dto.type === 'MSG_CHAIN_SOLVING' && hasCostMoves) {
-          console.log('[SEQ] ──── BOARD_STATE (intermediate, before chain solving) ────');
+          dlog.debug('BOARD_STATE (intermediate, before chain solving)');
           port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
           hasCostMoves = false;
         }
-        console.log('[SEQ] EMIT type=%-20s status=%-8s | %s',
-          dto.type,
-          status === OcgProcessResult.CONTINUE ? 'CONTINUE' : status === OcgProcessResult.WAITING ? 'WAITING' : 'END',
-          dto.type === 'MSG_MOVE' ? `${dto.cardName} loc${dto.fromLocation}/seq${dto.fromSequence} → loc${dto.toLocation}/seq${dto.toSequence}` :
-          dto.type === 'MSG_DRAW' ? `player=${dto.player} count=${dto.cards.length}` :
-          dto.type === 'MSG_CONFIRM_CARDS' ? `player=${dto.player} cards=[${dto.cards.map((c: {cardCode: number}) => c.cardCode).join(',')}]` :
-          dto.type === 'MSG_SHUFFLE_HAND' ? `player=${dto.player}` :
-          dto.type === 'MSG_SHUFFLE_DECK' ? `player=${dto.player}` :
-          dto.type === 'MSG_CHAINING' ? `chain=${dto.chainIndex} card=${dto.cardCode}` :
-          dto.type === 'MSG_CHAIN_SOLVING' ? `chain=${dto.chainIndex}` :
-          dto.type === 'MSG_CHAIN_SOLVED' ? `chain=${dto.chainIndex}` :
-          '');
+        dlog.debug('EMIT', { type: dto.type });
         port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
       } else {
-        console.warn('[WORKER] transformMessage returned null for type=%s (%d)', OcgMessageType[msg.type] ?? 'UNKNOWN', msg.type);
+        dlog.debug('transformMessage returned null', { type: OcgMessageType[msg.type] ?? 'UNKNOWN', typeId: msg.type });
       }
     }
 
@@ -1043,7 +1069,7 @@ function runDuelLoop(): void {
         continue;
       }
       // Player prompt — send BOARD_STATE snapshot then wait
-      console.log('[SEQ] ──── BOARD_STATE (final, before prompt) ────');
+      dlog.debug('BOARD_STATE (final, before prompt)');
       port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
       return;
     }
@@ -1064,7 +1090,6 @@ interface OcgInitResult {
 
 async function initOcgEngine(
   seed: [bigint, bigint, bigint, bigint],
-  logPrefix: string,
 ): Promise<OcgInitResult | null> {
   const dbPath = join(dataDir, 'cards.cdb');
   const scriptsDir = join(dataDir, 'scripts_full');
@@ -1084,7 +1109,7 @@ async function initOcgEngine(
     cardReader,
     scriptReader,
     errorHandler: (_type, text) => {
-      if (!text.includes('script not found')) console.error(`[${logPrefix}] [OCG] ${text}`);
+      if (!text.includes('script not found')) dlog.error('OCG error', { text });
     },
   });
 
@@ -1128,6 +1153,7 @@ function resetDuelState(): void {
 
 async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promise<void> {
   duelId = msg.duelId;
+  dlog = logger.forDuel(duelId);
   skipRpsFlag = msg.skipRps === true;
   skipShuffleFlag = msg.skipShuffle === true;
   const [deck0, deck1] = msg.decks;
@@ -1146,7 +1172,7 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
   const seed = generateSeed();
   duelSeed = [...seed];
 
-  const result = await initOcgEngine(seed, 'WORKER');
+  const result = await initOcgEngine(seed);
   if (!result) {
     port.postMessage({ type: 'WORKER_ERROR', duelId, error: 'Failed to create duel instance' });
     return;
@@ -1172,11 +1198,11 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
 
 function cleanup(): void {
   if (core && duel) {
-    try { core.destroyDuel(duel); } catch { /* ignore */ }
+    try { core.destroyDuel(duel); } catch (e) { dlog.error('destroyDuel failed', { error: e instanceof Error ? e.message : String(e) }); }
     duel = null;
   }
   if (cardDb) {
-    try { cardDb.db.close(); } catch { /* ignore */ }
+    try { cardDb.db.close(); } catch (e) { dlog.error('db.close failed', { error: e instanceof Error ? e.message : String(e) }); }
     cardDb = null;
   }
 }
@@ -1340,11 +1366,12 @@ function emitTurnBatch(replayDuelId: string, turnNum: number, states: PreCompute
 
 async function initReplay(msg: InitReplayMessage): Promise<void> {
   duelId = msg.duelId;
+  dlog = logger.forDuel(duelId);
   skipRpsFlag = true;
   skipShuffleFlag = true;
 
   const seed = msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint];
-  const result = await initOcgEngine(seed, `Replay ${msg.duelId}`);
+  const result = await initOcgEngine(seed);
   if (!result) {
     port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_INIT_FAILED', message: 'Failed to create duel instance' });
     return;
@@ -1398,11 +1425,11 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
   const MAX_ITERATIONS = 100_000; // CPU-spin guard — well above any real duel
   let iterations = 0;
 
-  console.log('[Replay %s] Starting pre-computation with %d responses', duelId, msg.playerResponses.length);
+  dlog.log('Starting pre-computation', { responses: msg.playerResponses.length });
 
   while (true) {
     if (++iterations > MAX_ITERATIONS) {
-      console.error('[Replay %s] Max iterations reached (%d) — aborting', duelId, MAX_ITERATIONS);
+      dlog.error('Max iterations reached — aborting', { maxIterations: MAX_ITERATIONS });
       port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_MAX_ITERATIONS', message: 'Pre-computation exceeded maximum iterations' });
       cleanup();
       return;
@@ -1413,7 +1440,7 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
       status = core.duelProcess(duel);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[Replay %s] duelProcess threw: %s', duelId, message);
+      dlog.error('Replay duelProcess threw', { error: message });
       port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_COMPUTATION_ERROR', message: `Pre-computation error: ${message}` });
       cleanup();
       return;
@@ -1424,7 +1451,7 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
     for (const rawMsg of messages) {
       // Explicit MSG_RETRY detection (AC#4)
       if (rawMsg.type === OcgMessageType.RETRY) {
-        console.error('[Replay %s] MSG_RETRY encountered at response index %d — divergence', duelId, responseIndex);
+        dlog.error('MSG_RETRY encountered — divergence', { responseIndex });
         port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_RETRY', message: 'Replay diverged: MSG_RETRY encountered (script/core version mismatch)' });
         cleanup();
         return;
@@ -1459,7 +1486,7 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
         emitTurnBatch(duelId, currentTurn, turnStates);
         currentTurn++;
         turnStates = [];
-        console.log('[Replay %s] Turn %d started', duelId, currentTurn);
+        dlog.debug('Replay turn started', { turn: currentTurn });
       }
 
       // Translate via message pipeline + omniscient filter
@@ -1515,29 +1542,23 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
 
       // Feed responses at select prompts
       if (SELECT_MESSAGE_TYPES.has(rawMsg.type)) {
-        console.log('[Replay %s] SELECT prompt #%d: type=%s (%d), player=%s, total_responses=%d',
-          duelId, responseIndex, OcgMessageType[rawMsg.type] ?? 'UNKNOWN', rawMsg.type,
-          (rawMsg as any).player, msg.playerResponses.length);
+        dlog.debug('Replay SELECT prompt', { index: responseIndex, type: OcgMessageType[rawMsg.type] ?? 'UNKNOWN', player: (rawMsg as any).player, totalResponses: msg.playerResponses.length });
 
         if (responseIndex >= msg.playerResponses.length) {
-          // Surrender/disconnect/timeout: running out of responses is expected — duel was interrupted mid-prompt
+          // Out of recorded responses — duel was interrupted (surrender/disconnect/timeout).
+          // Always complete gracefully: pre-existing replays may have result='VICTORY'
+          // due to a fixed bug that stored the winner's perspective instead of the interrupt cause.
           const interruptResults = new Set(['SURRENDER', 'DISCONNECT', 'TIMEOUT']);
-          if (msg.metadata.result && interruptResults.has(msg.metadata.result)) {
-            console.log('[Replay %s] End of recorded responses at index %d (result=%s) — treating as replay end', duelId, responseIndex, msg.metadata.result);
-            // Emit remaining events as final state
-            if (events.length > 0 || currentDecisions.length > 0) {
-              flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
-            }
-            finalizeChainGroups(turnStates);
-            emitTurnBatch(duelId, currentTurn, turnStates);
-            port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
-            cleanup();
-            return;
+          if (!msg.metadata.result || !interruptResults.has(msg.metadata.result)) {
+            dlog.warn('Unexpected end of responses — possible divergence', { responseIndex, result: msg.metadata.result });
           }
-
-          const detail = `ran out at index ${responseIndex}/${msg.playerResponses.length}, SELECT type=${OcgMessageType[rawMsg.type] ?? rawMsg.type}, player=${(rawMsg as any).player}, iteration=${iterations}, turn=${currentTurn}`;
-          console.error('[Replay %s] Divergence: %s', duelId, detail);
-          port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESPONSES', message: `Replay diverged: ${detail}` });
+          dlog.log('End of recorded responses — treating as replay end', { responseIndex, result: msg.metadata.result });
+          if (events.length > 0 || currentDecisions.length > 0) {
+            flushState(turnStates, events, currentDecisions, generateLabel(events), responseIndex);
+          }
+          finalizeChainGroups(turnStates);
+          emitTurnBatch(duelId, currentTurn, turnStates);
+          port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
           cleanup();
           return;
         }
@@ -1573,7 +1594,7 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
           lastConfirmedCards = null;
         }
 
-        console.log('[Replay %s] Feeding response #%d: %o', duelId, responseIndex, response.data);
+        dlog.debug('Replay feeding response', { index: responseIndex });
         core.duelSetResponse(duel, response.data as never);
         responseIndex++;
       }
@@ -1590,13 +1611,13 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
 
       // Verify duel ended normally (Task 3.5: END without MSG_WIN/MSG_DRAW = divergence)
       if (!hasWinOrDraw) {
-        console.error('[Replay %s] duelProcess returned END without MSG_WIN or MSG_DRAW — possible divergence', duelId);
+        dlog.error('duelProcess returned END without MSG_WIN or MSG_DRAW — possible divergence');
         port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESULT', message: 'Replay diverged: duel ended without a win or draw result' });
         cleanup();
         return;
       }
 
-      console.log('[Replay %s] Pre-computation complete: %d turns, %d responses consumed', duelId, currentTurn + 1, responseIndex);
+      dlog.log('Pre-computation complete', { turns: currentTurn + 1, responsesConsumed: responseIndex });
       port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
       cleanup();
       return;
@@ -1606,7 +1627,7 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
     if (status === OcgProcessResult.WAITING && responseIndex > 0) {
       const hasSelect = messages.some(m => SELECT_MESSAGE_TYPES.has(m.type));
       if (!hasSelect) {
-        console.error('[Replay %s] WAITING but no select message — possible divergence', duelId);
+        dlog.error('WAITING but no select message — possible divergence');
         port.postMessage({ type: 'WORKER_REPLAY_ERROR', duelId, code: 'REPLAY_DIVERGED_UNEXPECTED', message: 'Replay diverged: unexpected WAITING state without select prompt' });
         cleanup();
         return;
@@ -1626,6 +1647,7 @@ let forkPendingSelect: OcgMessage | null = null;
 
 async function initFork(msg: InitForkMessage): Promise<void> {
   duelId = msg.duelId;
+  dlog = logger.forDuel(duelId);
   skipRpsFlag = true;
   skipShuffleFlag = true;
 
@@ -1634,7 +1656,7 @@ async function initFork(msg: InitForkMessage): Promise<void> {
   setOcgcoreVersion(msg.ocgcoreVersion);
 
   const seed = msg.seed.map(BigInt) as [bigint, bigint, bigint, bigint];
-  const result = await initOcgEngine(seed, `Fork ${msg.duelId}`);
+  const result = await initOcgEngine(seed);
   if (!result) {
     port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_INIT_FAILED', message: 'Failed to create duel instance' });
     return;
@@ -1659,11 +1681,11 @@ function runForkReconstruction(msg: InitForkMessage): void {
   const MAX_ITERATIONS = 100_000;
   let iterations = 0;
 
-  console.log('[Fork %s] Starting reconstruction with %d target responses', duelId, msg.targetResponseCount);
+  dlog.log('Fork starting reconstruction', { targetResponses: msg.targetResponseCount });
 
   while (true) {
     if (++iterations > MAX_ITERATIONS) {
-      console.error('[Fork %s] Max iterations reached (%d) — aborting', duelId, MAX_ITERATIONS);
+      dlog.error('Fork max iterations reached — aborting', { maxIterations: MAX_ITERATIONS });
       port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_MAX_ITERATIONS', message: 'Fork reconstruction exceeded maximum iterations' });
       cleanup();
       return;
@@ -1674,7 +1696,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
       status = core.duelProcess(duel);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[Fork %s] duelProcess threw: %s', duelId, message);
+      dlog.error('Fork duelProcess threw', { error: message });
       port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_COMPUTATION_ERROR', message: `Fork reconstruction error: ${message}` });
       cleanup();
       return;
@@ -1684,7 +1706,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
 
     for (const rawMsg of messages) {
       if (rawMsg.type === OcgMessageType.RETRY) {
-        console.error('[Fork %s] MSG_RETRY at response index %d — divergence', duelId, responseIndex);
+        dlog.error('Fork MSG_RETRY — divergence', { responseIndex });
         port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_RETRY', message: 'Fork diverged: MSG_RETRY encountered' });
         cleanup();
         return;
@@ -1695,14 +1717,14 @@ function runForkReconstruction(msg: InitForkMessage): void {
       if (SELECT_MESSAGE_TYPES.has(rawMsg.type)) {
         if (responseIndex >= msg.targetResponseCount) {
           // Reached fork point — WASM is waiting for player input
-          console.log('[Fork %s] Reached fork point at response %d', duelId, responseIndex);
+          dlog.log('Fork reached fork point', { responseIndex });
           forkPendingSelect = rawMsg;
           performSanityCheck(msg.expectedState);
           return;
         }
 
         if (responseIndex >= msg.playerResponses.length) {
-          console.error('[Fork %s] Ran out of responses at index %d', duelId, responseIndex);
+          dlog.error('Fork ran out of responses', { responseIndex });
           port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESPONSES', message: 'Fork diverged: ran out of recorded responses' });
           cleanup();
           return;
@@ -1714,7 +1736,7 @@ function runForkReconstruction(msg: InitForkMessage): void {
     }
 
     if (status === OcgProcessResult.END) {
-      console.error('[Fork %s] Duel ended before reaching fork point (response %d/%d)', duelId, responseIndex, msg.targetResponseCount);
+      dlog.error('Fork duel ended before reaching fork point', { responseIndex, target: msg.targetResponseCount });
       port.postMessage({ type: 'WORKER_FORK_ERROR', duelId, code: 'REPLAY_DIVERGED_NO_RESULT', message: 'Fork failed: duel ended before reaching target response count' });
       cleanup();
       return;
@@ -1727,7 +1749,7 @@ function performSanityCheck(expectedState: InitForkMessage['expectedState']): vo
   const actualTurn = turnCount;
   const actualPhase = PHASE_MAP_REVERSE[phase];
   if (actualPhase === undefined) {
-    console.warn('[Fork %s] Unknown phase "%s" during sanity check — defaulting to 0', duelId, phase);
+    dlog.warn('Fork unknown phase during sanity check — defaulting to 0', { phase });
   }
 
   const mismatches: string[] = [];
@@ -1744,7 +1766,7 @@ function performSanityCheck(expectedState: InitForkMessage['expectedState']): vo
   const match = mismatches.length === 0;
   const details = match ? undefined : mismatches.join('; ');
 
-  console.log('[Fork %s] Sanity check: %s%s', duelId, match ? 'PASS' : 'MISMATCH', details ? ` — ${details}` : '');
+  dlog.log('Fork sanity check', { result: match ? 'PASS' : 'MISMATCH', details: details ?? undefined });
 
   forkMode = true;
   port.postMessage({ type: 'WORKER_FORK_READY', duelId, sanityResult: { match, details } });
@@ -1801,27 +1823,27 @@ port.on('message', (msg: MainToWorkerMessage) => {
       emitReplayData();
       cleanup();
     } catch (err) {
-      console.error('[WORKER] emitReplayData failed:', err instanceof Error ? err.message : err);
+      dlog.error('emitReplayData failed', { error: err instanceof Error ? err.message : String(err) });
       port.postMessage({ type: 'WORKER_ERROR', duelId, error: `emitReplayData failed: ${err instanceof Error ? err.message : err}` });
     }
   } else if (msg.type === 'PLAYER_RESPONSE') {
     if (!core || !duel) {
-      console.error('Received PLAYER_RESPONSE but no active duel');
+      dlog.error('Received PLAYER_RESPONSE but no active duel');
       return;
     }
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
-    console.log('[WORKER] transformResponse promptType=%s response=%o', msg.promptType, response);
+    dlog.debug('transformResponse', { promptType: msg.promptType });
     if (response) {
       if (forkMode) {
         core!.duelSetResponse(duel, response as never);
       } else {
         capturedSetResponse(duel, response);
       }
-      console.log('[WORKER] duelSetResponse done, calling runDuelLoop...');
+      dlog.debug('duelSetResponse done, calling runDuelLoop');
       runDuelLoop();
-      console.log('[WORKER] runDuelLoop returned');
+      dlog.debug('runDuelLoop returned');
     } else {
-      console.error('[WORKER] transformResponse returned null for promptType=%s', msg.promptType);
+      dlog.error('transformResponse returned null', { promptType: msg.promptType });
     }
   }
 });

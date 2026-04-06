@@ -77,7 +77,8 @@ export class ReplayConnectionService implements OnDestroy {
       this.connectionStatus.set('disconnected');
     };
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (e) => {
+      console.warn('[ReplayConnection] WebSocket error:', e);
       // onclose will fire after onerror
     };
   }

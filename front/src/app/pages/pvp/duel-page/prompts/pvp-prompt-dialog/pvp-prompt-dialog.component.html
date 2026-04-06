@@ -1,7 +1,6 @@
 <div class="prompt-dialog"
      [class.prompt-dialog--visible]="isDialogVisible()"
      [class.prompt-dialog--collapsed]="dialogState() === 'collapsed'"
-     [class.prompt-dialog--transitioning]="dialogState() === 'transitioning'"
      [cdkTrapFocus]="trapFocusActive()"
      [cdkTrapFocusAutoCapture]="true"
      role="dialog"
@@ -19,8 +18,7 @@
   }
 
   @if (hintText() && dialogState() !== 'collapsed') {
-    <div class="hint-header"
-         [class.hint-header--flash]="dialogState() === 'transitioning'">
+    <div class="hint-header">
       <span [innerHTML]="hintText()"></span>
     </div>
   }
@@ -41,7 +39,6 @@
     </div>
   } @else {
     <div class="portal-container"
-         [class.portal-container--disabled]="isBeat1()"
          [class.portal-container--hidden]="dialogState() === 'collapsed'">
       <ng-template cdkPortalOutlet></ng-template>
     </div>

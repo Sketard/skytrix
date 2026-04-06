@@ -2,7 +2,7 @@
 stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories', 'step-04-final-validation']
 status: complete
 completedAt: '2026-03-21'
-inputDocuments: ['prd-replay.md', 'architecture-replay.md', 'ux-design-specification-replay.md']
+inputDocuments: ['prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-replay.md']
 ---
 
 # skytrix PvP Replay Mode - Epic Breakdown
@@ -47,59 +47,7 @@ NFR7: Replay mode functions on the same browser matrix as PvP — modern desktop
 
 ### Additional Requirements
 
-**From Architecture:**
-- ADR-1: Storage format is `{seed, decks, playerResponses[]}` (engine inputs, ~32KB/duel). Not raw WS messages — compact, deterministic
-- ADR-2: Protocol boundary — extend `ws-protocol.ts` with REPLAY_* section server-side, separate `replay-ws.types.ts` client-side
-- ADR-5: PostgreSQL via Spring Boot (`replay` table, JSONB for replay data). Flyway migration required
-- ADR-6: Fork is reversible via route navigation — fork navigates to `/pvp/duel/fork-{replayId}`, return navigates back to `/pvp/replay/:replayId?seekTo={forkIndex}`. Fork creates new worker (previous freed after pre-computation)
-- ADR-7: Pre-compute ALL board states at replay load time. Worker replays all responses through OCGCore WASM, captures `{boardState, events[], label}` per response, sends progressively per turn. All navigation 100% client-side after pre-computation. Worker freed after pre-compute
-- Response capture via `capturedSetResponse()` wrapper in PvP mode — never call `setResponse` directly during capture
-- Message filter refactoring: `translate()` → `sanitize()` two-phase pattern with `omniscient: true` flag to skip sanitization
-- Worker operates in 3 modes: `pvp`, `replay`, `solo`. Mode set at creation
-- Capture flow: worker accumulates responses → duel end → `postMessage(replayData)` → main thread `POST /api/replays` → THEN worker cleanup
-- Persist failure = log + lost replay (accepted limitation, same as crash)
-- Replay metadata includes `scriptsHash` + `ocgcoreVersion` for divergence detection. At pre-computation time, Duel Server compares these against current values — `REPLAY_METADATA` includes `divergenceWarning: true` if mismatch, client shows non-blocking snackbar
-- Divergence handling: `MSG_RETRY` during replay = divergence → `REPLAY_ERROR` to client
-- Fork sanity check: compare LP, card count, turn number, current phase, and chain state (active chain link count) between pre-computed state and reconstructed WASM state
-- 4 client→server WS types: `REPLAY_LOAD`, `REPLAY_FORK`, `REPLAY_FORK_CONTINUE`, `REPLAY_FORK_CANCEL`. 4 server→client: `REPLAY_BOARD_STATES`, `REPLAY_METADATA`, `REPLAY_ERROR`, `REPLAY_FORK_READY`
-- Internal HTTP API: `POST /api/replays` (persist), `GET /api/internal/replays/:id` (fetch for playback)
-- Public REST API: `GET /api/replays` (paginated match history, metadata only), `DELETE /api/replays/{id}` (individual deletion)
-- `PvpBoardContainerComponent` refactoring required: receive board state via input signals + `readOnly` flag
-- `ReplayConnection` service scoped to `ReplayPageComponent` (not `providedIn: 'root'`)
-- `ReplayService` (REST) is `providedIn: 'root'`
-- Single `ReplayDTO` with nullable `replayData` — two mapper methods (`toDto()` without data, `toDetailDto()` with data)
-- `DuelResult` enum: 9 values — VICTORY, DEFEAT, DRAW, TIMEOUT, DISCONNECT, SURRENDER, OPPONENT_TIMEOUT, OPPONENT_DISCONNECT, OPPONENT_SURRENDER. Stored relative to player1. OPPONENT_* variants preserve "why" context in match history. `flip()` maps between perspectives: VICTORY↔DEFEAT, TIMEOUT↔OPPONENT_TIMEOUT, DISCONNECT↔OPPONENT_DISCONNECT, SURRENDER↔OPPONENT_SURRENDER, DRAW→DRAW
-- Duel Server caches replay data in memory (`Map<replayId, replayData>`) for the duration of the replay session — populated at `REPLAY_LOAD`, reused at `REPLAY_FORK` (no re-fetch). Evicted on WS close or 10-min TTL
-- Maximum 3 concurrent replay pre-computation workers (configurable). Additional requests queued
-- Duels ended by DISCONNECT or TIMEOUT produce valid but shorter replays (responses up to the disconnect/timeout point)
-- TTL retention via extended `RoomCleanupScheduler` with `@Scheduled` method
-
-**From UX Design Specification:**
-- Search-first UX principle: seek and step are primary, play/pause is secondary
-- Fork is exploratory, not permanent — multiple fork-return cycles expected (2-4 per debug session)
-- Omniscient view is the default, no toggles. Cards face-down during live PvP should get `.revealed-in-replay` CSS class (dashed border) — **not yet implemented**: the `replayMode` signal exists in `PvpHandRowComponent` but no CSS class binding is applied in the template
-- Keyboard shortcuts: Space (play/pause), Left/Right arrows (step), Home/End (skip), F (fork), A (toggle animations), M (toggle prompt mode), V (toggle perspective), D (debug panel toggle), G (event label granularity toggle)
-- Event label granularity toggle: normal mode (grouped logical actions) vs debug mode (individual WS events)
-- Timeline bar is primary navigation (separate `TimelineBarComponent`), transport bar is secondary (separate `TransportBarComponent`)
-- Timeline supports zoomable scroll (desktop), scrub with live board update, progressive pre-computation visual feedback, board preview popover on hover (miniature board at hovered position, ~200px wide, desktop only)
-- Turn markers with LP delta on timeline for targeted navigation
-- Clickable debug log panel: existing `DebugLogPanelComponent` with click-to-seek and `.active` highlight on current event
-- `DebugLogService` adapted to accept pre-computed event array instead of live `logServerMessage()` calls
-- Fork button inline `mat-spinner` (18px) during loading, no modal
-- Mode indicator in solo: "Solo — Forked from Turn 12, Event 47"
-- Return button replaces transport bar content (same layout position)
-- Match history: `mat-table` + `mat-paginator`, row click navigates to replay
-- Routes: `/pvp/history` (match history), `/pvp/replay/:replayId` (replay viewer)
-- Dark immersive viewer theme: `--surface-nav: #161616`, `--surface-elevated: #1E293B`, board on `--surface-base: #121212`
-- i18n keys under `replay.matchHistory.*`, `replay.paginator.*`, `replay.viewer.*`, `replay.transport.*`, `replay.timeline.*`, `replay.debug.*`
-- Accessibility: WCAG AA, `role="slider"` on timeline, `aria-label` on all buttons, `prefers-reduced-motion` respected
-- Play mode advances ~500ms/event (animated). Scrub/seek = instant, no animation
-- Opponent hand cards in omniscient view: show full card art (not face-down backs), with `.revealed-in-replay` provenance marker
-- Turn 0 ("Setup"): initial game state (draw phase, opening hands, LP set) — first segment on timeline, labeled "Setup"
-- ADR-6 amended: return from fork restores cached `boardStates[]` — no re-pre-computation, no WS reconnection. Instant return
-- `REPLAY_LOAD` and `REPLAY_FORK` verify the authenticated user is player1 or player2 of the requested replay
-- Responsive: desktop-first, mobile landscape-locked, match history hides date column on mobile
-- Error handling: snackbar for all errors, graceful degradation to match history or replay mode
+See architecture-pvp.md Replay Mode Extension for all architectural decisions (ADR-1 through ADR-7) and ux-design-specification-replay.md for all UX decisions. Key constraints incorporated in story ACs below.
 
 ### FR Coverage Map
 
@@ -192,7 +140,7 @@ So that completed duels can be replayed later.
 **When** the duel end is detected
 **Then** the worker sends the complete replay data (`{seed, decks, playerResponses[]}`) and metadata (`{playerUsernames, deckNames, turnCount, result, date, scriptsHash, ocgcoreVersion}`) to the main thread via `postMessage`
 **And** `decks` contains the decklists (main, extra — card IDs as `List<Long>`), not references to mutable deck entities. Side deck is excluded (not needed for deterministic replay)
-**And** `result` is derived from OCGCore duel end messages (`MSG_WIN`, `MSG_DRAW`) and WS-level events (disconnect, timeout, surrender), mapped to a `DuelResult` value (9 values: VICTORY, DEFEAT, DRAW, TIMEOUT, DISCONNECT, SURRENDER, OPPONENT_TIMEOUT, OPPONENT_DISCONNECT, OPPONENT_SURRENDER), stored relative to player1. `flip()` maps between perspectives at query time: VICTORY↔DEFEAT, TIMEOUT↔OPPONENT_TIMEOUT, DISCONNECT↔OPPONENT_DISCONNECT, SURRENDER↔OPPONENT_SURRENDER, DRAW→DRAW
+**And** `result` is derived from OCGCore duel end messages and WS-level events, mapped to a `DuelResult` value (see architecture-pvp.md for the 9-value enum and `flip()` mapping), stored relative to player1
 **And** the main thread sends `POST /api/replays` to Spring Boot
 **And** worker cleanup occurs only AFTER the POST completes (success or failure)
 
@@ -208,7 +156,9 @@ So that completed duels can be replayed later.
 
 **Implementation scope:** `duel-worker.ts` (pvp mode: `capturedSetResponse` wrapper — `Array<{data: Object}>` with no redundant index field, response accumulation, duel-end replay data emission), `server.ts` (POST to Spring Boot on worker message), `types.ts` (CapturedResponse, WorkerMode), `ocg-scripts.ts` (getScriptsHash).
 
-### Story 1.3: TTL-Based Replay Retention
+### Story 1.3: TTL-Based Replay Retention *(implemented)*
+
+> **Scope note:** This story is inherited from PvP infrastructure — `RoomCleanupScheduler` (Epic 5: Tech Debt & Infrastructure) already includes scheduled purge of expired replay data. No replay-specific implementation was required.
 
 As a developer,
 I want the system to automatically purge replay data older than a configurable retention period,
@@ -330,7 +280,13 @@ So that the same board component can be used for both live PvP and replay displa
 **Given** `PvpBoardContainerComponent` receives a board state via input signals
 **When** the component renders
 **Then** the board displays the provided state correctly (all 18 zones, both hands, LP, phase, turn)
-**And** the component is agnostic of the data source (DuelConnection or ReplayConnection)
+**And** the component is agnostic of the data source (`AnimationDataSource` interface — implemented by `DuelWebSocketService` for PvP and `ReplayDuelAdapter` for Replay)
+
+**Given** a new animation or signal is added to `AnimationOrchestratorService` that reads/writes game state
+**When** the change is implemented
+**Then** the signal or method is added to `AnimationDataSource` and implemented in both `DuelWebSocketService` and `ReplayDuelAdapter`
+**And** the orchestrator does NOT import or reference `DuelWebSocketService` or `DuelConnection` directly
+**And** board state sync follows the three-tier strategy in `syncAfterBoardState` (full sync / pileCounts-only / defer) — ensuring animated zones are not exposed prematurely when pre-locks are not yet in place
 
 **Given** `PvpBoardContainerComponent` receives `readOnly = true`
 **When** the player interacts with cards on the board
@@ -355,7 +311,7 @@ So that the same board component can be used for both live PvP and replay displa
 7. Card movement animations play (summon, destroy, equip, etc.)
 8. Drag-drop interactions function (if applicable in the page context)
 
-**Implementation scope:** `PvpBoardContainerComponent` — add `readOnly` input signal, refactor to accept board state via input signals instead of direct `DuelConnection` injection. Ensure existing PvP consumers still work.
+**Implementation scope:** `PvpBoardContainerComponent` — add `readOnly` input signal, receive board state via `RenderedBoardStateService.renderedState()` signal (injected, not input-bound). The component is decoupled from `DuelConnection` — it reads rendered state from RBS, which is populated by whichever `AnimationDataSource` implementation is active. Ensure existing PvP consumers still work.
 
 ### Story 3.2: Message Filter Refactoring
 
@@ -408,7 +364,7 @@ So that the client can navigate the replay entirely client-side.
 **And** captures `{boardState, events[], label}` per response via `duelQueryField()` + `duelQuery()`
 **And** `label` is a human-readable description of the logical action ("Normal Summon: Tearlaments Scheiren") — debug-level labels (individual WS event names) are derived client-side from the `events[]` array
 **And** sends results progressively via `REPLAY_BOARD_STATES` messages — **one WS message per turn** (format: `{turnNumber, states: Array<{boardState, events[], label}>}`). If a single turn exceeds 512KB serialized (combo-heavy turn with 100+ events), the worker splits it into sub-batches of 50 states each
-**And** **Turn 0 ("Setup")** is the first batch sent: all events before the first player action of Turn 1 (draw phase, opening hands dealt, LP set). The client displays the board from Turn 0's last state immediately
+**And** **Turn 0 ("Setup")** is the first batch sent: all events before the first `MSG_NEW_TURN` message (RPS, deck shuffles, opening hand draws, LP set). The boundary is `MSG_NEW_TURN` — when received, accumulated events are flushed as Turn 0, then `currentTurn` increments. The client displays the board from Turn 0's last state immediately
 **And** sends `REPLAY_METADATA` (player usernames, deck names, turn count, result, scriptsHash, ocgcoreVersion, `divergenceWarning: true` if scriptsHash or ocgcoreVersion differ from current server values) at handshake
 
 **Given** pre-computation completes successfully
@@ -456,7 +412,7 @@ So that I can see everything that happened during the duel including hidden info
 **When** the board renders
 **Then** both players' hands are fully visible
 **And** all face-down cards show their identity (card code visible despite face-down position)
-**And** cards whose position is currently face-down in the board state (POS_FACEDOWN_ATTACK, POS_FACEDOWN_DEFENSE) display a `.revealed-in-replay` provenance marker (dashed border) — indicating this information was hidden from the opponent during live PvP
+**And** face-down field cards (POS_FACEDOWN_ATTACK, POS_FACEDOWN_DEFENSE) are revealed via the X-ray vision toggle
 **And** PvP turn timers and inactivity timeouts are not active (FR15)
 
 **Given** the player clicks on a card during replay
@@ -486,13 +442,24 @@ So that I can see everything that happened during the duel including hidden info
 **Given** the replay is in omniscient mode
 **When** the opponent's hand is rendered
 **Then** opponent hand cards show their full card art/identity (real card IDs, not face-down backs)
-**And** opponent hand cards receive the `.revealed-in-replay` provenance marker (dashed border)
+**And** opponent hand cards show full card art via `replayMode` input (implemented)
 
 **Given** the replay finishes loading (first turn batch — Turn 0 "Setup" — received)
 **When** the initial state is displayed
 **Then** `currentIndex` is set to 0 (the state after the initial setup — both hands dealt, LP set, Turn 0 before any player action)
 
-**Implementation scope:** `ReplayPageComponent` (controller: boardStates[], currentIndex signal, computedUpTo signal, mode signal, derives views for children), `ReplayConnectionService` (scoped, WS for load, receives REPLAY_BOARD_STATES/METADATA/ERROR), `replay-ws.types.ts`, `app.routes.ts` (add `/pvp/replay/:replayId` lazy-loaded route), i18n keys (`replay.viewer.*`, `replay.error.*`).
+**Given** `ReplayDuelAdapter` processes animation events
+**When** chain/queue events are encountered
+**Then** `ReplayDuelAdapter` delegates to its own `DuelEventProcessor` instance — identical chain state machine as PvP's `DuelConnection`, guaranteeing identical chain/queue behavior with zero manual parity
+**And** chain state is preserved between transitions via `resetProcessorForTransition()` (resets queue only, not chain links) — PvP has no equivalent because events arrive continuously
+
+**Given** `ReplayDuelAdapter` advances through steps
+**When** `advanceStep` completes (all events animated)
+**Then** `syncRendered()` is called (respects locks) — NOT `commitAll()`
+**And** `assertNoLocks()` is called at transition boundaries to surface lock leaks in dev mode
+**And** `commitAll()` is reserved for exceptional paths only: `abort()`, `jumpToState()` (replay equivalent of PvP's `onStateSync()`)
+
+**Implementation scope:** `ReplayPageComponent` (controller: boardStates[], currentIndex signal, computedUpTo signal, mode signal, derives views for children), `ReplayDuelAdapter` (`AnimationDataSource` impl: feedTransition, buildSteps, advanceStep, board state sync via `RenderedBoardStateService`, delegates chain/queue to `DuelEventProcessor`), `ReplayConnectionService` (scoped, WS for load, receives REPLAY_BOARD_STATES/METADATA/ERROR), `replay-ws.types.ts`, `app.routes.ts` (add `/pvp/replay/:replayId` lazy-loaded route), i18n keys (`replay.viewer.*`, `replay.error.*`).
 
 ### Story 3.5: Timeline Bar & Transport Bar
 
@@ -617,7 +584,7 @@ So that the player can fork into a Quick Duel Solo session from that exact board
 
 **Given** the worker has reconstructed the OCGCore state at the fork point
 **When** reconstruction completes
-**Then** a fork sanity check compares LP, card count, turn number, current phase, and chain state (active chain link count) between the pre-computed state at `eventIndex` and the reconstructed WASM state via `duelQueryField()`
+**Then** a fork sanity check compares LP (both players), turn number, and phase between the pre-computed state at `eventIndex` and the reconstructed WASM state via `duelQueryField()` (`ForkSanityFields` interface)
 **And** if mismatch is detected, `REPLAY_ERROR` is sent with a warning (not blocking — client decides to continue or cancel)
 
 **Given** the sanity check passes (or the player continues despite warning)
@@ -631,7 +598,7 @@ So that the player can fork into a Quick Duel Solo session from that exact board
 **Then** the worker is terminated
 **And** `REPLAY_ERROR` is sent to the client
 
-**Implementation scope:** `duel-worker.ts` (fork reconstruction: replay responses to eventIndex, sanity check including chain state, mode switch replay→solo, direct setResponse in solo), `server.ts` (REPLAY_FORK/REPLAY_FORK_CONTINUE/REPLAY_FORK_CANCEL handlers with auth check, retrieve cached replay data from Map, send `REPLAY_FORK_READY` with fork tokens on success, concurrent worker limit).
+**Implementation scope:** `duel-worker.ts` (fork reconstruction: replay responses to eventIndex, sanity check (LP + turnNumber + phase via `ForkSanityFields`), mode switch replay→solo, direct setResponse in solo), `server.ts` (REPLAY_FORK/REPLAY_FORK_CONTINUE/REPLAY_FORK_CANCEL handlers with auth check, retrieve cached replay data from Map, send `REPLAY_FORK_READY` with fork tokens on success, concurrent worker limit).
 
 ### Story 4.2: Fork & Return — Client-Side Mode Transition
 
@@ -661,7 +628,7 @@ So that I can test alternative actions and try multiple branches without losing 
 **Given** the player wants to return to the replay from the forked solo session
 **When** return is initiated
 **Then** the app navigates back to `/pvp/replay/:replayId?seekTo={forkEventIndex}`
-**And** the replay page loads fresh, establishes a new WS connection, and re-pre-computes board states (progressive loading)
+**And** the replay page restores cached `boardStates[]` instantly (no re-pre-computation, no new WS connection — ADR-6 amended)
 **And** the `seekTo` query param auto-positions the timeline at the fork point
 
 **Implementation scope:** `ReplayForkService` (scoped to `ReplayPageComponent` — manages fork state signals: forking, forkEventIndex, cachedBoardStates; sends `REPLAY_FORK`/`REPLAY_FORK_CONTINUE`/`REPLAY_FORK_CANCEL` via `ReplayConnectionService`; navigates to fork duel on `REPLAY_FORK_READY`), `ReplayConnectionService` (forkStatus signal, sends fork WS messages), `DuelPageComponent` (detects fork mode via `fork=true` query param, `forkReplayId` property), `app.routes.ts` (generic `/pvp/duel/:roomCode` route, canDeactivate bypassed for fork duels).

@@ -51,6 +51,11 @@ export interface Deck {
   extra: number[];
 }
 
+/** Deduplicated non-zero card codes from both decklists — for client-side image prefetch. */
+export function extractCardCodes(decks: readonly [Deck, Deck]): number[] {
+  return [...new Set(decks.flatMap(d => [...d.main, ...d.extra]).filter(c => c > 0))];
+}
+
 export interface InitDuelMessage {
   type: 'INIT_DUEL';
   duelId: string;

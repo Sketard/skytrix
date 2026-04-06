@@ -10,7 +10,7 @@
       <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
                          [cards]="opponentHand()"
-                         [hiddenIndices]="orchestrator.hiddenHandIndices()[1]"
+                         [expansionSlots]="drawManager.handExpansionSlots()[1]"
                          [chainBadges]="opponentHandChainBadges()"
                          [revealedCardCodes]="opponentHandRevealedCodes()"
                          [replayMode]="true"
@@ -19,8 +19,9 @@
       <!-- Duel overlays (phase announcements, chain resolution) -->
       <app-pvp-duel-overlays
         [phaseAnnouncement]="phaseService.announcement()"
-        [chainResolutionAnnounce]="orchestrator.chainResolutionAnnounce()"
-        [opponentThinking]="false" />
+        [chainResolutionAnnounce]="chainManager.chainResolutionAnnounce()"
+        [opponentThinking]="false"
+        [duelToast]="toastService.toast()" />
 
       <!-- Board -->
       <app-pvp-board-container [readOnly]="true"
@@ -35,13 +36,12 @@
                                [actionablePrompt]="null"
                                [opponentDisconnected]="false"
                                [animatingZone]="orchestrator.animatingZone()"
-                               [animatingLp]="orchestrator.animatingLpPlayer()"
+                               [animatingLp]="lpTracker.animatingLpPlayer()"
                                [activeChainLinks]="adapter.activeChainLinks()"
                                [chainPhase]="adapter.chainPhase()"
-                               [maskedZoneKeys]="orchestrator.maskedZoneKeys()"
-                               [maskedPileImages]="orchestrator.maskedPileImages()"
-                               [maskedSourceImages]="orchestrator.maskedSourceImages()"
                                [targetedZoneKeys]="orchestrator.targetedZoneKeys()"
+                               [counterPulseKey]="orchestrator.counterPulseKey()"
+                               [swapGraveDeckKeys]="orchestrator.swapGraveDeckKeys()"
                                [preTargetZoneKeys]="emptyStringSet"
                                [revealedZoneKeys]="revealedZoneKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)"
@@ -63,7 +63,7 @@
       <app-pvp-hand-row class="hand-player" data-zone="HAND-0"
                          side="player"
                          [cards]="playerHand()"
-                         [hiddenIndices]="orchestrator.hiddenHandIndices()[0]"
+                         [expansionSlots]="drawManager.handExpansionSlots()[0]"
                          [chainBadges]="playerHandChainBadges()"
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 
@@ -71,17 +71,14 @@
       <app-pvp-chain-overlay [promptActive]="adapter.activePrompt() !== null" />
 
       <!-- Prompt Dialog for Replay Decision Mode -->
-      @if (promptMode() === 'decision' && adapter.activePrompt(); as prompt) {
-        <app-pvp-prompt-dialog [prompt]="prompt"
-                                [passiveMessage]="null"
-                                [skipBeat1]="true"
-                                [readOnly]="true"
-                                [preSelectedResponse]="adapter.activeResponse()"
-                                [ownPlayerIndex]="adapter.activePlayer()"
-                                [hintContext]="adapter.activeHint()"
-                                [confirmedCards]="adapter.activeConfirmedCards()"
-                                (longPressInspect)="onCardInspectRequest($event)" />
-      }
+      <app-pvp-prompt-dialog [prompt]="promptMode() === 'decision' ? adapter.activePrompt() : null"
+                              [passiveMessage]="null"
+                              [readOnly]="true"
+                              [preSelectedResponse]="adapter.activeResponse()"
+                              [ownPlayerIndex]="adapter.activePlayer()"
+                              [hintContext]="adapter.activeHint()"
+                              [confirmedCards]="adapter.activeConfirmedCards()"
+                              (longPressInspect)="onCardInspectRequest($event)" />
     </div>
 
     <!-- Timeline Bar -->

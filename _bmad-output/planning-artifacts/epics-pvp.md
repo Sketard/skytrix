@@ -13,103 +13,27 @@ This document provides the complete epic and story breakdown for skytrix PvP (On
 
 ### Functional Requirements
 
-FR1: The player can create a PvP duel room from any valid decklist; the room appears in a lobby visible to other authenticated players
-FR2: The system validates the deck before creating or joining a room (TCG format, TCG banlist compliance, deck size constraints: 40-60 main deck, 0-15 extra deck, 0-15 side deck)
-FR3: The player can browse available duel rooms and join one with a valid decklist
-FR4: The system starts the duel automatically when two players have joined the same room: both players play Rock-Paper-Scissors (30-second timeout, random selection on timeout) to determine who chooses to go first or second, then the duel begins with automatic hand distribution (5 cards each)
-FR5: The player can surrender during a PvP duel at any point
-FR6: The system handles player disconnection with a 60-second reconnection grace period
-FR7: The system declares a winner when: opponent's LP reaches 0, opponent surrenders, opponent's deck is empty and a draw is required, or opponent exceeds the reconnection timeout. The system declares a draw when both players' LP reach 0 simultaneously or other draw conditions are met per duel engine rules
-FR8: The system manages turn structure automatically (Draw Phase, Standby Phase, Main Phase 1, Battle Phase, Main Phase 2, End Phase)
-FR9: The player can perform Main Phase actions by clicking a card to open a contextual action menu listing available actions (normal summon, set, activate, special summon, change position). Phase-level actions (enter Battle Phase, end turn) are available via persistent UI controls
-FR10: The player can perform Battle Phase actions by clicking a monster to open a contextual attack menu (declare attack target). Phase-level actions (activate quick effect, enter Main Phase 2, end turn) are available via persistent UI controls
-FR11: The player can respond to effect activation prompts via modal dialogs: confirm activation (yes/no), select card(s) from a presented list, choose a zone on the field via highlighted selection, select a monster position (ATK/DEF/face-down), declare a card attribute or monster type, declare a number
-FR12: The system delegates chain resolution to the duel engine, which resolves chains automatically following official Yu-Gi-Oh! rules (SEGOC, LIFO resolution, timing)
-FR13: The system delegates all game rule enforcement to the duel engine: summoning conditions, effect timing windows, damage calculation, zone restrictions, Extra Monster Zone access (Master Rule 5)
-FR14: The system displays both players' fields: own field in full detail, opponent's face-up cards visible, opponent's face-down cards shown as card backs
-FR15: The system hides opponent's private information: hand contents (card count visible, not identity), deck order, face-down card identities, extra deck contents
-FR16: The system displays life points for both players, updated in real-time after damage or LP changes
-FR17: The system displays the current chain of effects being resolved, showing each chain link's card and effect
-FR18: The player can view card details for any face-up card on the field or in any public zone (graveyard, banished)
-FR19: The system provides a visual indicator when it is the player's turn to act and what type of response is expected
-FR20: The system enforces a turn timer with a cumulative time pool: 300 seconds initially, +40 seconds added to the remaining pool at the start of each subsequent turn. The timer counts down only during the active player's decision windows and pauses during chain resolution and opponent's actions
-FR21: The system enforces an inactivity timeout: if a player performs no action for 120 seconds when a response is required, the system automatically forfeits the match
-FR22: The system provides at least one visual feedback per game event in PvP (summon, destroy, activate, flip, LP change, chain link addition/resolution). Minimum: card movement animation + brief highlight. Visual style inspired by Yu-Gi-Oh! Master Duel
-FR23: PvP interaction is click-based (respond to engine prompts by selecting from presented options) — not drag & drop. This is a distinct interaction paradigm from solo mode
-FR24: The system displays a duel result screen at the end of a PvP duel showing: outcome (victory, defeat, or draw) and reason (opponent LP reduced to 0, opponent surrendered, opponent timed out, opponent disconnected, draw by simultaneous LP depletion)
-FR25: The system provides a client-side activation toggle (Auto/On/Off) that filters how the client handles optional effect activation prompts received from the engine. Auto (default): prompt only in reaction to game events. On: prompt at every legal priority window. Off: auto-respond "No"/"Pass" to all optional prompts
+See prd-pvp.md for full FR definitions (FR1-FR25).
 
 ### NonFunctional Requirements
 
-NFR1: PvP duel actions (player response -> board state update on both clients) complete within 500ms under normal network conditions
-NFR2: The WebSocket connection remains stable for the full duration of a duel (up to 60 minutes) with automatic heartbeat/keep-alive
-NFR3: The duel server supports at least 50 concurrent duels without degradation in response time
-NFR4: A disconnected player can reconnect to an active duel within 60 seconds without losing game state
-NFR5: If both players disconnect, the duel state is preserved server-side for up to 4 hours before automatic cleanup
-NFR6: The duel server is the sole authority for game state — the client receives only information the active player is authorized to see (no opponent hand contents, no face-down card identities, no deck order). Verified by: WebSocket message inspection confirms no private opponent data in payloads
-NFR7: All player responses are validated by the duel engine — invalid responses (illegal card selections, out-of-turn actions) are rejected without corrupting game state
-NFR8: PvP routes and WebSocket connections are protected by existing JWT authentication — unauthenticated users cannot access matchmaking or duels
-NFR9: PvP mode functions on modern desktop browsers (Chrome, Firefox, Edge, Safari — latest two versions) and modern mobile browsers (Chrome Android, Safari iOS — latest two versions). The duel board locks to landscape orientation on mobile devices
-NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license requirements — source code for the duel server is made available if the service is deployed publicly
+See prd-pvp.md for full NFR definitions (NFR1-NFR10).
 
-### Additional Requirements
-
-**From Architecture:**
+### Additional Requirements (Cross-Cutting Constraints)
 
 - Worker thread per duel for total isolation (OCGCore WASM blocks the thread during processing)
-- WebSocket protocol boundary: `ws-protocol.ts` (duel server) is the source of truth, `duel-ws.types.ts` (Angular) is a manual copy — same-commit update rule
+- WebSocket protocol boundary: `ws-protocol.ts` is source of truth, `duel-ws.types.ts` (Angular) is manual copy — same-commit update rule
 - Message filter whitelist per message type (default DROP policy) — anti-cheat, safety-critical
-- PlayerFieldComponent extraction from solo board.component.ts as Story 0 prerequisite (solo must function identically after)
-- Independent WebSocket DTOs (no shared package between server and client)
-- Docker-based deployment: duel-server container + docker-compose orchestration with Spring Boot + PostgreSQL
-- Room state machine: WAITING → CREATING_DUEL → ACTIVE → ENDED | CLOSED in Spring Boot (2min timeout on CREATING_DUEL → CLOSED via RoomCleanupScheduler; 3 scheduled tasks: orphaned WAITING >30min, orphaned ACTIVE not on duel server, stuck CREATING_DUEL >2min)
-- Internal HTTP API: Spring Boot → Duel Server (POST /api/duels, GET /api/duels/active, DELETE /api/duels/:duelId, GET /health, GET /status, PUT /api/update-data, POST /api/validate-passcodes) — Docker network auth
-- Duel server: 8 production source files + 3 PoC references + 2 test files (server.ts, duel-worker.ts, message-filter.ts, ws-protocol.ts, types.ts, ocg-callbacks.ts, ocg-scripts.ts, data-updater.ts; PoC: poc-duel.ts, poc-replay.ts, solver-poc.ts; test: test-core.ts, test-snapshot.ts)
-- OCGCore error resilience: try/catch around duelProcess() + 30s watchdog timer. On error → declare draw, notify both players, cleanup
-- Startup health check validates cards.cdb readable + scripts directory non-empty before accepting connections
-- WebSocket payload limit: maxPayload 4096 bytes (prevents JSON payload DoS)
-- One-shot JWT auth at WebSocket handshake (no per-message re-validation)
-- Long-lived JWT (≥ 2h) to cover full duel duration + reconnection window
-- Reconnection via snapshot: duelQueryField() + duelQuery() per card (not message log replay)
-- Implementation dependency graph: Phase 0 (ws-protocol.ts gate) → Phase 1A/1B (parallel server/client) → Phase 2A/2B → Phase 3 (end-to-end)
-- PvP-A0 scope staging: all 20 SELECT_* prompt types implemented via 10 prompt sub-components (9 in dialog registry + PromptZoneHighlight handled separately + PromptActionListReadonly for IDLECMD/BATTLECMD fallback) + IDLECMD/BATTLECMD handled by distributed UI
-- Spring Boot additions: RoomController, RoomService, DuelServerClient, Room entity, Flyway migration
-- Angular PvP routes: /pvp (LobbyPage, lazy-loaded, auth guard), /pvp/duel/:roomCode (DuelPage, lazy-loaded, auth guard)
-- Environment config: wsUrl for duel server WebSocket (dev: ws://localhost:3001, prod: wss://domain/ws)
-- Dev setup guide and deployment runbook required before deployment (upgraded from nice-to-have)
-- AGPL-3.0 LICENSE file in duel-server/ root
+- Room state machine: WAITING → CREATING_DUEL → ACTIVE → ENDED | CLOSED (3 cleanup schedulers in Spring Boot)
+- OCGCore error resilience: try/catch + 30s watchdog. On error → declare draw, notify, cleanup
+- One-shot JWT auth at WebSocket handshake; long-lived JWT (>= 2h) covers duel + reconnection window
+- Mobile-first interaction: prompts in bottom 40% viewport (thumb zone), 44px+ touch targets, landscape lock
+- Two-beat prompt rendering: MSG_HINT context first, interactive elements ~50ms after
+- Inspector + prompt coexistence on mobile (compact mode when prompt active)
+- Accessibility: LiveAnnouncer, FocusTrap on prompts, prefers-reduced-motion, WCAG AA contrast
+- Single tab enforcement (BroadcastChannel API), app background recovery (visibilitychange → WS verify + state sync)
 
-**From UX Design:**
-
-- CSS 3D perspective board layout for PvP (PvP-A scope, not polish) — ~10 lines CSS, opponent's field foreshortened, player's field full-size and thumb-friendly
-- Mobile-first interaction: all prompts in bottom 40% of viewport (thumb zone), 44px+ touch targets
-- Bottom-sheet pattern for all prompts (sliding up from bottom, board visible above)
-- Two-beat rendering for prompts: Beat 1 = MSG_HINT context, Beat 2 = interactive elements (~50ms gap)
-- Inspector + prompt coexistence: inspector transitions to compact mode (not closed) when prompt active, repositions above sheet
-- Card inspector compact variant (<768px): art 60×87px + name + type + ATK/DEF. Expands on tap
-- Hand row outside CSS perspective container, always visible, overlap at 6+ cards (Master Duel pattern)
-- Prompt sheet states: closed, opening, open, transitioning (swap without close/reopen), collapsed, closing
-- PvpBoardContainerComponent: responsive sizing (height: 90%; aspect-ratio: 274/215; max-width: 100%) — scales proportionally, centered with black beyond
-- PvpTimerBadgeComponent merges connection state display (normal → "Connecting..." → "Reconnecting..." → "Opponent connecting...")
-- PvpPhaseBadgeComponent: circular badge, tap to expand phase action menu (Battle Phase, Main Phase 2, End Turn)
-- PvpActivationToggleComponent: 3-state cycle (Auto/On/Off), visible own turn only, inside mini-toolbar with surrender button
-- Duel result UI (inline in DuelPageComponent, not a separate PvpDuelResultOverlayComponent): VICTORY/DEFEAT/DRAW + reason + Rematch/Leave Room/Back to Deck
-- Rematch flow: same decks, new RPS, no side decking in MVP. Rematch only while both on result screen. 5-min room timeout
-- Distributed UI for IDLECMD/BATTLECMD: cards glow on field, zone browsers highlight actionable cards. 1 action = direct send, 2+ actions = Card Action Menu (absolute div)
-- Zone browser with browse mode (read-only) and action mode (during IDLECMD — actionable cards highlighted)
-- Chain link visualization: CSS class .pvp-chain-badge (numbered badges, 24px), not a dedicated component
-- 10 prompt sub-components: PromptYesNoComponent, PromptCardGridComponent, PromptZoneHighlightComponent, PromptOptionListComponent, PromptNumericInputComponent, PromptChoiceComponent (handles RPS via RPS_CONFIG), PromptPositionSelectComponent, PromptSortCardComponent, PromptAnnounceCardComponent, PromptActionListReadonlyComponent (IDLECMD/BATTLECMD readonly fallback)
-- 3 visual prompt patterns: Pattern A (Floating Instruction — spatial), Pattern B (Bottom Sheet — selection), Pattern C (Yes/No — compact sheet)
-- Landscape orientation lock on duel route (blocking overlay in portrait — no "Continue anyway")
-- Fullscreen API + screen.orientation.lock('landscape-primary') at duel init (graceful degradation)
-- Single tab enforcement: BroadcastChannel API + localStorage fallback
-- App background recovery: visibilitychange → verify WS, request state sync, show auto-resolved actions snackbar
-- Duel loading screen: player names + LP 8000 vs 8000 + spinner, holds until first board state + critical thumbnails pre-cached
-- PvP design tokens: 25+ --pvp-* CSS custom properties in _design-tokens.scss (perspective, prompts, badges, highlights, timers, transitions, touch targets)
-- Accessibility: LiveAnnouncer for game events/prompts/timer, FocusTrap on prompts, prefers-reduced-motion support (all transitions 0ms), WCAG AA contrast on all PvP tokens
-- Deep link pattern: /pvp/duel/:roomCode shareable, redirect to auth if needed, Web Share API on mobile
-- Browser back during duel intercepted → surrender confirmation dialog
-- Keyboard shortcuts (desktop): 1-9 for options, Y/N, Esc to cancel, Space to confirm, C for collapse handle
+See architecture-pvp.md and ux-design-specification-pvp.md for full details.
 
 ### FR Coverage Map
 
@@ -172,6 +96,8 @@ The PvP experience handles real-world conditions — surrender, disconnection/re
 
 ### ~~Epic 4~~ *(skipped — numbering gap from scope revision during planning)*
 
+> Epic 4 was originally reserved for "Visual Polish & Animations" but was split into Epic 6 (Chain Overlay) and Epic 7 (Board Animations), with remaining items absorbed into Epic 5 (Tech Debt). The number was kept vacant to preserve stable references in commits/PRs.
+
 ### Epic 5: Tech Debt Cleanup ✅ COMPLETED
 Technical debt accumulated across Epics 1–4 is resolved: card inspector PvP placeholder, reconnection edge cases (3-3b), room management fixes (RoomDTO deck ID, orphaned room cleanup), infrastructure improvements (Docker integration test, thumbnail pre-fetch).
 **FRs covered:** Debt resolution — no new FRs
@@ -188,25 +114,13 @@ Board animations replace in-place glow effects with spatial card travel between 
 
 Two players can connect and play a complete automated duel online — all Yu-Gi-Oh! game rules enforced by OCGCore.
 
-### Story 1.1: PlayerFieldComponent Extraction
+### Story 1.1: PlayerFieldComponent Extraction — ⛔ SKIPPED (ADR-3 amendment)
 
-As a developer,
+> **Skipped:** Solo grid (7-col, drag-drop, 1060×608px) is fundamentally incompatible with PvP grid (6-col, click-based, CSS perspective). Shared reuse happens only at `CardComponent` / `CardInspectorComponent` level. PvP uses its own `PvpBoardContainerComponent`; Solo keeps `SimBoardComponent`.
+
+~~As a developer,
 I want the solo simulator's board zone layout extracted into a reusable `PlayerFieldComponent`,
-So that PvP can compose two player fields without duplicating zone layout code.
-
-**Acceptance Criteria:**
-
-**Given** the solo simulator board.component.ts contains the 18-zone layout
-**When** PlayerFieldComponent is extracted into `components/player-field/`
-**Then** it renders all 18 zones (5 Monster, 5 Spell/Trap, Field, Extra Deck, Main Deck, GY, Banished, and Pendulum L/R overlapping ST1/ST5) via a CSS grid
-**And** it accepts `@Input() showEmz: boolean` (`true` for solo — EMZ in field grid, `false` for PvP — EMZ rendered externally in central strip)
-**And** it supports `<ng-content>` projection (used by PvP for LP badge injection into grid area)
-**And** it uses `ChangeDetectionStrategy.OnPush`
-
-**Given** PlayerFieldComponent is extracted
-**When** the solo simulator page loads
-**Then** the solo simulator functions identically to before extraction (same layout, same drag & drop, same zone interactions)
-**And** solo board.component.ts uses `PlayerFieldComponent` directly (1 instance, `showEmz=true`)
+So that PvP can compose two player fields without duplicating zone layout code.~~
 
 ### Story 1.2: Duel Server Scaffold & Protocol Definition
 
@@ -275,7 +189,7 @@ So that duels are fair and no manual rule adjudication is needed.
 **And** `MSG_CONFIRM_CARDS` is routed only to the intended player
 **And** `SELECT_*` messages are sent only to the deciding player
 **And** any unrecognized message type returns `null` (DROP + console.error log)
-**And** this is the complete MVP filter set — all other recognized OCGCore message types pass through unfiltered to both players
+**And** all other explicitly whitelisted OCGCore message types (broadcast events: MSG_DAMAGE, MSG_CHAINING, MSG_WIN, etc.) pass through unfiltered to both players — any type NOT in the whitelist is DROP + console.error (fail-safe: prefer missing display over info leak)
 
 **Given** `server.ts` receives client→server WebSocket messages
 **When** a message arrives from a player
@@ -936,9 +850,9 @@ so that chain visualization can evolve into a full Master Duel-style cascade ani
 **Then** all chain badge rendering is removed from PvpBoardContainerComponent (template, SCSS, computed signals, input)
 **And** existing chain badge tokens are updated (`--pvp-chain-badge-size` 24→28px), `--pvp-chain-resolve-pulse` removed (both main and reduced-motion), and 9 new chain overlay tokens are added
 **And** `PvpChainOverlayComponent` exists as a standalone component shell (fixed overlay, `pointer-events: none`, signal inputs for `activeChainLinks`, `phase`, `promptActive`, `boardChanged`)
-**And** a `chainPhase` signal (`'idle' | 'building' | 'resolving'`) is added to DuelConnection tracking chain lifecycle
+**And** a `chainPhase` signal (`'idle' | 'building' | 'resolving'`) is managed by `DuelEventProcessor` (shared between PvP and Replay), with `building` set immediately on `MSG_CHAINING` and `resolving`/`idle` deferred to orchestrator calls
 **And** animation orchestrator chain event durations are updated for overlay timing
-**And** the orchestrator is migrated to support async events: `processEvent()` returns `number | 'async'`, with `chainOverlayReady` / `chainOverlayBoardChanged` signals and `_boardEventsSinceSolving` counter scaffolded for Story 6.3 board-change detection
+**And** the orchestrator is migrated to support async events: `processEvent()` returns `number | 'async'`, with chain signals (`chainOverlayReady`, `chainOverlayBoardChanged`, `chainResolutionAnnounce`, `chainEntryAnimating`, `chainPromptGateActive`) owned by `ChainResolutionManager` and board-change detection via event buffering
 
 ### Story 6.2: Chain Overlay Card Cascade & Construction Animation (FIFO)
 
@@ -1127,13 +1041,13 @@ So that I can see each chain link's impact on the board as spatial card movement
 
 **Acceptance Criteria:**
 
-**Given** the orchestrator is inside chain resolution (`_insideChainResolution = true`) and receives a board-changing event (MSG_MOVE, MSG_DRAW — extensible as new travel events are added in future stories)
+**Given** `ChainResolutionManager.isResolving` is true and the orchestrator receives a board-changing event (MSG_MOVE, MSG_DRAW, MSG_FLIP_SUMMONING, MSG_CHANGE_POS, MSG_DAMAGE, MSG_RECOVER, MSG_PAY_LPCOST, MSG_SHUFFLE_HAND, MSG_CONFIRM_CARDS, MSG_SHUFFLE_DECK)
 **When** the event arrives between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED
-**Then** the event is pushed to `_bufferedBoardEvents[]` instead of being processed immediately
+**Then** the event is buffered by `ChainResolutionManager.bufferIfResolving()` instead of being processed immediately
 
 **Given** a BOARD_STATE is received during buffering (between SOLVING and SOLVED)
 **When** the buffer contains pending events
-**Then** the BOARD_STATE is applied immediately to the data model (zones map), but the visual rendering of zones being animated is masked by the floating elements — the final position is correct underneath the floating element, and the replay animates only the visual transition
+**Then** the BOARD_STATE is applied to `RenderedBoardStateService.updateLogical()` — locked zones retain their rendered state while the logical state advances. No masking needed: the lock/commit model keeps the visual state stable until buffered events replay
 
 **Given** MSG_CHAIN_SOLVED fires and there are buffered events
 **When** the overlay exit animation completes and the overlay fades out
@@ -1163,8 +1077,8 @@ So that I can see each chain link's impact on the board as spatial card movement
 
 **Given** a STATE_SYNC or disconnection event is received while the buffer contains pending events (mid-chain disconnect)
 **When** the orchestrator processes STATE_SYNC
-**Then** `_bufferedBoardEvents[]` is flushed without replay — all buffered events are discarded
-**And** `_insideChainResolution` is reset to `false`, chain overlay disappears instantly (aligned with Story 6.3 disconnect AC)
+**Then** `ChainResolutionManager` buffer is flushed without replay — all buffered events are discarded
+**And** `ChainResolutionManager.isResolving` is reset to `false`, chain overlay disappears instantly (aligned with Story 6.3 disconnect AC)
 **And** the board reflects the STATE_SYNC snapshot directly (no animation)
 
 ### Story 7.4: MSG_DRAW Travel & MSG_SHUFFLE_HAND Animation
@@ -1258,3 +1172,187 @@ So that I can visually track XYZ material count and detachment events.
 **Given** the speed multiplier is active
 **When** the detach slide-out animation plays
 **Then** the 200ms base duration is multiplied by the speed factor
+
+---
+
+## Epic 8: Extended Animation Coverage ✅ COMPLETED
+
+**Goal:** Animate battle events, positional changes, and OCGCore gameplay messages that were previously silently dropped.
+
+**New components:** BattleAnimationTracker, toast service, `createLineBetween()` utility
+**Chain integration:** 7 OCGCore messages added to BOARD_CHANGING_EVENTS
+
+### Story 8.1: Travel Promise Timeout Fix
+
+**Depends on:** Story 7.1 (CardTravelService)
+
+As a developer,
+I want the travel promise timeout guard to actually force-resolve,
+So that a hung travel animation cannot block the queue indefinitely.
+
+**Acceptance Criteria:**
+
+**Given** a `CardTravelService.travel()` call is in progress
+**When** the 3-second safety timeout fires
+**Then** the promise resolves (not just logs a warning) via `Promise.race()` with a deadline
+**And** the queue continues processing the next event
+
+**Given** the Web Animations API rejects for reasons other than `cancel()`
+**When** `animation.finished.catch()` fires
+**Then** the catch path calls `resolve()` so the promise settles
+
+### Story 8.2: Battle Animation Tracker & Attack Line
+
+**Depends on:** Story 8.1 (timeout fix), Story 7.1 (CardTravelService)
+
+As a player,
+I want to see a visual attack line from attacker to target during battle, with a clash impact when damage resolves,
+So that battle events have clear spatial feedback.
+
+**Acceptance Criteria:**
+
+**Given** a MSG_ATTACK event is received
+**When** the orchestrator processes it
+**Then** `BattleAnimationTracker.processAttackEvent()` creates an attack line via `createLineBetween()` (red-to-gold gradient) from attacker zone to defender zone
+**And** the attacker card plays a lunge animation
+**And** the line and zone keys are stored in `pendingAttack` signal
+**And** for direct attacks (defenderPlayer===null), the line targets the opponent avatar area
+
+**Given** a MSG_BATTLE event is received and `pendingAttack()` is non-null
+**When** `processBattleEvent()` runs
+**Then** the attack line fades, a clash impact plays at the midpoint (350ms)
+**And** `pendingAttack` is cleared
+
+**Given** the queue empties via `finalizeAndCommit()` and `pendingAttack()` is non-null
+**When** no MSG_BATTLE arrived (attack negated or direct attack resolved)
+**Then** `releasePendingAttack()` fades out the line without clash impact
+
+**Given** queue collapse (>5 events) applies MSG_ATTACK instantly
+**When** MSG_BATTLE is later dequeued
+**Then** `processBattleEvent()` is a no-op (`pendingAttack()` is null) — no crash
+
+**Given** `createLineBetween(srcEl, dstEl, style)` is called
+**When** either element is null (zone not rendered, component destroyed)
+**Then** it returns `null` and the caller silently no-ops
+
+### Story 8.3: MSG_SWAP Cross-Travel
+
+**Depends on:** Story 7.1 (CardTravelService)
+
+As a player,
+I want card swap effects (e.g., Creature Swap) to show both cards traveling simultaneously,
+So that the swap is visually clear.
+
+**Acceptance Criteria:**
+
+**Given** a MSG_SWAP event is received
+**When** the orchestrator processes it
+**Then** MSG_SWAP is removed from `DuelEventProcessor.NO_OP_EVENTS`
+**And** both zones are locked synchronously before the first `await`
+**And** two parallel `travel()` calls execute (zone1→zone2, zone2→zone1, 400ms each)
+
+**Given** OCGCore emits MSG_SWAP (sequences unchanged) vs 2×MSG_MOVE (sequences changed)
+**When** both paths exist
+**Then** they never overlap — OCGCore emits one or the other, never both
+
+### Story 8.4: MSG_CHANGE_POS ATK↔DEF Rotation
+
+As a player,
+I want face-up position changes (ATK↔DEF) to show a rotation animation,
+So that position changes are visually distinct from flips.
+
+**Acceptance Criteria:**
+
+**Given** a MSG_CHANGE_POS event where `wasFaceUp && nowFaceUp`
+**When** the orchestrator processes it
+**Then** `setAnimatingZone(zoneId, 'rotate', msg.player)` fires
+**And** the CSS keyframe `pvp-position-rotate` plays (300ms)
+**And** `animatingZone.animationType` type literal includes `'rotate'`
+
+**Given** `prefers-reduced-motion: reduce` is active
+**When** MSG_CHANGE_POS rotation would play
+**Then** `pvp-position-rotate` is overridden to `animation: none`
+
+### Story 8.5: Coin & Dice Toast Overlay
+
+As a player,
+I want coin flip and dice roll results to appear as a visual toast on the board,
+So that random outcomes are clearly communicated.
+
+**Acceptance Criteria:**
+
+**Given** a TOSS_COIN (type 130) event is received with `player` and `results: boolean[]`
+**When** the orchestrator processes it
+**Then** a toast overlay appears centered on the board (fade-in/scale)
+**And** each flip result shows an icon + "Heads" or "Tails"
+**And** duration is `scaledDuration(1200)`, returns duration (not Promise)
+
+**Given** a TOSS_DICE (type 131) event is received with `player` and `results: number[]`
+**When** the orchestrator processes it
+**Then** same toast service displays die icon(s) + values (1–6)
+
+**Given** `reducedMotion()` is true
+**When** TOSS_COIN or TOSS_DICE is received
+**Then** returns 0 (no animation)
+
+### Story 8.6: Equip Animation & Hover Line
+
+**Depends on:** Story 8.2 (`createLineBetween()`)
+
+As a player,
+I want equip spell activations to show a brief line connecting spell to monster, and hovering equipped cards to show the same connection,
+So that equip relationships are visually clear.
+
+**Acceptance Criteria:**
+
+**Given** an EQUIP (type 93) event is received with `card` (equip spell) and `target` (monster)
+**When** the orchestrator processes it
+**Then** both zones are locked, a brief glow plays on the equip zone
+**And** an ephemeral cyan line via `createLineBetween()` appears (~400ms) then fades
+**And** duration is `scaledDuration(500)`, returns `Promise<void>`
+
+**Given** a user hovers an equipped card on the board
+**When** `mouseenter` fires and `equipMap().get(zoneKey)` returns a target
+**Then** a cyan line appears instantly via `createLineBetween()` (no animation)
+**And** on `mouseleave`, the line is removed
+
+**Given** animations are in progress and `equipTarget` is not yet committed
+**When** the user hovers a zone
+**Then** `equipMap().get(zoneKey)` returns `undefined` → no line drawn (self-protecting)
+
+### Story 8.7: Counter Pulse Animation
+
+As a player,
+I want counter additions and removals to show a pulse on the counter badge,
+So that counter changes are noticeable.
+
+**Acceptance Criteria:**
+
+**Given** an ADD_COUNTER (101) or REMOVE_COUNTER (102) event is received
+**When** the orchestrator processes it
+**Then** `setAnimatingZone()` applies transient CSS class `pvp-anim-counter-pulse` (scale-up pulse)
+**And** duration is `scaledDuration(400)`, returns duration
+**And** `commitUnlocked()` runs in same frame — badge value updates + pulse play simultaneously
+
+### Story 8.8: Shuffle Set Card & Swap Grave Deck
+
+**Depends on:** Story 8.3 (MSG_SWAP pattern)
+
+As a player,
+I want face-down card shuffles and graveyard/deck swaps to have visual feedback,
+So that these uncommon events are not invisible.
+
+**Acceptance Criteria:**
+
+**Given** a SHUFFLE_SET_CARD (type 36) event with `cards: { from, to }[]`
+**When** the orchestrator processes it
+**Then** all involved zones are locked
+**And** parallel cross-travels via `travel()` for each from→to pair execute with `showBack: true`
+**And** returns `Promise<void>` via `Promise.all()` (~400ms)
+
+**Given** a SWAP_GRAVE_DECK (type 35) event with `player`
+**When** the orchestrator processes it
+**Then** simultaneous pulse on GY and DECK zones of the affected player
+**And** bidirectional arrow icon overlay (~600ms)
+**And** duration is `scaledDuration(600)`, returns duration
+**And** BOARD_STATE sync updates pile counts afterward

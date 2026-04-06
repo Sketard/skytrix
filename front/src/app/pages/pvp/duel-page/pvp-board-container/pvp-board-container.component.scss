@@ -49,13 +49,9 @@
     'gy       mz5 mz4 mz3 mz2 mz1 field';
   grid-template-rows: 1fr 1fr;
 
-  // Rotate opponent's cards 180° so they face the opponent
-  .card-art {
+  // Piles (no .card-inner wrapper): rotate card art directly
+  .zone-pile .card-art {
     transform: rotate(180deg);
-  }
-
-  .zone-card.def-position {
-    transform: rotate(270deg);
   }
 }
 
@@ -91,10 +87,6 @@
     grid-column: 5;
   }
 
-  &--opponent .card-art {
-    transform: rotate(180deg);
-  }
-
   .zone-card {
     position: absolute;
     inset: 0;
@@ -110,6 +102,14 @@
   align-items: center;
   gap: 4px;
   z-index: z.$z-pvp-card-action-menu;
+}
+
+// Opponent mirroring: rotate .card-inner (art + indicators) 180°,
+// counter-rotate text children for readability. Defense −90° on
+// .zone-card composes naturally — no opponent override needed.
+:is(.opponent-field, .emz--opponent) {
+  .card-inner { rotate: 180deg; }
+  .card-inner > :not(.card-art):not(.xray-overlay) { rotate: 180deg; }
 }
 
 // === Zone Cell ===
@@ -221,6 +221,11 @@
   &--debuff { color: var(--pvp-alteration-debuff); }
   &--dim { color: #ccc; opacity: 0.9; }
 
+  &--opponent {
+    bottom: auto;
+    top: -10px;
+  }
+
   &__sep {
     color: #fff;
     margin: 0 1px;
@@ -309,6 +314,17 @@
   &--with-xyz {
     bottom: calc(3% + 24% + 3%);
   }
+
+  &--pulse {
+    animation: counter-pulse 400ms ease-out;
+  }
+}
+
+@keyframes counter-pulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.5); }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 // AC6: Equip hover float (uses `translate` to avoid colliding with `transform: rotate`)
@@ -316,6 +332,10 @@
   translate: 0 var(--pvp-alteration-equip-lift);
 
   .card-art { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4); }
+
+  :is(.opponent-field, .emz--opponent) & {
+    translate: 0 calc(-1 * var(--pvp-alteration-equip-lift));
+  }
 }
 
 // AC7: Pendulum scale coloring (bottom-center, S1/S5 only)
@@ -430,7 +450,9 @@
 
 
 // === XYZ Material Stack (Story 7.5 — stacked card-back indicators behind XYZ monsters) ===
+// --_stack-dir: 1 (player, bottom-right offset) / -1 (opponent, top-left offset)
 .xyz-material-stack {
+  --_stack-dir: 1;
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -450,7 +472,7 @@
   &[data-count='1']::before,
   &[data-count='2']::before,
   &[data-count='3']::before {
-    transform: translate(1.5%, 3%);
+    transform: translate(calc(1.5% * var(--_stack-dir)), calc(3% * var(--_stack-dir)));
   }
 
   &[data-count='1']::after {
@@ -459,7 +481,7 @@
 
   &[data-count='2']::after,
   &[data-count='3']::after {
-    transform: translate(3%, 6%);
+    transform: translate(calc(3% * var(--_stack-dir)), calc(6% * var(--_stack-dir)));
   }
 }
 
@@ -470,8 +492,12 @@
   background: #1e293b;
   border: 1px solid rgba(0, 212, 255, 0.15);
   border-radius: var(--pvp-radius-sm);
-  transform: translate(4.5%, 9%);
+  transform: translate(calc(4.5% * var(--_stack-dir)), calc(9% * var(--_stack-dir)));
   z-index: -1;
+}
+
+:is(.opponent-field, .emz--opponent) .xyz-material-stack {
+  --_stack-dir: -1;
 }
 
 // === XYZ Overlay Indicator ===
@@ -643,6 +669,16 @@
   100% {
     box-shadow: inset 0 0 6px rgba(201, 168, 76, 0.4), 0 0 8px 2px rgba(201, 168, 76, 0.3);
   }
+}
+
+.zone--swap-pulse {
+  animation: swap-grave-deck-pulse 300ms ease-out;
+}
+
+@keyframes swap-grave-deck-pulse {
+  0%   { box-shadow: none; }
+  40%  { box-shadow: inset 0 0 12px rgba(255, 215, 0, 0.6), 0 0 16px rgba(255, 215, 0, 0.4); }
+  100% { box-shadow: inset 0 0 6px rgba(255, 215, 0, 0.3), 0 0 8px rgba(255, 215, 0, 0.2); }
 }
 
 .zone-highlight-badge {
@@ -834,6 +870,9 @@
   // AC10: Equip hover — snap instantly (only equip-related properties)
   .zone-card { transition: translate 0s; }
   .zone-card .card-inner { transition: box-shadow 0s; }
+
+  .counter-indicator--pulse { animation: none; }
+  .zone--swap-pulse { animation: none; }
 
 }
 

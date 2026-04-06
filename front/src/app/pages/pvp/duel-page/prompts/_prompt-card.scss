@@ -41,7 +41,8 @@
 
 @mixin card-img {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: clamp(5rem, 20dvh, 9rem);
   aspect-ratio: 59 / 86;
   object-fit: cover;

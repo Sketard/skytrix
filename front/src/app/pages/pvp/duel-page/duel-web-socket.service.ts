@@ -2,15 +2,17 @@ import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { DuelConnection, ResponseData } from './duel-connection';
 import { DebugLogService } from './debug-log.service';
-import type { AnimationDataSource } from './animation-data-source';
+import { DuelLogger } from './duel-logger';
+import type { AnimationDataSource, QueueEntry } from './animation-data-source';
 
 export { ResponseData } from './duel-connection';
 
 @Injectable()
 export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private readonly debugLog = inject(DebugLogService);
+  private readonly logger = inject(DuelLogger);
 
-  private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true);
+  private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true, undefined, this.logger);
   private _activeConnection = signal<DuelConnection>(this._defaultConnection);
 
   onStateSync?: () => void;
@@ -35,7 +37,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   // --- All 13 signals + canRetry computed through _activeConnection ---
 
-  readonly duelState = computed(() => this._activeConnection().duelState());
+  get renderedBoardState() { return this._activeConnection().renderedBoardState; }
   readonly pendingPrompt = computed(() => this._activeConnection().pendingPrompt());
   readonly hintContext = computed(() => this._activeConnection().hintContext());
   readonly animationQueue = computed(() => this._activeConnection().animationQueue());
@@ -50,6 +52,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   readonly rpsResult = computed(() => this._activeConnection().rpsResult());
   readonly rpsInProgress = computed(() => this._activeConnection().rpsInProgress());
   readonly ocgPlayerIndex = computed(() => this._activeConnection().ocgPlayerIndex());
+  readonly cardCodes = computed(() => this._activeConnection().cardCodes());
   readonly rematchState = computed(() => this._activeConnection().rematchState());
   readonly rematchStarting = computed(() => this._activeConnection().rematchStarting());
   readonly inactivityWarning = computed(() => this._activeConnection().inactivityWarning());
@@ -99,7 +102,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this._activeConnection().sendActivityPing();
   }
 
-  dequeueAnimation(): import('../types').GameEvent | null {
+  dequeueAnimation(): QueueEntry | null {
     return this._activeConnection().dequeueAnimation();
   }
 
@@ -107,12 +110,12 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this._activeConnection().removeAnimationAt(index);
   }
 
-  clearAnimationQueue(): void {
-    this._activeConnection().skipPendingAnimations();
+  prependToQueue(entries: QueueEntry[]): void {
+    this._activeConnection().prependToQueue(entries);
   }
 
-  applyPendingBoardState(): void {
-    this._activeConnection().applyPendingBoardState();
+  clearAnimationQueue(): void {
+    this._activeConnection().skipPendingAnimations();
   }
 
   setBoardActive(active: boolean): void {
@@ -121,10 +124,6 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
 
   setAnimating(animating: boolean): void {
     this._activeConnection().setAnimating(animating);
-  }
-
-  setDrawMaskActive(active: boolean): void {
-    this._activeConnection().setDrawMaskActive(active);
   }
 
   applyChainSolving(chainIndex: number): void {

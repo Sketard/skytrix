@@ -3,31 +3,35 @@
      [class.hand-row--opponent]="side() === 'opponent'"
      (mousemove)="onContainerMouseMove($event)"
      (mouseleave)="onContainerMouseLeave()">
-  @for (card of cards(); track $index) {
-    @let chainNum = chainBadges().get($index);
-    @let revealedCode = revealedCardCodes().get($index);
+  @for (item of allItems(); track $index) {
+    @let isExpansion = isExpansionMarker(item);
+    @let chainNum = isExpansion ? undefined : chainBadges().get($index);
+    @let revealedCode = isExpansion ? undefined : revealedCardCodes().get($index);
     <div class="hand-card"
-         [attr.data-card-code]="card.cardCode"
-         [class.hand-card--hovered]="hoveredIndex() === $index"
-         [class.hand-card--selected]="selectedIndex() === $index"
-         [class.hand-card--actionable]="activateCardIndices().has($index)"
-         [class.hand-card--actionable-blue]="!activateCardIndices().has($index) && actionableCardIndices().has($index)"
+         [class.hand-card--expansion]="isExpansion"
+         [attr.data-card-code]="isExpansion ? null : item.cardCode"
+         [class.hand-card--hovered]="!isExpansion && hoveredIndex() === $index"
+         [class.hand-card--selected]="!isExpansion && selectedIndex() === $index"
+         [class.hand-card--actionable]="!isExpansion && activateCardIndices().has($index)"
+         [class.hand-card--actionable-blue]="!isExpansion && !activateCardIndices().has($index) && actionableCardIndices().has($index)"
+         [style.visibility]="isExpansion ? 'hidden' : null"
          [style.margin-left]="$index > 0 && needsOverlap() ? overlapMargin() : null"
-         [style.z-index]="(chainNum || revealedCode) ? (1000 + (chainNum ?? 0)) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index)"
+         [style.z-index]="isExpansion ? $index : ((chainNum || revealedCode) ? (1000 + (chainNum ?? 0)) : (hoveredIndex() === $index || selectedIndex() === $index ? 100 : $index))"
          [style.transform]="fanTransform($index)"
-         [style.visibility]="(hideAll() || hiddenIndices().has($index)) ? 'hidden' : null"
-         (click)="onCardTap($index, $event)">
-      @let effectiveCode = isPlayerSide() || replayMode() ? card.cardCode : revealedCode;
-      @if (effectiveCode) {
-        <img [src]="getCardImageUrlByCode(effectiveCode)"
-             [alt]="card.name ?? 'Card'"
-             class="hand-card-art"
-             (error)="$any($event.target).src='assets/images/card_back.jpg'">
-      } @else {
-        <img src="assets/images/card_back.jpg" alt="Card back" class="hand-card-art">
-      }
-      @if (chainNum) {
-        <div class="chain-badge">{{ chainNum }}</div>
+         (click)="isExpansion ? null : onCardTap($index, $event)">
+      @if (!isExpansion) {
+        @let effectiveCode = isPlayerSide() || replayMode() ? item.cardCode : revealedCode;
+        @if (effectiveCode) {
+          <img [src]="getCardImageUrlByCode(effectiveCode)"
+               [alt]="item.name ?? 'Card'"
+               class="hand-card-art"
+               (error)="$any($event.target).src='assets/images/card_back.jpg'">
+        } @else {
+          <img src="assets/images/card_back.jpg" alt="Card back" class="hand-card-art">
+        }
+        @if (chainNum) {
+          <div class="chain-badge">{{ chainNum }}</div>
+        }
       }
     </div>
   }

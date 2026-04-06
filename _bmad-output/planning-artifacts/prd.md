@@ -27,8 +27,6 @@ classification:
 **Date:** 2026-02-07
 **Related:** [prd-pvp.md](prd-pvp.md) (PvP Online Duels PRD)
 
-*Convention: User Journeys are written in French (author's working language). All other sections are in English.*
-
 ## Executive Summary
 
 **Product:** Yu-Gi-Oh! deck management application with integrated solo combo testing simulator, built on the existing skytrix platform.
@@ -71,9 +69,7 @@ classification:
 
 ### Measurable Outcomes
 
-- A full combo sequence (10+ actions) executes without friction or UI delays
-- Board reset to initial state in under 1 second
-- All Yu-Gi-Oh! game zones represented and functional including Extra Monster Zones and Pendulum Zones
+See NFR section for quantified targets.
 
 ## Product Scope & Phased Development
 
@@ -126,45 +122,9 @@ Solo enhancements for a more complete experience.
 - Save/load board states mid-combo
 - Record and share combo sequences
 
-### Risk Mitigation Strategy
-
-**Technical Risks:**
-- *Drag & drop with 18 zones:* Mitigated — `cdkDropListGroup` auto-connects all zones. Proven pattern. Ensure CDK version >= 19.1.6 to avoid known performance regression.
-- *Command pattern complexity:* Mitigated — delta-based commands are well-established. Shuffle stores order snapshot. CompositeCommand handles batch operations. ~10 command types cover all actions.
-- *Performance with full board:* Mitigated — OnPush change detection + Angular signals + `cdkDropListSortingDisabled` on single-card zones.
-- *Board layout with 18 zones:* Mitigated — design a minimal wireframe/grid layout before coding. Plan the board grid upfront to avoid a functional but visually cluttered result.
-
-**Market Risks:** None — personal project for personal use.
-
-**Resource Risks:** The 3 internal MVP milestones (A/B/C) provide natural stopping points — each sub-phase delivers a usable product.
-
 ## User Journeys
 
-### Journey 1: The Combo Builder — Happy Path
-
-Axel vient de finir la construction d'un nouveau deck Tearlaments dans skytrix. Il a ajoute les dernieres cartes, peaufine le ratio. Maintenant, la question qui le travaille : "est-ce que mon combo turn 1 passe ?"
-
-Actuellement, il n'a aucun moyen de le savoir sans aller en duel reel. Il doit esperer tomber sur la bonne main.
-
-Avec le simulateur : depuis la page de son deck, il clique **"Tester"**. Le simulateur charge son deck, shuffle, et lui distribue 5 cartes. Il regarde sa main — parfait, il a ses starters. Il commence a derouler : normal summon, effet, mill 3 depuis le deck, une Tearlaments tombe au cimetiere, il l'active depuis le GY, fusion... En 8 actions fluides via drag & drop, son board final est pose. Son combo passe. Il clique **Reset**, reteste 4-5 mains differentes, identifie que 3 fois sur 5 il a une main jouable. Confiance acquise — il sait que son deck tient la route.
-
-**Capabilities revealed:** deck loading, shuffle, draw, drag & drop, mill, graveyard interaction, pick from zone, reset, card tooltip for effect reference
-
-### Journey 2: The Optimizer — Iteration & Edge Cases
-
-Axel teste son deck et tombe sur une main briquee — aucun starter, que des extenders. Il veut comprendre pourquoi. Il utilise **search deck** pour regarder les cartes restantes et realise que ses 3 starters etaient en bas du deck. Il note qu'il devrait peut-etre ajouter un 4eme starter.
-
-Il modifie son deck (retour a la page deck builder), revient au simulateur, reteste. Cette fois, il deroule un combo mais se trompe a l'etape 5 — il envoie la mauvaise carte au cimetiere. Au lieu de tout recommencer, il fait **undo** deux fois, reprend au bon moment, et continue son combo.
-
-Apres 10 tests, il a une bonne vision des forces et faiblesses de son deck. Il identifie qu'un ratio est a ajuster.
-
-**Capabilities revealed:** search deck, undo/redo, iterative deck editing + retesting workflow, view stacked zones
-
-### Journey 3: The Explorer — Learning a New Archetype
-
-Axel decouvre un nouvel archetype et veut comprendre comment les cartes interagissent. Il cree un deck basique, lance le simulateur, et utilise **card detail on hover** intensivement pour relire les effets pendant qu'il teste. Il pose une carte face cachee, simule un tour adverse imaginaire, puis flip sa carte pour activer son effet. Il explore les differentes lignes de jeu possibles, utilisant le reveal pour voir ce qu'il aurait pioche, testant differentes sequences d'activation.
-
-**Capabilities revealed:** card detail on hover, face-down/flip, reveal/excavate, exploratory play without constraints
+Three user journeys inform the feature scope (deck combo testing, card interaction exploration, session management). Key capabilities:
 
 ### Journey Requirements Summary
 
@@ -189,9 +149,6 @@ Axel decouvre un nouvel archetype et veut comprendre comment les cartes interagi
 
 - **Architecture:** Angular 19 SPA (frontend) + Spring Boot API (backend, existing). Solo mode is 100% frontend — no backend changes required.
 - **Routes:** `/decks/:id/simulator` (solo mode, existing)
-- **Browser Support:** Modern browsers — desktop (Chrome, Firefox, Edge, Safari latest two versions) and mobile (Chrome Android, Safari iOS latest two versions)
-- **SEO:** Not applicable — authenticated features
-- **Real-time:** Not needed — all state local to browser session
 - **Responsive Design:** Responsive multi-device — deck management pages use fluid layouts with breakpoints (mobile-first CSS). The simulator board uses a fixed aspect ratio (1060x772) with proportional scaling on all devices; mobile adds a tap-to-place interaction mode and landscape-locked display.
 - **Performance Targets:** Drag & drop within 16ms frame budget
 - **Reuses:** Existing services (card data, deck data, card images), existing card-tooltip component
@@ -280,3 +237,15 @@ Axel decouvre un nouvel archetype et veut comprendre comment les cartes interagi
 - NFR11: Deck management pages (deck list, deck detail, deck builder) are usable on viewports from 375px width (mobile portrait) to 2560px+ (ultrawide desktop) without horizontal scrolling
 - NFR12: All interactive elements meet minimum touch target size of 44x44px on mobile viewports
 - NFR12b: Deck management pages target WCAG 2.1 AA compliance (color contrast, keyboard navigation, screen reader labels). The simulator board is exempt due to its specialized visual interaction model
+
+## Risk Mitigation Strategy
+
+**Technical Risks:**
+- *Drag & drop with 18 zones:* Mitigated — `cdkDropListGroup` auto-connects all zones. Proven pattern. Ensure CDK version >= 19.1.6 to avoid known performance regression.
+- *Command pattern complexity:* Mitigated — delta-based commands are well-established. Shuffle stores order snapshot. CompositeCommand handles batch operations. ~10 command types cover all actions.
+- *Performance with full board:* Mitigated — OnPush change detection + Angular signals + `cdkDropListSortingDisabled` on single-card zones.
+- *Board layout with 18 zones:* Mitigated — design a minimal wireframe/grid layout before coding. Plan the board grid upfront to avoid a functional but visually cluttered result.
+
+**Market Risks:** None — personal project for personal use.
+
+**Resource Risks:** The 3 internal MVP milestones (A/B/C) provide natural stopping points — each sub-phase delivers a usable product.

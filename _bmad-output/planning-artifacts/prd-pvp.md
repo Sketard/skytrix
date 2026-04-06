@@ -1,9 +1,9 @@
 ---
 status: updated-post-implementation
-inputDocuments: ['prd.md', 'research-ygo-duel-engine.md']
+inputDocuments: ['prd.md', 'research-ygo-duel-engine.md', 'brainstorming-session-2026-03-21.md']
 workflowType: 'prd'
 createdDate: '2026-02-24'
-lastUpdated: '2026-03-26'
+lastUpdated: '2026-04-05'
 classification:
   projectType: web_app
   domain: general
@@ -115,22 +115,38 @@ Enhancements for a more complete PvP experience.
 - **AI opponent:** heuristic-based auto-player for true solo practice (not yet implemented — currently the player controls both sides)
 - **Spectator mode:** watch ongoing duels
 - **Ranked mode:** Elo-based rating system
-- **Replay system:** *(implemented in v1)* — record and replay completed PvP duels with pre-computed client-side navigation, omniscient view, timeline scrubbing, and reversible fork to Quick Duel Solo. See [prd-replay.md](prd-replay.md)
+#### Replay System *(implemented in v1)*
 
-### Risk Mitigation Strategy
+A replay system that records all WebSocket messages during PvP duels and replays them server-side through OCGCore WASM. The player navigates the replay with video-like controls (play, pause, seek, step) and can fork at any point into a PvP Quick Duel Solo session to test alternative actions. Event sourcing is native (WS messages ARE the replay format), fork reuses the PvP reconnection mechanism, and the Sequence Viewer reuses PvP board components.
 
-**Technical Risks:**
+**Success Criteria:**
 
-- *OCGCore integration:* **Mitigated** — PoC validated (Node.js + `@n1xx1/ocgcore-wasm`). Full duel loop proven with deck loading, rule enforcement, and auto-player responses. See [research §10.6](research-ygo-duel-engine.md).
-- *Network latency:* **Mitigated** — OCGCore processes actions in <10ms; dominant latency is network round-trip. WebSocket keeps connection alive to avoid per-action handshakes.
-- *Lua script maintenance:* **Mitigated** — ProjectIgnis/CardScripts repository is actively maintained by the community (~weekly updates). Scripts are loaded at duel start, not compiled into the server.
-- *`@n1xx1/ocgcore-wasm` bus factor:* **Moderate risk** — single maintainer, pre-1.0. Mitigation: the WASM build is reproducible from edo9300/ygopro-core sources via Emscripten if the package becomes unmaintained.
-- *Message filtering complexity:* **Moderate risk** — OCGCore messages must be filtered per-player to prevent information leakage (opponent hand, face-down cards, deck order). Mitigation: NEOS (production React client) and SRVPro (Node.js server) both implement this pattern successfully.
-- *ESM compatibility:* **Mitigated** — PoC identified and resolved the `@n1xx1/ocgcore-wasm` ESM default export issue via `patch-package`. Fix documented in [research §10.6.3](research-ygo-duel-engine.md).
+- Seek eliminates O(n) manual reproduction — navigate to any point in a past duel within seconds
+- Fork to PvP Quick Duel Solo preserves the exact board state with no desynchronization
+- Omniscient view (both hands, face-down cards) enables post-game analysis with full information
+- Event sourcing is native — no custom serialization, raw WS messages are the replay format
+- Fast-forward through OCGCore WASM: 51ms avg for 252 responses (12-turn duel), scales linearly
 
-**Market Risks:** None — personal project for personal use.
+**MVP Scope:**
 
-**Resource Risks:** The 3 sub-phases (A/B/C) provide natural stopping points. PvP-A alone delivers a functional (if minimal) online duel. PvP-B adds session management. PvP-C adds polish.
+1. **Server-side WS capture:** Duel Server records all 47 WS message types during PvP duels, persisted via Spring Boot API
+2. **Match history:** List of past duels (deck name, opponent, turn count, result, date) with replay access
+3. **Sequence Viewer:** Video-like playback controls — play, pause, step forward/back, seek
+4. **Omniscient view:** Both players' hands, face-down cards, and all zones fully visible
+5. **Fork to PvP Quick Duel Solo:** Branch from any point into a Quick Duel Solo session controlling both players, with full OCGCore state reconstructed
+6. **TTL-based retention:** Automatic purge after configurable period
+
+**Growth Features:** "View Replay" button on duel result screen, replay sharing, bookmarks/annotations within a replay timeline.
+
+**Vision:** Spectator mode integration, AI analysis of replays (suggesting optimal plays at decision points).
+
+**Replay Risk Mitigation:**
+
+- *Server-side replay fidelity:* **Low risk** — replaying WS messages through OCGCore WASM is deterministic. Same inputs = same outputs. Already validated by PvP reconnection mechanism
+- *Fork state reconstruction:* **Low risk** — uses the same `duelQueryField()` + `duelQuery()` snapshot mechanism as PvP reconnection, already proven in production
+- *Storage volume:* **Low risk** — POC measured ~32KB per duel (252 responses, 12 turns with simple decks). Negligible for PostgreSQL
+- *Step-back / rewind performance:* **Low risk** — POC measured 51ms avg to fast-forward 252 responses through OCGCore WASM (40x under the 2s performance gate). Checkpoints not necessary for MVP
+- *Lua script divergence:* **Accepted risk** — Replay uses current ProjectIgnis card scripts at playback time, not the scripts active during the original duel. If scripts are updated between recording and playback, replay may diverge. Acceptable for a small team with infrequent script updates
 
 ## User Journeys
 
@@ -255,7 +271,57 @@ Satisfait de sa nouvelle ligne de jeu, il relance un duel PvP. Cette fois, quand
 
 - NFR10: The duel server's usage of OCGCore complies with AGPL-3.0 license requirements — source code for the duel server is made available if the service is deployed publicly
 
-## Cross-Reference to Solo PRD
+### Replay Data Capture
+
+- FR26: The system records all WS messages exchanged during a PvP duel and persists them server-side at duel completion. Duels that do not complete normally (server crash, process kill) do not produce a replay — this is an accepted limitation. Duels ended by DISCONNECT, TIMEOUT, or SURRENDER DO produce replays — these are valid completion states. The replay contains responses up to the disconnect/timeout/surrender point and is shorter than a naturally concluded duel
+- FR27: The system stores replay metadata alongside the recorded messages (player usernames, deck names, turn count, duel result, date). The duel result is stored relative to player1 using the `DuelResult` enum (9 values: VICTORY, DEFEAT, DRAW, TIMEOUT, DISCONNECT, SURRENDER, OPPONENT_TIMEOUT, OPPONENT_DISCONNECT, OPPONENT_SURRENDER). OPPONENT_* variants preserve the "why" context in match history (e.g., "Win — opponent timeout" vs generic "Victory"). `flip()` maps between perspectives at query time: VICTORY↔DEFEAT, TIMEOUT↔OPPONENT_TIMEOUT, DISCONNECT↔OPPONENT_DISCONNECT, SURRENDER↔OPPONENT_SURRENDER, DRAW→DRAW
+
+### Replay Match History
+
+- FR28: The player can view a list of past duels with replay data (deck name, opponent, turn count, result, date)
+- FR29: The player can open a replay from the match history list
+
+### Replay Sequence Viewer — Playback
+
+- FR30: The player can play a replay, displaying the duel board state progressing through recorded events with visual feedback (card movements, animations)
+- FR31: The player can pause the replay at any point
+- FR32: The player can step forward one event at a time from a paused state
+- FR33: The player can step backward one event at a time from a paused state
+- ~~FR34: The player can fast-forward the replay at variable speed~~ *(Removed by UX spec — seek/scrub via pre-computed client-side states replaces variable-speed fast-forward)*
+- ~~FR35: The player can rewind the replay~~ *(Removed by UX spec — seek/scrub replaces rewind)*
+- FR36: The player can seek to a specific turn in the replay. The timeline shows a miniature board preview on hover (desktop) to help visually identify the right moment before seeking
+
+### Replay Sequence Viewer — Display
+
+- FR37: The system displays the replay with a perspective toggle — the player can switch between Player 1 and Player 2 viewpoints, with full visibility of the selected player's hand, face-down cards, and all zones
+- FR38: The system displays the current turn number and active phase during replay playback
+- FR39: The player can inspect card details for any card visible on the board during replay
+- FR40: The system ignores PvP turn timers and inactivity timeouts during replay playback
+
+### Replay Fork to PvP Quick Duel Solo
+
+- FR41: The player can fork the replay at any point into a PvP Quick Duel Solo session
+- FR42: The system reconstructs the complete OCGCore game state at the fork point, enabling the Quick Duel Solo session to continue from that exact board state
+- FR43: The player controls both players in the forked Quick Duel Solo session
+
+### Replay Retention
+
+- FR44: The system automatically purges replay data older than a configurable retention period
+- FR45: The player can delete individual replays from match history (`DELETE /api/replays/{id}`)
+
+### Replay Non-Functional Requirements
+
+- NFR11: Playback control actions (play, pause, step, seek) respond within 500ms round-trip (aligned with PvP NFR1)
+- NFR12: Fast-forward / seek to any point in a duel completes server-side in under 500ms. POC validated: 51ms avg for 252 responses (12-turn duel). Scales linearly — a 30-turn duel with ~600 responses would be ~120ms
+- NFR13: Match history page loads the list of past duels within standard API response time (< 1 second)
+- NFR14: Replay playback produces the exact same board state sequence as the original duel — deterministic replay guaranteed by replaying the same WS messages through OCGCore
+- NFR15: Fork to PvP Quick Duel Solo reconstructs a valid OCGCore game state that allows the duel to continue without errors or desynchronization
+- NFR16: The WebSocket connection for replay playback remains stable for the full duration of a replay session (reuses PvP WebSocket infrastructure and heartbeat/keep-alive)
+- NFR17: Replay mode functions on the same browser matrix as PvP — modern desktop browsers (Chrome, Firefox, Edge, Safari latest 2 versions) and mobile browsers (Chrome Android, Safari iOS latest 2 versions)
+
+## Cross-References
+
+### PvP → Solo PRD
 
 This PRD is a companion to [prd.md](prd.md) (Solo Simulator). The following mapping shows the FR/NFR correspondence for traceability:
 
@@ -272,3 +338,17 @@ This PRD is a companion to [prd.md](prd.md) (Solo Simulator). The following mapp
 | NFR8 | NFR7 (shared) |
 | NFR9 | NFR9 (shared) |
 | NFR10 | NFR20 |
+
+### Replay FR/NFR Mapping (formerly prd-replay.md)
+
+| This PRD | Original prd-replay.md |
+|---|---|
+| FR26-FR27 | FR1-FR2 (Capture) |
+| FR28-FR29 | FR3-FR4 (Match History) |
+| FR30-FR36 | FR5-FR11 (Playback) |
+| FR37-FR40 | FR12-FR15 (Display) |
+| FR41-FR43 | FR16-FR18 (Fork) |
+| FR44-FR45 | FR19-FR20 (Retention) |
+| NFR11-NFR13 | NFR1-NFR3 (Performance) |
+| NFR14-NFR16 | NFR4-NFR6 (Reliability) |
+| NFR17 | NFR7 (Compatibility) |

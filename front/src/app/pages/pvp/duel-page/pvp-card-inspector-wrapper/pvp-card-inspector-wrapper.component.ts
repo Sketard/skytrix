@@ -49,7 +49,9 @@ export class PvpCardInspectorWrapperComponent {
 
   readonly shouldShowCompact = computed(() => {
     if (this.forceExpanded()) return false;
-    if (this.promptActive()) return true;
+    // Only force compact when a prompt is active AND viewport is narrow —
+    // on desktop the full inspector (top-left) doesn't overlap the prompt (bottom-center).
+    if (this.promptActive() && this.isCompact()) return true;
     return this.isCompact();
   });
 

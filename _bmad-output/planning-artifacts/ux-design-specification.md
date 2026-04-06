@@ -10,21 +10,6 @@ inputDocuments: ['prd.md', 'architecture.md', 'project-context.md']
 **Date:** 2026-02-08
 **Last Revised:** 2026-02-21
 
-### Revision History
-
-| Date | Source | Changes |
-|---|---|---|
-| 2026-02-12 | Sprint Retro (Epics 1-5) | **A.** Fixed 16:9 aspect ratio layout with proportional scaling (Master Duel zoom-out style), replaces flexible CSS Grid responsive model. **B.** Face-down behavior rethought for solo context: inspector shows full details for face-down cards, ED overlay displays all cards face-up (no eye icon/grouping), deck/ED zones show card-back when count > 0. **C.** `preventDefault()` on right-click for entire board in all builds (incl. devMode); right-click gesture reserved for future custom context menu. **D.** Collapsible navbar: chevron toggle at navbar border, collapses to ~32px thin bar, collapsed by default on simulator page only. |
-| 2026-02-12 | UX Review | **E.** Standardized pill drag: all stacked zones (Deck, ED, GY, Banished) support direct drag from the pill — grabs the top card with identical behavior to dragging a board card. Click still opens overlay for deeper card access. |
-| 2026-02-12 | Sprint Change Proposal | **F.** Responsive two-track strategy: Track A (fixed canvas scaling) for card manipulation pages (simulator, deck builder, card search); Track B (mobile-first responsive CSS) for content pages (deck list, settings, login). Shared components (CardComponent, CardInspectorComponent) extracted from simulator for cross-page reuse. Navbar responsive: hamburger/drawer on mobile ≤768px, collapsible sidebar on desktop. |
-| 2026-02-18 | UX Review (Bottom Sheet & Filters) | **G.** Bottom sheet component made generic and reusable (`aria-label` configurable via input). Reused on Card Search Page for mobile portrait filters. **H.** Card searcher filter display unified to expand/collapse vertical pattern across all contexts (replaces lateral slide-in overlay on deck builder and lateral panel on card search page). Filters expand above the card list; `card-searcher` manages this behavior internally. **I.** Bottom sheet auto-snaps to full when filters expand inside it; returns to previous snap state when filters collapse. **J.** Card inspector confirmed as overlay/modal pattern — never a bottom sheet (avoids nested bottom sheets on deck builder). |
-| 2026-02-18 | UX Review (Mobile Simulator) | **K.** Mobile hand detachment: on mobile viewports, the hand zone renders outside the scaled board canvas at native size. Board grid reduces from 4 to 3 rows (1060×608) on mobile. A `.board-scaler` wrapper applies `transform: scale()` to both grid and hand on desktop (preserving current behavior) while the hand exits the scaler on mobile via conditional rendering. Flex column layout with clean separation — no overlap (flat 2D board cannot hide the bottom row like Master Duel's 3D perspective). CDK DragDrop compatibility maintained — hand stays inside `cdkDropListGroup` container. Desktop layout unchanged. |
-| 2026-02-18 | UX Review (Deck Builder Card Density) | **L.** Deck builder card search grid density increased to 5 columns minimum (portrait and landscape) with reduced gap, matching Master Duel's deck builder aesthetic. Mosaic/favorite mode in `deckBuildMode` uses `minmax(55px, 1fr)` with `0.25em` gap (down from `minmax(85px, 1fr)` / `0.75em`). Applies to both the side panel (desktop/landscape) and the bottom sheet (mobile portrait). Cards remain recognizable by artwork at 55px — this is the standard size in Master Duel's search panel. **M.** Deck builder landscape: filters displayed via bottom sheet anchored inside the side panel (Option A) instead of full-width overlay. The side panel bottom sheet shows filters while keeping the deck viewer (left 55%) fully visible. Same `app-bottom-sheet` component reused, scoped to the side panel container. On desktop (≥768px), filters remain as vertical expand/collapse inline (unchanged from revision H). |
-| 2026-02-19 | UX Review (Content Pages & Patterns) | **N.** Login page redesign: hero-centered layout with `logo-icon.png` + `logo-text.png` replacing the plain `<h2>Login</h2>`. No `mat-card` — form floats on `--surface-base` background with a subtle radial gradient (cyan at 5-8% opacity) behind the logo. 400ms fadeIn on page load. `prefers-reduced-motion` disables animation. **O.** Parameters page redesign: structured into `mat-card` sections (Database, Images, Banlist) with Material icons, short descriptions, action buttons, and last-sync date display. Feedback via `MatSnackBar` during/after fetch operations. **P.** App-wide empty states: consistent text + CTA pattern across all empty contexts (search no results, empty deck, empty favorites, empty owned). Messages in `--text-secondary`, centered, with contextual CTA. **Q.** Notification system migration: `ngx-toastr` replaced by `MatSnackBar`. Position: top center (`verticalPosition: 'top'`, `horizontalPosition: 'center'`). Custom snackbar style: `--surface-card` background, 3px left border colored by type (`--accent-primary` for success, `--danger` for error), Material icon prefix. Utility functions in `functions.ts` updated to accept `MatSnackBar` instead of `ToastrService`. **R.** Deck builder save feedback: snackbar on success/error, dirty indicator (gold dot on save icon when unsaved changes), `canDeactivate` guard with confirm dialog on navigation with unsaved changes. **S.** Navbar collapsed mode: when sidebar is collapsed, navigation icons remain visible without labels (icon-only mode) instead of hiding all content. **T.** Z-index centralization: `_z-layers.scss` file with named tokens for all overlay layers. Legacy SCSS variables (`$black`, `$blue`, `$white`) progressive migration to semantic CSS custom properties (tracked per-screen, not bulk). |
-| 2026-02-20 | UX Review (Card Display Mode Homogeneity) | **U.** Card display mode redesign: 4 modes (INFORMATIVE, MOSAIC, OWNED, FAVORITE) consolidated to 2 display modes + 1 quick filter. Display modes (radio group): **Grid** (`view_module` — responsive image grid with overlay badges) and **List** (`view_headline` — horizontal rows with image + name + stats + rarity + badges). Quick filter (independent toggle): **★ Favorites** (`star` — filters results to favorites, inherits active display mode). Visually separated from display mode toggles via spacing/divider. **V.** OWNED mode eliminated as display mode: quantity controls (+/-) become contextual — they appear automatically when context is "collection" (collection page or "my cards" filter active). Quantity controls integrate into both Grid (overlay) and List (additional column) modes. **W.** `CardDisplayType` enum reduced from 4 to 2 values: `GRID`, `LIST`. Favorite toggle managed as a separate boolean signal, independent of display mode. **X.** Normalized card sizing via CSS custom properties: `--card-size-sm` (40px), `--card-size-md` (80px), `--card-size-lg` (100px). All display modes reference these tokens instead of ad-hoc pixel values. **Y.** Uniform badge system: ban badge and owned-count badge visible in both Grid and List modes with consistent styling. Previously, badge visibility was inconsistent across modes (e.g., rarity only in OWNED, ban badge missing from OWNED). **Z.** Card inspector personal metadata: owned count (mini stepper) and favorite toggle displayed as a secondary info line at bottom of inspector, below a divider. Visually distinct from deck builder's primary deck add/remove controls (which remain as prominent `<ng-content>`-projected action block). Hierarchy: deck controls = primary action block, personal metadata = discrete inline text. Available in all inspector modes (click, dismissable, permanent) across all contexts. |
-| 2026-02-21 | UX Review (Deck Viewer Ban Badge) | **AD.** Ban badge extended to deck viewer: `deck-card-zone` component displays the ban badge (Limited/Semi/Forbidden) on each card in the Main, Extra, and Side deck sections. Same bottom-left overlay style as Grid mode in card search. Uniform Badge System table updated to include Deck Viewer column. |
-| 2026-02-21 | UX Review (Mobile Touch Gesture Model) | **AA.** Mobile gesture model redesigned — replaces previous "tap-to-place" two-tap mode with native touch gestures: **Tap** = open card inspector (immediate, zero latency), **Long press** = initiate drag (standard mobile pattern), **Swipe/scroll** = native scroll (no conflict with drag). Add/remove deck actions accessed via inspector button (no double-tap — avoids 300ms tap-disambiguation delay). **AB.** Long-press drag affordance: donut loader micro-animation on card during long press (~400-500ms). Semi-transparent circular progress overlay centered on the card fills during hold duration. Confirms to user that drag mode is activating. On completion: subtle scale-up + haptic feedback (vibration) signals drag is active. If finger lifts before completion: donut disappears, tap action fires (inspector opens). Creates a smooth continuum between tap and long-press gestures. `prefers-reduced-motion` disables the donut animation (drag still activates after delay, but without visual progress indicator). **AC.** Desktop interaction unchanged: click = inspector, click+hold+move = drag (instant, browser-native distinction — no long-press delay needed). Scroll = mouse wheel. |
-
 ---
 
 ## Executive Summary
@@ -46,7 +31,7 @@ The core workflow is: build deck → test combos → iterate — all within a si
 1. **Visual Density Management** — 18 zones on a single screen with a fixed aspect ratio (1060×772). The board scales proportionally to fit the available viewport space — never scrolls, never deforms. The board must remain readable with 10+ cards in play. Clear visual hierarchy between primary zones (monster, spell/trap, hand) and secondary zones (banish, extra deck). Card details are always accessible via hover/inspector for readability at any scale.
 2. **Action Discoverability** — Without a rules engine to guide the player, all available actions (mill, search, reveal, flip, toggle position, banish, return to hand/deck) must be intuitively discoverable through the interface. No tutorial — the UI must be self-explanatory.
 3. **Drag & Drop Precision** — Targeting the correct zone among 18 while dragging a card. Visual feedback during drag (zone highlighting, capacity indicators) is critical to avoid frustrating mis-drops.
-4. **Multi-Device Readiness** — The application follows a two-track responsive strategy. Content pages (deck list, settings, login) use mobile-first responsive CSS — usable now on all viewports. Card manipulation pages (simulator, deck builder, card search) use fixed canvas scaling — adapts to any screen size. The simulator locks to landscape on mobile (like Master Duel). On mobile, the hand zone is detached from the scaled canvas and rendered at native size (consistent with Master Duel's mobile approach) — see §Spacing & Layout Foundation and §Responsive Strategy for details. Mobile touch interaction uses a native gesture model (tap = inspector, long press = drag with donut loader affordance, swipe = scroll) — see §Mobile Interaction for full specification.
+4. **Multi-Device Readiness** — The application follows a two-track responsive strategy (see architecture.md §Responsive Strategy). Content pages use mobile-first responsive CSS. Card manipulation pages use fixed canvas scaling. The simulator locks to landscape on mobile. On mobile, the hand zone is detached from the scaled canvas and rendered at native size — see §Spacing & Layout Foundation and §Mobile Interaction for UX details. Mobile touch interaction uses a native gesture model — see §Mobile Interaction for full specification.
 
 ### Design Opportunities
 
@@ -65,12 +50,9 @@ The core loop is: **load deck → shuffle → draw 5 → execute combo via drag 
 ### Platform Strategy
 
 - **Primary Platform:** Desktop web (Angular 19 SPA) — mouse + keyboard interaction. Responsive multi-device: all pages adapt from 375px (mobile portrait) to 2560px+ (ultrawide desktop).
-- **Input Model:** Mouse-driven drag & drop as primary on desktop, keyboard shortcuts as accelerators. Mobile touch interaction uses native gesture model: tap (inspector), long press (drag), swipe (scroll). See §Mobile Interaction for full specification.
+- **Input Model:** Mouse-driven drag & drop as primary on desktop, keyboard shortcuts as accelerators. Mobile uses native gesture model: tap (inspector), long press (drag with donut loader affordance), swipe (scroll). See §Mobile Interaction for full specification.
 - **Hover Dependency:** Card inspector on hover is integral to the desktop experience. On mobile, inspector becomes tap-triggered (full-screen modal).
-- **Screen Requirements — Two Tracks:**
-  - **Card manipulation pages** (simulator, deck builder, card search): Fixed canvas with proportional scaling via `transform: scale()`. No scrolling, no minimum size threshold. Letterboxing filled by app background.
-  - **Content pages** (deck list, settings, login): Mobile-first responsive CSS with fluid layouts and breakpoints (576px, 768px, 1024px). No canvas scaling.
-- **Mobile Consideration (Post-MVP for simulator, current for content pages):** Content pages are responsive now. The simulator's scaling model adapts to any viewport. Mobile touch interaction uses a native gesture model (tap = inspector, long press = drag, swipe = scroll) with a donut loader affordance during long press. See §Mobile Interaction for full specification.
+- **Screen Requirements:** Two-track responsive strategy — see architecture.md §Responsive Strategy for technical details. Card manipulation pages use fixed canvas scaling (`transform: scale()`). Content pages use mobile-first responsive CSS with breakpoints.
 - **Offline:** Not required — deck data loaded at initialization, then all processing is client-side and ephemeral
 - **No Backend Dependency:** Zero network calls during simulation — all state is local
 
@@ -138,14 +120,6 @@ Pills are contextual action buttons that provide access to stacked zone operatio
 
 ## Desired Emotional Response
 
-### Primary Emotional Goals
-
-1. **Mastery & Control** — "I control every card, every action. Nothing escapes me." The simulator is a precision tool that responds exactly to the player's intent. Full manual control reinforces the feeling of expertise.
-2. **Flow & Immersion** — "I don't think about the interface, only my combo." The UI disappears during play. Drag & drop is so fluid that the player's focus stays on card interactions, not on operating the tool.
-3. **Confidence** — "My deck works, I proved it in 5 tests." The simulator transforms uncertainty into validated knowledge. After a testing session, the player knows their deck's strengths and weaknesses.
-4. **Aesthetic Satisfaction** — "It's beautiful, it's a pleasure to play on." Master Duel-level visual polish turns every card placement into a micro-moment of delight. The board is a visual experience, not just a functional grid.
-5. **Lucidity** — "My deck has a problem, now I know which one." Even negative results (bricked hands, failed combos) are successes of the tool. The simulator reveals truth about the deck — the design must frame negative outcomes as actionable insight, not discouragement.
-
 ### Emotional Journey Mapping
 
 | Moment | Target Emotion |
@@ -160,29 +134,6 @@ Pills are contextual action buttons that provide access to stacked zone operatio
 | After 5-10 test hands (positive) | Confidence — "I know my deck, its strengths and weaknesses" |
 | After 5-10 test hands (negative — bricked) | Lucidity — "my deck has a ratio problem, I know what to fix". The ultra-fast reset cycle encourages retesting rather than abandoning. |
 | Return to deck builder | Motivation — "I know exactly what to adjust" |
-
-### Micro-Emotions
-
-**Critical Emotional Pairs (desired > avoided):**
-
-- **Recognition > Confusion** — First-time users instantly recognize the Yu-Gi-Oh! playmat layout. No tutorial needed, no learning curve for the board structure.
-- **Confidence > Confusion** — Every zone is clear, every action is obvious. Never "what can I do here?"
-- **Flow > Frustration** — Drag is precise, undo is instant. No friction that breaks the rhythm.
-- **Satisfaction > Impatience** — Reset is instant, shuffle is fast. Never waiting.
-- **Delight > Mere satisfaction** — Master Duel visual polish transforms a mundane action (placing a card) into a micro-moment of pleasure.
-- **Lucidity > Discouragement** — Negative test results are framed as useful discovery, not failure. The ease of reset-and-retry turns disappointment into iteration.
-
-### Design Implications
-
-| Emotion | Supporting UX Choices |
-|---|---|
-| **Recognition** | Board layout mirrors standard Yu-Gi-Oh! playmat zones — familiar spatial arrangement eliminates onboarding |
-| **Mastery** | 100% manual control, no imposed rules, all zones accessible, no artificial constraints |
-| **Flow** | Drag & drop < 16ms, zero confirmation dialogs during play, non-intrusive pills, keyboard shortcuts |
-| **Confidence** | Drop zone highlighting during drag, undo always available, card info on hover, clear zone labels |
-| **Aesthetic Satisfaction** | Master Duel-inspired visuals, smooth placement animations, clean board at rest, polished card rendering |
-| **Serenity on Error** | Instant undo, redo available, reset without penalty, silent rejection of invalid drops |
-| **Lucidity** | Ultra-fast reset encourages retesting, seamless return to deck builder for adjustments |
 
 ### Emotional Design Principles
 
@@ -316,36 +267,27 @@ All screens share a single set of CSS custom properties defined on `:root` in `_
 - `--surface-base: #0a0e1a` (deep navy instead of #121212)
 - `--accent-primary: #00d4ff` (cyan instead of gold)
 
-**Sidebar & Toolbar Dark Theme:**
-- All navigation surfaces (desktop sidebar, mobile top bar, mobile drawer) use `--surface-nav`
-- Text color: `--text-primary`. Active nav item: 3px left border `--accent-primary` + `--accent-primary-dim` background
-- → See screen-implementation-guide.md §Sidebar & Toolbar for full specification
-
 **Theme Isolation:**
 - Simulator styles are scoped to the simulator page component (Angular ViewEncapsulation default)
 - Shared CSS custom properties allow consistency across all pages — simulator overrides only the accent and background
 
-**Z-Index Centralization (`_z-layers.scss`):**
+**Z-Index Centralization and Legacy Migration:**
 
-All z-index values are defined as SCSS variables in a single file (`styles/_z-layers.scss`) to prevent overlay conflicts and make the stacking order explicit.
+All z-index values are centralized in `_z-layers.scss` with named SCSS tokens (`$z-card-overlay`, `$z-inspector`, `$z-bottom-sheet`, `$z-navbar-mobile`, `$z-drawer`, etc.). All components must import and reference these tokens instead of hardcoded z-index values. Migration is incremental per screen. Legacy SCSS variables (`$black`, `$blue`, `$white`) in `variable.scss` are progressively replaced by semantic CSS custom properties from `_tokens.scss` — see the migration mapping table at the top of `_tokens.scss`. → See architecture.md §File Structure for the full token table.
 
-| Token | Value | Usage |
-|---|---|---|
-| `$z-card-overlay` | 10 | Card hover elevation, drag preview base |
-| `$z-inspector` | 50 | Card inspector panel |
-| `$z-bottom-sheet` | 100 | Bottom sheet overlay |
-| `$z-bottom-sheet-backdrop` | 99 | Bottom sheet backdrop |
-| `$z-navbar-mobile` | 500 | Mobile top bar |
-| `$z-deck-remove` | 510 | Deck list delete button |
-| `$z-drawer-backdrop` | 1000 | Drawer backdrop |
-| `$z-drawer` | 1100 | Mobile drawer |
-| `$z-snackbar` | — | Managed by CDK Overlay (no custom value needed) |
+**Normalized Card Sizing:**
 
-All components must import `@use 'z-layers' as z` and reference `z.$z-*` tokens instead of hardcoded z-index values. Migration is incremental — each screen story replaces hardcoded values as it is touched.
+CSS custom properties replace ad-hoc pixel values across all card display contexts:
 
-**Legacy Variable Migration:**
+```scss
+:root {
+  --card-size-sm: 40px;   // Owned row thumbnails, compact contexts
+  --card-size-md: 80px;   // List mode card image, card inspector thumbnail
+  --card-size-lg: 100px;  // Grid mode base size (minmax lower bound)
+}
+```
 
-SCSS variables in `variable.scss` (`$black`, `$blue`, `$white`, `$red`, `$grey`, etc.) are progressively replaced by semantic CSS custom properties from `_tokens.scss`. See the migration mapping table at the top of `_tokens.scss` for the old → new correspondence. Migration is incremental per screen — do NOT bulk-replace. Each screen story handles its own migration when touched
+All card rendering in `card-list` references these tokens. Breakpoint-specific overrides use the same variable system.
 
 ## Defining Core Experience
 
@@ -488,11 +430,11 @@ The simulator's identity is captured in one interaction: picking up a card and p
 | `--radius-card` | `0.25rem` | Card border radius |
 
 **Layout Principles:**
-1. **Fixed board canvas with proportional scaling** — The board is a fixed-dimension container that scales proportionally to fit the available viewport space. Scaling is achieved via `transform: scale()` on the board container. `transform-origin: top center` on desktop; `transform-origin: bottom center` on mobile portrait (thumb-friendly, board anchored at bottom). Empty space (letterboxing) uses the app background. On desktop, the board is **1060×772** (4 rows: 3 zone rows + hand). On mobile, the board is **1060×608** (3 zone rows only — hand is detached, see point 5).
+1. **Fixed board canvas with proportional scaling** — The board is a fixed-dimension container that scales proportionally to fit the available viewport space. Scaling is achieved via `transform: scale()` on the board container. `transform-origin: top center` on desktop; `transform-origin: bottom center` on mobile portrait (thumb-friendly, board anchored at bottom). Empty space (letterboxing) uses the app background. On desktop, the board is **1060x772** (4 rows: 3 zone rows + hand). On mobile, the board is **1060x608** (3 zone rows only — hand is detached, see point 5). → See architecture.md §ScalingContainerDirective for the scaling computation.
 2. **CSS Grid with named areas** — Inside the fixed-ratio container, each of the 18 zones has a named grid area. Zone dimensions use fixed proportions (not `fr` + `minmax()`), since the container itself handles viewport adaptation via scaling.
 3. **Dynamic rescaling on navbar toggle** — The available viewport space changes when the collapsible navbar is shown/hidden. The board recalculates its scale factor dynamically to always fit within the available space.
 4. **Overlay positioning** — Pile overlays open to the side or bottom (never centered fullscreen) to keep the board visible as a drag target during pill-to-drag flow.
-5. **Mobile hand detachment** — On mobile viewports (≤767px), the hand exits the `.board-scaler` wrapper via conditional rendering and displays at **native size** inside `.board-container` (`cdkDropListGroup` host). This allows the hand cards to display at native size instead of being scaled down with the board. The board grid drops from 4 to 3 rows (removing the hand row), scaling more favorably on small screens. **Both mobile orientations:** flex column layout with clean separation — hand sits below the board, no overlap. The flat 2D board cannot hide the bottom row like Master Duel's 3D perspective board — the Deck/ED/ST row must remain fully visible and interactive. **Desktop (>767px):** a `.board-scaler` wrapper contains both the 3-row grid and the hand, applying `transform: scale()` to both together — visually identical to the previous 4-row grid behavior.
+5. **Mobile hand detachment** — On mobile viewports (<=767px), the hand exits the `.board-scaler` wrapper via conditional rendering and displays at **native size** inside `.board-container` (`cdkDropListGroup` host). This allows the hand cards to display at native size instead of being scaled down with the board. The board grid drops from 4 to 3 rows (removing the hand row), scaling more favorably on small screens. **Both mobile orientations:** flex column layout with clean separation — hand sits below the board, no overlap. The flat 2D board cannot hide the bottom row like Master Duel's 3D perspective board — the Deck/ED/ST row must remain fully visible and interactive. **Desktop (>767px):** a `.board-scaler` wrapper contains both the grid and the hand, scaling them together at `transform: scale()` — visually identical to the previous 4-row grid behavior.
 
 ### Accessibility Considerations
 
@@ -531,7 +473,7 @@ Eight design directions were generated and evaluated via interactive HTML mockup
 
 The board uses a **7-column CSS Grid**, matching the official Yu-Gi-Oh! playmat layout:
 
-**Desktop (4 rows — 1060×772):**
+**Desktop (4 rows — 1060x772):**
 ```
    .     |   .   | EMZ-L |   .   | EMZ-R |   .   | Banish
  Field   |  M-1  |  M-2  |  M-3  |  M-4  |  M-5  |   GY
@@ -539,13 +481,13 @@ The board uses a **7-column CSS Grid**, matching the official Yu-Gi-Oh! playmat 
               Hand (spans all 7 cols)
 ```
 
-**Mobile (3 rows — 1060×608, hand detached):**
+**Mobile (3 rows — 1060x608, hand detached):**
 ```
    .     |   .   | EMZ-L |   .   | EMZ-R |   .   | Banish
  Field   |  M-1  |  M-2  |  M-3  |  M-4  |  M-5  |   GY
    ED    | ST-1  |  ST-2 |  ST-3 |  ST-4 |  ST-5 |  Deck
 
-═══════════ Hand (native size, outside grid) ════════════
+=========== Hand (native size, outside grid) ============
 ```
 
 **Zone Notes:**
@@ -571,7 +513,7 @@ grid-template-areas:
   "field    m1    m2      m3     m4      m5     gy"
   "ed       st1   st2     st3    st4     st5    deck";
 grid-template-rows: 200px 200px 200px;
-/* Board canvas: 1060×608 — hand rendered separately at native size */
+/* Board canvas: 1060x608 — hand rendered separately at native size */
 ```
 
 ### Zone Interaction Rules
@@ -822,7 +764,7 @@ flowchart TD
 **Content:** 18 zones rendered via named grid areas. Injects `BoardStateService` for zone data. Computes scale factor reactively based on viewport dimensions, navbar state, and board height (772px desktop, 608px mobile).
 **Actions:** Handles global keyboard shortcuts (Ctrl+Z, Ctrl+Y). Manages `isDragging` signal suppression for pills.
 **States:** Default (board ready), Loading (deck loading), Empty (no deck loaded).
-**Mobile layout:** On mobile (≤767px), the hand exits the `.board-scaler` wrapper via conditional rendering and displays at native size below the board. `.board-container` uses `flex-direction: column; justify-content: flex-end` (thumb-friendly). The `.board-scaler` contains only the 3-row grid (1060×608) and scales via `transform: scale()` with `transform-origin: bottom center`. No overlap — the flat 2D board requires the bottom row (ED, ST1-5, Deck) to remain fully visible. On desktop, a `.board-scaler` wrapper contains both the grid and the hand, scaling them together at `transform: scale()` — visually identical to current behavior.
+**Mobile layout:** On mobile (<=767px), the hand exits the `.board-scaler` wrapper via conditional rendering and displays at native size below the board. `.board-container` uses `flex-direction: column; justify-content: flex-end` (thumb-friendly). The `.board-scaler` contains only the 3-row grid (1060x608) and scales via `transform: scale()` with `transform-origin: bottom center`. No overlap — the flat 2D board requires the bottom row (ED, ST1-5, Deck) to remain fully visible. On desktop, a `.board-scaler` wrapper contains both the grid and the hand, scaling them together at `transform: scale()` — visually identical to current behavior.
 **Accessibility:** `role="application"`, `aria-label="Yu-Gi-Oh simulator board"`. Keyboard shortcut hints in control bar.
 
 #### SimZoneComponent (Single-Card Zone)
@@ -864,7 +806,7 @@ interface StackedZoneConfig {
 **Actions:** Drag cards to board zones, drag to reorder within hand, receive cards from board/overlays.
 **States:** Empty (subtle dashed border placeholder), Has-cards (cards displayed with spacing), Drag-reorder (CDK sort animation active).
 **Desktop layout:** Hand is row 4 of the `.sim-board` grid (spans all 7 columns). Cards use an absolute-positioned fan layout with computed offsets (`--fan-x`, `--fan-rotation`, `--fan-y`). Scales with the board via `transform: scale()`.
-**Mobile layout (≤767px):** Hand exits the `.board-scaler` wrapper via conditional rendering and displays at **native size** in a horizontal strip (`display: flex; overflow-x: auto`). Card height: ~80px. Fan rotation and arc are disabled — cards align flat for touch ergonomics. Flex column layout with clean separation on both orientations — hand sits below the board, no overlap.
+**Mobile layout (<=767px):** Hand exits the `.board-scaler` wrapper via conditional rendering and displays at **native size** in a horizontal strip (`display: flex; overflow-x: auto`). Card height: ~80px. Fan rotation and arc are disabled — cards align flat for touch ergonomics. Flex column layout with clean separation on both orientations — hand sits below the board, no overlap.
 **Accessibility:** `role="listbox"`, cards are `role="option"`. Arrow keys for card navigation.
 
 #### SimCardComponent (Individual Card)
@@ -909,35 +851,6 @@ interface StackedZoneConfig {
 **Face-down cards:** Inspector shows **full card details** (image, name, stats, effect text) even for face-down cards. In a solo simulator, the player knows all their own cards — hiding information serves no purpose. The card's face-down *positional state* on the board is a gameplay choice, not an information barrier.
 **Accessibility:** `role="complementary"`, `aria-label="Card inspector"`, `aria-live="polite"` for content updates on hover change.
 
-#### Collapsible Navbar
-
-**Purpose:** The app navbar can be collapsed to maximize board space. On the simulator page, the navbar starts **collapsed by default**. On all other pages, the navbar remains expanded by default.
-
-**Dark Theme:** The navbar uses `--surface-nav` background across all pages (dark theme). Text: `--text-primary`. Active item: 3px left border `--accent-primary` + `--accent-primary-dim` background. Hover: `--surface-card` background (150ms ease). → See screen-implementation-guide.md §Sidebar & Toolbar for full specification.
-
-**Toggle Mechanism:**
-- A **chevron button** positioned at the border between the navbar (vertical sidebar) and the main content area, acting as a visual "tab" or "handle"
-- Navbar expanded → chevron points **←** (left = "collapse toward edge"). Navbar collapsed → chevron points **→** (right = "expand")
-- The chevron remains visible in both states
-
-**Collapsed State:**
-- The navbar collapses to a **thin bar (~32px width)** containing only the chevron toggle button
-- No logo, no text, no navigation links — just the toggle control
-- The thin bar provides a persistent affordance to re-expand
-
-**Expanded State:**
-- Full navbar as it exists today — all navigation links, logo, etc.
-
-**Board Interaction:**
-- When the navbar collapses/expands, the available viewport space changes
-- The board's `transform: scale()` factor recalculates dynamically to fit the new available space
-- Transition should be smooth (~200ms) with the board rescaling in sync
-
-**Scope:**
-- Collapsed-by-default behavior applies **only to the simulator page**
-- Other pages (deck builder, deck list, etc.) retain the expanded navbar by default
-- The user's toggle choice is ephemeral (not persisted across page navigations)
-
 #### SimControlBarComponent (Session Controls)
 
 **Purpose:** Undo / Redo / Reset buttons positioned in the controls grid area (bottom-left). Frosted glass pill (backdrop-filter: blur(8px)).
@@ -962,42 +875,20 @@ interface StackedZoneConfig {
 
 ```
 SimBoardComponent (root grid)
-├── SimZoneComponent × 13 (MZ1-5, ST1-5, EMZ-L, EMZ-R, Field)
+├── SimZoneComponent x 13 (MZ1-5, ST1-5, EMZ-L, EMZ-R, Field)
 │   └── SimCardComponent (0-1 per zone)
 │       └── SimXyzMaterialPeekComponent (conditional, XYZ only)
-├── SimStackedZoneComponent × 4 (Deck, ED, GY, Banished)
+├── SimStackedZoneComponent x 4 (Deck, ED, GY, Banished)
 │   └── SimPileOverlayComponent (conditional, on click/context-menu)
 ├── SimHandComponent (1)
-│   └── SimCardComponent × N (0-N cards in hand)
+│   └── SimCardComponent x N (0-N cards in hand)
 ├── SimControlBarComponent (1)
 └── SimCardInspectorComponent (1, fixed position, hover-driven)
 ```
 
 ### Implementation Roadmap
 
-**Phase 1 — MVP-A Core (Critical Path):**
-
-- `SimBoardComponent` — CSS Grid layout, zone rendering, keyboard shortcut capture
-- `SimZoneComponent` — Drop target, card display, zone highlighting during drag
-- `SimCardComponent` — Card image, drag source, face-up/down/ATK/DEF states
-- `SimHandComponent` — Card row with drag reordering
-- `SimStackedZoneComponent` — Card count badge, top card display, click trigger
-- `SimControlBarComponent` — Undo/Redo/Reset with keyboard shortcuts
-- `SimCardInspectorComponent` — Hover-triggered side panel with card image, stats, and effect text
-
-**Phase 2 — MVP-A Complete (Full Interaction):**
-
-- `SimPileOverlayComponent` — Side overlay with card images and drag-to-board
-- `SimXyzMaterialPeekComponent` — Material pill with drag-to-detach
-- Context menu integration (`mat-menu` on Deck/ED for Shuffle, Search)
-- **CDK DragDrop + Overlay interop spike** — Validate `cdkDropListGroup` sharing across overlay boundaries
-
-**Phase 3 — Post-MVP Enhancements:**
-
-- `SimTokenComponent` — Token creation UI and token card rendering (post-MVP)
-- `SimCounterBadgeComponent` — Counter management on face-up cards (post-MVP)
-- Card pills on board cards — Quick-action pills on individual cards (post-MVP)
-- Card effect tooltip — Enhanced tooltip with full card text and image (informed by existing skytrix tooltip pattern)
+See epics.md for implementation ordering.
 
 ## UX Consistency Patterns
 
@@ -1036,15 +927,6 @@ SimBoardComponent (root grid)
 - Source pile overlay **stays open** during drag-from-overlay — allows multi-card operations (e.g., drag 3 cards from GY to board without re-opening overlay each time)
 - Overlay closes automatically **after the last drop** if user clicks outside or interacts elsewhere
 - Other overlays remain suppressed during drag (only source overlay stays)
-
-**Mobile Touch Drag:**
-- Long press (~400-500ms) on any card or pill initiates drag — replaces desktop's instant click+hold+move
-- **Donut loader affordance:** semi-transparent circular progress overlay (`--accent-primary`, 3px stroke, `opacity: 0.7`) fills during hold duration, centered on the card/pill. Provides real-time feedback that drag mode is activating
-- On donut completion: scale-up (1.05) + haptic vibration (`navigator.vibrate(50)`) → card enters drag mode, valid zones illuminate
-- On early release (before donut completes): drag cancelled, tap action fires instead (inspector opens) — smooth continuum between tap and long-press
-- Once drag is active, touch-move drives the card position (same as desktop mousemove). Valid zones highlight on touch-over
-- Touch-end = drop on current zone (same CDK DragDrop behavior)
-- `prefers-reduced-motion`: donut animation disabled, drag still activates after same delay. Haptic feedback remains
 
 ### Overlay & Panel Patterns
 
@@ -1187,7 +1069,7 @@ All content pages follow a consistent empty state pattern: centered text message
 - `opened: InputSignal<boolean>` — controls open/close
 - `closed: OutputEmitterRef<void>` — emits on dismiss (drag-down, backdrop tap, Escape)
 - `cardDragActive: InputSignal<boolean>` (optional, default `false`) — disables pointer-events on content during CDK drag. Only used by deck builder.
-- `ariaLabel: InputSignal<string>` — configurable accessible label (replaces hardcoded French string)
+- `ariaLabel: InputSignal<string>` — configurable accessible label
 - Content projected via `<ng-content>`
 
 **Snap States:** closed → collapsed (85vh) → half (40vh) → full (navbar header height). Velocity-based snap determination (0.5 px/ms threshold). `prefers-reduced-motion` disables transitions.
@@ -1201,6 +1083,8 @@ All content pages follow a consistent empty state pattern: centered text message
 | Card Search Page | Mobile portrait only | `card-searcher` (with inline filters) |
 
 **Rule:** Bottom sheet is for **exploration panels** (search, filter, browse). Card detail is handled by `CardInspectorComponent` (overlay/modal) — never by bottom sheet. This avoids nested bottom sheets on pages where the search panel is already in a bottom sheet.
+
+**Auto-Snap Full (Filter Integration):** When filters expand inside a bottom sheet, the sheet automatically snaps to the `full` state to maximize available space for filters + results. When filters collapse, the sheet returns to its previous snap state (typically `half`). Coordinated via output signal from `card-searcher` (`filtersExpanded: OutputEmitterRef<boolean>`) consumed by the bottom sheet's parent.
 
 ### Card Searcher Filter Pattern (Expand/Collapse)
 
@@ -1219,12 +1103,82 @@ All content pages follow a consistent empty state pattern: centered text message
 - No overlay-inside-overlay anti-pattern
 - Results remain partially visible when filters are open (in full-height contexts)
 
-**Auto-Snap Full (Bottom Sheet Integration):**
-When filters expand inside a bottom sheet, the sheet automatically snaps to the `full` state to maximize available space for filters + results. When filters collapse, the sheet returns to its previous snap state (typically `half`). This is coordinated via an output signal from `card-searcher` (e.g., `filtersExpanded: OutputEmitterRef<boolean>`) consumed by the bottom sheet's parent component, which updates the sheet's snap target.
+### Notification Snackbar Pattern
+
+**Replaces:** `ngx-toastr` — removed as dependency. All notification points migrate to `MatSnackBar`.
+
+**Position:** Top center — `verticalPosition: 'top'`, `horizontalPosition: 'center'`. Top center avoids collisions with the bottom sheet (used heavily on mobile in deck builder and card search). Consistent across all pages and viewports.
+
+**Duration:** 3 seconds auto-dismiss. Dismiss button (x) available for immediate close.
+
+**Visual Design:**
+
+```
+Success:
+|=-------------------------------|
+|=  check  Deck sauvegarde     x |
+|=-------------------------------|
+ ^ 3px border-left: var(--accent-primary) (#C9A84C)
+   background: var(--surface-card) (#1E1E1E)
+   icon + text: var(--text-primary) (#EAEAEA)
+   icon color: var(--accent-primary)
+
+Error:
+|=-------------------------------|
+|=  error  Erreur de connexion x |
+|=-------------------------------|
+ ^ 3px border-left: var(--danger) (#CF6679)
+   icon color: var(--danger)
+   same background and text
+```
+
+**Custom CSS classes** (applied via `panelClass` on `MatSnackBar.open()`):
+- `.snackbar-success`: left border `--accent-primary`, icon `check_circle`
+- `.snackbar-error`: left border `--danger`, icon `error`
+
+**Implementation:**
+- Custom `SnackbarComponent` used via `MatSnackBar.openFromComponent()` to include the Material icon prefix
+- Utility functions in `core/utilities/functions.ts` updated: `displaySuccess(snackBar: MatSnackBar, message: string)` and `displayError(snackBar: MatSnackBar, message: string | HttpErrorResponse)`
+- All existing call sites (login, parameters, export, auth interceptor) updated to inject `MatSnackBar` instead of `ToastrService`
+- `ngx-toastr` removed from `package.json`, `angular.json` (styles), and `app.config.ts` (providers)
+
+**Z-index:** MatSnackBar uses CDK Overlay — automatically above all app content. No custom z-index needed.
+
+### Save Feedback Pattern (Deck Builder)
+
+**Context:** The deck builder save action (`POST /api/decks`) currently provides no visual feedback. Users cannot tell if save succeeded, failed, or if they have unsaved changes.
+
+**Three feedback mechanisms:**
+
+**1. Snackbar (success/error):**
+- Success: `displaySuccess(snackBar, 'Deck sauvegarde')` — gold-bordered snackbar
+- Error: `displayError(snackBar, error)` — red-bordered snackbar with error message
+- Added to `DeckBuildService.save()` subscriber's `next` and `error` handlers
+
+**2. Dirty Indicator (unsaved changes):**
+- A small gold dot (`--accent-primary`, 8px circle) appears on the top-right corner of the save `mat-icon-button` when the deck has unsaved modifications
+- The dirty state is tracked via a signal in `DeckBuildService`: `isDirty: Signal<boolean>`
+- Dirty becomes `true` when: card added, card removed, card moved, deck name changed
+- Dirty becomes `false` when: save succeeds, deck loaded fresh from API
+- CSS: `position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary)`
+- Appears on both mobile and desktop save buttons (both header locations)
+
+**3. Navigation Guard (unsaved changes warning):**
+- Angular `canDeactivate` guard on the deck builder route
+- When `isDirty()` is `true` and the user navigates away, a `mat-dialog` confirmation appears:
+  - Title: "Modifications non sauvegardees"
+  - Message: "Voulez-vous quitter sans sauvegarder ?"
+  - Actions: "Rester" (cancel, returns to builder) / "Quitter" (confirm, navigates away)
+- Dialog uses standard `--surface-card` background, same styling as `ConfirmDialogComponent`
+- Guard does NOT trigger on save-then-navigate (dirty resets on save success)
+
+## Deck Builder & Card Search UX (Cross-Cutting)
+
+This section covers UX patterns that affect the deck builder and card search pages. These are not simulator-specific but are documented here as they emerged from the same design review cycle.
 
 ### Card Display Mode System
 
-**Context:** The card searcher previously offered 4 display modes via a `MatButtonToggleGroup` (`INFORMATIVE`, `MOSAIC`, `OWNED`, `FAVORITE`). Analysis revealed homogeneity issues: FAVORITE was visually identical to MOSAIC (a filter masquerading as a display mode), OWNED mixed layout with editing controls, badge visibility was inconsistent across modes, and card sizing used ad-hoc values.
+**Context:** The card searcher previously offered 4 display modes (`INFORMATIVE`, `MOSAIC`, `OWNED`, `FAVORITE`). Analysis revealed homogeneity issues: FAVORITE was a filter masquerading as a display mode, OWNED mixed layout with editing controls, badge visibility was inconsistent across modes, and card sizing used ad-hoc values.
 
 **New model: 2 display modes + 1 quick filter**
 
@@ -1235,23 +1189,22 @@ When filters expand inside a bottom sheet, the sheet automatically snaps to the 
 | **Grid** | `view_module` | CSS grid, `repeat(auto-fill, minmax(var(--card-size-lg), 1fr))`, gap `0.75em` | Card image + ban badge overlay + owned count overlay (in deckBuildMode) |
 | **List** | `view_headline` | Flexbox, `flex-wrap: wrap`, gap `0.75em`, full-width rows | Card image (fixed width `var(--card-size-md)`) + name + ATK/DEF + rarity badge + ban badge + owned count (in deckBuildMode) |
 
-In `deckBuildMode`, Grid uses `minmax(55px, 1fr)` with `0.25em` gap (unchanged from revision L).
+In `deckBuildMode`, Grid uses `minmax(55px, 1fr)` with `0.25em` gap for higher density (5 columns minimum, matching Master Duel's deck builder aesthetic).
 
 #### Quick Filter (independent toggle)
 
 | Filter | Icon | Behavior |
 |---|---|---|
-| **★ Favorites** | `star` | Toggle on/off. Filters search results to favorites only. Inherits the active display mode (Grid or List). Combinable with other active filters. |
+| **Favorites** | `star` | Toggle on/off. Filters search results to favorites only. Inherits the active display mode (Grid or List). Combinable with other active filters. |
 
 **Toolbar layout:**
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  🔍 [search input]   [filter btn]   [▦] [≡]  · [★]  │
-└──────────────────────────────────────────────────────┘
-                                       ^^^^      ^^^
-                                    display    quick
-                                    modes      filter
++------------------------------------------------------+
+|  [search input]   [filter btn]   [grid] [list]  [fav] |
++------------------------------------------------------+
+                                   ^^^^^         ^^^
+                                display mode   quick filter
 ```
 
 The display mode toggles and the favorites toggle are **visually separated** (gap or thin divider) to communicate that they are independent controls. Display modes are mutually exclusive (radio). Favorites is a binary toggle (on/off).
@@ -1270,20 +1223,6 @@ Integration per display mode:
 |---|---|
 | **Grid** | Overlay at bottom of card image (semi-transparent background strip with `[-] count [+]`) |
 | **List** | Additional column prepended to card row (same layout as previous OWNED mode: `[-] count [+]` group) |
-
-#### Normalized Card Sizing
-
-CSS custom properties replace ad-hoc pixel values across all card display contexts:
-
-```scss
-:root {
-  --card-size-sm: 40px;   // Owned row thumbnails, compact contexts
-  --card-size-md: 80px;   // List mode card image, card inspector thumbnail
-  --card-size-lg: 100px;  // Grid mode base size (minmax lower bound)
-}
-```
-
-All card rendering in `card-list` references these tokens. Breakpoint-specific overrides (e.g., 60px on mobile for List mode) use the same variable system.
 
 #### Uniform Badge System
 
@@ -1316,23 +1255,23 @@ Favorite state is managed as a separate `Signal<boolean>` on the search service,
 **Layout — visual hierarchy separation:**
 
 ```
-┌─ Card Inspector ─────────────────────┐
-│  [Image]                             │
-│                                      │
-│  Dark Magician                       │
-│  ★★★★★★★  ·  Spellcaster  ·  DARK   │
-│  ATK 2500 / DEF 2100                 │
-│                                      │
-│  "The ultimate wizard in terms of    │
-│   attack and defense."               │
-│                                      │
-│  ┌─── Deck ───────────────────────┐  │  ← ng-content (deck build only)
-│  │   [−]      2      [+]         │  │     prominent action block
-│  └────────────────────────────────┘  │
-│                                      │
-│  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─  │  ← divider
-│  Possédées: [−] 3 [+]    ★ Favori   │  ← personal metadata line
-└──────────────────────────────────────┘
++- Card Inspector ----------------------+
+|  [Image]                             |
+|                                      |
+|  Dark Magician                       |
+|  *******  .  Spellcaster  .  DARK    |
+|  ATK 2500 / DEF 2100                 |
+|                                      |
+|  "The ultimate wizard in terms of    |
+|   attack and defense."               |
+|                                      |
+|  +--- Deck -------------------------+|  <- ng-content (deck build only)
+|  |   [-]      2      [+]           ||     prominent action block
+|  +----------------------------------+|
+|                                      |
+|  - - - - - - - - - - - - - - - - -  |  <- divider
+|  Possedees: [-] 3 [+]    * Favori   |  <- personal metadata line
++--------------------------------------+
 ```
 
 **Design rules:**
@@ -1340,8 +1279,8 @@ Favorite state is managed as a separate `Signal<boolean>` on the search service,
 | Element | Style | Purpose |
 |---|---|---|
 | Deck controls (`<ng-content>`) | `mat-icon-button` in bordered container, prominent count | Primary action — adding/removing from deck |
-| Owned stepper | Small inline text `[−] 3 [+]` with `font-size: 0.8125rem`, `color: var(--text-secondary)` | Secondary info — collection management |
-| Favorite toggle | Star icon toggle (`☆`/`★`), same line as owned | Secondary info — personal preference |
+| Owned stepper | Small inline text `[-] 3 [+]` with `font-size: 0.8125rem`, `color: var(--text-secondary)` | Secondary info — collection management |
+| Favorite toggle | Star icon toggle, same line as owned | Secondary info — personal preference |
 | Divider | `1px solid var(--inspector-border-color)` with `margin: 0.75rem 0` | Visual separation between action and info zones |
 
 **Behavior by context:**
@@ -1365,115 +1304,44 @@ Favorite state is managed as a separate `Signal<boolean>` on the search service,
 | `grid-template-columns` | `repeat(auto-fill, minmax(85px, 1fr))` | `repeat(auto-fill, minmax(55px, 1fr))` |
 | `gap` | `0.75em` | `0.25em` |
 | Typical columns (side panel ~300px) | 3 | 5 |
-| Typical columns (bottom sheet ~375px) | 4 | 5–6 |
+| Typical columns (bottom sheet ~375px) | 4 | 5-6 |
 
 **Rationale:** In deck building mode, users scan cards by artwork recognition. Smaller thumbnails (55px) are sufficient — Master Duel uses comparable sizes. The increased density reduces scrolling and provides a more catalog-like browsing experience. This change is scoped to `deckBuildMode` only; the card search page retains its current sizing (`minmax(100px, 1fr)` / `minmax(85px, 1fr)`).
 
 ### Deck Builder Landscape Filter Bottom Sheet
 
-**Context:** In landscape split layout, the deck builder displays the deck viewer (55% left) and the side panel with card search (45% right). Filters were previously an absolute-positioned overlay covering the entire side panel, hiding both the search bar and results.
+**Context:** In landscape split layout, the deck builder displays the deck viewer (55% left) and the side panel with card search (45% right). Filters were previously an absolute-positioned overlay covering the entire side panel.
 
-**New behavior (landscape only):**
-
-Filters are displayed via an `app-bottom-sheet` instance **anchored inside the side panel** (not full-screen). This keeps the deck viewer fully visible while providing filter access.
+**New behavior (landscape only):** Filters are displayed via an `app-bottom-sheet` instance **anchored inside the side panel** (not full-screen). This keeps the deck viewer fully visible while providing filter access.
 
 **Layout:**
 ```
-┌──────────────────────────┬───────────────────────┐
-│                          │  [search bar] [filter] │
-│                          │  ┌──┬──┬──┬──┬──┐     │
-│     DECK VIEWER          │  │  │  │  │  │  │     │
-│     (55% left)           │  ├──┼──┼──┼──┼──┤     │
-│     always visible       │  │  │  │  │  │  │     │
-│                          │  ├──┼──┼──┼──┼──┤     │
-│                          │  │  │  │  │  │  │     │
-│                          │  └──┴──┴──┴──┴──┘     │
-│                          │ ┌─── FILTERS ────────┐ │
-│                          │ │ bottom sheet (~40%) │ │
-│                          │ └────────────────────┘ │
-└──────────────────────────┴───────────────────────┘
++--------------------------+-----------------------+
+|                          |  [search bar] [filter] |
+|                          |  +--+--+--+--+--+     |
+|     DECK VIEWER          |  |  |  |  |  |  |     |
+|     (55% left)           |  +--+--+--+--+--+     |
+|     always visible       |  |  |  |  |  |  |     |
+|                          |  +--+--+--+--+--+     |
+|                          |  |  |  |  |  |  |     |
+|                          |  +--+--+--+--+--+     |
+|                          | +--- FILTERS --------+ |
+|                          | | bottom sheet (~40%) | |
+|                          | +--------------------+ |
++--------------------------+-----------------------+
 ```
 
 **Implementation notes:**
 - The bottom sheet's container is the `.deckBuilder-side` element (not the viewport). It uses `position: absolute` within the side panel, not `position: fixed`.
 - Snap states adapt to the side panel height (not viewport height).
-- On desktop (≥768px), filters remain as vertical expand/collapse inline above the card list (revision H behavior, unchanged).
+- On desktop (>=768px), filters remain as vertical expand/collapse inline above the card list (unchanged).
 - On mobile portrait, filters are inside the main full-screen bottom sheet (unchanged).
 
 | Viewport | Filter mechanism |
 |---|---|
-| Desktop (≥768px) | Vertical expand/collapse inline (revision H) |
+| Desktop (>=768px) | Vertical expand/collapse inline |
 | Mobile landscape (<768px) | Bottom sheet anchored in side panel |
-| Mobile portrait (<768px) | Inside main bottom sheet (auto-snap full, revision I) |
-
-### Notification Snackbar Pattern
-
-**Replaces:** `ngx-toastr` — removed as dependency. All notification points migrate to `MatSnackBar`.
-
-**Position:** Top center — `verticalPosition: 'top'`, `horizontalPosition: 'center'`. Top center avoids collisions with the bottom sheet (used heavily on mobile in deck builder and card search). Consistent across all pages and viewports.
-
-**Duration:** 3 seconds auto-dismiss. Dismiss button (×) available for immediate close.
-
-**Visual Design:**
-
-```
-Success:
-┃█────────────────────────────┐
-┃█  ✓  Deck sauvegardé     ✕ │
-┃█────────────────────────────┘
- ↑ 3px border-left: var(--accent-primary) (#C9A84C)
-   background: var(--surface-card) (#1E1E1E)
-   icon + text: var(--text-primary) (#EAEAEA)
-   icon color: var(--accent-primary)
-
-Error:
-┃█────────────────────────────┐
-┃█  ✖  Erreur de connexion  ✕ │
-┃█────────────────────────────┘
- ↑ 3px border-left: var(--danger) (#CF6679)
-   icon color: var(--danger)
-   same background and text
-```
-
-**Custom CSS classes** (applied via `panelClass` on `MatSnackBar.open()`):
-- `.snackbar-success`: left border `--accent-primary`, icon `check_circle`
-- `.snackbar-error`: left border `--danger`, icon `error`
-
-**Implementation:**
-- Custom `SnackbarComponent` used via `MatSnackBar.openFromComponent()` to include the Material icon prefix
-- Utility functions in `core/utilities/functions.ts` updated: `displaySuccess(snackBar: MatSnackBar, message: string)` and `displayError(snackBar: MatSnackBar, message: string | HttpErrorResponse)`
-- All existing call sites (login, parameters, export, auth interceptor) updated to inject `MatSnackBar` instead of `ToastrService`
-- `ngx-toastr` removed from `package.json`, `angular.json` (styles), and `app.config.ts` (providers)
-
-**Z-index:** MatSnackBar uses CDK Overlay — automatically above all app content. No custom z-index needed.
-
-### Save Feedback Pattern (Deck Builder)
-
-**Context:** The deck builder save action (`POST /api/decks`) currently provides no visual feedback. Users cannot tell if save succeeded, failed, or if they have unsaved changes.
-
-**Three feedback mechanisms:**
-
-**1. Snackbar (success/error):**
-- Success: `displaySuccess(snackBar, 'Deck sauvegardé')` — gold-bordered snackbar
-- Error: `displayError(snackBar, error)` — red-bordered snackbar with error message
-- Added to `DeckBuildService.save()` subscriber's `next` and `error` handlers
-
-**2. Dirty Indicator (unsaved changes):**
-- A small gold dot (`--accent-primary`, 8px circle) appears on the top-right corner of the save `mat-icon-button` when the deck has unsaved modifications
-- The dirty state is tracked via a signal in `DeckBuildService`: `isDirty: Signal<boolean>`
-- Dirty becomes `true` when: card added, card removed, card moved, deck name changed
-- Dirty becomes `false` when: save succeeds, deck loaded fresh from API
-- CSS: `position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary)`
-- Appears on both mobile and desktop save buttons (both header locations)
-
-**3. Navigation Guard (unsaved changes warning):**
-- Angular `canDeactivate` guard on the deck builder route
-- When `isDirty()` is `true` and the user navigates away, a `mat-dialog` confirmation appears:
-  - Title: "Modifications non sauvegardées"
-  - Message: "Voulez-vous quitter sans sauvegarder ?"
-  - Actions: "Rester" (cancel, returns to builder) / "Quitter" (confirm, navigates away)
-- Dialog uses standard `--surface-card` background, same styling as `ConfirmDialogComponent`
-- Guard does NOT trigger on save-then-navigate (dirty resets on save success)
+| Mobile portrait (<768px) | Inside main bottom sheet (auto-snap full) |
 
 ## Content Page UX Specifications
 
@@ -1485,23 +1353,23 @@ Error:
 
 **Visual Structure (desktop):**
 ```
-┌─────────────────────────────────┐
-│                                 │
-│       ╭──────────────╮          │
-│       │  logo-icon   │  ~140px  │
-│       ╰──────────────╯          │
-│          SKYTRIX                │
-│      ··· radial halo ···        │
-│                                 │
-│      ┌───────────────┐          │
-│      │   Pseudo      │          │
-│      ├───────────────┤          │
-│      │  Mot de passe │          │
-│      └───────────────┘          │
-│                                 │
-│   Créer un compte  [LOGIN]      │
-│                                 │
-└─────────────────────────────────┘
++---------------------------------+
+|                                 |
+|       +----------------+        |
+|       |  logo-icon     | ~140px |
+|       +----------------+        |
+|          SKYTRIX                |
+|      ... radial halo ...        |
+|                                 |
+|      +-------------------+      |
+|      |   Pseudo          |      |
+|      +-------------------+      |
+|      |  Mot de passe     |      |
+|      +-------------------+      |
+|                                 |
+|   Creer un compte  [LOGIN]      |
+|                                 |
++---------------------------------+
 ```
 
 **Visual Structure (mobile):**
@@ -1530,7 +1398,7 @@ Error:
 - Form validation — unchanged
 
 **Responsive Breakpoints:**
-- Mobile (≤576px): logo-icon 100px, full-width form, 1rem padding
+- Mobile (<=576px): logo-icon 100px, full-width form, 1rem padding
 - Tablet+ (>576px): logo-icon 140px, max-width 400px form, 2rem padding
 
 ### Parameters Page
@@ -1541,38 +1409,38 @@ Error:
 
 **Visual Structure:**
 ```
-┌───────────────────────────────────┐
-│  Paramètres                       │
-│                                   │
-│  Base de données                  │
-│  ╔═══════════════════════════════╗ │
-│  ║ storage  Mettre à jour       ║ │
-│  ║  les cartes                  ║ │
-│  ║  Synchronise depuis          ║ │
-│  ║  YGOProDeck                  ║ │
-│  ║  Dernière MAJ: il y a 3j    ║ │
-│  ║             [Mettre à jour]  ║ │
-│  ╚═══════════════════════════════╝ │
-│                                   │
-│  Images                          │
-│  ╔═══════════════════════════════╗ │
-│  ║ image  Images originales     ║ │
-│  ║  Télécharge les artworks     ║ │
-│  ║             [Mettre à jour]  ║ │
-│  ║                              ║ │
-│  ║ translate  Images traduites  ║ │
-│  ║  Versions TCG françaises     ║ │
-│  ║             [Mettre à jour]  ║ │
-│  ╚═══════════════════════════════╝ │
-│                                   │
-│  Règles                          │
-│  ╔═══════════════════════════════╗ │
-│  ║ gavel  Banlist               ║ │
-│  ║  Liste des cartes interdites ║ │
-│  ║  et limitées                 ║ │
-│  ║             [Mettre à jour]  ║ │
-│  ╚═══════════════════════════════╝ │
-└───────────────────────────────────┘
++-----------------------------------+
+|  Parametres                       |
+|                                   |
+|  Base de donnees                  |
+|  +===============================+|
+|  | storage  Mettre a jour        ||
+|  |  les cartes                   ||
+|  |  Synchronise depuis           ||
+|  |  YGOProDeck                   ||
+|  |  Derniere MAJ: il y a 3j     ||
+|  |             [Mettre a jour]   ||
+|  +===============================+|
+|                                   |
+|  Images                          |
+|  +===============================+|
+|  | image  Images originales      ||
+|  |  Telecharge les artworks      ||
+|  |             [Mettre a jour]   ||
+|  |                               ||
+|  | translate  Images traduites   ||
+|  |  Versions TCG francaises      ||
+|  |             [Mettre a jour]   ||
+|  +===============================+|
+|                                   |
+|  Regles                          |
+|  +===============================+|
+|  | gavel  Banlist                ||
+|  |  Liste des cartes interdites  ||
+|  |  et limitees                  ||
+|  |             [Mettre a jour]   ||
+|  +===============================+|
++-----------------------------------+
 ```
 
 **Card Structure:**
@@ -1610,120 +1478,51 @@ Error:
 
 ### Responsive Strategy
 
-**Two-Track Approach:** The application uses two responsive strategies, determined by page type:
+The application uses a two-track responsive strategy. Technical details (scaling computation, `ScalingContainerDirective`, breakpoint variables, navbar architecture) are defined in architecture.md §Responsive Strategy and §Navbar Responsive Behavior. This section documents the UX rationale and behavior expectations.
 
-**Track A — Fixed Canvas Scaling (Card Manipulation Pages)**
+**Track A — Fixed Canvas Scaling (Card Manipulation Pages):** Simulator, deck builder, card search. Fixed internal resolution per page, `transform: scale()` to fit viewport. The canvas never scrolls and never hides content zones. Card details remain accessible at any scale via hover/inspector.
 
-Pages where cards are the primary content and spatial layout is critical:
-- Simulator (`/decks/:id/simulator`) — already implemented
-- Deck Builder (`/decks/builder`, `/decks/:id`)
-- Card Search (`/search`)
-
-Fixed internal resolution per page, `transform: scale()` to fit viewport. The canvas structure is invariant — only the scale factor changes. No breakpoint-based layout changes for the canvas area. Card details remain accessible at any scale via hover/inspector.
-
-**Key Principle:** Canvas pages never scroll and never hide content zones. The only variable is the scale factor. On desktop, the grid structure is invariant. **Exception:** On mobile, the simulator board grid changes from 4 rows to 3 rows (hand detached) — this is the only structural grid change, driven by a single media query (≤767px). This eliminates breakpoint-specific CSS bugs while allowing the hand to render at native size on small screens.
-
-**Hybrid layout** for deck builder and card search: responsive search/filter header above the scaled canvas. The header adapts via standard responsive CSS (Track B patterns) — search inputs, filter controls, action buttons. The canvas below contains the card grid/workspace with fixed scaling.
-
-**Track B — Responsive CSS (Content/Utility Pages)**
-
-Pages where content flows naturally and card spatial layout is not required:
-- Deck List (`/decks`)
-- Settings (`/parameters`)
-- Login (`/login`)
-
-Mobile-first CSS with breakpoints:
-
-| Breakpoint | Name | Target |
-|---|---|---|
-| ≤576px | Mobile | Phone portrait |
-| 577–768px | Tablet | Tablet portrait / phone landscape |
-| 769–1024px | Desktop-small | Laptop / small desktop |
-| >1024px | Desktop | Standard desktop |
-
-Standard responsive patterns: fluid grid, stacking columns, adjusted spacing. No canvas scaling needed.
+**Track B — Responsive CSS (Content/Utility Pages):** Deck list, settings, login. Mobile-first CSS with breakpoints (576px, 768px, 1024px). Standard responsive patterns: fluid grid, stacking columns, adjusted spacing.
 
 **Cross-Track Transitions:** When navigating from a Track B page (deck list) to a Track A page (deck builder), the layout paradigm shifts (fluid → fixed canvas) and the navbar may change mode (expanded → collapsed). The transition must feel natural — no jarring layout jumps or flickers.
-
-### Scaling Model
-
-Track A pages use a shared `ScalingContainerDirective` that provides autonomous canvas scaling:
-
-```
-parentWidth = container width (reactive via ResizeObserver)
-parentHeight = container height
-scaleX = parentWidth / referenceWidth
-scaleY = parentHeight / (referenceWidth / aspectRatio)
-scale = min(scaleX, scaleY)
-→ transform: scale(scale), transform-origin: top center (desktop) | bottom center (mobile portrait)
-```
-
-The directive measures the **parent container**, not the viewport — navbar awareness comes naturally from the DOM layout. Each Track A page has its own reference dimensions calibrated to its content density (e.g., simulator: 1060×772 on desktop, 1060×608 on mobile with detached hand).
-
-The canvas is centered in the available space. Empty space (letterboxing) shows the app's existing background — the canvas floats over it.
 
 **Simulator Mobile Scale Calculations (hand detached):**
 
 | Scenario | Viewport | Board canvas | Scale factor | Board rendered height | Hand |
 |---|---|---|---|---|---|
-| **Desktop** (navbar collapsed) | 1920×1080 | 1060×772 | 1.0 (capped) | 772px | In grid, scaled |
-| **Mobile landscape** (immersive) | 844×390 | 1060×608 | ~0.49 (height-constrained) | ~300px | Native ~90px, below board |
-| **Mobile portrait** (topbar visible) | 390×844 | 1060×608 | ~0.37 (width-constrained) | ~224px | Native ~120px, below board |
-| **Current (no detach)** | 390×844 | 1060×772 | ~0.37 | ~284px (hand ~59px) | Scaled, illegible |
+| **Desktop** (navbar collapsed) | 1920x1080 | 1060x772 | 1.0 (capped) | 772px | In grid, scaled |
+| **Mobile landscape** (immersive) | 844x390 | 1060x608 | ~0.49 (height-constrained) | ~300px | Native ~90px, below board |
+| **Mobile portrait** (topbar visible) | 390x844 | 1060x608 | ~0.37 (width-constrained) | ~224px | Native ~120px, below board |
 
 Key gains: hand cards go from ~52px (scaled, illegible) to ~100px (native, readable) on portrait; from ~71px (scaled, blurry) to ~75px (native, crisp) on landscape.
 
-### Viewport Considerations
+### Navbar UX
 
-| Context | Track A (Canvas Pages) | Track B (Content Pages) |
-|---|---|---|
-| **Desktop (>1024px)** | Canvas scales to fit. Card inspector as fixed side panel. Full drag & drop with mouse. | Full layout — multi-column grids, expanded cards. |
-| **Small desktop / laptop (769–1024px)** | Canvas scales down proportionally. All zones remain visible. Inspector may overlap more. | Reduced columns, adjusted spacing. |
-| **Tablet (577–768px)** | Canvas scales further. Still functional. Navbar switches to hamburger/drawer. | Stacked layout, single or dual columns. Touch-friendly tap targets. |
-| **Mobile (≤576px)** | Simulator: landscape-locked, canvas scales to full viewport. Hand detached from canvas at native size, below board (flex column, no overlap). Deck builder/search: portrait usable via scaled canvas. | Single column, full-width cards, 44×44px touch targets. |
+The collapsible navbar provides maximum board space on the simulator while remaining accessible on all pages. Technical implementation details (breakpoint variables, `BreakpointObserver` integration, SCSS architecture) are in architecture.md §Navbar Responsive Behavior.
 
-### Navbar Responsive UX
-
-| Viewport | Mode | Behavior |
-|---|---|---|
-| >768px (desktop) | Collapsible sidebar | Expanded by default (simulator: collapsed by default). Chevron toggle at navbar border. |
-| ≤768px (mobile/tablet) | Hamburger + drawer | Hidden by default. Hamburger button in a fixed top bar. Navbar content slides in as overlay drawer. |
-
-**Collapsed Sidebar — Icon-Only Mode:**
-When the sidebar is collapsed (via chevron toggle), navigation icons remain visible without their text labels. This allows the user to navigate without re-expanding the sidebar.
-
-| State | Width | Content |
-|---|---|---|
-| Expanded | 260px | Logo + icon + label for each nav link + user section |
-| Collapsed | ~56px | Icon only for each nav link (centered, no labels, no logo, no user section) |
-
-- Icons use the same `--text-primary` color and `--accent-primary` active highlight as expanded mode
-- Active route: icon highlighted with `--accent-primary` background (no left border in collapsed — icon background circle instead)
-- Tooltip on hover (icon only mode): shows the nav label via `matTooltip`
-- The chevron toggle button remains at the sidebar border in both states
+**Desktop Sidebar:**
+- Expanded by default on all pages except the simulator (collapsed by default)
+- **Chevron toggle** at the navbar border — points left to collapse, right to expand
+- **Collapsed state (~56px):** Icon-only mode — navigation icons remain visible without labels, centered. Active route highlighted with `--accent-primary` background circle. Tooltip on hover shows nav label via `matTooltip`
+- **Expanded state (~260px):** Full navbar with logo, icon + label for each nav link, user section. Active route: 3px left border `--accent-primary` + `--accent-primary-dim` background
 - Transition: 200ms width + opacity on labels, respects `prefers-reduced-motion`
+- Toggle choice is ephemeral (not persisted across page navigations)
+- When toggled, the board's `transform: scale()` factor recalculates dynamically
 
-- On Track A pages (mobile): the fixed top bar with hamburger reduces available vertical space for the canvas. The canvas parent height accounts for this (e.g., `calc(100vh - mobile-header-height)`).
-- On Track B pages (mobile): the top bar provides persistent navigation access without consuming significant content space.
-- The navbar mode switch is driven by a single breakpoint: **768px**.
+**Mobile (<=768px):**
+- Hamburger button in a fixed top bar, navbar content slides in as overlay drawer
+- Top bar reduces available vertical space for Track A canvas pages
+- Dark theme: `--surface-nav` background, `--text-primary` text
 
-### Mobile Interaction (Post-MVP for Simulator)
+### Mobile Interaction
 
 **Content pages (Track B) — responsive now:**
-- All interactive elements meet 44×44px minimum touch target size
+- All interactive elements meet 44x44px minimum touch target size
 - Standard touch gestures (tap, scroll) work natively with responsive layouts
-- No special interaction mode needed
 
-**Simulator (Track A) — mobile layout improvements (current) + post-MVP touch design:**
+**Card manipulation pages (Track A) — mobile gesture model:**
 
-Mobile layout (current — implemented with hand detachment):
-- **Landscape-locked display** — like Master Duel on mobile, the simulator locks to landscape orientation
-- **Hand detached from scaled canvas** — on mobile (≤767px), the hand renders outside the `.sim-board` grid at native size, inside the `.board-container` (CDK DragDrop group preserved). Board grid drops to 3 rows (1060×608) for better scaling. See §Spacing & Layout Foundation point 5 for full specification.
-- **Landscape hand below board** — hand renders at native size below the board in flex column layout. Cards in horizontal strip at ~80px height. No overlap — flat 2D board requires the bottom row (ED, ST1-5, Deck) to remain fully visible and interactive.
-- **Portrait hand below board** — `.board-container` uses `flex-direction: column; justify-content: flex-end`. Hand sits below the board at ~100-120px height. Cards in horizontal strip with `overflow-x: auto` for scrolling when many cards in hand.
-- Card inspector becomes full-screen modal on tap
-
-Mobile touch gesture model:
+Canvas scaling works on mobile. The header area (Track B patterns) is touch-friendly with responsive CSS. Card interaction within the canvas uses the following gesture model:
 
 **Gesture Map:**
 
@@ -1755,11 +1554,6 @@ Mobile touch gesture model:
 - Click = inspector, click+hold+move = drag (instant, browser-native mousedown/mousemove distinction — no long-press delay needed), scroll = mouse wheel
 - No donut loader on desktop — drag feedback is immediate via cursor change (`grab` → `grabbing`) and card lift animation
 
-**Deck builder / Card search (Track A) — hybrid:**
-- Canvas scaling works on mobile (same as simulator)
-- Header area (Track B) is touch-friendly with responsive CSS
-- Card interaction within the canvas uses the same mobile gesture model (tap = inspector, long press = drag)
-
 ### Accessibility Strategy
 
 **Compliance Level:** Pragmatic WCAG AA — not pursuing formal certification, but following AA guidelines where they align with good UX. Solo personal tool: keyboard navigation and contrast are high priority; screen reader support is low priority.
@@ -1768,8 +1562,8 @@ Mobile touch gesture model:
 
 | Requirement | Status | Source |
 |---|---|---|
-| Color contrast ≥ 4.5:1 (text) | Validated | Step 7 — all text tokens exceed AA |
-| Color contrast ≥ 3:1 (UI components) | Validated | Step 7 — cyan 8.2:1, gold 7.1:1 |
+| Color contrast >= 4.5:1 (text) | Validated | Step 7 — all text tokens exceed AA |
+| Color contrast >= 3:1 (UI components) | Validated | Step 7 — cyan 8.2:1, gold 7.1:1 |
 | Non-color feedback (drag) | Defined | Step 7 — border + glow + scale |
 | Keyboard shortcuts | Defined | Step 12 — Ctrl+Z, Ctrl+Y, Escape |
 | ARIA roles on components | Defined | Step 11 — per component spec |
@@ -1810,6 +1604,6 @@ Mobile touch gesture model:
 - Long-press timing calibration: test 400ms and 500ms thresholds on real devices for optimal feel
 - Donut loader visual test: verify affordance visibility over various card artworks (light/dark)
 - Haptic feedback test: verify `navigator.vibrate(50)` fires on drag activation (Android; graceful no-op on iOS)
-- Touch target size audit (44×44px minimum on all pages)
+- Touch target size audit (44x44px minimum on all pages)
 - CDK DragDrop touch compatibility: verify drag from cards, pills, and overlay cards
 - `prefers-reduced-motion` test: verify donut animation disabled, drag still functional

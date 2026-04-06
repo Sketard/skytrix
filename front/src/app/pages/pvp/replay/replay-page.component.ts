@@ -1,8 +1,7 @@
 import {
-  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, OnDestroy, OnInit, signal, untracked,
+  ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, isDevMode, OnDestroy, OnInit, signal, untracked,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { TranslateService, TranslateModule } from '@ngx-translate/core';
 
@@ -14,13 +13,13 @@ import { TransportBarComponent } from './transport-bar/transport-bar.component';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
-import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY, EMPTY_MAP, EMPTY_CARD_MAP } from '../types';
+import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import type { DuelState } from '../types';
 import type { PreComputedState, TurnMeta } from '../replay-ws.types';
 import { DebugLogPanelComponent } from '../duel-page/debug-log-panel/debug-log-panel.component';
 import { buildReplayLogEntries } from '../duel-page/debug-log-formatter';
 import type { CardOnField, SelectPlaceMsg, SelectDisfieldMsg, PlaceOption, ZoneId } from '../duel-ws.types';
-import { buildFaceDownZoneKeys } from '../pvp-card.utils';
+import { buildFaceDownZoneKeys, preloadCardImages } from '../pvp-card.utils';
 import { buildHandChainBadges, buildOpponentHandChainData } from '../duel-page/chain-badge.utils';
 import type { Player } from '../duel-ws.types';
 import { locationToZoneId, getZonePillCards } from '../pvp-zone.utils';
@@ -35,7 +34,15 @@ import { DebugLogService } from '../duel-page/debug-log.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
 import { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
+import { DuelToastService } from '../duel-page/duel-toast.service';
 import { ANIMATION_DATA_SOURCE } from '../duel-page/animation-data-source';
+import { DuelContext } from '../duel-page/duel-context';
+import { DuelLogger } from '../duel-page/duel-logger';
+import { BattleAnimationTracker } from '../duel-page/battle-animation-tracker';
+import { LpAnimationTracker } from '../duel-page/lp-animation-tracker';
+import { ChainResolutionManager } from '../duel-page/chain-resolution-manager';
+import { DrawSequenceManager } from '../duel-page/draw-sequence-manager';
+import { MoveAnimationRouter } from '../duel-page/move-animation-router';
 import { PvpChainOverlayComponent } from '../duel-page/pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from '../duel-page/pvp-duel-overlays/pvp-duel-overlays.component';
 import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog/pvp-prompt-dialog.component';
@@ -49,7 +56,9 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   providers: [
     ReplayConnectionService, ReplayForkService,
     CardDataCacheService, CardInspectionService, CardTravelService,
-    ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService,
+    DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
+    ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter,
+    ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DebugLogService,
     DuelWebSocketService, // Required by PvpPromptDialogComponent
     { provide: ANIMATION_DATA_SOURCE, useExisting: ReplayDuelAdapter },
@@ -72,12 +81,17 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly cardDataCache = inject(CardDataCacheService);
   private readonly cardInspection = inject(CardInspectionService);
   private readonly cardTravel = inject(CardTravelService);
-  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
+  private readonly duelCtx = inject(DuelContext);
+  private readonly duelLogger = inject(DuelLogger);
   readonly adapter = inject(ReplayDuelAdapter);
   readonly orchestrator = inject(AnimationOrchestratorService);
+  readonly chainManager = inject(ChainResolutionManager);
+  readonly drawManager = inject(DrawSequenceManager);
+  readonly lpTracker = inject(LpAnimationTracker);
   readonly phaseService = inject(PhaseAnnouncementService);
+  readonly toastService = inject(DuelToastService);
   readonly fork = inject(ReplayForkService);
 
   readonly currentIndex = signal<number>(0);
@@ -90,7 +104,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     localStorage.getItem(ReplayPageComponent.PREF_PROMPT_MODE) === 'result' ? 'result' : 'decision',
   );
   /** Debug log detail level (toggled via G key) */
-  readonly logDetail = signal<'normal' | 'debug'>('normal');
+  readonly logDetail = signal<'normal' | 'debug'>(isDevMode() ? 'debug' : 'normal');
   /** Perspective: 0 = player 1, 1 = player 2 */
   readonly perspectiveIndex = signal<Player>(
     localStorage.getItem(ReplayPageComponent.PREF_PERSPECTIVE) === '1' ? 1 : 0,
@@ -99,7 +113,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private static readonly PREF_ANIMATIONS = 'replay.animationsEnabled';
   private static readonly PREF_PROMPT_MODE = 'replay.promptMode';
   private static readonly PREF_PERSPECTIVE = 'replay.perspectiveIndex';
-  private static readonly PREF_POSITION_PREFIX = 'replay.position.';
   private static readonly PLAYBACK_INTERVAL = 500;
   private static readonly PROMPT_DISPLAY_MIN = 800;
   private static readonly PROMPT_DISPLAY_MAX = 3000;
@@ -120,22 +133,25 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const result: TurnMeta[] = [];
     let currentTurn = states[0].boardState.turnCount;
     let startIdx = 0;
-    for (let i = 1; i <= states.length; i++) {
-      const turn = i < states.length ? states[i].boardState.turnCount : -1;
-      if (turn !== currentTurn) {
-        const first = states[startIdx].boardState;
-        result.push({
-          turnNumber: currentTurn,
-          startIndex: startIdx,
-          endIndex: i - 1,
-          p1LP: first.players[0]?.lp ?? 8000,
-          p2LP: first.players[1]?.lp ?? 8000,
-          eventCount: i - startIdx,
-        });
-        currentTurn = turn;
+    const pushTurn = (endIdx: number) => {
+      const first = states[startIdx].boardState;
+      result.push({
+        turnNumber: currentTurn,
+        startIndex: startIdx,
+        endIndex: endIdx,
+        p1LP: first.players[0]?.lp ?? 8000,
+        p2LP: first.players[1]?.lp ?? 8000,
+        eventCount: endIdx - startIdx + 1,
+      });
+    };
+    for (let i = 1; i < states.length; i++) {
+      if (states[i].boardState.turnCount !== currentTurn) {
+        pushTurn(i - 1);
+        currentTurn = states[i].boardState.turnCount;
         startIdx = i;
       }
     }
+    pushTurn(states.length - 1);
     return result;
   });
 
@@ -143,17 +159,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly currentState = computed<PreComputedState | null>(() => this.boardStates()[this.currentIndex()] ?? null);
   readonly debugLogEntries = computed(() => buildReplayLogEntries(this.boardStates(), this.logDetail()));
 
-  /** Perspective-adjusted duel state for display.
-   *  Replay data is always from P0's perspective — swap when perspectiveIndex = 1. */
-  readonly activeDuelState = computed<DuelState>(() => {
-    const state = this.adapter.duelState();
-    if (this.perspectiveIndex() === 0) return state;
-    return {
-      ...state,
-      turnPlayer: state.turnPlayer === 0 ? 1 : 0,
-      players: [state.players[1], state.players[0]],
-    };
-  });
+  /** Duel state for display — the adapter's RBS is already perspective-relative
+   *  (swapBoardState applied on every updateLogical), so no swap needed here. */
+  readonly activeDuelState = computed<DuelState>(() =>
+    this.adapter.renderedBoardState.renderedState(),
+  );
 
   /** Eligible zones for the active SELECT_PLACE/SELECT_DISFIELD decision (zone keys with player suffix). */
   readonly replayHighlightedZones = computed<Set<string>>(() => {
@@ -213,14 +223,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     return this.translate.instant('replay.viewer.loading');
   });
 
-  readonly playerHand = computed<CardOnField[]>(() => [
-    ...this.getHandCards(this.activeDuelState(), 0),
-    ...this.orchestrator.handGhostCards()[0],
-  ]);
-  readonly opponentHand = computed<CardOnField[]>(() => [
-    ...this.getHandCards(this.activeDuelState(), 1),
-    ...this.orchestrator.handGhostCards()[1],
-  ]);
+  readonly playerHand = computed<CardOnField[]>(() =>
+    this.getHandCards(this.activeDuelState(), 0)
+  );
+  readonly opponentHand = computed<CardOnField[]>(() =>
+    this.getHandCards(this.activeDuelState(), 1)
+  );
 
   readonly playerHandChainBadges = computed(() =>
     buildHandChainBadges(this.adapter.activeChainLinks(), this.perspectiveIndex(), this.adapter.chainPhase(), this.playerHand()),
@@ -269,8 +277,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly emptySet = EMPTY_ZONE_SET;
   readonly emptyStringSet = EMPTY_STRING_SET;
   readonly emptyArray = EMPTY_ARRAY;
-  readonly emptyMap = EMPTY_MAP;
-  readonly emptyCardMap = EMPTY_CARD_MAP;
 
   private hasConnected = false;
 
@@ -315,13 +321,19 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Persist currentIndex to localStorage (debounced by Angular's effect batching)
+
+    // Prefetch all card images upfront from decklist codes sent with metadata.
+    // Fires once on REPLAY_METADATA (before any board state arrives).
+    // Tokens/non-deck cards are not covered — they load on demand during
+    // travel animations which provide a natural loading window.
+    let imagesPrefetched = false;
     effect(() => {
-      const idx = this.currentIndex();
-      untracked(() => {
-        const id = this.route.snapshot.paramMap.get('replayId');
-        if (id && idx > 0) localStorage.setItem(ReplayPageComponent.PREF_POSITION_PREFIX + id, String(idx));
-      });
+      const meta = this.replayConnection.metadata();
+      const codes = meta?.cardCodes;
+      if (codes?.length && !imagesPrefetched) {
+        imagesPrefetched = true;
+        untracked(() => preloadCardImages(codes));
+      }
     });
 
     // Queue watcher — mirrors duel-page.component.ts: triggers orchestrator when events arrive
@@ -377,7 +389,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     effect(() => {
       const states = this.boardStates();
       untracked(() => {
-        if (states.length > 0 && this.adapter.duelState() === EMPTY_DUEL_STATE) {
+        if (states.length > 0 && this.adapter.renderedBoardState.renderedState() === EMPTY_DUEL_STATE) {
           this.adapter.jumpToState(states[0]);
         }
       });
@@ -387,31 +399,26 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const replayId = this.route.snapshot.paramMap.get('replayId');
     if (replayId) {
+      this.duelLogger.setTraceId(replayId);
       this.replayConnection.connect(replayId, this.buildReplayToken());
     } else {
       this.router.navigate(['/pvp/history']);
       return;
     }
 
-    // seekTo support: query param (fork return) takes priority, then saved position
+    // seekTo support: query param only (fork return)
     const seekToParam = this.route.snapshot.queryParamMap.get('seekTo');
-    const savedPos = localStorage.getItem(ReplayPageComponent.PREF_POSITION_PREFIX + replayId);
-    const seekTo = seekToParam ? parseInt(seekToParam, 10)
-                 : savedPos   ? parseInt(savedPos, 10)
-                 : NaN;
+    const seekTo = seekToParam ? parseInt(seekToParam, 10) : NaN;
     if (!isNaN(seekTo) && seekTo > 0) {
       this.setupSeekTo(seekTo);
     }
 
-    this.orchestrator.init({
-      dataSource: this.adapter,
-      liveAnnouncer: this.liveAnnouncer,
-      cardTravelService: this.cardTravel,
+    this.duelCtx.configure({
       ownPlayerIndex: () => this.perspectiveIndex(),
       speedMultiplier: () => 1,
       isBoardActive: () => true,
-      injector: this.injector,
     });
+    this.adapter.perspectiveIndex.set(this.perspectiveIndex());
   }
 
   ngOnDestroy(): void {
@@ -507,8 +514,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   }
 
   onTogglePerspective(): void {
+    this.clearPlaybackTimer();
     this.abortAndClean();
     this.perspectiveIndex.update(i => i === 0 ? 1 : 0);
+    this.adapter.perspectiveIndex.set(this.perspectiveIndex());
     localStorage.setItem(ReplayPageComponent.PREF_PERSPECTIVE, String(this.perspectiveIndex()));
     const state = this.boardStates()[this.currentIndex()];
     if (state) this.adapter.jumpToState(state);
@@ -662,13 +671,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       this.adapter.jumpToState(next);
       // Schedule next via timer to avoid synchronous recursion
       // (scheduleNext → doStepForward → feedAnimatedTransition → scheduleNext ...)
-      this.playbackTimer = setTimeout(() => this.scheduleNext(), ReplayPageComponent.PLAYBACK_INTERVAL);
+      this.playbackTimer = setTimeout(() => { this.playbackTimer = null; this.scheduleNext(); }, ReplayPageComponent.PLAYBACK_INTERVAL);
     }
   }
 
   private scheduleNext(): void {
     if (!this.isPlaying()) return;
-
+    if (this.playbackTimer !== null) return; // Already scheduled — prevent double-fire
     if (this.adapter.busy()) return;
 
     if (this.currentIndex() >= this.computedUpTo()) {
@@ -678,13 +687,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     }
 
     this.doStepForward();
-
-    if (!this.animationsEnabled()) {
-      this.playbackTimer = setTimeout(() => this.scheduleNext(), ReplayPageComponent.PLAYBACK_INTERVAL);
-    }
+    // No timer here — feedAnimatedTransition already schedules the next
+    // step via its own setTimeout when animations are disabled.
   }
 
   private schedulePromptDismiss(): void {
+    this.clearPlaybackTimer();
     const tsStr = this.adapter.activeTimestamp();
     const ts = tsStr ? new Date(tsStr).getTime() : null;
     const prevTs = this._lastResponseTimestamp;
@@ -695,6 +703,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       : ReplayPageComponent.PROMPT_DISPLAY_FALLBACK;
 
     this.playbackTimer = setTimeout(() => {
+      this.playbackTimer = null;
       this.adapter.resumeAfterPrompt();
     }, duration);
   }

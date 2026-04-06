@@ -20,7 +20,7 @@ An online PvP automated duel mode for skytrix, powered by OCGCore — the open-s
 
 The PvP mode reuses the solo simulator's visual components (board zones, card rendering, card inspector) but with a distinct data flow: server-pushed state via WebSocket, read-only board, prompt-driven interaction. Visual polish targets Yu-Gi-Oh! Master Duel quality: animations per game event, chain visualization, turn timer, duel result screen.
 
-MVP scope: PvP between friends (trusted players) in 3 incremental sub-phases — PvP-A (functional duel), PvP-B (lobby & session management), PvP-C (visual polish). **PvP-C is implemented:** card travel animations, chain overlay, LP counter effects, draw animation, XYZ detach, token dissolution, and the full masking system are all in place. This UX spec focuses on PvP-A and PvP-B UX decisions; for the complete animation implementation, see [animation-architecture-pvp.md](./animation-architecture-pvp.md).
+MVP scope: PvP between friends (trusted players) in 3 incremental sub-phases — PvP-A (functional duel), PvP-B (lobby & session management), PvP-C (visual polish). **PvP-C is implemented:** card travel animations, chain overlay, LP counter effects, draw animation, XYZ detach, token dissolution, and the lock/commit animation pipeline are all in place. This UX spec focuses on PvP-A and PvP-B UX decisions; for the complete animation implementation, see `CLAUDE.md` and [architecture-pvp.md](./architecture-pvp.md) §Animation Patterns.
 
 ### Design North Star
 
@@ -91,6 +91,8 @@ Comparative Analysis Matrix evaluating Master Duel, EDOPro, and Dueling Nexus ac
 
 ## Core User Experience
 
+> Executive-level summary with detailed mental model, success criteria, and 5-phase interaction cycle.
+
 ### Defining Experience
 
 The PvP experience is a **prompt → response loop** driven entirely by the OCGCore engine:
@@ -131,13 +133,77 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 3. **Board is Contextual Display** — The PvP board is primarily a read-only 3D contextual display the player consults visually while responding to prompts at the bottom. The exception: during SELECT_PLACE prompts, board zones become active tap targets with highlight feedback. Tap any card to inspect, tap highlighted zones to select — nothing more
 4. **Speed Over Polish** — EDOPro speed first, Master Duel polish second. Never blocking. An unanswered prompt = timer ticking. The UX must be fast, not pretty. PvP-C visual polish (card travels, chain overlay, LP counter) is implemented and always interruptible — it adds feedback without ever blocking the prompt flow.
 
+### User Mental Model
+
+| Aspect | Solo Simulator | PvP Duel |
+|--------|---------------|----------|
+| Agency | Player is master — full manual control | Engine dictates — player responds |
+| Interaction | Drag & drop (free-form) | Click/tap prompts (constrained) |
+| Board | 2D flat, editable | 3D perspective, read-only (except SELECT_PLACE) |
+| Pace | Self-paced, no timer | Real-time, chess-clock timer (300s pool + 40s/turn) |
+| Information | Full visibility (own deck) | Asymmetric (opponent hand hidden) |
+| Platform priority | Desktop-first | Mobile landscape-first |
+| Player state | Always active | ~50% active (prompts) / ~50% spectator (opponent's turn) |
+| Reversibility | Undo libre (Ctrl+Z via CommandStack) | No undo — every action is final and irreversible |
+
+**Spectator mode** is PvP-unique: during the opponent's turn, the player observes resolutions, consults the inspector to read opponent's effects, and builds mental readiness for the next prompt window (handtrap decisions). In solo, the player is always active. In PvP, half the experience is watching and thinking — this is where competitive tension builds.
+
+### Success Criteria
+
+| Criterion | Threshold | How Measured |
+|-----------|-----------|-------------|
+| Prompt comprehension | <2s from prompt display to understanding | Player never asks "what is this asking?" |
+| Response speed | 1-2 taps to answer any prompt | All prompt UIs require ≤2 taps |
+| Visual feedback | Every state change has visible transition | No "teleporting" cards or silent LP changes |
+| Chain clarity | Player identifies which card resolves at any point | Chain overlay with 3-card cascade, numbered badges, golden glow on resolving card |
+| Duel result | Player understands why the duel ended | Win condition reason on result screen |
+| Rematch intent | Player wants to immediately replay | Rematch button 1-tap on result screen. Reuses existing room if opponent still connected; creates new room with shareable code if opponent left |
+
+### Novel UX Patterns
+
+**Only one novel pattern**: Inspector + prompt coexistence on mobile. No competitor (Master Duel, EDOPro, Dueling Nexus) allows reading a card's full details while an interactive prompt is active on mobile. This is skytrix's primary UX differentiator for PvP.
+
+All other patterns are established (floating dialog prompts, activation toggle, chain resolution overlay, room code lobby, dual timer/LP) — adopted or adapted from proven products.
+
+### Experience Mechanics
+
+The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation phase):
+
+**Phase 0 — Observation (Spectator Mode)**
+
+- **When:** Opponent's turn, chain resolutions the player didn't initiate, engine-driven state changes
+- **Player sees:** Cards moving, effects resolving, LP changing, chain overlay appearing/disappearing
+- **Player does:** Consults inspector (tap opponent's cards to read effects), builds mental model of game state, prepares handtrap decisions
+- **System provides:** Animation queue playback (no-op in PvP-A, visual polish in PvP-C), continuous board state updates via WebSocket
+- **Emotion:** Tension — "what is my opponent doing? Should I respond?"
+
+**Phase 1 — Initiation (Two-Beat Rendering)**
+
+- **Beat 1:** MSG_HINT arrives → client renders context immediately (card name, effect description, hint type). Player reads WHAT is happening before being asked to act
+- **Beat 2:** SELECT_* arrives (~50ms after) → client renders interactive elements (buttons, zone highlights, card grid) OVER the already-visible context
+- **Why two beats:** Priming. Player's eye catches context first, then interactive targets appear. Flushing both simultaneously causes ~500ms of "where do I look?" hesitation
+- **Fallback:** If no MSG_HINT precedes SELECT_* (e.g. SELECT_POSITION, SELECT_PLACE), skip Beat 1. Render SELECT_* directly with a generic context label derived from the prompt type (e.g. "Choose summon position", "Choose a zone"). Two-beat is the happy path, not the only path
+
+**Phase 2 — Interaction**
+
+- Player reads full context (MSG_HINT + card art + inspector if needed)
+- Player responds: tap card, tap Yes/No, tap zone, select from list — 1-2 taps maximum
+- Timer visible, urgency via color (green >120s → yellow ≤60s → red ≤30s)
+
+**Phase 3 — Feedback**
+
+- Immediate visual confirmation: selected card highlights, zone confirms, LP updates
+- CSS transitions (PvP-A): highlight flash ~100ms, card slide ~150ms, LP counter ~200ms
+- Player knows their action registered — no ambiguity
+
+**Phase 4 — Completion + Animation Drain**
+
+- Client sends SELECT_RESPONSE to server
+- **Animation queue drain point:** Between response sent and next prompt received, the client plays queued visual transitions from the resolution (card destroyed, LP changed, tokens removed). In PvP-A: instant no-op slots. In PvP-C: this is where cinematic animations insert. This explicit drain point is the architectural seam between PvP-A and PvP-C
+- Engine resolves → next Phase 0 (observation) or Phase 1 (next prompt)
+- Cycle repeats until duel ends (LP = 0, deck out, or special win condition)
+
 ## Desired Emotional Response
-
-### Primary Emotional Goals
-
-1. **Comprehension** — "I know exactly what's happening." The player understands every prompt, every resolution, every state change. Zero confusion. This is the foundation — without comprehension, everything else (excitement, satisfaction) is impossible
-2. **Control** — "My decisions matter." Even though the engine dictates the pace, the player feels they are making meaningful strategic choices: activate or not, which card to choose, which zone to target. The Auto/On/Off toggle reinforces this — "I CHOOSE when to engage"
-3. **Competitive tension** — "The next prompt could change everything." The tension of the opponent's turn (will they activate something?), the handtrap decision moment, the LP race. This is what makes Yu-Gi-Oh! addictive — and the emotion Master Duel captures best
 
 ### Emotional Journey
 
@@ -150,23 +216,6 @@ The core action to get right: **reading and responding to a prompt in <2 seconds
 | Chain resolution | **Satisfaction** — "it worked as planned" | Clear visual feedback of resolution |
 | End of match | **Clean closure** — victory = pride, defeat = "I want a rematch" | VICTORY/DEFEAT + reason + easy rematch |
 | Disconnection/error | **No panic** — "nothing is lost" | Auto-reconnect, state preserved |
-
-### Emotions to Avoid
-
-- **Confusion** — "I don't understand what I'm being asked" (= poorly contextualized prompts)
-- **Helplessness** — "the timer is ticking and I can't find the button" (= bad UI placement)
-- **Boredom** — "another 5-second blocking animation" (= Master Duel's worst flaw)
-- **Technical rage-quit** — "it's lagging / disconnecting" (= unhandled network issues)
-
-### Emotion-Design Connections
-
-| Micro-Emotion Spectrum | Design Implication |
-|----------------------|-------------------|
-| Confidence vs Confusion | MSG_HINT ALWAYS visible. Never a prompt without context |
-| Control vs Helplessness | Auto/On/Off toggle accessible at all times. Timer visible but not stressful (color changes at <30s, no aggressive flashing) |
-| Tension vs Anxiety | Chain overlay shows clear progression (3-card cascade, badges decrement). The player sees WHERE they are in resolution |
-| Satisfaction vs Frustration | Immediate visual feedback after every action (highlight, card movement, LP change) |
-| Flow vs Interruption | Animations never blocking. Prompt appears as soon as resolution completes, no artificial delay |
 
 ## UX Pattern Analysis & Inspiration
 
@@ -236,15 +285,6 @@ The activation toggle is a **client-side-only** UI control (no server interactio
 | **Defer** | EDOPro duel log | Toggle panel for action history — adds complexity without serving core loop | PvP-B |
 | **Defer** | EDOPro keyboard shortcuts | Keydown listeners on prompt components (1-9, Y/N, Esc, Space) — desktop-only bonus | PvP-B |
 
-### Pre-mortem Risk Mitigations
-
-| Risk | What Goes Wrong | Preventive Measure | Phase |
-|------|----------------|-------------------|-------|
-| **Inspector + prompt too cramped on mobile** | Floating dialog (centered) + inspector overlay = reduced board visibility. Player closes inspector every time → can't read effects during prompts | Inspector compact mode when prompt is active: card art mini + name + type + ATK/DEF (1 line). Tap to expand. Desktop: no issue (full overlay + prompt coexist). Floating dialog mitigates: only ~15-25% board occlusion vs ~40-55% with bottom sheet | PvP-A |
-| **CSS perspective breaks on mid-range devices** | Samsung Galaxy A-series (60% Android mid-range): flickering, non-clickable zones, 15fps rendering | Flat mode fallback (2D without perspective, smaller but functional zones). Test on 3 target devices (iPhone SE, Galaxy A-series, Pixel). Perspective is progressive enhancement, not hard requirement | PvP-A |
-| **Zero feedback = incomprehension** | Cards appear/disappear instantly, LP changes without transition. Player doesn't understand what just happened. | Resolved by PvP-C implementation: card travel animations, LP counter interpolation, chain overlay, and zone glow provide full visual feedback. All animations respect `prefers-reduced-motion` and the speed multiplier toggle. See [animation-architecture-pvp.md](./animation-architecture-pvp.md). | Implemented |
-| **Room lost after app switch on mobile** | Player creates room, switches to Discord to share code. Browser kills background tab after 30s. Room lost | Deep link (`skytrix.app/pvp/XXXX`) + Web Share API native share sheet. WebSocket keep-alive ping for backgrounded tabs | PvP-B |
-
 ## Design System Foundation
 
 ### Design System Choice
@@ -282,84 +322,6 @@ PvP tokens are namespaced as `--pvp-*` within the existing `_design-tokens.scss`
 - **No user-configurable visual options** — Fixed layout, fixed colors, fixed animations
 - **Token-driven tuning** — Perspective angle, transition durations, and badge sizes are CSS custom properties, adjustable during development without code changes
 - **Desktop adaptation via inverted responsive strategy** — Solo uses Track A = desktop (primary), Track B = mobile (secondary). PvP inverts this: Track A = mobile landscape (primary), Track B = desktop (secondary). `PvpBoardContainerComponent` supports responsive sizing via CSS custom properties and viewport units
-
-## 2. Core User Experience — Defining Experience
-
-### 2.1 Defining Experience Tagline
-
-**"Share a code, duel a friend — tap to read, tap to decide, tap to win."**
-
-The PvP experience has two defining moments: the social entry (share a room code, opponent joins in seconds) and the tactical loop (prompt → response, repeated 20-50 times per duel). If we nail the lobby-to-duel transition AND the prompt comprehension speed, everything else follows.
-
-### 2.2 User Mental Model
-
-| Aspect | Solo Simulator | PvP Duel |
-|--------|---------------|----------|
-| Agency | Player is master — full manual control | Engine dictates — player responds |
-| Interaction | Drag & drop (free-form) | Click/tap prompts (constrained) |
-| Board | 2D flat, editable | 3D perspective, read-only (except SELECT_PLACE) |
-| Pace | Self-paced, no timer | Real-time, chess-clock timer (300s pool + 40s/turn) |
-| Information | Full visibility (own deck) | Asymmetric (opponent hand hidden) |
-| Platform priority | Desktop-first | Mobile landscape-first |
-| Player state | Always active | ~50% active (prompts) / ~50% spectator (opponent's turn) |
-| Reversibility | Undo libre (Ctrl+Z via CommandStack) | No undo — every action is final and irreversible |
-
-**Spectator mode** is PvP-unique: during the opponent's turn, the player observes resolutions, consults the inspector to read opponent's effects, and builds mental readiness for the next prompt window (handtrap decisions). In solo, the player is always active. In PvP, half the experience is watching and thinking — this is where competitive tension builds.
-
-### 2.3 Success Criteria
-
-| Criterion | Threshold | How Measured |
-|-----------|-----------|-------------|
-| Prompt comprehension | <2s from prompt display to understanding | Player never asks "what is this asking?" |
-| Response speed | 1-2 taps to answer any prompt | All prompt UIs require ≤2 taps |
-| Visual feedback | Every state change has visible transition | No "teleporting" cards or silent LP changes |
-| Chain clarity | Player identifies which card resolves at any point | Chain overlay with 3-card cascade, numbered badges, golden glow on resolving card |
-| Duel result | Player understands why the duel ended | Win condition reason on result screen |
-| Rematch intent | Player wants to immediately replay | Rematch button 1-tap on result screen. Reuses existing room if opponent still connected; creates new room with shareable code if opponent left |
-
-### 2.4 Novel UX Patterns
-
-**Only one novel pattern**: Inspector + prompt coexistence on mobile. No competitor (Master Duel, EDOPro, Dueling Nexus) allows reading a card's full details while an interactive prompt is active on mobile. This is skytrix's primary UX differentiator for PvP.
-
-All other patterns are established (floating dialog prompts, activation toggle, chain resolution overlay, room code lobby, dual timer/LP) — adopted or adapted from proven products.
-
-### 2.5 Experience Mechanics
-
-The core PvP interaction is a **5-phase cycle** (4 active phases + 1 observation phase):
-
-**Phase 0 — Observation (Spectator Mode)**
-
-- **When:** Opponent's turn, chain resolutions the player didn't initiate, engine-driven state changes
-- **Player sees:** Cards moving, effects resolving, LP changing, chain overlay appearing/disappearing
-- **Player does:** Consults inspector (tap opponent's cards to read effects), builds mental model of game state, prepares handtrap decisions
-- **System provides:** Animation queue playback (no-op in PvP-A, visual polish in PvP-C), continuous board state updates via WebSocket
-- **Emotion:** Tension — "what is my opponent doing? Should I respond?"
-
-**Phase 1 — Initiation (Two-Beat Rendering)**
-
-- **Beat 1:** MSG_HINT arrives → client renders context immediately (card name, effect description, hint type). Player reads WHAT is happening before being asked to act
-- **Beat 2:** SELECT_* arrives (~50ms after) → client renders interactive elements (buttons, zone highlights, card grid) OVER the already-visible context
-- **Why two beats:** Priming. Player's eye catches context first, then interactive targets appear. Flushing both simultaneously causes ~500ms of "where do I look?" hesitation
-- **Fallback:** If no MSG_HINT precedes SELECT_* (e.g. SELECT_POSITION, SELECT_PLACE), skip Beat 1. Render SELECT_* directly with a generic context label derived from the prompt type (e.g. "Choose summon position", "Choose a zone"). Two-beat is the happy path, not the only path
-
-**Phase 2 — Interaction**
-
-- Player reads full context (MSG_HINT + card art + inspector if needed)
-- Player responds: tap card, tap Yes/No, tap zone, select from list — 1-2 taps maximum
-- Timer visible, urgency via color (green >120s → yellow ≤60s → red ≤30s)
-
-**Phase 3 — Feedback**
-
-- Immediate visual confirmation: selected card highlights, zone confirms, LP updates
-- CSS transitions (PvP-A): highlight flash ~100ms, card slide ~150ms, LP counter ~200ms
-- Player knows their action registered — no ambiguity
-
-**Phase 4 — Completion + Animation Drain**
-
-- Client sends SELECT_RESPONSE to server
-- **Animation queue drain point:** Between response sent and next prompt received, the client plays queued visual transitions from the resolution (card destroyed, LP changed, tokens removed). In PvP-A: instant no-op slots. In PvP-C: this is where cinematic animations insert. This explicit drain point is the architectural seam between PvP-A and PvP-C
-- Engine resolves → next Phase 0 (observation) or Phase 1 (next prompt)
-- Cycle repeats until duel ends (LP = 0, deck out, or special win condition)
 
 ## Visual Design Foundation (PvP Extensions)
 

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCGCore Dropped Messages — Animation Mock</title>
+<style>
+  :root {
+    --board-bg: #1a3a2a;
+    --zone-bg: rgba(255,255,255,0.08);
+    --zone-border: rgba(255,255,255,0.15);
+    --card-back: #2a1a5e;
+    --card-front: #1a1a3a;
+    --gold: #ffd700;
+    --cyan: #00e5ff;
+    --green: #4caf50;
+    --red: #f44336;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #111;
+    color: #eee;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    gap: 32px;
+  }
+  h1 { font-size: 1.3rem; opacity: 0.7; font-weight: 400; }
+  h2 { font-size: 1rem; opacity: 0.5; font-weight: 400; margin-bottom: 8px; }
+
+  /* ---- Shared board strip ---- */
+  .demo {
+    background: var(--board-bg);
+    border-radius: 12px;
+    padding: 24px;
+    width: 700px;
+    position: relative;
+    overflow: hidden;
+  }
+  .demo-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    margin-bottom: 12px;
+  }
+  .field-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  /* ---- Zone / Card ---- */
+  .zone {
+    width: 72px;
+    height: 100px;
+    border: 1px dashed var(--zone-border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: var(--zone-bg);
+  }
+  .zone-label {
+    position: absolute;
+    bottom: -16px;
+    font-size: 0.6rem;
+    opacity: 0.4;
+    white-space: nowrap;
+  }
+  .card {
+    width: 62px;
+    height: 90px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    position: relative;
+  }
+  .card-front {
+    background: linear-gradient(135deg, #2a2a5a, #1a1a3a);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #ccc;
+  }
+  .card-back {
+    background: linear-gradient(135deg, #3a1a6e, #2a1a5e);
+    border: 1px solid rgba(150,100,255,0.3);
+  }
+  .card-back::after {
+    content: '?';
+    font-size: 1.4rem;
+    opacity: 0.3;
+  }
+  .card-monster {
+    background: linear-gradient(135deg, #5a4a1a, #3a3a1a);
+    border: 1px solid rgba(255,200,50,0.3);
+    color: #ddc;
+  }
+  .pile {
+    width: 72px;
+    height: 100px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    position: relative;
+  }
+  .pile-deck {
+    background: linear-gradient(135deg, #3a1a6e, #2a1a5e);
+    border: 2px solid rgba(150,100,255,0.3);
+  }
+  .pile-gy {
+    background: linear-gradient(135deg, #3a1a1a, #2a1a1a);
+    border: 2px solid rgba(255,100,100,0.3);
+    color: #c88;
+  }
+
+  /* ---- Counter badge ---- */
+  .counter-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--cyan);
+    color: #000;
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  /* ---- Toast overlay ---- */
+  .toast {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    opacity: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .toast-icon {
+    font-size: 2rem;
+    line-height: 1;
+  }
+  .toast-results {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .toast-result {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .toast-result.heads { color: var(--gold); }
+  .toast-result.tails { color: #aaa; }
+  .toast-result.dice { color: var(--cyan); }
+
+  /* ---- Equip line ---- */
+  .equip-line {
+    position: absolute;
+    height: 2px;
+    background: var(--cyan);
+    transform-origin: left center;
+    opacity: 0;
+    z-index: 5;
+    box-shadow: 0 0 8px var(--cyan), 0 0 16px rgba(0,229,255,0.3);
+  }
+
+  /* ---- Glow effect ---- */
+  .glow-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 8px;
+    border: 2px solid var(--cyan);
+    opacity: 0;
+    z-index: 3;
+    box-shadow: 0 0 12px var(--cyan), inset 0 0 8px rgba(0,229,255,0.15);
+  }
+
+  /* ---- Swap arrows overlay ---- */
+  .swap-arrows {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    font-size: 2.5rem;
+    opacity: 0;
+    z-index: 10;
+    filter: drop-shadow(0 0 8px var(--gold));
+    color: var(--gold);
+  }
+
+  /* ---- Pulse on pile ---- */
+  .pile-pulse {
+    position: absolute;
+    inset: -3px;
+    border-radius: 8px;
+    border: 2px solid var(--gold);
+    opacity: 0;
+    box-shadow: 0 0 16px rgba(255,215,0,0.4);
+  }
+
+  /* ===================== ANIMATIONS ===================== */
+
+  /* -- Toast fade-in/out -- */
+  @keyframes toast-show {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+    12%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    18%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    82%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  }
+
+  /* -- Glow pulse -- */
+  @keyframes glow-pulse {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    70%  { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+
+  /* -- Line extend -- */
+  @keyframes line-extend {
+    0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
+    15%  { opacity: 1; clip-path: inset(0 60% 0 0); }
+    40%  { opacity: 1; clip-path: inset(0 0% 0 0); }
+    75%  { opacity: 0.7; clip-path: inset(0 0% 0 0); }
+    100% { opacity: 0; clip-path: inset(0 0% 0 0); }
+  }
+
+  /* -- Counter bump -- */
+  @keyframes counter-bump {
+    0%   { transform: scale(1); }
+    20%  { transform: scale(1.6); }
+    50%  { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  /* -- Shuffle travel (same arc as CardTravelService.travel) -- */
+  @keyframes travel-to-right {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    40%  { transform: translate(65px, -30px) scale(1.08); opacity: 1; }
+    100% { transform: translate(132px, 0) scale(1); opacity: 1; }
+  }
+  @keyframes travel-to-left {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    40%  { transform: translate(-65px, -30px) scale(1.08); opacity: 1; }
+    100% { transform: translate(-132px, 0) scale(1); opacity: 1; }
+  }
+
+  /* -- Pile pulse -- */
+  @keyframes pile-glow {
+    0%   { opacity: 0; transform: scale(0.95); }
+    25%  { opacity: 1; transform: scale(1.02); }
+    75%  { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.98); }
+  }
+
+  /* -- Swap arrows -- */
+  @keyframes arrows-show {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    30%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  }
+
+  /* ---- Play states (triggered by .playing) ---- */
+  .playing .toast             { animation: toast-show 1.4s ease forwards; }
+  .playing .glow-ring         { animation: glow-pulse 600ms ease forwards; }
+  .playing .equip-line        { animation: line-extend 600ms ease forwards; }
+  .playing .counter-badge     { animation: counter-bump 450ms ease forwards; }
+  .playing .shuffle-a         { animation: travel-to-right 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+  .playing .shuffle-b         { animation: travel-to-left 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+  .playing .pile-pulse        { animation: pile-glow 700ms ease forwards; }
+  .playing .swap-arrows       { animation: arrows-show 700ms ease forwards; }
+
+  /* ---- Replay button ---- */
+  .replay-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #eee;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    z-index: 20;
+  }
+  .replay-btn:hover { background: rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+
+<h1>OCGCore Dropped Messages — Animation Mock</h1>
+
+<!-- ==================== TOSS COIN ==================== -->
+<div class="demo" id="demo-coin">
+  <div class="demo-label">1. TOSS_COIN — Toast overlay</div>
+  <button class="replay-btn" onclick="replay('demo-coin')">Replay</button>
+  <div class="field-row">
+    <div class="zone"><div class="card card-front">Arcana<br>Force</div></div>
+    <div class="zone"></div>
+    <div class="zone"><div class="card card-monster">Monster</div></div>
+  </div>
+  <div class="toast">
+    <div class="toast-icon">&#x1FA99;</div>
+    <div class="toast-results">
+      <div class="toast-result heads">Heads &#x2714;</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TOSS DICE ==================== -->
+<div class="demo" id="demo-dice">
+  <div class="demo-label">2. TOSS_DICE — Toast overlay (multiple dice)</div>
+  <button class="replay-btn" onclick="replay('demo-dice')">Replay</button>
+  <div class="field-row">
+    <div class="zone"><div class="card card-front">Skull<br>Dice</div></div>
+    <div class="zone"></div>
+    <div class="zone"><div class="card card-monster">Monster</div></div>
+  </div>
+  <div class="toast">
+    <div class="toast-icon">&#x1F3B2;</div>
+    <div class="toast-results">
+      <div class="toast-result dice">Die 1: 4</div>
+      <div class="toast-result dice">Die 2: 6</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== EQUIP ==================== -->
+<div class="demo" id="demo-equip">
+  <div class="demo-label">3. EQUIP — Line from equip spell to target monster</div>
+  <button class="replay-btn" onclick="replay('demo-equip')">Replay</button>
+  <div class="field-row" style="gap: 60px;">
+    <div class="zone" id="equip-src">
+      <div class="card card-front" style="font-size:0.5rem">United<br>We<br>Stand</div>
+      <div class="glow-ring"></div>
+      <div class="zone-label">S3</div>
+    </div>
+    <div class="zone" id="equip-dst">
+      <div class="card card-monster">Blue-Eyes</div>
+      <div class="glow-ring" style="border-color: var(--gold); box-shadow: 0 0 12px var(--gold), inset 0 0 8px rgba(255,215,0,0.15);"></div>
+      <div class="zone-label">M3</div>
+    </div>
+  </div>
+  <div class="equip-line" id="equip-line-el"></div>
+</div>
+
+<!-- ==================== ADD/REMOVE COUNTER ==================== -->
+<div class="demo" id="demo-counter">
+  <div class="demo-label">4. ADD_COUNTER / REMOVE_COUNTER — Badge pulse</div>
+  <button class="replay-btn" onclick="replay('demo-counter')">Replay</button>
+  <div class="field-row">
+    <div class="zone">
+      <div class="card card-front" style="font-size:0.5rem">Magical<br>Citadel</div>
+      <div class="counter-badge">3</div>
+      <div class="zone-label">FIELD</div>
+    </div>
+    <div class="zone">
+      <div class="card card-monster" style="font-size:0.5rem">Endymion</div>
+      <div class="counter-badge" style="background: var(--green);">6</div>
+      <div class="zone-label">M2</div>
+    </div>
+    <div class="zone"></div>
+  </div>
+</div>
+
+<!-- ==================== SHUFFLE SET CARD ==================== -->
+<div class="demo" id="demo-shuffle" style="min-height: 160px;">
+  <div class="demo-label">5. SHUFFLE_SET_CARD — Face-down cross-travel</div>
+  <button class="replay-btn" onclick="replay('demo-shuffle')">Replay</button>
+  <div class="field-row" style="gap: 60px; margin-top: 16px;">
+    <div class="zone" style="border-color: transparent; background: transparent;">
+      <div class="card card-back shuffle-a"></div>
+      <div class="zone-label">M1</div>
+    </div>
+    <div class="zone" style="border-color: transparent; background: transparent;">
+      <div class="card card-back shuffle-b"></div>
+      <div class="zone-label">M2</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SWAP GRAVE DECK ==================== -->
+<div class="demo" id="demo-swap-gd">
+  <div class="demo-label">6. SWAP_GRAVE_DECK — Pulse on GY + DECK with swap icon</div>
+  <button class="replay-btn" onclick="replay('demo-swap-gd')">Replay</button>
+  <div class="field-row" style="gap: 48px;">
+    <div class="pile pile-gy" style="position:relative;">
+      GY<br><span style="font-size:0.55rem;opacity:0.6">12 cards</span>
+      <div class="pile-pulse"></div>
+      <div class="zone-label">Graveyard</div>
+    </div>
+    <div style="position:relative; width:40px; display:flex; align-items:center; justify-content:center;">
+      <div class="swap-arrows">&#x21C4;</div>
+    </div>
+    <div class="pile pile-deck" style="position:relative;">
+      &#x1F0CF;<br><span style="font-size:0.55rem;opacity:0.6">28 cards</span>
+      <div class="pile-pulse" style="border-color: #9c7cff; box-shadow: 0 0 16px rgba(150,100,255,0.4);"></div>
+      <div class="zone-label">Deck</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function positionEquipLine() {
+    const demo = document.getElementById('demo-equip');
+    const src = document.getElementById('equip-src');
+    const dst = document.getElementById('equip-dst');
+    const line = document.getElementById('equip-line-el');
+    const demoRect = demo.getBoundingClientRect();
+    const srcRect = src.getBoundingClientRect();
+    const dstRect = dst.getBoundingClientRect();
+    const x1 = srcRect.left + srcRect.width / 2 - demoRect.left;
+    const y1 = srcRect.top + srcRect.height / 2 - demoRect.top;
+    const x2 = dstRect.left + dstRect.width / 2 - demoRect.left;
+    const y2 = dstRect.top + dstRect.height / 2 - demoRect.top;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    line.style.left = x1 + 'px';
+    line.style.top = y1 + 'px';
+    line.style.width = length + 'px';
+    line.style.transform = `rotate(${angle}deg)`;
+  }
+
+  function replay(id) {
+    const el = document.getElementById(id);
+    el.classList.remove('playing');
+    void el.offsetWidth; // force reflow
+    if (id === 'demo-equip') positionEquipLine();
+    el.classList.add('playing');
+  }
+  // Auto-play all on load
+  document.addEventListener('DOMContentLoaded', () => {
+    positionEquipLine();
+    document.querySelectorAll('.demo').forEach(d => d.classList.add('playing'));
+  });
+</script>
+</body>
+</html>

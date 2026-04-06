@@ -17,6 +17,7 @@ import {
   REPLAY_WORKER_WATCHDOG_MS,
   REPLAY_CACHE_TTL_MS,
   MAX_REPLAY_WORKERS,
+  extractCardCodes,
 } from './types.js';
 import type {
   WorkerToMainMessage,
@@ -32,6 +33,7 @@ import type { ServerMessage, ClientMessage, Player } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
 import { validateData, findMissingPasscodes, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import { updateData } from './data-updater.js';
+import * as logger from './logger.js';
 
 // =============================================================================
 // Configuration
@@ -132,9 +134,9 @@ const scriptsDir = join(DATA_DIR, 'scripts_full');
 const validation = validateData(dbPath, scriptsDir);
 dataReady = validation.ok;
 if (!dataReady) {
-  console.error(`[Startup] Data validation failed: ${validation.reason}`);
+  logger.error('Data validation failed', { reason: validation.reason });
 } else {
-  console.log('[Startup] Data validation passed');
+  logger.log('Data validation passed');
   initScriptsHash(scriptsDir);
 }
 
@@ -209,7 +211,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
   res.on('finish', () => {
     if (pathname !== '/health') {
-      console.log('[%s] %s %s %d — %dms', requestId, method, pathname, res.statusCode, Date.now() - start);
+      logger.debug('HTTP request', { requestId, method, path: pathname, status: res.statusCode, ms: Date.now() - start });
     }
   });
 
@@ -255,7 +257,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       dataReady = revalidation.ok;
       json(res, 200, { ...result, dataReady });
     } catch (err) {
-      console.error('[UpdateData] Failed:', err);
+      logger.error('UpdateData failed', { error: err instanceof Error ? err.message : String(err) });
       json(res, 500, { error: 'Update failed', detail: err instanceof Error ? err.message : String(err) });
     }
     return;
@@ -407,7 +409,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     setTimeout(() => {
       const s = activeDuels.get(duelId);
       if (s && s.players.every(p => !p.connected)) {
-        console.log(`[${duelId}] Connection timeout — no players connected, cleaning up`);
+        logger.log('Connection timeout — no players connected, cleaning up', { duelId });
         safeTerminateWorker(s);
         cleanupDuelSession(s);
       }
@@ -427,7 +429,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       json(res, 404, { code: 'DUEL_NOT_FOUND', error: 'Duel not found' });
       return;
     }
-    console.log(`[${deleteDuelId}] Duel terminated via API`);
+    logger.log('Duel terminated via API', { duelId: deleteDuelId });
     safeTerminateWorker(session);
     cleanupDuelSession(session);
     json(res, 200, { success: true });
@@ -461,7 +463,7 @@ function attachWorkerHandlers(session: ActiveDuelSession): void {
     handleWorkerMessage(session, wmsg);
   });
   session.worker!.on('exit', (code) => {
-    console.log(`[Duel ${session.duelId}] Worker exited (code: ${code})`);
+    logger.log('Worker exited', { duelId: session.duelId, exitCode: code });
     // Only count if not already counted by safeTerminateWorker
     if (!session.workerTerminated) {
       session.workerTerminated = true;
@@ -473,7 +475,7 @@ function attachWorkerHandlers(session: ActiveDuelSession): void {
     cleanupDuelSession(session);
   });
   session.worker!.on('error', (err: Error) => {
-    console.error(`[Duel ${session.duelId}] Worker error:`, err.message);
+    logger.error('Worker error', { duelId: session.duelId, error: err.message });
   });
 }
 
@@ -501,7 +503,7 @@ async function persistReplay(session: ActiveDuelSession, payload: import('./type
   const player1Id = Number(session.players[0].playerId);
   const player2Id = Number(session.players[1].playerId);
   if (!Number.isFinite(player1Id) || !Number.isFinite(player2Id)) {
-    console.error(`[Duel ${session.duelId}] Replay persist aborted: invalid player IDs (p1=${session.players[0].playerId}, p2=${session.players[1].playerId})`);
+    logger.error('Replay persist aborted: invalid player IDs', { duelId: session.duelId, p1: session.players[0].playerId, p2: session.players[1].playerId });
     return;
   }
 
@@ -528,13 +530,13 @@ async function persistReplay(session: ActiveDuelSession, payload: import('./type
       });
       if (response.ok) {
         const data = await response.json() as { id: string };
-        console.log(`[Duel ${session.duelId}] Replay persisted: ${data.id}`);
+        logger.log('Replay persisted', { duelId: session.duelId, replayId: data.id });
         return;
       }
       const errBody = await response.text().catch(() => '');
-      console.error(`[Duel ${session.duelId}] Replay persist failed (attempt ${attempt}/${maxRetries}): HTTP ${response.status} — ${errBody}`);
+      logger.error('Replay persist failed', { duelId: session.duelId, attempt, maxRetries, status: response.status, body: errBody });
     } catch (err) {
-      console.error(`[Duel ${session.duelId}] Replay persist error (attempt ${attempt}/${maxRetries}):`, err instanceof Error ? err.message : err);
+      logger.error('Replay persist error', { duelId: session.duelId, attempt, maxRetries, error: err instanceof Error ? err.message : String(err) });
     }
 
     if (attempt < maxRetries) {
@@ -542,7 +544,7 @@ async function persistReplay(session: ActiveDuelSession, payload: import('./type
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  console.error(`[Duel ${session.duelId}] All ${maxRetries} persist attempts failed — replay data lost`);
+  logger.error('All persist attempts failed — replay data lost', { duelId: session.duelId, maxRetries });
 }
 
 // =============================================================================
@@ -769,8 +771,9 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
   }
 
   // Tell each player their OCGCore index (after potential swap)
-  sendToPlayer(session, 0, { type: 'DUEL_STARTING', playerIndex: 0 });
-  sendToPlayer(session, 1, { type: 'DUEL_STARTING', playerIndex: 1 });
+  const duelCardCodes = extractCardCodes(session.decks);
+  sendToPlayer(session, 0, { type: 'DUEL_STARTING', playerIndex: 0, traceId: session.duelId, cardCodes: duelCardCodes });
+  sendToPlayer(session, 1, { type: 'DUEL_STARTING', playerIndex: 1, traceId: session.duelId, cardCodes: duelCardCodes });
 
   // Spawn worker
   const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
@@ -806,7 +809,7 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
 function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessage): void {
   switch (wmsg.type) {
     case 'WORKER_DUEL_CREATED':
-      console.log(`[Duel ${wmsg.duelId}] Duel created in worker`);
+      logger.log('Duel created in worker', { duelId: wmsg.duelId });
       session.startedAt = Date.now();
       // Initialize turn timer context
       session.timerContext = {
@@ -832,16 +835,16 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
         const cached = session.lastSentPrompt[p];
         if (cached) {
           session.invalidResponseCount[p]++;
-          console.warn(`[Duel ${session.duelId}] RETRY #${session.invalidResponseCount[p]}: re-sending ${cached.type} to player ${p}`);
+          logger.warn('RETRY: re-sending prompt', { duelId: session.duelId, retryCount: session.invalidResponseCount[p], promptType: cached.type, player: p });
 
           if (session.invalidResponseCount[p] >= MAX_INVALID_RESPONSES) {
             const winner: Player = p === 0 ? 1 : 0;
             const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
-            console.log(`[Duel ${session.duelId}] DUEL_END winner=${winner} reason=too_many_invalid_responses`);
+            logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'too_many_invalid_responses' });
             sendToPlayer(session, 0, endMsg);
             sendToPlayer(session, 1, endMsg);
             handleDuelEnd(session);
-            requestReplayFromWorker(session, p === 0 ? 'TIMEOUT' : 'VICTORY');
+            requestReplayFromWorker(session, 'TIMEOUT');
             return;
           }
 
@@ -852,9 +855,9 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
     }
 
     case 'WORKER_ERROR': {
-      console.error(`[Duel ${wmsg.duelId}] Worker error: ${wmsg.error}`);
+      logger.error('Worker error', { duelId: wmsg.duelId, error: wmsg.error });
       const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'worker_error' };
-      console.log(`[Duel ${session.duelId}] DUEL_END winner=null reason=engine_error`);
+      logger.log('DUEL_END', { duelId: session.duelId, winner: null, reason: 'engine_error' });
       sendToPlayer(session, 0, errorMsg);
       sendToPlayer(session, 1, errorMsg);
       handleDuelEnd(session);
@@ -863,7 +866,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
     }
 
     case 'WORKER_REPLAY_DATA': {
-      console.log(`[Duel ${wmsg.duelId}] Received WORKER_REPLAY_DATA (${wmsg.payload.playerResponses.length} responses)`);
+      logger.log('Received WORKER_REPLAY_DATA', { duelId: wmsg.duelId, responses: wmsg.payload.playerResponses.length });
       persistReplay(session, wmsg.payload).finally(() => {
         safeTerminateWorker(session);
       });
@@ -875,7 +878,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
 function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): void {
   // Detect natural DUEL_END from worker (LP=0, deck-out, etc.)
   if (message.type === 'DUEL_END') {
-    console.log(`[Duel ${session.duelId}] DUEL_END winner=${message.winner} reason=worker`);
+    logger.log('DUEL_END', { duelId: session.duelId, winner: message.winner, reason: 'worker' });
     handleDuelEnd(session);
   }
 
@@ -883,7 +886,7 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
   // The worker sends MSG_WIN (not DUEL_END) for LP=0, deck-out, Exodia, etc.
   if (message.type === 'MSG_WIN') {
     const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
-    console.log(`[Duel ${session.duelId}] DUEL_END winner=${message.player} reason=win`);
+    logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win' });
     sendToPlayer(session, 0, endMsg);
     sendToPlayer(session, 1, endMsg);
     handleDuelEnd(session);
@@ -915,7 +918,7 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
   // Track awaitingResponse for SELECT_* messages + start timers
   if (isSelectMessage(message)) {
     const targetPlayer = (message as { player: Player }).player;
-    console.log(`[TIMER] SELECT ${message.type} for player=${targetPlayer}, timerRunning=${session.timerContext?.running}`);
+    logger.debug('SELECT prompt sent', { duelId: session.duelId, type: message.type, player: targetPlayer, timerRunning: session.timerContext?.running });
     session.awaitingResponse[targetPlayer] = true;
     session.promptSentAt[targetPlayer] = Date.now();
     const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
@@ -962,6 +965,173 @@ function isSelectMessage(message: ServerMessage): boolean {
 }
 
 // =============================================================================
+// Response Data Validation (bounds checking before FFI)
+// =============================================================================
+
+function validateResponseData(prompt: ServerMessage, data: Record<string, unknown>): string | null {
+  const p = prompt as unknown as Record<string, unknown>;
+  const cards = p['cards'] as unknown[] | undefined;
+  const cardsLen = cards?.length ?? 0;
+
+  switch (prompt.type) {
+    case 'SELECT_CARD':
+    case 'SELECT_TRIBUTE': {
+      const indices = data['indices'];
+      if (indices === null) {
+        // Cancel — only valid when cancelable
+        return p['cancelable'] ? null : 'cancel not allowed for this prompt';
+      }
+      if (!Array.isArray(indices)) return 'indices must be an array';
+      const min = (p['min'] as number) ?? 1;
+      const max = (p['max'] as number) ?? cardsLen;
+      if (indices.length < min || indices.length > max) return `indices length ${indices.length} not in [${min}, ${max}]`;
+      for (const idx of indices) {
+        if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
+          return `index ${idx} out of bounds [0, ${cardsLen})`;
+        }
+      }
+      if (new Set(indices).size !== indices.length) return 'duplicate indices';
+      return null;
+    }
+
+    case 'SELECT_SUM': {
+      const indices = data['indices'];
+      if (!Array.isArray(indices)) return 'indices must be an array';
+      const mustLen = (p['mustSelect'] as unknown[])?.length ?? 0;
+      const totalLen = mustLen + cardsLen;
+      for (const idx of indices) {
+        if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= totalLen) {
+          return `index ${idx} out of bounds [0, ${totalLen})`;
+        }
+      }
+      if (new Set(indices).size !== indices.length) return 'duplicate indices';
+      return null;
+    }
+
+    case 'SELECT_CHAIN': {
+      const idx = data['index'];
+      if (idx === null || idx === -1) return null; // decline chain
+      if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
+        return `index ${idx} out of bounds [0, ${cardsLen})`;
+      }
+      return null;
+    }
+
+    case 'SELECT_UNSELECT_CARD': {
+      const idx = data['index'];
+      if (idx === null) return null; // finish selection
+      if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
+        return `index ${idx} out of bounds [0, ${cardsLen})`;
+      }
+      return null;
+    }
+
+    case 'SELECT_OPTION': {
+      const options = p['options'] as unknown[] | undefined;
+      const optLen = options?.length ?? 0;
+      const idx = data['index'];
+      if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= optLen) {
+        return `index ${idx} out of bounds [0, ${optLen})`;
+      }
+      return null;
+    }
+
+    case 'SORT_CARD':
+    case 'SORT_CHAIN': {
+      const order = data['order'];
+      if (order === null) return null; // auto-sort
+      if (!Array.isArray(order)) return 'order must be an array';
+      if (order.length !== cardsLen) return `order length ${order.length} !== cards length ${cardsLen}`;
+      const seen = new Set<number>();
+      for (const idx of order) {
+        if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
+          return `order value ${idx} out of bounds [0, ${cardsLen})`;
+        }
+        if (seen.has(idx)) return `duplicate order value ${idx}`;
+        seen.add(idx);
+      }
+      return null;
+    }
+
+    case 'SELECT_COUNTER': {
+      const counts = data['counts'];
+      if (!Array.isArray(counts)) return 'counts must be an array';
+      if (counts.length !== cardsLen) return `counts length ${counts.length} !== cards length ${cardsLen}`;
+      const total = (p['count'] as number) ?? 0;
+      let sum = 0;
+      for (const c of counts) {
+        if (typeof c !== 'number' || !Number.isInteger(c) || c < 0) return `invalid count value ${c}`;
+        sum += c;
+      }
+      if (sum !== total) return `counts sum ${sum} !== required ${total}`;
+      return null;
+    }
+
+    case 'SELECT_POSITION': {
+      const pos = data['position'];
+      if (typeof pos !== 'number') return 'position must be a number';
+      const positions = p['positions'] as number[] | undefined;
+      if (positions && !positions.includes(pos)) return `position ${pos} not in allowed set`;
+      return null;
+    }
+
+    case 'SELECT_EFFECTYN':
+    case 'SELECT_YESNO': {
+      const yes = data['yes'];
+      if (typeof yes !== 'boolean') return 'yes must be a boolean';
+      return null;
+    }
+
+    case 'SELECT_PLACE':
+    case 'SELECT_DISFIELD': {
+      const places = data['places'];
+      if (!Array.isArray(places)) return 'places must be an array';
+      const count = (p['count'] as number) ?? 1;
+      if (places.length !== count) return `places length ${places.length} !== required ${count}`;
+      const allowed = p['places'] as Array<{ player: number; location: number; sequence: number }> | undefined;
+      if (allowed) {
+        for (const pl of places as Array<{ player: number; location: number; sequence: number }>) {
+          if (!allowed.some(a => a.player === pl.player && a.location === pl.location && a.sequence === pl.sequence)) {
+            return `place p${pl.player}/loc${pl.location}/seq${pl.sequence} not in allowed set`;
+          }
+        }
+      }
+      return null;
+    }
+
+    case 'ANNOUNCE_RACE': {
+      const value = data['value'];
+      if (typeof value !== 'number') return 'value must be a number';
+      return null;
+    }
+
+    case 'ANNOUNCE_ATTRIB': {
+      const value = data['value'];
+      if (typeof value !== 'number') return 'value must be a number';
+      return null;
+    }
+
+    case 'ANNOUNCE_NUMBER': {
+      const value = data['value'];
+      if (typeof value !== 'number') return 'value must be a number';
+      const options = p['options'] as number[] | undefined;
+      if (options && !options.includes(value)) return `value ${value} not in options`;
+      return null;
+    }
+
+    case 'SELECT_BATTLECMD':
+    case 'SELECT_IDLECMD': {
+      const action = data['action'];
+      if (typeof action !== 'string' && typeof action !== 'number') return 'action must be string or number';
+      return null;
+    }
+
+    default:
+      return null;
+  }
+}
+
+// =============================================================================
 // Turn Timer & Inactivity Timeout (Story 3.2)
 // =============================================================================
 
@@ -990,11 +1160,11 @@ function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer: 0 | 1)
 function startTurnTimer(session: ActiveDuelSession): void {
   const ctx = session.timerContext;
   if (!ctx || ctx.running) {
-    console.log(`[TIMER] startTurnTimer SKIPPED — ctx=${!!ctx}, running=${ctx?.running}`);
+    logger.debug('startTurnTimer SKIPPED', { duelId: session.duelId, hasCtx: !!ctx, running: ctx?.running });
     return;
   }
 
-  console.log(`[TIMER] startTurnTimer START — activePlayer=${ctx.activePlayer}, pool=${ctx.pools[ctx.activePlayer]}`);
+  logger.debug('startTurnTimer START', { duelId: session.duelId, activePlayer: ctx.activePlayer, pool: ctx.pools[ctx.activePlayer] });
   ctx.running = true;
   ctx.lastTickMs = Date.now();
 
@@ -1020,11 +1190,11 @@ function startTurnTimer(session: ActiveDuelSession): void {
       const winner: Player = loser === 0 ? 1 : 0;
       session.awaitingResponse[loser] = false;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'timeout' };
-      console.log(`[Duel ${session.duelId}] DUEL_END winner=${winner} reason=timeout (player ${loser} pool depleted)`);
+      logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'timeout', loser });
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      requestReplayFromWorker(session, loser === 0 ? 'TIMEOUT' : 'VICTORY');
+      requestReplayFromWorker(session, 'TIMEOUT');
     }
   }, 250);
 }
@@ -1032,10 +1202,10 @@ function startTurnTimer(session: ActiveDuelSession): void {
 function pauseTurnTimer(session: ActiveDuelSession): void {
   const ctx = session.timerContext;
   if (!ctx || !ctx.running) {
-    console.log(`[TIMER] pauseTurnTimer SKIPPED — ctx=${!!ctx}, running=${ctx?.running}`);
+    logger.debug('pauseTurnTimer SKIPPED', { duelId: session.duelId, hasCtx: !!ctx, running: ctx?.running });
     return;
   }
-  console.log(`[TIMER] pauseTurnTimer PAUSE — activePlayer=${ctx.activePlayer}, pool=${ctx.pools[ctx.activePlayer]}`);
+  logger.debug('pauseTurnTimer PAUSE', { duelId: session.duelId, activePlayer: ctx.activePlayer, pool: ctx.pools[ctx.activePlayer] });
 
 
   // Account for time elapsed since last tick
@@ -1080,7 +1250,7 @@ function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, new
   const ctx = session.timerContext;
   if (!ctx || newTurnCount <= ctx.turnCount) return;
 
-  console.log(`[TIMER] handleTurnChange — turn ${ctx.turnCount} → ${newTurnCount}, activePlayer → ${newTurnPlayer}`);
+  logger.debug('handleTurnChange', { duelId: session.duelId, fromTurn: ctx.turnCount, toTurn: newTurnCount, activePlayer: newTurnPlayer });
   // New turn detected — pause current timer, add increment, switch active player
   const wasRunning = ctx.running;
   pauseTurnTimer(session);
@@ -1130,11 +1300,11 @@ function startInactivityTimer(session: ActiveDuelSession, player: Player): void 
         const winner: Player = player === 0 ? 1 : 0;
         session.awaitingResponse[player] = false;
         const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
-        console.log(`[Duel ${session.duelId}] DUEL_END winner=${winner} reason=inactivity (player ${player})`);
+        logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'inactivity', player });
         sendToPlayer(session, 0, endMsg);
         sendToPlayer(session, 1, endMsg);
         handleDuelEnd(session);
-        requestReplayFromWorker(session, player === 0 ? 'TIMEOUT' : 'VICTORY');
+        requestReplayFromWorker(session, 'TIMEOUT');
       }, INACTIVITY_RACE_WINDOW_MS);
     }, INACTIVITY_WARNING_BEFORE_MS);
   }, warningDelay);
@@ -1249,7 +1419,7 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
 
 const server = createServer((req, res) => {
   handleRequest(req, res).catch((err) => {
-    console.error('[HTTP] Unhandled error:', err);
+    logger.error('HTTP unhandled error', { error: err instanceof Error ? err.message : String(err) });
     if (!res.headersSent) {
       json(res, 500, { code: 'INTERNAL_ERROR', error: 'Internal Server Error' });
     }
@@ -1362,7 +1532,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       reconPs.gracePeriodTimer = null;
     }
 
-    console.log(`[Duel ${session.duelId}] Player ${playerIndex} reconnected`);
+    logger.log('Player reconnected', { duelId: session.duelId, player: playerIndex });
 
     // Story 3.2 — Resume turn timer on reconnect if a prompt is pending
     if (session.awaitingResponse.some(a => a)) {
@@ -1392,7 +1562,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     playerIndex = tokenInfo.playerIndex;
     pendingTokens.delete(token!);
 
-    console.log(`[Duel ${session.duelId}] Player ${playerIndex} connected`);
+    logger.log('Player connected', { duelId: session.duelId, player: playerIndex });
   }
 
   // Associate WebSocket to player
@@ -1465,7 +1635,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
   // Check if both players are connected — trigger pre-duel RPS or fork resume
   if (session.players[0].connected && session.players[1].connected) {
-    console.log(`[Duel ${session.duelId}] Both players connected`);
+    logger.log('Both players connected', { duelId: session.duelId });
     if (session.phase === 'WAITING_PLAYERS') {
       if (session.soloMode) {
         // Solo mode: backend already placed the first player at index 0
@@ -1489,7 +1659,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     try {
       parsed = JSON.parse(data.toString());
     } catch {
-      console.error(`[Duel ${session!.duelId}] Invalid JSON from player ${playerIndex}`);
+      logger.error('Invalid JSON from player', { duelId: session!.duelId, player: playerIndex });
       return;
     }
 
@@ -1499,7 +1669,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   ws.on('close', () => {
     session!.players[playerIndex].connected = false;
     session!.players[playerIndex].disconnectedAt = Date.now();
-    console.log(`[Duel ${session!.duelId}] Player ${playerIndex} disconnected`);
+    logger.log('Player disconnected', { duelId: session!.duelId, player: playerIndex });
 
     if (!session!.endedAt) {
       // Story 3.2 — Pause turn timer and clear inactivity on disconnect
@@ -1538,7 +1708,7 @@ function resendPendingPrompt(session: ActiveDuelSession, playerIndex: 0 | 1): vo
 function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void {
   // Re-send OCGCore player index (lost on page refresh)
   if (session.phase === 'DUELING') {
-    sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex } as ServerMessage);
+    sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex, traceId: session.duelId, cardCodes: extractCardCodes(session.decks) } as ServerMessage);
   }
   if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
     const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
@@ -1577,7 +1747,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
         // Neither player reconnected — end as draw
         if (!session.players[0].connected && !session.players[1].connected && !session.endedAt) {
           const endMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'draw_both_disconnect' };
-          console.log(`[Duel ${session.duelId}] DUEL_END winner=null reason=draw_both_disconnect`);
+          logger.log('DUEL_END', { duelId: session.duelId, winner: null, reason: 'draw_both_disconnect' });
           session.storedDuelResult = endMsg;
           handleDuelEnd(session);
           requestReplayFromWorker(session, 'DISCONNECT');
@@ -1601,11 +1771,11 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
     if (!session.players[playerIndex].connected && !session.endedAt) {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'disconnect' };
-      console.log(`[Duel ${session.duelId}] DUEL_END winner=${opponentIndex} reason=disconnect (player ${playerIndex})`);
+      logger.log('DUEL_END', { duelId: session.duelId, winner: opponentIndex, reason: 'disconnect', player: playerIndex });
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      requestReplayFromWorker(session, playerIndex === 0 ? 'DISCONNECT' : 'VICTORY');
+      requestReplayFromWorker(session, 'DISCONNECT');
     }
   }, RECONNECT_GRACE_MS);
 }
@@ -1619,16 +1789,16 @@ const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_R
 function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg: ClientMessage): void {
   // Validate message type
   if (!ALLOWED_CLIENT_TYPES.has(msg.type)) {
-    console.error(`[Duel ${session.duelId}] Invalid message type from player ${playerIndex}: ${msg.type}`);
+    logger.error('Invalid message type', { duelId: session.duelId, player: playerIndex, type: msg.type });
     return;
   }
 
   switch (msg.type) {
     case 'PLAYER_RESPONSE': {
-      console.log(`[SERVER] PLAYER_RESPONSE from player=${playerIndex} promptType=${msg.promptType} awaiting=[${session.awaitingResponse}] lastSentPrompt=${session.lastSentPrompt[playerIndex]?.type}`);
+      logger.debug('PLAYER_RESPONSE', { duelId: session.duelId, player: playerIndex, promptType: msg.promptType, awaiting: session.awaitingResponse.slice(), lastPrompt: session.lastSentPrompt[playerIndex]?.type });
       // Check awaitingResponse flag — prevents spam/out-of-sequence responses
       if (!session.awaitingResponse[playerIndex]) {
-        console.error(`[Duel ${session.duelId}] Unexpected PLAYER_RESPONSE from player ${playerIndex}`);
+        logger.error('Unexpected PLAYER_RESPONSE', { duelId: session.duelId, player: playerIndex });
         return;
       }
 
@@ -1645,6 +1815,28 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       // Pre-duel RPS/TP — handled by application layer, not forwarded to worker
       if (session.phase !== 'DUELING') {
         if (handlePreDuelResponse(session, playerIndex, msg.promptType, msg.data as unknown as Record<string, unknown>)) return;
+      }
+
+      // Validate response data bounds before forwarding to worker (FFI safety)
+      if (expectedPrompt) {
+        const validationError = validateResponseData(expectedPrompt, msg.data as unknown as Record<string, unknown>);
+        if (validationError) {
+          logger.warn('Invalid response data — re-sending prompt', { duelId: session.duelId, player: playerIndex, reason: validationError });
+          session.invalidResponseCount[playerIndex]++;
+          if (session.invalidResponseCount[playerIndex] >= MAX_INVALID_RESPONSES) {
+            const winner: Player = playerIndex === 0 ? 1 : 0;
+            const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
+            logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'too_many_invalid_responses' });
+            sendToPlayer(session, 0, endMsg);
+            sendToPlayer(session, 1, endMsg);
+            handleDuelEnd(session);
+            requestReplayFromWorker(session, 'TIMEOUT');
+            return;
+          }
+          // Re-send prompt like a RETRY
+          sendToPlayer(session, playerIndex, expectedPrompt);
+          return;
+        }
       }
 
       session.invalidResponseCount[playerIndex] = 0;
@@ -1674,11 +1866,11 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
     case 'SURRENDER': {
       const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
       const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'surrender' };
-      console.log(`[Duel ${session.duelId}] DUEL_END winner=${opponentIndex} reason=surrender (player ${playerIndex})`);
+      logger.log('DUEL_END', { duelId: session.duelId, winner: opponentIndex, reason: 'surrender', player: playerIndex });
       sendToPlayer(session, 0, endMsg);
       sendToPlayer(session, 1, endMsg);
       handleDuelEnd(session);
-      requestReplayFromWorker(session, playerIndex === 0 ? 'SURRENDER' : 'VICTORY');
+      requestReplayFromWorker(session, 'SURRENDER');
       break;
     }
 
@@ -1746,13 +1938,13 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
     userId = String(payload.sub ?? payload.userId ?? payload.id ?? '');
     if (!userId) throw new Error('No user ID in JWT');
   } catch (err) {
-    console.error('[Replay] JWT decode error:', err instanceof Error ? err.message : err);
+    logger.error('Replay JWT decode error', { error: err instanceof Error ? err.message : String(err) });
     recordFailedWsAttempt(ip);
     ws.close(4001, 'Invalid token');
     return;
   }
 
-  console.log('[Replay %s] Connection from userId=%s', replayId, userId);
+  logger.log('Replay connection', { replayId, userId });
 
   // Fetch replay data from Spring Boot
   let replayData!: WorkerReplayPayload;
@@ -1760,7 +1952,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
   if (cached) {
     // Auth check even on cache hit
     if (cached.playerIds[0] !== userId && cached.playerIds[1] !== userId) {
-      console.error('[Replay %s] Auth failed (cached): userId=%s not in [%s, %s]', replayId, userId, cached.playerIds[0], cached.playerIds[1]);
+      logger.error('Replay auth failed (cached)', { replayId, userId, allowed: cached.playerIds });
       recordFailedWsAttempt(ip);
       ws.close(4003, 'Not authorized');
       return;
@@ -1771,7 +1963,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
     replayCache.delete(replayId);
     const refreshedTimer = setTimeout(() => { replayCache.delete(replayId); }, REPLAY_CACHE_TTL_MS);
     replayCache.set(replayId, { data: cached.data, playerIds: cached.playerIds, timer: refreshedTimer });
-    console.log('[Replay %s] Using cached replay data (TTL refreshed)', replayId);
+    logger.debug('Replay cache hit (TTL refreshed)', { replayId });
   } else {
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1780,13 +1972,13 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
           headers: { 'X-Internal-Key': INTERNAL_API_KEY },
         });
         if (response.status === 404) {
-          console.error('[Replay %s] Replay not found (HTTP 404)', replayId);
+          logger.error('Replay not found', { replayId });
           recordFailedWsAttempt(ip);
           ws.close(4004, 'Replay not found');
           return;
         }
         if (!response.ok) {
-          console.error('[Replay %s] Spring Boot returned HTTP %d (attempt %d/%d)', replayId, response.status, attempt, maxRetries);
+          logger.error('Replay fetch failed', { replayId, status: response.status, attempt, maxRetries });
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, Math.pow(3, attempt - 1) * 1000));
             continue;
@@ -1800,7 +1992,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
         const p1 = String(body.player1Id);
         const p2 = String(body.player2Id);
         if (p1 !== userId && p2 !== userId) {
-          console.error('[Replay %s] Auth failed: userId=%s not in [%s, %s]', replayId, userId, body.player1Id, body.player2Id);
+          logger.error('Replay auth failed', { replayId, userId, p1: body.player1Id, p2: body.player2Id });
           recordFailedWsAttempt(ip);
           ws.close(4003, 'Not authorized');
           return;
@@ -1821,7 +2013,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
         replayCache.set(replayId, { data: replayData, playerIds: [p1, p2], timer });
         break;
       } catch (err) {
-        console.error('[Replay %s] Fetch error (attempt %d/%d):', replayId, attempt, maxRetries, err instanceof Error ? err.message : err);
+        logger.error('Replay fetch error', { replayId, attempt, maxRetries, error: err instanceof Error ? err.message : String(err) });
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, Math.pow(3, attempt - 1) * 1000));
           continue;
@@ -1839,6 +2031,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
   // Send REPLAY_METADATA
   const divergenceWarning = replayData.metadata.scriptsHash !== getScriptsHash()
     || replayData.metadata.ocgcoreVersion !== getOcgcoreVersion();
+  const cardCodes = extractCardCodes(replayData.decks);
   ws.send(JSON.stringify({
     type: 'REPLAY_METADATA',
     playerUsernames: replayData.metadata.playerUsernames,
@@ -1847,6 +2040,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
     result: replayData.metadata.result,
     divergenceWarning,
     totalResponses: replayData.playerResponses.length,
+    cardCodes,
   }));
 
   // Mark as alive for heartbeat (shared with duel connections via wss.clients)
@@ -1881,11 +2075,11 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
 
   // WS close/error handlers for replay
   ws.on('close', () => {
-    console.log('[Replay %s] Client disconnected', replayId);
+    logger.log('Replay client disconnected', { replayId });
     cleanupReplayConnection(conn);
   });
   ws.on('error', (err) => {
-    console.error('[Replay %s] WS error:', replayId, err.message);
+    logger.error('Replay WS error', { replayId, error: err.message });
     cleanupReplayConnection(conn);
   });
 }
@@ -1919,7 +2113,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
   function resetWatchdog(): void {
     if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
     conn.watchdogTimer = setTimeout(() => {
-      console.error('[Replay %s] Watchdog timeout — terminating worker', conn.replayId);
+      logger.error('Replay watchdog timeout — terminating worker', { replayId: conn.replayId });
       if (conn.ws.readyState === WebSocket.OPEN) {
         conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Pre-computation timed out (30s inactivity)' }));
       }
@@ -1939,7 +2133,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
         }));
       }
     } else if (wmsg.type === 'WORKER_REPLAY_COMPLETE') {
-      console.log('[Replay %s] Pre-computation complete', conn.replayId);
+      logger.log('Replay pre-computation complete', { replayId: conn.replayId });
       conn.state = 'ready';
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
       worker.removeAllListeners();
@@ -1947,7 +2141,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
       conn.worker = null;
       onReplayWorkerDone();
     } else if (wmsg.type === 'WORKER_REPLAY_ERROR') {
-      console.error('[Replay %s] Worker error: %s', conn.replayId, wmsg.message);
+      logger.error('Replay worker error', { replayId: conn.replayId, error: wmsg.message });
       if (conn.ws.readyState === WebSocket.OPEN) {
         conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
       }
@@ -1966,7 +2160,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
   });
 
   worker.on('exit', (code) => {
-    console.log('[Replay %s] Worker exited (code: %d)', conn.replayId, code);
+    logger.log('Replay worker exited', { replayId: conn.replayId, exitCode: code });
     if (conn.worker === worker) {
       conn.worker = null;
       onReplayWorkerDone();
@@ -1974,7 +2168,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
   });
 
   worker.on('error', (err: Error) => {
-    console.error('[Replay %s] Worker error:', conn.replayId, err.message);
+    logger.error('Replay worker thread error', { replayId: conn.replayId, error: err.message });
   });
 
   // Send INIT_REPLAY to worker
@@ -2002,7 +2196,7 @@ function handleReplayFork(
 ): void {
   // Guard: only allow fork from loading/ready states
   if (conn.state !== 'loading' && conn.state !== 'ready') {
-    console.warn('[Fork %s] Ignoring REPLAY_FORK in state "%s"', conn.replayId, conn.state);
+    logger.warn('Ignoring REPLAY_FORK in unexpected state', { replayId: conn.replayId, state: conn.state });
     return;
   }
 
@@ -2037,7 +2231,7 @@ function handleReplayFork(
   // Double fork guard: terminate previous fork/pre-computation worker if still running (AC#5)
   const hadWorker = !!conn.worker;
   if (conn.worker) {
-    console.log('[Fork %s] Terminating previous worker before starting fork', conn.replayId);
+    logger.log('Terminating previous worker before starting fork', { replayId: conn.replayId });
     conn.worker.removeAllListeners();
     conn.worker.terminate();
     conn.worker = null;
@@ -2078,7 +2272,7 @@ function createForkWorker(
   // Watchdog: 30s timeout
   if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
   conn.watchdogTimer = setTimeout(() => {
-    console.error('[Fork %s] Watchdog timeout — terminating fork worker', conn.replayId);
+    logger.error('Fork watchdog timeout — terminating worker', { replayId: conn.replayId });
     if (conn.ws.readyState === WebSocket.OPEN) {
       conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Fork reconstruction timed out (30s)' }));
     }
@@ -2098,7 +2292,7 @@ function createForkWorker(
       if (!wmsg.sanityResult.match) {
         // Divergence warning — send to client, keep worker alive pending decision
         conn.state = 'fork_warning';
-        console.log('[Fork %s] Sanity mismatch: %s', conn.replayId, wmsg.sanityResult.details);
+        logger.log('Fork sanity mismatch', { replayId: conn.replayId, details: wmsg.sanityResult.details });
         pendingForkWorkers.set(conn, { worker, replayData, forkDuelId });
         if (conn.ws.readyState === WebSocket.OPEN) {
           conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: 'FORK_DIVERGENCE_WARNING', message: wmsg.sanityResult.details ?? '' }));
@@ -2109,7 +2303,7 @@ function createForkWorker(
         transitionForkToSolo(conn, worker, forkDuelId, replayData);
       }
     } else if (wmsg.type === 'WORKER_FORK_ERROR') {
-      console.error('[Fork %s] Worker error: %s', conn.replayId, wmsg.message);
+      logger.error('Fork worker error', { replayId: conn.replayId, error: wmsg.message });
       if (conn.ws.readyState === WebSocket.OPEN) {
         conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
       }
@@ -2123,7 +2317,7 @@ function createForkWorker(
   });
 
   worker.on('exit', (code) => {
-    console.log('[Fork %s] Worker exited (code: %d)', conn.replayId, code);
+    logger.log('Fork worker exited', { replayId: conn.replayId, exitCode: code });
     if (conn.worker === worker) {
       conn.worker = null;
       onReplayWorkerDone();
@@ -2131,7 +2325,7 @@ function createForkWorker(
   });
 
   worker.on('error', (err: Error) => {
-    console.error('[Fork %s] Worker error:', conn.replayId, err.message);
+    logger.error('Fork worker thread error', { replayId: conn.replayId, error: err.message });
   });
 
   // Send INIT_FORK to worker
@@ -2200,7 +2394,7 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
   // H2 — Clean up if no client connects within 30s
   session.forkConnectionTimeout = setTimeout(() => {
     if (!session.players[0].connected && !session.players[1].connected) {
-      console.log('[ForkSolo %s] No client connected within timeout — cleaning up', forkDuelId);
+      logger.log('ForkSolo: no client connected within timeout — cleaning up', { duelId: forkDuelId });
       safeTerminateWorker(session);
       cleanupDuelSession(session);
     }
@@ -2235,7 +2429,7 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
   worker.removeAllListeners('error');
   setupForkWorkerHandlers(session, worker);
 
-  console.log('[Fork %s] Transitioned to solo session, duelId=%s', conn.replayId, forkDuelId);
+  logger.log('Fork transitioned to solo session', { replayId: conn.replayId, duelId: forkDuelId });
 }
 
 function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): void {
@@ -2246,7 +2440,7 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
       // Detect natural game end via MSG_WIN — generate DUEL_END for clients (same as broadcastMessage)
       if (message.type === 'MSG_WIN') {
         const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
-        console.log('[ForkSolo %s] DUEL_END winner=%d reason=win', session.duelId, message.player);
+        logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win', mode: 'fork_solo' });
         sendToPlayer(session, 0, endMsg);
         sendToPlayer(session, 1, endMsg);
         handleDuelEnd(session);
@@ -2280,7 +2474,7 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
         }
       }
     } else if (wmsg.type === 'WORKER_ERROR') {
-      console.error('[ForkSolo %s] Worker error: %s', session.duelId, wmsg.error);
+      logger.error('ForkSolo worker error', { duelId: session.duelId, error: wmsg.error });
     } else if (wmsg.type === 'WORKER_RETRY') {
       // Re-send last prompt to the relevant player
       for (const [idx, ps] of session.players.entries()) {
@@ -2292,18 +2486,18 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
   });
 
   worker.on('exit', (code) => {
-    console.log('[ForkSolo %s] Worker exited (code: %d)', session.duelId, code);
+    logger.log('ForkSolo worker exited', { duelId: session.duelId, exitCode: code });
     session.workerTerminated = true;
   });
 
   worker.on('error', (err: Error) => {
-    console.error('[ForkSolo %s] Worker error:', session.duelId, err.message);
+    logger.error('ForkSolo worker thread error', { duelId: session.duelId, error: err.message });
   });
 }
 
 function handleReplayForkContinue(conn: ReplayConnection): void {
   if (conn.state !== 'fork_warning') {
-    console.warn('[Fork %s] Ignoring REPLAY_FORK_CONTINUE in state "%s"', conn.replayId, conn.state);
+    logger.warn('Ignoring REPLAY_FORK_CONTINUE in unexpected state', { replayId: conn.replayId, state: conn.state });
     return;
   }
   const pending = pendingForkWorkers.get(conn);
@@ -2316,7 +2510,7 @@ function handleReplayForkContinue(conn: ReplayConnection): void {
 
 function handleReplayForkCancel(conn: ReplayConnection): void {
   if (conn.state !== 'fork_warning') {
-    console.warn('[Fork %s] Ignoring REPLAY_FORK_CANCEL in state "%s"', conn.replayId, conn.state);
+    logger.warn('Ignoring REPLAY_FORK_CANCEL in unexpected state', { replayId: conn.replayId, state: conn.state });
     return;
   }
   const pending = pendingForkWorkers.get(conn);
@@ -2372,8 +2566,11 @@ function cleanupReplayConnection(conn: ReplayConnection, preserveCache = false):
 // Graceful Shutdown
 // =============================================================================
 
+let shuttingDown = false;
 function shutdown(): void {
-  console.log('Shutting down...');
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.log('Shutting down...');
 
   clearInterval(heartbeatTimer);
 
@@ -2405,13 +2602,13 @@ function shutdown(): void {
 
   wss.close(() => {
     server.close(() => {
-      console.log('Server stopped.');
+      logger.log('Server stopped');
       process.exit(0);
     });
   });
 
   setTimeout(() => {
-    console.error('Forced shutdown after timeout.');
+    logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 5000);
 }
@@ -2419,18 +2616,34 @@ function shutdown(): void {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception — initiating graceful shutdown', {
+    error: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
+  shutdown();
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', {
+    error: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+  // Do NOT shutdown — a missed .catch() must not kill all active duels
+});
+
 // =============================================================================
 // Start
 // =============================================================================
 
 if (!process.env['INTERNAL_API_KEY']) {
   if (IS_PRODUCTION) {
-    console.error('[Config] INTERNAL_API_KEY not set in production — internal API auth and replay persistence will fail');
+    logger.error('INTERNAL_API_KEY not set in production — internal API auth and replay persistence will fail');
   } else {
-    console.warn('[Config] INTERNAL_API_KEY not set — using dev default key');
+    logger.warn('INTERNAL_API_KEY not set — using dev default key');
   }
 }
 
 server.listen(PORT, () => {
-  console.log(`Duel server listening on port ${PORT}`);
+  logger.log(`Duel server listening on port ${PORT}`);
 });

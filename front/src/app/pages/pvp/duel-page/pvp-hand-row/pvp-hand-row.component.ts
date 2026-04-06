@@ -10,6 +10,7 @@ import { getCardImageUrlByCode } from '../../pvp-card.utils';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PvpHandRowComponent {
+  private static readonly EXPANSION_MARKER = {} as CardOnField;
   private readonly el = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   readonly hoveredIndex = signal<number | null>(null);
@@ -20,16 +21,14 @@ export class PvpHandRowComponent {
   readonly cards = input<CardOnField[]>([]);
   readonly actionableCardIndices = input<Set<number>>(new Set());
   readonly activateCardIndices = input<Set<number>>(new Set());
-  /** Specific card indices to hide (hand masking for draw/move-to-hand animations). */
-  readonly hiddenIndices = input<ReadonlySet<number>>(new Set());
-  /** Hide the entire hand (initial draw pending). */
-  readonly hideAll = input(false);
   /** Chain link badges: hand card index → chain link number. */
   readonly chainBadges = input<Map<number, number>>(new Map());
   /** Revealed card codes for opponent hand cards activated in chain: sequence → cardCode. */
   readonly revealedCardCodes = input<Map<number, number>>(new Map());
-  /** Whether this hand is in replay mode (applies .revealed-in-replay marker to opponent cards). */
+  /** Whether this hand is in replay mode (shows full card art for opponent hand cards). */
   readonly replayMode = input(false);
+  /** Number of invisible expansion slot placeholders for draw animation targets. */
+  readonly expansionSlots = input(0);
 
   readonly handCardAction = output<{ index: number; element: HTMLElement }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();
@@ -55,10 +54,21 @@ export class PvpHandRowComponent {
     }
   }
 
-  readonly needsOverlap = computed(() => this.cards().length >= 2);
+  readonly allItems = computed(() => {
+    const real = this.cards();
+    const slots = this.expansionSlots();
+    if (slots <= 0) return real;
+    return [...real, ...Array.from({ length: slots }, () => PvpHandRowComponent.EXPANSION_MARKER)];
+  });
+
+  isExpansionMarker(item: CardOnField): boolean {
+    return item === PvpHandRowComponent.EXPANSION_MARKER;
+  }
+
+  readonly needsOverlap = computed(() => this.allItems().length >= 2);
 
   readonly overlapMargin = computed(() => {
-    const count = this.cards().length;
+    const count = this.allItems().length;
     if (count < 2) return null;
     let ratio: number;
     if (this.isSmallViewport()) {
@@ -78,7 +88,7 @@ export class PvpHandRowComponent {
   private readonly FAN_MAX_Y = 8;
 
   fanTransform(index: number): string {
-    const count = this.cards().length;
+    const count = this.allItems().length;
     if (count <= 1) return '';
     const t = (index - (count - 1) / 2) / ((count - 1) / 2);
     const angle = t * this.FAN_MAX_ANGLE;
@@ -96,7 +106,7 @@ export class PvpHandRowComponent {
 
   onContainerMouseMove(event: MouseEvent): void {
     if (this.side() !== 'player') return;
-    const cardEls = (this.el.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.hand-card');
+    const cardEls = (this.el.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.hand-card:not(.hand-card--expansion)');
     let best = -1, minDist = Infinity, cardWidth = 0;
     cardEls.forEach((el, i) => {
       const { left, width } = el.getBoundingClientRect();

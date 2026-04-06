@@ -1,141 +1,88 @@
-import { computed, Injectable, signal, type Signal } from '@angular/core';
+import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 
-import type { AnimationDataSource } from '../duel-page/animation-data-source';
-import type { DuelState, ChainLinkState, GameEvent, HintContext, Prompt } from '../types';
-import { EMPTY_DUEL_STATE } from '../types';
+import { syncAfterBoardState, type AnimationDataSource, type QueueEntry } from '../duel-page/animation-data-source';
+import { DuelEventProcessor } from '../duel-page/duel-event-processor';
+import { DuelLogCategory, DuelLogger } from '../duel-page/duel-logger';
+import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
+import type { HintContext, Prompt } from '../types';
 import type {
-  BoardStatePayload, ChainNegatedMsg, ChainingMsg, DecisionMoment, PreComputedState,
-  ServerMessage, CardInfo,
+  BoardStatePayload, DecisionMoment, Player, PreComputedState,
+  PlayerBoardState, ServerMessage, CardInfo,
 } from '../duel-ws.types';
-import { locationToZoneId } from '../pvp-zone.utils';
 
-interface AnimateStep { kind: 'animate'; events: GameEvent[]; pendingState?: BoardStatePayload }
+
+interface AnimateStep { kind: 'animate'; events: ServerMessage[]; pendingState?: BoardStatePayload }
 interface DecideStep { kind: 'decide'; decision: DecisionMoment }
 type ReplayStep = AnimateStep | DecideStep;
 
-const INTERNAL_TYPES = new Set(['MSG_CHAIN_NEGATED', 'WAITING_RESPONSE']);
-
 @Injectable()
-export class ReplayDuelAdapter implements AnimationDataSource {
+export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
 
   // ══════════════════════════════════════════════════
   //  AnimationDataSource contract (orchestrator interface)
   // ══════════════════════════════════════════════════
 
-  private readonly _duelState = signal<DuelState>(EMPTY_DUEL_STATE);
-  private readonly _activeChainLinks = signal<ChainLinkState[]>([]);
-  private readonly _chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
-  // Typed as ServerMessage[] internally — dequeueAnimation() consumes non-GameEvent
-  // types defensively (MSG_CHAIN_NEGATED, WAITING_RESPONSE, SELECT_*).
-  // The public getter is cast to GameEvent[] to satisfy AnimationDataSource.
-  // This cast is safe: filterEventsForQueue strips non-GameEvent types before
-  // insertion, and dequeueAnimation() handles any that slip through.
-  private readonly _animationQueue = signal<ServerMessage[]>([]);
-  private _pendingBoardState: BoardStatePayload | null = null;
+  private readonly logger = inject(DuelLogger);
+  private readonly processor = (() => { const p = new DuelEventProcessor(); p.logger = this.logger; return p; })();
+  private readonly rbs = (() => { const s = new RenderedBoardStateService(); s.logger = this.logger; return s; })();
+  readonly renderedBoardState = this.rbs;
 
-  readonly duelState = this._duelState.asReadonly();
-  readonly animationQueue = this._animationQueue.asReadonly() as unknown as Signal<GameEvent[]>;
-  readonly activeChainLinks = this._activeChainLinks.asReadonly();
-  readonly chainPhase = this._chainPhase.asReadonly();
+  readonly animationQueue = this.processor.animationQueue;
+  readonly activeChainLinks = this.processor.activeChainLinks;
+  readonly chainPhase = this.processor.chainPhase;
   readonly pendingPrompt = signal<Prompt | null>(null); // Always null — replay has no interactive prompts
 
-  // ── Pending chain entry — mirrors DuelConnection's deferred commit pattern ──
-  private _pendingChainEntry: ChainLinkState | null = null;
-
-  private commitPendingChainEntry(): void {
-    if (this._pendingChainEntry) {
-      this._activeChainLinks.update(links => [...links, this._pendingChainEntry!]);
-      this._pendingChainEntry = null;
-    }
-  }
-
-  dequeueAnimation(): GameEvent | null {
-    while (true) {
-      const q = this._animationQueue();
-      if (q.length === 0) return null;
-      const first = q[0];
-      this._animationQueue.update(queue => queue.slice(1));
-
-      // ── Internal types: consume and continue (not returned) ──
-      if (first.type === 'MSG_CHAIN_NEGATED') {
-        this._activeChainLinks.update(links =>
-          links.map(l => l.chainIndex === (first as ChainNegatedMsg).chainIndex
-            ? { ...l, negated: true } : l));
-        continue;
-      }
-      if (first.type === 'WAITING_RESPONSE') {
-        this.commitPendingChainEntry();
-        continue;
-      }
-      if (first.type.startsWith('SELECT_')) {
-        this.commitPendingChainEntry();
-        continue;
-      }
-
-      // ── GameEvent types: chain bookkeeping + return to orchestrator ──
-      if (first.type === 'MSG_CHAINING') {
-        this.commitPendingChainEntry();
-        if (this._chainPhase() === 'idle') {
-          this._chainPhase.set('building');
-        }
-        const chaining = first as ChainingMsg;
-        this._pendingChainEntry = {
-          chainIndex: chaining.chainIndex,
-          cardCode: chaining.cardCode,
-          cardName: chaining.cardName,
-          player: chaining.player,
-          zoneId: locationToZoneId(chaining.location, chaining.sequence),
-          location: chaining.location,
-          sequence: chaining.sequence,
-          resolving: false,
-          negated: false,
-        };
-      }
-      if (first.type === 'MSG_CHAIN_SOLVING' || first.type === 'MSG_CHAIN_END') {
-        this.commitPendingChainEntry();
-      }
-      return first as GameEvent;
-    }
+  dequeueAnimation(): QueueEntry | null {
+    return this.processor.dequeueAnimation();
   }
 
   removeAnimationAt(index: number): void {
-    this._animationQueue.update(q => [...q.slice(0, index), ...q.slice(index + 1)]);
+    this.processor.removeAnimationAt(index);
   }
 
-  applyPendingBoardState(): void {
-    if (!this._pendingBoardState) return;
-    // Apply but do NOT clear — the same final state may be re-applied on
-    // subsequent calls within the same transition (draw/shuffle flows).
-    // Without intermediate board states, the board jumps to the final state
-    // after the first event. Masking hides destination zones during travel
-    // so the visual result is acceptable.
-    this._duelState.set(this._pendingBoardState);
+  prependToQueue(entries: QueueEntry[]): void {
+    this.processor.prependToQueue(entries);
   }
 
   setAnimating(animating: boolean): void {
     if (!animating) {
+      const qBefore = this.processor.animationQueue().length;
       this.advanceStep();
+      const qAfter = this.processor.animationQueue().length;
+      this.logger.log(DuelLogCategory.REPLAY,
+        'setAnimating(false) → advanceStep done | qBefore=%d qAfter=%d steps=%d busy=%s',
+        qBefore, qAfter, this._steps.length, this.busy());
     }
   }
 
-  setDrawMaskActive(_active: boolean): void {
-    // No-op — hands always visible in omniscient replay.
-  }
-
   applyChainSolving(chainIndex: number): void {
-    this._activeChainLinks.update(links =>
-      links.map(l => l.chainIndex === chainIndex ? { ...l, resolving: true } : l));
-    this._chainPhase.set('resolving');
+    this.processor.applyChainSolving(chainIndex);
   }
 
   applyChainSolved(chainIndex: number): void {
-    this._activeChainLinks.update(links =>
-      links.filter(l => l.chainIndex !== chainIndex));
+    this.processor.applyChainSolved(chainIndex);
   }
 
   applyChainEnd(): void {
-    this._activeChainLinks.set([]);
-    this._chainPhase.set('idle');
+    this.processor.applyChainEnd();
+  }
+
+  // ══════════════════════════════════════════════════
+  //  Perspective swap — board states arrive in absolute P0 order.
+  //  When perspectiveIndex = 1, swap players so the RBS is
+  //  perspective-relative (players[0] = own, players[1] = opponent),
+  //  matching the PvP convention that the animation pipeline expects.
+  // ══════════════════════════════════════════════════
+
+  readonly perspectiveIndex = signal<0 | 1>(0);
+
+  private swapBoardState(bs: BoardStatePayload): BoardStatePayload {
+    if (this.perspectiveIndex() === 0) return bs;
+    return {
+      ...bs,
+      turnPlayer: (bs.turnPlayer === 0 ? 1 : 0) as Player,
+      players: [bs.players[1], bs.players[0]] as [PlayerBoardState, PlayerBoardState],
+    };
   }
 
   // ══════════════════════════════════════════════════
@@ -163,25 +110,26 @@ export class ReplayDuelAdapter implements AnimationDataSource {
 
   private _steps: ReplayStep[] = [];
 
-  private filterEventsForQueue(events: ServerMessage[]): GameEvent[] {
-    return events.filter(
-      (e): e is GameEvent =>
-        !e.type.startsWith('SELECT_') && !INTERNAL_TYPES.has(e.type)
-    );
-  }
-
   feedTransition(prev: PreComputedState, next: PreComputedState): void {
     this.busy.set(true);
     this._steps = [];
-    this._duelState.set(prev.boardState);
-    this._pendingBoardState = next.boardState;
-    const filtered = this.filterEventsForQueue(next.events);
-    if (filtered.length === 0) {
-      this.applyPendingBoardState();
+    this.rbs.updateLogical(this.swapBoardState(prev.boardState));
+    this.rbs.assertNoLocks('feedTransition');
+    this.rbs.syncRendered();
+
+    this.resetProcessorForTransition();
+    for (const event of next.events) {
+      this.processor.processMessage(event);
+    }
+
+    syncAfterBoardState(this.rbs, this.processor.chainPhase(),
+      this.processor.animationQueue().length, this.swapBoardState(next.boardState), true);
+
+    if (this.processor.animationQueue().length === 0) {
+      this.rbs.syncRendered();
       this.busy.set(false);
       return;
     }
-    this._animationQueue.set(filtered);
   }
 
   feedTransitionPhased(
@@ -193,13 +141,16 @@ export class ReplayDuelAdapter implements AnimationDataSource {
       return 'done';
     }
 
-    console.log('[ADAPTER:FEED-PHASED] prevPhase=%s nextPhase=%s events=%d decisions=%d',
+    this.logger.log(DuelLogCategory.REPLAY, 'feedPhased prevPhase=%s nextPhase=%s events=%d decisions=%d',
       prev.boardState.phase, next.boardState.phase, next.events.length, next.decisions.length);
     this.busy.set(true);
-    this._duelState.set(prev.boardState);
-    this._pendingBoardState = next.boardState;
-    this._steps = this.buildSteps(next.events, next.decisions, next.boardState);
-    console.log('[ADAPTER:FEED-PHASED] steps=%o', this._steps.map(s => s.kind));
+    this.rbs.updateLogical(this.swapBoardState(prev.boardState));
+    this.rbs.assertNoLocks('feedTransitionPhased');
+    this.rbs.syncRendered();
+
+    this.resetProcessorForTransition();
+    this._steps = this.buildSteps(next.events, next.decisions, this.swapBoardState(next.boardState));
+    this.logger.log(DuelLogCategory.REPLAY, 'feedPhased steps=%o', this._steps.map(s => s.kind));
     this.advanceStep();
     return this._activeDecision() ? 'prompt' : 'done';
   }
@@ -209,16 +160,26 @@ export class ReplayDuelAdapter implements AnimationDataSource {
     decisions: DecisionMoment[],
     finalBoardState: BoardStatePayload,
   ): ReplayStep[] {
+    const selectCount = rawEvents.filter(e => e.type.startsWith('SELECT_')).length;
+    if (selectCount !== decisions.length) {
+      this.logger.warn('[DECISION-MISMATCH] %d SELECT_* events but %d decisions — falling back to non-phased',
+        selectCount, decisions.length);
+      return [{ kind: 'animate', events: rawEvents, pendingState: finalBoardState }];
+    }
+
     const steps: ReplayStep[] = [];
     let segment: ServerMessage[] = [];
     let di = 0;
 
     for (const e of rawEvents) {
       if (e.type.startsWith('SELECT_') && di < decisions.length) {
+        // Include the SELECT_* event at the end of the preceding segment so that
+        // the processor sees it during event feeding and commits pending chain entry.
+        segment.push(e);
         // The decision's boardState is the state AFTER the events in this segment
         // (matches the BOARD_STATE the PvP client receives before the prompt).
         const decision = decisions[di++];
-        steps.push({ kind: 'animate', events: this.filterEventsForQueue(segment), pendingState: decision.boardState });
+        steps.push({ kind: 'animate', events: [...segment], pendingState: decision.boardState ? this.swapBoardState(decision.boardState) : undefined });
         steps.push({ kind: 'decide', decision });
         segment = [];
       } else {
@@ -228,7 +189,7 @@ export class ReplayDuelAdapter implements AnimationDataSource {
     // Final segment: use the transition's next.boardState as pendingState so that
     // processShuffleEvent applies the post-shuffle state (matching PvP behavior where
     // the next BOARD_STATE from the server includes the shuffle result).
-    steps.push({ kind: 'animate', events: this.filterEventsForQueue(segment), pendingState: finalBoardState });
+    steps.push({ kind: 'animate', events: [...segment], pendingState: finalBoardState });
 
     return steps;
   }
@@ -238,20 +199,18 @@ export class ReplayDuelAdapter implements AnimationDataSource {
       const step = this._steps.shift();
 
       if (!step) {
-        if (this._pendingBoardState) {
-          this._duelState.set(this._pendingBoardState);
-          this._pendingBoardState = null;
-        }
+        this.rbs.assertNoLocks('advanceStep:done');
+        this.rbs.syncRendered();
         this.busy.set(false);
         return;
       }
 
       if (step.kind === 'decide') {
-        const prompt = step.decision.prompt as unknown as Record<string, unknown>;
-        const cards = prompt['cards'] as unknown[] | undefined;
+        const cards = 'cards' in step.decision.prompt
+          ? (step.decision.prompt as ServerMessage & { cards: unknown[] }).cards
+          : undefined;
 
         if (step.decision.prompt.type === 'SELECT_CHAIN') {
-          this.commitPendingChainEntry();
           // Auto-skip chain windows with no chainable cards — in PvP these are
           // auto-declined by the activation toggle and never shown to the player.
           if (!cards?.length) continue;
@@ -261,59 +220,88 @@ export class ReplayDuelAdapter implements AnimationDataSource {
         return; // busy stays true — waiting for resumeAfterPrompt()
       }
 
-      // Always update _pendingBoardState so it tracks the correct intermediate
-      // state at each step (matching what the PvP server would send at each prompt).
-      if (step.pendingState) {
-        this._pendingBoardState = step.pendingState;
+      // Feed events FIRST (same as PvP: events arrive before BOARD_STATE)
+      for (const event of step.events) {
+        this.processor.processMessage(event);
       }
 
-      if (step.events.length === 0) {
-        // No events — apply the state now only if no chain is active.
-        // During a chain, the orchestrator controls when to apply via
-        // applyPendingBoardState() (with proper masks in place). Applying
-        // here during auto-skipped steps would flash future state.
-        if (step.pendingState && this._chainPhase() === 'idle') {
-          this.applyPendingBoardState();
+      // Shared sync — same decision as PvP BOARD_STATE handler.
+      // When queue > 0 and chainPhase idle: syncRendered runs, but
+      // pre-locks (from startProcessingIfIdle) protect animated zones.
+      if (step.pendingState) {
+        syncAfterBoardState(this.rbs, this.processor.chainPhase(),
+          this.processor.animationQueue().length, step.pendingState, true);
+      }
+
+      if (this.processor.animationQueue().length === 0) {
+        if (step.pendingState && this.processor.chainPhase() === 'idle') {
+          this.rbs.syncRendered();
         }
         continue;
       }
-      this._animationQueue.set(step.events);
       return;
     }
   }
 
   resumeAfterPrompt(): void {
+    if (!this._activeDecision()) return;
     this._activeDecision.set(null);
     this.advanceStep();
   }
 
   collapseRemainingSteps(): void {
     this._activeDecision.set(null);
-    const remaining = this._steps
-      .filter((s): s is AnimateStep => s.kind === 'animate')
-      .flatMap(s => s.events);
+    // Clear any active zone locks before re-feeding — animations may still hold locks
+    // from the interrupted step. commitAll() is the replay equivalent of PvP's onStateSync().
+    this.rbs.commitAll();
+    const remainingSteps = this._steps.filter((s): s is AnimateStep => s.kind === 'animate');
+    const remaining = remainingSteps.flatMap(s => s.events);
+    // Extract the last pendingState — fixes absorbed bug where intermediate state was lost
+    const lastState = [...remainingSteps].reverse().find(s => s.pendingState)?.pendingState;
     this._steps = [];
     if (remaining.length > 0) {
-      this._animationQueue.update(q => [...q, ...remaining]);
-    } else {
-      if (this._pendingBoardState) this.applyPendingBoardState();
+      for (const event of remaining) {
+        this.processor.processMessage(event);
+      }
+    }
+    if (lastState) {
+      syncAfterBoardState(this.rbs, this.processor.chainPhase(),
+        this.processor.animationQueue().length, lastState, true);
+    }
+    if (this.processor.animationQueue().length === 0) {
+      this.rbs.syncRendered();
       this.busy.set(false);
     }
   }
 
+  /**
+   * Reset processor for a new transition. Mid-chain transitions (chainPhase !== 'idle')
+   * only clear the animation queue — chain signals (activeChainLinks, chainPhase) are
+   * preserved so multi-link chains accumulate correctly across transitions.
+   */
+  private resetProcessorForTransition(): void {
+    if (this.processor.chainPhase() === 'idle') {
+      this.processor.reset();
+    } else {
+      this.processor.resetQueue();
+    }
+  }
+
   abort(): void {
-    this._animationQueue.set([]);
-    this._pendingBoardState = null;
-    this._pendingChainEntry = null;
+    this.processor.reset();
+    this.rbs.commitAll();
     this._steps = [];
     this._activeDecision.set(null);
-    this._activeChainLinks.set([]);
-    this._chainPhase.set('idle');
     this.busy.set(false);
   }
 
   jumpToState(state: PreComputedState): void {
     this.abort();
-    this._duelState.set(state.boardState);
+    this.rbs.updateLogical(this.swapBoardState(state.boardState));
+    this.rbs.commitAll();
+  }
+
+  ngOnDestroy(): void {
+    this.rbs.destroy();
   }
 }

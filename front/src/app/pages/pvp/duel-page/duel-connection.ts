@@ -1,6 +1,9 @@
 import { computed, signal } from '@angular/core';
-import { DuelState, EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
-import type { ChainingMsg, MoveMsg } from '../duel-ws.types';
+import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, ChainLinkState } from '../types';
+import { syncAfterBoardState, type QueueEntry } from './animation-data-source';
+import { DuelEventProcessor } from './duel-event-processor';
+import { DuelLogCategory, type DuelLogger } from './duel-logger';
+import { RenderedBoardStateService } from './rendered-board-state.service';
 import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
@@ -42,48 +45,45 @@ export type ResponseData = Record<string, unknown>;
  */
 export class DuelConnection {
   // --- Signals (13 pairs) ---
-  private _duelState = signal<DuelState>(EMPTY_DUEL_STATE);
   private _pendingPrompt = signal<Prompt | null>(null);
   private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
-  private _animationQueue = signal<GameEvent[]>([]);
+  private logger?: DuelLogger;
+  private readonly processor = new DuelEventProcessor();
+  private readonly rbs = new RenderedBoardStateService();
+  readonly renderedBoardState = this.rbs;
   private _timerState = signal<TimerStateMsg | null>(null);
   private _timerStatePerPlayer = signal<[TimerStateMsg | null, TimerStateMsg | null]>([null, null]);
   private _connectionStatus = signal<ConnectionStatus>('connected');
   private _opponentDisconnected = signal(false);
   private _disconnectGraceSec = signal(0);
-  private _activeChainLinks = signal<ChainLinkState[]>([]);
-  private _chainPhase = signal<'idle' | 'building' | 'resolving'>('idle');
   private _duelResult = signal<DuelEndMsg | null>(null);
   private _rpsResult = signal<RpsResultMsg | null>(null);
   private _rpsInProgress = signal(false);
   private _ocgPlayerIndex = signal<0 | 1 | null>(null);
+  private _cardCodes = signal<number[]>([]);
   private _rematchState = signal<'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired'>('idle');
   private _rematchStarting = signal(false);
   private _inactivityWarning = signal<InactivityWarningMsg | null>(null);
   private _waitingForOpponent = signal(false);
   private _tpResult = signal<{ goFirst: boolean } | null>(null);
   private _tpResponseSent = signal(false);
-  private _pendingBoardState: DuelState | null = null;
   private _boardActive = false;
-  private _animating = false;
-  private _drawMaskActive = false;
-  private _pendingBoardStateTimer: ReturnType<typeof setTimeout> | null = null;
 
-  readonly duelState = this._duelState.asReadonly();
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
   readonly hintContext = this._hintContext.asReadonly();
-  readonly animationQueue = this._animationQueue.asReadonly();
+  readonly animationQueue = this.processor.animationQueue;
   readonly timerState = this._timerState.asReadonly();
   readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
   readonly disconnectGraceSec = this._disconnectGraceSec.asReadonly();
-  readonly activeChainLinks = this._activeChainLinks.asReadonly();
-  readonly chainPhase = this._chainPhase.asReadonly();
+  readonly activeChainLinks = this.processor.activeChainLinks;
+  readonly chainPhase = this.processor.chainPhase;
   readonly duelResult = this._duelResult.asReadonly();
   readonly rpsResult = this._rpsResult.asReadonly();
   readonly rpsInProgress = this._rpsInProgress.asReadonly();
   readonly ocgPlayerIndex = this._ocgPlayerIndex.asReadonly();
+  readonly cardCodes = this._cardCodes.asReadonly();
   readonly rematchState = this._rematchState.asReadonly();
   readonly rematchStarting = this._rematchStarting.asReadonly();
   readonly inactivityWarning = this._inactivityWarning.asReadonly();
@@ -121,12 +121,7 @@ export class DuelConnection {
   private _lastConfirmedCards: CardInfo[] = [];
   get lastConfirmedCards(): CardInfo[] { return this._lastConfirmedCards; }
 
-  // --- Pending chain entry ---
-  // MSG_CHAINING stores here instead of immediately adding to _activeChainLinks.
-  // Committed when cost prompts are resolved (SELECT_CHAIN, MSG_CHAIN_SOLVING, next MSG_CHAINING).
-  private _pendingChainEntry: ChainLinkState | null = null;
-  private _hasPendingChainEntry = signal(false);
-  readonly hasPendingChainEntry = this._hasPendingChainEntry.asReadonly();
+  readonly hasPendingChainEntry = this.processor.hasPendingChainEntry;
 
   // --- Hint consumed flag ---
   // Set after a prompt response is sent. Prevents stale cardName from a previous
@@ -148,7 +143,7 @@ export class DuelConnection {
 
   private readonly storageKey: string;
 
-  constructor(wsUrlBase: string, autoReconnect: boolean, storageKey = 'duel-reconnect-token') {
+  constructor(wsUrlBase: string, autoReconnect: boolean, storageKey = 'duel-reconnect-token', logger?: DuelLogger) {
     if (wsUrlBase.startsWith('/')) {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       this.wsUrlBase = `${proto}//${location.host}${wsUrlBase}`;
@@ -157,20 +152,13 @@ export class DuelConnection {
     }
     this._autoReconnect = autoReconnect;
     this.storageKey = storageKey;
+    this.logger = logger;
+    this.processor.logger = logger;
+    this.rbs.logger = logger;
   }
 
   clearStorageToken(): void {
     try { sessionStorage.removeItem(this.storageKey); } catch {}
-  }
-
-  /** Flush pending chain entry into activeChainLinks (cost is resolved). */
-  private commitPendingChainEntry(): void {
-    if (this._pendingChainEntry) {
-      const entry = this._pendingChainEntry;
-      this._pendingChainEntry = null;
-      this._hasPendingChainEntry.set(false);
-      this._activeChainLinks.update(links => [...links, entry]);
-    }
   }
 
   // --- Public API ---
@@ -247,61 +235,21 @@ export class DuelConnection {
     }
   }
 
-  dequeueAnimation(): GameEvent | null {
-    const q = this._animationQueue();
-    if (q.length === 0) return null;
-    const first = q[0];
-    this._animationQueue.update(queue => queue.slice(1));
-    return first;
+  dequeueAnimation(): QueueEntry | null {
+    return this.processor.dequeueAnimation();
   }
 
   removeAnimationAt(index: number): void {
-    this._animationQueue.update(q => [...q.slice(0, index), ...q.slice(index + 1)]);
+    this.processor.removeAnimationAt(index);
+  }
+
+  prependToQueue(entries: QueueEntry[]): void {
+    this.processor.prependToQueue(entries);
   }
 
   skipPendingAnimations(): void {
-    this._animationQueue.set([]);
-    this.applyPendingBoardState();
-    // If chain RESOLUTION was in progress when switching, force-clear so the overlay doesn't
-    // freeze on the next view (MSG_CHAIN_END would never fire since the queue was cleared).
-    // 'building' phase is intentionally left intact — chain links are still valid data.
-    if (this._chainPhase() === 'resolving') {
-      this.applyChainEnd();
-    }
-  }
-
-  applyPendingBoardState(): void {
-    this.cancelPendingBoardStateFlush();
-    if (this._pendingBoardState) {
-      this._duelState.set(this._pendingBoardState);
-      this._pendingBoardState = null;
-    }
-  }
-
-  /**
-   * Schedule auto-flush of pending board state after a short delay.
-   * If animation events arrive before the timer fires, the timer is cancelled
-   * (via cancelPendingBoardStateFlush called from setAnimating).
-   */
-  private schedulePendingBoardStateFlush(): void {
-    this.cancelPendingBoardStateFlush();
-    this._pendingBoardStateTimer = setTimeout(() => {
-      this._pendingBoardStateTimer = null;
-      // Only auto-flush if no animations started in the meantime.
-      // During chain resolution, the orchestrator controls when board state is applied
-      // (after overlay exit + replay) — never auto-flush in that phase.
-      if (!this._animating && this._animationQueue().length === 0
-        && this._chainPhase() !== 'resolving') {
-        this.applyPendingBoardState();
-      }
-    }, 50);
-  }
-
-  private cancelPendingBoardStateFlush(): void {
-    if (this._pendingBoardStateTimer !== null) {
-      clearTimeout(this._pendingBoardStateTimer);
-      this._pendingBoardStateTimer = null;
-    }
+    this.processor.reset();
+    this.rbs.commitAll();
   }
 
   setBoardActive(active: boolean): void {
@@ -309,44 +257,19 @@ export class DuelConnection {
   }
 
   setAnimating(animating: boolean): void {
-    this._animating = animating;
-    if (animating) {
-      this.cancelPendingBoardStateFlush();
-    }
-  }
-
-  setDrawMaskActive(active: boolean): void {
-    this._drawMaskActive = active;
+    this.logger?.log(DuelLogCategory.DRAW, 'setAnimating(%s)', animating);
   }
 
   applyChainSolving(chainIndex: number): void {
-    this._chainPhase.set('resolving');
-    this._activeChainLinks.update(links =>
-      links.map(l => l.chainIndex === chainIndex ? { ...l, resolving: true } : l),
-    );
+    this.processor.applyChainSolving(chainIndex);
   }
 
   applyChainSolved(chainIndex: number): void {
-    this._activeChainLinks.update(links =>
-      links.filter(l => l.chainIndex !== chainIndex),
-    );
-    console.log('[DBG:BADGE] applyChainSolved idx=%d → remaining links=%o',
-      chainIndex, this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId })));
+    this.processor.applyChainSolved(chainIndex);
   }
 
   applyChainEnd(): void {
-    this._chainPhase.set('idle');
-    this._activeChainLinks.set([]);
-    console.log('[DBG:BADGE] applyChainEnd → phase=idle, links cleared');
-  }
-
-  private applyChainNegated(chainIndex: number): void {
-    if (this._pendingChainEntry?.chainIndex === chainIndex) {
-      this._pendingChainEntry = { ...this._pendingChainEntry, negated: true };
-    }
-    this._activeChainLinks.update(links =>
-      links.map(l => l.chainIndex === chainIndex ? { ...l, negated: true } : l),
-    );
+    this.processor.applyChainEnd();
   }
 
   resetRematchStarting(): void {
@@ -362,7 +285,8 @@ export class DuelConnection {
   }
 
   cleanup(): void {
-    this.cancelPendingBoardStateFlush();
+    this.rbs.assertNoLocks('cleanup');
+    this.rbs.destroy();
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
     }
@@ -494,26 +418,17 @@ export class DuelConnection {
       case 'BOARD_STATE':
         this._rematchStarting.set(false);
         this._justReconnected.set(false);
-        if (!this._boardActive) {
-          this._duelState.set(message.data);
-        } else if (this._drawMaskActive) {
-          // Draw masking handles visual hiding — apply immediately
-          this._duelState.set(message.data);
-        } else {
-          // Buffer for non-draw animations — apply when queue empties
-          this._pendingBoardState = message.data;
-          this.schedulePendingBoardStateFlush();
-        }
+        syncAfterBoardState(this.rbs, this.processor.chainPhase(),
+          this.processor.animationQueue().length, message.data, this._boardActive);
         break;
 
       case 'STATE_SYNC':
         this._lastConfirmedCards = [];
         this._rematchStarting.set(false);
-        this._pendingBoardState = null;
-        this._duelState.set(message.data);
-        this._activeChainLinks.set([]);
-        this._chainPhase.set('idle');
-        this._animationQueue.set([]);
+        this.rbs.assertNoLocks('onStateSync');
+        this.rbs.updateLogical(message.data);
+        this.rbs.commitAll();
+        this.processor.reset();
         // Clear stale prompt + hint: server will re-send them in order (hint first, then prompt)
         this._pendingPrompt.set(null);
         this._hintContext.set({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
@@ -536,8 +451,8 @@ export class DuelConnection {
           resolving: false,
           negated: negatedSet.has(msg.chainIndex),
         }));
-        this._activeChainLinks.set(links);
-        this._chainPhase.set(cs.phase);
+        // STATE_SYNC + CHAIN_STATE arrive in same WS batch — queue already cleared by processor.reset() in STATE_SYNC
+        this.processor.restoreChainState(links, cs.phase);
         break;
       }
 
@@ -547,8 +462,7 @@ export class DuelConnection {
       case 'SELECT_SUM':
       case 'SELECT_UNSELECT_CARD':
       case 'SELECT_COUNTER':
-        // SELECT_CHAIN means cost phase is done — commit pending chain entry
-        if (message.type === 'SELECT_CHAIN') this.commitPendingChainEntry();
+        this.processor.processMessage(message);
         // Reset exclusion accumulator when the prompt type changes mid-sequence
         // (must happen before _pendingPrompt.set so attachComponent reads the correct value)
         if (this._lastSelectedPromptType !== null && this._lastSelectedPromptType !== message.type) {
@@ -570,13 +484,10 @@ export class DuelConnection {
       case 'ANNOUNCE_RACE':
       case 'ANNOUNCE_ATTRIB':
       case 'ANNOUNCE_NUMBER':
-        this._waitingForOpponent.set(false);
-        this._pendingPrompt.set(message);
-        break;
-
       case 'SORT_CARD':
       case 'SORT_CHAIN':
       case 'ANNOUNCE_CARD':
+        this.processor.processMessage(message);
         this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);
         break;
@@ -606,6 +517,8 @@ export class DuelConnection {
       case 'DUEL_STARTING':
         this._tpResult.set(null);
         this._ocgPlayerIndex.set(message.playerIndex as 0 | 1);
+        if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
+        this.logger?.setTraceId(message.traceId);
         break;
 
       case 'MSG_HINT': {
@@ -623,7 +536,7 @@ export class DuelConnection {
           cardName: message.cardName || (canInherit ? prev.cardName : ''),
           hintAction: message.hintAction || (canInherit ? prev.hintAction : ''),
         };
-        console.log('[MSG_HINT] raw:', { hintType: message.hintType, cardName: message.cardName, hintAction: message.hintAction, isSelectMsg, canInherit }, '=> merged:', merged);
+        this.logger?.log(DuelLogCategory.PROC, 'MSG_HINT raw: %o => merged: %o', { hintType: message.hintType, cardName: message.cardName, hintAction: message.hintAction, isSelectMsg, canInherit }, merged);
         this._hintContext.set(merged);
         break;
       }
@@ -645,8 +558,7 @@ export class DuelConnection {
 
       case 'DUEL_END':
         this._lastConfirmedCards = [];
-        this._pendingChainEntry = null;
-        this._hasPendingChainEntry.set(false);
+        this.processor.reset();
         this._pendingPrompt.set(null);
         this._inactivityWarning.set(null);
         this._waitingForOpponent.set(false);
@@ -655,9 +567,6 @@ export class DuelConnection {
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
         this._disconnectGraceSec.set(0);
-        this._activeChainLinks.set([]);
-        this._chainPhase.set('idle');
-        this._animationQueue.set([]);
         try { sessionStorage.removeItem(this.storageKey); } catch {}
         break;
 
@@ -671,11 +580,12 @@ export class DuelConnection {
 
       case 'REMATCH_STARTING':
         this._lastConfirmedCards = [];
-        this._pendingChainEntry = null;
-        this._hasPendingChainEntry.set(false);
+        this.processor.reset();
         this._rematchStarting.set(true);
         this._duelResult.set(null);
-        this._duelState.set(EMPTY_DUEL_STATE);
+        this._cardCodes.set([]);
+        this.rbs.updateLogical(EMPTY_DUEL_STATE);
+        this.rbs.commitAll();
         this._pendingPrompt.set(null);
         this._waitingForOpponent.set(false);
         this._tpResult.set(null);
@@ -683,9 +593,6 @@ export class DuelConnection {
         this._opponentDisconnected.set(false);
         this._disconnectGraceSec.set(0);
         this._rematchState.set('idle');
-        this._activeChainLinks.set([]);
-        this._chainPhase.set('idle');
-        this._animationQueue.set([]);
         break;
 
       case 'OPPONENT_DISCONNECTED':
@@ -699,7 +606,7 @@ export class DuelConnection {
         break;
 
       case 'WAITING_RESPONSE':
-        this.commitPendingChainEntry();
+        this.processor.processMessage(message);
         this._waitingForOpponent.set(true);
         break;
 
@@ -719,65 +626,22 @@ export class DuelConnection {
         }
         break;
 
-      case 'MSG_CHAINING': {
-        const msg = message as ChainingMsg;
-        if (this._chainPhase() === 'idle') {
-          this._chainPhase.set('building');
-        }
-        // Commit any previous pending entry first (its cost is resolved)
-        this.commitPendingChainEntry();
-        // Store as pending — will be committed when cost prompts are resolved
-        this._pendingChainEntry = {
-          chainIndex: msg.chainIndex,
-          cardCode: msg.cardCode,
-          cardName: msg.cardName,
-          player: msg.player,
-          zoneId: locationToZoneId(msg.location, msg.sequence),
-          location: msg.location,
-          sequence: msg.sequence,
-          resolving: false,
-          negated: false,
-        };
-        this._hasPendingChainEntry.set(true);
-        this._animationQueue.update(q => [...q, message]);
+      case 'MSG_CHAINING':
+        this.processor.processMessage(message);
         break;
-      }
 
       case 'MSG_CHAIN_SOLVING':
-        console.log('[DBG:CONN] MSG_CHAIN_SOLVING chainIndex=%d | links=%o',
-          (message as any).chainIndex,
-          this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
-        this.commitPendingChainEntry();
-        // Phase transition deferred to applyChainSolving() — called by orchestrator when queue reaches this event
-        this._animationQueue.update(q => [...q, message]);
-        break;
       case 'MSG_CHAIN_SOLVED':
-        console.log('[DBG:CONN] MSG_CHAIN_SOLVED chainIndex=%d', (message as any).chainIndex);
-        this._animationQueue.update(q => [...q, message]);
-        break;
       case 'MSG_CHAIN_END':
-        console.log('[DBG:CONN] MSG_CHAIN_END');
-        this.commitPendingChainEntry();
-        // Phase transition deferred to applyChainEnd() — called by orchestrator when queue reaches this event
-        this._animationQueue.update(q => [...q, message]);
-        break;
-
       case 'MSG_CHAIN_NEGATED':
-        console.log('[DBG:CONN] MSG_CHAIN_NEGATED chainIndex=%d | links before=%o',
-          message.chainIndex,
-          this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
-        this.applyChainNegated(message.chainIndex);
-        console.log('[DBG:CONN] MSG_CHAIN_NEGATED links after=%o',
-          this._activeChainLinks().map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
+        this.processor.processMessage(message);
         break;
 
       case 'MSG_CONFIRM_CARDS':
         this._lastConfirmedCards = (message as ConfirmCardsMsg).cards;
-        this._animationQueue.update(q => [...q, message]);
+        this.processor.processMessage(message);
         break;
       case 'MSG_MOVE':
-        this._animationQueue.update(q => [...q, message]);
-        break;
       case 'MSG_DRAW':
       case 'MSG_SHUFFLE_HAND':
       case 'MSG_SHUFFLE_DECK':
@@ -786,11 +650,18 @@ export class DuelConnection {
       case 'MSG_PAY_LPCOST':
       case 'MSG_FLIP_SUMMONING':
       case 'MSG_CHANGE_POS':
+      case 'MSG_BECOME_TARGET':
       case 'MSG_SWAP':
       case 'MSG_ATTACK':
       case 'MSG_BATTLE':
-      case 'MSG_BECOME_TARGET':
-        this._animationQueue.update(q => [...q, message]);
+      case 'MSG_TOSS_COIN':
+      case 'MSG_TOSS_DICE':
+      case 'MSG_EQUIP':
+      case 'MSG_ADD_COUNTER':
+      case 'MSG_REMOVE_COUNTER':
+      case 'MSG_SHUFFLE_SET_CARD':
+      case 'MSG_SWAP_GRAVE_DECK':
+        this.processor.processMessage(message);
         break;
 
       default:

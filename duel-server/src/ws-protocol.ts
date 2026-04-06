@@ -295,6 +295,56 @@ export interface BattleMsg {
   defenderDamage: number;
 }
 
+export interface TossCoinMsg {
+  type: 'MSG_TOSS_COIN';
+  player: Player;
+  results: boolean[];
+}
+
+export interface TossDiceMsg {
+  type: 'MSG_TOSS_DICE';
+  player: Player;
+  results: number[];
+}
+
+export interface EquipMsg {
+  type: 'MSG_EQUIP';
+  equipPlayer: Player;
+  equipLocation: CardLocation;
+  equipSequence: number;
+  targetPlayer: Player;
+  targetLocation: CardLocation;
+  targetSequence: number;
+}
+
+export interface AddCounterMsg {
+  type: 'MSG_ADD_COUNTER';
+  counterType: number;
+  player: Player;
+  location: CardLocation;
+  sequence: number;
+  count: number;
+}
+
+export interface RemoveCounterMsg {
+  type: 'MSG_REMOVE_COUNTER';
+  counterType: number;
+  player: Player;
+  location: CardLocation;
+  sequence: number;
+  count: number;
+}
+
+export interface ShuffleSetCardMsg {
+  type: 'MSG_SHUFFLE_SET_CARD';
+  cards: { fromPlayer: Player; fromSequence: number; toPlayer: Player; toSequence: number; location: CardLocation }[];
+}
+
+export interface SwapGraveDeckMsg {
+  type: 'MSG_SWAP_GRAVE_DECK';
+  player: Player;
+}
+
 export interface WinMsg {
   type: 'MSG_WIN';
   player: Player;
@@ -516,6 +566,9 @@ export interface TpResultMsg {
 export interface DuelStartingMsg {
   type: 'DUEL_STARTING';
   playerIndex: Player;
+  traceId: string;
+  /** Unique card codes from both decklists — for upfront image prefetch. */
+  cardCodes: number[];
 }
 
 export interface RematchInvitationMsg {
@@ -785,6 +838,8 @@ export interface ReplayMetadataMsg {
   result: string | null;
   divergenceWarning: boolean;
   totalResponses: number;
+  /** Unique card codes from both decklists — for upfront image prefetch. */
+  cardCodes: number[];
 }
 
 export interface ReplayErrorMsg {
@@ -821,6 +876,13 @@ export type ServerMessage =
   | BecomeTargetMsg
   | AttackMsg
   | BattleMsg
+  | TossCoinMsg
+  | TossDiceMsg
+  | EquipMsg
+  | AddCounterMsg
+  | RemoveCounterMsg
+  | ShuffleSetCardMsg
+  | SwapGraveDeckMsg
   | WinMsg
   // Prompt messages (20)
   | SelectIdleCmdMsg
