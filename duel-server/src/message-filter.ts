@@ -119,6 +119,7 @@ export function filterMessage(message: ServerMessage, forPlayer: Player, omnisci
     case 'MSG_CHAIN_NEGATED':
     case 'MSG_FLIP_SUMMONING':
     case 'MSG_CHANGE_POS':
+    case 'MSG_SET':
     case 'MSG_SWAP':
     case 'MSG_BECOME_TARGET':
     case 'MSG_ATTACK':

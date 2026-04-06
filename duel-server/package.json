@@ -9,6 +9,7 @@
     "prebuild": "node ../scripts/check-ws-protocol-sync.mjs",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "vitest run",
     "test:integration": "tsx test/integration.ts",
     "postinstall": "node scripts/patch-ocgcore-wasm.mjs"
   },
@@ -20,7 +21,8 @@
     "@types/node": "^25.3.0",
     "@types/ws": "^8.18.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.2"
   },
   "dependencies": {
     "@n1xx1/ocgcore-wasm": "npm:@jsr/n1xx1__ocgcore-wasm@^0.1.1",

@@ -46,7 +46,7 @@ export function getRaceName(raceId: number): string | null {
 
 export function formatStat(value: number): string {
   if (value < 0) return '?';
-  if (value >= 10000) return `${value / 1000}k`;
+  if (value >= 10000) return `${Math.round(value / 100) / 10}k`;
   return String(value);
 }
 
