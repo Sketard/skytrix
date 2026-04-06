@@ -55,8 +55,16 @@ export class DeckBuildService extends SearchServiceCore {
     this.resetDirty();
   }
 
-  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false) {
-    this.deckState.update(deck => deck.addCard(card, zone, targetIndex, animate));
+  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false, selectedImageId?: number) {
+    this.deckState.update(deck => deck.addCard(card, zone, targetIndex, animate, selectedImageId));
+    this._isDirty.set(true);
+  }
+
+  public updateCardImage(zone: DeckZone, slotIndex: number, selectedImageId: number | undefined) {
+    this.deckState.update(deck => {
+      deck[zone][slotIndex].selectedImageId = selectedImageId;
+      return deck.sortDeck();
+    });
     this._isDirty.set(true);
   }
 

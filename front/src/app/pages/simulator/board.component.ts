@@ -47,6 +47,7 @@ export class SimBoardComponent {
       displayAtk: c.displayAtk,
       displayDef: c.displayDef,
       description: c.description ?? '',
+      images: ci.card.images ?? [],
     };
   });
 

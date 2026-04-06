@@ -29,6 +29,8 @@ public class CardDeckIndex {
     @ManyToOne
     private Card card;
     @ManyToOne(fetch = FetchType.LAZY)
+    private CardImage selectedImage;
+    @ManyToOne(fetch = FetchType.LAZY)
     private Deck deck;
     @Enumerated(EnumType.STRING)
     private DeckKeyword type;

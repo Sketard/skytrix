@@ -1,6 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Deck } from '../../core/model/deck';
 import { IndexedCardDetail } from '../../core/model/card-detail';
+import { CardImageDTO } from '../../core/model/dto/card-image-dto';
+import { resolveCardImage } from '../../core/model/shared-card-data';
 import { CardInstance, OverlayMode, ZoneId } from './simulator.models';
 
 function createEmptyBoard(): Record<ZoneId, CardInstance[]> {
@@ -161,7 +163,7 @@ export class BoardStateService {
     return cards.map(icd => ({
       instanceId: String(icd.id),
       card: icd.card,
-      image: icd.card.images[0] ?? { id: 0, imageId: 0, url: '', smallUrl: '', cardId: 0 },
+      image: resolveCardImage(icd.card, icd.selectedImageId) ?? new CardImageDTO(),
       faceDown: false,
       position: 'ATK' as const,
     }));

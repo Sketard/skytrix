@@ -40,7 +40,7 @@
         (click)="toggleSearchPanel()">
         <mat-icon>search</mat-icon>
       </button>
-      <deck-viewer (cardClicked)="onCardClicked($event)"></deck-viewer>
+      <deck-viewer (cardClicked)="onDeckCardClicked($event)"></deck-viewer>
     </div>
     <div class="deckBuilder-side">
       <!-- HEADER (inside side panel) -->
@@ -111,7 +111,7 @@
           <deck-card-zone
             [cardDetails]="deckBuildService.deck().images"
             [slotNumber]="3"
-            (cardClicked)="onCardClicked($event)"></deck-card-zone>
+            (cardClicked)="onDeckCardClicked($event)"></deck-card-zone>
         </div>
       </div>
       <div class="deckBuilder-side-searcher">
@@ -176,6 +176,7 @@
     [isFavorite]="selectedCardDetail()?.favorite ?? false"
     (ownedCountChange)="onOwnedCountChange($event)"
     (favoriteChange)="onFavoriteChange()"
+    (imageChange)="onImageChange($event)"
     (dismissed)="dismissInspector()">
     <div class="inspector-actions" (click)="$event.stopPropagation()">
       <button mat-icon-button (click)="removeSelectedCardFromDeck()" [title]="'deckBuilder.removeFromDeck' | translate">

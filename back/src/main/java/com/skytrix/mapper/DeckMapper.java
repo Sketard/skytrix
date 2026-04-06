@@ -38,17 +38,17 @@ public abstract class DeckMapper {
 
 		var main = deckMap.get(DeckKeyword.MAIN);
 		for(int i = 0; i < main.size(); i++) {
-			deck.addCard(toCardDeckIndex(main.get(i), i, MAIN, deck));
+			deck.addCard(toCardDeckIndex(main.get(i), i, MAIN, deck, null));
 		}
 
 		var extra = deckMap.get(DeckKeyword.EXTRA);
 		for(int i = 0; i < extra.size(); i++) {
-			deck.addCard(toCardDeckIndex(extra.get(i), i, EXTRA, deck));
+			deck.addCard(toCardDeckIndex(extra.get(i), i, EXTRA, deck, null));
 		}
 
 		var side = deckMap.get(DeckKeyword.SIDE);
 		for(int i = 0; i < side.size(); i++) {
-			deck.addCard(toCardDeckIndex(side.get(i), i, SIDE, deck));
+			deck.addCard(toCardDeckIndex(side.get(i), i, SIDE, deck, null));
 		}
 
 		return deck;
@@ -59,7 +59,8 @@ public abstract class DeckMapper {
 	@Mapping(target = "index", source = "index")
 	@Mapping(target = "type", source = "type")
 	@Mapping(target = "deck", source = "deck")
-	public abstract CardDeckIndex toCardDeckIndex(Card card, int index, DeckKeyword type, Deck deck);
+	@Mapping(target = "selectedImage", source = "selectedImage")
+	public abstract CardDeckIndex toCardDeckIndex(Card card, int index, DeckKeyword type, Deck deck, CardImage selectedImage);
 
 	public DeckDTO toDeckDTO(Deck source) {
 		var target = new DeckDTO();

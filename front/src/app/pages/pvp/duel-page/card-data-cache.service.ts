@@ -15,6 +15,7 @@ export const CARD_BACK_PLACEHOLDER: SharedCardInspectorData = {
   displayAtk: '',
   displayDef: '',
   description: '',
+  images: [],
 };
 
 export const UNKNOWN_CARD_PLACEHOLDER: SharedCardInspectorData = {
@@ -26,6 +27,7 @@ export const UNKNOWN_CARD_PLACEHOLDER: SharedCardInspectorData = {
   displayAtk: '',
   displayDef: '',
   description: '',
+  images: [],
 };
 
 @Injectable()

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, HostListener, input, outp
 import { CardComponent } from '../card/card.component';
 import { NgClass } from '@angular/common';
 import { DeckBuildService, DeckZone } from '../../services/deck-build.service';
-import { CardDetail, IndexedCardDetail } from '../../core/model/card-detail';
+import { IndexedCardDetail } from '../../core/model/card-detail';
 import { toSharedCardData } from '../../core/model/shared-card-data';
 import { LongPressDragDirective } from '../../core/directives/long-press-drag.directive';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -27,7 +27,7 @@ export class DeckCardZoneComponent {
   readonly cardDetails = input<Array<IndexedCardDetail>>(new Array<IndexedCardDetail>());
   readonly deckZone = input<DeckZone>();
 
-  readonly cardClicked = output<CardDetail>();
+  readonly cardClicked = output<IndexedCardDetail>();
   readonly isEmpty = computed(() => !!this.deckZone() && this.cardDetails().every(cd => cd.index === -1));
 
   readonly staticDeckZone = StaticDeckZone;
@@ -46,8 +46,8 @@ export class DeckCardZoneComponent {
 
   public constructor(public deckBuildService: DeckBuildService) {}
 
-  onCardClick(cd: CardDetail): void {
-    this.cardClicked.emit(cd);
+  onCardClick(icd: IndexedCardDetail): void {
+    this.cardClicked.emit(icd);
   }
 
   drop(event: CdkDragDrop<any>) {

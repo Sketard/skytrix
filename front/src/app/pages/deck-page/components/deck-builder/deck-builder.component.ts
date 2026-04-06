@@ -27,7 +27,7 @@ import { HandTestComponent } from './components/hand-test/hand-test.component';
 import { Router } from '@angular/router';
 import { CardInspectorComponent } from '../../../../components/card-inspector/card-inspector.component';
 import { BottomSheetComponent } from '../../../../components/bottom-sheet/bottom-sheet.component';
-import { SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
+import { resolveCardImage, SharedCardInspectorData, toSharedCardInspectorData } from '../../../../core/model/shared-card-data';
 import { OwnedCardService } from '../../../../services/owned-card.service';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -77,6 +77,10 @@ export class DeckBuilderComponent implements OnDestroy {
 
   readonly selectedCardForInspector = signal<SharedCardInspectorData | null>(null);
   protected readonly selectedCardDetail = signal<CardDetail | null>(null);
+  /** Tracks the deck slot being inspected (null when inspecting a search card) */
+  private readonly selectedDeckSlot = signal<{ zone: DeckZone; slotIndex: number } | null>(null);
+  /** Tracks the currently displayed art in the inspector (for "add to deck" with selected art) */
+  private readonly inspectorImageId = signal<number | undefined>(undefined);
   readonly selectedCardCount = computed(() => {
     const cd = this.selectedCardDetail();
     if (!cd) return 0;
@@ -170,12 +174,46 @@ export class DeckBuilderComponent implements OnDestroy {
 
   onCardClicked(cd: CardDetail): void {
     this.selectedCardDetail.set(cd);
+    this.selectedDeckSlot.set(null);
+    this.inspectorImageId.set(undefined);
     this.selectedCardForInspector.set(toSharedCardInspectorData(cd));
+  }
+
+  onDeckCardClicked(icd: IndexedCardDetail): void {
+    this.selectedCardDetail.set(icd.card);
+    this.inspectorImageId.set(icd.selectedImageId);
+    // Find the slot in the deck to enable art updates
+    const deck = this.deckBuildService.deck();
+    const zones: Array<{ cards: Array<IndexedCardDetail>; zone: DeckZone }> = [
+      { cards: deck.mainDeck, zone: DeckZone.MAIN },
+      { cards: deck.extraDeck, zone: DeckZone.EXTRA },
+      { cards: deck.sideDeck, zone: DeckZone.SIDE },
+    ];
+    let slot: { zone: DeckZone; slotIndex: number } | null = null;
+    for (const { cards, zone } of zones) {
+      const idx = cards.indexOf(icd);
+      if (idx >= 0) {
+        slot = { zone, slotIndex: idx };
+        break;
+      }
+    }
+    this.selectedDeckSlot.set(slot);
+    this.selectedCardForInspector.set(toSharedCardInspectorData(icd.card, icd.selectedImageId));
+  }
+
+  onImageChange(imageId: number | undefined): void {
+    this.inspectorImageId.set(imageId);
+    const slot = this.selectedDeckSlot();
+    if (slot) {
+      this.deckBuildService.updateCardImage(slot.zone, slot.slotIndex, imageId);
+    }
   }
 
   dismissInspector(): void {
     this.selectedCardForInspector.set(null);
     this.selectedCardDetail.set(null);
+    this.selectedDeckSlot.set(null);
+    this.inspectorImageId.set(undefined);
   }
 
   onOwnedCountChange(newCount: number | undefined): void {
@@ -198,7 +236,7 @@ export class DeckBuilderComponent implements OnDestroy {
       }
       const updated = { ...cd, favorite: !cd.favorite };
       this.selectedCardDetail.set(updated);
-      this.selectedCardForInspector.set(toSharedCardInspectorData(updated));
+      this.selectedCardForInspector.set(toSharedCardInspectorData(updated, this.inspectorImageId()));
     } catch {
       // API error — state unchanged
     }
@@ -207,7 +245,7 @@ export class DeckBuilderComponent implements OnDestroy {
   addSelectedCardToDeck(): void {
     if (!this.selectedCardDetail()) return;
     const cd = this.selectedCardDetail()!;
-    this.deckBuildService.addCard(cd, cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN);
+    this.deckBuildService.addCard(cd, cd.card.extraCard ? DeckZone.EXTRA : DeckZone.MAIN, undefined, false, this.inspectorImageId());
   }
 
   removeSelectedCardFromDeck(): void {
@@ -303,7 +341,7 @@ export class DeckBuilderComponent implements OnDestroy {
   }
 
   private getCardsUrls(): Array<string> {
-    return this.getAllDeckCards().map(e => e.card.images[0].url);
+    return this.getAllDeckCards().map(e => resolveCardImage(e.card, e.selectedImageId)?.url ?? '');
   }
 
   public export(mode: ExportMode) {

@@ -286,6 +286,9 @@ public class YugiproApiService {
         var smallPath = smallImageFolder + imageId + ".jpg";
         var bigPath = bigImageFolder + imageId + ".jpg";
 
+        deleteStaleFile(smallPath, cardImage.isSmallLocal(), forceUpdate);
+        deleteStaleFile(bigPath, cardImage.isLocal(), forceUpdate);
+
         var smallOk = createImage(smallPath, cardImage, true, forceUpdate);
         if (smallOk) {
             cardImage.setSmallUrl(smallPath);
@@ -309,6 +312,16 @@ public class YugiproApiService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
+            }
+        }
+    }
+
+    private void deleteStaleFile(String path, boolean markedLocal, boolean forceUpdate) {
+        if (!markedLocal && !forceUpdate) {
+            try {
+                Files.deleteIfExists(Path.of(path));
+            } catch (IOException e) {
+                log.warn("Could not delete stale image file {}: {}", path, e.getMessage());
             }
         }
     }

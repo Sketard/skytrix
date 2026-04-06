@@ -64,7 +64,11 @@ export class Deck {
   public cleanSlotsAndMap = (slots: Array<IndexedCardDetail>, image?: boolean): Array<CardIndexDTO> => {
     return this.cleanSlots(slots).map(
       (detail: IndexedCardDetail) =>
-        new CardIndexDTO(image ? detail.card.images[0].id : detail.card.card.id!, detail.index)
+        new CardIndexDTO(
+          image ? detail.card.images[0].id : detail.card.card.id!,
+          detail.index,
+          image ? undefined : detail.selectedImageId
+        )
     );
   };
 
@@ -104,7 +108,7 @@ export class Deck {
     return this.sortImages();
   }
 
-  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false): Deck {
+  public addCard(card: CardDetail, zone: DeckZone, targetIndex?: number, animate = false, selectedImageId?: number): Deck {
     const correctedZone = this.getCorrectZone(card, zone);
     const numberOfCopyReached = this._isMaxNumberOfCopyReached(card, correctedZone);
     if (numberOfCopyReached) {
@@ -124,7 +128,7 @@ export class Deck {
         c.index++;
       }
     }
-    const newCard = new IndexedCardDetail(card, insertAt);
+    const newCard = new IndexedCardDetail(card, insertAt, selectedImageId);
     newCard.justAdded = animate;
     this[correctedZone][firstAvailableSlot] = newCard;
     return this.sortDeck();
@@ -247,7 +251,7 @@ export class Deck {
     cards: Array<IndexedCardDetailDTO> = new Array<IndexedCardDetail>()
   ): Array<IndexedCardDetail> {
     return this.createFixedSizeArray(
-      cards.map((card: IndexedCardDetailDTO) => new IndexedCardDetail(new CardDetail(card.card), card.index)),
+      cards.map((card: IndexedCardDetailDTO) => new IndexedCardDetail(new CardDetail(card.card), card.index, card.selectedImageId)),
       size
     );
   }

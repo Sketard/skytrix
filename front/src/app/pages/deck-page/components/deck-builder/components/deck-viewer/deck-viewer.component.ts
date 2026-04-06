@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, output } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { DeckBuildService, DeckZone } from '../../../../../../services/deck-build.service';
 import { DeckCardZoneComponent } from '../../../../../../components/deck-card-zone/deck-card-zone.component';
-import { CardDetail } from '../../../../../../core/model/card-detail';
+import { IndexedCardDetail } from '../../../../../../core/model/card-detail';
 import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
@@ -16,7 +16,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 export class DeckViewerComponent {
   public deckZone = DeckZone;
 
-  readonly cardClicked = output<CardDetail>();
+  readonly cardClicked = output<IndexedCardDetail>();
 
   public constructor(public deckBuildService: DeckBuildService) {}
 }

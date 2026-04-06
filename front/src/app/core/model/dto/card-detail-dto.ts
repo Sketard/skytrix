@@ -24,9 +24,11 @@ export class CardDetailDTO {
 export class IndexedCardDetailDTO {
   card: CardDetailDTO;
   index: number;
+  selectedImageId?: number;
 
   constructor(indexedCard: IndexedCardDetailDTO) {
     this.card = indexedCard.card;
     this.index = indexedCard.index;
+    this.selectedImageId = indexedCard.selectedImageId;
   }
 }

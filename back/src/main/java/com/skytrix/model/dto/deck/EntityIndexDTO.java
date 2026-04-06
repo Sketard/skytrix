@@ -6,4 +6,5 @@ import lombok.Data;
 public class EntityIndexDTO {
     private Long id;
     private int index;
+    private Long imageId;
 }

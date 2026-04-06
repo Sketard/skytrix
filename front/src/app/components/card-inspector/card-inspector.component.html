@@ -57,16 +57,40 @@
   </div>
 </ng-template>
 
+<!-- Art switcher: dots or counter -->
+<ng-template #artSwitcher>
+  @if (imageCount() > 1) {
+    <div class="art-switcher">
+      <button mat-icon-button class="art-switcher-arrow" (click)="navigateImage(-1); $event.stopPropagation()">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      @if (imageCount() <= DOT_THRESHOLD) {
+        <div class="art-switcher-dots">
+          @for (img of card()!.images; track img.id; let idx = $index) {
+            <button class="art-switcher-dot" [class.active]="idx === currentImageIndex()" (click)="goToImage(idx); $event.stopPropagation()"></button>
+          }
+        </div>
+      } @else {
+        <span class="art-switcher-counter">{{ currentImageIndex() + 1 }} / {{ imageCount() }}</span>
+      }
+      <button mat-icon-button class="art-switcher-arrow" (click)="navigateImage(1); $event.stopPropagation()">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  }
+</ng-template>
+
 @if (mode() === 'click') {
   <!-- Click mode: full-screen backdrop + centered panel -->
   @if (isVisible()) {
     @if (card(); as c) {
       <div class="inspector-backdrop" (click)="dismissed.emit()">
         <div class="inspector-panel" (click)="$event.stopPropagation()">
-          <img [src]="c.imageUrlFull || c.imageUrl"
+          <img [src]="currentImageUrlFull()"
                [alt]="c | cardName"
                class="inspector-image"
                (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+          <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
           <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
         </div>
         <ng-content></ng-content>
@@ -79,10 +103,11 @@
     @if (card(); as c) {
       <div class="inspector-content">
         <div class="inspector-left">
-          <img [src]="c.imageUrl"
+          <img [src]="currentImageUrl()"
                [alt]="c | cardName"
                class="inspector-image"
                (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+          <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
           <ng-content></ng-content>
         </div>
         <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>

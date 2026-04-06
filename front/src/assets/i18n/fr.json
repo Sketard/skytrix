@@ -65,9 +65,9 @@
     "OTHER": "Autre"
   },
   "card_ban": {
-    "0": "Interdit",
-    "1": "Limité",
-    "2": "Semi-Limité"
+    "0": "0",
+    "1": "1",
+    "2": "2"
   },
   "common": {
     "cancel": "Annuler",

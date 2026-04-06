@@ -32,8 +32,8 @@
         (contextmenu)="onRightClick($event, deckZone(), i)">
         @if (cardDetail.card.card.id) {
           <app-card
-            [card]="toSharedCardData(cardDetail.card)"
-            (click)="onCardClick(cardDetail.card)">
+            [card]="toSharedCardData(cardDetail.card, cardDetail.selectedImageId)"
+            (click)="onCardClick(cardDetail)">
           </app-card>
           @if (cardDetail.card.card.banInfo < 3) {
             <div class="ban-badge">

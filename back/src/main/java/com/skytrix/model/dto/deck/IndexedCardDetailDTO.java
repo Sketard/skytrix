@@ -8,4 +8,5 @@ import lombok.Data;
 public class IndexedCardDetailDTO {
     private int index;
     private CardDetailedDTO card;
+    private Long selectedImageId;
 }

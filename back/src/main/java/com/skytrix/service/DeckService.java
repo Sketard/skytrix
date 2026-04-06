@@ -3,11 +3,15 @@ package com.skytrix.service;
 import jakarta.inject.Inject;
 
 import static com.skytrix.utils.CoreUtils.findAny;
+import static com.skytrix.utils.CoreUtils.getNullSafe;
 import static com.skytrix.utils.CoreUtils.mapToList;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
@@ -48,14 +52,25 @@ public class DeckService {
 
     @Transactional
     public DeckDTO createDeck(CreateDeckDTO createDTO) {
-        var mainIds = createDTO.getMainIds();
-        var extraIds = createDTO.getExtraIds();
-        var sideIds = createDTO.getSideIds();
-        var cardIds = Stream.of(mainIds, extraIds, sideIds).flatMap(Collection::stream).toList();
-        var imageIds = createDTO.getImageIds();
+        var mainIds = getNullSafe(createDTO.getMainIds());
+        var extraIds = getNullSafe(createDTO.getExtraIds());
+        var sideIds = getNullSafe(createDTO.getSideIds());
+        var allCardEntries = Stream.of(mainIds, extraIds, sideIds).flatMap(Collection::stream).toList();
+        var imageIds = getNullSafe(createDTO.getImageIds());
 
-        var cards = cardRepository.findAllByIdIn(mapToList(cardIds, EntityIndexDTO::getId));
+        var cards = cardRepository.findAllByIdIn(mapToList(allCardEntries, EntityIndexDTO::getId));
         var images = cardImageRepository.findAllByIdIn(mapToList(imageIds, EntityIndexDTO::getId));
+
+        var selectedImageIds = allCardEntries.stream()
+                .map(EntityIndexDTO::getImageId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        var selectedImages = selectedImageIds.isEmpty()
+                ? Map.<Long, CardImage>of()
+                : cardImageRepository.findAllByIdIn(selectedImageIds).stream()
+                    .collect(Collectors.toMap(CardImage::getId, Function.identity()));
+
         var deckId = createDTO.getId();
         var deck = new Deck();
         if (deckId != null) {
@@ -66,9 +81,9 @@ public class DeckService {
         deck.addImages(getImageIndexed(imageIds, images, deck));
         deck.setName(createDTO.getName());
         deck.getCardsIndexed().clear();
-        deck.addCards(getCardDeckIndex(mainIds, cards, deck, DeckKeyword.MAIN));
-        deck.addCards(getCardDeckIndex(extraIds, cards, deck, DeckKeyword.EXTRA));
-        deck.addCards(getCardDeckIndex(sideIds, cards, deck, DeckKeyword.SIDE));
+        deck.addCards(getCardDeckIndex(mainIds, cards, deck, DeckKeyword.MAIN, selectedImages));
+        deck.addCards(getCardDeckIndex(extraIds, cards, deck, DeckKeyword.EXTRA, selectedImages));
+        deck.addCards(getCardDeckIndex(sideIds, cards, deck, DeckKeyword.SIDE, selectedImages));
         deck.setUser(authService.getConnectedUser());
         deckRepository.save(deck);
         return deckMapper.toDeckDTO(deck);
@@ -86,13 +101,20 @@ public class DeckService {
         deckRepository.deleteById(id);
     }
 
-    private List<CardDeckIndex> getCardDeckIndex(List<EntityIndexDTO> cardsIndexed, List<Card> cards, Deck deck, DeckKeyword type)  {
+    private List<CardDeckIndex> getCardDeckIndex(List<EntityIndexDTO> cardsIndexed, List<Card> cards, Deck deck, DeckKeyword type, Map<Long, CardImage> selectedImages)  {
         if (cardsIndexed == null) {
             return List.of();
         }
         return mapToList(cardsIndexed, cid -> {
             var card = findAny(cards, c -> Objects.equals(c.getId(), cid.getId()));
-            return deckMapper.toCardDeckIndex(card, cid.getIndex(), type, deck);
+            CardImage selectedImage = null;
+            if (cid.getImageId() != null) {
+                selectedImage = selectedImages.get(cid.getImageId());
+                if (selectedImage != null && !Objects.equals(selectedImage.getCard().getId(), card.getId())) {
+                    selectedImage = null;
+                }
+            }
+            return deckMapper.toCardDeckIndex(card, cid.getIndex(), type, deck, selectedImage);
         });
     }
 

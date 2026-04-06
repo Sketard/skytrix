@@ -33,7 +33,7 @@ export class HandTestComponent {
   }
 
   toCardData(icd: IndexedCardDetail): SharedCardData {
-    return toSharedCardData(icd.card);
+    return toSharedCardData(icd.card, icd.selectedImageId);
   }
 
   public retry() {

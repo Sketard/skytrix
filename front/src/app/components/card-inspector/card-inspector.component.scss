@@ -144,6 +144,61 @@
   }
 }
 
+// Art switcher (dots / counter + arrows)
+.art-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+
+  &-arrow {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    transform: scale(0.8);
+    color: var(--inspector-text-secondary, #94a3b8);
+
+    &:hover {
+      color: var(--inspector-text, #f1f5f9);
+    }
+  }
+
+  &-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid var(--inspector-text-secondary, #94a3b8);
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease;
+
+    &.active {
+      background: var(--inspector-border-color, rgba(0, 212, 255, 0.6));
+      border-color: var(--inspector-border-color, rgba(0, 212, 255, 0.6));
+    }
+
+    &:hover:not(.active) {
+      border-color: var(--inspector-text, #f1f5f9);
+    }
+  }
+
+  &-counter {
+    color: var(--inspector-text-secondary, #94a3b8);
+    font-size: 0.75rem;
+    min-width: 3rem;
+    text-align: center;
+    user-select: none;
+  }
+}
+
 // Shared detail styles
 .inspector-details {
   flex: 1;

@@ -22,11 +22,13 @@ export class CardDetail {
 export class IndexedCardDetail {
   card: CardDetail;
   index: number;
+  selectedImageId?: number;
   id = generateRandomId();
   justAdded = false;
 
-  constructor(cardDetail: CardDetail, index: number) {
+  constructor(cardDetail: CardDetail, index: number, selectedImageId?: number) {
     this.card = cardDetail;
     this.index = index;
+    this.selectedImageId = selectedImageId;
   }
 }

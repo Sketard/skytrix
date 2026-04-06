@@ -115,6 +115,9 @@ public abstract class CardMapper {
         var target = new IndexedCardDetailDTO();
         target.setCard(toCardDetailedDTO(source.getCard()));
         target.setIndex(source.getIndex());
+        if (source.getSelectedImage() != null) {
+            target.setSelectedImageId(source.getSelectedImage().getId());
+        }
         return target;
     }
 

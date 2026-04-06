@@ -21,9 +21,11 @@ export class CreateDeckDTO {
 export class CardIndexDTO {
   id: number;
   index: number;
+  imageId?: number;
 
-  constructor(id: number, index: number) {
+  constructor(id: number, index: number, imageId?: number) {
     this.id = id;
     this.index = index;
+    this.imageId = imageId;
   }
 }

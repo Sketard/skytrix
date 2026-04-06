@@ -55,7 +55,7 @@ public class YugiproRequester extends Requester {
     }
 
     public byte[] fetchImage(CardImage cardImage, boolean small) {
-        var url = "https://images.ygoprodeck.com/images/%s/%s.jpg".formatted((small ? "cards_small" : "cards"), cardImage.getCard().getPasscode());
+        var url = "https://images.ygoprodeck.com/images/%s/%s.jpg".formatted((small ? "cards_small" : "cards"), cardImage.getImageId());
         var request = createGetRequest(url);
         var response = sendRequestByteArray(request);
         if (response.statusCode() != 200) {
