@@ -568,7 +568,7 @@ export interface DuelStartingMsg {
   playerIndex: Player;
   traceId: string;
   /** Unique card codes from both decklists — for upfront image prefetch. */
-  cardCodes?: number[];
+  cardCodes: number[];
 }
 
 export interface RematchInvitationMsg {
@@ -838,8 +838,8 @@ export interface ReplayMetadataMsg {
   result: string | null;
   divergenceWarning: boolean;
   totalResponses: number;
-  /** Unique card codes from both decklists — for upfront image prefetch. Optional for backward compat with older servers. */
-  cardCodes?: number[];
+  /** Unique card codes from both decklists — for upfront image prefetch. */
+  cardCodes: number[];
 }
 
 export interface ReplayErrorMsg {
