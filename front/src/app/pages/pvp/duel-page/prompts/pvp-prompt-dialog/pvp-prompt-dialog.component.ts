@@ -2,11 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  createComponent,
   effect,
   ElementRef,
+  EnvironmentInjector,
   HostListener,
   inject,
   input,
+  AfterViewInit,
   OnDestroy,
   output,
   signal,
@@ -33,7 +36,7 @@ function isExcavatedCard(c: CardInfo): boolean {
   return c.location === LOCATION.DECK || c.location === LOCATION.EXTRA;
 }
 
-export type DialogState = 'closed' | 'opening' | 'open' | 'transitioning' | 'collapsed' | 'closing';
+export type DialogState = 'closed' | 'open' | 'collapsed';
 
 export interface PassiveMessage {
   title: string;
@@ -49,15 +52,15 @@ export interface PassiveMessage {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkPortalOutlet, CdkTrapFocus, TranslatePipe],
 })
-export class PvpPromptDialogComponent implements OnDestroy {
+export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private readonly envInjector = inject(EnvironmentInjector);
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
   readonly prompt = input<Prompt | null>(null);
   readonly passiveMessage = input<PassiveMessage | null>(null);
-  readonly skipBeat1 = input(false);
   readonly responseOverride = input<((data: unknown) => void) | null>(null);
   readonly ownPlayerIndex = input(0);
   /** Replay mode: override hint context (replaces wsService.hintContext()). */
@@ -71,21 +74,16 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
   readonly dialogState = signal<DialogState>('closed');
   readonly hintText = signal<string | null>(null);
-  readonly isBeat1 = signal(false);
   readonly isSending = signal(false);
 
   readonly isDialogVisible = computed(() => this.dialogState() !== 'closed');
-  readonly trapFocusActive = computed(() => {
-    const s = this.dialogState();
-    return s === 'open' || s === 'opening' || s === 'transitioning';
-  });
+  readonly trapFocusActive = computed(() => this.dialogState() === 'open');
 
   readonly dialogExpanded = output<boolean>();
   readonly longPressInspect = output<{ cardCode: number }>();
   readonly preTargetCards = output<CardInfo[]>();
 
-  private beatTimeout: ReturnType<typeof setTimeout> | null = null;
-  private closingTimeout: ReturnType<typeof setTimeout> | null = null;
+  private pendingAttach: { prompt: Prompt; componentType: Type<PromptSubComponent> } | null = null;
   private responseSubscription: { unsubscribe(): void } | null = null;
   private longPressSubscription: { unsubscribe(): void } | null = null;
   private preTargetSubscription: { unsubscribe(): void } | null = null;
@@ -104,14 +102,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
           this.isSending.set(false);
           this.hintText.set(null);
           this.detachComponent();
-          if (this.dialogState() === 'closed' || this.dialogState() === 'closing') {
-            this.clearTimeouts();
-            this.dialogState.set('opening');
-            this.beatTimeout = setTimeout(() => this.dialogState.set('open'), 50);
+          if (this.dialogState() === 'closed') {
+            this.dialogState.set('open');
           }
         } else if (!rpsIp && !this.wsService.tpResponseSent()) {
           // No prompt, no passive message, RPS resolved → close
-          if (this.dialogState() !== 'closed') this.closeDialog(false);
+          if (this.dialogState() !== 'closed') this.closeDialog();
         } else {
           // RPS or TP in progress with no prompt/passive — handle null prompt
           this.onPromptChange(null);
@@ -121,8 +117,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
     effect(() => {
       const s = this.dialogState();
-      const expanded = s === 'open' || s === 'opening' || s === 'transitioning';
-      untracked(() => this.dialogExpanded.emit(expanded));
+      untracked(() => this.dialogExpanded.emit(s === 'open'));
     });
   }
 
@@ -150,8 +145,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
   @HostListener('document:contextmenu', ['$event'])
   handleContextMenu(event: MouseEvent): void {
     if (this.readOnly()) return;
-    const s = this.dialogState();
-    if (s !== 'open' && s !== 'opening' && s !== 'transitioning') return;
+    if (this.dialogState() !== 'open') return;
     event.preventDefault();
     const cancelBtn = this.elementRef.nativeElement.querySelector('.btn--secondary') as HTMLElement;
     cancelBtn?.click();
@@ -159,15 +153,32 @@ export class PvpPromptDialogComponent implements OnDestroy {
 
   toggleCollapse(): void {
     const s = this.dialogState();
-    if (s === 'open' || s === 'transitioning') {
+    if (s === 'open') {
       this.dialogState.set('collapsed');
     } else if (s === 'collapsed') {
       this.dialogState.set('open');
     }
   }
 
+  ngAfterViewInit(): void {
+    // Create & destroy one instance of each portal sub-component to force
+    // Angular to register their scoped styles before first real use (prevents FOUC).
+    const seen = new Set<Type<PromptSubComponent>>();
+    for (const type of [...Object.values(PROMPT_COMPONENT_MAP), PromptActionListReadonlyComponent]) {
+      if (seen.has(type)) continue;
+      seen.add(type);
+      createComponent(type, { environmentInjector: this.envInjector }).destroy();
+    }
+
+    if (this.pendingAttach) {
+      const { prompt, componentType } = this.pendingAttach;
+      this.pendingAttach = null;
+      this.attachComponent(prompt, componentType);
+      this.dialogState.set('open');
+    }
+  }
+
   ngOnDestroy(): void {
-    this.clearTimeouts();
     this.detachComponent();
   }
 
@@ -179,8 +190,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
       if (this.wsService.rpsInProgress() || this.wsService.tpResponseSent() || this.passiveMessage()) return;
 
       if (this.dialogState() !== 'closed') {
-        const instant = this.wsService.duelResult() !== null;
-        this.closeDialog(instant);
+        this.closeDialog();
       }
       return;
     }
@@ -197,7 +207,7 @@ export class PvpPromptDialogComponent implements OnDestroy {
     if (!componentType) {
       // Prompt handled elsewhere (e.g. zone highlights for SELECT_PLACE/SELECT_DISFIELD).
       // Close any open dialog so it doesn't block board interactions.
-      if (this.dialogState() !== 'closed') this.closeDialog(true);
+      if (this.dialogState() !== 'closed') this.closeDialog();
       return;
     }
 
@@ -207,10 +217,8 @@ export class PvpPromptDialogComponent implements OnDestroy {
   private openForPrompt(prompt: Prompt, componentType: Type<PromptSubComponent>): void {
     const hint = this.hintContext() ?? this.wsService.hintContext();
     const hasHint = hint.hintType !== 0;
-    const wasOpen = this.dialogState() !== 'closed' && this.dialogState() !== 'closing';
 
     this.isSending.set(false);
-    this.clearTimeouts();
     // For SELECT_CHAIN, only show "X is activated" if there's actually an active chain.
     // Otherwise the hint cardName is leftover from a summon/effect, not an activation.
     const chainHasActivation = prompt.type === 'SELECT_CHAIN' && this.wsService.activeChainLinks().length === 0;
@@ -235,21 +243,12 @@ export class PvpPromptDialogComponent implements OnDestroy {
     const descriptionText = 'descriptionText' in prompt ? (prompt as { descriptionText?: string }).descriptionText ?? '' : '';
     this.hintText.set(this.buildHintText(prompt.type, cardName, hintAction, hintTimingLabel, descriptionText));
 
-    if (wasOpen) {
-      this.dialogState.set('transitioning');
+    if (this.portalOutlet) {
       this.swapComponent(prompt, componentType);
-      this.beatTimeout = setTimeout(() => {
-        if (this.dialogState() === 'transitioning') this.dialogState.set('open');
-      }, 200);
+      this.dialogState.set('open');
     } else {
-      this.dialogState.set('opening');
-      const skipHintDelay = this.skipBeat1();
-      this.isBeat1.set(hasHint && !skipHintDelay);
-      this.beatTimeout = setTimeout(() => {
-        this.attachComponent(prompt, componentType);
-        this.isBeat1.set(false);
-        this.dialogState.set('open');
-      }, (hasHint && !skipHintDelay) ? 50 : 0);
+      // Defer visibility until ngAfterViewInit attaches the content
+      this.pendingAttach = { prompt, componentType };
     }
   }
 
@@ -315,20 +314,13 @@ export class PvpPromptDialogComponent implements OnDestroy {
     }
   }
 
-  private closeDialog(instant: boolean): void {
+  private closeDialog(): void {
     if (this.dialogState() === 'closed') return;
-    this.clearTimeouts();
+    this.pendingAttach = null;
     this.detachComponent();
     this.hintText.set(null);
     this.isSending.set(false);
-    this.isBeat1.set(false);
-
-    if (instant) {
-      this.dialogState.set('closed');
-    } else {
-      this.dialogState.set('closing');
-      this.closingTimeout = setTimeout(() => this.dialogState.set('closed'), 200);
-    }
+    this.dialogState.set('closed');
   }
 
   // Yu-Gi-Oh game mechanic keywords highlighted à la Master Duel.
@@ -413,10 +405,5 @@ export class PvpPromptDialogComponent implements OnDestroy {
       default:
         return q || null;
     }
-  }
-
-  private clearTimeouts(): void {
-    if (this.beatTimeout) { clearTimeout(this.beatTimeout); this.beatTimeout = null; }
-    if (this.closingTimeout) { clearTimeout(this.closingTimeout); this.closingTimeout = null; }
   }
 }

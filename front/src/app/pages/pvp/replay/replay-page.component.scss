@@ -78,15 +78,31 @@
       }
     }
 
-    // Overlays, chain overlay and prompt dialogs must not participate in flex layout.
-    // Without this, they take implicit height and starve the board container.
-    app-pvp-duel-overlays,
-    app-pvp-chain-overlay,
-    app-pvp-prompt-dialog {
+    // Overlays must not participate in flex layout — position: absolute removes
+    // them from the flow. Each component manages its own inset/z-index internally.
+    app-pvp-duel-overlays {
       position: absolute;
       inset: 0;
       pointer-events: none;
       z-index: z.$z-pvp-phase-announcement;
+    }
+
+    // Chain overlay has position: fixed + z-index: 950 on its :host.
+    // Don't override — it manages its own stacking context. Just remove
+    // it from flex layout calculation (flex considers fixed-position
+    // children as out-of-flow already, but explicit flex: 0 is safer).
+    app-pvp-chain-overlay {
+      flex: none;
+    }
+
+    // Prompt dialog host is display: contents — the inner .prompt-dialog does
+    // its own absolute positioning (bottom: 8dvh, left: 50%, width: 50dvw).
+    // We just need the host to fill .board-area so the inner absolute
+    // positioning has the right containing block.
+    app-pvp-prompt-dialog {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
     }
   }
 

@@ -22,6 +22,7 @@ export class ClientLogService implements OnDestroy {
   private readonly FLUSH_INTERVAL = 5_000;
   private readonly MAX_BUFFER = 50;
   private readonly beforeUnloadHandler = () => this.flushSync();
+  private droppedEntries = 0;
 
   readonly originalConsole = {
     log: console.log.bind(console),
@@ -60,7 +61,10 @@ export class ClientLogService implements OnDestroy {
     }
     const entries = this.buffer.splice(0);
     this.http.post(`${environment.apiUrl}/client-logs`, entries).subscribe({
-      error: () => {}
+      error: () => {
+        this.droppedEntries += entries.length;
+        this.originalConsole.warn(`[ClientLog] Failed to flush ${entries.length} entries (total dropped: ${this.droppedEntries})`);
+      },
     });
   }
 

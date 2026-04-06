@@ -178,6 +178,8 @@
 :host(.read-only) {
   .card-slot--selected { @include btn.replay-chosen-pulse; }
   .card-slot:not(.card-slot--selected) { @include btn.replay-not-chosen; }
+  .btn--selected { @include btn.replay-chosen-pulse; }
+  .btn:not(.btn--selected) { @include btn.replay-not-chosen; }
   .actions { pointer-events: none; }
 }
 

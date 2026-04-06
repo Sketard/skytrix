@@ -9,24 +9,20 @@
   position: absolute;
   bottom: 8dvh;
   left: 50%;
-  transform: translateX(-50%) scale(0.95);
+  transform: translateX(-50%);
   z-index: z.$z-pvp-prompt-sheet;
   width: var(--pvp-prompt-dialog-width, 50dvw);
   background: var(--pvp-prompt-dialog-bg, rgba(15, 23, 42, 0.92));
   border-radius: var(--pvp-prompt-dialog-radius, 0.75rem);
-  opacity: 0;
-  transition:
-    opacity 200ms ease-out,
-    transform 200ms ease-out;
   overflow: hidden;
   overscroll-behavior: contain;
   pointer-events: none;
+  opacity: 0;
   visibility: hidden;
 
   &--visible {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
     pointer-events: auto;
+    opacity: 1;
     visibility: visible;
   }
 
@@ -64,7 +60,6 @@
 }
 
 .collapse-arrow {
-  transition: transform 200ms ease-out;
   font-size: 0.625rem;
 
   &--up {
@@ -88,15 +83,6 @@
   ::ng-deep .hint-action {
     color: var(--pvp-accent, #c9a84c);
   }
-
-  &--flash {
-    animation: hint-flash 200ms ease-in-out;
-  }
-}
-
-@keyframes hint-flash {
-  0% { background: rgba(201, 168, 76, 0.3); }
-  100% { background: transparent; }
 }
 
 .collapsed-bar {
@@ -108,10 +94,6 @@
 
 .portal-container {
   padding: 8px 16px 16px;
-
-  &--disabled {
-    pointer-events: none;
-  }
 
   &--hidden {
     display: none;
@@ -164,13 +146,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .passive-title,
-  .passive-subtitle {
-    animation: none !important;
-  }
-}
-
 .sending-indicator {
   display: flex;
   justify-content: center;
@@ -215,11 +190,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .prompt-dialog {
-    transition: none;
-  }
-
-  .hint-header--flash {
-    animation: none;
+  .passive-title,
+  .passive-subtitle {
+    animation: none !important;
   }
 }

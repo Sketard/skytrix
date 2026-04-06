@@ -1,8 +1,9 @@
-import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, input, output, signal } from '@angular/core';
+import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, input, output, signal } from '@angular/core';
 import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
 import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupPileActions, isActivateAction } from '../idle-action-codes';
+import { EQUIP_HOVER_COLOR, EQUIP_HOVER_SHADOW } from '../equip-line.constants';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
 import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
@@ -44,6 +45,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
   private readonly cardTravelService = inject(CardTravelService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly zoneElements = new Map<string, HTMLElement>();
 
   /** When true, this instance is a miniature preview — skip zone resolver registration. */
@@ -53,6 +55,8 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly hasOpponent = computed(() => this.duelState().players[1] != null);
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.onEquipLeave());
+
     // Dynamic rebuild: re-query zone elements when opponent field first renders
     effect(() => {
       this.hasOpponent(); // track only player presence changes
@@ -105,12 +109,11 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number }>();
   readonly cardInspectRequest = output<{ cardCode: number }>();
-  readonly maskedZoneKeys = input<ReadonlySet<string>>(new Set());
-  readonly maskedPileImages = input<ReadonlyMap<string, string | null>>(new Map());
-  readonly maskedSourceImages = input<ReadonlyMap<string, CardOnField>>(new Map());
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
+  readonly counterPulseKey = input<string | null>(null);
+  readonly swapGraveDeckKeys = input<ReadonlySet<string>>(new Set());
 
   readonly playerZones = computed(() => this.buildFieldZones(0));
   readonly opponentZones = computed(() => this.buildFieldZones(1));
@@ -459,10 +462,20 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     this.actionResponse.emit(event);
   }
 
+  private equipHoverLines: HTMLDivElement[] = [];
+
   onEquipHover(zoneKey: string): void {
     const linked = this.equipMap().get(zoneKey);
     if (linked?.length) {
       this.equipHighlightedZones.set(new Set(linked));
+      const srcEl = this.cardTravelService.getZoneElement(zoneKey);
+      for (const targetKey of linked) {
+        const dstEl = this.cardTravelService.getZoneElement(targetKey);
+        const line = this.cardTravelService.createLineBetween(srcEl, dstEl, {
+          color: EQUIP_HOVER_COLOR, shadow: EQUIP_HOVER_SHADOW,
+        });
+        if (line) this.equipHoverLines.push(line);
+      }
     }
   }
 
@@ -470,6 +483,8 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     if (this.equipHighlightedZones().size > 0) {
       this.equipHighlightedZones.set(new Set());
     }
+    for (const line of this.equipHoverLines) line.remove();
+    this.equipHoverLines.length = 0;
   }
 
   buildAriaLabel(card: CardOnField): string {

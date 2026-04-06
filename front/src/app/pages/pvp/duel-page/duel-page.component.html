@@ -131,8 +131,9 @@
     <!-- Duel overlays (opponent thinking glow, phase/chain announcements) -->
     <app-pvp-duel-overlays
       [phaseAnnouncement]="phaseService.announcement()"
-      [chainResolutionAnnounce]="animationService.chainResolutionAnnounce()"
-      [opponentThinking]="waitingForOpponent() && roomState() === 'active'" />
+      [chainResolutionAnnounce]="chainManager.chainResolutionAnnounce()"
+      [opponentThinking]="waitingForOpponent() && roomState() === 'active'"
+      [duelToast]="toastService.toast()" />
 
     <!-- Board + hands + toolbar — only visible when duel is active (not during RPS) -->
     @if (roomState() === 'active') {
@@ -140,15 +141,14 @@
       <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
                          [cards]="opponentHand()"
-                         [hiddenIndices]="animationService.hiddenHandIndices()[1]"
-                         [hideAll]="animationService.initialDrawPending()[1]"
+                         [expansionSlots]="drawManager.handExpansionSlots()[1]"
                          [chainBadges]="opponentHandChainBadges()"
                          [revealedCardCodes]="opponentHandRevealedCards()"
                          (cardInspectRequest)="onOpponentHandInspect($event)" />
 
       <!-- Board with CSS 3D perspective -->
       <app-pvp-board-container [class.switching]="switching()"
-                               [duelState]="duelState()"
+                               [duelState]="renderedState()"
                                [timerState]="displayedTimerState()"
                                [ownPlayerIndex]="ownPlayerIndex()"
                                [highlightedZones]="highlightedZones()"
@@ -165,20 +165,18 @@
                                (actionResponse)="onBoardActionResponse($event)"
                                (menuRequest)="onBoardMenuRequest($event)"
                                (zonePillRequest)="onZonePillRequest($event)"
-                               [maskedZoneKeys]="animationService.maskedZoneKeys()"
-                               [maskedPileImages]="animationService.maskedPileImages()"
-                               [maskedSourceImages]="animationService.maskedSourceImages()"
                                [targetedZoneKeys]="animationService.targetedZoneKeys()"
                                [preTargetZoneKeys]="preTargetZoneKeys()"
                                [revealedZoneKeys]="revealedZoneKeys()"
+                               [counterPulseKey]="animationService.counterPulseKey()"
+                               [swapGraveDeckKeys]="animationService.swapGraveDeckKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)" />
 
       <!-- Player Hand (bottom, face-up, outside perspective) -->
       <app-pvp-hand-row #playerHandRow class="hand-player" data-zone="HAND-0"
                          side="player"
                          [cards]="playerHand()"
-                         [hiddenIndices]="animationService.hiddenHandIndices()[0]"
-                         [hideAll]="animationService.initialDrawPending()[0]"
+                         [expansionSlots]="drawManager.handExpansionSlots()[0]"
                          [actionableCardIndices]="playerActionableHandIndices()"
                          [activateCardIndices]="playerActivateHandIndices()"
                          [chainBadges]="playerHandChainBadges()"
@@ -433,7 +431,6 @@
     <!-- Prompt dialog (Story 1.6) — Story 4.2: visiblePrompt drains behind animation queue -->
     <app-pvp-prompt-dialog [prompt]="effectivePrompt()"
                            [passiveMessage]="tpPassiveMessage()"
-                           [skipBeat1]="returningFromBackground()"
                            [ownPlayerIndex]="ownPlayerIndex()"
                            [responseOverride]="pilePrompt() ? pileResponseHandler : null"
                            (dialogExpanded)="promptSheetExpanded.set($event)"

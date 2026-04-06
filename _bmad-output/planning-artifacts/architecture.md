@@ -22,23 +22,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 ### Requirements Overview
 
-**Functional Requirements:**
-34 functional requirements across 7 categories covering simulation initialization, card movement via drag & drop across 18 interconnected game zones, card actions (draw, summon, activate, send to GY, banish, return), deck operations (search, mill, reveal/excavate), zone inspection with expandable overlays, card state management (face-down/flip, ATK/DEF toggle), and session management (undo/redo with Command pattern, reset, keyboard shortcuts).
-
-The simulator is fully manual with no rules engine — the player has complete freedom over card placement and actions. This eliminates rules engine complexity but places the burden on intuitive UX and flexible state management.
-
-**Non-Functional Requirements:**
-12 NFRs focused on four areas:
-- **Performance (NFR1-6):** 16ms frame budget for drag & drop, <100ms board state updates, <1s board reset, <200ms tooltip, <300ms overlay open. These are tight constraints requiring OnPush change detection and signal-based reactivity.
-- **Security (NFR7-8):** Route protected by existing authentication. No data transmitted to backend — fully client-side.
-- **Compatibility (NFR9-10):** Modern desktop and mobile browsers. Integrates with existing build/deploy pipeline.
-- **Responsiveness (NFR11-12):** Deck management pages usable 375px–2560px+. Touch targets min 44×44px on mobile.
-
-**Scale & Complexity:**
-
-- Primary domain: Frontend web (Angular SPA)
-- Complexity level: Medium — rich interactive UI with state management challenges, but no backend, no real-time, no multi-tenancy
-- Estimated architectural components: ~8-12 (board container, zone components, card component, drag & drop orchestration, game state service, command stack service, deck operations service, overlay components)
+The PRD defines 34 FRs across 6 categories and 12 NFRs across 4 categories. Scale assessment: medium complexity (~8-12 components). See prd.md for full requirements.
 
 ### Technical Constraints & Dependencies
 
@@ -60,42 +44,6 @@ The simulator is fully manual with no rules engine — the player has complete f
 - **Performance discipline:** OnPush + signals throughout. No unnecessary re-renders when only one zone changes. cdkDropListSortingDisabled on single-card zones.
 - **Card rendering consistency:** Cards appear in multiple contexts (hand, board zones, overlays, tooltips) — consistent rendering logic needed.
 - **Board scaling:** The board uses a fixed aspect ratio container that scales via `transform: scale()` to fit the available viewport space. The scale factor must be computed reactively (viewport resize, navbar toggle) and propagated to the board component. → See UX spec for visual behavior (dimensions, transform-origin, letterboxing).
-
-## Starter Template Evaluation
-
-### Primary Technology Domain
-
-Frontend web (Angular SPA) — brownfield project. The simulator is a new feature within an existing, established application.
-
-### Starter Options Considered
-
-**Not applicable.** This is a brownfield project with a fully established technology stack. The existing skytrix application provides all foundational architecture — no starter template, boilerplate, or scaffolding tool is needed.
-
-### Selected Approach: Extend Existing Application
-
-**Rationale:** The simulator is a new page/route within an existing Angular 19 SPA. All infrastructure (build pipeline, routing, services, components, styling) is already in place. Adding a starter template would conflict with the established project structure and conventions.
-
-**Architectural Decisions Already Established by Existing Project:**
-
-**Language & Runtime:**
-TypeScript 5.5.4 strict mode, ES2022 target, `useDefineForClassFields: false` for Angular compatibility.
-
-**Styling Solution:**
-SCSS with shared styles from `src/app/styles/`. Angular Material theming.
-
-**Build Tooling:**
-Angular CLI with existing build and deployment pipeline. No additional configuration needed.
-
-**Testing Framework:**
-Karma + Jasmine available but not used for this feature (big bang development, manual testing only).
-
-**Code Organization:**
-`pages/simulator/` as root folder with colocated components, services, and models. Flat structure preferred — introduce sub-folders only if file count exceeds readability threshold.
-
-**Development Experience:**
-`ng serve` with proxy to backend, hot reload, Angular DevTools compatible.
-
-**Entry Point:** Create the simulator page component and register the route `/decks/:id/simulator` in `app.routes.ts`. This is the first concrete action — all other simulator code branches from this.
 
 ## Core Architectural Decisions
 
@@ -586,89 +534,6 @@ front/src/app/
 │   └── _responsive.scss                      # NEW — breakpoints, responsive mixins
 ```
 
-## Architecture Validation Results
+### Architecture Validation
 
-### Coherence Validation ✅
-
-**Decision Compatibility:** All technology choices are compatible — Angular 19.1.3, CDK DragDrop, TypeScript 5.5.4 strict, signals, OnPush. Zero new dependencies, zero version conflicts.
-
-**Pattern Consistency:** Signal-based state management aligns with OnPush rendering. Command pattern with immutable updates ensures predictable state flow. Canonical action flow eliminates ambiguity in how state changes propagate.
-
-**Structure Alignment:** Project structure directly supports all patterns — colocated simulator code, encapsulated commands folder, clear service boundaries.
-
-### Requirements Coverage Validation ✅
-
-**Functional Requirements:** 34/34 FRs fully covered by architectural decisions and mapped to specific files.
-
-**Non-Functional Requirements:** 10/10 NFRs addressed — performance via signals + OnPush + CDK optimizations, security via existing auth, compatibility via existing build pipeline.
-
-### Implementation Readiness Validation ✅
-
-**Decision Completeness:** All critical and important decisions documented with rationale.
-
-**Structure Completeness:** Every file defined, every component named, every boundary documented. FR-to-file mapping explicit.
-
-**Pattern Completeness:** Naming conventions, action flow, error handling, debug observability, enforcement guidelines, and anti-patterns all specified.
-
-### Service Scoping Decision
-
-**BoardStateService and CommandStackService are provided via `providers` on SimulatorPageComponent** (not `providedIn: 'root'`). This is a documented exception to the project-context pattern — justified by the ephemeral nature of simulation state. Each navigation to the simulator creates fresh service instances, ensuring a clean board when returning after deck edits (per User Journey 2).
-
-### Gap Analysis Results
-
-**Critical Gaps:** None.
-**Important Gaps:** None — keyboard shortcut specifics are implementation-level detail.
-**Nice-to-Have:** Board CSS grid wireframe recommended as a separate UX artifact.
-
-### Architecture Completeness Checklist
-
-**✅ Requirements Analysis**
-- [x] Project context thoroughly analyzed
-- [x] Scale and complexity assessed (medium)
-- [x] Technical constraints identified (frontend-only, brownfield, big bang)
-- [x] Cross-cutting concerns mapped (6 concerns)
-
-**✅ Architectural Decisions**
-- [x] Critical decisions documented (data model, zones, commands, components)
-- [x] Technology stack fully specified (all existing, zero new deps)
-- [x] Integration patterns defined (service injection, signal inputs/outputs)
-- [x] Performance considerations addressed (OnPush, computed per zone, CDK optimizations)
-
-**✅ Implementation Patterns**
-- [x] Naming conventions established (signal naming, selector prefix, ZoneId enum)
-- [x] Structure patterns defined (2 services scoped to component, commands encapsulated)
-- [x] Communication patterns specified (inputs/outputs, service injection, no event bus)
-- [x] Process patterns documented (action flow, error handling, debug panel)
-
-**✅ Project Structure**
-- [x] Complete directory structure defined (all files listed)
-- [x] Component boundaries established (who reads/writes what)
-- [x] Integration points mapped (existing services reused)
-- [x] Requirements to structure mapping complete (FR → file table)
-
-### Architecture Readiness Assessment
-
-**Overall Status:** READY FOR IMPLEMENTATION
-
-**Confidence Level:** High
-
-**Key Strengths:**
-- Clean separation: 2 services scoped to component, commands encapsulated, clear boundaries
-- Performance-first: signals + computed + OnPush from the ground up
-- Predictable state: canonical action flow, zero direct mutations
-- Brownfield-native: fits seamlessly into existing project structure
-
-**Areas for Future Enhancement (Post-MVP):**
-- Board CSS grid wireframe/layout specification
-- Token creation architecture (Phase 2)
-- Board state serialization for save/load (Phase 3)
-
-### Implementation Handoff
-
-**AI Agent Guidelines:**
-- Follow all architectural decisions exactly as documented
-- Use implementation patterns consistently across all components
-- Respect project structure and boundaries
-- Refer to this document for all architectural questions
-
-**First Implementation Priority:** Create `simulator-page.component.ts` with `providers: [BoardStateService, CommandStackService]` and register route `/decks/:id/simulator` in `app.routes.ts`.
+All 34 FRs and 12 NFRs are architecturally supported. No critical gaps identified. One naming note: the solo simulator uses `Action` (not `SolverAction`) for user commands — this avoids confusion with the solver feature's `SolverAction` type.

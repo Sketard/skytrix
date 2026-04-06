@@ -61,6 +61,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   readonly selectedCardAmounts = signal<Map<number, number>>(new Map());
   /** For SELECT_UNSELECT_CARD: the card index the user just toggled (delta to send to engine), or null if confirming as-is. */
   readonly toggledIndex = signal<number | null>(null);
+  /** True when the replay response was a cancel action (empty indices / null index). */
+  cancelSelected = false;
   answered = false;
 
   ngOnInit(): void {
@@ -72,7 +74,13 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       // Server sends "indicies" (legacy typo) — accept both spellings
       const arr = (r['indices'] ?? r['indicies']) as number[] | undefined;
       if (Array.isArray(arr)) {
-        this.selectedIndices.set(new Set<number>(arr));
+        if (arr.length === 0) {
+          this.cancelSelected = true;
+        } else {
+          this.selectedIndices.set(new Set<number>(arr));
+        }
+      } else if (r['index'] === null) {
+        this.cancelSelected = true;
       } else if (r['index'] != null && (r['index'] as number) >= 0) {
         this.selectedIndices.set(new Set<number>([r['index'] as number]));
       }

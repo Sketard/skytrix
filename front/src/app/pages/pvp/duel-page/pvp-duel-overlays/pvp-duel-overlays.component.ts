@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import type { PhaseAnnouncement } from '../phase-announcement.service';
+import type { DuelToast } from '../duel-toast.service';
 
 @Component({
   selector: 'app-pvp-duel-overlays',
@@ -40,10 +41,23 @@ import type { PhaseAnnouncement } from '../phase-announcement.service';
         </div>
       </div>
     }
+
+    <!-- Game toast (coin flip, dice roll) -->
+    @if (duelToast(); as t) {
+      <div class="duel-toast" role="status" aria-live="polite" aria-atomic="true">
+        <span class="duel-toast__icon">{{ t.icon }}</span>
+        <div class="duel-toast__body">
+          @for (line of t.lines; track $index) {
+            <span class="duel-toast__line">{{ line }}</span>
+          }
+        </div>
+      </div>
+    }
   `,
 })
 export class PvpDuelOverlaysComponent {
   readonly phaseAnnouncement = input<PhaseAnnouncement | null>(null);
   readonly chainResolutionAnnounce = input(false);
   readonly opponentThinking = input(false);
+  readonly duelToast = input<DuelToast | null>(null);
 }

@@ -14,6 +14,8 @@ import type { ChainLinkState } from '../../types';
 import { getCardImageUrlByCode } from '../../pvp-card.utils';
 import { ANIMATION_DATA_SOURCE } from '../animation-data-source';
 import { AnimationOrchestratorService } from '../animation-orchestrator.service';
+import { ChainResolutionManager } from '../chain-resolution-manager';
+import { DuelLogCategory, DuelLogger } from '../duel-logger';
 
 export interface VisibleCard {
   chainIndex: number;
@@ -78,8 +80,10 @@ export class PvpChainOverlayComponent {
 
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly orchestrator = inject(AnimationOrchestratorService);
+  private readonly chainManager = inject(ChainResolutionManager);
   private readonly destroyRef = inject(DestroyRef);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly logger = inject(DuelLogger);
 
   readonly activeChainLinks = this.dataSource.activeChainLinks;
   readonly phase = this.dataSource.chainPhase;
@@ -234,10 +238,11 @@ export class PvpChainOverlayComponent {
           this.cancelEntryTimer();
           this.entryAnimInProgress = false;
           // Force clear entry animation gate — resolution takes over
-          this.orchestrator.chainEntryAnimating.set(false);
+          this.chainManager.chainEntryAnimating.set(false);
         }
 
         if (currentCount < prevCount && prevCount > 0) {
+          this.logger.log(DuelLogCategory.CHAIN, 'Effect A: link removed %d→%d — calling onChainLinkResolved', prevCount, currentCount);
           this.onChainLinkResolved();
         }
       });
@@ -259,7 +264,7 @@ export class PvpChainOverlayComponent {
         }
 
         const resolvingLink = links.find(l => l.resolving);
-        console.log('[DBG:EFFECT-B] phase=resolving links=%d resolvingLink=%o allLinks=%o',
+        this.logger.log(DuelLogCategory.CHAIN, 'Effect-B phase=resolving links=%d resolvingLink=%o allLinks=%o',
           links.length,
           resolvingLink ? { idx: resolvingLink.chainIndex, negated: resolvingLink.negated, name: resolvingLink.cardName } : null,
           links.map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
@@ -303,7 +308,7 @@ export class PvpChainOverlayComponent {
 
     // Effect D — Hide overlay during "Chain Resolution" banner
     effect(() => {
-      const announcing = this.orchestrator.chainResolutionAnnounce();
+      const announcing = this.chainManager.chainResolutionAnnounce();
       untracked(() => {
         if (announcing) {
           this.cancelEntryTimer();
@@ -341,14 +346,14 @@ export class PvpChainOverlayComponent {
         if (phase !== 'resolving') return;
 
         if (isPromptActive && this.overlayVisible()) {
-          this.orchestrator.chainPromptGateActive.set(true);
+          this.chainManager.chainPromptGateActive.set(true);
           this.overlayVisible.set(false);
           this.scheduleTimeout(() => {
-            this.orchestrator.chainPromptGateActive.set(false);
+            this.chainManager.chainPromptGateActive.set(false);
           }, this.durations().overlayFadeOut);
-        } else if (!isPromptActive && this.orchestrator.chainPromptGateActive()) {
+        } else if (!isPromptActive && this.chainManager.chainPromptGateActive()) {
           // Prompt closed before fade-out finished — release gate immediately
-          this.orchestrator.chainPromptGateActive.set(false);
+          this.chainManager.chainPromptGateActive.set(false);
         }
       });
     });
@@ -396,8 +401,8 @@ export class PvpChainOverlayComponent {
     this.overlayShownDuringBuild = true;
     this.overlayVisible.set(true);
     this.entryAnimInProgress = true;
-    this.orchestrator.chainEntryAnimating.set(true);
-    this.scheduleTimeout(() => this.orchestrator.chainEntryAnimating.set(false), this.durations().constructAppear);
+    this.chainManager.chainEntryAnimating.set(true);
+    this.scheduleTimeout(() => this.chainManager.chainEntryAnimating.set(false), this.durations().constructAppear);
     this.scheduleFadeOutAfterEntry();
   }
 
@@ -428,9 +433,14 @@ export class PvpChainOverlayComponent {
    * promises never resolve, so the rest of the async chain is discarded.
    */
   private async onChainLinkResolved(): Promise<void> {
-    if (this.resolvingInFlight) return;
+    this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved — resolvingInFlight=%s chainOverlayReady=%s waitingForOverlay=%s',
+      this.resolvingInFlight, this.chainManager.chainOverlayReady(), this.chainManager.isWaitingForOverlay);
+    if (this.resolvingInFlight) {
+      this.logger.log(DuelLogCategory.CHAIN, 'BLOCKED by resolvingInFlight guard');
+      return;
+    }
     this.resolvingInFlight = true;
-    this.orchestrator.chainOverlayReady.set(false);
+    this.chainManager.chainOverlayReady.set(false);
 
     // Snapshot mutable state before any await — immune to concurrent Effect B updates
     const resolvedIdx = this.resolvingNegated ? this.negatedResolvingIndex() : this.resolvingIndex();
@@ -463,18 +473,19 @@ export class PvpChainOverlayComponent {
     await this.waitFor(this.durations().overlayFadeIn);
 
     // 5. Cleanup resolving state + signal ready
+    this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved DONE — signaling ready');
     this.resolvingInFlight = false;
     this.resolvingNegated = false;
     this.resolvingCardInfo = null;
     this.resolvingIndex.set(-1);
     this.negatedResolvingIndex.set(-1);
-    this.orchestrator.chainOverlayReady.set(true);
+    this.chainManager.chainOverlayReady.set(true);
   }
 
   private async replayAndPause(negated: boolean): Promise<void> {
     if (negated) return;
-    if (this.orchestrator.chainOverlayBoardChanged()) {
-      await this.orchestrator.replayBufferedEvents();
+    if (this.chainManager.chainOverlayBoardChanged()) {
+      await this.orchestrator.replayBuffer();
       await this.waitFor(this.durations().impactPause);
     }
   }

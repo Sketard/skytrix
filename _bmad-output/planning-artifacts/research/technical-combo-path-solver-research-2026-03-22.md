@@ -13,6 +13,8 @@ web_research_enabled: true
 source_verification: true
 ---
 
+> **Note:** Interface definitions and implementation roadmaps in this document are research-stage drafts. See `architecture-solver.md` for final, authoritative contracts and `prd-solver.md` for final requirements.
+
 # Technical Research Report: Combo Path Solver — Exploration Algorithms Benchmark
 
 **Date:** 2026-03-22
@@ -44,28 +46,6 @@ This report investigates the algorithmic, architectural, and implementation feas
 - **Critical unknown:** OCGCore per-action latency — Phase 1 POC must profile this before committing to full implementation
 
 ---
-
-## Technical Research Scope Confirmation
-
-**Research Topic:** Combo path solver & board optimizer — exploration algorithms benchmark
-**Research Goals:** Benchmark exploration algorithms (DFS+pruning, MCTS, A*, Iterative Deepening) for automated combo path solving in Yu-Gi-Oh!, evaluate feasibility with OCGCore WASM forward-only constraint, and determine the best Strategy pattern implementation
-
-**Technical Research Scope:**
-
-- Architecture Analysis - tree search patterns, parallel worker pool, replay-from-scratch architecture
-- Implementation Approaches - DFS+pruning, MCTS, A*, Iterative Deepening, alpha-beta for minimax
-- Technology Stack - Node.js worker threads, OCGCore WASM, memory/CPU constraints
-- Integration Patterns - Strategy pattern for swappable algorithms, duel-server integration
-- Performance Considerations - replay cost per node, branching factor, worker pool scalability
-
-**Research Methodology:**
-
-- Current web data with rigorous source verification
-- Multi-source validation for critical technical claims
-- Confidence level framework for uncertain information
-- Comprehensive technical coverage with architecture-specific insights
-
-**Scope Confirmed:** 2026-03-22
 
 ## Technology Stack Analysis
 
@@ -540,6 +520,9 @@ Decision tree     ←→ StateSerializer     ←→ ArrayBuffer
 ```
 
 **Port — GameOracle (driven):**
+
+> ⚠ Research draft — final interface uses `applyAction`/`fork`. See `architecture-solver.md`.
+
 ```typescript
 interface GameOracle {
   createDuel(config: DuelConfig): DuelHandle;
@@ -552,6 +535,9 @@ interface GameOracle {
 ```
 
 **Port — SearchStrategy (driving):**
+
+> ⚠ Research draft — final interface is `SolverStrategy` with `solve()`. See `architecture-solver.md`.
+
 ```typescript
 interface SearchStrategy {
   search(
@@ -730,40 +716,6 @@ _Confidence: HIGH for risk identification, MEDIUM for probability estimates (nee
 
 ## Technical Research Recommendations
 
-### Implementation Roadmap
-
-**Phase 1 — POC (2-3 weeks)**
-1. Build `GameOracle` interface + `OCGCoreAdapter` in duel-server
-2. Implement DFS with iterative deepening (simplest strategy)
-3. Single deck, goldfish, fixed hand → measure OCGCore per-action latency
-4. Profile with Clinic.js + perf_hooks → establish performance baseline
-5. **Go/No-Go decision** based on OCGCore latency data
-
-**Phase 2 — Core Solver (3-4 weeks)**
-1. Implement Zobrist hashing + transposition table
-2. Add SP-MCTS as second strategy (Strategy pattern swap)
-3. Implement piscina worker pool with root parallelism
-4. Benchmark DFS vs MCTS on 5 test decks (100 runs each)
-5. Implement anytime behavior (time budget + best-so-far return)
-
-**Phase 3 — Integration (2-3 weeks)**
-1. WebSocket protocol (SOLVER_START/PROGRESS/RESULT/CANCEL)
-2. Angular SolverService + basic UI (start solve, show progress, display result)
-3. AbortController cancellation wiring
-4. Progress throttling (200ms or N iterations)
-
-**Phase 4 — Adversarial Mode (3-4 weeks)**
-1. IS-MCTS with determinization for handtrap modeling
-2. Disruption profile configuration (select handtraps + probabilities)
-3. Decision tree output with handtrap branches
-4. Interactive decision tree visualization
-
-**Phase 5 — Polish (2-3 weeks)**
-1. Progressive widening for high-branching decks
-2. Interruption tagging database (optional enhancement)
-3. Golden test suite (50 hands) + CI regression testing
-4. Complexity detection + user guidance on locked first steps
-
 ### Technology Stack Recommendations
 
 | Component | Choice | Rationale |
@@ -776,6 +728,8 @@ _Confidence: HIGH for risk identification, MEDIUM for probability estimates (nee
 | Architecture | Hexagonal (ports/adapters) | Testable without OCGCore, clean separation |
 | Handtrap modeling | IS-MCTS with determinization | Purpose-built for hidden information card games |
 | Profiling | Clinic.js + perf_hooks + Piscina stats | Full-stack observability from WASM to worker pool |
+
+> Targets below are pre-POC estimates. See `prd-solver.md` for final requirements.
 
 ### Success Metrics and KPIs
 

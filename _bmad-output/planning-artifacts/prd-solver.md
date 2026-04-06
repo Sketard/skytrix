@@ -77,48 +77,21 @@ classification:
 
 **Axel** just finished a new Branded Despia build. He theorycrafted on paper but isn't sure of the real ceiling — does the hand Branded Fusion + Fallen of Albaz + a discard really open into a 3-negate board?
 
-He opens skytrix, navigates to his deck, and clicks **"Solve"**. He selects **Goldfish Fast** mode and sets his test hand (5 chosen cards). The solver starts — a progress bar shows advancement. In **3 seconds**, the result appears:
+He clicks **"Solve"** in Goldfish Fast mode with a 5-card test hand. In **3 seconds**, the result appears: **Score 35 (3 interruptions)** with an annotated main path from Normal Summon through Fusion Summon Mirrorjade to a 2-negate + 1-destruction board.
 
-**Score: 35 (3 interruptions)** — the main path displays: Normal Summon Aleister → activate Branded Fusion → send materials → Fusion Summon Mirrorjade → effect chain → set Branded in Red. Each step is annotated with the card name and action. The final board shows 2 omni-negates + 1 destruction.
-
-Axel spots a branch he hadn't seen — at step 4, instead of Fusion Summoning Mirrorjade, the solver shows an alternative with Lubellion leading to a different board (2 negates + 1 floodgate, score 32). He clicks to expand the branch, compares both boards, and realizes the Lubellion line is actually better against aggro decks.
-
-**Aha moment:** "I didn't know this line existed with this hand."
-
-Curious, Axel tries a different hand — 3 spells and 2 traps, no combo starter. The solver runs for 2 seconds and returns: **"No viable combo — no path leads to a board with at least 1 interruption."** Axel nods — confirmed brick. He now knows this hand configuration is unplayable and can evaluate how often his deck draws it.
-
-**Capabilities revealed:** Deck selection, hand selection (fixed), solve launch, progress feedback, decision tree display, expand/collapse branches, score per board, step annotations, brick diagnostic.
+At step 4, he spots an alternative Lubellion line (score 32, 2 negates + 1 floodgate) he hadn't considered — better against aggro. A second test with a 3-spell/2-trap hand confirms it's a brick in 2 seconds.
 
 ### Journey 2: Handtrap Resilience — "Does it hold against Ash?"
 
 The next day, Axel prepares for a locals tournament. His Branded deck works well in goldfish, but he knows opponents play **Ash Blossom** and **Nibiru** in triplicate. He wants to know: if the opponent has Ash, what's the best fallback line?
 
-He returns to the solver, same deck, same hand. This time he selects **Adversarial** mode and checks **Ash Blossom + Nibiru** in the handtrap list. He launches in **Optimal** mode — he has time, he wants the complete result.
-
-The progress streaming shows: "Exploring... 1200 nodes, best score = 28". After **45 seconds**, the final result arrives: a **complete decision tree** with the main path (goldfish, score 35) and two handtrap branches:
-
-- **"If Ash on Branded Fusion"** → pivot to Lubellion line, score 22 (1 negate + 1 bounce)
-- **"If Nibiru at 5th summon"** → only 1 token remaining, score 8
-
-Axel immediately sees the problem: his deck is **vulnerable to Nibiru**. He notes he needs to add protections (Crossout Designator) or play a line that stays under the 5-summon threshold. The global resilience score (worst-case minimax) is displayed at the top: **8** — the score if the opponent plays optimally.
-
-**Aha moment:** "My deck folds to Nibiru. I need to change my play sequence or add outs."
-
-**Capabilities revealed:** Handtrap selection (checkboxes), adversarial mode, long-running progress streaming, minimax score (worst-case), handtrap branches annotated with activation timing, global resilience score.
+He switches to **Adversarial Optimal** mode, checks **Ash Blossom + Nibiru**, and launches. After **45 seconds**, the decision tree shows handtrap branches: Ash on Branded Fusion → Lubellion fallback (score 22), Nibiru at 5th summon → score 8. The minimax resilience score is **8** — the deck folds to Nibiru. He needs Crossout Designator or a sub-5-summon line.
 
 ### Journey 3: Build Comparison — "With or without the Extender?"
 
 Axel hesitates: he has a version of his deck with 2 copies of **Aluber the Jester of Despia** (extender) and a version without (replaced by 2 copies of **Crossout Designator** for resilience). Which build is better?
 
-He opens the solver, loads **Build A** (with Aluber), launches an Adversarial Fast solve on a representative hand. Result in 4 seconds: goldfish score 38, minimax resilience 12. He notes the numbers.
-
-Then he loads **Build B** (with Crossout), same hand, same handtraps. Result: goldfish score 30 (lower ceiling without the extender), but minimax resilience **22** — Crossout protects Branded Fusion from Ash.
-
-Axel sees the trade-off clearly: Build A = higher ceiling but fragile. Build B = lower ceiling but resilient. For his local meta (lots of Ash), **Build B is the better choice**. Decision made in 2 solves, < 30 seconds.
-
-**Aha moment:** "Now I have data to decide, not just gut feeling."
-
-**Capabilities revealed:** Successive solves on different decks, mental score comparison (no side-by-side UI in MVP), Fast mode speed for iterative use.
+He runs Adversarial Fast on **Build A** (with Aluber): goldfish 38, minimax 12. Then **Build B** (with Crossout): goldfish 30, minimax **22**. Build A has the higher ceiling but folds to Ash; Build B is resilient. For his Ash-heavy local meta, Build B wins. Decision made in 2 solves, < 30 seconds — data replaces gut feeling.
 
 ### Journey Requirements Summary
 
@@ -143,13 +116,9 @@ Axel sees the trade-off clearly: Build A = higher ceiling but fragile. Build B =
 
 ### Innovation Areas
 
-1. **WASM Memory Snapshot as State Fork** — `WebAssembly.Memory.buffer.slice()` creates complete OCGCore state snapshots (~16MB, ~10ms). Enables branching without recreating the duel (6.5x speedup vs replay). **Relies on Emscripten implementation detail (Memory export), not a stable public API.** Validated by POC; requires CI smoke test per package update.
+1. **IS-MCTS with Determinization for Handtrap Modeling** — Information Set MCTS (poker/Hanabi technique) applied to model adverse handtrap timings. MCTS has been applied to Yu-Gi-Oh! (melvinzhang/yugioh-ai), but **IS-MCTS with determinization for handtrap resilience is novel**.
 
-2. **First Handtrap Resilience Analyzer for TCG** — Positioning is not "first combo solver" but **"first automated handtrap resilience analyzer"**. A player knows their goldfish line but cannot systematically explore all fallback lines against every handtrap combination.
-
-3. **IS-MCTS with Determinization for Handtrap Modeling** — Information Set MCTS (poker/Hanabi technique) applied to model adverse handtrap timings. MCTS has been applied to Yu-Gi-Oh! (melvinzhang/yugioh-ai), but **IS-MCTS with determinization for handtrap resilience is novel**.
-
-4. **Handtraps as Natural Pruning** — Counter-intuitive insight: adverse interactions reduce the exploration tree. An Ash that cuts a line eliminates all downstream branches. Makes minimax viable.
+2. **Handtraps as Natural Pruning** — Counter-intuitive insight: adverse interactions reduce the exploration tree. An Ash that cuts a line eliminates all downstream branches. Makes minimax viable.
 
 ### Competitive Landscape
 
@@ -173,40 +142,7 @@ Axel sees the trade-off clearly: Build A = higher ceiling but fragile. Build B =
 
 ## Web App Technical Context
 
-### Frontend (Angular 19)
-
-- New `SolverPageComponent` (standalone, OnPush, signals)
-- `DecisionTreeComponent` based on **Angular CDK Tree** (`CdkTree` + `CdkTreeNode`) — no new dependency
-- **MVP UI**: breadcrumb best path + tree expand/collapse with scores per node. Detail panel → Growth.
-- Communication via existing WebSocket (same connection as PvP)
-- Reuses existing DeckService (REST → Spring Boot), CardDatabaseService, Material components
-- i18n labels in fr.json/en.json (ngx-translate)
-- State management via Angular signals (idle/running/complete/error)
-
-### Backend — duel-server (Node.js)
-
-- Dedicated solver module: piscina worker pool separate from duel workers
-- WS handlers: SOLVER_START, SOLVER_PROGRESS, SOLVER_RESULT, SOLVER_CANCEL, SOLVER_CANCELLED
-- Strategy pattern: `SolverStrategy` interface with DFS + SP-MCTS implementations
-- WASM snapshot via `WebAssembly.instantiate` hook with automatic fallback to replay-from-scratch
-- Interruption tagging: static JSON file, manually editable. **Pre-filled with top 50 meta end-board cards.** UI admin → Growth.
-
-### Backend — Spring Boot (minimal impact)
-
-- No new REST endpoint required for MVP
-- Decks already exposed via existing API
-- PostgreSQL not required for tags (JSON file for MVP)
-
-### Implementation Considerations
-
-- **No new dependencies** — CDK Tree already installed, no d3/vis-network
-- **Contextualized score** — Display "3 interruptions (2 omni-negate, 1 destruction)" not a raw number. Board summary at path end.
-- **Enriched annotations** — "Activate Branded Fusion → send Albaz + Lubellion → Fusion Summon Mirrorjade", not just "Activate effect"
-- **Meta deck profiling** — Profile 3 real meta decks (Snake-Eye, Branded, Tearlaments) from dev start. CI regression: "top 5 meta decks < 60s Optimal"
-- **Handtrap validation** — Cross-validation golden suite vs manual test. "Verify" mode replays the line with handtrap at declared timing.
-- **WASM snapshot safety** — Pin exact `@n1xx1/ocgcore-wasm` version (no `^`). Smoke test at boot. Log WARNING if replay fallback activated.
-- **Pre-filled interruption tags** — Top 50 meta end-board cards. User completes for their specific cards.
-- **Desktop-first** — Tree viewer designed for desktop. No mobile-specific target for MVP.
+Solver runs as a Node.js worker thread pool managed by piscina, communicating via WebSocket. See architecture-solver.md for detailed technical architecture.
 
 ## Product Scope & Phased Development
 
@@ -215,18 +151,6 @@ Axel sees the trade-off clearly: Build A = higher ceiling but fragile. Build B =
 **Approach:** Problem-solving MVP — smallest product that validates "an automated solver is useful for Yu-Gi-Oh! deck optimization."
 
 **Resource:** Solo dev (Axel). Existing duel-server + Angular frontend.
-
-**Implementation Sequence:**
-1. GameOracle interface + OCGCoreAdapter (foundation)
-2. DFS + Iterative Deepening (first algorithm, baseline)
-3. Zobrist hashing + transposition table
-4. Goldfish solver functional (Journey 1 complete)
-5. SP-MCTS (second algorithm via Strategy swap)
-6. piscina worker pool + root parallelism
-7. IS-MCTS determinization + handtrap modeling (Journey 2 complete)
-8. WS protocol + Angular UI + CDK Tree viewer (Journey 3 complete)
-9. Interruption tagging JSON (pre-filled top 50)
-10. Golden test suite (30 hands)
 
 ### MVP Feature Set
 

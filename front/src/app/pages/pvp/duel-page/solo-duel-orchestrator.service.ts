@@ -4,12 +4,14 @@ import { DuelConnection } from './duel-connection';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { DebugLogService } from './debug-log.service';
+import { DuelLogger } from './duel-logger';
 
 @Injectable()
 export class SoloDuelOrchestratorService {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly animationService = inject(AnimationOrchestratorService);
   private readonly debugLog = inject(DebugLogService);
+  private readonly logger = inject(DuelLogger);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
 
@@ -31,8 +33,8 @@ export class SoloDuelOrchestratorService {
 
   init(token1: string, token2: string): void {
     this.enabled = true;
-    const conn0 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p1');
-    const conn1 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p2');
+    const conn0 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p1', this.logger);
+    const conn1 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p2', this.logger);
 
     // Set callbacks on both connections
     conn0.onMessage = msg => this.debugLog.logServerMessage(msg);
@@ -58,6 +60,13 @@ export class SoloDuelOrchestratorService {
     const newIndex: 0 | 1 = outgoingIndex === 0 ? 1 : 0;
 
     conns[outgoingIndex].skipPendingAnimations();
+    // Clear the incoming connection's accumulated animation queue — it has been
+    // receiving events since game start (MSG_DRAW, MSG_MOVE, etc.) but its RBS
+    // is already fully committed (_boardActive was false → every BOARD_STATE
+    // called commitAll). Without this, resetForSwitch resets _initialDrawDone
+    // and the stale MSG_DRAW events re-trigger the initial draw animation on
+    // top of already-visible cards.
+    conns[newIndex].skipPendingAnimations();
     this.animationService.resetForSwitch();
     this.activePlayerIndex.set(newIndex);
     this.wsService.setActiveConnection(conns[newIndex]);
@@ -65,10 +74,6 @@ export class SoloDuelOrchestratorService {
     // setBoardActive is only called once at game start (on P1's connection), so P2 would
     // otherwise apply every BOARD_STATE instantly, bypassing the animation masking system.
     conns[newIndex].setBoardActive(true);
-    // Synchronously start processing the incoming queue to set destination masks
-    // BEFORE Angular renders — prevents a one-frame flash of cards at destination
-    // without animation (otherwise the queue-watcher effect only fires after rendering).
-    this.animationService.startProcessingIfIdle();
   }
 
   cleanup(): void {
@@ -103,6 +108,8 @@ export class SoloDuelOrchestratorService {
         const starting0 = conns[0].rematchStarting();
         const starting1 = conns[1].rematchStarting();
         if (starting0 && starting1) {
+          conns[0].skipPendingAnimations();
+          conns[1].skipPendingAnimations();
           this.activePlayerIndex.set(0);
           this.wsService.setActiveConnection(conns[0]);
           this.animationService.resetForSwitch();

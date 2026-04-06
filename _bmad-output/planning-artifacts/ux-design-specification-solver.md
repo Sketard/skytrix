@@ -82,18 +82,6 @@ The read phase is the product. Configuration and progress are supporting infrast
 
 4. **Re-solve is one click** — After adjusting config, a single "Solve" button relaunches. No confirmation dialog, no navigation. The button is visually disabled during the server rate limit cooldown (2s) to prevent silent rejection.
 
-### Critical Success Moments
-
-1. **First result read (< 10s)** — The user sees score + end board + main path breadcrumb and immediately understands the result. This is the make-or-break moment. If they have to hunt for the answer, the product fails.
-
-2. **Discovery of an unknown line** — The user expands a branch and finds a combo path they hadn't considered. This is the "Aha moment" that validates the solver's existence.
-
-3. **Chokepoint identification (adversarial)** — The user sees exactly where a handtrap breaks their combo and what the best fallback line is. This turns abstract fear ("Ash might wreck me") into concrete knowledge.
-
-4. **Iterative comparison** — The user pins a result, changes a card, resolves, and compares scores. The trade-off between builds becomes data, not gut feeling.
-
-5. **Brick acknowledgment** — When the solver returns "No viable combo", the user receives it as actionable information ("this hand has no path to an interruption — try a different hand"), not as a tool failure. The empty state design matters as much as the result state.
-
 ### Experience Principles
 
 1. **Answer first, exploration second** — The result page leads with the answer (score + end board + main path). The decision tree is available for exploration but is not the primary interface. The breadcrumb tells the story; the tree is the reference.
@@ -105,17 +93,6 @@ The read phase is the product. Configuration and progress are supporting infrast
 4. **Progressive disclosure for tree depth** — Main path visible by default. Alternative branches collapsed. Handtrap branches labeled but collapsed. The user drills down by choice, never by necessity.
 
 ## Desired Emotional Response
-
-### Primary Emotional Goals
-
-| Phase | Emotion | Design Implication |
-|---|---|---|
-| Configuration | **Control & efficiency** | Minimal steps, persistent config, immediate launch |
-| Solve in progress | **Confident anticipation** | Live stats prove the solver is working; progress is visible and steady |
-| Result — combo found | **Surprise & discovery** ("wow, this line exists?") | Highlight the recommended path prominently; make unknown lines visually distinct from obvious ones |
-| Result — brick | **Informed acceptance** ("this hand doesn't work, now I know") | Actionable wording, not failure messaging; suggest trying another hand |
-| Result — adversarial chokepoint | **Relief & clarity** ("finally I know where it breaks") | Present chokepoints as knowledge gained, not as bad news; show the fallback line alongside the break point |
-| Iteration (pin + relaunch) | **Productive momentum** | Each solve adds data; pinned results show accumulating knowledge |
 
 ### Emotional Journey Mapping
 
@@ -130,17 +107,6 @@ Configure ──► Wait ──► Read Result ──► Iterate
 
 The emotional arc is **certainty → anticipation → revelation → accumulation**. There is no frustration phase if the UX is correct — even a brick result is a revelation ("now I know this hand doesn't work").
 
-### Micro-Emotions
-
-| Micro-Emotion | Target State | Avoid State | Where It Matters |
-|---|---|---|---|
-| Confidence vs. Confusion | Confident | Confused | Config panel — every option must be self-explanatory |
-| Trust vs. Skepticism | Trust | Skepticism | Live stats — the user must believe the solver is actually working |
-| Surprise vs. Boredom | Surprise | Boredom | Result — unknown combo lines must feel like discoveries |
-| Clarity vs. Overwhelm | Clarity | Overwhelm | Decision tree — progressive disclosure prevents information overload |
-| Relief vs. Dread | Relief | Dread | Adversarial results — chokepoints are knowledge, not bad news |
-| Momentum vs. Tedium | Momentum | Tedium | Iteration — config persistence + pin make re-solves feel fast |
-
 ### Emotional Design Principles
 
 1. **Surprise over confirmation** — When the solver finds a line the user didn't know, the UX should make it feel like a discovery, not just another data row. The recommended path breadcrumb is the "wow" moment delivery mechanism.
@@ -151,57 +117,23 @@ The emotional arc is **certainty → anticipation → revelation → accumulatio
 
 4. **Informed acceptance over failure** — Brick results ("No viable combo") are framed as useful data: "This hand configuration has no path to an interruption." The empty state invites the next action ("Try a different hand") rather than presenting a dead end.
 
+### Critical Success Moments
+
+_These define the concrete pass/fail criteria for the emotional goals above._
+
+1. **First result read (< 10s)** — The user sees score + end board + main path breadcrumb and immediately understands the result. This is the make-or-break moment. If they have to hunt for the answer, the product fails. _(Emotion: Surprise & discovery)_
+
+2. **Discovery of an unknown line** — The user expands a branch and finds a combo path they hadn't considered. This is the "Aha moment" that validates the solver's existence. _(Emotion: Surprise over confirmation)_
+
+3. **Chokepoint identification (adversarial)** — The user sees exactly where a handtrap breaks their combo and what the best fallback line is. This turns abstract fear ("Ash might wreck me") into concrete knowledge. _(Emotion: Relief & clarity)_
+
+4. **Iterative comparison** — The user pins a result, changes a card, resolves, and compares scores. The trade-off between builds becomes data, not gut feeling. _(Emotion: Productive momentum)_
+
+5. **Brick acknowledgment** — When the solver returns "No viable combo", the user receives it as actionable information ("this hand has no path to an interruption — try a different hand"), not as a tool failure. The empty state design matters as much as the result state. _(Emotion: Informed acceptance)_
+
 ## UX Pattern Analysis & Inspiration
 
 ### Inspiring Products Analysis
-
-**Master Duel (Konami)**
-- **Strength:** Information density mastery — complex game state (LP, cards, zones, chains) displayed simultaneously without overwhelming the player. Clear visual hierarchy guides attention.
-- **Strength:** Card artwork as primary identifier — players recognize cards by art faster than by name. Visual recognition > text scanning.
-- **Strength:** Immediate feedback on every state change — short animations confirm actions, eliminating ambiguity about what just happened.
-- **Relevance to solver:** The end board display and decision tree annotations should leverage card art for instant recognition. The result page handles similar information density challenges.
-
-**Cardcluster**
-- **Strength:** Compact card grid view — dense but scannable. The entire deck is visible at a glance without scrolling.
-- **Strength:** Frictionless iteration — click to add/remove cards, no modals, no confirmations. Optimized for rapid adjustment loops.
-- **Strength:** Functional minimalism — no decorative elements, pure focus on cards and data.
-- **Relevance to solver:** The hand selection panel should mirror this compact grid + click-to-toggle pattern. Config persistence + one-click re-solve follows the same "frictionless iteration" philosophy.
-
-### Transferable UX Patterns
-
-**From Master Duel:**
-
-1. **Card art as identifier** — End board display shows card artwork thumbnails, not just names. The user recognizes their end board visually in < 2 seconds. Annotations in the breadcrumb path pair a small card art with the action description.
-
-2. **Visual hierarchy for dense information** — Score prominently displayed (large, top), end board cards below (visual), tree underneath (text-heavy, collapsed). Same layering principle as Master Duel's game state display.
-
-**From Cardcluster:**
-
-3. **Click-to-toggle hand selection** — Hand selector shows all deck cards as a compact grid. Click a card to add/remove from the test hand. Counter shows "3/5 selected". Same interaction pattern as Cardcluster's deck editor.
-
-4. **No-modal iteration** — Config changes happen inline. No dialog boxes, no "are you sure?" prompts. Adjust and relaunch in the same view.
-
-**From Master Duel (adapted):**
-
-5. **Breadcrumb as card art timeline** — Main path displayed as a compact sequence of card art thumbnails (~32×46px). Hover/click reveals full annotation. Visual recognition without sacrificing horizontal space. Similar to avatar sequences in messaging apps.
-
-6. **End board with interruption badges** — 3-5 final field cards displayed as card art with small overlay icons indicating interruption type (negate, destruction, bounce). Answers "what cards, how many interruptions" at a glance.
-
-**From Lichess / Chess.com:**
-
-7. **Chess analysis tree navigation** — Main line displayed linearly, alternative variations indented below. Directly transferable to combo main path + alternative branches. Score functions like the evaluation bar — an instant visual indicator of board quality.
-
-### Anti-Patterns to Avoid
-
-1. **Wall of text logs** — Some duel simulators (YGOPro, EDOPro) display combo sequences as plain text logs. Unreadable for anything beyond 10 actions. The solver must use structured visual display, not log dumps.
-
-2. **Over-animated transitions** — Master Duel's animations are great during gameplay but would be distracting in an analysis tool. The solver should feel snappy and data-focused, not cinematic. Minimal animation, fast transitions.
-
-3. **Modal-heavy configuration** — Some deck tools require modal dialogs for every setting change. This breaks iteration flow. All solver config should be inline and persistent.
-
-4. **Score without context** — Displaying "Score: 35" without breakdown is meaningless. Always show what the score means: "3 interruptions (2 omni-negate, 1 destruction)". A number alone creates skepticism; a breakdown creates trust.
-
-### Design Inspiration Strategy
 
 **Adopt:**
 - Card art as visual identifier (Master Duel) — for end board display, hand selector, and breadcrumb annotations
@@ -441,19 +373,7 @@ Colors implemented as SCSS variables in `src/app/styles/` (e.g., `$solver-chip-n
 
 ## Design Direction Decision
 
-### Design Directions Explored
-
-Single direction explored and refined through iterative validation (4 AE rounds + 3 Party Modes). The brownfield context (existing Angular Material theme) and the highly specific domain (combo path solver) made multiple divergent visual directions unnecessary. Instead, the single direction was stress-tested through critique, edge case analysis, pre-mortem, and first principles validation.
-
-**HTML mockup:** `_bmad-output/planning-artifacts/ux-design-directions-solver.html` — 7 interactive states (Idle, Configuring, Solving, Result Goldfish, Result Adversarial, Brick, No Resilient Line).
-
-### Chosen Direction
-
-Sidebar-left config panel + fluid result area. Material Dark theme. Functional minimalism (Cardcluster-inspired). Data-focused, no decorative elements. Card art as visual identifier throughout.
-
-### Design Rationale
-
-Validated by comparative analysis matrix (4.45/5 vs alternatives). The sidebar-left pattern won on iteration speed (config always visible) while providing sufficient horizontal space for the decision tree. Confirmed through pre-mortem analysis (5 failure scenarios prevented) and first principles review (0 superfluous elements — every component serves the core loop).
+Single design direction explored and refined.
 
 ### Key Design Decisions Consolidated
 
@@ -621,6 +541,8 @@ flowchart TD
 
 ## Component Strategy
 
+> **Accessibility:** All components in this section must meet WCAG AA. See the [Responsive Design & Accessibility](#responsive-design--accessibility) section at the end of this document for detailed accessibility requirements, ARIA patterns, and the testing checklist.
+
 ### Design System Components (Angular Material 19)
 
 | Material Component | Solver Usage | Journey |
@@ -734,16 +656,7 @@ All custom components follow existing skytrix patterns:
 
 ### Implementation Roadmap
 
-**Phase 1 — Core (defines the experience):**
-1. `HandSelectorGrid` — needed before any solve can happen
-2. `HeroResultBlock` — the defining experience, answers the 3 questions
-3. `BreadcrumbPath` — combo narration, "wow" moment delivery mechanism
-4. `DecisionTreeView` — exploration of alternatives
-5. `SolveProgressPanel` — feedback during solve
-
-**Phase 2 — Complete journeys:**
-6. `BrickStateBlock` — brick/no-resilient feedback (completes error states)
-7. `PinnedResultsBar` — comparison (enables J3)
+> **Note:** Component implementation order and phasing are defined in the architecture document (architecture-solver.md, Implementation Sequence) and the epics/stories (epics-solver.md). Refer to those documents for the authoritative build order.
 
 ## UX Consistency Patterns
 

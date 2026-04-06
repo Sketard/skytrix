@@ -46,6 +46,44 @@ export class CardTravelService implements OnDestroy {
     return this._zoneResolver?.(zoneKey) ?? null;
   }
 
+  /** The container element for floating overlays (attack lines, clash effects). */
+  getContainer(): HTMLElement {
+    return this._container;
+  }
+
+  /**
+   * Create a positioned line element between two zone elements.
+   * Returns null if either element is missing. Caller owns lifecycle (animation, removal).
+   */
+  createLineBetween(
+    srcEl: HTMLElement | null,
+    dstEl: HTMLElement | null,
+    style: { color: string; height?: number; shadow?: string },
+  ): HTMLDivElement | null {
+    if (!srcEl || !dstEl) return null;
+    const sRect = srcEl.getBoundingClientRect();
+    const dRect = dstEl.getBoundingClientRect();
+    const sx = sRect.left + sRect.width / 2;
+    const sy = sRect.top + sRect.height / 2;
+    const dx = dRect.left + dRect.width / 2;
+    const dy = dRect.top + dRect.height / 2;
+    const length = Math.sqrt((dx - sx) ** 2 + (dy - sy) ** 2);
+    const angle = Math.atan2(dy - sy, dx - sx) * (180 / Math.PI);
+    const h = style.height ?? 3;
+
+    const line = document.createElement('div');
+    line.style.cssText = `
+      position: fixed; pointer-events: none; z-index: 50;
+      left: ${sx}px; top: ${sy - h / 2}px;
+      width: ${length}px; height: ${h}px;
+      transform-origin: 0 50%; transform: rotate(${angle}deg);
+      background: ${style.color}; border-radius: ${h / 2}px;
+      ${style.shadow ? `box-shadow: ${style.shadow};` : ''}
+    `;
+    this._container.appendChild(line);
+    return line;
+  }
+
   travel(source: string | HTMLElement, destination: string | HTMLElement, cardImage: string, options: TravelOptions = {}): Promise<void> {
     if (this._reducedMotion || !this._zoneResolver) return Promise.resolve();
 
@@ -125,6 +163,7 @@ export class CardTravelService implements OnDestroy {
     const floatingEl = this.createFloatingElement(sourceRect, cardImage, options);
     const dstKey = options.dstZoneKey ?? (typeof destination === 'string' ? destination : null);
     if (dstKey) floatingEl.dataset['dstKey'] = dstKey;
+
     this._container.appendChild(floatingEl);
 
     // Flip: swap img src at the 90° midpoint (edge-on, visually invisible swap)
@@ -140,15 +179,21 @@ export class CardTravelService implements OnDestroy {
 
     // Copy transform-origin from destination as percentages so the pivot maps
     // correctly even though the floating element has different dimensions.
-    if (destRotateZ && destEl instanceof HTMLElement) {
+    // Skip when baseRotateZ is set: the float needs center origin so that the
+    // constant 180° rotation doesn't shift the AABB. The dest-origin copy is
+    // only meaningful for explicit destRotateZ (defense -90°), not fan angles.
+    let originYFraction = 0.5; // default: center
+    const base = options.baseRotateZ ?? 0;
+    if (destRotateZ && !base && destEl instanceof HTMLElement) {
       const raw = getComputedStyle(destEl).transformOrigin;
       const [oxPx, oyPx] = raw.split(' ').map(parseFloat);
       const oxPct = (oxPx / rawDestRect.width) * 100;
       const oyPct = (oyPx / rawDestRect.height) * 100;
       floatingEl.style.transformOrigin = `${oxPct}% ${oyPct}%`;
+      originYFraction = oyPct / 100;
     }
 
-    const keyframes = this.buildKeyframes(sourceRect, destRect, options, destRotateZ, destTranslateY);
+    const keyframes = this.buildKeyframes(sourceRect, destRect, options, destRotateZ, destTranslateY, originYFraction);
     const animation = floatingEl.animate(keyframes, {
       duration,
       easing: 'ease-in-out',
@@ -192,11 +237,20 @@ export class CardTravelService implements OnDestroy {
       }
       onLanded();
     }).catch(() => {
-      // animation.cancel() rejects — cleanup handled by ngOnDestroy
+      // animation.cancel() rejects — resolve so the queue never hangs.
+      // ngOnDestroy also calls resolve(), but this covers mid-lifecycle rejections.
+      this._inFlight.delete(floatingEl);
+      resolve();
     });
 
     return promise;
   }
+
+  /** Number of landed floats (for debug tracing). */
+  landedCount(): number { return this._landed.size; }
+
+  /** Number of in-flight travels (for debug tracing). */
+  inFlightCount(): number { return this._inFlight.size; }
 
   /** Return the most recently landed float element (if any). */
   getLastLandedFloat(): HTMLElement | null {
@@ -217,6 +271,21 @@ export class CardTravelService implements OnDestroy {
       }
     }
     return null;
+  }
+
+  /**
+   * Cancel running animations on a float and pin it at its current visual
+   * position using fixed CSS coords. `baseRotateCSS` (e.g. 'rotateZ(180deg)')
+   * is preserved so opponent cards keep facing their owner.
+   * Returns the rect captured before cancellation.
+   */
+  stabilizeFloat(el: HTMLElement, baseRotateCSS: string): DOMRect {
+    const rect = el.getBoundingClientRect();
+    el.getAnimations().forEach(a => a.cancel());
+    el.style.left = `${rect.left}px`;
+    el.style.top = `${rect.top}px`;
+    el.style.transform = baseRotateCSS;
+    return rect;
   }
 
   /** Re-add a previously popped float to the landed set for deferred cleanup. */
@@ -240,6 +309,20 @@ export class CardTravelService implements OnDestroy {
       el.remove();
     }
     this._landed.clear();
+  }
+
+  /** Map of zone keys → in-flight travel elements for lock assertion ([LOCK-ASSERT]). */
+  inFlightByZone(): Map<string, HTMLDivElement[]> {
+    const byZone = new Map<string, HTMLDivElement[]>();
+    for (const [el] of this._inFlight) {
+      const key = el.dataset['dstKey'];
+      if (key) {
+        const list = byZone.get(key);
+        if (list) list.push(el);
+        else byZone.set(key, [el]);
+      }
+    }
+    return byZone;
   }
 
   /** Finish all in-flight animations and remove all travel elements. */
@@ -280,6 +363,7 @@ export class CardTravelService implements OnDestroy {
       top: ${sourceRect.top}px;
       overflow: hidden;
       border-radius: 4px;
+      transform-origin: ${sourceRect.width / 2}px ${sourceRect.height / 2}px;
     `;
 
     const img = document.createElement('img');
@@ -293,12 +377,15 @@ export class CardTravelService implements OnDestroy {
     return div;
   }
 
-  private buildKeyframes(fromRect: DOMRect, destRect: DOMRect, options: TravelOptions, destRotateZ = 0, destTranslateY = 0): Keyframe[] {
+  private buildKeyframes(fromRect: DOMRect, destRect: DOMRect, options: TravelOptions, destRotateZ = 0, destTranslateY = 0, originYFraction = 0.5): Keyframe[] {
     // Scale factor so the float matches the destination size at landing.
     const fs = destRect.width > 0 && fromRect.width > 0 ? destRect.width / fromRect.width : 1;
-    // Translate center-to-center (scale is applied around transform-origin:center)
+    // Translate center-to-center, compensated for non-center transform-origin.
+    // When scale(fs) is applied around an origin offset from center, the visual
+    // center shifts by originOffset * (1-fs). Subtract to keep the float aligned.
     const dx = (destRect.left + destRect.width / 2) - (fromRect.left + fromRect.width / 2);
-    const dy = (destRect.top + destRect.height / 2) - (fromRect.top + fromRect.height / 2) + destTranslateY;
+    const originOffsetY = (originYFraction - 0.5) * fromRect.height;
+    const dy = (destRect.top + destRect.height / 2) - (fromRect.top + fromRect.height / 2) + destTranslateY - originOffsetY * (1 - fs);
     const flip = options.flipDuringTravel ?? false;
     const base = options.baseRotateZ ?? 0;
 
@@ -518,7 +605,12 @@ export class CardTravelService implements OnDestroy {
       border-radius:4px; overflow:hidden;
     `;
     const img = document.createElement('img');
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    // Mirror the source card's rotation (e.g. 180° for opponent cards).
+    // The rotation lives on .card-inner (via CSS `rotate`), not on .card-art.
+    const srcInner = srcEl.querySelector<HTMLElement>('.card-inner');
+    const srcRotation = srcInner ? getComputedStyle(srcInner).transform : '';
+    const imgTransform = (srcRotation && srcRotation !== 'none') ? `transform:${srcRotation};` : '';
+    img.style.cssText = `width:100%;height:100%;object-fit:cover;display:block;${imgTransform}`;
     img.src = cardImageUrl ?? this.toAbsoluteUrl('assets/images/card_back.jpg');
     overlay.appendChild(img);
 

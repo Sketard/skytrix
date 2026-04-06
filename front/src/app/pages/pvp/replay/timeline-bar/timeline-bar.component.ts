@@ -8,7 +8,7 @@ import type { TurnMeta } from '../../replay-ws.types';
 import type { PreComputedState } from '../../replay-ws.types';
 import type { Player } from '../../duel-ws.types';
 import type { DuelState } from '../../types';
-import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY, EMPTY_MAP, EMPTY_CARD_MAP } from '../../types';
+import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../../types';
 
 export type TimelineSegment =
   | { type: 'single'; idx: number }
@@ -150,8 +150,6 @@ export class TimelineBarComponent implements OnDestroy {
   readonly emptySet = EMPTY_ZONE_SET;
   readonly emptyStringSet = EMPTY_STRING_SET;
   readonly emptyArray = EMPTY_ARRAY;
-  readonly emptyMap = EMPTY_MAP;
-  readonly emptyCardMap = EMPTY_CARD_MAP;
 
   constructor() {
     this.pointerMql.addEventListener('change', this.pointerMqlHandler);
@@ -288,6 +286,7 @@ export class TimelineBarComponent implements OnDestroy {
 
   onSubEventMouseEnter(event: MouseEvent, index: number): void {
     if (!this.isDesktop() || this.isScrubbing) return;
+    if (index > this.computedUpTo()) return;
     this.clearHoverDebounce();
     this.lastPreviewUpdateMs = Date.now();
     this.hoveredIndex.set(index);

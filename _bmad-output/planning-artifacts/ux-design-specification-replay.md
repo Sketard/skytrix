@@ -3,7 +3,7 @@ stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
 status: 'complete'
 completedAt: '2026-03-21'
-inputDocuments: ['prd-replay.md', 'architecture-replay.md', 'prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-pvp.md', 'project-context.md']
+inputDocuments: ['prd-pvp.md', 'architecture-pvp.md', 'ux-design-specification-pvp.md', 'project-context.md']
 workflowType: 'ux-design'
 project_name: 'skytrix'
 user_name: 'Axel'
@@ -14,7 +14,7 @@ date: '2026-03-21'
 
 **Author:** Axel
 **Date:** 2026-03-21
-**Related:** [prd-replay.md](prd-replay.md), [architecture-replay.md](architecture-replay.md)
+**Related:** [prd-pvp.md](prd-pvp.md) (§Replay System), [architecture-pvp.md](architecture-pvp.md) (§Replay Mode Extension)
 
 ---
 
@@ -28,10 +28,7 @@ The replay is not a standalone viewer — it is an extension of the PvP experien
 
 ### Target Users
 
-**Axel (solo developer, competitive player)**
-- **As debugger:** Needs to reproduce engine bugs efficiently. Currently requires replaying entire duels manually to reach the problematic turn. Replay + seek + fork eliminates this. WS message-level granularity (step-by-step) is critical for pinpointing the exact event where behavior diverges.
-- **As analyst:** Wants to explore alternative decisions post-game. Omniscient view reveals opponent's hidden information (hand, face-downs), enabling better game reads. Fork at decision points tests "what-if" scenarios with full OCGCore state.
-- **Tech-savvy:** Comfortable with developer tools, understands the underlying WS protocol. UX should be efficient, not hand-holding.
+**Axel** — solo developer and competitive player. Uses replay as a debug tool (reproduce engine bugs at WS-event granularity) and analysis tool (omniscient view + fork for "what-if" scenarios). Tech-savvy, keyboard-native workflow.
 
 ### Key Design Challenges
 
@@ -97,58 +94,42 @@ The primary interaction is temporal navigation — the user moves through the du
 
 4. **Keyboard-native efficiency.** Frequent actions (step, play/pause, seek) must have keyboard shortcuts. A debug session involves dozens of step-forward/step-back actions — clicking buttons for each one is unacceptable.
 
-## Desired Emotional Response
+### User Mental Model
 
-### Primary Emotional Goals
+**How the user thinks about replay navigation:**
+- Mental anchors are **events**, not turns. "The fusion trigger that didn't resolve" — not "turn 12." Turns are structural containers; events are the meaningful units.
+- The timeline is a **search space**, not a video. The user doesn't watch from left to right — they jump to areas of interest and inspect locally.
+- Step-by-step is **reading**, not watching. Each step reveals a labeled event ("Chain Link 1: Tearlaments Scheiren — Fusion Effect"). The user reads the sequence like a log, not observes it like a movie.
 
-1. **Control** — From the moment the replay opens, the user must feel in command of the timeline. The frustration of the original bug or loss is replaced by mastery over the sequence of events. "I can go anywhere in this duel instantly."
+**How the user thinks about fork:**
+- Fork = **"debug from here."** It's a breakpoint, not a save point. The user wants to re-execute a specific sequence with different inputs and compare the output.
+- The fork is disposable. The user doesn't care about the solo session itself — they care about the answer: "does the engine behave correctly if I do X instead of Y?"
+- Return = **"try again from the same breakpoint."** The user returns to the exact fork point to launch another debug attempt. Multiple fork-return cycles from the same point are the expected workflow.
 
-2. **Confidence** — After investigating (debug or analysis), the user leaves with certainty. Not "I think this is what happened" but "I know exactly what happened and I verified it." The fork-and-test loop builds evidence-based confidence.
+### Success Criteria
 
-3. **Efficiency** — The replay is a productivity tool. The user should feel that the time from "I want to investigate" to "I have my answer" is minimal. No wasted steps, no unnecessary screens, no friction between intent and action.
+| Criterion | Measure | Why It Matters |
+|-----------|---------|---------------|
+| User finds the right event | < 30 seconds from replay open to target event | If navigation is slow, the user reverts to manual reproduction |
+| User understands what happened | Event labels clearly describe engine actions | If the user can't read what the engine did, they can't identify the bug |
+| Fork preserves exact state | Zero desynchronization between replay state and forked solo state | If the fork diverges, the debug is invalid |
+| Return lands at fork point | Exact same event index, board state, and timeline position | If the user has to re-navigate after return, the fork-return loop breaks |
+| Multiple fork-return cycles feel instant | < 2 seconds per fork (OCGCore reconstruction) + instant return (restore cached board states, seek to fork point — no re-pre-computation) | The debug loop is iterative — each cycle must be fast |
 
-### Emotional Journey Mapping
+### Pattern Analysis — Established Patterns with Yu-Gi-Oh! Adaptation
 
-| Stage | Emotion | Design Driver |
-|-------|---------|---------------|
-| Open match history | Recognition — "That's the game" | Familiar metadata (deck name, opponent, turns, result) enables instant identification |
-| Replay loads | Control — "I can navigate this" | Timeline is immediately visible and understandable. Playback controls are obvious. No tutorial needed |
-| Seek to turn | Precision — "I'm exactly where I need to be" | Seek is instant and unambiguous. Current position (turn, phase, player) is always clear |
-| Step through events | Clarity — "I see exactly what happened" | Each event is visually distinct. Board state changes are readable. No guessing what the engine did |
-| Fork | Empowerment — "Let me test this" | One click, no hesitation. The fork feels safe because return is trivial |
-| Post-fork solo | Exploration — "What if...?" | Full control of both sides. The sandbox feeling — experiment freely, no consequences |
-| Return to replay | Continuity — "Right back where I was" | Auto-seek to fork point. No re-navigation. The replay is always there |
-| Investigation complete | Confidence — "I know what happened" | The debug/analysis loop produced a clear answer. Time well spent |
+All core interactions use **established patterns** — no novel UX education needed:
 
-### Micro-Emotions
+| Interaction | Established Pattern | Yu-Gi-Oh! Adaptation |
+|-------------|-------------------|---------------------|
+| Timeline navigation | Video player seek (YouTube) | Turn segments with event labels instead of time codes |
+| Step-by-step | Debugger step-over (IDE) | Each "step" is one OCGCore event with a readable label |
+| Scrub | DAW playhead drag | Drag along timeline, board state updates in real-time (pre-computed) |
+| Fork | Debugger "run from here" / Git branch | Create a live session from a frozen replay point |
+| Return to replay | Browser "back" button / Git checkout | Return to the immutable timeline at the fork point |
+| Debug log panel | IDE console / DevTools console | Existing `DebugLogPanelComponent` with click-to-navigate |
 
-**Critical to achieve:**
-- **Orientation** over confusion — The user always knows where they are in the duel timeline. Turn number, phase, active player, and timeline position are never ambiguous. This is the #1 priority. Without orientation, the feature is useless.
-- **Confidence** over skepticism — The replay is deterministic. The user trusts that what they see is exactly what happened. No "is this accurate?" doubt.
-- **Momentum** over hesitation — Fork, return, seek, step — every action is immediate. The user never pauses to wonder "what will this do?" or "will I lose my place?"
-
-**Critical to avoid:**
-- **Disorientation** — Not knowing which turn or event the user is looking at. This is the primary failure mode. If the timeline is unclear, the entire feature fails.
-- **Anxiety before fork** — "Will I lose my replay?" must never cross the user's mind. The return path must be visually obvious before the user clicks Fork.
-- **Tedium during navigation** — Clicking step-forward 50 times to reach the right event. Seek and fast-forward must eliminate repetitive manual navigation.
-
-### Design Implications
-
-| Emotional Goal | UX Design Approach |
-|----------------|-------------------|
-| Orientation (always know where you are) | Persistent timeline bar showing all turns with current position highlighted. Turn number + phase + active player always visible in a fixed header/overlay. Timeline is the primary navigation element, not a secondary indicator |
-| Control (I can go anywhere) | Direct manipulation of the timeline (click on a turn to seek). Keyboard shortcuts for all navigation actions. No modal dialogs blocking navigation |
-| Confidence (I know what happened) | Deterministic replay — same inputs always produce the same output. Visual provenance markers on revealed cards. Clear event descriptions during step-by-step |
-| Momentum (every action is instant) | No confirmation dialogs. Fork is one click. Return is one click. Seek round-trip < 500ms. Keyboard shortcuts eliminate mouse travel |
-| Safety (fork without fear) | "Return to Replay" button permanently visible in solo mode. Fork point remembered. Solo changes are implicitly disposable |
-
-### Emotional Design Principles
-
-1. **The timeline is the product.** If the user cannot orient themselves in the duel timeline at any moment, nothing else matters. Every other feature (fork, omniscient view, step-by-step) depends on the user knowing exactly where they are. Design the timeline first, everything else second.
-
-2. **Confidence through determinism.** The replay shows exactly what happened — no approximation, no interpretation. The user's trust in the replay is absolute. Visual design should reinforce this: precise event labels, clear state transitions, no ambiguity in what the engine did.
-
-3. **Zero-hesitation actions.** Every user action (seek, step, fork, return) should be executable without a moment of doubt. No "are you sure?" dialogs, no hidden consequences, no state loss. The user acts and the system responds immediately.
+**No novel patterns.** Every interaction maps to a pattern the user (developer + gamer) already knows.
 
 ## UX Pattern Analysis & Inspiration
 
@@ -208,50 +189,13 @@ The primary interaction is temporal navigation — the user moves through the du
 
 ### Architecture Note: Pre-Computed Board States (ADR-7)
 
-**Status:** Proposed (amendment to architecture-replay.md ADR-3)
+> See architecture-pvp.md ADR-7 for full decision record and alternatives analysis.
 
-**Context:** The original architecture (ADR-3) specifies server-driven replay navigation — every playback command (play, pause, step, seek) is a WebSocket message to the Duel Server, which replays OCGCore events and streams results back. This creates a WS round-trip per action (~500ms), makes scrubbing impossible, and requires the worker thread to stay alive for the entire replay session.
-
-UX design analysis identified that the primary interaction is temporal navigation (seek + step), not passive playback. The user needs instant, friction-free movement through the timeline — including drag-scrubbing with live board state feedback. Server-driven navigation cannot support this.
-
-**Decision:** Pre-compute all board states at replay load time. The Duel Server worker replays all `playerResponses` through OCGCore WASM in silent mode, capturing a board state snapshot (`duelQueryField()` + `duelQuery()`) and the WS events that produced the transition after each response. The complete array is sent to the client. All navigation (seek, step, scrub, play) becomes 100% client-side.
-
-**Pre-computed state format:** `Array<{ boardState: BoardState, events: WsMessage[], label: string }>`. Each entry includes the board state snapshot, the WS messages that produced the transition from the previous state (used for animation in step/play mode), and a human-readable event label. Animation is driven by captured events, not inferred from state diffs — more reliable and simpler client-side logic.
-
-**Alternatives Considered:**
-
-| Alternative | Pros | Cons | Rejected Because |
-|-------------|------|------|-----------------|
-| A) Server-driven (original ADR-3) | Simple worker logic, no bulk data transfer | ~500ms per action, no scrub, worker alive entire session, 9 WS message types | Fails the "timeline is the product" UX principle. Navigation must be instant |
-| B) Checkpoint system (periodic snapshots) | Reduced seek cost vs A, lower memory than C | Still requires server round-trip for seek-between-checkpoints, complex checkpoint interval tuning | Half-measure — still server-dependent, still no scrub |
-| C) Full pre-computation (selected) | Instant navigation (<1ms), scrub enabled, 9→2 WS types, worker freed after compute | 2-10s initial load, ~3-10MB client memory | Best alignment with UX principles. Trade-offs are acceptable |
-| D) Hybrid (stream + pre-compute in background) | Instant start, progressive enhancement | Complex dual-mode logic, client must handle both server-driven and local navigation | Over-engineering for MVP. Progressive batch computation within option C achieves similar UX |
-
-**Consequences:**
-
-*Positive:*
-- Navigation latency: ~500ms → <1ms (index swap)
-- Scrub/drag with live board state update becomes possible
-- WS protocol simplified: 9 client→server message types → 2 (`REPLAY_LOAD`, `REPLAY_FORK`)
-- Worker thread freed after pre-computation (alive only for fork)
-- Client-side animations driven by captured WS events — reliable, no diff inference needed
-- Activity ping (`REPLAY_ACTIVITY_PING`) no longer needed — no persistent server session during navigation
-
-*Negative:*
-- Initial load time: 0 → 2-10s depending on duel length. Mitigated by progressive batch computation (navigation available from first computed turn)
-- Client memory: ~3-10MB for board state array. Acceptable on desktop, monitor on mobile
-- Fork still requires server round-trip (~1-2s) — worker must reconstruct live OCGCore WASM instance at fork point by replaying from scratch. Pre-computed states are read-only snapshots, not resumable WASM instances
-
-**Impact on architecture-replay.md:**
-
-| Section | Change |
-|---------|--------|
-| ADR-3 (Seek implementation) | Replaced by ADR-7. "Replay from scratch per seek" → "pre-compute all at load" |
-| Replay Session Lifecycle (ADR-4) | Worker lifecycle changes: alive for pre-compute phase + fork only, not entire session. Idle timeout no longer needed |
-| Protocol boundary (ADR-2) | Client→server types reduced from 9 to 2. `REPLAY_PLAY/PAUSE/STEP_*/SEEK/FF/REWIND/ACTIVITY_PING` removed. `REPLAY_LOAD` and `REPLAY_FORK` remain |
-| Frontend Architecture | `ReplayConnection` simplified — receives pre-computed states, manages local navigation. No longer sends playback commands |
-| New server→client type | `REPLAY_BOARD_STATES` (batch of pre-computed board states with event metadata and labels) replaces per-event game messages during replay |
-| Fork Architecture (ADR-6) | Unchanged mechanically — worker reconstructs WASM at fork point. But now the worker must be re-activated (it was freed after pre-compute) |
+**UX-relevant consequences:**
+- Navigation latency: ~500ms → <1ms (client-side index swap). Enables scrub/drag with live board state update.
+- WS protocol simplified: 9 → 2 client→server types (`REPLAY_LOAD`, `REPLAY_FORK`). Worker freed after pre-computation.
+- Initial load time: 2-10s (mitigated by progressive batch computation — navigation available from first computed turn).
+- Fork still requires ~1-2s server round-trip for OCGCore WASM reconstruction.
 
 ### Anti-Patterns to Avoid
 
@@ -290,14 +234,14 @@ UX design analysis identified that the primary interaction is temporal navigatio
 
 ### PRD Divergences
 
-This UX specification diverges from the PRD ([prd-replay.md](prd-replay.md)) on the following functional requirements:
+This UX specification diverges from the PRD ([prd-pvp.md](prd-pvp.md) §Replay) on the following functional requirements:
 
 | PRD FR | PRD Description | UX Decision | Rationale |
 |--------|----------------|-------------|-----------|
-| FR9 | Fast-forward at variable speed | **Removed.** Seek/scrub replace fast-forward. No speed selector. | Search-first principle — if you want to go fast, seek to the turn, don't watch in accelerated playback. Seek is instant with pre-computed states |
-| FR10 | Rewind the replay | **Removed.** Seek/scrub replace rewind. Step-back remains for single-event regression. | Same rationale — backward scrub on timeline replaces dedicated rewind control |
-| — | Fork is one-way (Architecture ADR-6) | **Fork is reversible.** Fork navigates to `/pvp/duel/fork-{replayId}`. Return navigates back to `/pvp/replay/:replayId?seekTo={forkIndex}`, auto-seeks to fork point. | Fork must feel exploratory, not permanent. User experiments freely because returning is trivial |
-| — | Server-driven navigation (Architecture ADR-3) | **Pre-computed client-side navigation (ADR-7).** All board states computed at load time. | Enables instant seek (<1ms), scrub with live board update, simplified WS protocol (9→2 types) |
+| FR9 | Fast-forward at variable speed | **Removed.** Seek/scrub replace fast-forward. | Search-first — seek is instant with pre-computed states |
+| FR10 | Rewind the replay | **Removed.** Seek/scrub replace rewind. Step-back remains. | Same rationale — scrub replaces rewind |
+| — | Fork is one-way (ADR-6) | **Fork is reversible.** Return auto-seeks to fork point. | Exploratory, not permanent |
+| — | Server-driven navigation (ADR-3) | **Pre-computed client-side (ADR-7).** | Instant seek (<1ms), scrub, 9→2 WS types |
 
 ## Design System Foundation
 
@@ -341,150 +285,6 @@ The Replay Mode spans two distinct visual contexts:
 - **Timeline bar:** Custom SCSS component. Horizontal bar below the transport bar. Dark background, accent color for current position, turn segments clickable. CDK or native pointer events for scrub interaction. Zoomable via scroll wheel (desktop) or pinch (mobile).
 - **Turn markers / tooltips:** `MatTooltip` for hover turn summary on timeline segments.
 
-### Responsive Strategy
-
-Responsive behavior consistent with the existing PvP implementation:
-
-- **Desktop:** Transport bar and timeline full width below the board. All buttons visible with icon + optional label. Timeline supports scroll-wheel zoom and mouse scrub.
-- **Mobile (landscape-locked):** Transport bar compact (icons only, no text labels, smaller touch targets). Timeline simplified (turn segments clickable, no zoom — touch scrub only). Same landscape-lock mechanism as PvP board (`screen.orientation.lock('landscape')`). Board uses same responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`).
-- **Match History page:** Angular Material responsive defaults. `mat-table` column hiding on narrow screens if needed (hide date column on mobile, keep deck name + opponent + result).
-
-### Z-Index Management
-
-- Transport bar and timeline: dedicated token in `_z-layers.scss` (above board, below overlays).
-- Debug log panel (slide-in): existing z-index already defined.
-- Card inspector: existing z-index already defined.
-
-## Defining Experience
-
-### Core Interaction
-
-**"Navigate to any moment in a past duel and debug from there."**
-
-The user thinks in events, not turns. "When Scheiren triggered" is the mental anchor, not "turn 12." The timeline shows turns as structural segments, but event labels are the actual navigation targets. The user scans labels to find the right moment, then forks to debug.
-
-The fork is not exploratory play — it is a targeted debug action. "I want to see what happens if I respond differently to this specific prompt." The user forks, replays the critical action, observes the result, and returns to try another approach.
-
-### User Mental Model
-
-**How the user thinks about replay navigation:**
-- Mental anchors are **events**, not turns. "The fusion trigger that didn't resolve" — not "turn 12." Turns are structural containers; events are the meaningful units.
-- The timeline is a **search space**, not a video. The user doesn't watch from left to right — they jump to areas of interest and inspect locally.
-- Step-by-step is **reading**, not watching. Each step reveals a labeled event ("Chain Link 1: Tearlaments Scheiren — Fusion Effect"). The user reads the sequence like a log, not observes it like a movie.
-
-**How the user thinks about fork:**
-- Fork = **"debug from here."** It's a breakpoint, not a save point. The user wants to re-execute a specific sequence with different inputs and compare the output.
-- The fork is disposable. The user doesn't care about the solo session itself — they care about the answer: "does the engine behave correctly if I do X instead of Y?"
-- Return = **"try again from the same breakpoint."** The user returns to the exact fork point to launch another debug attempt. Multiple fork-return cycles from the same point are the expected workflow.
-
-**Current solution (without replay):**
-- Start a new PvP Quick Duel Solo session with the same decks
-- Manually play through N turns to reach the problematic board state
-- This takes minutes to hours for a single investigation
-- No guarantee of reaching the exact same board state (different draws, different RNG)
-
-**What makes the replay better:**
-- Deterministic — exact same sequence, every time
-- Seek eliminates manual replay — jump directly to the event
-- Fork preserves the exact OCGCore state — no approximation
-- Multiple investigations from the same point without replaying from scratch
-
-### Success Criteria
-
-| Criterion | Measure | Why It Matters |
-|-----------|---------|---------------|
-| User finds the right event | < 30 seconds from replay open to target event | If navigation is slow, the user reverts to manual reproduction |
-| User understands what happened | Event labels clearly describe engine actions | If the user can't read what the engine did, they can't identify the bug |
-| Fork preserves exact state | Zero desynchronization between replay state and forked solo state | If the fork diverges, the debug is invalid |
-| Return lands at fork point | Exact same event index, board state, and timeline position | If the user has to re-navigate after return, the fork-return loop breaks |
-| Multiple fork-return cycles feel instant | < 2 seconds per fork (OCGCore reconstruction) + instant return (restore cached board states, seek to fork point — no re-pre-computation) | The debug loop is iterative — each cycle must be fast |
-
-### Pattern Analysis — Established Patterns with Yu-Gi-Oh! Adaptation
-
-All core interactions use **established patterns** — no novel UX education needed:
-
-| Interaction | Established Pattern | Yu-Gi-Oh! Adaptation |
-|-------------|-------------------|---------------------|
-| Timeline navigation | Video player seek (YouTube) | Turn segments with event labels instead of time codes |
-| Step-by-step | Debugger step-over (IDE) | Each "step" is one OCGCore event with a readable label |
-| Scrub | DAW playhead drag | Drag along timeline, board state updates in real-time (pre-computed) |
-| Fork | Debugger "run from here" / Git branch | Create a live session from a frozen replay point |
-| Return to replay | Browser "back" button / Git checkout | Return to the immutable timeline at the fork point |
-| Debug log panel | IDE console / DevTools console | Existing `DebugLogPanelComponent` with click-to-navigate |
-
-**No novel patterns.** Every interaction maps to a pattern the user (developer + gamer) already knows. The defining experience is the **combination** of these patterns in a Yu-Gi-Oh! context, not any individual interaction.
-
-### Experience Mechanics
-
-#### Flow 1: Find the Event (Seek → Step)
-
-**1. Initiation:**
-- User opens replay from match history (row click). Replay loads with pre-computation (~2-10s, progressive). Board shows initial game state (both hands dealt, turn 1).
-
-**2. Interaction:**
-- User clicks a turn segment on the timeline (or scrubs) → board jumps to that turn's first event. Turn number, phase, and active player update in the position indicator.
-- User presses Right Arrow (or clicks Step Forward) → board advances one event. Event label appears: "Normal Summon: Tearlaments Scheiren (Zone M3)."
-- User scans event labels. Not the right event → keeps stepping. Too far → Left Arrow steps back one event.
-- Alternative: user opens debug log panel, scans the event list, clicks the target event → board jumps to that event.
-
-**3. Feedback:**
-- Timeline position indicator tracks current event within the turn.
-- Event label always visible — user reads what the engine did.
-- Board state updates with each step (animated in step mode).
-- Debug log panel highlights the current event entry.
-
-**4. Completion:**
-- User found the problematic event. The board shows the exact state before/after the issue. The event label describes what the engine did. User is ready to fork or continue investigating.
-
-#### Flow 2: Debug from Here (Fork)
-
-**1. Initiation:**
-- User clicks Fork in the transport bar (or keyboard shortcut). No confirmation dialog.
-
-**2. Interaction:**
-- Loading indicator (~1-2s) while the worker reconstructs OCGCore WASM state at the fork point.
-- Board transitions from replay mode to solo mode: transport bar controls are replaced by PvP action UI. Board `readOnly` switches to `false`. `ReplayConnection` closes, `DuelConnection` opens.
-- "Return to Replay" button appears (always visible in solo mode post-fork).
-- User plays both sides, testing the alternative action.
-
-**3. Feedback:**
-- Visual mode indicator changes (e.g., subtle border color or label: "Solo — Forked from Turn 12, Event 47").
-- Board becomes interactive — action menus appear on card click, prompts display for engine queries.
-- The user sees the engine's response to their alternative action in real-time.
-
-**4. Completion:**
-- User observed the result. Either the bug reproduces (confirms the issue) or the alternative works (isolates the root cause).
-- User clicks "Return to Replay" to try another approach, or navigates away (match history, deckbuilder, etc.).
-
-#### Flow 3: Try Again (Return → Re-fork)
-
-**1. Initiation:**
-- User clicks "Return to Replay" in solo mode post-fork.
-
-**2. Interaction:**
-- Solo session closes (worker cleanup). Cached `boardStates[]` restored instantly — no re-pre-computation, no WS reconnection. Auto-seeks to the fork point (cached event index).
-- Board returns to replay mode: transport bar controls reappear, `readOnly` = true, position indicator shows the fork point.
-- User is exactly where they forked — ready to fork again or navigate elsewhere.
-
-**3. Feedback:**
-- Timeline shows the fork point. Position indicator confirms the event index.
-- Board state matches the pre-fork state exactly.
-
-**4. Completion:**
-- User forks again to test another alternative (loop back to Flow 2), or navigates to a different point in the replay (loop back to Flow 1), or leaves.
-
-#### Expected Debug Session Flow
-
-```
-Open replay → Seek to turn 12 → Step to event 47 (the problematic trigger)
-  → Fork → Test alternative A → Observe result → Return to replay (turn 12, event 47)
-  → Fork → Test alternative B → Observe result → Return to replay (turn 12, event 47)
-  → Navigate to turn 6 → Step to event 23 (an earlier decision)
-  → Fork → Test alternative C → Observe result → Done — close replay
-```
-
-Typical session: 2-4 fork-return cycles, 1-2 navigation jumps. Total investigation time: 5-15 minutes vs. hours of manual reproduction.
-
 ## Visual Design Foundation
 
 ### Color System
@@ -504,11 +304,11 @@ Typical session: 2-4 fork-return cycles, 1-2 navigation jumps. Total investigati
 - Player indicators: P1 `#64b5f6` (blue), P2 `#ef5350` (red) — same as debug panel
 - LP display: `--pvp-lp-own: #4CAF50`, `--pvp-lp-opponent: #90CAF9`, `--pvp-lp-danger: #F44336`
 
-**Omniscient provenance marker:**
-Cards that were face-down during the live PvP duel should receive a distinct visual indicator in replay — a CSS class `.revealed-in-replay` with a dashed border or corner triangle. Does NOT reuse `--pvp-highlight-selectable` (that token means "actionable" in PvP live, which would create semantic confusion in replay context). **Implementation status:** The `replayMode` signal exists in `PvpHandRowComponent` and controls card visibility, but the `.revealed-in-replay` CSS class binding is not yet applied in the template — this visual provenance marker is pending implementation.
+**Omniscient view — opponent hand rendering:**
+In live PvP, the opponent's hand renders as face-down card backs. In replay omniscient mode, the opponent's hand cards show their full card art/identity (same rendering as the player's own hand). This is driven by the `omniscient: true` flag on the message filter — card codes are not sanitized, so `BoardState.opponentHand` contains real card IDs instead of zeros. The `replayMode` input in `PvpHandRowComponent` controls this: when true, all opponent hand cards render face-up art.
 
-**Opponent hand rendering in omniscient view:**
-In live PvP, the opponent's hand renders as face-down card backs. In replay omniscient mode, the opponent's hand cards show their full card art/identity (same rendering as the player's own hand). This is driven by the `omniscient: true` flag on the message filter — card codes are not sanitized, so `BoardState.opponentHand` contains real card IDs instead of zeros. The board component renders cards with valid IDs as face-up art. The `.revealed-in-replay` class is applied to opponent hand cards as a provenance marker (these were hidden during live PvP).
+**Omniscient view — face-down field cards:**
+Face-down field cards (SET monsters, set Spell/Traps) are revealed via the X-ray vision toggle in `PvpBoardContainerComponent`. No additional provenance marker is needed — the X-ray overlay itself is the visual indicator.
 
 **Semantic colors:**
 - Error / divergence warning: `--danger: #CF6679`
@@ -573,50 +373,9 @@ The Return button occupies the same space as the transport bar — same height, 
 
 **Touch targets:** 44×44px minimum (`--pvp-card-min-tap-target: 44px`) — applies to transport bar buttons on mobile.
 
-### Responsive Strategy
+### Layout Rationale
 
-Responsive behavior consistent with the existing PvP implementation:
-
-- **Desktop:** Timeline and transport bar full width below the board. All buttons visible with icon + optional label. Timeline supports scroll-wheel zoom and mouse scrub.
-- **Mobile (landscape-locked):** Transport bar compact (icons only, no text labels, smaller touch targets respecting 44px minimum). Timeline simplified (turn segments clickable, no zoom — touch scrub only). Same landscape-lock mechanism as PvP board (`screen.orientation.lock('landscape')`). Board uses same responsive sizing (`height: 90%; aspect-ratio: 274/215; max-width: 100%`).
-- **Match History page:** Angular Material responsive defaults. `mat-table` column hiding on narrow screens if needed (hide date column on mobile, keep deck name + opponent + result).
-
-**Responsive breakpoints (inherited):**
-- `$bp-mobile: 576px`
-- `$bp-tablet: 768px`
-- `$bp-desktop-sm: 1024px`
-- `$bp-pvp-narrow: 480px` (portrait phones)
-- `$bp-pvp-tiny: 400px` (very small phones)
-
-### Z-Index Management
-
-Z-index tokens are only needed if transport bar and timeline use absolute/fixed positioning (overlay mode). If layout uses standard flex flow (board → timeline → transport bar in a flex column), z-index tokens are not needed — standard document flow handles stacking.
-
-If overlay positioning is required during implementation, add to `_z-layers.scss`:
-
-| Token | Value | Element |
-|-------|-------|---------|
-| `$z-pvp-timeline` | 55 | Timeline bar (above hand `50`) |
-| `$z-pvp-transport-bar` | 60 | Transport bar (above timeline, below prompt sheet `80`) |
-
-Existing tokens reused:
-- `$z-pvp-board: 1` — board canvas
-- `$z-pvp-hand: 50` — player hands
-- `$z-pvp-prompt-sheet: 80` — prompts (in solo mode post-fork)
-- `$z-pvp-chain-overlay: 950` — chain card travel overlay
-- `$z-pvp-orientation-lock: 9000` — landscape lock overlay
-
-### Layout Validation (Comparative Analysis)
-
-Layout choices validated via comparative analysis against alternatives:
-
-| Dimension | Options Compared | Winner | Score |
-|-----------|-----------------|--------|-------|
-| Timeline placement | A: Under board (flex) vs B: Overlay on board vs C: Side panel | A: Under board | 3.45 / 5 |
-| Return button placement | A: Replaces transport bar vs B: Floating corner vs C: Top bar | A: Replaces transport bar | 3.70 / 5 |
-| Mobile layout | A: Stacked compact vs B: Timeline in board vs C: All overlay | A: Stacked compact | 3.55 / 5 |
-
-Key rationale: under-board placement preserves full board size, avoids touch conflicts, and maintains desktop↔mobile layout consistency. The transport bar replacement for Return button minimizes visual disruption during mode transition.
+Under-board placement (flex column: board → timeline → transport bar) preserves full board size, avoids touch conflicts, and maintains desktop/mobile layout consistency. The transport bar replacement for Return button minimizes visual disruption during mode transition. See Responsive Design & Accessibility section for full responsive strategy and z-index management.
 
 ### Accessibility Considerations
 
@@ -628,29 +387,7 @@ Key rationale: under-board placement preserves full board size, avoids touch con
 
 ## Design Direction
 
-### Design Directions Explored
-
-Not applicable — brownfield project. The visual direction is fully constrained by the existing PvP board components, design tokens, and the decisions made in this UX specification (layout, color system, typography). There is no meaningful visual variation to explore.
-
-### Chosen Direction
-
-**Single direction: Dark immersive viewer extending PvP visual language.**
-
-The Replay Mode is visually indistinguishable from a PvP duel in layout and board appearance. The only new visual elements are the timeline bar and transport bar below the board, both using existing design tokens (`--surface-nav`, `--surface-elevated`, `--pvp-accent`). The debug log panel is reused as-is with added click-to-seek behavior.
-
-**Visual identity summary:**
-- Dark surfaces (`#161616`, `#1E293B`) consistent with PvP board context
-- Gold accent (`#C9A84C`) for active elements (timeline position, selected state)
-- White Material icons on dark background for transport controls
-- Monospace event labels matching debug panel typography
-- Dashed border provenance marker for omniscient-revealed cards
-- Flex column layout: board → timeline+label → transport bar
-
-### Design Rationale
-
-1. **Brownfield = no choice to make.** The board is built. The tokens exist. The layout is validated. Introducing visual variation would create inconsistency with the rest of the application.
-2. **Debug tool aesthetic.** The user expects a functional, information-dense interface — not a polished consumer product. The dark theme, monospace labels, and debug panel aesthetic are appropriate for the use case.
-3. **Zero learning curve.** The board looks identical to PvP. Only the controls below the board are new. The user recognizes the interface instantly.
+Single direction explored and refined: **dark immersive viewer extending PvP visual language.** Brownfield project — visual direction fully constrained by existing PvP board components and design tokens.
 
 ### Key Visual Elements
 
@@ -662,7 +399,7 @@ The Replay Mode is visually indistinguishable from a PvP duel in layout and boar
 | Event label | Monospace `0.75rem`, integrated in timeline block, categories color-coded | Matching `DebugLogPanelComponent` |
 | Mode indicator (solo) | Simple text label: "Solo — Forked from Turn 12, Event 47" | New, minimal styling |
 | Return button | Occupies transport bar space, same height/position | New, replaces transport bar |
-| Provenance marker | `.revealed-in-replay` class, dashed border on cards that were face-down in live PvP | New CSS class |
+| Omniscient view | Opponent hand: full card art via `replayMode` input; field face-downs: X-ray vision toggle | Implemented |
 | Debug log panel | Existing component with click-to-seek + current event highlight | Extended existing component |
 | Match history | Standard `mat-table` + `mat-paginator`, Material theme | New, standard Material |
 
@@ -776,19 +513,9 @@ All errors (WS disconnect, pre-compute failure, divergence) degrade to the previ
 
 ### Keyboard Shortcut Map
 
-| Key | Action | Context |
-|-----|--------|---------|
-| Space | Play / Pause | Replay mode |
-| Right Arrow | Step forward one event | Replay mode |
-| Left Arrow | Step back one event | Replay mode |
-| Home | Seek to start (Turn 1) | Replay mode |
-| End | Seek to last event | Replay mode |
-| F | Fork | Replay mode |
-| A | Toggle animations on/off | Replay mode |
-| M | Toggle prompt mode (decision/result) | Replay mode |
-| V | Toggle perspective (player 1/player 2) | Replay mode |
-| D | Toggle debug panel | Both modes |
-| G | Toggle event label granularity (normal/debug) | Replay mode |
+> See [epics-replay.md](epics-replay.md) Story 3.5 for the full keyboard shortcut table and acceptance criteria. Design rationale: shortcuts mirror video editing conventions (Space=play, arrows=step) for immediate familiarity.
+
+**Scoping strategy:** Replay shortcuts are bound via `(keydown)` on the `.replay-viewer` container element (`tabindex="0"`) — component-scoped, NOT global. PvP duel-page uses a global `@HostListener('document:keydown')` for S (solo player switch) and Escape only. When PvP-B adds its own shortcuts, they MUST follow the same component-scoped pattern to avoid conflicts with replay shortcuts during fork navigation (both components may briefly coexist during route transition).
 
 ## Component Strategy
 
@@ -820,38 +547,14 @@ All errors (WS disconnect, pre-compute failure, divergence) degrade to the previ
 
 **Purpose:** Primary navigation element — visual representation of the duel as a horizontal bar of turn segments.
 
-**Anatomy:**
-```
-┌─────────────────────────────────────────────────┐
-│ [T1][T2][T3]...[T12▼]............[T30]          │  ← Turn segments (clickable)
-│ Turn 12 · Main Phase 1 · P1 · "Normal Summon…" │  ← Position + event label
-└─────────────────────────────────────────────────┘
-```
+> See [epics-replay.md](epics-replay.md) Story 3.5 for full signal API, states, and acceptance criteria.
 
-**Input signals:**
-- `turns: Array<{turnNumber, startIndex, endIndex, p1LP, p2LP, eventCount}>` — derived metadata per turn (~2KB, not the full board states array). **Turn 0 ("Setup")** is the initial game state: draw phase, opening hands dealt, LP set — all events before the first player action of Turn 1. Turn 0 appears as the first segment on the timeline (labeled "Setup")
-- `currentIndex: number` — current event index
-- `computedUpTo: number` — progressive computation progress
-- `totalEvents: number` — total number of events in the replay
-
-**Output signals:**
-- `seekTo = output<number>()` — emitted on click/scrub release (event index)
-- `scrubbing = output<number>()` — emitted during drag (event index, for live board update via parent)
-
-**Data flow:** The timeline receives the full `boardStates` array (needed for the hover board preview popover — renders a scaled `PvpBoardContainerComponent` at the hovered position). It emits event indices; the parent (`ReplayPageComponent`) uses `boardStates[currentIndex]` to drive the main board display.
-
-**States:**
-- Default: full timeline, gold playhead at current position. All turns visible as equal-width segments
-- Scrubbing: playhead follows cursor, emits index to parent for live board update
-- Partially computed: computed turns normal, remaining turns grayed out with subtle border
-- Zoomed in: scroll wheel zooms in/out. **Zoom anchor:** cursor position (zoom centers on where the mouse points). **Zoom levels:** 3 discrete levels — L1 (default: turns only), L2 (turns expanded, event count labels visible), L3 (individual events visible as sub-segments within turns, clickable). Zoom transitions use CSS `transform: scaleX()` with `transform-origin` at cursor X position. Horizontal overflow handled by `overflow-x: auto` on the timeline container — scroll to pan. On mobile: no zoom (touch scrub only, per responsive strategy)
-- Hover: a popover shows a **miniature board preview** (~200px wide) of the board state at the hovered position, anchored above the cursor X position on the timeline. Below the preview: turn number, LP for both players, event label. The preview is a scaled-down `PvpBoardContainerComponent` (CSS `transform: scale()`) with `readOnly = true`, animations disabled, card inspector disabled. Dismissed on mouse leave. During progressive loading, hover beyond `computedUpTo` shows turn summary text only (no preview). On mobile: no hover preview (touch-only — scrub with live main board update replaces it)
-
-**Play mode:** Playhead advances per event (~500ms/event for animation). A turn of 3 events traverses in ~1.5s, a turn of 40 events in ~20s. Consistent with "automated step-by-step" mental model. No speed control — seek/scrub replaces fast-forward (FR9 removed).
-
-**Keyboard:** Left/Right arrows handled at page level (step), not by timeline. Home/End seek to start/end.
-
-**Accessibility:** `role="slider"`, `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, `aria-label="Duel timeline"`. Focusable via Tab.
+**UX rationale:**
+- Turn segments (not event-level) as default granularity — matches the "VCR mental model" (users think in turns, not events). Zoom levels (L1→L3) progressively reveal detail for expert users
+- Hover board preview (~200px scaled `PvpBoardContainerComponent`) follows YouTube thumbnail convention — visual navigation before committing to seek
+- Gold playhead (`--pvp-accent`) anchors current position. Partially computed turns grayed out with subtle border — progressive loading feedback without blocking navigation
+- Mobile: no zoom, no hover preview — touch scrub with live main board update replaces both
+- Accessibility: `role="slider"` with full ARIA attributes, focusable via Tab
 
 ---
 
@@ -859,39 +562,13 @@ All errors (WS disconnect, pre-compute failure, divergence) degrade to the previ
 
 **Purpose:** Secondary control bar — playback actions, fork, return.
 
-**Anatomy:**
-```
-┌──────────────────────────────────────────────────┐
-│  |◀   ◁   ⏸/▶   ▷   ▶|   ⑂ Fork   ↩ Return   │
-└──────────────────────────────────────────────────┘
-```
+> See [epics-replay.md](epics-replay.md) Story 3.6 for full signal API and acceptance criteria.
 
-**Input signals:**
-- `isPlaying: boolean` — toggles play/pause icon
-- `forking: boolean` — shows spinner, disables Fork button
-- `positionLabel: string | null` — current position indicator
-- `animationsEnabled: boolean` — animation toggle state
-- `promptMode: 'decision' | 'result'` — prompt mode toggle state
-- `perspectiveIndex: number` — current perspective (0 or 1)
-
-**Output signals (one per action):**
-- `skipStart = output<void>()`
-- `stepBack = output<void>()`
-- `playPause = output<void>()`
-- `stepForward = output<void>()`
-- `skipEnd = output<void>()`
-- `fork = output<void>()`
-- `toggleAnimations = output<void>()`
-- `togglePromptMode = output<void>()`
-- `togglePerspective = output<void>()`
-
-> **Implementation note (post-v1):** No `mode` input or `returnToReplay` output — fork uses route navigation to `/pvp/duel/fork-{replayId}`, not in-page mode switching. The transport bar is always in replay mode.
-
-**States:**
-- Forking: Fork button shows `mat-spinner` (18px), disabled
-- Playing: pause icon shown instead of play
-
-**Accessibility:** All buttons have `aria-label`. Keyboard shortcuts handled at page level.
+**UX rationale:**
+- Layout mirrors standard media player conventions (skip/step/play/step/skip + action buttons)
+- Fork button shows inline `mat-spinner` (18px) during server-side reconstruction — inline feedback avoids modal interruption
+- Fork uses route navigation, not in-page mode switching — simpler architecture, position preserved via `seekTo` query param on return
+- All buttons have `aria-label`. Keyboard shortcuts handled at page level (not per-component)
 
 ---
 
@@ -958,7 +635,7 @@ ReplayPageComponent (controller)
 | P0 | Transport bar | Timeline bar | Control actions — fork, return, step, play |
 | P0 | `PvpBoardContainerComponent` `readOnly` refactor | None | Board must accept input signals |
 | P1 | `DebugLogPanelComponent` click-to-seek | Pre-computed events | Debug navigation enhancement |
-| P1 | Provenance marker (`.revealed-in-replay`) | Board component | Omniscient view visual indicator |
+| — | Omniscient view (hand + X-ray) | `PvpHandRowComponent`, `PvpBoardContainerComponent` | Implemented |
 
 ## UX Consistency Patterns
 
@@ -1022,21 +699,9 @@ ReplayPageComponent (controller)
 
 ### Mode Transition Patterns
 
-**Replay → Solo (fork):**
-1. Fork button shows `mat-spinner`, disabled (~1-2s server-side reconstruction)
-2. Server sends `REPLAY_FORK_READY` with fork tokens (or warning if sanity check fails)
-3. App navigates to `/pvp/duel/fork-{replayId}` — `DuelPageComponent` loads in fork mode
-4. Board is interactive — action menus and prompts available, player controls both sides
-5. Fork duels skip surrender confirmation on leave (canDeactivate bypassed)
+> See [epics-replay.md](epics-replay.md) Story 4.1–4.2 for fork flow acceptance criteria and sanity check details.
 
-**Solo → Replay (return):**
-1. Player navigates back (browser back or explicit action)
-2. App navigates to `/pvp/replay/:replayId?seekTo={forkEventIndex}`
-3. Replay page loads fresh — new WS connection, re-pre-computation (progressive loading)
-4. `seekTo` query param auto-positions the timeline at the fork point
-5. Board is read-only again — replay controls visible
-
-**Pattern rule:** Fork uses route navigation, not in-page mode switching. The replay page is destroyed during fork and re-created on return. The trade-off is re-pre-computation cost (~2-10s) for simpler architecture. The user's position is preserved via `seekTo` query param.
+**UX rationale:** Fork uses route navigation (`/pvp/duel/fork-{replayId}`), not in-page mode switching. The replay page is destroyed during fork and re-created on return. Trade-off: re-pre-computation cost (~2-10s) for simpler architecture. User position preserved via `seekTo` query param — the timeline auto-positions at the fork point on return.
 
 ### i18n Pattern
 

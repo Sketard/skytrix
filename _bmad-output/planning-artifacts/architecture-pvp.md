@@ -1,48 +1,30 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
-inputDocuments: ['prd-pvp.md', 'architecture.md', 'project-context.md', 'research-ygo-duel-engine.md', 'research-ocgcore-message-protocol.md', 'research-wasm-js-duel-engines.md', 'research-web-ygo-simulators.md', 'ux-design-board-animations.md']
+inputDocuments: ['prd-pvp.md', 'architecture.md', 'project-context.md', 'research-ygo-duel-engine.md', 'research-ocgcore-message-protocol.md', 'research-wasm-js-duel-engines.md', 'research-web-ygo-simulators.md', 'ux-design-board-animations.md', 'brainstorming-session-2026-03-21.md']
 workflowType: 'architecture'
 lastStep: 8
 status: 'updated-post-implementation'
-lastUpdated: '2026-03-26'
+lastUpdated: '2026-04-05'
 completedAt: '2026-02-24'
 project_name: 'skytrix'
 user_name: 'Axel'
 date: '2026-02-24'
-lastEdited: '2026-03-26'
-editHistory:
-  - date: '2026-03-10'
-    changes: 'Integrated animation orchestration architecture (3-layer chain system, async overlay contract, pending chain entry) and PvP-C board animations (card travel, buffer/replay, CardTravelService, XYZ material visuals, Beat-based parallel replay, acceleration features)'
-  - date: '2026-03-12'
-    changes: 'Replaced animation orchestration detail section with summary + link to animation-architecture-pvp.md (new dedicated document). Removed obsolete AC5 and animatingZone Set<string> signal.'
-  - date: '2026-03-26'
-    changes: 'Post-implementation alignment: fixed ConnectionStatus (removed phantom resynchronized state), expanded DuelConnection signals from 10 to 24, updated WS message types to complete inventory (game 19 + attack 3 + end 1 + prompt 22 + system 18 + replay 8), renamed PromptRpsComponent to PromptChoiceComponent, updated duel server file count (8 prod + 3 PoC + 2 test), marked replay storage as implemented'
-  - date: '2026-03-26'
-    changes: 'Cleanup pass: fixed system/prompt classification (RPS_CHOICE+SELECT_TP moved to system per code, 20 prompts + 18 system), signal count 24→25 (+timerStatePerPlayer), prompt sub-components 9→10 (+PromptActionListReadonly), removed all PlayerFieldComponent references (Story 1.1 skipped), removed all PvpDuelResultOverlayComponent references (inline in DuelPageComponent), updated prompt file structure to match actual 10 sub-component dirs'
-  - date: '2026-03-26'
-    changes: 'Doc-code alignment: lobby subcomponents → monolithic lobby-page, waiting room polling → SSE via RoomEventService, added 5 undocumented DuelPageComponent-scoped services (CardDataCacheService, CardInspectionService, RoomStateMachineService, PhaseAnnouncementService, DuelTabGuardService), added SSE boundary to API table, fixed FR mapping references'
+lastEdited: '2026-03-31'
+editHistory: '(see §Appendix: Edit History at end of document)'
 ---
 
-# Architecture Decision Document — PvP (Online Automated Duels)
+# Architecture Decision Document — PvP & Replay
 
-_This document builds collaboratively through step-by-step discovery. Sections are appended as we work through each architectural decision together._
+_This document covers PvP Online Automated Duels and PvP Replay Mode (formerly architecture-replay.md). Sections are appended as we work through each architectural decision together._
 
 ## Project Context Analysis
 
 ### Requirements Overview
 
-**Functional Requirements:**
-25 functional requirements across 4 categories covering matchmaking & session management (FR1-7: room creation, deck validation, lobby, auto-start, surrender, disconnection handling, win/draw conditions), turn & phase management (FR8-10: automated phase flow, main phase contextual actions, battle phase actions), player prompts & engine delegation (FR11-13: modal dialogs for all SELECT_* types, chain resolution delegation, full rule enforcement delegation), and board display & information (FR14-25: two-player field display, private information hiding, LP tracking, chain visualization, card inspection, turn indicator, turn timer, inactivity timeout, visual feedback per game event, click-based interaction, duel result screen, client-side activation toggle).
+**Functional & Non-Functional Requirements:**
+See [prd-pvp.md](prd-pvp.md) — 25 FRs across 4 categories, 10 NFRs across 5 areas.
 
 The PvP mode is fundamentally different from the solo simulator: the duel engine (OCGCore) is the sole authority for game state, the player responds to engine prompts rather than freely manipulating the board, and all communication is server-mediated for anti-cheat integrity.
-
-**Non-Functional Requirements:**
-10 NFRs across 5 areas:
-- **Network & Latency (NFR1-2):** Player action to board update round-trip < 500ms. WebSocket stable for full duel duration (up to 60 min) with heartbeat/keep-alive.
-- **Scalability (NFR3):** 50 concurrent duels without degradation. Each duel requires one OCGCore WASM instance with its own Lua VM. Memory footprint per duel instance must be profiled during implementation.
-- **Reliability (NFR4-5):** 60-second reconnection grace period. Duel state preserved server-side up to 4 hours if both disconnect. Reconnection uses a snapshot via `duelQueryField()` + `duelQuery()` (not message log replay — OCGCore has no save/restore, and replay is fragile and slow).
-- **Security (NFR6-8):** Server-only game state authority. Per-player message filtering (no private info leakage). Response validation by engine. JWT-protected WebSocket and PvP routes.
-- **Compatibility & Licensing (NFR9-10):** Modern desktop + mobile browsers. AGPL-3.0 compliance for duel server source code.
 
 **Scale & Complexity:**
 
@@ -84,12 +66,7 @@ The MVP targets PvP between friends (trusted players). This determines which arc
 - **Component reuse (solo ↔ PvP) (T1):** Card component and card inspector shared between modes. Data source differs: solo = local signals via BoardStateService, PvP = server-pushed state via WebSocket. The PvP board layout differs fundamentally from solo: two player fields visible (36 zones vs 18), different aspect ratio, opponent's field mirrored. PvP uses a dedicated `PvpBoardContainerComponent` (ADR-3 revised). Shared reuse at `CardComponent`/`CardInspectorComponent` level only — grid layouts are incompatible (solo: 7-col drag-drop, PvP: 6-col click-based with CSS perspective).
 - **Two interaction paradigms (T1):** Solo = drag & drop (CDK DragDrop), PvP = click-based prompts. Same visual components, completely different interaction handlers.
 - **Turn timer & inactivity (T1):** Timer state is server-authoritative. Server pushes timer updates; client displays. Timer pauses during opponent's decisions and chain resolution. Edge case: timeout during mandatory SELECT_* — the server forfeits the match and properly closes the OCGCore duel instance.
-- **Animation orchestration (T1):** OCGCore produces event messages in bursts during chain resolution (10+ messages in <100ms). The client implements a **three-layer animation architecture**: `DuelConnection` (data — enqueues events, manages chain link state), `AnimationOrchestratorService` (timing — dequeues sequentially, controls signal mutations, coordinates async pauses), `PvpChainOverlayComponent` (visual — card cascade, resolve-exit animations, board pause). The orchestrator consumes messages at animation speed, not network speed. Key mechanisms:
-  - **Async overlay contract:** On `MSG_CHAIN_SOLVED`, the orchestrator pauses (returns `'async'`), sets `chainOverlayReady = false`. The overlay plays its exit animation, optionally hides for a board pause window, then sets `chainOverlayReady = true` to resume the orchestrator.
-  - **Pending chain entry:** `MSG_CHAINING` does NOT immediately commit to `activeChainLinks`. It is stored as `_pendingChainEntry` and committed only after cost prompts complete (`SELECT_EFFECTYN` response sent, `WAITING_RESPONSE` received, next `MSG_CHAINING`, or `MSG_CHAIN_SOLVING`). This prevents cards from appearing in the overlay before their activation cost is paid.
-  - **Board event buffer & replay (PvP-C):** During chain resolution (`MSG_CHAIN_SOLVING` → `MSG_CHAIN_SOLVED`), board-changing events (`MSG_MOVE`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_DAMAGE`, etc.) are buffered instead of processed immediately. After the overlay exit animation, buffered events replay as visible card travel animations on the board during the overlay-hidden window. Board pause duration is **dynamic** (calculated from replay animation time) instead of fixed.
-  - **Card travel animations (PvP-C):** Replace in-place glow effects (`pvp-summon-flash`, `pvp-destroy-flash`) with spatial card movement between zones (Lift → Travel → Land). A dedicated `CardTravelService` (component-scoped) creates `position: fixed` floating elements, resolves source/destination rects via `getBoundingClientRect()`, animates with Web Animations API, and cleans up on completion. `pvp-flip-flash` and `pvp-activate-flash` remain unchanged (in-place by nature).
-  - **Acceleration features:** AC5 (auto-resolve: ≥3 chain links solved without prompt → halve animation durations), AC7 (queue collapse: > 5 queued events → instantly apply all but last 3, skip if chain resolution events present), AC8 (speed multiplier: activation toggle `off` → 0.5× all durations).
+- **Animation orchestration (T1):** OCGCore produces event messages in bursts during chain resolution (10+ messages in <100ms). The client implements a four-layer animation architecture with queue directives, zone locking, and chain buffering. See §Animation Patterns below for full architecture, mechanisms, and timing reference.
 - **Prompt UI components (T1):** The 20 SELECT_* types map to ~8-10 distinct UI components grouped by interaction pattern: card grid selection (SELECT_CARD, SELECT_TRIBUTE, SELECT_SUM, SELECT_UNSELECT_CARD), yes/no dialogs (SELECT_EFFECTYN, SELECT_YESNO), zone highlight (SELECT_PLACE, SELECT_DISFIELD), position picker (SELECT_POSITION), option list (SELECT_OPTION, SELECT_CHAIN), ordering (SORT_CARD, SORT_CHAIN), declaration pickers (ANNOUNCE_RACE, ANNOUNCE_ATTRIB, ANNOUNCE_CARD, ANNOUNCE_NUMBER), counters (SELECT_COUNTER), phase action menus (SELECT_IDLECMD, SELECT_BATTLECMD), and RPS (ROCK_PAPER_SCISSORS).
 - **IDLECMD/BATTLECMD as distributed UI (T1):** SELECT_IDLECMD and SELECT_BATTLECMD are NOT rendered as prompt sheet components. Instead, card-specific actions are distributed spatially: cards with available actions glow on the field (`--pvp-actionable-glow`), zone browsers (GY, Banished, ED) highlight actionable cards, and phase transitions (Battle Phase, Main Phase 2, End Turn) are handled by `PvpPhaseBadgeComponent`. Tap a card with 1 action → sent directly. Tap a card with 2+ actions → contextual action menu (absolute-positioned div, not a sheet). The client maps the engine's flat action list to spatial UI elements. See UX spec §PvpPhaseBadgeComponent and §Card Action Menu.
 - **MSG_HINT as UX-critical (T1):** OCGCore sends MSG_HINT (HINT_SELECTMSG, HINT_EFFECT, HINT_CODE) before SELECT_* messages to provide context (which effect is asking, what the prompt means). These hints are essential for a usable UI — without them, prompts are blind choices. The Angular WebSocket service must maintain a `currentHintContext` consumed by all prompt components.
@@ -104,77 +81,6 @@ The MVP targets PvP between friends (trusted players). This determines which arc
 | Type sharing | Independent WebSocket DTOs | Clean boundary, frontend/engine decoupled, boring tech |
 | Board layout PvP | ~~Composition via PlayerFieldComponent~~ **REVISED: PvP builds own PvpBoardContainerComponent** | Original: Extract don't rewrite. **Revised (2026-02-25 FMA):** Solo grid (7-col, EMZ in grid, drag-drop, 1060×608px) is fundamentally incompatible with PvP grid (6-col, EMZ in central strip, click-based, CSS perspective). Shared reuse happens at CardComponent/CardInspectorComponent level (already in components/), not at grid layout level. Story 1-1 skipped. |
 | Message filter | Whitelist per message type | Safety-critical = explicit, auditable, default DROP policy |
-
-### Story-Level Implementation Notes
-
-_These insights surfaced during analysis but are too granular for architecture decisions. They should be captured in story acceptance criteria or implementation tasks._
-
-- Worker thread: wrap `duelProcess()` in try/catch, implement 30s watchdog via `setTimeout` + `worker.terminate()`
-- Client: handle `document.visibilitychange` — when tab returns to focus, consume animation queue in fast-forward (skip animations, show final state)
-- Client: display countdown timer on each prompt, notification at 10s remaining
-- Message filter: `MSG_DRAW` contains `card_code` + `position` per drawn card — sanitize `card_code` to 0 for opponent, keep `position`
-- Message filter: `MSG_SHUFFLE_HAND` contains card codes after shuffle — sanitize all to 0 for opponent
-- Message filter: `MSG_CONFIRM_CARDS` reveals specific card codes — route only to the intended player
-- Reconnection snapshot: use `duelQueryField()` for global state + `duelQueryLocation()` per zone with FULL_FLAGS (`OcgQueryFlags.CODE | POSITION | ATTACK | DEFENSE | TYPE | LEVEL | RANK | ATTRIBUTE | RACE | OVERLAY_CARD | COUNTERS | LSCALE | RSCALE | LINK`). Apply message filter per player before sending (hand codes → 0 for opponent, face-down codes → 0 for opponent). See `ocgcore-technical-reference.md` §8 for exact query strategy and `OcgFieldState` structure
-- Scripts update: update `data/` folder manually, restart duel server. New duels use new scripts; in-progress duels keep their loaded scripts.
-- ~~Scope reduction (PvP-A0):~~ All 20 SELECT_* types are now implemented via 10 prompt sub-components + distributed UI. No auto-select fallback remains.
-
-## Starter Template Evaluation
-
-### Primary Technology Domain
-
-Full-stack brownfield — three technology domains:
-- **Angular 19.1.3 SPA** (existing) — new PvP pages, prompt components, WebSocket service
-- **Spring Boot 3.4.2** (existing) — new matchmaking/room REST endpoints, deck relay to duel server
-- **Node.js Duel Server** (new) — extends PoC into production microservice
-
-### Starter Options Considered
-
-**Frontend (Angular):** Not applicable — brownfield project, existing SPA with established patterns (standalone components, signals, OnPush). PvP features are new pages/components within the existing application.
-
-**Backend (Spring Boot):** Not applicable — existing service with established patterns. PvP adds new REST controllers and an HTTP client for duel server communication.
-
-**Duel Server (Node.js):** No starter template needed. The PoC (`research-ygo-duel-engine.md` §10.6) validated the core duel loop (create → process → getMessage → setResponse). Production server extends this foundation with WebSocket and worker thread isolation.
-
-### Selected Approach: Extend PoC + Minimal Dependencies
-
-**Rationale:** The project is brownfield with established conventions. The only new infrastructure is the Node.js duel server, which is too specialized (OCGCore WASM + worker threads + WebSocket) for any generic starter to be useful. The PoC already validates the core technical risk.
-
-**Duel Server Technology Choices:**
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| WebSocket library | `ws` | Raw, lightweight, full control over binary/text frames. No fallback transport needed (modern browsers only). No namespace/room abstraction overhead — duel server manages its own session mapping. |
-| Internal HTTP API | Native `node:http` | 6 routes (create duel, active duels, validate passcodes, update data, health, status). No middleware, no body parsing beyond `JSON.parse`. Adding Express/Fastify for 6 routes is over-engineering. |
-| Runtime | Node.js 22+ LTS, ESM | Required for `worker_threads` stability and `@n1xx1/ocgcore-wasm` ESM support |
-| Language | TypeScript 5.9 strict | Consistent with Angular frontend, type safety for message protocol |
-| Build & Run | `tsx` for development, `tsc` + `node dist/server.js` for production | `tsx` gives fast DX iteration without build step. Production uses compiled JS for performance and no dev dependency. |
-
-**Production Source File Structure (8 files + 3 PoC references + 2 test files):**
-
-| File | Role | Responsibility |
-|------|------|---------------|
-| `server.ts` | Main thread entry point | `ws.WebSocketServer` + `node:http` server, session routing, worker lifecycle management |
-| `duel-worker.ts` | Worker thread entry point | Spawned via `new Worker('./duel-worker.ts')` — NOT imported by server.ts. OCGCore WASM instance, duel loop (`duelProcess` → `getMessage` → `setResponse`), `parentPort.postMessage` communication with main thread. |
-| `message-filter.ts` | Pure function module | Whitelist-based per-player message filtering (anti-cheat). Stateless pure functions: `(message, playerId) → filteredMessage | null`. Most safety-critical and most testable component. |
-| `ws-protocol.ts` | Protocol boundary | WebSocket DTO types sent/received by the Angular frontend. This file IS the ADR-2 boundary — changes here are protocol changes. |
-| `types.ts` | Internal types | OCGCore enum re-exports, internal constants, worker message types, session state interfaces |
-| `ocg-callbacks.ts` | OCGCore integration | `cardReader` + `scriptReader` sync callbacks for OCGCore. Receives pre-loaded `CardDB` via injection (not global state). |
-| `ocg-scripts.ts` | Data loading | Exports `loadDatabase(dbPath): CardDB` and `loadScripts(scriptDir): ScriptDB`. Reads `cards.cdb` (better-sqlite3) + Lua files at startup. Returns injectable data objects consumed by `ocg-callbacks.ts`. |
-| `data-updater.ts` | Data refresh pipeline | Refreshes `cards.cdb`, Lua scripts, and `strings.conf` from ProjectIgnis repositories. Blocked while duels are active. Triggered via `PUT /api/update-data`. |
-
-**Dependencies (production):**
-
-| Package | Purpose | Status |
-|---------|---------|--------|
-| `@n1xx1/ocgcore-wasm` | OCGCore WASM binary + TypeScript API | Validated in PoC (+ ESM patch via `patch-package`) |
-| `ws` | WebSocket server | To add |
-| `better-sqlite3` | Read cards.cdb (card database) | To add |
-| `tsx` | Dev-only: TypeScript execution without build step | To add (devDependency) |
-
-**Note:** PoC code remains as standalone reference. Production duel server is a new entry point (`server.ts`) that reuses the validated OCGCore integration patterns from the PoC.
-
-**Note:** First implementation story scope: scaffold Node.js project (`package.json`, `tsconfig.json`, `patch-package` setup), create the 8 production source files with principal imports/exports, and implement `GET /health` → 200 endpoint. Produces a runnable duel server skeleton verifiable in minutes.
 
 ## Core Architectural Decisions
 
@@ -199,7 +105,7 @@ All important decisions made — data architecture, auth chain, protocol format,
 | Duel state | In-memory (OCGCore WASM worker) | Technical constraint — OCGCore has no save/restore. State exists only in the live WASM instance. |
 | Room/lobby data | PostgreSQL via Spring Boot | Existing infrastructure, persistence for free (page refresh safe) |
 | Card data (duel server) | `cards.cdb` loaded at startup via `better-sqlite3` | Read-only, pre-loaded in memory for sync callbacks |
-| Duel replay | *(Implemented)* PostgreSQL JSONB via Spring Boot (`replay` table) | See [architecture-replay.md](architecture-replay.md). Stores `{seed, decks, playerResponses[]}` (~32KB/duel) |
+| Duel replay | *(Implemented)* PostgreSQL JSONB via Spring Boot (`replay` table) | See §Replay Mode Extension below. Stores `{seed, decks, playerResponses[]}` (~32KB/duel) |
 | Room state machine | `WAITING → CREATING_DUEL → ACTIVE → ENDED / CLOSED` | Explicit states in Spring Boot. `CREATING_DUEL` timeout: 2min → transition to `CLOSED` via `RoomCleanupScheduler` (3 scheduled tasks: orphaned WAITING rooms >30min, orphaned ACTIVE rooms not on duel server, stuck CREATING_DUEL rooms >2min). Prevents players stuck in lobby on handoff failure. |
 
 ### Authentication & Security
@@ -282,19 +188,19 @@ All important decisions made — data architecture, auth chain, protocol format,
 - `justReconnected` flag is set to `true` after reconnection to suppress auto-respond logic until the player manually interacts with a prompt
 
 **Chain Phase Transition Timing:**
-- `building` — set **immediately** when first `MSG_CHAINING` arrives (overlay needs this for entry animation)
-- `resolving` — deferred to `applyChainSolving()` called by orchestrator (messages arrive in bursts, orchestrator processes sequentially with animation delays)
-- `idle` — deferred to `applyChainEnd()` called by orchestrator (same reason)
+- `building` — set **immediately** when first `MSG_CHAINING` arrives via `DuelEventProcessor` (overlay needs this for entry animation)
+- `resolving` — deferred to `applyChainSolving()` called by orchestrator via `ChainResolutionManager` (messages arrive in bursts, orchestrator processes sequentially with animation delays)
+- `idle` — deferred to `applyChainEnd()` called by orchestrator via `ChainResolutionManager` (same reason)
 
 **Animation Orchestration — `AnimationOrchestratorService` (component-scoped):**
 
-Three-layer architecture: `DuelConnection` (data) → `AnimationOrchestratorService` (timing) → `PvpChainOverlayComponent` + `PvpBoardContainerComponent` (visuals).
+Four-layer architecture: `DuelEventProcessor` (shared chain/queue state) → `RenderedBoardStateService` (logical/rendered split, per-zone lock/commit) → `AnimationOrchestratorService` (thin coordinator, delegates to `ChainResolutionManager`, `DrawSequenceManager`, `MoveAnimationRouter`, `LpAnimationTracker`) → `PvpChainOverlayComponent` + `PvpBoardContainerComponent` (visuals). All managers share a `DuelContext` (relative player, scaled duration, announcements, reduced motion).
 
-The orchestrator dequeues `GameEvent` objects from `wsService.animationQueue` and controls when signal mutations happen. It returns a duration (ms), a `Promise<void>`, or `'async'` for each event — the queue pauses on `'async'` until the overlay or draw animation signals completion.
+The orchestrator dequeues `GameEvent` objects from `dataSource.animationQueue` and controls when signal mutations happen. It returns a duration (ms), a `Promise<void>`, or `'async'` for each event — the queue pauses on `'async'` until the overlay or draw animation signals completion.
 
-Key acceleration features: AC7 queue collapse (queue > 5 non-chain events → instantly apply all but last 3), AC8 speed multiplier (0.5× when activation toggle is Off). Full `prefers-reduced-motion` support.
+Key acceleration features: AC7 queue collapse (queue > 5 non-chain events → instantly apply all but last 3, skip if chain events present), AC8 speed multiplier (0.5× when activation toggle is Off). Full `prefers-reduced-motion` support via `DuelContext.reducedMotion` signal.
 
-> See [animation-architecture-pvp.md](./animation-architecture-pvp.md) for the complete signal reference, queue processing flow, all animation types, the masking system, chain resolution sequence diagram, and `PvpChainOverlayComponent` state machine.
+> See `CLAUDE.md` for the definitive RenderedBoardStateService lock/commit model, DuelEventProcessor design, 4-manager decomposition, DuelContext, and all animation invariants.
 
 **Prompt Display Coordination:**
 ```typescript
@@ -335,7 +241,7 @@ _These items are consciously deferred. They are NOT forgotten — each has a tie
 
 | Item | Tier | Rationale for deferral |
 |------|------|----------------------|
-| Duel replay storage | — | *(Implemented — see [architecture-replay.md](architecture-replay.md))* Stores `{seed, decks, playerResponses[]}` in PostgreSQL JSONB |
+| Duel replay storage | — | *(Implemented — see §Replay Mode Extension)* Stores `{seed, decks, playerResponses[]}` in PostgreSQL JSONB |
 | WebSocket protocol versioning | — | Single developer, single client. No backward compatibility needed. |
 | Structured JSON logging | — | `console.log` + `docker logs` sufficient for friends-only scale |
 | Shared secret (internal API auth) | T2 | Docker network isolation sufficient while services co-located |
@@ -434,6 +340,21 @@ pages/pvp/
 │   ├── phase-announcement.service.ts  # Phase transition screen reader announcements
 │   ├── duel-tab-guard.service.ts      # Multi-tab prevention via BroadcastChannel API
 │   ├── debug-log.service.ts           # Server message logging for debugging
+│   ├── duel-logger.ts                 # Category-gated logger (8 categories, localStorage filter, [ANIM-TRACE])
+│   ├── duel-context.ts                # Shared context for animation managers (relativePlayer, scaledDuration, reducedMotion)
+│   ├── rendered-board-state.service.ts # Logical/rendered state split, per-zone lock/commit
+│   ├── duel-event-processor.ts        # Chain/queue state management (shared PvP + Replay)
+│   ├── chain-resolution-manager.ts    # Chain state, buffer, replay timeouts, solved count
+│   ├── draw-sequence-manager.ts       # Draw sequences, travelToHand, shuffle/confirm subsystem
+│   ├── move-animation-router.ts       # MSG_MOVE routing (15 branches), zone pre-locking
+│   ├── lp-animation-tracker.ts        # LP tracking, counter animation, pending LP commit
+│   ├── animation-data-source.ts       # Interface + shared utilities (syncAfterBoardState, peekAndDequeueMatching)
+│   ├── duel-animation-bridge.service.ts  # Bridges effects services and animation orchestrator
+│   ├── duel-connection-effects.service.ts   # Connection status effects
+│   ├── solo-mode-effects.service.ts         # Dual-connection logic for solo mode
+│   ├── duel-prompt-effects.service.ts       # Prompt lifecycle effects
+│   ├── duel-a11y-effects.service.ts         # Accessibility announcements
+│   ├── duel-loading-effects.service.ts      # Loading state management
 │   ├── pvp-board-container/            # Board layout: 2× player fields, zone element registry, XYZ indicators
 │   ├── pvp-chain-overlay/              # Visual layer: card cascade, resolve-exit, board pause
 │   ├── pvp-lp-badge/                   # LP counter with rAF interpolation
@@ -477,10 +398,14 @@ Each step has a single owner file. No file bypasses the chain.
 
 ### Animation Patterns
 
-**Three-Layer Separation:**
-- `DuelConnection`: enqueues `GameEvent` objects, manages `activeChainLinks` + `chainPhase` signals, handles pending chain entry commit logic. Never triggers visual animations directly.
-- `AnimationOrchestratorService`: sole owner of animation timing. Dequeues events, calls `DuelConnection.applyChain*()` mutations at the right moment, controls `animatingZone`/`animatingLpPlayer` signals, manages buffer/replay during chain resolution, coordinates with overlay via `chainOverlayReady`.
+**Four-Layer Separation:**
+- `DuelEventProcessor`: shared chain/queue state management (unified for PvP and Replay). Enqueues `GameEvent` objects, manages `activeChainLinks` + `chainPhase` signals, handles pending chain entry commit logic. Never triggers visual animations directly.
+- `RenderedBoardStateService`: separates logical state (truth, ahead of animations) from rendered state (what Angular sees). Per-zone lock/commit model replaces the former masking system.
+- `AnimationOrchestratorService`: thin coordinator delegating to 4 managers (`ChainResolutionManager`, `DrawSequenceManager`, `MoveAnimationRouter`, `LpAnimationTracker`) via shared `DuelContext`. Dequeues events, controls animation timing, coordinates with overlay via `chainOverlayReady`.
 - Visual components (`PvpChainOverlayComponent`, `PvpBoardContainerComponent`, `PvpLpBadgeComponent`): react to signals only. Never dequeue or mutate game state.
+
+**`AnimationDataSource` Interface (`animation-data-source.ts`):**
+The abstraction contract between the orchestrator and concrete implementations (`DuelWebSocketService` for PvP, `ReplayDuelAdapter` for replay). Exposes: `renderedBoardState`, `animationQueue`, `activeChainLinks`, `chainPhase`, `pendingPrompt` signals; `dequeueAnimation()`, `removeAnimationAt()`, `prependToQueue()`, `setAnimating()`, `applyChainSolving/Solved/End()` methods. Queue entries are `QueueEntry = GameEvent | QueueDirective` where directives are: `group` (parallel staggered events), `barrier` (wait for travels), `lp` (LP animation), `batch-end` (completion sentinel), `await-signal` (pause until signal). Shared utility functions in the same file: `syncAfterBoardState()` (BOARD_STATE sync decision — used by both adapters), `peekAndDequeueMatching()` (find and remove matching event from queue).
 
 **Async Overlay Contract:**
 ```
@@ -491,16 +416,20 @@ MSG_CHAIN_SOLVED → orchestrator pauses, returns 'async'
   → Overlay: chainOverlayReady = true
   → Orchestrator resume effect detects ready → resumes queue
 ```
-The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()` which the overlay invokes during the board-pause window to trigger travel animations on the visible board. All other communication is unidirectional via signals.
+The overlay NEVER calls orchestrator methods — except `replayBuffer()` which the overlay invokes during the board-pause window to trigger travel animations on the visible board. All other communication is unidirectional via signals.
 
 **Buffer & Replay (PvP-C):**
-- When `_insideChainResolution = true`, board-changing events (`MSG_MOVE`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`) are pushed to `_bufferedBoardEvents[]` instead of processed.
-- On `MSG_CHAIN_SOLVED`, the overlay calls `replayBufferedEvents()` during the board-pause window (after fade-out).
-- Replay executes in two sequential beats (each internally parallel):
-  - Beat 1 (zones): all `CardTravelService.travel()` calls fire simultaneously with 50ms stagger
-  - Beat 2 (LP): all LP interpolations fire simultaneously
-- Board pause duration = `max(Beat 1 durations) + (count-1) × stagger + Beat 2 duration` (dynamic, not fixed)
-- If no board-changing events buffered, skip pause entirely (same as current `chainOverlayBoardChanged = false` behavior)
+- When `ChainResolutionManager.isResolving` is true, board-changing events (all 11 types in `BOARD_CHANGING_EVENTS`: `MSG_MOVE`, `MSG_FLIP_SUMMONING`, `MSG_CHANGE_POS`, `MSG_SET`, `MSG_DAMAGE`, `MSG_RECOVER`, `MSG_PAY_LPCOST`, `MSG_DRAW`, `MSG_SHUFFLE_HAND`, `MSG_CONFIRM_CARDS`, `MSG_SHUFFLE_DECK`) are buffered by `ChainResolutionManager.bufferIfResolving()` instead of processed.
+- On `MSG_CHAIN_SOLVED`, the overlay calls `replayBuffer()` during the board-pause window (after fade-out). Buffered events are re-injected into the main animation queue via `prependToQueue()` with queue directives — they are processed by the same queue loop as normal events.
+- Beat structure via directives:
+  - `group` (zones): MSG_MOVE + MSG_DRAW travel animations with 50ms stagger
+  - Sequential: MSG_FLIP_SUMMONING, MSG_CHANGE_POS, MSG_SET (state events)
+  - `barrier`: wait for all travel animations to land + `commitUnlocked()`
+  - Sequential: MSG_CONFIRM_CARDS, MSG_SHUFFLE_HAND, MSG_SHUFFLE_DECK
+  - `lp` directives: LP events
+  - `batch-end`: resolve overlay's Promise
+  - `await-signal(chainOverlayReady)`: pause queue until overlay re-shows
+- If no board-changing events buffered, skip pause entirely (same as `chainOverlayBoardChanged = false` behavior)
 
 **Card Travel (PvP-C):**
 - Replaces in-place glow effects for summon/destroy events. `pvp-summon-flash` and `pvp-destroy-flash` CSS keyframes are removed.
@@ -508,18 +437,32 @@ The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()`
 - `pvp-flip-flash` and `pvp-activate-flash` remain unchanged (in-place by nature)
 - Token destruction: dissolve in-place (fade + scale down), no travel — tokens don't go to GY
 
-**Event-Specific Travel Behavior:**
+**Event-Specific Travel Behavior (`MoveAnimationRouter` — 15 branches via `MoveContext`):**
+
+| Branch | Source → Destination | Details |
+|--------|---------------------|---------|
+| `overlayDetach` | XYZ parent → GY | Slide-out from stacked indicator, then standard travel |
+| `summonToField` | Hand/Deck/Extra/GY/Banished → MZ/SZ | Face visible on arrival, slam landing style |
+| `tokenDissolve` | MZ → (removed) | Dissolve in-place (fade + scale down), no travel |
+| `leaveFieldDestroy` | MZ/SZ → GY/Banished | Pre-destroy effect, card flips to back, red departure glow |
+| `leaveFieldNonDestroy` | MZ/SZ → GY/Banished/Extra | No destructive glow, soft landing |
+| `bounceToHand` | MZ/SZ → Hand | No destructive glow, travelToHand |
+| `returnToDeck` | MZ/SZ → Deck | Card flips to back, deck pulses on arrival |
+| `fieldToField` | MZ → MZ, SZ → SZ | Direct travel, neutral glow |
+| `discardFromHand` | Hand → GY/Banished | Discard glow, soft landing |
+| `handToDeck` | Hand → Deck | Card flips to back |
+| `deckOrExtraToPile` | Deck/Extra → GY/Banished | Flip during travel, soft/banish landing |
+| `pileToHand` | GY/Banished/Extra → Hand | travelToHand with highlight |
+| `pileToDeck` | GY/Banished/Extra → Deck | Card flips to back |
+| `pileToPile` | GY/Banished/Extra → GY/Banished/Extra | Neutral glow, soft landing |
+| `fallback` | (any unmatched) | Catch-all for edge cases |
+
+**Additional non-MSG_MOVE travel behavior:**
 
 | Event | Source → Destination | Details |
 |-------|---------------------|---------|
-| MSG_MOVE summon | Hand/Deck/Extra → MZ/SZ | Face visible on arrival, green impact glow |
-| MSG_MOVE destroy | MZ/SZ → GY/Banished | Card flips to back during travel, red departure glow |
-| MSG_MOVE bounce | MZ/SZ → Hand | No destructive glow, softer travel arc |
-| MSG_MOVE return to deck | MZ/SZ → Deck | Card flips to back, deck pulses on arrival |
-| MSG_MOVE field-to-field | MZ → MZ, SZ → SZ | Direct travel, neutral glow |
 | MSG_DRAW | Deck → Hand | Card back visible during travel (promoted from no-op) |
-| MSG_SHUFFLE_HAND | Deck zone in-place | Fan-out/fan-in pseudo-elements (~250ms) |
-| XYZ material detach | XYZ parent → GY | Slide-out from stacked indicator, then standard travel |
+| MSG_SHUFFLE_HAND | Hand in-place | FLIP animation to new positions (~250ms) |
 
 **Stagger for Parallel Travels:**
 - ~50ms stagger between each card's departure (e.g., Raigeki → 5 destroys)
@@ -532,27 +475,27 @@ The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()`
 - `.emz-slot` overflow changed from `hidden` to `visible` (prevents clipping on EMZ-positioned XYZ monsters)
 
 **LP Tracking:**
-- Orchestrator maintains private `trackedLp: [player, opponent]` — synced to board state when queue is empty
+- `LpAnimationTracker` maintains `trackedLp: [player, opponent]` — synced to board state when queue is empty via `commitAll()`. LP is excluded from auto-sync in `mergeUnlockedZones()` and committed explicitly via `commitLp()` or `commitAll()`.
 - `animatingLpPlayer` signal carries interpolation metadata (`fromLp`, `toLp`, `durationMs`)
 - `PvpLpBadgeComponent` uses `requestAnimationFrame` for smooth counter interpolation
 
 **Acceleration Features:**
-- AC5 (auto-resolve): ≥3 chain links solved without user prompt → `chainAccelerated = true` → halve all animation durations. Overlay buffers announcements, announces "Chain of N links resolved" on chain end.
-- AC7 (queue collapse): > 5 queued events → instantly apply all but last 3 (LP tracking updated, no visual animation). Skip collapse if chain resolution events present in queue.
+- ~~AC5 (auto-resolve): ≥3 chain links solved without prompt → halve animation durations~~ *(not implemented — deferred)*
+- AC7 (queue collapse): > 5 queued events → instantly apply all but last 3 (LP tracking updated, no visual animation). Skip collapse if chain resolution events or queue directives present in queue.
 - AC8 (speed multiplier): activation toggle `off` → `speedMultiplier = 0.5` applied to all `setTimeout` durations in orchestrator. Card travel minimum floor: 200ms even after multiplier.
 
 **Timing & Duration Reference:**
 
-| Animation | Normal | Accelerated (AC5/3+ chain) | Reduced Motion |
+| Animation | Normal | With speed multiplier (AC8) | Reduced Motion |
 |-----------|--------|----------------------------|----------------|
-| Card travel (Lift→Travel→Land) | 400ms | 250ms (min 200ms floor) | Instant (no travel) |
-| Stagger between parallel cards | 50ms | 30ms | 0ms |
-| LP counter interpolation | CSS `--pvp-transition-lp-counter` | Same × speed multiplier | 0ms |
+| Card travel (Lift→Travel→Land) | 400ms | 200ms (min floor) | Instant (no travel) |
+| Stagger between parallel cards | 50ms | 25ms | 0ms |
+| LP counter interpolation | CSS `--pvp-transition-lp-counter` | Same × multiplier | 0ms |
 | Chain overlay pulse glow | 600ms | 300ms | 300ms |
 | Chain overlay exit | 600ms | 300ms | 300ms |
-| Chain overlay board pause | Dynamic (from buffer) | Same × speed multiplier | 0ms |
-| Deck shuffle (fan-out/fan-in) | 250ms | 150ms | Instant |
-| XYZ detach slide-out | 200ms | 120ms | Instant |
+| Chain overlay board pause | Controlled by queue directives (`batch-end` + `await-signal`) | Same × multiplier | 0ms |
+| Deck shuffle (fan-out/fan-in) | 250ms | 125ms | Instant |
+| XYZ detach slide-out | 200ms | 100ms | Instant |
 | MSG_CHAINING activate glow | 1400ms | 700ms | 700ms |
 
 **Accessibility (`prefers-reduced-motion: reduce`):**
@@ -570,15 +513,24 @@ The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()`
 - `message-filter.ts`: Pure functions, no error handling needed (stateless). Unknown message type → `null` (DROP + log)
 - Angular `DuelWebSocketService`: WebSocket `onerror`/`onclose` → update `connectionStatus` signal, attempt reconnection
 
+**Worker Lifecycle (spawn → terminate):**
+- **Spawn:** `new Worker('./duel-worker.ts')` on room creation (one worker per duel)
+- **Normal end (MSG_WIN/DRAW):** `handleDuelEnd()` sets `endedAt`, clears timers, starts 5-minute rematch window. Worker stays alive for potential rematch
+- **Rematch expiry:** After 5 min with no rematch → `cleanupDuelSession()` + `safeTerminateWorker()`
+- **Both disconnect:** Preservation timer starts → after timeout → `cleanupDuelSession()` + `safeTerminateWorker()`
+- **Unexpected crash:** Worker `exit` event with no `endedAt` → immediate `cleanupDuelSession()`
+- **Double-terminate guard:** `workerTerminated` flag on session prevents calling `worker.terminate()` twice; only the first caller increments `totalDuelsServed`
+- **Replay workers:** Watchdog timeout (`REPLAY_WORKER_WATCHDOG_MS`), explicit `removeAllListeners()` + `terminate()` on completion/error
+- **Edge case — client crash after DUEL_END:** Room stays `ACTIVE` until rematch timeout (5 min) or orphaned room cleanup (Spring Boot `RoomCleanupScheduler`). Acceptable: preserves state for reconnection.
+
 **Loading States:**
 - Angular lobby: standard loading spinner during room fetch/creation
 - Angular duel: `connectionStatus` signal drives the UI (`connected | reconnecting | lost`)
 - No global loading state — each context manages its own
 
-**Logging (MVP):**
-- `console.error()` for errors (worker crash, WebSocket failure, data integrity)
-- `console.log()` for info (duel created, player joined, duel ended)
-- No prescribed format — `docker logs` captures everything. Structured logging deferred to T2.
+**Logging:**
+- **Duel Server:** `console.error()` for errors, `console.log()` for info. Captured by `docker logs`.
+- **Angular — `DuelLogger` (component-scoped):** Category-gated logging with 8 categories: `QUEUE`, `MOVE`, `DRAW`, `CHAIN`, `SHUFFLE`, `REPLAY`, `LP`, `PROC`. Categories enabled/disabled at runtime via `localStorage` key `duel-log-categories` (comma-separated). `logger.warn()` always fires (deadlocks, timeouts). Structured `[ANIM-TRACE]` trace points log commit mode, locked zones, queue length, and chain phase per animation event — filter on `[ANIM-TRACE]` for the complete animation flow in one linear log.
 
 ### Enforcement Checklist
 
@@ -594,10 +546,10 @@ The overlay NEVER calls orchestrator methods — except `replayBufferedEvents()`
 8. Route all worker communication through typed `postMessage` — never shared memory or global state
 9. Keep `ws-protocol.ts` self-contained — zero internal imports (it is copied to Angular, cannot depend on server internals)
 10. Never mutate game state from visual components — only `DuelConnection` mutates chain/board state, only `AnimationOrchestratorService` controls timing
-11. Overlay ↔ orchestrator communication is unidirectional via signals — overlay NEVER calls orchestrator methods except `replayBufferedEvents()` (board-pause replay trigger)
+11. Overlay ↔ orchestrator communication is unidirectional via signals — overlay NEVER calls orchestrator methods except `replayBuffer()` (board-pause replay trigger via queue directives)
 12. Card travel minimum duration floor: 200ms after speed multiplier — below this threshold travel is imperceptible
 13. All card travel floating elements MUST be cleaned up on animation completion — leaked DOM elements accumulate and degrade performance
-14. Buffer & replay ONLY during chain resolution (`_insideChainResolution = true`) — normal gameplay events process immediately
+14. Buffer & replay ONLY during chain resolution (`ChainResolutionManager.isResolving`) — normal gameplay events process immediately
 15. Beat ordering is fixed: Beat 1 (zone travels) completes before Beat 2 (LP) starts — LP changes must appear after the card movement that caused them
 
 **Cross-Reference:** `duel-ws.types.ts` (Angular) is the client-side counterpart of `ws-protocol.ts` (duel server). These two files define opposite ends of the same protocol boundary (ADR-2). The server file is the source of truth.
@@ -849,6 +801,191 @@ spring-boot:
 - `PhaseAnnouncementService` — announces phase transitions via screen reader (accessibility)
 - `DuelTabGuardService` — prevents multiple browser tabs from controlling the same duel via BroadcastChannel API
 
+## Replay Mode Extension
+
+_Formerly `architecture-replay.md`. The Replay Mode extends PvP — it does not introduce new microservices or communication patterns. This section covers replay-specific decisions only; shared infrastructure (auth, protocol format, animation pipeline, worker threads) is defined in the PvP sections above._
+
+### Replay Requirements Overview
+
+See prd-pvp.md FR26-FR45 and NFR11-NFR17 for replay requirements. Key constraints driving architectural decisions below:
+
+- FR34/FR35 removed by UX spec — seek/scrub via pre-computed client-side states replaces variable-speed fast-forward and rewind
+- Fork is reversible (UX amendment to one-way decision)
+- Navigation is 100% client-side via pre-computed board states (ADR-7 replaces ADR-3)
+
+### Replay Technical Constraints
+
+- **OCGCore has no reverse:** Step-back requires replaying all WS messages from start. **Mitigated by ADR-7:** all board states pre-computed at load time — step-back is client-side index decrement (<1ms)
+- **OCGCore has no save/restore:** Fork creates a new WASM instance and replays messages from scratch (~1-2s). Pre-computed states are read-only snapshots, not resumable instances
+- **Lua script divergence accepted:** Replay uses current scripts, not original duel scripts (PRD accepted risk). `scriptsHash` + `ocgcoreVersion` enable detection via `divergenceWarning` flag
+- **Crash = no replay:** Only duels completing normally produce a replay (FR1 accepted limitation). DISCONNECT/TIMEOUT/SURRENDER DO produce replays
+
+### Replay Architectural Decisions
+
+**Data Architecture (ADR-R1 — Storage Format):**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Storage format | `{seed, decks, playerResponses[]}` — engine inputs. `seed` is 4-element `List<String>`. `decks` has `main: List<Long>` and `extra: List<Long>` per player (no side deck) | Compact (~32KB/duel), deterministic (POC: 568 identical messages), omniscient view natural (no filter bypass), aligned with server-side playback. Client-side playback closed — documented decision |
+| Response capture | `setResponse()` wrapper — never call `setResponse` directly during PvP capture | Single capture point guarantees completeness including auto-responses |
+| Response format | `playerResponses: Array<{data: Object}>` | Array position IS the index. Compact, inspectable in DB |
+| Replay metadata | `{playerUsernames, deckNames, turnCount, result, date, scriptsHash, ocgcoreVersion}` | Enables match history queries without deserializing JSONB. Divergence detection via scriptsHash/ocgcoreVersion |
+| Storage location (ADR-R5) | PostgreSQL via Spring Boot (`replay` table, JSONB) | Existing infrastructure, Flyway migrations |
+| Capture flow | Worker accumulates → duel end → `postMessage(replayData)` → main thread `POST /api/replays` → Spring Boot → THEN worker cleanup | Tri-service pattern. Duel Server stays DB-free |
+| TTL retention | Spring Boot scheduled task purges replays older than configurable period | Same pattern as `RoomCleanupScheduler` |
+| Truncated replays | DISCONNECT/TIMEOUT duels produce shorter replays. Timeline shows actual turns played | OCGCore processes what it has |
+
+**Authentication & Security:**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Replay access | Admin-only route guard during MVP. API ownership check (player1 or player2). `GET /api/internal/replays/:id` internal-only | Personal debugging tool. Prevents cross-player access |
+| Omniscient view | Message filter with `omniscient: true` flag — skip sanitization, keep translation | Single code path. Replay sees everything |
+| WebSocket auth | Same one-shot JWT at handshake as PvP | Reuse existing pattern |
+
+**API & Communication (ADR-R2 — Protocol Extension):**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Client→Server types | 3 explicit: `REPLAY_FORK`, `REPLAY_FORK_CONTINUE`, `REPLAY_FORK_CANCEL`. `REPLAY_LOAD` implicit via WS URL query param | Pre-computed states eliminate server-driven playback commands |
+| Server→Client types | 4: `REPLAY_BOARD_STATES` (batched per turn), `REPLAY_METADATA` (at handshake, includes `divergenceWarning`), `REPLAY_ERROR`, `REPLAY_FORK_READY` (fork tokens) | One WS message per turn (~50-200KB). 30-turn duel = 30 messages. Splits at 512KB |
+| Replay data flow | Angular sends `replayId` at WS handshake → Duel Server fetches from Spring Boot via `GET /api/internal/replays/:id` → creates worker | Same pattern as PvP deck relay |
+| Match history REST | `GET /api/replays` (paginated, metadata only, `CustomPageable<ReplayDTO>`). No individual replay endpoint for Angular — metadata via WS `REPLAY_METADATA` (supports deep links) | Standard REST |
+| Divergence handling | Worker detects `MSG_RETRY` during replay = divergence → `REPLAY_ERROR` → stops cleanly | Not invalid input, but script/engine divergence |
+
+**Frontend Architecture:**
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Board display | `PvpBoardContainerComponent` with `readOnly` input signal — agnostic of PvP vs replay | No action menus, no prompts. Animations and inspector remain active |
+| Replay page | `ReplayPageComponent` hosts `TimelineBarComponent` + `TransportBarComponent`. Signals: `promptMode`, `animationsEnabled`, `perspectiveIndex`, `logDetail`, `pausedAtBoundary`, `isPlaying`. Preferences in `localStorage` | Fork via route navigation to `/pvp/duel/fork-{replayId}` — replay page destroyed |
+| Replay page as controller | Holds full `boardStates[]`. Derives views for children. `currentIndex` signal drives all child updates. Playback engine: `startPlayback()` → `scheduleNext()` → `doStepForward()` with `feedAnimatedTransition()` | Central controller — children receive only what they need |
+| Timeline bar | `TimelineBarComponent` — receives `turns[]`, `currentIndex`, `computedUpTo`, `totalEvents`, `boardStates` (for hover preview), `ownPlayerIndex`. Emits `seekTo(index)`, `scrubbing(index)`. 3 zoom levels, chain segment grouping | Board preview on hover uses boardStates directly |
+| Transport bar | `TransportBarComponent` — separate `output<void>()` per action. Inputs for display state | One output per action (Angular signal pattern) |
+| Replay state | `ReplayConnectionService` (scoped) receives pre-computed states at load, manages WS for load + fork only. `ReplayDuelAdapter` implements `AnimationDataSource` — plugs into orchestrator identically to `DuelWebSocketService`. **Signals:** `busy`, `activePrompt`, `activeResponse`, `activePlayer`, `activeHint`, `activeConfirmedCards`, `activeTimestamp`. **Navigation:** `feedTransition()`, `feedTransitionPhased()`, `jumpToState()`, `collapseRemainingSteps()`, `resumeAfterPrompt()`, `abort()`. **Internal step model:** `AnimateStep | DecideStep` (`ReplayStep`). Transitive dependency: `DuelWebSocketService` provided for `PvpPromptDialogComponent` reuse | WS only for data loading and fork. AnimationDataSource ensures parity |
+| Match history | `MatchHistoryPageComponent` + `ReplayService` (`GET /api/replays` paginated, `DELETE /api/replays/{id}`) | `CustomPageable<ReplayDTO>` |
+
+### Pre-Computed Client-Side Navigation (ADR-7 — replaces ADR-3)
+
+**Context:** Original ADR-3 specified server-driven navigation (~500ms per command). UX identified the primary interaction is temporal navigation (seek + step) — needs instant, friction-free movement including drag-scrubbing with live board state feedback.
+
+**Decision:** Pre-compute all board states at replay load time. Worker replays all `playerResponses` through OCGCore WASM in silent mode, capturing snapshots per response. Complete array sent progressively (per turn). All navigation 100% client-side.
+
+**Pre-computed state format:**
+```typescript
+interface PreComputedState {
+  boardState: BoardStatePayload;
+  events: ServerMessage[];
+  label: string;
+  responseCount: number;
+  decisions?: DecisionMoment[];
+  chainIndex?: number;
+}
+
+interface DecisionMoment {
+  prompt: ServerMessage;
+  response: { data: unknown; timestamp?: string };
+  player: Player;
+  hint?: { hintType: number; value: number; cardName: string; hintAction: string };
+  confirmedCards?: CardInfo[];
+  boardState?: BoardStatePayload;
+}
+```
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Thread model | 1 worker per replay, mode `'replay'`. **Freed after pre-computation** | Alive only ~2-10s (pre-compute) and ~1-2s (fork). ~2MB per worker |
+| Pre-computation | Worker replays all responses, captures `{boardState, events[], label}` per response, sends per turn via `REPLAY_BOARD_STATES`. Turn 0 ("Setup") sent first | Progressive: client navigates already-computed turns while remaining compute in background |
+| Navigation | 100% client-side. Index into `BoardState[]`. Seek = change index (<1ms). Scrub = emit index during drag | Eliminates all server round-trips |
+| Board preview | Scaled `PvpBoardContainerComponent` (~200px wide) in popover on timeline hover | Data already in memory |
+| Animation | Step/play: animate using captured `events[]`. Scrub/seek: direct board state injection | Events captured during pre-compute |
+| Idle timeout | Not needed. Worker freed after pre-computation. WS stays open for fork only | Activity ping removed |
+
+### Fork Architecture (ADR-6 — amended: reversible fork)
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Fork mechanism | New worker created, replays from scratch to fork point, switches to solo mode | ~1-2s cost. Pre-computed states are read-only, not resumable WASM |
+| Replay data caching | `Map<replayId, replayData>` in Duel Server (~32KB). Populated at REPLAY_LOAD, reused at REPLAY_FORK. 10-min TTL eviction | Avoids redundant Spring Boot fetch |
+| Main thread transition | Server sends `REPLAY_FORK_READY` with tokens → `ReplayForkService` navigates to `/pvp/duel/fork-{replayId}` | Route navigation, not in-page mode switch |
+| Fork sanity check | Compare LP, card count, turn, phase, chain state between pre-computed and reconstructed WASM state. Warning if mismatch, don't block | Catches divergence before user invests time |
+| Fork direction | **Reversible.** Return navigates to `/pvp/replay/:replayId?seekTo={forkIndex}`. Board states re-pre-computed on return | Simpler than in-page mode switching |
+
+### Replay Infrastructure
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Deployment | Same Docker compose, no new containers | Extends existing services |
+| Concurrent replay sessions | Max 3 workers (configurable). Additional requests queued. Peak ~6MB | Prevents memory pressure |
+| DB migration | Flyway `replay` table (id, player1_id, player2_id, metadata JSONB, replay_data JSONB, created_at) | Standard Spring Boot |
+
+### Replay Implementation Patterns
+
+**Worker Modes** (single `duel-worker.ts` with 3 modes): `pvp` (live, filter active, captures responses), `replay` (silent pre-computation, omniscient, worker freed after), `solo` (dual WS, omniscient). Mode transition: `replay` → `solo` (fork). After fork, response capture stops.
+
+**setResponse Wrapper (MANDATORY in PvP capture, NOT in solo):**
+```typescript
+function capturedSetResponse(duel: OcgDuel, response: Uint8Array, responses: CapturedResponse[]): void {
+  responses.push({ data: Array.from(response) });
+  duel.setResponse(response);
+}
+```
+
+**Message Filter translate() → sanitize() (MANDATORY):** Two-phase structure. `omniscient: true` skips `sanitize()`. ONE code path for translation. Anti-pattern: do NOT intermingle translation and sanitization.
+
+**AnimationDataSource Contract:** `ReplayDuelAdapter` implements same interface as `DuelWebSocketService`. Board state sync tiers, replay normal flow (uses `syncRendered()`, NOT `commitAll()`), `assertNoLocks()` at transition boundaries, LP commit discipline — all defined in `CLAUDE.md`.
+
+**DuelEventProcessor:** Both `DuelConnection` and `ReplayDuelAdapter` delegate to their own instance. Replay preserves chain state between transitions via `resetProcessorForTransition()` (resets queue only). PvP has no "transition" concept.
+
+**Spring Boot Entities:** Table `replay` (lowercase, singular). `ReplayDTO` single DTO with nullable `replayData`. `ReplayMapper` (MapStruct): `toDto()` (public, no replayData) + `toDetailDto()` (internal, with replayData). Anti-pattern: do NOT expose `replay_data` in public REST API.
+
+**Fork Transition:** `ReplayForkService` caches `boardStates[]` and `forkEventIndex`, sends `REPLAY_FORK`, navigates to `/pvp/duel/fork-{replayId}` on `REPLAY_FORK_READY`. `DuelPageComponent` detects fork via `fork=true` query param — skips surrender confirmation on leave. Return: `/pvp/replay/:replayId?seekTo={forkEventIndex}`, fresh load + re-pre-computation.
+
+**Error Handling:** Divergence at load (scriptsHash/ocgcoreVersion mismatch) → non-blocking snackbar warning. `MSG_RETRY` during pre-computation → `REPLAY_ERROR`, stop cleanly. OCGCore crash → watchdog 30s → `REPLAY_ERROR`. `MSG_RETRY` during fork → sanity check warning (Continue/Cancel).
+
+### Replay Project Structure
+
+**Duel Server (Modified):**
+`server.ts` (replay WS routing), `ws-protocol.ts` (REPLAY_* types), `message-filter.ts` (translate/sanitize + omniscient), `duel-worker.ts` (3 modes + capture + pre-computation + fork), `ocg-scripts.ts` (getScriptsHash), `types.ts` (ReplaySession, WorkerMode)
+
+**Spring Boot (New):**
+`ReplayController.java` (GET/POST/DELETE), `ReplayService.java` (CRUD + TTL), `ReplayRepository.java`, `Replay.java` (entity), `ReplayDTO.java`, `DuelResult.java` (9 values with `flip()`), `ReplayMapper.java`, `RoomCleanupScheduler.java` (modified: +replay TTL), Flyway migration
+
+**Angular (New):**
+`match-history-page/` (paginated mat-table), `pvp/replay/` (`replay-page.component`, `replay-duel-adapter.ts`, `replay-fork.service.ts`, `replay-connection.service.ts`, `timeline-bar/`, `transport-bar/`), `replay.service.ts` (REST, providedIn root), `replay-ws.types.ts`
+
+**Modified:** `app.routes.ts` (+/pvp/history, +/pvp/replay/:replayId), `fr.json`/`en.json` (i18n keys)
+
+### Replay Architectural Boundaries
+
+| Boundary | Route | Direction | Purpose |
+|----------|-------|-----------|---------|
+| Public REST | `GET /api/replays` | Angular → Spring Boot | Match history (paginated, metadata only) |
+| Public REST | `DELETE /api/replays/{id}` | Angular → Spring Boot | Delete replay (ownership verified) |
+| Internal REST | `POST /api/replays` | Duel Server → Spring Boot | Persist at duel end |
+| Internal REST | `GET /api/internal/replays/:id` | Duel Server ← Spring Boot | Fetch for playback |
+| Replay WS | `ws://duel-server?mode=replay&replayId=X` | Angular ↔ Duel Server | Load (pre-computed states ←) + fork (→) |
+
+### Replay FR → Structure Mapping
+
+| FR | Files |
+|----|-------|
+| FR1-2 (Capture) | `duel-worker.ts` (wrapper), `server.ts` (POST on duel end), `ReplayController.java`, `ReplayService.java` |
+| FR3-4 (Match History) | `match-history-page.component.ts`, `replay.service.ts`, `ReplayController.java` |
+| FR5-8, FR11 (Playback) | `duel-worker.ts` (pre-computation), `replay-page.component.ts`, `timeline-bar.component.ts`, `transport-bar.component.ts` |
+| FR12-15 (Display) | `PvpBoardContainerComponent` (readOnly), `message-filter.ts` (omniscient), `replay-page.component.ts` |
+| FR16-18 (Fork) | `duel-worker.ts` (reconstruction), `server.ts` (REPLAY_FORK handler), `replay-fork.service.ts`, `duel-page.component.ts` (fork mode) |
+| FR19-20 (Retention/Deletion) | `RoomCleanupScheduler.java`, `ReplayService.java`, `replay.service.ts` |
+
+### Replay Validation Results
+
+- **17 of 19 FRs architecturally supported** (FR9/FR10 removed by UX spec)
+- **All 7 NFRs addressed** — NFR1 (<1ms via pre-computed states), NFR2 (51ms POC), NFR4 (deterministic), NFR5 (fork sanity check)
+- **7 ADRs documented** including ADR-7 amendment from UX spec
+- **POC validated:** deterministic replay (568 identical messages), seek (51ms avg), fork (functional), storage (~32KB/duel)
+- **Refactoring prerequisites completed:** (1) `PvpBoardContainerComponent` receives state via input signals, (2) `message-filter.ts` separates translate/sanitize, (3) 6-phase animation pipeline cleanup
+- **UX amendments:** ADR-7 replaces ADR-3 (pre-computed vs server-driven), ADR-6 amended (reversible fork), FR9/FR10 removed, protocol simplified (9→3 client types), worker freed after pre-computation, separate Timeline/Transport components
+
 ## Architecture Validation Results
 
 ### Coherence Validation ✅
@@ -877,50 +1014,9 @@ Key compatibility confirmations:
 
 ### Requirements Coverage Validation ✅
 
-**Functional Requirements Coverage (25/25):**
+All 25 FRs are architecturally supported. See FR-to-Structure Mapping in Project Structure for file-level traceability.
 
-| FR | Architectural Support | Primary Files |
-|----|----------------------|---------------|
-| FR1 (Room creation) | Spring Boot REST + Angular lobby | `RoomController.java`, `lobby-page.component.ts` |
-| FR2 (Deck validation) | Spring Boot validates before room entry | `RoomService.java` |
-| FR3 (Browse/join rooms) | REST API + lobby page | `RoomController.java`, `lobby-page.component.ts` |
-| FR4 (Auto-start) | Spring Boot triggers duel creation on join | `RoomService.java`, `DuelServerClient.java` |
-| FR5 (Surrender) | WebSocket `SURRENDER` message type | `ws-protocol.ts`, `server.ts` |
-| FR6 (Disconnection) | 60s grace period, snapshot reconnection | `server.ts` (session mgmt), `duel-websocket.service.ts` |
-| FR7 (Win/draw) | OCGCore `DUEL_END` + client-mediated room update | `duel-worker.ts`, `POST /api/rooms/:id/end` |
-| FR8 (Turn structure) | Delegated to OCGCore | `duel-worker.ts` |
-| FR9 (Main Phase actions) | `SELECT_IDLECMD` → distributed UI: cards glow, tap opens inline action menu | `pvp-board-container.component.ts`, card action menu (inline template) |
-| FR10 (Battle Phase actions) | `SELECT_BATTLECMD` → distributed UI: attackable monsters glow, tap opens attack target menu | `pvp-board-container.component.ts`, card action menu (inline template) |
-| FR11 (Player prompts) | 3 prompt components covering SELECT_YESNO, SELECT_CARD, SELECT_PLACE, etc. | `prompts/*.component.ts` |
-| FR12 (Chain delegation) | OCGCore resolves chains automatically | `duel-worker.ts` |
-| FR13 (Rule enforcement) | OCGCore is sole authority | `duel-worker.ts` + `message-filter.ts` |
-| FR14 (Two-player display) | `PlayerFieldComponent` ×2 (own + mirrored) | `pvp-board.component.ts`, `player-field.component.ts` |
-| FR15 (Private info hiding) | Whitelist filter + default DROP | `message-filter.ts` |
-| FR16 (LP display) | `duelState` signal includes LP | `duel-websocket.service.ts` |
-| FR17 (Chain visualization) | Three-layer animation architecture + async overlay contract | `animation-orchestrator.service.ts`, `pvp-chain-overlay.component.ts`, `duel-connection.ts` |
-| FR18 (Card inspection) | Reuse existing card inspector | Shared `components/` |
-| FR19 (Turn indicator) | `duelState` signal includes phase/turn | `duel-page.component.ts` |
-| FR20 (Turn timer) | `timerState` signal, server-authoritative | `server.ts`, `duel-websocket.service.ts` |
-| FR21 (Inactivity timeout) | Server-side 120s watchdog. `INACTIVITY_WARNING` sent 20s before timeout. Client sends `ACTIVITY_PING` to reset timer. | `server.ts` |
-| FR22 (Visual feedback) | Card travel animations (PvP-C) + buffer/replay during chain + LP interpolation | `animation-orchestrator.service.ts`, `card-travel.service.ts`, `pvp-board-container.component.ts`, `pvp-lp-badge.component.ts` |
-| FR23 (Click-based interaction) | Prompt components (not drag & drop) | `prompts/*.component.ts` |
-| FR24 (Duel result screen) | Duel result state in `duel-page.component.ts` | `duel-page.component.ts` |
-| FR25 (Activation toggle) | Client-side filter (Auto/On/Off) on optional prompts, per-duel state | `pvp-activation-toggle.component.ts`, `duel-websocket.service.ts` |
-
-**Non-Functional Requirements Coverage (10/10):**
-
-| NFR | Architectural Support |
-|-----|----------------------|
-| NFR1 (< 500ms round-trip) | WebSocket direct connection, OCGCore < 10ms processing, worker thread isolation prevents blocking |
-| NFR2 (Stable WebSocket) | Native `ws` ping/pong, `connectionStatus` signal, reconnection handling |
-| NFR3 (50 concurrent duels) | Worker thread per duel, ~2MB WASM per instance, main thread remains responsive |
-| NFR4 (60s reconnection) | Session state in `server.ts`, snapshot via `duelQueryField` + `duelQuery` |
-| NFR5 (4h state preservation) | Worker keeps running while both disconnected, 4h cleanup timer |
-| NFR6 (Server authority) | OCGCore in worker thread, whitelist filter, default DROP policy |
-| NFR7 (Response validation) | OCGCore validates all responses (`MSG_RETRY` on invalid), `awaitingResponse` guard |
-| NFR8 (JWT protection) | One-shot JWT at WebSocket handshake, Spring Boot JWT for REST routes |
-| NFR9 (Browser compatibility) | Angular 19 (modern browsers), landscape lock for mobile |
-| NFR10 (AGPL-3.0) | Duel server source code published (LICENSE file required) |
+All 10 NFRs are addressed via the mechanisms defined in Core Architectural Decisions.
 
 ### Implementation Readiness Validation ✅
 
@@ -976,34 +1072,7 @@ Key compatibility confirmations:
 
 ### Architecture Completeness Checklist
 
-**✅ Requirements Analysis**
-
-- [x] Project context thoroughly analyzed (tri-service architecture, 25 FRs, 10 NFRs)
-- [x] Scale and complexity assessed (~20-25 components, high complexity)
-- [x] Technical constraints identified (OCGCore sync mode, ESM patch, anti-cheat)
-- [x] Cross-cutting concerns mapped (8 concerns documented in Step 1)
-
-**✅ Architectural Decisions**
-
-- [x] Critical decisions documented with versions (10 ADRs, all scored via Comparative Analysis Matrix)
-- [x] Technology stack fully specified (ws, node:http, better-sqlite3, ocgcore-wasm 0.1.1)
-- [x] Integration patterns defined (WebSocket, HTTP internal, REST, worker postMessage)
-- [x] Performance considerations addressed (worker isolation, < 500ms target, 50 concurrent duels)
-
-**✅ Implementation Patterns**
-
-- [x] Naming conventions established (4 categories: message types, code, files, Angular)
-- [x] Structure patterns defined (complete file trees for all 3 services)
-- [x] Communication patterns specified (protocol invariant, transformation chain, worker contract)
-- [x] Process patterns documented (error handling, loading states, logging)
-- [x] Animation patterns documented (three-layer separation, async overlay contract, buffer/replay, card travel, Beat grouping, acceleration, timing reference, accessibility)
-
-**✅ Project Structure**
-
-- [x] Complete directory structure defined (duel server + Angular delta + Spring Boot delta + infrastructure)
-- [x] Component boundaries established (7 boundary contracts in table)
-- [x] Integration points mapped (architectural boundaries diagram)
-- [x] Requirements to structure mapping complete (FR → files table)
+Architecture completeness validated — all checklist items confirmed.
 
 ### Architecture Readiness Assessment
 
@@ -1045,3 +1114,15 @@ Phase 0 — Define `ws-protocol.ts` (all WebSocket DTO types). This unblocks bot
 **Required Documentation (before deployment):**
 - Dev setup guide (local environment, dependencies, data files)
 - Deployment runbook (docker-compose, reverse proxy, TLS, data volumes)
+
+## Appendix: Edit History
+
+| Date | Changes |
+|------|---------|
+| 2026-03-10 | Integrated animation orchestration architecture (3-layer chain system, async overlay contract, pending chain entry) and PvP-C board animations (card travel, buffer/replay, CardTravelService, XYZ material visuals, Beat-based parallel replay, acceleration features) |
+| 2026-03-12 | Replaced animation orchestration detail section with summary + link to animation-architecture-pvp.md (new dedicated document). Removed obsolete AC5 and animatingZone Set<string> signal. |
+| 2026-03-26 | Post-implementation alignment: fixed ConnectionStatus (removed phantom resynchronized state), expanded DuelConnection signals from 10 to 24, updated WS message types to complete inventory (game 19 + attack 3 + end 1 + prompt 22 + system 18 + replay 8), renamed PromptRpsComponent to PromptChoiceComponent, updated duel server file count (8 prod + 3 PoC + 2 test), marked replay storage as implemented |
+| 2026-03-26 | Cleanup pass: fixed system/prompt classification (RPS_CHOICE+SELECT_TP moved to system per code, 20 prompts + 18 system), signal count 24->25 (+timerStatePerPlayer), prompt sub-components 9->10 (+PromptActionListReadonly), removed all PlayerFieldComponent references (Story 1.1 skipped), removed all PvpDuelResultOverlayComponent references (inline in DuelPageComponent), updated prompt file structure to match actual 10 sub-component dirs |
+| 2026-03-26 | Doc-code alignment: lobby subcomponents -> monolithic lobby-page, waiting room polling -> SSE via RoomEventService, added 5 undocumented DuelPageComponent-scoped services (CardDataCacheService, CardInspectionService, RoomStateMachineService, PhaseAnnouncementService, DuelTabGuardService), added SSE boundary to API table, fixed FR mapping references |
+| 2026-03-29 | Post-refactor alignment: animation architecture updated from three-layer (DuelConnection -> Orchestrator -> UI) to four-layer (DuelEventProcessor -> RenderedBoardStateService -> Orchestrator with 4 managers -> UI). Masking system references replaced with lock/commit model. *(Cross-references formerly pointed to architecture-animation-refactor.md and architecture-orchestrator-decomposition.md — consolidated into this document and CLAUDE.md on 2026-04-05.)* |
+| 2026-03-31 | Post-pipeline-cleanup alignment: deduplicated animation description (Cross-Cutting -> back-ref to Animation Patterns), removed stale line counts, added DuelLogger category system, added 6 effect services + animation managers to file tree, expanded MoveAnimationRouter from 8 to 15 branches, added AnimationDataSource interface + queue directives + shared utilities, updated Buffer & Replay to reflect replayBuffer() with queue directives replacing replayBufferedEvents(), updated board pause mechanism in timing table |

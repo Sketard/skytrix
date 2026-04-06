@@ -18,29 +18,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 ### Requirements Overview
 
-**Functional Requirements:**
-31 FRs across 6 categories covering the full solver lifecycle:
-- **Solve Configuration (FR1-FR6):** Deck selection, hand definition (fixed/random), mode selection (Goldfish/Adversarial), speed selection (Fast/Optimal), handtrap selection from predefined list, solve launch.
-- **Solve Execution (FR7-FR13):** Legal action exploration via OCGCore oracle, minimum 2 swappable algorithms (Strategy pattern — DFS + SP-MCTS), dedicated worker pool (separate from duel workers), state forking via WASM snapshot, infinite loop detection (max depth + Zobrist hash), transposition table for equivalent states, adversarial handtrap modeling via virtual opponent.
-- **Progress & Control (FR14-FR16):** Real-time progress streaming (nodes, best score), cancellation, anytime behavior (best-so-far on cancel/timeout).
-- **Results & Decision Tree (FR17-FR26):** Interactive CDK Tree output, breadcrumb main path, expand/collapse, enriched annotations (card name + action), contextualized scoring (interruption types), handtrap branches with activation timing, global resilience score (minimax), tree pruning (top-X configurable), brick diagnostic, session history (client-side in-memory).
-- **Interruption Scoring (FR27-FR30):** Weighted scoring by interruption type, configurable weights via server JSON, interruption tags JSON mapping cards to types, pre-filled top 50 meta cards.
-- **Handtrap Validation (FR31):** Verify mode replays recommended line with handtrap at declared timing.
-
-The solver is a compute-heavy tree search — not a CRUD feature. The primary architectural challenge is managing CPU-bound work (OCGCore WASM simulations) without blocking the duel-server event loop or starving active PvP duels.
-
-**Non-Functional Requirements:**
-17 NFRs driving architectural decisions:
-- **Performance (NFR1-7):** Fast < 5s, Optimal < 60s (ref: 8-core). WS progress < 100ms latency. Tree render < 500ms (50 nodes). Branch expand < 50ms. Page TTI < 1s. Top 20 meta decks < 60s Optimal. These impose parallelism (piscina worker pool), efficient state forking, and pruning/caching (Zobrist + transposition table).
-- **Reliability (NFR8-11):** Guaranteed termination (depth 50 + loop detection). WASM snapshot auto-fallback to replay. Boot-time smoke test for WASM Memory hook. Configurable worker count with core reservation.
-- **Data Integrity (NFR12-15):** 100% legal sequences (integrated post-condition verification). Golden test suite (30 hands, 100% concordance). Manual cross-validation for handtrap results. Pinned @n1xx1/ocgcore-wasm version.
-- **Resource Management (NFR16-17):** Configurable memory budget (512MB default), 80% warning. Solve logging (nodes, score, time, algorithm, mode, deck ID).
-
-**Scale & Complexity:**
-
-- Primary domain: Backend compute (Node.js duel-server) + Frontend visualization (Angular)
-- Complexity level: High — tree search algorithms, WASM state forking, parallel worker pool, adversarial game theory (IS-MCTS), real-time progress streaming
-- Estimated architectural components: ~15-20 (GameOracle, OCGCoreAdapter, SolverStrategy interface, DFS solver, SP-MCTS solver, IS-MCTS determinizer, Zobrist hasher, transposition table, piscina worker pool, solver orchestrator, WS handlers, interruption scorer, decision tree builder, Angular SolverPage, DecisionTreeComponent, SolverService)
+The PRD defines 31 FRs across 6 categories and 17 NFRs across 5 categories. See prd-solver.md for full requirements.
 
 ### Technical Constraints & Dependencies
 
@@ -62,40 +40,6 @@ The solver is a compute-heavy tree search — not a CRUD feature. The primary ar
 - **Legality post-condition:** Every returned sequence must be verified by replaying on OCGCore. Cross-cutting across all result paths (normal completion, timeout, cancellation).
 - **Progress reporting:** All strategies must emit progress via MessagePort at configurable intervals. Throttled to avoid WS backpressure.
 - **WASM lifecycle management:** Each worker must properly create/destroy duel handles (no heap leak). Smoke test at boot. Fallback logging.
-
-## Starter Template Evaluation
-
-### Primary Technology Domain
-
-Backend compute (Node.js duel-server) + Frontend visualization (Angular SPA) — brownfield project. The solver is a new module within an existing, established application.
-
-### Starter Options Considered
-
-**Not applicable.** This is a brownfield project with a fully established technology stack. The existing skytrix application provides all infrastructure — no starter template needed.
-
-### Selected Approach: Extend Existing Application
-
-**Rationale:** The solver adds a new module to the duel-server (Node.js worker pool + algorithms) and a new page to the Angular frontend (solver config + decision tree viewer). All infrastructure (build pipeline, routing, services, WS connection, WASM integration) is already in place.
-
-**Architectural Decisions Already Established by Existing Project:**
-
-**Language & Runtime:**
-TypeScript 5.5.4 strict mode (frontend), TypeScript/Node.js (duel-server). ES2022 target.
-
-**Styling Solution:**
-SCSS with shared styles from `src/app/styles/`. Angular Material theming.
-
-**Build Tooling:**
-Angular CLI (frontend). Node.js with existing duel-server build pipeline (backend).
-
-**Testing Framework:**
-Karma + Jasmine available but not used for MVP (big bang development). Golden test suite (30 hands) as domain-specific quality gate.
-
-**Code Organization:**
-Frontend: `pages/solver/` with colocated components and services. Backend: `duel-server/src/solver/` as new module alongside existing duel worker code.
-
-**Development Experience:**
-`ng serve` with proxy (frontend). Existing duel-server dev workflow (backend). No additional tooling needed.
 
 ## Core Architectural Decisions
 
@@ -751,97 +695,9 @@ Verify mode reuses `SOLVER_START` with an optional `verifyPath?: SolverAction[]`
 | `front/src/assets/i18n/fr.json` | Add solver labels |
 | `front/src/assets/i18n/en.json` | Add solver labels |
 
-## Architecture Validation Results
+### Architecture Validation
 
-### Coherence Validation ✅
-
-**Decision Compatibility:** All technology choices work together without conflicts. GameOracle (fork-based) + SolverStrategy (callback) + piscina (root parallelism) form a coherent chain. Zobrist hashing fed by FieldState from GameOracle. WS protocol (6 types) aligned with frontend state machine transitions.
-
-**Pattern Consistency:** All implementation patterns support architectural decisions. "Fork before mutating" aligns with fork() design. "Workers never do I/O" aligns with orchestrator HTTP deck loading. "Tree pruning in orchestrator" aligns with strategy/orchestrator separation.
-
-**Structure Alignment:** 3 type files correspond to 3 architectural layers (data, oracle port, strategy port). strategies/ subdirectory isolates algorithms. Verify mode integrated into SOLVER_START without structural changes.
-
-### Requirements Coverage Validation ✅
-
-**Functional Requirements:** 31/31 FRs covered. Every FR has explicit architectural support mapped to specific files and components.
-
-**Non-Functional Requirements:** 17/17 NFRs covered. Performance NFRs addressed via parallelism + time budgets + CDK flat tree. Reliability NFRs via termination guarantees + snapshot fallback + boot smoke test. Data integrity via legality post-condition + golden tests. Resource management via handle tracking + memory budget.
-
-### Gap Analysis Results
-
-**Critical Gaps:** None identified.
-
-**Important Gap Resolved:** `Action` vs `SolverAction` type distinction formalized:
-
-```typescript
-// Action: internal oracle type (what OCGCore works with)
-interface Action {
-  responseIndex: number;
-  cardId: number;
-}
-
-// SolverAction: enriched output type (what the client sees)
-interface SolverAction extends Action {
-  cardName: string;
-  actionDescription: string;
-}
-```
-
-**Deferred (Phase 2):** Solver pool monitoring dashboard, scoring synergies, checkpoint system for deep MCTS replays, side-by-side build comparison UI.
-
-### Architecture Completeness Checklist
-
-**✅ Requirements Analysis**
-- [x] Project context thoroughly analyzed (31 FRs, 17 NFRs)
-- [x] Scale and complexity assessed (High — tree search + WASM + parallelism)
-- [x] Technical constraints identified (forward-only OCGCore, WASM snapshot instability, brownfield)
-- [x] Cross-cutting concerns mapped (7 concerns: resource isolation, anytime, state forking, termination, legality, progress, WASM lifecycle)
-
-**✅ Architectural Decisions**
-- [x] Critical decisions documented (GameOracle, SolverStrategy, DecisionNode, worker pool, WS protocol)
-- [x] Technology stack fully specified (piscina, CDK Tree, Zobrist dual 32-bit)
-- [x] Integration patterns defined (5 boundaries: orchestrator↔worker, server↔client, server↔Spring, strategy↔oracle, strategy↔scorer)
-- [x] Performance considerations addressed (root parallelism, time budgets, complexity detection, auto algo switch)
-
-**✅ Implementation Patterns**
-- [x] Oracle usage patterns (fork before mutate, destroyAll safety net, adapter annotations)
-- [x] Worker communication patterns (progress frequency, no I/O, AbortSignal location)
-- [x] State management patterns (unidirectional state machine, service-owned signals)
-- [x] Error handling patterns (SOLVER_ERROR, WARNING for snapshot fallback)
-- [x] Degraded mode pattern (budgets unchanged)
-- [x] Logging patterns (console.log [Solver], NFR17 solve logging)
-- [x] Config access patterns (boot load, workerData injection)
-- [x] Golden test patterns (GoldenTestCase fixture format)
-- [x] Anti-patterns documented (8 anti-patterns with correct approaches)
-
-**✅ Project Structure**
-- [x] Complete directory structure defined (solver/ module + frontend pages/solver/)
-- [x] Component boundaries established (5 architectural boundaries)
-- [x] Integration points mapped (FR category → files)
-- [x] Files modified (existing) documented
-- [x] Type organization convention established (3 files, backend source of truth)
-
-### Architecture Readiness Assessment
-
-**Overall Status:** READY FOR IMPLEMENTATION
-
-**Confidence Level:** HIGH — validated through 4 rounds of advanced elicitation (pre-mortem, red team, algorithm olympics, critique & refine) and 2 party mode reviews. 31/31 FRs and 17/17 NFRs covered. No critical gaps.
-
-**Key Strengths:**
-- Hexagonal architecture (GameOracle port) enables testing without WASM
-- Strategy pattern ensures algorithm swappability (FR8) with minimal coupling
-- Root parallelism provides near-linear speedup with zero synchronization complexity
-- Comprehensive safety nets: destroyAll(), verification key, complexity detection, snapshot fallback, rate limit
-- 15 interruption types community-validated with configurable weights
-- Auto algorithm detection (BF-based DFS/MCTS switch) maximizes result quality
-
-**Areas for Future Enhancement (Phase 2):**
-- Neural MCTS policy network (replaces random rollouts)
-- Scoring synergies (negate + floodgate combo bonuses)
-- Checkpoint system for deep MCTS replays
-- Side-by-side build comparison UI
-- Tags migration to PostgreSQL
-- Solver pool monitoring dashboard
+All 31 FRs and 17 NFRs are architecturally supported. No critical gaps. Action vs SolverAction naming: the solver uses `SolverAction` to distinguish from the solo simulator's `Action` type.
 
 ### Implementation Handoff
 
@@ -852,14 +708,4 @@ interface SolverAction extends Action {
 - Backend solver-types.ts is source of truth — frontend solver.model.ts must match
 - Refer to this document and project-context.md (62 rules) for all questions
 
-**Implementation Sequence:**
-1. GameOracle interface + OCGCoreAdapter (foundation — everything depends on this)
-2. DFS solver with iterative deepening (first algorithm, baseline)
-3. Zobrist hashing + transposition table
-4. Solver orchestrator + piscina worker pool + WS handlers
-5. Angular SolverPage + SolverService + CDK Tree viewer
-6. Interruption scorer + tags JSON (pre-filled top 50)
-7. SP-MCTS solver (second algorithm via Strategy swap)
-8. IS-MCTS determinization + handtrap modeling (adversarial mode)
-9. Golden test suite (30 hands)
-10. Verify mode (FR31)
+See epics for implementation ordering.

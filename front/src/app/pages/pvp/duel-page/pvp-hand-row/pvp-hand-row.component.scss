@@ -22,11 +22,13 @@
   border-radius: 3px;
   overflow: hidden;
   pointer-events: auto;
-  transition: transform var(--pvp-transition-card-move);
 
   .hand-row--player & {
     cursor: pointer;
     transform-origin: center bottom;
+    // Smooth return from hover/selected lift — only on the un-hovered state
+    // to avoid transition firing on initial render (draw animation).
+    transition: transform var(--pvp-transition-card-move);
 
     &.hand-card--hovered,
     &.hand-card--selected {

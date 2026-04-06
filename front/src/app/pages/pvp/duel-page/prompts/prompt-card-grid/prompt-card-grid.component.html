@@ -33,7 +33,7 @@
               <img class="card-img"
                    [src]="getCardImageUrl(entry.card)"
                    alt=""
-                   loading="lazy" />
+                   width="99" height="144" />
               @if (promptData?.type === 'SELECT_SUM' && isSelected(entry.originalIndex) && isDualAmount(entry.card)) {
                 <span class="card-slot__amount-badge">×{{ getSelectedAmount(entry.originalIndex) }}</span>
               }
@@ -53,6 +53,7 @@
     }
     @if (canCancel) {
       <button class="btn btn--secondary"
+              [class.btn--selected]="cancelSelected"
               (click)="cancel()"
               [disabled]="answered"
               type="button">
