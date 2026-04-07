@@ -46,6 +46,13 @@ export interface DecisionNode {
   truncated?: boolean;
 }
 
+export const EMPTY_SCORE_BREAKDOWN: ScoreBreakdown = {
+  omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
+  controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
+  spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
+  bounce: 0, handRip: 0, sendToGy: 0, total: 0,
+};
+
 // =============================================================================
 // Solver Progress & Stats
 // =============================================================================
@@ -97,6 +104,18 @@ export interface AdversarialTiming {
   handtrapCardId: number;
   handtrapCardName: string;
   responseIndex: number;
+}
+
+// =============================================================================
+// Solver Error
+// =============================================================================
+
+export type { SolverWsError } from '../../pages/pvp/duel-ws.types';
+import type { SolverWsError } from '../../pages/pvp/duel-ws.types';
+
+export interface SolverErrorMessage {
+  error: SolverWsError;
+  message: string;
 }
 
 // =============================================================================

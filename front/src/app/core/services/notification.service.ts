@@ -9,8 +9,8 @@ export class NotificationService {
   private snackBar = inject(MatSnackBar);
   private translate = inject(TranslateService);
 
-  error(errorOrKey: HttpErrorResponse | string, params?: Record<string, unknown>): void {
-    this.show('error', 'error', this.resolve(errorOrKey, params), 4000);
+  error(errorOrKey: HttpErrorResponse | string, params?: Record<string, unknown>, duration = 4000): void {
+    this.show('error', 'error', this.resolve(errorOrKey, params), duration);
   }
 
   success(key: string, params?: Record<string, unknown>, duration = 2000): void {

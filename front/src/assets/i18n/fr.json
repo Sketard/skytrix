@@ -452,7 +452,22 @@
     "dragActivated": "Glisser activé",
     "refreshRooms": "Rafraîchir la liste des rooms",
     "quickDuelDebug": "Duel rapide - mode debug",
-    "createRoom": "Créer une room"
+    "createRoom": "Créer une room",
+    "solveDeck": "Résoudre le deck {{name}}"
+  },
+  "solver": {
+    "pageTitle": "Solveur",
+    "desktopRequired": "Le solveur requiert un navigateur desktop (1024px minimum)",
+    "backToDecks": "Retour aux decks",
+    "config": { "title": "Configuration" },
+    "uncollapse": "Ouvrir la configuration",
+    "loading": "Chargement...",
+    "error": {
+      "deckNotFound": "Deck introuvable",
+      "accessDenied": "Accès refusé à ce deck",
+      "connectionFailed": "Connexion au serveur échouée",
+      "handtrapUnavailable": "Données handtrap indisponibles — vérifiez la connexion serveur"
+    }
   },
   "replay": {
     "matchHistory": {

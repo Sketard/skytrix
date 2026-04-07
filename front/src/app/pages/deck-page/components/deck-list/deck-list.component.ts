@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { DeckBoxComponent } from '../../../../components/deck-box/deck-box.component';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../../components/confirm-dialog/confirm-dialog.component';
@@ -14,7 +16,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'deck-list',
-  imports: [CommonModule, DeckBoxComponent, MatIconModule, MatButtonModule, EmptyStateComponent, TranslatePipe],
+  imports: [CommonModule, DeckBoxComponent, MatIconModule, MatButtonModule, MatTooltipModule, EmptyStateComponent, TranslatePipe],
   templateUrl: './deck-list.component.html',
   styleUrl: './deck-list.component.scss',
   standalone: true,
@@ -25,9 +27,14 @@ export class DeckListComponent {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly translate = inject(TranslateService);
+  private readonly router = inject(Router);
 
   constructor() {
     this.deckBuildService.fetchDecks();
+  }
+
+  openSolver(deck: ShortDeck): void {
+    this.router.navigate(['/decks', deck.id, 'solver']);
   }
 
   confirmDelete(deck: ShortDeck) {

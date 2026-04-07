@@ -1,0 +1,26 @@
+@if (!isDesktop()) {
+  <div class="solver-desktop-only">
+    <p>{{ 'solver.desktopRequired' | translate }}</p>
+    <a mat-button routerLink="/decks">{{ 'solver.backToDecks' | translate }}</a>
+  </div>
+} @else {
+  <div class="solver-layout">
+    <div class="solver-config" [class.collapsed]="collapsed()">
+      <!-- Config components go here (Story 1.5b) -->
+    </div>
+
+    @if (collapsed()) {
+      <div class="solver-collapsed-bar">
+        <button mat-icon-button
+          [attr.aria-label]="'solver.uncollapse' | translate"
+          (click)="uncollapse()">
+          <mat-icon fontIcon="tune"></mat-icon>
+        </button>
+      </div>
+    }
+
+    <div class="solver-result">
+      <!-- Result components go here (Story 1.6a) -->
+    </div>
+  </div>
+}
