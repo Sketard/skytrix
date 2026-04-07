@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { Worker } from 'node:worker_threads';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual, randomBytes } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join } from 'node:path';
 import {
@@ -29,13 +29,22 @@ import type {
   WorkerReplayPayload,
   ReplayMetadata,
 } from './types.js';
-import type { ServerMessage, ClientMessage, Player } from './ws-protocol.js';
+import type {
+  ServerMessage, ClientMessage, Player,
+  SolverStartMessage, SolverResultMessage, SolverCancelledMessage,
+  SolverProgressMessage, SolverErrorMessage, SolverHandtrapsMessage, SolverWsError,
+} from './ws-protocol.js';
+import {
+  SOLVER_START, SOLVER_CANCEL, SOLVER_INIT, SOLVER_PROGRESS,
+  SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR, SOLVER_HANDTRAPS,
+} from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
 import { validateData, findMissingPasscodes, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import { updateData } from './data-updater.js';
 import * as logger from './logger.js';
-import { loadSolverConfig } from './solver/solver-config-loader.js';
+import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
+import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
 
 // =============================================================================
 // Configuration
@@ -51,6 +60,10 @@ const WS_RATE_LIMIT_WINDOW_MS = 60_000;
 const WS_RATE_LIMIT_MAX = 30;
 const MAX_INVALID_RESPONSES = 5;
 const MAX_REPLAY_CACHE_ENTRIES = 50;
+const MAX_SOLVER_CONNECTIONS = 10;
+const MAX_SOLVER_CACHE_ENTRIES = 50;
+const SOLVER_RESULT_CACHE_TTL_MS = 5 * 60 * 1000;
+const FILLER_CARD_ID = 43096270; // Alexandrite Dragon — vanilla filler for goldfish opponent
 
 const startTime = Date.now();
 let totalDuelsServed = 0;
@@ -147,6 +160,11 @@ if (!dataReady) {
 // =============================================================================
 
 export let solverOrchestrator: SolverOrchestrator | null = null;
+let solverHandtraps: HandtrapConfig[] = [];
+let solverRateLimitIntervalMs = 2000;
+let solverTimeBudgetFastMs = 5000;
+let solverTimeBudgetOptimalMs = 30000;
+let solverBfComplexityThreshold = 100;
 
 if (dataReady) {
   try {
@@ -154,10 +172,26 @@ if (dataReady) {
     const orchestrator = new SolverOrchestrator();
     await orchestrator.init(solverConfig, DATA_DIR);
     solverOrchestrator = orchestrator;
+
+    // Store WS-layer config values from SolverConfigFile
+    solverRateLimitIntervalMs = solverConfig.rateLimitIntervalMs;
+    solverTimeBudgetFastMs = solverConfig.timeBudgetFastMs;
+    solverTimeBudgetOptimalMs = solverConfig.timeBudgetOptimalMs;
+    solverBfComplexityThreshold = solverConfig.bfComplexityThreshold;
+
+    solverHandtraps = loadHandtraps(DATA_DIR);
   } catch (err) {
     logger.warn('Solver orchestrator failed to initialize — solver features disabled', err as Record<string, unknown>);
   }
 }
+
+// =============================================================================
+// Solver State (Story 1.4)
+// =============================================================================
+
+const solverConnections = new Map<string, WebSocket>();
+const solverLastStart = new Map<string, number>();
+const solverResultCache = new Map<string, { message: SolverResultMessage; timer: ReturnType<typeof setTimeout>; createdAt: number }>();
 
 // =============================================================================
 // HTTP Helpers
@@ -1512,6 +1546,73 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     return;
   }
 
+  // Solver mode branch — separate flow from PvP duels (Story 1.4)
+  if (mode === 'solver') {
+    const jwt = url.searchParams.get('token');
+    if (!jwt) {
+      ws.close(4001, 'Missing token');
+      return;
+    }
+
+    // Decode JWT to extract userId (same pattern as replay)
+    let userId: string;
+    try {
+      const parts = jwt.split('.');
+      if (parts.length !== 3) throw new Error('Invalid JWT format');
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+      userId = String(payload.sub ?? payload.userId ?? payload.id ?? '');
+      if (!userId) throw new Error('No user ID in JWT');
+    } catch (err) {
+      logger.error('[Solver] JWT decode error', { error: err instanceof Error ? err.message : String(err) });
+      recordFailedWsAttempt(ip);
+      ws.close(4001, 'Invalid token');
+      return;
+    }
+
+    // Connection limit guard
+    if (solverConnections.size >= MAX_SOLVER_CONNECTIONS) {
+      ws.close(4029, 'Too many solver connections');
+      return;
+    }
+
+    // Replace existing solver WS for same user
+    const existingWs = solverConnections.get(userId);
+    if (existingWs) {
+      existingWs.close(4001, 'Replaced by new connection');
+    }
+    solverConnections.set(userId, ws);
+
+    // Heartbeat
+    (ws as AliveWebSocket).isAlive = true;
+    ws.on('pong', () => { (ws as AliveWebSocket).isAlive = true; });
+
+    // Message handler
+    ws.on('message', (data: Buffer) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(data.toString());
+      } catch {
+        ws.close(4002, 'Invalid JSON');
+        return;
+      }
+      handleSolverMessage(userId, ws, parsed);
+    });
+
+    // Close handler — remove from map but do NOT abort running solves
+    ws.on('close', () => {
+      if (solverConnections.get(userId) === ws) {
+        solverConnections.delete(userId);
+      }
+    });
+
+    ws.on('error', (error) => {
+      console.error('[Solver] ws error', { userId, error });
+    });
+
+    console.log('[Solver] connected', { userId });
+    return;
+  }
+
   const token = url.searchParams.get('token');
   const reconnect = url.searchParams.get('reconnect');
 
@@ -2579,6 +2680,267 @@ function cleanupReplayConnection(conn: ReplayConnection, preserveCache = false):
   }
 
   activeReplayConnections.delete(conn.ws);
+}
+
+// =============================================================================
+// Solver WS Handlers (Story 1.4)
+// =============================================================================
+
+function sendSolverMessage(ws: WebSocket | undefined, message: ServerMessage): void {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  try {
+    ws.send(JSON.stringify(message));
+  } catch {
+    // TOCTOU: ws transitioned to CLOSING between readyState check and send()
+  }
+}
+
+function sendSolverError(ws: WebSocket | undefined, error: SolverWsError, message: string): void {
+  const msg: SolverErrorMessage = { type: SOLVER_ERROR, error, message };
+  sendSolverMessage(ws, msg);
+}
+
+// --- Task 3: Message router ---
+
+function handleSolverMessage(userId: string, ws: WebSocket, msg: unknown): void {
+  if (!msg || typeof (msg as { type?: unknown }).type !== 'string') return;
+
+  if (solverOrchestrator === null) {
+    sendSolverError(ws, 'WASM_INIT_FAILED', 'Solver not available — orchestrator failed to initialize');
+    return;
+  }
+
+  const type = (msg as { type: string }).type;
+  switch (type) {
+    case SOLVER_INIT:
+      handleSolverInit(userId, ws);
+      break;
+    case SOLVER_START:
+      handleSolverStart(userId, ws, msg as SolverStartMessage).catch(err => {
+        console.error('[Solver] unhandled start error', { userId, err });
+        sendSolverError(ws, 'INTERNAL_ERROR', 'Unexpected error');
+      });
+      break;
+    case SOLVER_CANCEL:
+      handleSolverCancel(userId);
+      break;
+    default:
+      console.warn('[Solver] unknown message type', { userId, type });
+  }
+}
+
+// --- Task 4: SOLVER_INIT handler ---
+
+function handleSolverInit(userId: string, ws: WebSocket): void {
+  const handtrapsMsg: SolverHandtrapsMessage = { type: SOLVER_HANDTRAPS, handtraps: solverHandtraps };
+  sendSolverMessage(ws, handtrapsMsg);
+
+  const cached = solverResultCache.get(userId);
+  if (cached) {
+    sendSolverMessage(ws, cached.message);
+  }
+
+  console.log('[Solver] init', { userId, cachedResult: !!cached });
+}
+
+// --- Task 5: SOLVER_START handler ---
+
+async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStartMessage): Promise<void> {
+  try {
+    // Rate limit check (AC #6) — set timestamp synchronously BEFORE first await
+    const now = Date.now();
+    const lastStart = solverLastStart.get(userId);
+    if (lastStart !== undefined && now - lastStart < solverRateLimitIntervalMs) {
+      sendSolverError(ws, 'RATE_LIMITED', 'Please wait before starting another solve');
+      return;
+    }
+    solverLastStart.set(userId, now);
+
+    // Input validation (AC #10)
+    if (!Array.isArray(msg.hand) || msg.hand.length !== 5 || !msg.hand.every(c => Number.isInteger(c) && c > 0)) {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Hand must be exactly 5 positive integers');
+      return;
+    }
+    if (!msg.deck || !Array.isArray(msg.deck.main) || !Array.isArray(msg.deck.extra)) {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Deck must have main and extra arrays');
+      return;
+    }
+    if (msg.deck.main.length < 40 || msg.deck.main.length > 60) {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Main deck must be 40-60 cards');
+      return;
+    }
+    if (msg.deck.extra.length > 15) {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Extra deck must be 0-15 cards');
+      return;
+    }
+    if (msg.mode !== 'goldfish') {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Only goldfish mode is supported');
+      return;
+    }
+    if (msg.speed !== 'fast' && msg.speed !== 'optimal') {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Speed must be fast or optimal');
+      return;
+    }
+    const algorithm: 'dfs' | 'mcts' | 'auto' = msg.algorithm ?? 'auto';
+    if (algorithm !== 'dfs' && algorithm !== 'mcts' && algorithm !== 'auto') {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Algorithm must be dfs, mcts, or auto');
+      return;
+    }
+
+    // Hand removal from deck (AC #4)
+    const mainDeck = [...msg.deck.main];
+    for (const cardId of msg.hand) {
+      const idx = mainDeck.indexOf(cardId);
+      if (idx === -1) {
+        sendSolverError(ws, 'INTERNAL_ERROR', `Hand card ${cardId} not found in deck`);
+        return;
+      }
+      mainDeck.splice(idx, 1);
+    }
+
+    // Seed generation
+    let deckSeed: bigint[];
+    if (msg.deckSeed) {
+      try {
+        deckSeed = msg.deckSeed.split(',').map(s => BigInt(s.trim()));
+        if (deckSeed.length !== 2) throw new Error('Expected 2 seed values');
+      } catch {
+        sendSolverError(ws, 'INTERNAL_ERROR', 'Invalid deckSeed format');
+        return;
+      }
+    } else {
+      const buf = randomBytes(16);
+      deckSeed = [buf.readBigUInt64LE(0), buf.readBigUInt64LE(8)];
+    }
+
+    // Build DuelConfig
+    const duelConfig: DuelConfig = {
+      mainDeck,
+      extraDeck: msg.deck.extra,
+      hand: msg.hand,
+      deckSeed,
+      opponentDeck: Array(40).fill(FILLER_CARD_ID),
+    };
+
+    // Build SolverConfig
+    const solverCfg: SolverConfig = {
+      mode: msg.mode,
+      speed: msg.speed,
+      timeLimitMs: msg.speed === 'fast' ? solverTimeBudgetFastMs : solverTimeBudgetOptimalMs,
+    };
+
+    // Evict previous cache
+    evictSolverResult(userId);
+
+    console.log('[Solver] solve-start', { userId, deckId: msg.deckId, mode: msg.mode, speed: msg.speed, algorithm });
+
+    // Progress callback — resolve CURRENT ws (not captured closure)
+    // Throttling is handled by the orchestrator (config.progressThrottleMs) — no WS-layer throttle
+    const onProgress = (progress: SolverProgress) => {
+      const currentWs = solverConnections.get(userId);
+      if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
+
+      // highComplexity WS-layer heuristic (AC #7)
+      const timeLimitMs = solverCfg.timeLimitMs;
+      const highComplexity = progress.nodesExplored > solverBfComplexityThreshold
+        && progress.bestScore === 0
+        && progress.elapsed > timeLimitMs * 0.3;
+
+      const progressMsg: SolverProgressMessage = {
+        type: SOLVER_PROGRESS,
+        nodesExplored: progress.nodesExplored,
+        bestScore: progress.bestScore,
+        elapsed: progress.elapsed,
+        ...(highComplexity ? { highComplexity: true } : {}),
+      };
+      sendSolverMessage(currentWs, progressMsg);
+    };
+
+    const onDebug = process.env['LOG_LEVEL'] === 'debug'
+      ? (cat: string, data: unknown) => { console.log('[Solver:debug]', cat, data); }
+      : undefined;
+
+    // Dispatch solve
+    const outcome = await solverOrchestrator!.solve(userId, duelConfig, solverCfg, algorithm, onProgress, onDebug, msg.deckId);
+
+    // Handle SolveOutcome — resolve CURRENT ws
+    const currentWs = solverConnections.get(userId);
+    const deckSeedStr = deckSeed.map(String).join(',');
+
+    if (outcome.type === 'cancelled') {
+      const stats = outcome.partialResult?.stats ?? {
+        nodesExplored: 0, elapsed: 0, algorithm, algorithmUsed: algorithm,
+        maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr,
+      };
+      const cancelledMsg: SolverCancelledMessage = {
+        type: SOLVER_CANCELLED,
+        partialTree: outcome.partialResult?.tree as SolverCancelledMessage['partialTree'],
+        stats: stats as SolverCancelledMessage['stats'],
+      };
+      sendSolverMessage(currentWs, cancelledMsg);
+      // Do NOT cache partial cancelled results as SOLVER_RESULT — the client
+      // would receive an incomplete tree as if it were a full solve on reconnect
+    } else if (outcome.type === 'result') {
+      const result = outcome.result;
+      const resultMsg: SolverResultMessage = {
+        type: SOLVER_RESULT,
+        tree: result.tree as SolverResultMessage['tree'],
+        mainPath: result.mainPath as SolverResultMessage['mainPath'],
+        score: result.score,
+        scoreBreakdown: result.scoreBreakdown as SolverResultMessage['scoreBreakdown'],
+        stats: { ...result.stats, deckSeed: deckSeedStr } as SolverResultMessage['stats'],
+        verified: result.verified,
+        ...(result.minimax !== undefined ? { minimax: result.minimax } : {}),
+        ...(result.adversarialTimings ? { adversarialTimings: result.adversarialTimings as SolverResultMessage['adversarialTimings'] } : {}),
+      };
+      cacheSolverResult(userId, resultMsg);
+      sendSolverMessage(currentWs, resultMsg);
+    } else if (outcome.type === 'error') {
+      sendSolverError(currentWs, outcome.error as SolverWsError, outcome.message);
+      console.error('[Solver] solve error', { userId, error: outcome.error, message: outcome.message });
+    }
+  } catch (err) {
+    console.error('[Solver] unexpected error', { userId, err });
+    sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'An unexpected error occurred');
+  }
+}
+
+// --- Task 6: SOLVER_CANCEL handler ---
+
+function handleSolverCancel(userId: string): void {
+  solverOrchestrator?.cancel(userId);
+  solverLastStart.delete(userId);
+  console.log('[Solver] cancel-requested', { userId });
+}
+
+// --- Task 7: Result caching ---
+
+function cacheSolverResult(userId: string, resultMsg: SolverResultMessage): void {
+  evictSolverResult(userId);
+
+  // Cache size cap
+  if (solverResultCache.size >= MAX_SOLVER_CACHE_ENTRIES) {
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+    for (const [key, entry] of solverResultCache) {
+      if (entry.createdAt < oldestTime) {
+        oldestTime = entry.createdAt;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) evictSolverResult(oldestKey);
+  }
+
+  const timer = setTimeout(() => { solverResultCache.delete(userId); }, SOLVER_RESULT_CACHE_TTL_MS);
+  solverResultCache.set(userId, { message: resultMsg, timer, createdAt: Date.now() });
+}
+
+function evictSolverResult(userId: string): void {
+  const cached = solverResultCache.get(userId);
+  if (cached) {
+    clearTimeout(cached.timer);
+    solverResultCache.delete(userId);
+  }
 }
 
 // =============================================================================

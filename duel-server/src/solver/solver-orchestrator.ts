@@ -36,6 +36,9 @@ type SolveOutcome = {
   type: 'error';
   error: SolverError;
   message: string;
+} | {
+  type: 'cancelled';
+  partialResult?: SolverResult;
 };
 
 type OnProgress = (progress: SolverProgress) => void;
@@ -250,12 +253,12 @@ export class SolverOrchestrator {
         }
       }
 
-      // Cancelled — return partial result if available (AC10)
+      // Cancelled — return 'cancelled' variant with optional partial result
       if (activeSolve.resolved) {
         if (allResults.length > 0) {
-          return { type: 'result', result: this.mergeResults(allResults) };
+          return { type: 'cancelled', partialResult: this.mergeResults(allResults) };
         }
-        return { type: 'error', error: 'INTERNAL_ERROR', message: 'Solve was cancelled' };
+        return { type: 'cancelled' };
       }
       activeSolve.resolved = true;
 
@@ -288,7 +291,7 @@ export class SolverOrchestrator {
       return { type: 'result', result: merged };
     } catch (err) {
       if (activeSolve.resolved) {
-        return { type: 'error', error: 'INTERNAL_ERROR', message: 'Solve was cancelled' };
+        return { type: 'cancelled' };
       }
       activeSolve.resolved = true;
       console.error('[Solver] Unexpected error', err);

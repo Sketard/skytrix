@@ -1,8 +1,9 @@
 // =============================================================================
-// ws-protocol.ts — Skytrix PvP WebSocket Protocol DTOs
+// ws-protocol.ts — Skytrix PvP & Solver WebSocket Protocol DTOs
 // Zero internal imports — this file is copied verbatim to Angular
 // Manual copy: duel-server/src/ws-protocol.ts <-> front/src/app/pages/pvp/duel-ws.types.ts
 // Update BOTH files in the same commit
+// Solver types (SOLVER_*) added in Story 1.4 — canonical type definitions in solver-types.ts
 // =============================================================================
 
 // =============================================================================
@@ -849,6 +850,153 @@ export interface ReplayErrorMsg {
 }
 
 // =============================================================================
+// Solver Message Types (8 constants) — Story 1.4
+// Canonical type definitions live in solver-types.ts; these are lightweight
+// inline mirrors so ws-protocol.ts stays zero-import.
+// =============================================================================
+
+export const SOLVER_START = 'SOLVER_START' as const;
+export const SOLVER_CANCEL = 'SOLVER_CANCEL' as const;
+export const SOLVER_INIT = 'SOLVER_INIT' as const;
+export const SOLVER_PROGRESS = 'SOLVER_PROGRESS' as const;
+export const SOLVER_RESULT = 'SOLVER_RESULT' as const;
+export const SOLVER_CANCELLED = 'SOLVER_CANCELLED' as const;
+export const SOLVER_ERROR = 'SOLVER_ERROR' as const;
+export const SOLVER_HANDTRAPS = 'SOLVER_HANDTRAPS' as const;
+
+// --- Solver Payload Sub-Types (inlined from solver-types.ts) ---
+
+export interface SolverWsAction {
+  responseIndex: number;
+  cardId: number;
+  cardName: string;
+  actionDescription: string;
+}
+
+export interface SolverWsScoreBreakdown {
+  omniNegate: number;
+  typedNegate: number;
+  targetedNegate: number;
+  floodgate: number;
+  controlChange: number;
+  banish: number;
+  banishFacedown: number;
+  attach: number;
+  spin: number;
+  flipFacedown: number;
+  destruction: number;
+  moveToSt: number;
+  bounce: number;
+  handRip: number;
+  sendToGy: number;
+  total: number;
+}
+
+export interface SolverWsDecisionNode {
+  action: SolverWsAction;
+  annotation: string;
+  score: number;
+  scoreBreakdown?: SolverWsScoreBreakdown;
+  confidence: number;
+  children: SolverWsDecisionNode[];
+  isTerminal: boolean;
+  handtrapLabel?: string;
+  prunedChildren?: number;
+  truncated?: boolean;
+}
+
+export interface SolverWsStats {
+  nodesExplored: number;
+  elapsed: number;
+  algorithm: string;
+  algorithmUsed: string;
+  maxDepthReached: number;
+  averageBranchingFactor: number;
+  transpositionHits?: number;
+  deckSeed: string;
+}
+
+export interface SolverWsHandtrapConfig {
+  cardId: number;
+  cardName: string;
+}
+
+export interface SolverWsAdversarialTiming {
+  stepIndex: number;
+  handtrapCardId: number;
+  handtrapCardName: string;
+  responseIndex: number;
+}
+
+export type SolverWsError =
+  | 'DECK_NOT_FOUND'
+  | 'DECK_ACCESS_DENIED'
+  | 'WASM_INIT_FAILED'
+  | 'RATE_LIMITED'
+  | 'MEMORY_LIMIT'
+  | 'INTERNAL_ERROR';
+
+// --- Solver: Client → Server (3) ---
+
+export interface SolverStartMessage {
+  type: typeof SOLVER_START;
+  deckId: string;
+  deck: { main: number[]; extra: number[] };
+  hand: number[];
+  mode: 'goldfish';
+  speed: 'fast' | 'optimal';
+  algorithm?: 'dfs' | 'mcts' | 'auto';
+  deckSeed?: string;
+}
+
+export interface SolverCancelMessage {
+  type: typeof SOLVER_CANCEL;
+}
+
+export interface SolverInitMessage {
+  type: typeof SOLVER_INIT;
+}
+
+// --- Solver: Server → Client (5) ---
+
+export interface SolverProgressMessage {
+  type: typeof SOLVER_PROGRESS;
+  nodesExplored: number;
+  bestScore: number;
+  elapsed: number;
+  highComplexity?: boolean;
+}
+
+export interface SolverResultMessage {
+  type: typeof SOLVER_RESULT;
+  tree: SolverWsDecisionNode;
+  mainPath: SolverWsAction[];
+  score: number;
+  scoreBreakdown: SolverWsScoreBreakdown;
+  minimax?: number;
+  adversarialTimings?: SolverWsAdversarialTiming[];
+  stats: SolverWsStats;
+  verified?: boolean;
+}
+
+export interface SolverCancelledMessage {
+  type: typeof SOLVER_CANCELLED;
+  partialTree?: SolverWsDecisionNode;
+  stats: SolverWsStats;
+}
+
+export interface SolverErrorMessage {
+  type: typeof SOLVER_ERROR;
+  error: SolverWsError;
+  message: string;
+}
+
+export interface SolverHandtrapsMessage {
+  type: typeof SOLVER_HANDTRAPS;
+  handtraps: SolverWsHandtrapConfig[];
+}
+
+// =============================================================================
 // Union Type Exports
 // =============================================================================
 
@@ -928,7 +1076,13 @@ export type ServerMessage =
   | ReplayBoardStatesMsg
   | ReplayMetadataMsg
   | ReplayErrorMsg
-  | ReplayForkReadyMsg;
+  | ReplayForkReadyMsg
+  // Solver messages (5)
+  | SolverProgressMessage
+  | SolverResultMessage
+  | SolverCancelledMessage
+  | SolverErrorMessage
+  | SolverHandtrapsMessage;
 
 export type ClientMessage =
   | PlayerResponseMsg
@@ -940,4 +1094,8 @@ export type ClientMessage =
   | ReplayLoadMsg
   | ReplayForkMsg
   | ReplayForkContinueMsg
-  | ReplayForkCancelMsg;
+  | ReplayForkCancelMsg
+  // Solver messages (3)
+  | SolverStartMessage
+  | SolverCancelMessage
+  | SolverInitMessage;

@@ -354,7 +354,7 @@ if (hasData) {
 
         const result = await solvePromise;
         assert(
-          result.type === 'result' || result.type === 'error',
+          result.type === 'result' || result.type === 'error' || result.type === 'cancelled',
           `Cancel completed (type: ${result.type})`,
         );
       }
@@ -392,10 +392,13 @@ if (hasData) {
           assert(result.result.stats.nodesExplored > 0, `nodesExplored > 0 (got ${result.result.stats.nodesExplored})`);
           // Note: vanilla Alexandrite Dragon deck won't have high scores
           // but the integration should complete without errors
-        } else {
+        } else if (result.type === 'error') {
           console.log(`  ⚠️  Integration solve returned error: ${result.error} — ${result.message}`);
           // Still count as passed if it completes without crash
           assert(true, 'Integration solve completed (with error result)');
+        } else {
+          console.log(`  ⚠️  Integration solve was cancelled`);
+          assert(true, 'Integration solve completed (cancelled)');
         }
       }
 
