@@ -370,6 +370,9 @@ export class OCGCoreAdapter implements GameOracle {
   // ===========================================================================
 
   private actionToResponse(action: Action): unknown {
+    // Prefer response stored on the action itself (survives DFS recursion)
+    if (action._response !== undefined) return action._response;
+
     const cached = this._lastActionResponses.get(action.responseIndex);
     if (cached) return cached;
 
@@ -403,46 +406,45 @@ export class OCGCoreAdapter implements GameOracle {
     const actions: Action[] = [];
     const isExploratory = true;
 
+    // Helper: cache response AND store it on the action for DFS recursion safety
+    const pushAction = (action: Action, response: unknown): void => {
+      action._response = response;
+      this._lastActionResponses.set(action.responseIndex, response);
+      actions.push(action);
+    };
+
     switch (promptType) {
       case 'SELECT_IDLECMD': {
         let idx = 0;
         for (let i = 0; i < ((msg['summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['summons'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 1, action: 0, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['special_summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['special_summons'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 1, action: 1, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 1, index: i });
         }
         for (let i = 0; i < ((msg['pos_changes'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['pos_changes'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 1, action: 2, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 2, index: i });
         }
         for (let i = 0; i < ((msg['monster_sets'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['monster_sets'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 1, action: 3, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 3, index: i });
         }
         for (let i = 0; i < ((msg['spell_sets'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['spell_sets'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 1, action: 4, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 4, index: i });
         }
         for (let i = 0; i < ((msg['activates'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['activates'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 1, action: 5, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 5, index: i });
         }
         if (msg['to_bp']) {
-          this._lastActionResponses.set(idx, { type: 1, action: 6 });
-          actions.push({ responseIndex: idx++, cardId: 0, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory }, { type: 1, action: 6 });
         }
         if (msg['to_ep']) {
-          this._lastActionResponses.set(idx, { type: 1, action: 7 });
-          actions.push({ responseIndex: idx++, cardId: 0, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory }, { type: 1, action: 7 });
         }
         break;
       }
@@ -450,60 +452,49 @@ export class OCGCoreAdapter implements GameOracle {
         let idx = 0;
         for (let i = 0; i < ((msg['attacks'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['attacks'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 0, action: 0, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'attack' }, { type: 0, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['chains'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['chains'] as { code: number }[])[i]);
-          this._lastActionResponses.set(idx, { type: 0, action: 1, index: i });
-          actions.push({ responseIndex: idx++, cardId: card.code, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'chain' }, { type: 0, action: 1, index: i });
         }
         if (msg['to_m2']) {
-          this._lastActionResponses.set(idx, { type: 0, action: 2 });
-          actions.push({ responseIndex: idx++, cardId: 0, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory, actionTag: 'to_m2' }, { type: 0, action: 2 });
         }
         if (msg['to_ep']) {
-          this._lastActionResponses.set(idx, { type: 0, action: 3 });
-          actions.push({ responseIndex: idx++, cardId: 0, promptType, isExploratory });
+          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory, actionTag: 'to_ep' }, { type: 0, action: 3 });
         }
         break;
       }
       case 'SELECT_CHAIN': {
-        const selects = (msg['selects'] ?? []) as { code: number }[];
+        const selects = (msg['selects'] ?? []) as { code: number; description: bigint }[];
         for (let i = 0; i < selects.length; i++) {
-          this._lastActionResponses.set(i, { type: 8, index: i });
-          actions.push({ responseIndex: i, cardId: selects[i].code, promptType, isExploratory });
+          pushAction({
+            responseIndex: i, cardId: selects[i].code, promptType, isExploratory,
+            description: this.decodeDescription(selects[i].description),
+            actionTag: 'activate',
+          }, { type: 8, index: i });
         }
         if (!(msg['forced'] as boolean)) {
-          this._lastActionResponses.set(-1, { type: 8, index: null });
-          actions.push({ responseIndex: -1, cardId: 0, promptType, isExploratory });
+          pushAction({ responseIndex: -1, cardId: 0, promptType, isExploratory, actionTag: 'pass' }, { type: 8, index: null });
         }
         break;
       }
       case 'SELECT_EFFECTYN': {
         const cardId = (msg['code'] as number) ?? 0;
-        this._lastActionResponses.set(0, { type: 2, yes: false });
-        this._lastActionResponses.set(1, { type: 2, yes: true });
-        actions.push(
-          { responseIndex: 0, cardId, promptType, isExploratory },
-          { responseIndex: 1, cardId, promptType, isExploratory },
-        );
+        pushAction({ responseIndex: 0, cardId, promptType, isExploratory }, { type: 2, yes: false });
+        pushAction({ responseIndex: 1, cardId, promptType, isExploratory }, { type: 2, yes: true });
         break;
       }
       case 'SELECT_YESNO': {
-        this._lastActionResponses.set(0, { type: 3, yes: false });
-        this._lastActionResponses.set(1, { type: 3, yes: true });
-        actions.push(
-          { responseIndex: 0, cardId: 0, promptType, isExploratory },
-          { responseIndex: 1, cardId: 0, promptType, isExploratory },
-        );
+        pushAction({ responseIndex: 0, cardId: 0, promptType, isExploratory }, { type: 3, yes: false });
+        pushAction({ responseIndex: 1, cardId: 0, promptType, isExploratory }, { type: 3, yes: true });
         break;
       }
       case 'SELECT_OPTION': {
         const options = (msg['options'] ?? []) as unknown[];
         for (let i = 0; i < options.length; i++) {
-          this._lastActionResponses.set(i, { type: 4, index: i });
-          actions.push({ responseIndex: i, cardId: 0, promptType, isExploratory });
+          pushAction({ responseIndex: i, cardId: 0, promptType, isExploratory }, { type: 4, index: i });
         }
         break;
       }
@@ -716,6 +707,16 @@ export class OCGCoreAdapter implements GameOracle {
   // ===========================================================================
   // Internal: Helpers
   // ===========================================================================
+
+  private decodeDescription(desc: bigint): string | undefined {
+    if (typeof desc !== 'bigint') return undefined;
+    const cardCode = Number(desc >> 20n);
+    const strIndex = Number(desc & 0xFFFFFn);
+    if (!cardCode) return undefined;
+    const row = this.cardDB.descStmt.get(cardCode) as Record<string, string> | undefined;
+    if (!row) return undefined;
+    return row[`str${strIndex + 1}`] || undefined;
+  }
 
   private getCardName(code: number): string {
     if (!code) return '';

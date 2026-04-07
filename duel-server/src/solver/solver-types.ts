@@ -59,6 +59,10 @@ export interface Action {
   cardId: number;
   promptType: PromptType;
   isExploratory: boolean;
+  description?: string;
+  actionTag?: string;
+  /** @internal OCGCore response object — set by adapter, consumed by applyAction. */
+  _response?: unknown;
 }
 
 export interface FieldCard {

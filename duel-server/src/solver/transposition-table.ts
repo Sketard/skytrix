@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { ALL_ZONE_IDS } from './solver-types.js';
-import type { Action, FieldCard, FieldState } from './solver-types.js';
+import type { Action, FieldCard, FieldState, ScoreBreakdown } from './solver-types.js';
 import type { ZobristHash } from './zobrist.js';
 import { hashToKey } from './zobrist.js';
 
@@ -18,6 +18,7 @@ export interface TranspositionEntry {
   score: number;
   bestAction: Action;
   verificationKey: string;
+  scoreBreakdown: ScoreBreakdown;
 }
 
 export interface TranspositionStats {
@@ -95,14 +96,14 @@ export class TranspositionTable {
     this._staleHits++;
   }
 
-  store(hash: ZobristHash, depth: number, score: number, bestAction: Action, verificationKey: string): void {
+  store(hash: ZobristHash, depth: number, score: number, bestAction: Action, verificationKey: string, scoreBreakdown: ScoreBreakdown): void {
     const key = hashToKey(hash);
     const existing = this.table.get(key);
 
     if (existing) {
       // Replace only if new depth >= existing
       if (depth >= existing.depth) {
-        this.table.set(key, { hash, depth, score, bestAction, verificationKey });
+        this.table.set(key, { hash, depth, score, bestAction, verificationKey, scoreBreakdown });
         this._stores++;
       }
       return;
@@ -114,7 +115,7 @@ export class TranspositionTable {
       return;
     }
 
-    this.table.set(key, { hash, depth, score, bestAction, verificationKey });
+    this.table.set(key, { hash, depth, score, bestAction, verificationKey, scoreBreakdown });
     this._stores++;
   }
 
