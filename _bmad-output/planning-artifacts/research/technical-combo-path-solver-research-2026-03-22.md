@@ -266,7 +266,7 @@ _How the Angular client interacts with the solver through the existing WS connec
 **Reuse Existing WebSocket** — The duel-server already maintains a persistent WS connection per client. The solver reuses this same connection. No SSE or separate HTTP endpoint needed — bidirectional communication (send cancel, receive progress) is already available.
 _Source: https://websocket.org/comparisons/sse/, https://rxdb.info/articles/websockets-sse-polling-webrtc-webtransport.html_
 
-**Message Flow:**
+**Message Flow (research draft — superseded by `architecture-solver.md` §WS Protocol for final 6-message contract, payloads, and rules):**
 
 | Step | Direction | Message Type | Payload |
 |---|---|---|---|
@@ -412,7 +412,7 @@ _Source: https://en.wikipedia.org/wiki/Transposition_table_
 | XYZ overlays | `zobrist[card_id][parent_zone][overlay_index]` |
 | State flags | LP thresholds, once-per-turn flags, chain state |
 
-**Incremental update** (O(1) per action): `newHash = oldHash XOR zobrist[card][oldZone][oldSlot] XOR zobrist[card][newZone][newSlot]`. Collision rate with 64-bit: first collision around ~4 billion states — more than sufficient. Use cryptographically seeded PRNG (not `Math.random()`). In TypeScript: two parallel 32-bit numbers or BigInt.
+**Incremental update** (O(1) per action): `newHash = oldHash XOR zobrist[card][oldZone][oldSlot] XOR zobrist[card][newZone][newSlot]`. Collision rate with 64-bit: first collision around ~4 billion states — more than sufficient. Use cryptographically seeded PRNG (not `Math.random()`). In TypeScript: two parallel 32-bit numbers or BigInt (architecture chose dual 32-bit — BigInt is 5-10× slower in V8).
 _Source: https://www.chessprogramming.org/Zobrist_Hashing, https://iq.opengenus.org/zobrist-hashing-game-theory/_
 
 _Confidence: HIGH — well-established computer science patterns, verified against multiple sources._
@@ -723,7 +723,7 @@ _Confidence: HIGH for risk identification, MEDIUM for probability estimates (nee
 | Worker pool | piscina | De facto Node.js standard, AbortController + MessagePort + priority queues |
 | First algorithm | DFS + iterative deepening | Simplest, establishes baseline, anytime via IDDFS |
 | Second algorithm | SP-MCTS with randomized restarts | Handles high branching, natural anytime, no heuristic required |
-| State hashing | Zobrist (64-bit, BigInt) | O(1) incremental updates, proven for game state caching |
+| State hashing | Zobrist (64-bit, ~~BigInt~~ dual 32-bit `number`) | O(1) incremental updates, proven for game state caching. **Architecture decision:** dual 32-bit chosen over BigInt (5-10× slower in V8). See `architecture-solver.md` §Zobrist Hashing. |
 | Parallelism | Root parallelism | 14.9x speedup / 16 threads, zero synchronization |
 | Architecture | Hexagonal (ports/adapters) | Testable without OCGCore, clean separation |
 | Handtrap modeling | IS-MCTS with determinization | Purpose-built for hidden information card games |
