@@ -52,6 +52,10 @@ _bmad-output/implementation-artifacts/
 
 # Duel server external data (downloaded at setup, ~100 MB)
 duel-server/data/
+!duel-server/data/solver-config.json
+!duel-server/data/interruption-weights.json
+!duel-server/data/interruption-tags.json
+!duel-server/data/handtraps.json
 duel-server/node_modules/
 duel-server/dist/
 

@@ -1,0 +1,17 @@
+{
+  "omniNegate": 14,
+  "typedNegate": 10,
+  "targetedNegate": 9,
+  "floodgate": 12,
+  "controlChange": 8,
+  "banish": 8,
+  "banishFacedown": 8,
+  "attach": 8,
+  "spin": 7,
+  "flipFacedown": 7,
+  "destruction": 6,
+  "moveToSt": 6,
+  "bounce": 6,
+  "handRip": 6,
+  "sendToGy": 5
+}

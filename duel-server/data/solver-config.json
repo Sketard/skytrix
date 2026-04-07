@@ -1,0 +1,19 @@
+{
+  "poolSize": 6,
+  "maxDepth": 50,
+  "timeBudgetFastMs": 5000,
+  "timeBudgetOptimalMs": 60000,
+  "progressThrottleMs": 200,
+  "treePruningTopX": 10,
+  "maxResultNodes": 500,
+  "transpositionMaxEntries": 25000,
+  "memoryBudgetMb": 512,
+  "bfComplexityThreshold": 25,
+  "rateLimitIntervalMs": 2000,
+  "ismctsDeterminizations": 3,
+  "maxHandtraps": 5,
+  "ucb1C": 1.414,
+  "backpropPolicy": "max",
+  "rolloutEpsilon": 0.1,
+  "verificationBudgetRatio": 0.15
+}
