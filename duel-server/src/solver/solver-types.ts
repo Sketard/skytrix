@@ -244,3 +244,22 @@ export type SolverError =
   | 'RATE_LIMITED'
   | 'MEMORY_LIMIT'
   | 'INTERNAL_ERROR';
+
+// =============================================================================
+// Shared Constants
+// =============================================================================
+
+/** Canonical zone iteration order — use this instead of Object.keys() for determinism. */
+export const ALL_ZONE_IDS: readonly ZoneId[] = [
+  'M1', 'M2', 'M3', 'M4', 'M5',
+  'S1', 'S2', 'S3', 'S4', 'S5',
+  'FIELD', 'EMZ_L', 'EMZ_R',
+  'GY', 'BANISHED', 'EXTRA', 'DECK', 'HAND',
+] satisfies readonly ZoneId[];
+
+// =============================================================================
+// Re-exports from Zobrist / Transposition modules (convenience for DFS consumer)
+// =============================================================================
+
+export type { ZobristHash } from './zobrist.js';
+export type { TranspositionEntry } from './transposition-table.js';
