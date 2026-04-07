@@ -34,6 +34,8 @@ import { filterMessage } from './message-filter.js';
 import { validateData, findMissingPasscodes, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import { updateData } from './data-updater.js';
 import * as logger from './logger.js';
+import { loadSolverConfig } from './solver/solver-config-loader.js';
+import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 
 // =============================================================================
 // Configuration
@@ -138,6 +140,23 @@ if (!dataReady) {
 } else {
   logger.log('Data validation passed');
   initScriptsHash(scriptsDir);
+}
+
+// =============================================================================
+// Solver Orchestrator (Story 1.3)
+// =============================================================================
+
+export let solverOrchestrator: SolverOrchestrator | null = null;
+
+if (dataReady) {
+  try {
+    const solverConfig = loadSolverConfig(DATA_DIR);
+    const orchestrator = new SolverOrchestrator();
+    await orchestrator.init(solverConfig, DATA_DIR);
+    solverOrchestrator = orchestrator;
+  } catch (err) {
+    logger.warn('Solver orchestrator failed to initialize — solver features disabled', err as Record<string, unknown>);
+  }
 }
 
 // =============================================================================

@@ -310,26 +310,11 @@ export class DfsSolver implements SolverStrategy {
   }
 
   // ===========================================================================
-  // Main Path Extraction
+  // Main Path Extraction (delegates to free function)
   // ===========================================================================
 
   private extractMainPath(root: DecisionNode): SolverAction[] {
-    if (root.children.length === 0) return [];
-
-    const path: SolverAction[] = [];
-    let current = root;
-    let guard = this.maxDepth;
-
-    while (current.children.length > 0 && guard-- > 0) {
-      const next = current.children[0];
-      // Skip ROOT_ACTION sentinel (identified by its unique actionDescription)
-      if (next.action.actionDescription !== ROOT_ACTION.actionDescription) {
-        path.push(next.action);
-      }
-      current = next;
-    }
-
-    return path;
+    return extractMainPath(root, this.maxDepth);
   }
 
   // ===========================================================================
@@ -381,6 +366,28 @@ export class DfsSolver implements SolverStrategy {
       bounce: 0, handRip: 0, sendToGy: 0, total: 0,
     };
   }
+}
+
+// =============================================================================
+// extractMainPath — Public free function for top-K extraction by workers
+// =============================================================================
+
+export function extractMainPath(root: DecisionNode, maxDepth = 50): SolverAction[] {
+  if (root.children.length === 0) return [];
+
+  const path: SolverAction[] = [];
+  let current = root;
+  let guard = maxDepth;
+
+  while (current.children.length > 0 && guard-- > 0) {
+    const next = current.children[0];
+    if (next.action.actionDescription !== ROOT_ACTION.actionDescription) {
+      path.push(next.action);
+    }
+    current = next;
+  }
+
+  return path;
 }
 
 // =============================================================================
