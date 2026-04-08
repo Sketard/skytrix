@@ -76,6 +76,19 @@ export interface SolverStats {
 }
 
 // =============================================================================
+// End Board Card
+// =============================================================================
+
+export interface EndBoardCard {
+  cardId: number;
+  cardName: string;
+  position: 'faceup-atk' | 'faceup-def' | 'facedown-def' | 'facedown';
+  zone: string;
+  effects: { type: string; usesPerTurn: number }[];
+  isFallback: boolean;
+}
+
+// =============================================================================
 // Solver Result
 // =============================================================================
 
@@ -84,10 +97,12 @@ export interface SolverResult {
   mainPath: SolverAction[];
   score: number;
   scoreBreakdown: ScoreBreakdown;
+  endBoardCards?: EndBoardCard[];
   stats: SolverStats;
   adversarialTimings?: AdversarialTiming[];
   minimax?: number;
   verified?: boolean;
+  partial?: boolean;
 }
 
 // =============================================================================

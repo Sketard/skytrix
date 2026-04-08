@@ -1,0 +1,63 @@
+<div class="hero-container"
+  [attr.aria-label]="ariaLabel()">
+
+  <div class="score-section">
+    <div class="score-line">
+      <span class="mat-headline-4">{{ result().score }} — {{ totalInterruptions() }} {{ 'solver.result.interruptions' | translate }}</span>
+      @if (isPartial()) {
+        <mat-chip class="partial-badge" highlighted>{{ 'solver.result.partial' | translate }}</mat-chip>
+      }
+      @if (hasFallbackCards()) {
+        <mat-icon class="fallback-icon"
+          fontIcon="info_outline"
+          [matTooltip]="'solver.result.fallbackHint' | translate"></mat-icon>
+      }
+    </div>
+
+    <div class="chips-row">
+      @for (chip of interruptionChips(); track chip.label) {
+        <mat-chip
+          [style.--mdc-chip-elevated-container-color]="chip.color"
+          [style.--mdc-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
+          {{ chip.label }} ×{{ chip.count }}
+        </mat-chip>
+      }
+    </div>
+  </div>
+
+  @if (endBoardDisplay().length > 0) {
+    <div class="end-board-section">
+      @for (card of endBoardDisplay(); track $index) {
+        <div class="end-board-card"
+          [class.fallback]="card.isFallback"
+          (mouseenter)="onCardEnter(card)"
+          (mouseleave)="onCardLeave()"
+          cdkOverlayOrigin
+          #cardOrigin="cdkOverlayOrigin">
+          <img [src]="card.imageUrl"
+            [alt]="card.cardName"
+            (error)="onCardImgError($event)"
+            loading="lazy" />
+          @if (card.badgeLabel) {
+            <div class="card-badge">{{ card.badgeLabel }}</div>
+          }
+
+          <ng-template cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="cardOrigin"
+            [cdkConnectedOverlayOpen]="hoverCard() === card"
+            [cdkConnectedOverlayOffsetY]="-10"
+            cdkConnectedOverlayPanelClass="hero-card-popup">
+            <div class="card-popup"
+              (mouseenter)="onPopupEnter()"
+              (mouseleave)="onCardLeave()">
+              <img [src]="card.imageUrl"
+                [alt]="card.cardName"
+                (error)="onCardImgError($event)" />
+              <span class="card-popup-name">{{ card.cardName }}</span>
+            </div>
+          </ng-template>
+        </div>
+      }
+    </div>
+  }
+</div>

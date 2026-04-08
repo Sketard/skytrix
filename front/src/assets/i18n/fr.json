@@ -485,6 +485,17 @@
     },
     "uncollapse": "Ouvrir la configuration",
     "loading": "Chargement...",
+    "result": {
+      "interruptions": "interruptions",
+      "interruptionSingular": "interruption",
+      "partial": "Résultat partiel",
+      "fallbackHint": "Certaines cartes n'ont pas de tags d'interruption — le score est estimé",
+      "brick": {
+        "title": "Aucun combo viable",
+        "message": "Cette main n'a aucun chemin vers une interruption, même sans opposition.",
+        "suggestion": "Essayez une main différente"
+      }
+    },
     "error": {
       "deckNotFound": "Deck introuvable",
       "accessDenied": "Accès refusé à ce deck",

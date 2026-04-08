@@ -928,6 +928,15 @@ export interface SolverWsAdversarialTiming {
   responseIndex: number;
 }
 
+export interface SolverWsEndBoardCard {
+  cardId: number;
+  cardName: string;
+  position: 'faceup-atk' | 'faceup-def' | 'facedown-def' | 'facedown';
+  zone: string;
+  effects: { type: string; usesPerTurn: number }[];
+  isFallback: boolean;
+}
+
 export type SolverWsError =
   | 'DECK_NOT_FOUND'
   | 'DECK_ACCESS_DENIED'
@@ -973,6 +982,7 @@ export interface SolverResultMessage {
   mainPath: SolverWsAction[];
   score: number;
   scoreBreakdown: SolverWsScoreBreakdown;
+  endBoardCards?: SolverWsEndBoardCard[];
   minimax?: number;
   adversarialTimings?: SolverWsAdversarialTiming[];
   stats: SolverWsStats;

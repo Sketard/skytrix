@@ -5,6 +5,7 @@
 
 import type { ZoneId } from '../ws-protocol.js';
 import type {
+  EndBoardCard,
   FieldState,
   InterruptionTag,
   InterruptionType,
@@ -47,6 +48,11 @@ export class InterruptionScorer {
   }
 
   score(fieldState: FieldState): { score: number; scoreBreakdown: ScoreBreakdown } {
+    const { score, scoreBreakdown } = this.scoreWithCards(fieldState);
+    return { score, scoreBreakdown };
+  }
+
+  scoreWithCards(fieldState: FieldState): { score: number; scoreBreakdown: ScoreBreakdown; endBoardCards: EndBoardCard[] } {
     const breakdown: ScoreBreakdown = {
       omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
       controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
@@ -55,32 +61,50 @@ export class InterruptionScorer {
     };
 
     let total = 0;
+    const endBoardCards: EndBoardCard[] = [];
+    const isMonsterZone = new Set(MONSTER_ZONE_IDS);
 
-    // Tag-based scoring: all 13 field zones, any position
     for (const zoneId of FIELD_ZONE_IDS) {
       const cards = fieldState.zones[zoneId];
       for (const card of cards) {
+        const isFaceDown = card.position === 'facedown-def' || card.position === 'facedown';
         const tag = this.tags[card.cardId];
         if (tag) {
           for (const effect of tag.effects) {
             breakdown[effect.type] += effect.usesPerTurn;
             total += this.weights[effect.type] * effect.usesPerTurn;
           }
-        }
-      }
-    }
-
-    // Fallback heuristic: face-up monsters only, monster zones only
-    for (const zoneId of MONSTER_ZONE_IDS) {
-      const cards = fieldState.zones[zoneId];
-      for (const card of cards) {
-        if (!this.tags[card.cardId] && (card.position === 'faceup-atk' || card.position === 'faceup-def')) {
+          // Face-down tagged cards score but are not shown on the end board
+          if (!isFaceDown) {
+            endBoardCards.push({
+              cardId: card.cardId,
+              cardName: card.cardName,
+              position: card.position,
+              zone: zoneId,
+              effects: tag.effects,
+              isFallback: false,
+            });
+          }
+        } else if (
+          isMonsterZone.has(zoneId) &&
+          (card.position === 'faceup-atk' || card.position === 'faceup-def')
+        ) {
+          // Fallback heuristic: face-up monster, no tag
           total += 1;
+          endBoardCards.push({
+            cardId: card.cardId,
+            cardName: card.cardName,
+            position: card.position,
+            zone: zoneId,
+            effects: [],
+            isFallback: true,
+          });
         }
+        // Face-down cards without tags are skipped (not visible on end board)
       }
     }
 
     breakdown.total = total;
-    return { score: total, scoreBreakdown: breakdown };
+    return { score: total, scoreBreakdown: breakdown, endBoardCards };
   }
 }

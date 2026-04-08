@@ -33,7 +33,18 @@
           [progress]="solverService.progress()"
           (cancel)="onCancel()" />
       }
-      <!-- Result components go here (Story 1.6a) -->
+      @if (solverState() === 'complete') {
+        @if (solverService.result(); as r) {
+          @if (r.score === 0 && !solverService.isPartialResult()) {
+            <app-brick-state-block brickType="pure-brick" />
+          } @else {
+            <app-hero-result-block
+              [result]="r"
+              [isPartial]="solverService.isPartialResult()"
+              [cardImageMap]="cardImageMap()" />
+          }
+        }
+      }
     </div>
   </div>
 }

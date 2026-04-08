@@ -485,6 +485,17 @@
     },
     "uncollapse": "Open configuration",
     "loading": "Loading...",
+    "result": {
+      "interruptions": "interruptions",
+      "interruptionSingular": "interruption",
+      "partial": "Partial result",
+      "fallbackHint": "Some cards lack interruption tags — score is estimated",
+      "brick": {
+        "title": "No viable combo",
+        "message": "This hand has no path to an interruption even uncontested.",
+        "suggestion": "Try a different hand"
+      }
+    },
     "error": {
       "deckNotFound": "Deck not found",
       "accessDenied": "Access denied for this deck",

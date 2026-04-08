@@ -8,6 +8,7 @@ import type { SolverStrategy, ActionRanker } from './solver-strategy.js';
 import type {
   Action,
   DecisionNode,
+  EndBoardCard,
   FieldState,
   ScoreBreakdown,
   SolverAction,
@@ -106,6 +107,7 @@ export class DfsSolver implements SolverStrategy {
       timeBudget,
       nodesExplored: 0,
       bestScore: -1,
+      bestEndBoardCards: [],
       maxDepthReached: 0,
       totalChildren: 0,
       totalBranchingNodes: 0,
@@ -141,6 +143,7 @@ export class DfsSolver implements SolverStrategy {
         mainPath,
         score: result.score,
         scoreBreakdown: result.scoreBreakdown,
+        endBoardCards: ctx.bestEndBoardCards,
         stats,
       };
     } finally {
@@ -298,9 +301,12 @@ export class DfsSolver implements SolverStrategy {
   }
 
   private scoreTerminal(ctx: DfsContext, fieldState: FieldState, _depth: number, truncated?: boolean): DfsNodeResult {
-    const { score, scoreBreakdown } = this.scorer.score(fieldState);
+    const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState);
     ctx.totalTreeNodes++;
-    if (score > ctx.bestScore) ctx.bestScore = score;
+    if (score > ctx.bestScore) {
+      ctx.bestScore = score;
+      ctx.bestEndBoardCards = endBoardCards;
+    }
 
     return {
       node: this.makeNode(ROOT_ACTION, score, scoreBreakdown, truncated ? 0.5 : 1.0, [], true, truncated),
@@ -402,6 +408,7 @@ interface DfsContext {
   timeBudget: number;
   nodesExplored: number;
   bestScore: number;
+  bestEndBoardCards: EndBoardCard[];
   maxDepthReached: number;
   totalChildren: number;
   totalBranchingNodes: number;

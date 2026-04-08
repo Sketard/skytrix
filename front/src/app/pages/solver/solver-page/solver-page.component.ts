@@ -28,11 +28,13 @@ import { DeckDTO } from '../../../core/model/dto/deck-dto';
 import type { SolverStartConfig } from '../../../core/model/solver.model';
 import { SolverConfigComponent } from '../solver-config/solver-config.component';
 import { SolverProgressComponent } from '../solver-progress/solver-progress.component';
+import { HeroResultBlockComponent } from '../solver-result/hero-result-block.component';
+import { BrickStateBlockComponent } from '../solver-result/brick-state-block.component';
 
 @Component({
   selector: 'app-solver-page',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent],
   providers: [SolverDebugLogService],
   templateUrl: './solver-page.component.html',
   styleUrl: './solver-page.component.scss',
@@ -51,6 +53,23 @@ export class SolverPageComponent implements OnInit, OnDestroy {
   readonly isDesktop = computed(() => this.windowWidth() >= 1024);
 
   readonly solverState = this.solverService.solverState;
+
+  readonly cardImageMap = computed(() => {
+    const d = this.deck();
+    if (!d) return new Map<number, string>();
+    const map = new Map<number, string>();
+    for (const icd of d.mainDeck) {
+      if (icd.index !== -1) {
+        map.set(icd.card.card.id!, icd.card.images[0]?.smallUrl || 'assets/images/card_back.jpg');
+      }
+    }
+    for (const icd of d.extraDeck) {
+      if (icd.index !== -1) {
+        map.set(icd.card.card.id!, icd.card.images[0]?.smallUrl || 'assets/images/card_back.jpg');
+      }
+    }
+    return map;
+  });
 
   constructor() {
     effect(() => {

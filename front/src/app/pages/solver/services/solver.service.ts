@@ -2,7 +2,7 @@ import { inject, Injectable, OnDestroy } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SolverDebugLogService } from './solver-debug-log.service';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { duelAssert } from '../../pvp/duel-page/duel-assert';
 import type {
   SolverStartMessage,
@@ -36,6 +36,7 @@ import type {
   ScoreBreakdown,
   SolverStats,
   AdversarialTiming,
+  EndBoardCard,
 } from '../../../core/model/solver.model';
 
 const SESSION_HISTORY_CAP = 20;
@@ -56,6 +57,7 @@ export class SolverService implements OnDestroy {
   readonly handtraps = signal<HandtrapConfig[] | null>(null);
   readonly sessionHistory = signal<SolverResult[]>([]);
   readonly currentDeckId = signal<string | null>(null);
+  readonly isPartialResult = computed(() => this.result()?.partial === true);
 
   private ws: WebSocket | null = null;
   private lastSolveDeckId: string | null = null;
@@ -224,12 +226,16 @@ export class SolverService implements OnDestroy {
             mainPath: [],
             score: 0,
             scoreBreakdown: EMPTY_SCORE_BREAKDOWN,
+            endBoardCards: [],
             stats: payload.stats as unknown as SolverStats,
+            partial: true,
           };
           this.result.set(partialResult);
           this.addToHistory(partialResult);
+          this.solverState.set('complete');
+        } else {
+          this.solverState.set('configuring');
         }
-        this.solverState.set('configuring');
         break;
       }
 
@@ -249,6 +255,7 @@ export class SolverService implements OnDestroy {
       mainPath: payload.mainPath as unknown as SolverAction[],
       score: payload.score,
       scoreBreakdown: payload.scoreBreakdown as unknown as ScoreBreakdown,
+      endBoardCards: payload.endBoardCards ?? [],
       stats: payload.stats as unknown as SolverStats,
       adversarialTimings: payload.adversarialTimings as unknown as AdversarialTiming[] | undefined,
       minimax: payload.minimax,

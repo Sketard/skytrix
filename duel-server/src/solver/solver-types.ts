@@ -142,11 +142,21 @@ export interface SolverConfig {
   handtraps?: HandtrapConfig[];
 }
 
+export interface EndBoardCard {
+  cardId: number;
+  cardName: string;
+  position: FieldCard['position'];
+  zone: ZoneId;
+  effects: InterruptionEffect[];
+  isFallback: boolean;
+}
+
 export interface SolverResult {
   tree: DecisionNode;
   mainPath: SolverAction[];
   score: number;
   scoreBreakdown: ScoreBreakdown;
+  endBoardCards?: EndBoardCard[];
   stats: SolverStats;
   adversarialTimings?: AdversarialTiming[];
   minimax?: number;

@@ -2888,6 +2888,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
         mainPath: result.mainPath as SolverResultMessage['mainPath'],
         score: result.score,
         scoreBreakdown: result.scoreBreakdown as SolverResultMessage['scoreBreakdown'],
+        endBoardCards: result.endBoardCards as SolverResultMessage['endBoardCards'],
         stats: { ...result.stats, deckSeed: deckSeedStr } as SolverResultMessage['stats'],
         verified: result.verified,
         ...(result.minimax !== undefined ? { minimax: result.minimax } : {}),
