@@ -459,7 +459,30 @@
     "pageTitle": "Solveur",
     "desktopRequired": "Le solveur requiert un navigateur desktop (1024px minimum)",
     "backToDecks": "Retour aux decks",
-    "config": { "title": "Configuration" },
+    "config": {
+      "title": "Configuration",
+      "selected": "{{count}}/5 sélectionnées",
+      "fillRandom": "Remplir aléatoirement",
+      "clear": "Réinitialiser la sélection",
+      "mode": "Mode",
+      "modeGoldfish": "Goldfish",
+      "speed": "Vitesse",
+      "speedFast": "Rapide",
+      "speedOptimal": "Optimal",
+      "algorithm": "Algorithme",
+      "algorithmDfs": "DFS",
+      "algorithmMcts": "MCTS",
+      "algorithmAuto": "Auto",
+      "solve": "Résoudre",
+      "notEnoughCards": "Pas assez de cartes pour former une main"
+    },
+    "progress": {
+      "exploring": "Exploration des lignes de combo...",
+      "nodesExplored": "{{count}} lignes de combo explorées",
+      "bestScore": "Meilleur board : {{score}}",
+      "elapsed": "Temps écoulé : {{time}}",
+      "cancel": "Annuler"
+    },
     "uncollapse": "Ouvrir la configuration",
     "loading": "Chargement...",
     "error": {

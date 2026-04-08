@@ -459,7 +459,30 @@
     "pageTitle": "Solver",
     "desktopRequired": "Solver requires a desktop browser (1024px minimum)",
     "backToDecks": "Back to decks",
-    "config": { "title": "Configuration" },
+    "config": {
+      "title": "Configuration",
+      "selected": "{{count}}/5 selected",
+      "fillRandom": "Fill Random",
+      "clear": "Clear selection",
+      "mode": "Mode",
+      "modeGoldfish": "Goldfish",
+      "speed": "Speed",
+      "speedFast": "Fast",
+      "speedOptimal": "Optimal",
+      "algorithm": "Algorithm",
+      "algorithmDfs": "DFS",
+      "algorithmMcts": "MCTS",
+      "algorithmAuto": "Auto",
+      "solve": "Solve",
+      "notEnoughCards": "Not enough cards to form a hand"
+    },
+    "progress": {
+      "exploring": "Exploring combo lines...",
+      "nodesExplored": "{{count}} combo lines explored",
+      "bestScore": "Best board: {{score}}",
+      "elapsed": "Elapsed: {{time}}",
+      "cancel": "Cancel"
+    },
     "uncollapse": "Open configuration",
     "loading": "Loading...",
     "error": {

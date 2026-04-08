@@ -1,0 +1,76 @@
+<section class="solver-config-panel" [class.locked]="isLocked()">
+  @if (!hasEnoughCards()) {
+    <p class="error-message">{{ 'solver.config.notEnoughCards' | translate }}</p>
+  } @else {
+    <div class="hand-selector">
+      <div class="hand-header">
+        <span class="hand-count">{{ 'solver.config.selected' | translate:{ count: totalSelected() } }}</span>
+        @if (totalSelected() > 0) {
+          <button mat-icon-button
+            [attr.aria-label]="'solver.config.clear' | translate"
+            (click)="clearSelection()"
+            [disabled]="isLocked()">
+            <mat-icon fontIcon="clear_all"></mat-icon>
+          </button>
+        }
+      </div>
+
+      <div class="card-grid">
+        @for (card of deduplicatedCards(); track card.cardId) {
+          <button class="card-thumb"
+            [class.selected]="selectedCount(card.cardId) > 0"
+            [disabled]="isLocked()"
+            [attr.aria-label]="card.name + ' — ' + selectedCount(card.cardId) + '/' + card.maxCopies + ' selected'"
+            (click)="onCardClick(card)">
+            <img [src]="card.imageUrl"
+              [alt]="card.name"
+              (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+            <span class="card-badge">
+              @if (selectedCount(card.cardId) > 0) {
+                &times;{{ selectedCount(card.cardId) }}/{{ card.maxCopies }}
+              } @else {
+                &times;{{ card.maxCopies }}
+              }
+            </span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="controls">
+      <button mat-stroked-button
+        (click)="fillRandom()"
+        [disabled]="isLocked() || totalSelected() >= 5">
+        {{ 'solver.config.fillRandom' | translate }}
+      </button>
+
+      <div class="toggle-group">
+        <span class="toggle-label">{{ 'solver.config.speed' | translate }}</span>
+        <mat-button-toggle-group [value]="speed()" (change)="speed.set($event.value)" [disabled]="isLocked()">
+          <mat-button-toggle value="fast">{{ 'solver.config.speedFast' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="optimal">{{ 'solver.config.speedOptimal' | translate }}</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="toggle-group">
+        <span class="toggle-label">{{ 'solver.config.algorithm' | translate }}</span>
+        <mat-button-toggle-group [value]="algorithm()" (change)="algorithm.set($event.value)" [disabled]="isLocked()">
+          <mat-button-toggle value="dfs">{{ 'solver.config.algorithmDfs' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="mcts">{{ 'solver.config.algorithmMcts' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="auto">{{ 'solver.config.algorithmAuto' | translate }}</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="toggle-group">
+        <span class="toggle-label">{{ 'solver.config.mode' | translate }}</span>
+        <span class="mode-static">{{ 'solver.config.modeGoldfish' | translate }}</span>
+      </div>
+
+      <button mat-raised-button color="primary"
+        [disabled]="isLocked() || totalSelected() !== 5"
+        (click)="onSolve()">
+        {{ 'solver.config.solve' | translate }}
+      </button>
+    </div>
+  }
+</section>

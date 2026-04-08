@@ -119,6 +119,19 @@ export interface SolverErrorMessage {
 }
 
 // =============================================================================
+// Solver Start Config (emitted by SolverConfigComponent)
+// =============================================================================
+
+export interface SolverStartConfig {
+  deckId: string;
+  deck: { main: number[]; extra: number[] };
+  hand: number[];
+  mode: 'goldfish';
+  speed: 'fast' | 'optimal';
+  algorithm?: 'dfs' | 'mcts' | 'auto';
+}
+
+// =============================================================================
 // Solver State Machine
 // =============================================================================
 

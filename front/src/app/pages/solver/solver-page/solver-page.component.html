@@ -6,7 +6,15 @@
 } @else {
   <div class="solver-layout">
     <div class="solver-config" [class.collapsed]="collapsed()">
-      <!-- Config components go here (Story 1.5b) -->
+      @if (solverState() === 'loading') {
+        <mat-spinner diameter="40"></mat-spinner>
+      }
+      @if (deck(); as d) {
+        <app-solver-config
+          [deck]="d"
+          [solverState]="solverState()"
+          (solve)="onSolve($event)" />
+      }
     </div>
 
     @if (collapsed()) {
@@ -20,6 +28,11 @@
     }
 
     <div class="solver-result">
+      @if (solverState() === 'running') {
+        <app-solver-progress
+          [progress]="solverService.progress()"
+          (cancel)="onCancel()" />
+      }
       <!-- Result components go here (Story 1.6a) -->
     </div>
   </div>

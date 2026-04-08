@@ -17,6 +17,7 @@ import { switchMap, catchError } from 'rxjs/operators';
 import { EMPTY } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { SolverService } from '../services/solver.service';
@@ -24,18 +25,21 @@ import { SolverDebugLogService } from '../services/solver-debug-log.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Deck } from '../../../core/model/deck';
 import { DeckDTO } from '../../../core/model/dto/deck-dto';
+import type { SolverStartConfig } from '../../../core/model/solver.model';
+import { SolverConfigComponent } from '../solver-config/solver-config.component';
+import { SolverProgressComponent } from '../solver-progress/solver-progress.component';
 
 @Component({
   selector: 'app-solver-page',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, RouterLink, TranslatePipe],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent],
   providers: [SolverDebugLogService],
   templateUrl: './solver-page.component.html',
   styleUrl: './solver-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SolverPageComponent implements OnInit, OnDestroy {
-  private readonly solverService = inject(SolverService);
+  protected readonly solverService = inject(SolverService);
   private readonly route = inject(ActivatedRoute);
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
@@ -101,6 +105,14 @@ export class SolverPageComponent implements OnInit, OnDestroy {
   uncollapse(): void {
     this.solverService.solverState.set('configuring');
     this.collapsed.set(false);
+  }
+
+  onSolve(config: SolverStartConfig): void {
+    this.solverService.solve(config);
+  }
+
+  onCancel(): void {
+    this.solverService.cancel();
   }
 
   ngOnDestroy(): void {
