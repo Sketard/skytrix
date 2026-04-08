@@ -494,6 +494,10 @@
         "title": "No viable combo",
         "message": "This hand has no path to an interruption even uncontested.",
         "suggestion": "Try a different hand"
+      },
+      "tree": {
+        "pruned": "... and {{count}} other branches",
+        "truncated": "Subtree cut for size"
       }
     },
     "error": {

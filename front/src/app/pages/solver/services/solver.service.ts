@@ -3,7 +3,7 @@ import { environment } from '../../../../environments/environment';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SolverDebugLogService } from './solver-debug-log.service';
 import { computed, signal } from '@angular/core';
-import { duelAssert } from '../../pvp/duel-page/duel-assert';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 import type {
   SolverStartMessage,
   SolverProgressMessage,

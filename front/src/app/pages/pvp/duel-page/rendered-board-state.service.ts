@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE } from '../types';
 import { Player, PlayerBoardState, BoardZone } from '../duel-ws.types';
 import { LOCK_SAFETY_TIMEOUT_MS } from './animation-constants';
-import { duelAssert } from './duel-assert';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 import type { CardTravelService } from './card-travel.service';
 import type { DuelLogger } from './duel-logger';
 

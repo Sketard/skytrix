@@ -494,6 +494,10 @@
         "title": "Aucun combo viable",
         "message": "Cette main n'a aucun chemin vers une interruption, même sans opposition.",
         "suggestion": "Essayez une main différente"
+      },
+      "tree": {
+        "pruned": "... et {{count}} autres branches",
+        "truncated": "Sous-arbre tronqué pour la taille"
       }
     },
     "error": {

@@ -1,0 +1,69 @@
+<cdk-tree [dataSource]="visibleNodes()" [treeControl]="treeControl" [trackBy]="trackByNode">
+  <cdk-tree-node *cdkTreeNodeDef="let node"
+    [attr.data-node-id]="node.id"
+    [style.padding-left.px]="node.level * 24"
+    [attr.aria-label]="node.node.annotation + ' — Score: ' + node.node.score"
+    class="tree-node"
+    [class.main-path]="node.isMainPath">
+
+    @if (node.expandable) {
+      <button mat-icon-button (click)="toggleNode(node)"
+        [attr.aria-label]="'toggle ' + node.node.action.cardName">
+        <mat-icon [fontIcon]="isExpanded(node) ? 'expand_more' : 'chevron_right'"></mat-icon>
+      </button>
+    } @else {
+      <span class="tree-node-spacer"></span>
+    }
+
+    <div class="tree-card-art"
+      (mouseenter)="onNodeCardEnter(node)"
+      (mouseleave)="onNodeCardLeave()"
+      cdkOverlayOrigin
+      #nodeOrigin="cdkOverlayOrigin">
+      <img [src]="node.imageUrl"
+        [alt]="node.node.action.cardName"
+        (error)="onImgError($event)"
+        loading="lazy" />
+
+      <ng-template cdkConnectedOverlay
+        [cdkConnectedOverlayOrigin]="nodeOrigin"
+        [cdkConnectedOverlayOpen]="hoverNodeId() === node.id"
+        [cdkConnectedOverlayOffsetX]="40"
+        cdkConnectedOverlayPanelClass="tree-card-popup">
+        <div class="card-popup"
+          (mouseenter)="onPopupEnter()"
+          (mouseleave)="onNodeCardLeave()">
+          <img [src]="node.imageUrl"
+            [alt]="node.node.action.cardName"
+            (error)="onImgError($event)" />
+          <span class="card-popup-name">{{ node.node.action.cardName }}</span>
+        </div>
+      </ng-template>
+    </div>
+
+    <span class="tree-annotation"
+      [matTooltip]="node.node.annotation">{{ node.node.annotation }}</span>
+
+    <span class="tree-score mat-body-1">{{ node.node.score }}</span>
+
+    @if (node.scoreDelta) {
+      <span class="tree-score-delta"
+        [class.positive]="node.node.score > mainPathScore()"
+        [class.negative]="node.node.score < mainPathScore()">
+        {{ node.scoreDelta }}
+      </span>
+    }
+
+    @if (node.node.truncated) {
+      <mat-icon class="truncated-icon"
+        fontIcon="more_horiz"
+        [matTooltip]="'solver.result.tree.truncated' | translate"></mat-icon>
+    }
+  </cdk-tree-node>
+
+  <cdk-tree-node *cdkTreeNodeDef="let node; when: isPrunedNode"
+    [style.padding-left.px]="node.level * 24"
+    class="tree-node pruned-placeholder">
+    <span class="pruned-text">{{ 'solver.result.tree.pruned' | translate:{ count: node.prunedCount } }}</span>
+  </cdk-tree-node>
+</cdk-tree>

@@ -1,6 +1,6 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { duelAssert } from './duel-assert';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
  * Component-level context for the animation pipeline.

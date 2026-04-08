@@ -9,6 +9,7 @@ import {
   OnDestroy,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -25,16 +26,18 @@ import { SolverDebugLogService } from '../services/solver-debug-log.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Deck } from '../../../core/model/deck';
 import { DeckDTO } from '../../../core/model/dto/deck-dto';
-import type { SolverStartConfig } from '../../../core/model/solver.model';
+import type { SolverAction, SolverStartConfig } from '../../../core/model/solver.model';
 import { SolverConfigComponent } from '../solver-config/solver-config.component';
 import { SolverProgressComponent } from '../solver-progress/solver-progress.component';
 import { HeroResultBlockComponent } from '../solver-result/hero-result-block.component';
 import { BrickStateBlockComponent } from '../solver-result/brick-state-block.component';
+import { BreadcrumbPathComponent } from '../solver-result/breadcrumb-path.component';
+import { DecisionTreeComponent } from '../solver-result/decision-tree.component';
 
 @Component({
   selector: 'app-solver-page',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent, BreadcrumbPathComponent, DecisionTreeComponent],
   providers: [SolverDebugLogService],
   templateUrl: './solver-page.component.html',
   styleUrl: './solver-page.component.scss',
@@ -46,6 +49,8 @@ export class SolverPageComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly notify = inject(NotificationService);
+
+  readonly decisionTree = viewChild<DecisionTreeComponent>('decisionTree');
 
   readonly collapsed = signal(false);
   readonly deck = signal<Deck | null>(null);
@@ -119,6 +124,10 @@ export class SolverPageComponent implements OnInit, OnDestroy {
           this.solverService.solverState.set('idle');
         }
       });
+  }
+
+  onBreadcrumbClick(action: SolverAction): void {
+    this.decisionTree()?.scrollToAction(action);
   }
 
   uncollapse(): void {

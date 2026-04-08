@@ -1,7 +1,7 @@
 import { effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import type { GameEvent } from '../types';
 import type { ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
-import { duelAssert } from './duel-assert';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 
 /**
