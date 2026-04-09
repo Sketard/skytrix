@@ -5,7 +5,7 @@
 // =============================================================================
 
 import type { ActionRanker } from './solver-strategy.js';
-import type { Action, FieldState } from './solver-types.js';
+import type { Action, FieldState, PromptType } from './solver-types.js';
 
 export class GoldfishChainRanker implements ActionRanker {
   private _descriptionWarnLogged = false;
@@ -29,6 +29,16 @@ export class GoldfishChainRanker implements ActionRanker {
     }
 
     return actions;
+  }
+
+  /**
+   * Single source of truth for which prompts this ranker actually inspects.
+   * Keep in sync with the rank() dispatch above. Note: rank() ignores _state
+   * today, but the contract still flags these prompts so future scoring
+   * heuristics that DO read state don't silently bypass the FieldState fetch.
+   */
+  needsState(promptType: PromptType): boolean {
+    return promptType === 'SELECT_CHAIN' || promptType === 'SELECT_BATTLECMD';
   }
 
   private rankChain(actions: Action[]): Action[] {

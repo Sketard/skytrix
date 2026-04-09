@@ -116,7 +116,10 @@ export class DfsSolver implements SolverStrategy {
     };
 
     try {
-      this.table.reset();
+      // Skip TT reset when resuming from probe — TT already populated
+      if (!this._probeStats) {
+        this.table.reset();
+      }
       if ('resetWarnFlag' in this.ranker) (this.ranker as GoldfishChainRanker).resetWarnFlag();
 
       const pathHashes = new Set<string>();
@@ -125,7 +128,7 @@ export class DfsSolver implements SolverStrategy {
       const mainPath = this.extractMainPath(result.node);
       const elapsed = Date.now() - startTime;
 
-      const stats: SolverStats = {
+      let stats: SolverStats = {
         nodesExplored: ctx.nodesExplored,
         elapsed,
         algorithm: 'dfs',
@@ -137,6 +140,9 @@ export class DfsSolver implements SolverStrategy {
         transpositionHits: this.table.getStats().hits,
         deckSeed: '',
       };
+
+      // Merge probe stats if resuming from probe
+      stats = this.mergeProbeStats(stats);
 
       return {
         tree: result.node,
@@ -161,8 +167,8 @@ export class DfsSolver implements SolverStrategy {
     depth: number,
     pathHashes: Set<string>,
   ): DfsNodeResult {
-    // Abort check
-    if (ctx.signal.aborted) {
+    // Abort check + node limit (probe mode)
+    if (ctx.signal.aborted || (ctx.nodeLimit !== undefined && ctx.nodesExplored >= ctx.nodeLimit)) {
       return this.makeTerminal(ctx, handle, depth);
     }
 
@@ -220,9 +226,11 @@ export class DfsSolver implements SolverStrategy {
       this.table.recordStaleHit();
     }
 
-    // Action ranking for SELECT_CHAIN and SELECT_BATTLECMD
+    // Action ranking — the ranker owns its own prompt list via needsState().
+    // fieldState is already computed above for the zobrist hash, so passing
+    // it here is free regardless.
     let ranked = actions;
-    if (actions.length > 0 && (actions[0].promptType === 'SELECT_CHAIN' || actions[0].promptType === 'SELECT_BATTLECMD')) {
+    if (actions.length > 0 && this.ranker.needsState(actions[0].promptType)) {
       ranked = this.ranker.rank(actions, fieldState);
     }
 
@@ -313,6 +321,84 @@ export class DfsSolver implements SolverStrategy {
       score,
       scoreBreakdown,
     };
+  }
+
+  // ===========================================================================
+  // Probe — 100-node DFS for auto-detection BF measurement (Task 8.4)
+  // ===========================================================================
+
+  /**
+   * Runs a bounded DFS (nodeLimit nodes) to measure branching factor for
+   * auto-detection. Called only by the worker's dispatch path.
+   *
+   * SIDE EFFECT: Resets the shared transposition table before traversal.
+   * Callers must treat the probe as destructive to any previously cached
+   * TT state. The subsequent solve() (if resuming via resumeFromProbe)
+   * skips its own reset to preserve probe entries.
+   */
+  probe(
+    oracle: GameOracle,
+    config: SolverConfig,
+    signal: AbortSignal,
+    nodeLimit: number,
+    startHandle: DuelHandle,
+  ): ProbeResult {
+    const startTime = Date.now();
+    const ctx: DfsContext = {
+      oracle,
+      signal,
+      onProgress: () => {},
+      startTime,
+      timeBudget: config.timeLimitMs,
+      nodesExplored: 0,
+      bestScore: -1,
+      bestEndBoardCards: [],
+      maxDepthReached: 0,
+      totalChildren: 0,
+      totalBranchingNodes: 0,
+      totalTreeNodes: 0,
+      lastProgressTime: startTime,
+      nodeLimit,
+    };
+
+    // Reset TT for clean probe. The resumed solve() skips its own TT reset
+    // (via _probeStats check) so probe entries are preserved for resume.
+    this.table.reset();
+    if ('resetWarnFlag' in this.ranker) (this.ranker as GoldfishChainRanker).resetWarnFlag();
+
+    const pathHashes = new Set<string>();
+    this.dfs(ctx, startHandle, 0, pathHashes);
+
+    return {
+      averageBranchingFactor: ctx.totalBranchingNodes > 0
+        ? ctx.totalChildren / ctx.totalBranchingNodes
+        : 0,
+      bestScore: ctx.bestScore,
+      nodesExplored: ctx.nodesExplored,
+    };
+  }
+
+  // ===========================================================================
+  // Resume from probe — continue DFS with preserved TT (Task 8.5)
+  // ===========================================================================
+
+  private _probeStats: ProbeResult | null = null;
+
+  resumeFromProbe(probeResult: ProbeResult): void {
+    this._probeStats = probeResult;
+  }
+
+  // Merge probe stats when resuming. Approximate: probe nodes that are TT hits
+  // during the resumed solve are counted twice, but overlap is bounded by probe
+  // size (~100 nodes) — negligible vs total solve exploration.
+  private mergeProbeStats(stats: SolverStats): SolverStats {
+    if (!this._probeStats) return stats;
+    const merged = {
+      ...stats,
+      nodesExplored: stats.nodesExplored + this._probeStats.nodesExplored,
+    };
+    this._probeStats = null;
+    return merged;
   }
 
   // ===========================================================================
@@ -414,4 +500,15 @@ interface DfsContext {
   totalBranchingNodes: number;
   totalTreeNodes: number;
   lastProgressTime: number;
+  nodeLimit?: number; // for probe mode
+}
+
+// =============================================================================
+// ProbeResult — Returned by DfsSolver.probe() for auto-detection
+// =============================================================================
+
+export interface ProbeResult {
+  averageBranchingFactor: number;
+  bestScore: number;
+  nodesExplored: number;
 }

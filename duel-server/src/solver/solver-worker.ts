@@ -14,6 +14,7 @@ import { ZobristHasher } from './zobrist.js';
 import { TranspositionTable } from './transposition-table.js';
 import { InterruptionScorer } from './interruption-scorer.js';
 import { DfsSolver, extractMainPath } from './dfs-solver.js';
+import { MCTSSolver } from './mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import type {
   DuelConfig,
@@ -65,7 +66,8 @@ const scorer = new InterruptionScorer(
   allConfigs.interruptionWeights,
 );
 const ranker = new GoldfishChainRanker();
-const solver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
+const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
+const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
 
 // =============================================================================
 // Default Export — piscina calls this per task
@@ -78,6 +80,11 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   }
 
   const { duelConfig, solverConfig, seed, algorithm, progressPort, topK = 3 } = task;
+
+  // Anchor for time accounting. The 'auto' branch runs a probe BEFORE the
+  // main solver, so the main solver must subtract probe elapsed from its own
+  // budget — otherwise it over-runs and starves the verification budget.
+  const taskStartTime = Date.now();
 
   // Apply seed to duel config
   const seededConfig: DuelConfig = { ...duelConfig, deckSeed: seed };
@@ -104,12 +111,7 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     } catch { /* port may be closed */ }
   };
 
-  // Algorithm fallback
-  if (algorithm === 'mcts' || algorithm === 'auto') {
-    console.warn('[Solver] MCTS not implemented, falling back to DFS');
-  }
-
-  // AbortSignal.timeout as defense-in-depth backup to DFS time budget checks.
+  // AbortSignal.timeout as defense-in-depth backup to solver time budget checks.
   // piscina handles hard-kill via workerTerminateTimeout on the main thread.
   const signal = AbortSignal.timeout(solverConfig.timeLimitMs);
 
@@ -118,11 +120,60 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   const startHandle = adapter.createDuel(seededConfig);
 
   try {
-    // Run DFS solver (calls adapter.destroyAll() in its finally block)
-    const result = solver.solve(adapter, solverConfig, signal, onProgress, startHandle);
+    // Algorithm dispatch
+    let result: SolverResult;
 
-    // Set deckSeed on stats (DFS doesn't know the seed)
+    if (algorithm === 'dfs') {
+      result = dfsSolver.solve(adapter, solverConfig, signal, onProgress, startHandle);
+    } else if (algorithm === 'mcts') {
+      mctsSolver.setSeed(seed);
+      result = mctsSolver.solve(adapter, solverConfig, signal, onProgress, startHandle);
+    } else {
+      // 'auto' — run 100-node DFS probe to measure branching factor
+      //
+      // REVIEW NOTE (finding #9): 100 nodes typically explore only 2-3 depth
+      // levels. The measured avgBF may not reflect mid-game branching (e.g.,
+      // a wide opening with a narrow combo continuation can flip MCTS on when
+      // DFS would have been fine). Revisit the sample size and/or threshold
+      // once we have empirical data on mis-dispatch rates per deck archetype.
+      const probeResult = dfsSolver.probe(adapter, solverConfig, signal, 100, startHandle);
+      const avgBF = probeResult.averageBranchingFactor;
+
+      postDebug('auto-probe', { avgBF, bestScore: probeResult.bestScore, nodes: probeResult.nodesExplored });
+
+      // Emit highComplexity BEFORE solve so UI can display live warning
+      if (avgBF > allConfigs.solverConfig.bfComplexityThreshold) {
+        onProgress({
+          nodesExplored: probeResult.nodesExplored,
+          bestScore: probeResult.bestScore,
+          elapsed: 0,
+          highComplexity: true,
+        });
+      }
+
+      // Subtract probe elapsed from the budget passed to the main solver.
+      // The original code recomputed solveBudgetMs from the full timeLimitMs
+      // and over-ran the global AbortSignal, eating into the verification slice.
+      const remainingMs = Math.max(0, solverConfig.timeLimitMs - (Date.now() - taskStartTime));
+      const adjustedConfig: SolverConfig = { ...solverConfig, timeLimitMs: remainingMs };
+
+      if (avgBF >= 12) {
+        // High BF → switch to MCTS with warm-start from probe stats
+        mctsSolver.setSeed(seed);
+        mctsSolver.warmStart(probeResult);
+        // Clean up DFS transposition table — stale entries won't help MCTS
+        table.reset();
+        result = mctsSolver.solve(adapter, adjustedConfig, signal, onProgress, startHandle);
+      } else {
+        // Low BF → continue with DFS, reusing TT from probe
+        dfsSolver.resumeFromProbe(probeResult);
+        result = dfsSolver.solve(adapter, adjustedConfig, signal, onProgress, startHandle);
+      }
+    }
+
+    // Set worker-level stats (solvers don't know these values)
     result.stats.deckSeed = seed.map(s => s.toString()).join(',');
+    result.stats.algorithm = algorithm;
 
     // Top-K extraction: root's first K children are alternative combo lines
     const K = Math.min(topK, result.tree.children.length);
@@ -184,7 +235,8 @@ function verifyMainPath(
 
   const handle = oracle.createDuel(duelConfig);
   try {
-    for (const action of mainPath) {
+    for (let i = 0; i < mainPath.length; i++) {
+      const action = mainPath[i];
       const legalActions = oracle.getLegalActions(handle);
       // responseIndex is unique per prompt context in sequential replay.
       // SolverAction doesn't carry promptType (stripped by enrichAction),
@@ -193,11 +245,23 @@ function verifyMainPath(
       const match = legalActions.find(
         a => a.responseIndex === action.responseIndex,
       );
-      if (!match) return false;
+      if (!match) {
+        // Surface enough state to localize the divergence in production logs.
+        console.warn('[Solver] verification-step-failed', {
+          stepIndex: i,
+          totalSteps: mainPath.length,
+          expectedResponseIndex: action.responseIndex,
+          expectedCardName: action.cardName,
+          legalPromptType: legalActions[0]?.promptType,
+          legalResponseIndexes: legalActions.map(a => a.responseIndex),
+        });
+        return false;
+      }
       oracle.applyAction(handle, match);
     }
     return true;
-  } catch {
+  } catch (err) {
+    console.warn('[Solver] verification-threw', { error: String(err) });
     return false;
   } finally {
     oracle.destroyDuel(handle);

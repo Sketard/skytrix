@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { filterMessage } from './message-filter.js';
 import { LOCATION, POSITION } from './ws-protocol.js';
-import type { ServerMessage, Player, BoardStatePayload, PlayerBoardState, BoardZone, CardOnField } from './ws-protocol.js';
+import type { ServerMessage, Player, BoardStatePayload, PlayerBoardState, BoardZone, CardOnField, Position } from './ws-protocol.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function card(code: number, pos = POSITION.FACEUP_ATTACK): CardOnField {
+function card(code: number, pos: Position = POSITION.FACEUP_ATTACK): CardOnField {
   return {
     cardCode: code, name: `Card ${code}`, position: pos,
     overlayMaterials: [], counters: {},
