@@ -16,6 +16,7 @@ import { ALL_ZONE_IDS } from './solver-types.js';
 import { InterruptionScorer } from './interruption-scorer.js';
 import { buildVerificationKey } from './transposition-table.js';
 import { loadInterruptionTags, loadInterruptionWeights } from './solver-config-loader.js';
+import { disambiguateEffect, isFieldActivation } from './interruption-disambiguation.js';
 
 // =============================================================================
 // Helpers
@@ -126,6 +127,92 @@ console.log('\n🔬 Test A4: deep-clone isolation between parent and child handl
 
   assert(parentArr.length === 1, `parent log unchanged after child mutation (parent=${parentArr.length}, expected 1)`);
   assert(childArr.length === 2, `child log advances independently (child=${childArr.length}, expected 2)`);
+}
+
+// =============================================================================
+// Test A5: disambiguateEffect resolves multi-effect tags by prompt context
+// =============================================================================
+
+console.log('\n🔬 Test A5: disambiguateEffect maps prompt context to effect index');
+{
+  // --- Real card: Baronne de Fleur ---
+  // Effects per data file: [omni-negate (quick), destruction (main)]
+  //   - Quick Effect omni-negate → activatable in chain windows → 'quick'
+  //   - Main-Phase-only target+destroy → 'main'
+  const baronneTag = tags[String(BARONNE)];
+
+  // SELECT_CHAIN accepts {chain, quick} → only omni-negate matches → idx 0
+  const baronneChain = disambiguateEffect(baronneTag, BARONNE, 'SELECT_CHAIN');
+  assert(baronneChain === 0, `Baronne SELECT_CHAIN → idx ${baronneChain} (expected 0 = omni-negate)`);
+
+  // SELECT_BATTLECMD accepts {quick} → only omni-negate matches → idx 0
+  // (destruction is main-only and rightly excluded from BP)
+  const baronneBp = disambiguateEffect(baronneTag, BARONNE, 'SELECT_BATTLECMD');
+  assert(baronneBp === 0, `Baronne SELECT_BATTLECMD → idx ${baronneBp} (expected 0; destruction is main-only)`);
+
+  // SELECT_IDLECMD accepts {main, quick} → BOTH match → ambiguous, picks idx 0
+  const baronneIdle = disambiguateEffect(baronneTag, BARONNE, 'SELECT_IDLECMD');
+  assert(baronneIdle === 0, `Baronne SELECT_IDLECMD → idx ${baronneIdle} (expected 0; ambiguous match picks lowest)`);
+
+  // --- Single-effect short-circuit ---
+  const apollousaTag = tags[String(APOLLOUSA)];
+  const single = disambiguateEffect(apollousaTag, APOLLOUSA, 'SELECT_CHAIN');
+  assert(single === 0, `Apollousa single-effect → idx ${single} (expected 0)`);
+
+  // --- Synthetic tag with clean trigger separation ---
+  // Baronne's two effects both fit Main Phase, so they don't reveal pure
+  // discrimination. This synthetic tag proves disambiguation actually
+  // routes different prompts to different indices.
+  const cleanTag: InterruptionTag = {
+    cardName: 'Synthetic Clean-Disambiguation',
+    effects: [
+      { type: 'omniNegate', usesPerTurn: 1, trigger: 'chain' },     // idx 0: chain only
+      { type: 'destruction', usesPerTurn: 1, trigger: 'main' },     // idx 1: main only
+      { type: 'banish', usesPerTurn: 1, trigger: 'trigger' },       // idx 2: trigger only
+    ],
+  };
+  const cleanChain = disambiguateEffect(cleanTag, 999999003, 'SELECT_CHAIN');
+  assert(cleanChain === 0, `clean tag SELECT_CHAIN → idx ${cleanChain} (expected 0 = chain effect)`);
+  const cleanIdle = disambiguateEffect(cleanTag, 999999003, 'SELECT_IDLECMD');
+  assert(cleanIdle === 1, `clean tag SELECT_IDLECMD → idx ${cleanIdle} (expected 1 = main effect)`);
+  const cleanEffectyn = disambiguateEffect(cleanTag, 999999003, 'SELECT_EFFECTYN');
+  assert(cleanEffectyn === 2, `clean tag SELECT_EFFECTYN → idx ${cleanEffectyn} (expected 2 = trigger effect)`);
+
+  // --- Synthetic no-match tag falls back to 0 (and warns) ---
+  const noMatchTag: InterruptionTag = {
+    cardName: 'No-Match Test',
+    effects: [
+      { type: 'omniNegate', usesPerTurn: 1, trigger: 'continuous' },
+      { type: 'destruction', usesPerTurn: 1, trigger: 'trigger' },
+    ],
+  };
+  const fallback = disambiguateEffect(noMatchTag, 999999002, 'SELECT_CHAIN');
+  assert(fallback === 0, `No-match prompt → fallback idx ${fallback} (expected 0)`);
+}
+
+// =============================================================================
+// Test A5b: isFieldActivation discriminates EXTRA from on-field locations
+// =============================================================================
+
+console.log('\n🔬 Test A5b: isFieldActivation filters Extra Deck (summon procedures)');
+{
+  // OcgLocation enum from @n1xx1/ocgcore-wasm
+  const HAND = 2;
+  const MZONE = 4;
+  const SZONE = 8;
+  const GRAVE = 16;
+  const REMOVED = 32;
+  const EXTRA = 64;
+  const FZONE = 256;
+
+  assert(isFieldActivation(MZONE), `MZONE → true (effect from field monster)`);
+  assert(isFieldActivation(SZONE), `SZONE → true (spell/trap on field)`);
+  assert(isFieldActivation(HAND), `HAND → true (handtrap activation)`);
+  assert(isFieldActivation(GRAVE), `GRAVE → true (grave effect activation)`);
+  assert(isFieldActivation(REMOVED), `REMOVED → true (banished effect activation)`);
+  assert(isFieldActivation(FZONE), `FZONE → true (field spell)`);
+  assert(!isFieldActivation(EXTRA), `EXTRA → false (Synchro/Xyz/Link summon procedure)`);
+  assert(!isFieldActivation(undefined), `undefined → false (defensive)`);
 }
 
 // =============================================================================

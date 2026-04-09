@@ -173,6 +173,12 @@ export function loadInterruptionTags(dataDir: string): Record<string, Interrupti
         `interruption-tags.${cardId}.totalUsesPerTurn`,
         { min: 1, max: 20 },
       );
+      // totalUsesPerTurn is only meaningful when sharedOpt is true. The
+      // scorer ignores it otherwise — warn so the data file isn't silently
+      // misconfigured.
+      if (tag.sharedOpt !== true) {
+        console.warn(`[Solver] interruption-tags.json: cardId ${cardId} has totalUsesPerTurn=${tag.totalUsesPerTurn} without sharedOpt:true — value will be ignored by the scorer`);
+      }
     }
     if (typeof eFull._generatedBy === 'string') tag._generatedBy = eFull._generatedBy;
     if (typeof eFull._oracleVersion === 'string') tag._oracleVersion = eFull._oracleVersion;

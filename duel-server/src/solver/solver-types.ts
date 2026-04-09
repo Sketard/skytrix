@@ -63,6 +63,12 @@ export interface Action {
   actionTag?: string;
   /** @internal OCGCore response object — set by adapter, consumed by applyAction. */
   _response?: unknown;
+  /** @internal True when this action represents an effect activation that
+   *  should be recorded in the per-handle activation log. Set by the adapter
+   *  enumerator based on prompt sub-type and `selects[i].location` (so that
+   *  Synchro/Xyz/Link summon procedures, normal summons, sets, attacks, and
+   *  SELECT_EFFECTYN "no" responses do NOT pollute the OPT log). Story 1.8. */
+  _isEffectActivation?: boolean;
 }
 
 export interface FieldCard {
@@ -300,6 +306,16 @@ export interface InterruptionTag {
  *  Cleared on every NEW_TURN. Used by the scorer for OPT-aware evaluation
  *  and by the transposition table for verification key fingerprinting. */
 export type ActivationLog = ReadonlyMap<number, readonly number[]>;
+
+/** Deep-clone an activation log into a fresh standalone Map. Each entry's
+ *  array is reallocated so mutations on the clone do not leak back to the
+ *  source. Shared by `OCGCoreAdapter.forkViaReplay` (DFS branch isolation)
+ *  and `mcts-solver.simulate` (rollout snapshot before handle destruction). */
+export function cloneActivationLog(src: ActivationLog | Map<number, number[]>): Map<number, number[]> {
+  const dst = new Map<number, number[]>();
+  for (const [k, v] of src) dst.set(k, [...v]);
+  return dst;
+}
 
 // =============================================================================
 // Solver Error Types

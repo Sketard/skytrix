@@ -27,11 +27,11 @@ import type {
   FieldCard,
   FieldState,
   InterruptionTag,
-  InterruptionTrigger,
   PromptType,
   SolverAction,
 } from './solver-types.js';
-import { EXPLORATORY_PROMPTS } from './solver-types.js';
+import { EXPLORATORY_PROMPTS, cloneActivationLog } from './solver-types.js';
+import { disambiguateEffect, isFieldActivation } from './interruption-disambiguation.js';
 
 // =============================================================================
 // Constants
@@ -81,46 +81,6 @@ const MESSAGE_TO_PROMPT: Record<number, PromptType> = {
 
 // SELECT_* message types that we recognize
 const SELECT_MSG_TYPES = new Set(Object.keys(MESSAGE_TO_PROMPT).map(Number));
-
-// Story 1.8: prompt types that represent player activations of card effects.
-// Only these prompts contribute to the activation log. Filtering at this level
-// avoids spurious entries from positional/mechanical prompts (SELECT_PLACE,
-// SELECT_TRIBUTE, etc.) that don't correspond to effect activation.
-const ACTIVATION_PROMPTS: ReadonlySet<PromptType> = new Set<PromptType>([
-  'SELECT_CHAIN',
-  'SELECT_IDLECMD',
-  'SELECT_BATTLECMD',
-  'SELECT_EFFECTYN',
-]);
-
-// Story 1.8: which `trigger` values are compatible with a given prompt context.
-// Used by `disambiguateEffect()` to map a runtime activation back to a specific
-// effect index in `InterruptionTag.effects[]`.
-//
-// Reasoning:
-// - SELECT_CHAIN happens during a chain window — only `chain` and `quick` effects
-//   can be activated then.
-// - SELECT_IDLECMD is the Main Phase activate command — only `main` and `quick`
-//   effects fit (`main` for ignition, `quick` for cards with quick effects that
-//   can also activate during your own MP).
-// - SELECT_BATTLECMD is during the Battle Phase chain window — `quick` only.
-// - SELECT_EFFECTYN is the prompt for "do you want to activate this trigger
-//   effect?" — `trigger` is the natural match.
-const TRIGGERS_FOR_PROMPT: Partial<Record<PromptType, ReadonlySet<InterruptionTrigger>>> = {
-  'SELECT_CHAIN': new Set<InterruptionTrigger>(['chain', 'quick']),
-  'SELECT_IDLECMD': new Set<InterruptionTrigger>(['main', 'quick']),
-  'SELECT_BATTLECMD': new Set<InterruptionTrigger>(['quick']),
-  'SELECT_EFFECTYN': new Set<InterruptionTrigger>(['trigger']),
-};
-
-/** Deep clone an activation log Map for fork isolation. Each entry's array
- *  is freshly allocated so the parent and the child do not share array
- *  references. */
-function cloneActivationLog(src: Map<number, number[]>): Map<number, number[]> {
-  const dst = new Map<number, number[]>();
-  for (const [k, v] of src) dst.set(k, [...v]);
-  return dst;
-}
 
 // All ZoneId values — kept in sync with ws-protocol.ts ZoneId type
 const ALL_ZONE_IDS: readonly ZoneId[] = [
@@ -506,6 +466,13 @@ export class OCGCoreAdapter implements GameOracle {
       actions.push(action);
     };
 
+    // Story 1.8: a card whose effect is "activated" from EXTRA is by
+    // construction a Synchro/Xyz/Link summon procedure, NOT an interruption
+    // effect activation. The interruption effect (if any) only exists once
+    // the monster is on the field. `isFieldActivation` (in
+    // interruption-disambiguation.ts) filters EXTRA out at the source so
+    // the activation log stays clean.
+
     switch (promptType) {
       case 'SELECT_IDLECMD': {
         let idx = 0;
@@ -530,8 +497,12 @@ export class OCGCoreAdapter implements GameOracle {
           pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 4, index: i });
         }
         for (let i = 0; i < ((msg['activates'] ?? []) as unknown[]).length; i++) {
-          const card = ((msg['activates'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 5, index: i });
+          const card = ((msg['activates'] as { code: number; location?: number }[])[i]);
+          pushAction({
+            responseIndex: idx++, cardId: card.code, promptType, isExploratory,
+            actionTag: 'activate',
+            _isEffectActivation: isFieldActivation(card.location),
+          }, { type: 1, action: 5, index: i });
         }
         if (msg['to_bp']) {
           pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory }, { type: 1, action: 6 });
@@ -548,8 +519,11 @@ export class OCGCoreAdapter implements GameOracle {
           pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'attack' }, { type: 0, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['chains'] ?? []) as unknown[]).length; i++) {
-          const card = ((msg['chains'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'chain' }, { type: 0, action: 1, index: i });
+          const card = ((msg['chains'] as { code: number; location?: number }[])[i]);
+          pushAction({
+            responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'chain',
+            _isEffectActivation: isFieldActivation(card.location),
+          }, { type: 0, action: 1, index: i });
         }
         if (msg['to_m2']) {
           pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory, actionTag: 'to_m2' }, { type: 0, action: 2 });
@@ -560,12 +534,13 @@ export class OCGCoreAdapter implements GameOracle {
         break;
       }
       case 'SELECT_CHAIN': {
-        const selects = (msg['selects'] ?? []) as { code: number; description: bigint }[];
+        const selects = (msg['selects'] ?? []) as { code: number; description: bigint; location?: number }[];
         for (let i = 0; i < selects.length; i++) {
           pushAction({
             responseIndex: i, cardId: selects[i].code, promptType, isExploratory,
             description: this.decodeDescription(selects[i].description),
             actionTag: 'activate',
+            _isEffectActivation: isFieldActivation(selects[i].location),
           }, { type: 8, index: i });
         }
         if (!(msg['forced'] as boolean)) {
@@ -575,8 +550,10 @@ export class OCGCoreAdapter implements GameOracle {
       }
       case 'SELECT_EFFECTYN': {
         const cardId = (msg['code'] as number) ?? 0;
+        // Only the "yes" branch represents an actual effect activation. The
+        // "no" branch declines the trigger and must NOT pollute the OPT log.
         pushAction({ responseIndex: 0, cardId, promptType, isExploratory }, { type: 2, yes: false });
-        pushAction({ responseIndex: 1, cardId, promptType, isExploratory }, { type: 2, yes: true });
+        pushAction({ responseIndex: 1, cardId, promptType, isExploratory, _isEffectActivation: true }, { type: 2, yes: true });
         break;
       }
       case 'SELECT_YESNO': {
@@ -776,65 +753,24 @@ export class OCGCoreAdapter implements GameOracle {
 
   /** Records a player-side activation of a tagged card into the handle's
    *  activation log. Called from `applyAction` after the OCGCore response is
-   *  set. Filters: cardId must be > 0, must be tagged, and the prompt must be
-   *  one of the activation-bearing types. The effect index is resolved via
+   *  set. The `_isEffectActivation` flag is set by `enumerateActionsWithResponses`
+   *  at the source — see that method for which prompt sub-types qualify. This
+   *  filter excludes summons, sets, attacks, summon procedures from EXTRA, and
+   *  SELECT_EFFECTYN "no" responses. The effect index is resolved via
    *  `disambiguateEffect()` using the tag's `trigger` field. */
   private recordActivation(internal: InternalHandle, action: Action): void {
-    if (action.cardId <= 0) return; // pass-action or zone-only action
+    if (action._isEffectActivation !== true) return;
+    if (action.cardId <= 0) return; // belt-and-braces (pass-action carries cardId=0)
     const tag = this.tags[String(action.cardId)];
     if (!tag) return;
 
-    if (!ACTIVATION_PROMPTS.has(action.promptType)) return;
-
-    const effectIndex = this.disambiguateEffect(tag, action.promptType, internal.phase);
+    const effectIndex = disambiguateEffect(tag, action.cardId, action.promptType);
     const log = internal.activationLog.get(action.cardId);
     if (log) {
       log.push(effectIndex);
     } else {
       internal.activationLog.set(action.cardId, [effectIndex]);
     }
-  }
-
-  /** Maps a runtime activation prompt to a specific effect index in
-   *  `tag.effects[]`. Uses the `trigger` field of each effect together with
-   *  the prompt context (promptType + phase) to resolve the index. Falls back
-   *  to index 0 with a warning when no effect matches or when multiple effects
-   *  match (ambiguous). Single-effect tags always return 0. */
-  private disambiguateEffect(
-    tag: InterruptionTag,
-    promptType: PromptType,
-    phase: Phase,
-  ): number {
-    if (tag.effects.length === 1) return 0;
-
-    const acceptedTriggers = TRIGGERS_FOR_PROMPT[promptType];
-    if (!acceptedTriggers) {
-      console.warn(`[Solver] effect-disambiguation-fallback: ${tag.cardName} prompt ${promptType} not in TRIGGERS_FOR_PROMPT — using index 0`);
-      return 0;
-    }
-
-    const matches: number[] = [];
-    for (let i = 0; i < tag.effects.length; i++) {
-      const t = tag.effects[i].trigger;
-      if (t === undefined) continue;
-      if (acceptedTriggers.has(t)) matches.push(i);
-    }
-
-    if (matches.length === 0) {
-      // No effect has a trigger matching this prompt context. Either the
-      // tag is missing trigger fields (legacy or partial regeneration), or
-      // the activation context is unexpected. Fall back to index 0.
-      console.warn(`[Solver] effect-disambiguation-fallback: ${tag.cardName} no trigger matches prompt=${promptType} phase=${phase} — using index 0`);
-      return 0;
-    }
-
-    if (matches.length === 1) return matches[0];
-
-    // Multiple effects match — true ambiguity. Pick lowest index. This is
-    // rare in practice (most multi-effect cards have differently-typed
-    // triggers between their effects).
-    console.warn(`[Solver] effect-disambiguation-ambiguous: ${tag.cardName} prompt=${promptType} phase=${phase} matches=[${matches.join(',')}] — using index ${matches[0]}`);
-    return matches[0];
   }
 
   /** Run duelProcess until WAITING or END — used during replay phase. */

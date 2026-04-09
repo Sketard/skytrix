@@ -19,6 +19,7 @@ import type {
   SolverResult,
   SolverStats,
 } from './solver-types.js';
+import { cloneActivationLog } from './solver-types.js';
 import type { InterruptionScorer } from './interruption-scorer.js';
 import type { OCGCoreAdapter } from './ocgcore-adapter.js';
 import { extractMainPath, ROOT_ACTION } from './dfs-solver.js';
@@ -26,16 +27,6 @@ import { extractMainPath, ROOT_ACTION } from './dfs-solver.js';
 // Bail out of MCTS main loop after this many consecutive iteration failures.
 // Protects against WASM corruption / adapter bad state spinning the budget.
 const MAX_CONSECUTIVE_FAILURES = 10;
-
-/** Story 1.8: deep-clone an ActivationLog into a fresh standalone Map.
- *  Used to snapshot the rollout handle's log before the handle is destroyed,
- *  so the result builder can score the best terminal with the same OPT state
- *  the rollout actually saw. */
-function snapshotActivationLog(src: ActivationLog): Map<number, number[]> {
-  const dst = new Map<number, number[]>();
-  for (const [k, v] of src) dst.set(k, [...v]);
-  return dst;
-}
 
 // Frozen zero-breakdown sentinel — avoids per-call allocations.
 const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
@@ -447,7 +438,7 @@ export class MCTSSolver implements SolverStrategy {
     // verification key parity. We snapshot here (rather than re-fetching in
     // buildResult) because the rollout handle is destroyed after this method
     // returns — the live log would be gone.
-    const finalLog = snapshotActivationLog(oracle.getActivationLog(handle));
+    const finalLog = cloneActivationLog(oracle.getActivationLog(handle));
     const { score, scoreBreakdown } = this.scorer.score(finalState, finalLog);
 
     // Track best terminal globally (Task 5.4)
