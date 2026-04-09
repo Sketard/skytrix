@@ -2852,6 +2852,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
         bestScore: progress.bestScore,
         elapsed: progress.elapsed,
         ...(highComplexity ? { highComplexity: true } : {}),
+        ...(progress.stalled ? { stalled: true } : {}),
       };
       sendSolverMessage(currentWs, progressMsg);
     };

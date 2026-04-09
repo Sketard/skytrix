@@ -69,7 +69,7 @@ export class SolverOrchestrator {
 
   async init(configFile: SolverConfigFile, dataDir: string, workerPathOverride?: string): Promise<void> {
     this.config = configFile;
-    this.poolSize = configFile.poolSize || (availableParallelism() - 2);
+    this.poolSize = configFile.poolSize || Math.max(1, availableParallelism() - 2);
 
     const memPerWorker = Math.floor(
       (configFile.memoryBudgetMb - (this.poolSize * 20)) / this.poolSize,
@@ -136,8 +136,14 @@ export class SolverOrchestrator {
 
     const startTime = Date.now();
 
+    // DFS is deterministic given a deck order — running multiple workers on
+    // identical input is wasteful. Dispatch to a single worker for 'dfs',
+    // and to the full pool for 'mcts'/'auto' (auto may resolve to MCTS via
+    // the BF probe, so it needs full parallelism upfront).
+    const dispatchCount = algorithm === 'dfs' ? 1 : this.poolSize;
+
     // Seed diversity: generate unique seeds per worker
-    const seeds = Array.from({ length: this.poolSize }, () => {
+    const seeds = Array.from({ length: dispatchCount }, () => {
       const buf = randomBytes(16);
       return [buf.readBigUInt64LE(0), buf.readBigUInt64LE(8)];
     });
@@ -145,12 +151,55 @@ export class SolverOrchestrator {
     // Progress aggregation state
     const workerProgress = new Map<number, SolverProgress>();
     let lastProgressEmit = 0;
+    let lastSumNodes = -1;
+    let lastNodeAdvanceAt = startTime;
+    let stalledFlag = false;
+
+    const aggregateAndEmit = (now: number, force: boolean): void => {
+      let maxBestScore = -1;
+      let sumNodes = 0;
+      for (const p of workerProgress.values()) {
+        if (p.bestScore > maxBestScore) maxBestScore = p.bestScore;
+        sumNodes += p.nodesExplored;
+      }
+
+      // Track node-advance for stall detection
+      if (sumNodes > lastSumNodes) {
+        lastSumNodes = sumNodes;
+        lastNodeAdvanceAt = now;
+        if (stalledFlag) {
+          stalledFlag = false;
+          force = true; // emit a clearing update immediately
+        }
+      } else if (!stalledFlag && now - lastNodeAdvanceAt >= this.config.stalledWarningMs) {
+        stalledFlag = true;
+        force = true; // emit the stall transition immediately
+      }
+
+      if (!force && now - lastProgressEmit < this.config.progressThrottleMs) return;
+      lastProgressEmit = now;
+
+      onProgress({
+        nodesExplored: sumNodes,
+        bestScore: maxBestScore,
+        elapsed: now - startTime,
+        ...(stalledFlag ? { stalled: true } : {}),
+      });
+    };
+
+    // Periodic stall watchdog: fires even when no worker emits a progress
+    // message, so the frontend can switch the spinner copy when a synchronous
+    // WASM call freezes the worker event loop.
+    const stallTimer = setInterval(() => {
+      if (activeSolve.resolved) return;
+      aggregateAndEmit(Date.now(), false);
+    }, Math.min(this.config.stalledWarningMs, this.config.progressThrottleMs));
 
     // Set up MessageChannels for progress streaming
     const channels: MessageChannel[] = [];
     const workerPromises: Promise<WorkerResult>[] = [];
 
-    for (let i = 0; i < this.poolSize; i++) {
+    for (let i = 0; i < dispatchCount; i++) {
       const { port1, port2 } = new MessageChannel();
       channels.push({ port1, port2 } as MessageChannel);
 
@@ -159,23 +208,7 @@ export class SolverOrchestrator {
 
         if (msg.type === 'progress' && msg.data) {
           workerProgress.set(i, msg.data);
-
-          // Throttled aggregated progress emission
-          const now = Date.now();
-          if (now - lastProgressEmit >= this.config.progressThrottleMs) {
-            lastProgressEmit = now;
-            let maxBestScore = -1;
-            let sumNodes = 0;
-            for (const p of workerProgress.values()) {
-              if (p.bestScore > maxBestScore) maxBestScore = p.bestScore;
-              sumNodes += p.nodesExplored;
-            }
-            onProgress({
-              nodesExplored: sumNodes,
-              bestScore: maxBestScore,
-              elapsed: now - startTime,
-            });
-          }
+          aggregateAndEmit(Date.now(), false);
         } else if (msg.type === 'debug' && onDebug && process.env['LOG_LEVEL'] === 'debug') {
           onDebug(msg.cat ?? '', msg.data);
         }
@@ -298,6 +331,7 @@ export class SolverOrchestrator {
       return { type: 'error', error: 'INTERNAL_ERROR', message: String(err) };
     } finally {
       clearTimeout(hardKillTimer!);
+      clearInterval(stallTimer);
       for (const ch of channels) {
         try { ch.port1.close(); } catch { /* best effort */ }
       }
@@ -341,29 +375,38 @@ export class SolverOrchestrator {
     // Sort by score descending
     allResults.sort((a, b) => b.score - a.score);
 
-    // Deduplicate by mainPath hash (skip empty mainPaths)
-    const seen = new Set<string>();
-    const unique: SolverResult[] = [];
+    // Group by mainPath hash. Two workers can converge on the same recommended
+    // path while exploring entirely different alternative branches below it —
+    // we want to preserve those, not discard duplicates.
+    const groups = new Map<string, SolverResult[]>();
+    const emptyPathResults: SolverResult[] = [];
 
     for (const r of allResults) {
       if (r.mainPath.length === 0) {
-        // Keep empty-path results without dedup
-        unique.push(r);
+        emptyPathResults.push(r);
         continue;
       }
       const hash = hashMainPath(r.mainPath);
-      if (!seen.has(hash)) {
-        seen.add(hash);
-        unique.push(r);
+      let group = groups.get(hash);
+      if (!group) {
+        group = [];
+        groups.set(hash, group);
       }
+      group.push(r);
     }
 
-    // Keep up to treePruningTopX alternatives
-    const topX = this.config.treePruningTopX;
-    const kept = unique.slice(0, topX);
+    // Merge each group into a single representative result by unioning
+    // alternative subtrees along the shared mainPath.
+    const merged: SolverResult[] = [];
+    for (const group of groups.values()) {
+      merged.push(this.mergeMainPathDuplicates(group));
+    }
+    for (const r of emptyPathResults) merged.push(r);
 
-    // Build merged tree: best result as primary, alternatives as extra children
-    const best = kept[0];
+    merged.sort((a, b) => b.score - a.score);
+
+    const topX = this.config.treePruningTopX;
+    const best = merged[0];
 
     // Prune the best result's tree
     this.pruneTree(best.tree, topX, this.config.maxResultNodes);
@@ -376,6 +419,70 @@ export class SolverOrchestrator {
     best.stats.nodesExplored = totalNodes;
 
     return best;
+  }
+
+  // ===========================================================================
+  // mainPath Group Merging — union alternative subtrees along the shared path
+  // ===========================================================================
+
+  private mergeMainPathDuplicates(group: SolverResult[]): SolverResult {
+    if (group.length === 1) return group[0];
+
+    // Highest-scoring result is the base; mutate its tree in place to absorb
+    // alternative children from the other duplicates.
+    group.sort((a, b) => b.score - a.score);
+    const base = group[0];
+
+    this.mergeAlternativesAlongPath(
+      base.tree,
+      group.map(r => r.tree),
+      base.mainPath,
+      0,
+    );
+
+    return base;
+  }
+
+  private mergeAlternativesAlongPath(
+    baseNode: DecisionNode,
+    duplicateNodes: DecisionNode[],
+    mainPath: SolverAction[],
+    depth: number,
+  ): void {
+    const mainResponseIdx = depth < mainPath.length ? mainPath[depth].responseIndex : null;
+
+    // Collect alternative children (everything that isn't the next mainPath
+    // step) from all duplicates at this level, dedup by responseIndex,
+    // keep highest-scoring on collision.
+    const altByResponse = new Map<number, DecisionNode>();
+
+    for (const dup of duplicateNodes) {
+      for (const child of dup.children) {
+        if (child.action.responseIndex === mainResponseIdx) continue;
+        const existing = altByResponse.get(child.action.responseIndex);
+        if (!existing || child.score > existing.score) {
+          altByResponse.set(child.action.responseIndex, child);
+        }
+      }
+    }
+
+    // Rebuild baseNode.children: main child first, then merged alternatives
+    // sorted by score descending.
+    const mainChild = baseNode.children.find(c => c.action.responseIndex === mainResponseIdx);
+    const alts = Array.from(altByResponse.values()).sort((a, b) => b.score - a.score);
+    baseNode.children = mainChild ? [mainChild, ...alts] : alts;
+
+    // Recurse into the main child if mainPath continues. Gather the
+    // corresponding main descendant from each duplicate to keep the
+    // lockstep walk consistent.
+    if (mainChild && depth + 1 < mainPath.length) {
+      const nextDuplicates: DecisionNode[] = [];
+      for (const dup of duplicateNodes) {
+        const dupMain = dup.children.find(c => c.action.responseIndex === mainResponseIdx);
+        if (dupMain) nextDuplicates.push(dupMain);
+      }
+      this.mergeAlternativesAlongPath(mainChild, nextDuplicates, mainPath, depth + 1);
+    }
   }
 
   // ===========================================================================

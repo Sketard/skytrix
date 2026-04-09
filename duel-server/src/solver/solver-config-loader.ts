@@ -61,6 +61,7 @@ const SOLVER_CONFIG_RANGES: Record<string, RangeRule> = {
   ucb1C:                   { min: 0.5,  max: 3.0 },
   rolloutEpsilon:          { min: 0.0,  max: 1.0 },
   verificationBudgetRatio: { min: 0.05, max: 0.30 },
+  stalledWarningMs:        { min: 500,  max: 30000 },
 };
 
 export function loadSolverConfig(dataDir: string): SolverConfigFile {
@@ -103,6 +104,9 @@ export function loadInterruptionWeights(dataDir: string): Record<InterruptionTyp
 // =============================================================================
 
 const VALID_TYPES_SET: ReadonlySet<string> = new Set(INTERRUPTION_TYPES);
+const VALID_TRIGGERS_SET: ReadonlySet<string> = new Set([
+  'chain', 'main', 'quick', 'trigger', 'continuous',
+]);
 
 export function loadInterruptionTags(dataDir: string): Record<string, InterruptionTag> {
   const filePath = join(dataDir, 'interruption-tags.json');
@@ -123,20 +127,57 @@ export function loadInterruptionTags(dataDir: string): Record<string, Interrupti
     }
 
     const effects = e.effects.map((eff: unknown, i: number) => {
-      const f = eff as { type?: string; usesPerTurn?: number };
+      const f = eff as { type?: string; usesPerTurn?: number; trigger?: string; description?: string };
       if (!VALID_TYPES_SET.has(f.type ?? '')) {
         console.error(`[Solver] Invalid interruption-tags.json: cardId ${cardId} effect[${i}] has invalid type "${f.type}"`);
         process.exit(1);
       }
       const usesPerTurn = validateRange(f.usesPerTurn, `interruption-tags.${cardId}.effects[${i}].usesPerTurn`, { min: 1, max: 10 });
-      return { type: f.type as InterruptionType, usesPerTurn };
+      // trigger is optional. When present, must be one of the known values.
+      // Unknown values are coerced to undefined with a warning (forward-compat
+      // for future trigger types).
+      let trigger: InterruptionTag['effects'][number]['trigger'];
+      if (f.trigger !== undefined) {
+        if (VALID_TRIGGERS_SET.has(f.trigger)) {
+          trigger = f.trigger as InterruptionTag['effects'][number]['trigger'];
+        } else {
+          console.warn(`[Solver] interruption-tags.json: cardId ${cardId} effect[${i}] has unknown trigger "${f.trigger}" — ignored`);
+        }
+      }
+      const effect: InterruptionTag['effects'][number] = { type: f.type as InterruptionType, usesPerTurn };
+      if (trigger !== undefined) effect.trigger = trigger;
+      if (typeof f.description === 'string') effect.description = f.description;
+      return effect;
     });
 
     if (!e.cardName || e.cardName.trim() === '') {
       console.error(`[Solver] Invalid interruption-tags.json: cardId ${cardId} has empty cardName`);
       process.exit(1);
     }
-    tags[cardId] = { cardName: e.cardName, effects };
+
+    // Extract optional new fields (sharedOpt, totalUsesPerTurn, audit metadata).
+    // These are forward-compat — old entries without them still load correctly.
+    const eFull = entry as {
+      cardName: string;
+      sharedOpt?: boolean;
+      totalUsesPerTurn?: number;
+      _generatedBy?: string;
+      _oracleVersion?: string;
+      _validated?: boolean;
+    };
+    const tag: InterruptionTag = { cardName: e.cardName, effects };
+    if (typeof eFull.sharedOpt === 'boolean') tag.sharedOpt = eFull.sharedOpt;
+    if (typeof eFull.totalUsesPerTurn === 'number') {
+      tag.totalUsesPerTurn = validateRange(
+        eFull.totalUsesPerTurn,
+        `interruption-tags.${cardId}.totalUsesPerTurn`,
+        { min: 1, max: 20 },
+      );
+    }
+    if (typeof eFull._generatedBy === 'string') tag._generatedBy = eFull._generatedBy;
+    if (typeof eFull._oracleVersion === 'string') tag._oracleVersion = eFull._oracleVersion;
+    if (typeof eFull._validated === 'boolean') tag._validated = eFull._validated;
+    tags[cardId] = tag;
   }
 
   console.log(`[Solver] interruption-tags.json loaded and validated (${Object.keys(tags).length} cards)`);

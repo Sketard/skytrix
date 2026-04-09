@@ -106,6 +106,13 @@ export interface ScoreBreakdown {
   bounce: number;
   handRip: number;
   sendToGy: number;
+  /** Sum of weighted interruption scores from TAGGED cards only — excludes the
+   *  fallback +1 heuristic. Brick detection MUST use this, not `total`. */
+  weighted: number;
+  /** Bonus points awarded by the fallback heuristic (untagged face-up monsters).
+   *  Used for tie-breaking between non-brick paths only. */
+  fallbackPoints: number;
+  /** weighted + fallbackPoints. Surfaced as the headline score in the UI. */
   total: number;
 }
 
@@ -149,6 +156,10 @@ export interface EndBoardCard {
   zone: ZoneId;
   effects: InterruptionEffect[];
   isFallback: boolean;
+  /** Number of OPT effects consumed by this card during the current turn.
+   *  Set when the scorer is called with an active `ActivationLog`. Zero or
+   *  undefined means no effects consumed (fresh card). */
+  consumedUses?: number;
 }
 
 export interface SolverResult {
@@ -181,6 +192,8 @@ export interface SolverProgress {
   bestScore: number;
   elapsed: number;
   highComplexity?: boolean;
+  /** Set when no nodesExplored advancement has been observed for stalledWarningMs. */
+  stalled?: boolean;
 }
 
 // =============================================================================
@@ -237,17 +250,56 @@ export interface SolverConfigFile {
   backpropPolicy: 'max' | 'mean';
   rolloutEpsilon: number;
   verificationBudgetRatio: number;
+  stalledWarningMs: number;
 }
+
+/** When/how an interruption effect can be activated. Used by the solver's
+ *  effect-disambiguation logic to map a runtime activation prompt back to a
+ *  specific entry in `InterruptionTag.effects[]`. */
+export type InterruptionTrigger =
+  | 'chain'        // Activatable in a chain (most negate effects)
+  | 'main'         // Ignition effect, Main Phase only
+  | 'quick'        // Quick effect, either player's turn
+  | 'trigger'      // Triggers on a specific event (summon, destruction, etc.)
+  | 'continuous';  // Continuous effect (no per-activation tracking)
 
 export interface InterruptionEffect {
   type: InterruptionType;
   usesPerTurn: number;
+  /** When this effect can be activated. Used by `disambiguateEffect()` to map
+   *  a runtime SELECT_CHAIN/SELECT_IDLECMD prompt to a specific effect index.
+   *  Optional for backward compat — missing trigger falls back to index 0 with
+   *  a warning when multiple effects exist. */
+  trigger?: InterruptionTrigger;
+  /** Human-readable summary for debugging and UI tooltips. ≤120 chars. */
+  description?: string;
 }
 
 export interface InterruptionTag {
   cardName: string;
   effects: InterruptionEffect[];
+  /** True when the card's effects share a single hard OPT budget
+   *  (e.g., "you can only use 1 effect of [card] per turn, and only once that turn").
+   *  Default false — each effect has its own independent OPT counter. */
+  sharedOpt?: boolean;
+  /** Override for the shared OPT budget when `sharedOpt: true`. Defaults to
+   *  `sum(effects.usesPerTurn)` if omitted. */
+  totalUsesPerTurn?: number;
+  /** Audit metadata — name of the generator (e.g., 'claude-opus-4-6'). */
+  _generatedBy?: string;
+  /** Audit metadata — ISO date of the oracle text used. */
+  _oracleVersion?: string;
+  /** True when a human has reviewed and validated this entry. */
+  _validated?: boolean;
 }
+
+/** Per-handle log of interruption effect activations consumed during the
+ *  current turn. Key: cardId. Value: list of effect indices (positions in
+ *  `InterruptionTag.effects[]`) that have been activated, in order. The same
+ *  index can appear multiple times if the effect has `usesPerTurn > 1`.
+ *  Cleared on every NEW_TURN. Used by the scorer for OPT-aware evaluation
+ *  and by the transposition table for verification key fingerprinting. */
+export type ActivationLog = ReadonlyMap<number, readonly number[]>;
 
 // =============================================================================
 // Solver Error Types

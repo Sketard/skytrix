@@ -58,7 +58,7 @@ const cardDB = loadDatabase(join(dataDir, 'cards.cdb'));
 const scripts = loadScripts(join(dataDir, 'scripts_full'));
 const allConfigs = loadAllSolverConfigs(dataDir, cardDB);
 
-const adapter = await OCGCoreAdapter.create(cardDB, scripts);
+const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
 const hasher = new ZobristHasher();
 const table = new TranspositionTable(allConfigs.solverConfig.transpositionMaxEntries);
 const scorer = new InterruptionScorer(

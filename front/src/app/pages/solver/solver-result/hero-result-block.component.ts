@@ -76,6 +76,13 @@ interface EndBoardCardDisplay {
   effects: EndBoardCard['effects'];
   isFallback: boolean;
   badgeLabel: string;
+  /** Story 1.8: number of OPT effects this card has consumed during the
+   *  recommended combo. Undefined or 0 means the card is fresh on the
+   *  end board (no badge shown). */
+  consumedUses?: number;
+  /** Total OPT budget for the card (sum of effects.usesPerTurn). Used by the
+   *  consumed-uses badge tooltip and as the denominator in "X/Y used". */
+  totalUses?: number;
 }
 
 // =============================================================================
@@ -132,6 +139,7 @@ export class HeroResultBlockComponent {
     return cards.map(card => {
       const imageUrl = imgMap.get(card.cardId) ?? 'assets/images/card_back.jpg';
       let badgeLabel = '';
+      let totalUses: number | undefined;
       if (card.effects.length > 0) {
         // Pick the highest-weight effect for the badge
         let best = card.effects[0];
@@ -146,8 +154,20 @@ export class HeroResultBlockComponent {
           }
         }
         badgeLabel = `${DISPLAY_LABELS[best.type] ?? best.type} ×${best.usesPerTurn}`;
+        // Story 1.8: total OPT budget = sum of effects.usesPerTurn. Used as
+        // the denominator in the consumed-uses badge.
+        totalUses = card.effects.reduce((sum, e) => sum + e.usesPerTurn, 0);
       }
-      return { cardId: card.cardId, cardName: card.cardName, imageUrl, effects: card.effects, isFallback: card.isFallback, badgeLabel };
+      return {
+        cardId: card.cardId,
+        cardName: card.cardName,
+        imageUrl,
+        effects: card.effects,
+        isFallback: card.isFallback,
+        badgeLabel,
+        consumedUses: card.consumedUses,
+        totalUses,
+      };
     });
   });
 

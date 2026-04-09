@@ -20,7 +20,17 @@ import type { Phase, ZoneId } from '../ws-protocol.js';
 import { STARTUP_SCRIPTS } from '../ocg-scripts.js';
 import { createCardReader, createScriptReader } from '../ocg-callbacks.js';
 import type { GameOracle, DuelHandle } from './game-oracle.js';
-import type { Action, DuelConfig, FieldCard, FieldState, SolverAction, PromptType } from './solver-types.js';
+import type {
+  ActivationLog,
+  Action,
+  DuelConfig,
+  FieldCard,
+  FieldState,
+  InterruptionTag,
+  InterruptionTrigger,
+  PromptType,
+  SolverAction,
+} from './solver-types.js';
 import { EXPLORATORY_PROMPTS } from './solver-types.js';
 
 // =============================================================================
@@ -72,6 +82,46 @@ const MESSAGE_TO_PROMPT: Record<number, PromptType> = {
 // SELECT_* message types that we recognize
 const SELECT_MSG_TYPES = new Set(Object.keys(MESSAGE_TO_PROMPT).map(Number));
 
+// Story 1.8: prompt types that represent player activations of card effects.
+// Only these prompts contribute to the activation log. Filtering at this level
+// avoids spurious entries from positional/mechanical prompts (SELECT_PLACE,
+// SELECT_TRIBUTE, etc.) that don't correspond to effect activation.
+const ACTIVATION_PROMPTS: ReadonlySet<PromptType> = new Set<PromptType>([
+  'SELECT_CHAIN',
+  'SELECT_IDLECMD',
+  'SELECT_BATTLECMD',
+  'SELECT_EFFECTYN',
+]);
+
+// Story 1.8: which `trigger` values are compatible with a given prompt context.
+// Used by `disambiguateEffect()` to map a runtime activation back to a specific
+// effect index in `InterruptionTag.effects[]`.
+//
+// Reasoning:
+// - SELECT_CHAIN happens during a chain window — only `chain` and `quick` effects
+//   can be activated then.
+// - SELECT_IDLECMD is the Main Phase activate command — only `main` and `quick`
+//   effects fit (`main` for ignition, `quick` for cards with quick effects that
+//   can also activate during your own MP).
+// - SELECT_BATTLECMD is during the Battle Phase chain window — `quick` only.
+// - SELECT_EFFECTYN is the prompt for "do you want to activate this trigger
+//   effect?" — `trigger` is the natural match.
+const TRIGGERS_FOR_PROMPT: Partial<Record<PromptType, ReadonlySet<InterruptionTrigger>>> = {
+  'SELECT_CHAIN': new Set<InterruptionTrigger>(['chain', 'quick']),
+  'SELECT_IDLECMD': new Set<InterruptionTrigger>(['main', 'quick']),
+  'SELECT_BATTLECMD': new Set<InterruptionTrigger>(['quick']),
+  'SELECT_EFFECTYN': new Set<InterruptionTrigger>(['trigger']),
+};
+
+/** Deep clone an activation log Map for fork isolation. Each entry's array
+ *  is freshly allocated so the parent and the child do not share array
+ *  references. */
+function cloneActivationLog(src: Map<number, number[]>): Map<number, number[]> {
+  const dst = new Map<number, number[]>();
+  for (const [k, v] of src) dst.set(k, [...v]);
+  return dst;
+}
+
 // All ZoneId values — kept in sync with ws-protocol.ts ZoneId type
 const ALL_ZONE_IDS: readonly ZoneId[] = [
   'M1', 'M2', 'M3', 'M4', 'M5',
@@ -115,6 +165,13 @@ interface InternalHandle {
   isActive: boolean;
   turn: number;
   phase: Phase;
+  /** Per-turn log of interruption effect activations consumed by this handle.
+   *  Key: cardId. Value: list of effect indices (positions in
+   *  `InterruptionTag.effects[]`) that have been activated, in chronological
+   *  order. The same index can appear multiple times when an effect's
+   *  `usesPerTurn > 1`. Cleared on every NEW_TURN. Cloned by `forkViaReplay`.
+   *  Populated only for player-side activations of tagged cards (Story 1.8). */
+  activationLog: Map<number, number[]>;
 }
 
 // =============================================================================
@@ -130,28 +187,47 @@ export class OCGCoreAdapter implements GameOracle {
   private activeHandles = new Map<number, InternalHandle>();
   private nextHandleId = 1;
   private _snapshotAvailable = false;
+  /** Boot-loaded interruption tags (Story 1.8). Used by `applyAction` to
+   *  detect player-side activations of tagged cards and update each handle's
+   *  `activationLog`. Empty when the adapter is constructed without tags
+   *  (legacy code paths and tests) — in that case the activation log stays
+   *  empty and OPT-aware scoring degrades gracefully to pre-1.8 behavior. */
+  private readonly tags: Record<string, InterruptionTag>;
 
   get snapshotAvailable(): boolean {
     return this._snapshotAvailable;
   }
 
-  private constructor(core: OcgCoreSync, cardDB: CardDB, scripts: ScriptDB) {
+  private constructor(
+    core: OcgCoreSync,
+    cardDB: CardDB,
+    scripts: ScriptDB,
+    tags: Record<string, InterruptionTag>,
+  ) {
     this.core = core;
     this.cardDB = cardDB;
     this.scripts = scripts;
+    this.tags = tags;
     this.cardReader = createCardReader(cardDB);
     this.scriptReader = createScriptReader(scripts);
   }
 
   /**
    * Factory: initialize OCGCore WASM, run smoke test, return adapter.
+   * `tags` is optional for backward compat — when omitted, OPT-aware scoring
+   * is disabled (no activations are tracked). Production callers should pass
+   * the boot-loaded tags from `solver-config-loader.ts`.
    */
-  static async create(cardDB: CardDB, scripts: ScriptDB): Promise<OCGCoreAdapter> {
+  static async create(
+    cardDB: CardDB,
+    scripts: ScriptDB,
+    tags: Record<string, InterruptionTag> = {},
+  ): Promise<OCGCoreAdapter> {
     const core = await createCore({ sync: true });
     const version = core.getVersion();
     console.log(`[Solver] OCGCore v${version[0]}.${version[1]} initialized`);
 
-    const adapter = new OCGCoreAdapter(core, cardDB, scripts);
+    const adapter = new OCGCoreAdapter(core, cardDB, scripts, tags);
     adapter.runSmokeTest();
     return adapter;
   }
@@ -172,6 +248,7 @@ export class OCGCoreAdapter implements GameOracle {
       isActive: true,
       turn: 0,
       phase: 'DRAW',
+      activationLog: new Map(),
     };
     internal.id = id;
     this.activeHandles.set(id, internal);
@@ -189,6 +266,11 @@ export class OCGCoreAdapter implements GameOracle {
     this.core.duelSetResponse(internal.nativeHandle, response as never);
     internal.actionHistory.push(action);
     internal.responseHistory.push(response);
+    // Story 1.8: track player-side activations of tagged cards.
+    // We do this AFTER duelSetResponse to avoid logging on actions that
+    // would throw inside the engine. The pass-action (responseIndex === -1
+    // for SELECT_CHAIN) carries cardId === 0 so it's filtered out below.
+    this.recordActivation(internal, action);
   }
 
   fork(handle: DuelHandle): DuelHandle {
@@ -202,6 +284,13 @@ export class OCGCoreAdapter implements GameOracle {
   getFieldState(handle: DuelHandle): FieldState {
     const internal = this.resolveHandle(handle);
     return this.queryFieldState(internal);
+  }
+
+  getActivationLog(handle: DuelHandle): ActivationLog {
+    const internal = this.resolveHandle(handle);
+    // Return the live Map — readers must not mutate. The ReadonlyMap type on
+    // GameOracle enforces this at compile time.
+    return internal.activationLog;
   }
 
   destroyDuel(handle: DuelHandle): void {
@@ -323,6 +412,10 @@ export class OCGCoreAdapter implements GameOracle {
       for (const m of messages) {
         if (m.type === OcgMessageType.NEW_TURN) {
           internal.turn = (m as unknown as { turn_count: number }).turn_count ?? internal.turn + 1;
+          // Story 1.8: OPT counters reset on every NEW_TURN. The solver
+          // currently runs only turn 1 in goldfish mode, so this clear is
+          // defensive — but Epic 2 (adversarial multi-turn) will rely on it.
+          internal.activationLog.clear();
         } else if (m.type === OcgMessageType.NEW_PHASE) {
           const p = (m as unknown as { phase: number }).phase;
           if (p && PHASE_MAP[p]) internal.phase = PHASE_MAP[p];
@@ -668,9 +761,80 @@ export class OCGCoreAdapter implements GameOracle {
       isActive: true,
       turn: parent.turn,
       phase: parent.phase,
+      // Story 1.8: deep clone the activation log so DFS branches do not share
+      // state. Each entry is a fresh array — mutating the parent's log after
+      // a fork must NOT affect the child, and vice versa.
+      activationLog: cloneActivationLog(parent.activationLog),
     };
     this.activeHandles.set(id, internal);
     return this.toPublicHandle(internal);
+  }
+
+  // ===========================================================================
+  // Internal: Activation Log Tracking (Story 1.8)
+  // ===========================================================================
+
+  /** Records a player-side activation of a tagged card into the handle's
+   *  activation log. Called from `applyAction` after the OCGCore response is
+   *  set. Filters: cardId must be > 0, must be tagged, and the prompt must be
+   *  one of the activation-bearing types. The effect index is resolved via
+   *  `disambiguateEffect()` using the tag's `trigger` field. */
+  private recordActivation(internal: InternalHandle, action: Action): void {
+    if (action.cardId <= 0) return; // pass-action or zone-only action
+    const tag = this.tags[String(action.cardId)];
+    if (!tag) return;
+
+    if (!ACTIVATION_PROMPTS.has(action.promptType)) return;
+
+    const effectIndex = this.disambiguateEffect(tag, action.promptType, internal.phase);
+    const log = internal.activationLog.get(action.cardId);
+    if (log) {
+      log.push(effectIndex);
+    } else {
+      internal.activationLog.set(action.cardId, [effectIndex]);
+    }
+  }
+
+  /** Maps a runtime activation prompt to a specific effect index in
+   *  `tag.effects[]`. Uses the `trigger` field of each effect together with
+   *  the prompt context (promptType + phase) to resolve the index. Falls back
+   *  to index 0 with a warning when no effect matches or when multiple effects
+   *  match (ambiguous). Single-effect tags always return 0. */
+  private disambiguateEffect(
+    tag: InterruptionTag,
+    promptType: PromptType,
+    phase: Phase,
+  ): number {
+    if (tag.effects.length === 1) return 0;
+
+    const acceptedTriggers = TRIGGERS_FOR_PROMPT[promptType];
+    if (!acceptedTriggers) {
+      console.warn(`[Solver] effect-disambiguation-fallback: ${tag.cardName} prompt ${promptType} not in TRIGGERS_FOR_PROMPT — using index 0`);
+      return 0;
+    }
+
+    const matches: number[] = [];
+    for (let i = 0; i < tag.effects.length; i++) {
+      const t = tag.effects[i].trigger;
+      if (t === undefined) continue;
+      if (acceptedTriggers.has(t)) matches.push(i);
+    }
+
+    if (matches.length === 0) {
+      // No effect has a trigger matching this prompt context. Either the
+      // tag is missing trigger fields (legacy or partial regeneration), or
+      // the activation context is unexpected. Fall back to index 0.
+      console.warn(`[Solver] effect-disambiguation-fallback: ${tag.cardName} no trigger matches prompt=${promptType} phase=${phase} — using index 0`);
+      return 0;
+    }
+
+    if (matches.length === 1) return matches[0];
+
+    // Multiple effects match — true ambiguity. Pick lowest index. This is
+    // rare in practice (most multi-effect cards have differently-typed
+    // triggers between their effects).
+    console.warn(`[Solver] effect-disambiguation-ambiguous: ${tag.cardName} prompt=${promptType} phase=${phase} matches=[${matches.join(',')}] — using index ${matches[0]}`);
+    return matches[0];
   }
 
   /** Run duelProcess until WAITING or END — used during replay phase. */

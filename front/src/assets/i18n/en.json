@@ -478,6 +478,7 @@
     },
     "progress": {
       "exploring": "Exploring combo lines...",
+      "stalled": "Resolving complex effect...",
       "nodesExplored": "{{count}} combo lines explored",
       "bestScore": "Best board: {{score}}",
       "elapsed": "Elapsed: {{time}}",
@@ -490,6 +491,10 @@
       "interruptionSingular": "interruption",
       "partial": "Partial result",
       "fallbackHint": "Some cards lack interruption tags — score is estimated",
+      "consumedBadge": {
+        "text": "used",
+        "tooltip": "This card has used {{consumed}} of its {{total}} once-per-turn effects this turn"
+      },
       "brick": {
         "title": "No viable combo",
         "message": "This hand has no path to an interruption even uncontested.",
@@ -504,7 +509,8 @@
       "deckNotFound": "Deck not found",
       "accessDenied": "Access denied for this deck",
       "connectionFailed": "Server connection failed",
-      "handtrapUnavailable": "Handtrap data unavailable — check server connection"
+      "handtrapUnavailable": "Handtrap data unavailable — check server connection",
+      "resultEvicted": "Previous solve result expired during reconnection — please run it again"
     }
   },
   "replay": {

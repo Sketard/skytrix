@@ -41,6 +41,12 @@
           @if (card.badgeLabel) {
             <div class="card-badge">{{ card.badgeLabel }}</div>
           }
+          @if (card.consumedUses && card.totalUses) {
+            <div class="card-consumed-badge"
+              [matTooltip]="'solver.result.consumedBadge.tooltip' | translate:{ consumed: card.consumedUses, total: card.totalUses }">
+              {{ card.consumedUses }}/{{ card.totalUses }} {{ 'solver.result.consumedBadge.text' | translate }}
+            </div>
+          }
 
           <ng-template cdkConnectedOverlay
             [cdkConnectedOverlayOrigin]="cardOrigin"

@@ -7,6 +7,7 @@
 import type { GameOracle, DuelHandle } from './game-oracle.js';
 import type { SolverStrategy, ActionRanker } from './solver-strategy.js';
 import type {
+  ActivationLog,
   Action,
   DecisionNode,
   FieldState,
@@ -26,12 +27,23 @@ import { extractMainPath, ROOT_ACTION } from './dfs-solver.js';
 // Protects against WASM corruption / adapter bad state spinning the budget.
 const MAX_CONSECUTIVE_FAILURES = 10;
 
+/** Story 1.8: deep-clone an ActivationLog into a fresh standalone Map.
+ *  Used to snapshot the rollout handle's log before the handle is destroyed,
+ *  so the result builder can score the best terminal with the same OPT state
+ *  the rollout actually saw. */
+function snapshotActivationLog(src: ActivationLog): Map<number, number[]> {
+  const dst = new Map<number, number[]>();
+  for (const [k, v] of src) dst.set(k, [...v]);
+  return dst;
+}
+
 // Frozen zero-breakdown sentinel — avoids per-call allocations.
 const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
   omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
   controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-  bounce: 0, handRip: 0, sendToGy: 0, total: 0,
+  bounce: 0, handRip: 0, sendToGy: 0,
+  weighted: 0, fallbackPoints: 0, total: 0,
 });
 
 // =============================================================================
@@ -134,6 +146,9 @@ export class MCTSSolver implements SolverStrategy {
   private _bestTerminalScore = -Infinity;
   private _bestTerminalFieldState: FieldState | undefined;
   private _bestTerminalScoreBreakdown: ScoreBreakdown | undefined;
+  // Story 1.8: snapshot of the activation log at the best terminal so the
+  // result builder can render the same OPT-aware end board the rollout saw.
+  private _bestTerminalActivationLog: ActivationLog | undefined;
 
   constructor(
     scorer: InterruptionScorer,
@@ -183,6 +198,7 @@ export class MCTSSolver implements SolverStrategy {
     this._bestTerminalScore = -Infinity;
     this._bestTerminalFieldState = undefined;
     this._bestTerminalScoreBreakdown = undefined;
+    this._bestTerminalActivationLog = undefined;
 
     const root = this.createRootNode();
 
@@ -427,13 +443,19 @@ export class MCTSSolver implements SolverStrategy {
     }
 
     const finalState = oracle.getFieldState(handle);
-    const { score, scoreBreakdown } = this.scorer.score(finalState);
+    // Story 1.8: snapshot the activation log for OPT-aware scoring AND for
+    // verification key parity. We snapshot here (rather than re-fetching in
+    // buildResult) because the rollout handle is destroyed after this method
+    // returns — the live log would be gone.
+    const finalLog = snapshotActivationLog(oracle.getActivationLog(handle));
+    const { score, scoreBreakdown } = this.scorer.score(finalState, finalLog);
 
     // Track best terminal globally (Task 5.4)
     if (score > this._bestTerminalScore) {
       this._bestTerminalScore = score;
       this._bestTerminalFieldState = finalState;
       this._bestTerminalScoreBreakdown = scoreBreakdown;
+      this._bestTerminalActivationLog = finalLog;
     }
 
     return { rolloutScore: score, maxDepth: depth };
@@ -474,9 +496,14 @@ export class MCTSSolver implements SolverStrategy {
     const useMax = this.configFile.backpropPolicy !== 'mean';
 
     // endBoardCards from best terminal (shared by empty + populated paths)
+    // Story 1.8: pass the snapshotted activation log so consumed-uses badges
+    // appear on the rendered end board.
     let endBoardCards = undefined;
     if (this._bestTerminalFieldState) {
-      endBoardCards = this.scorer.scoreWithCards(this._bestTerminalFieldState).endBoardCards;
+      endBoardCards = this.scorer.scoreWithCards(
+        this._bestTerminalFieldState,
+        this._bestTerminalActivationLog,
+      ).endBoardCards;
     }
 
     // Empty result guard (Task 7.6) — root has no children either because no

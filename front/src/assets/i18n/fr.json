@@ -478,6 +478,7 @@
     },
     "progress": {
       "exploring": "Exploration des lignes de combo...",
+      "stalled": "Résolution d'un effet complexe...",
       "nodesExplored": "{{count}} lignes de combo explorées",
       "bestScore": "Meilleur board : {{score}}",
       "elapsed": "Temps écoulé : {{time}}",
@@ -490,6 +491,10 @@
       "interruptionSingular": "interruption",
       "partial": "Résultat partiel",
       "fallbackHint": "Certaines cartes n'ont pas de tags d'interruption — le score est estimé",
+      "consumedBadge": {
+        "text": "utilisés",
+        "tooltip": "Cette carte a déjà utilisé {{consumed}} de ses {{total}} effets une-fois-par-tour ce tour"
+      },
       "brick": {
         "title": "Aucun combo viable",
         "message": "Cette main n'a aucun chemin vers une interruption, même sans opposition.",
@@ -504,7 +509,8 @@
       "deckNotFound": "Deck introuvable",
       "accessDenied": "Accès refusé à ce deck",
       "connectionFailed": "Connexion au serveur échouée",
-      "handtrapUnavailable": "Données handtrap indisponibles — vérifiez la connexion serveur"
+      "handtrapUnavailable": "Données handtrap indisponibles — vérifiez la connexion serveur",
+      "resultEvicted": "Le résultat du solve précédent a expiré pendant la reconnexion — veuillez le relancer"
     }
   },
   "replay": {

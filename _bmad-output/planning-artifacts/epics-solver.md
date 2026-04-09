@@ -267,6 +267,7 @@ So that the DFS solver can detect loops and avoid re-exploring equivalent game s
 **Then** the Zobrist table is pre-generated with crypto PRNG: zobrist[cardId][zoneId][position]
 **And** hash is 64-bit via two 32-bit numbers (not BigInt)
 **And** hash components include card positions across ALL zones (monster, spell/trap, hand, GY, banished, extra, deck) + phase + turn count modulo 4. GY and banished zones are included because they directly affect legal actions (GY recursion, banished recovery) — excluding them causes false transposition hits
+**And** HAND, GY, and BANISHED are hashed as multisets (`position` fixed to 0) so different draw/discard orderings of the same cards collide intentionally. EXTRA still uses positional indexing because face-up vs face-down matters for Pendulum monsters. DECK uses a count-only hash (player doesn't know deck order). Only monster and spell/trap zones use full positional indexing (zone slot matters for legality)
 **And** updates are incremental O(1) per action via XOR
 
 **Given** the transposition table
@@ -279,7 +280,7 @@ So that the DFS solver can detect loops and avoid re-exploring equivalent game s
 **When** a game state hash matches a transposition entry with valid verification key and depth ≥ current
 **Then** the cached score and bestAction are reused instead of re-exploring
 **And** stale actions (not in current legal action set) trigger re-exploration
-**And** the verification key fingerprint includes: cards-per-zone + top card IDs + overlay counts per zone + face-down flag count per zone (prevents false hits from OPT-divergent states with identical card layout but different overlay/face-down state)
+**And** the verification key fingerprint includes: cards-per-zone + top card IDs + overlay counts per zone + face-down flag count per zone + per-card OPT-spent flags (read from OCGCore's effect-used flags via `duelQueryField()`'s effect status payload). OPT flags are required because cards like Baronne de Fleur (omni-negate, OPT) leave no visible board change after the first activation — a board reached via "Baronne already used" vs "Baronne fresh" has identical layout but different legal-action sets. Without OPT flags, the transposition table produces false score hits on these states
 
 **Given** a golden test hand involving a multi-chain combo with OPT effects (e.g., Baronne de Fleur)
 **When** the same board is reached via two different activation orders
@@ -305,10 +306,11 @@ So that the solver can rank combo paths by the defensive value of their final bo
 **Given** a face-up monster on the field that has no entry in interruption-tags.json
 **When** the scorer evaluates it
 **Then** it receives 1 base point via the fallback heuristic (prevents false bricks for rogue decks)
+**And** fallback points are tracked separately in `ScoreBreakdown.fallbackPoints` (NOT folded into `total`) so brick detection can ignore them
 
-**Given** a terminal node with total score = 0
+**Given** a terminal node where the sum of weighted interruption scores (excluding fallback heuristic points) is 0
 **When** the solver evaluates it
-**Then** it is marked as a brick path (FR25)
+**Then** it is marked as a brick path (FR25). A board with untagged face-up monsters but zero tagged interruptions is still a brick — the fallback heuristic exists for tie-breaking between non-brick paths, NOT to suppress brick detection
 
 **Given** the interruption-tags.json data file (FR30)
 **When** Story 1.2b is delivered
@@ -331,6 +333,12 @@ So that the solver can find optimal combo paths from any game state via exhausti
 **Then** it explores legal actions depth-first from the initial game state
 **And** respects maxDepth (50 actions) as a hard termination limit
 **And** returns a SolverResult with tree (DecisionNode), mainPath (SolverAction[]), score, scoreBreakdown, and stats
+
+**Given** a strategy (DFS or MCTS) receives a SolverConfig with `timeLimitMs` and `verificationBudgetRatio`
+**When** the strategy begins exploration
+**Then** it MUST treat its effective exploration budget as `timeLimitMs * (1 - verificationBudgetRatio)` (default 85% of `timeLimitMs`)
+**And** the strategy MUST self-halt exploration when the elapsed time crosses this internal deadline, returning the best result found so far so the worker can run verification (Story 1.3) before the orchestrator's hard-kill timeout
+**And** the AbortSignal is the outer guarantee — the internal deadline is the strategy's contractual obligation. A strategy that ignores its internal deadline and only stops on AbortSignal violates the contract because verification is then either skipped or runs past the user-visible time budget
 
 **Given** a DFS exploration in progress
 **When** the same Zobrist hash is encountered on the current path
@@ -378,18 +386,20 @@ So that solves are parallelized across cores and the best result is returned eff
 **Given** the duel-server boot sequence
 **When** the solver orchestrator initializes
 **Then** a piscina pool is created separate from the duel worker pool
-**And** pool size defaults to os.availableParallelism() - 2 (configurable via solver-config.json)
+**And** pool size defaults to `Math.max(1, os.availableParallelism() - 2)` (clamped floor of 1 for low-core hosts: CI runners, 1–2 core VMs); configurable via solver-config.json
 **And** idleTimeout keeps workers alive between solves (warm pool)
 
 **Given** a valid solve request (deck + hand + config)
 **When** the orchestrator dispatches work
-**Then** each worker in the pool receives an independent task with a different PRNG seed
+**Then** each worker in the pool receives an independent task. All workers receive the **same** shuffled deck (seeded once by `deckSeed` server-side, see Story 1.4) — not different shuffles
+**And** for **MCTS**, each worker is given a distinct `mctsSeed` (derived from `deckSeed + workerIndex`) that drives rollout randomization, so workers explore different stochastic trajectories of the same deck. Root parallelism is meaningful here
+**And** for **DFS** (deterministic given a deck order), running multiple workers on identical input is wasteful. The orchestrator dispatches DFS to a **single** worker regardless of pool size; remaining workers stay idle. The pool exists for MCTS and `auto`-selected MCTS solves
 **And** workers operate with zero synchronization (root parallelism)
 
 **Given** multiple workers returning SolverResults
 **When** all workers complete (or abort)
 **Then** the orchestrator aggregates top-K trees per worker (default K=3)
-**And** merges all top-K trees: (1) keep global best by score, (2) deduplicate remaining by mainPath action-sequence hash (discard lower-scoring duplicates), (3) keep up to treePruningTopX distinct alternatives sorted by score
+**And** merges all top-K trees: (1) keep global best by score; (2) when two results share the same `mainPath` action-sequence hash, **merge** their alternative subtrees (union children at each shared level, deduplicating identical action-edges) rather than discarding the lower-scoring duplicate — this preserves distinct alternative branches that happen to share a recommended path; (3) keep up to `treePruningTopX` distinct top-level alternatives sorted by score
 **And** the final tree is pruned: top-X children per node (configurable, default 5) and maxResultNodes (default 500)
 **And** mainPath is extracted from the best tree (first child at each level)
 **And** prunedChildren count is set on nodes where branches were removed
@@ -421,11 +431,23 @@ So that solves are parallelized across cores and the best result is returned eff
 **And** if a worker exceeds its V8 heap limit, V8 terminates it with an OOM error
 **And** the orchestrator catches the worker crash, logs WARNING, and returns SOLVER_ERROR { error: 'MEMORY_LIMIT', message: 'Solver worker exceeded memory limit' }
 
+**Given** the configured per-worker V8 heap cap
+**When** the post-implementation big bang test runs
+**Then** a memory smoke test executes a worst-case Optimal solve (a meta combo deck — Snake-Eye or Branded — with a 5-card combo hand) under the default 65MB cap and confirms no OOM occurs
+**And** if the smoke test OOMs, the default `memoryBudgetMb` in `solver-config.json` is raised until the worst-case solve fits, and the new value is recorded in the smoke test artifact
+**And** the smoke test result is captured as a validation artifact alongside `golden-tests.json`
+
 **Given** a solve dispatched to workers
 **When** the orchestrator starts the solve
 **Then** a hard-kill `setTimeout` is set at `timeLimitMs * 1.5` wrapping the `Promise.allSettled()` of all worker tasks
-**And** if the timeout fires (worker stuck in a WASM call or missed AbortSignal check), the orchestrator calls `AbortController.abort()` and resolves with whatever results are available. If no results, returns SOLVER_ERROR { error: 'INTERNAL_ERROR', message: 'Solve hard-kill timeout exceeded' }
+**And** if the timeout fires (worker stuck in a WASM call or missed AbortSignal check), the orchestrator calls `AbortController.abort()`, calls `worker.terminate()` on any worker that did not honor the abort within 250ms, and resolves with whatever results are available. If no results, returns SOLVER_ERROR { error: 'INTERNAL_ERROR', message: 'Solve hard-kill timeout exceeded' }
 **And** under normal operation this timeout never fires (AbortSignal terminates first)
+
+**Given** a solve in progress
+**When** no `SOLVER_PROGRESS` aggregate has advanced (`nodesExplored` unchanged) for `stalledWarningMs` (default 3000ms, configurable)
+**Then** the orchestrator emits `SOLVER_PROGRESS { ..., stalled: true }` so the frontend can switch the spinner copy from "Exploring combo lines..." to "Resolving complex effect..." instead of showing a frozen spinner
+**And** when progress resumes, the next `SOLVER_PROGRESS` clears the flag (`stalled: false`)
+**And** if every worker is simultaneously stalled at the moment the hard-kill fires, the resulting `SOLVER_ERROR` includes `cause: 'all_workers_stalled'` so the frontend can display a deck-content diagnostic ("A card effect in this deck caused the solver to hang — try removing recently added cards") rather than a generic internal error
 
 **Given** a solve in progress
 **When** the orchestrator receives a cancel signal
@@ -515,9 +537,16 @@ So that clients can start, monitor, and cancel solves over the existing WS conne
 **And** the cache entry is evicted after 5 minutes or on next SOLVER_START
 
 **Given** a WS reconnection for a user who has a cached result
-**When** the client reconnects
+**When** the client reconnects and sends SOLVER_INIT
 **Then** the cached SOLVER_RESULT is automatically resent to the client
 **And** SolverService handles the re-delivered result idempotently (same result signal update)
+
+**Given** a WS reconnection where the previous solve's result has already been evicted from the server-side cache (5-minute TTL elapsed, or evicted by a newer SOLVER_START)
+**When** the client reconnects and sends SOLVER_INIT
+**Then** the server responds with SOLVER_HANDTRAPS only — no cached result is included
+**And** the frontend SolverService treats the absence of a cached result as the normal post-init state: the local `result` signal is preserved (the user keeps seeing whatever result is currently rendered, which may be from before disconnection), `solverState` stays at whatever value it currently holds (`complete` or `idle`), and no error is raised
+**And** the user can launch a new solve normally; the now-orphaned local result is replaced when the new SOLVER_RESULT arrives
+**And** if the user had no local result before disconnection (fresh page load after eviction), state is `'idle'` and the page shows the empty config — same as a first visit
 
 **Given** the WS connection closes during a solve
 **When** the client disconnects
@@ -550,7 +579,7 @@ So that all frontend solver stories build on a working service layer and page st
 **And** 'loading' state is active while the deck is being fetched from the route param — transitions to 'idle' once the deck is loaded
 **And** it manages WS communication for SOLVER_* messages
 **And** on first instantiation, it sends SOLVER_INIT over WS to request the handtrap list
-**And** if SOLVER_HANDTRAPS is not received within 10 seconds, retries once; if still no response, transitions to 'error' state with a user-visible message ("Handtrap data unavailable — check server connection") and the adversarial config section shows a disabled state with an inline error hint
+**And** if SOLVER_HANDTRAPS is not received within 10 seconds, retries once; if still no response, the `handtraps` signal stays `null` and a `handtrapsLoadFailed` signal is set to `true`. The page does NOT enter the global `'error'` state — goldfish mode (Epic 1) does not consume handtrap data, so it must remain fully usable. Only the adversarial mode toggle (added in Epic 2) is disabled and shows an inline error hint ("Handtrap data unavailable — adversarial mode requires server connection. Goldfish mode is still available."). The global `'error'` state is reserved for failures that block goldfish itself (deck load failure, WS disconnect, SOLVER_ERROR)
 **And** on SOLVER_HANDTRAPS received, it populates the handtraps signal (+ re-delivers any cached SOLVER_RESULT)
 **And** all incoming WS messages are delegated to SolverDebugLogService for logging
 
@@ -777,11 +806,17 @@ So that the solver can handle high-branching-factor decks that DFS cannot tracta
 
 **Given** a solve request with algorithm = 'auto'
 **When** the orchestrator dispatches work
-**Then** each worker runs a 100-node DFS probe to measure average branching factor
-**And** if BF < 12, the worker continues with DFS — resuming from the probe's frontier (probe tree is reused, not discarded)
-**And** if BF ≥ 12, the worker switches to MCTS — probe leaf nodes seed the initial MCTS tree and their scores initialize UCB1 statistics (warm-start)
-**And** if BF > bfComplexityThreshold (default 25), the progress includes highComplexity: true
+**Then** the orchestrator runs a **breadth-limited** probe: an iterative-deepening DFS capped at 100 expanded nodes, where each visited node fully enumerates and counts its legal actions before recursing into the highest-ranked child. The branching factor metric is the **mean of `legalActions.length` across all 100 visited nodes**, NOT the number of children actually descended into. Pure depth-first descent would systematically under-sample BF because it follows one branch deeply; the iterative-deepening shape ensures the probe samples nodes from multiple depths
+**And** if mean BF < 12, the worker continues with DFS — resuming from the probe's frontier (probe tree is reused, not discarded)
+**And** if mean BF ≥ 12, the worker switches to MCTS using the probe nodes as warm-start (see warm-start AC below)
+**And** if mean BF > bfComplexityThreshold (default 25), the progress includes highComplexity: true
 **And** in both cases the probe budget (~100 nodes) is amortized into the solve, not wasted
+
+**Given** a probe measured BF ≥ 12 and the worker switches to MCTS
+**When** MCTS solve begins
+**Then** the warm-start is restricted to a **score floor**: only the probe's `bestScore` is carried over and seeded as `_bestTerminalScore` (and as `root.bestScore` / `root.score`) before the first MCTS iteration. MCTS will never report a worse line than the probe found
+**And** the probe's `nodesExplored` is intentionally NOT recorded as MCTS visits, and the probe tree is NOT converted to MCTS nodes. DFS node-explorations and MCTS rollouts measure different quantities; mixing them poisons UCB1 exploration (denominator inflated, exploration bonus collapses) and the mean-policy denominator
+**And** the probe and MCTS use the same `InterruptionScorer`, so the floor is directly comparable to rollout scores — no normalization needed
 
 **Given** the ActionRanker interface
 **When** a strategy calls ranker.rank(actions, state)
@@ -802,8 +837,74 @@ So that the solver can handle high-branching-factor decks that DFS cannot tracta
 
 **Given** the UCB1 exploration constant C and backpropagation policy
 **When** Story 1.7 is implemented
-**Then** C is exposed as a configurable constant in `solver-config.json` (default calibrated during implementation, starting point √2)
+**Then** C is exposed as a configurable constant in `solver-config.json` (range 0.5-3.0, starting point √2 ≈ 1.414)
 **And** a `backpropPolicy` config field supports `'max'` (default) and `'mean'` — enabling empirical comparison if max-backprop causes exploitation traps on specific decks
+**And** a calibration script (`scripts/calibrate-mcts.ts`, dev-only) runs MCTS over a fixed set of 5 calibration hands (defined in `_bmad-output/planning-artifacts/research/mcts-calibration-hands.json` — to be created during implementation) at C ∈ {0.7, 1.0, √2, 2.0, 2.5}, 10 runs each per C, and reports the mean final score and stddev per C value
+**And** the calibration is "complete" when the script has been run, its output committed as a validation artifact, and `solver-config.json` is set to the C with the highest mean score whose stddev is ≤ 15% of mean (matches the stability threshold from the MCTS golden-test AC)
+**And** the story is NOT considered done if `solver-config.json` still contains the placeholder √2 value with no calibration artifact
+
+---
+
+### Story 1.8: ActivationLog Tracking & OPT-Aware Scoring
+
+As a developer,
+I want the solver to track which interruption effects each card has already used during a turn and apply that knowledge to scoring + transposition table fingerprinting,
+So that the score of a board final reflects the real defensive value of cards that have already activated their once-per-turn effects, and the transposition table no longer produces false hits between OPT-divergent states with identical visible layouts.
+
+**Background:** The current scorer assumes every tagged card on the board final has all its OPT effects available. In reality, cards can spend OPT effects mid-combo (e.g., a Baronne summoned early that activates omni-negate to negate a handtrap before continuing). The board final still shows Baronne, but its real value is 0, not 30. The transposition table cannot distinguish OPT-divergent states with identical visible layouts because its verification key only encodes cardId/position/overlay/face-down. This story resolves both issues by tracking activations on the JS side (the OCGCore WASM API does not expose effect counters — investigation confirmed `OcgQueryFlags.STATUS` only exposes 3 bits, none of which are OPT-related).
+
+**Acceptance Criteria:**
+
+**Given** a player activation of a tagged card via SELECT_CHAIN, SELECT_IDLECMD, or SELECT_EFFECTYN
+**When** `applyAction()` is called
+**Then** the adapter records the activation in `InternalHandle.activationLog: Map<cardId, number[]>`, where the value array contains effect indices (positions in `tag.effects[]`)
+**And** the effect index is determined by `disambiguateEffect(tag, promptType, phase)` which uses the `trigger` field of each effect to match against the prompt context
+**And** ambiguous matches log a warning and pick the lowest index; missing-trigger fallback uses index 0 with warning
+
+**Given** a `forkViaReplay()` call
+**When** the new handle is created
+**Then** `activationLog` is deep-cloned from the parent (Map clone with array clone per entry) so DFS branches do not share state
+**And** opponent activations are NOT logged in this story (Epic 2 will extend `applyAction` to track them)
+
+**Given** a `NEW_TURN` message processed by `runUntilPlayerPrompt()`
+**When** the turn counter advances
+**Then** `activationLog` is cleared on the active handle
+
+**Given** the `GameOracle` interface
+**When** a consumer needs OPT state
+**Then** `oracle.getActivationLog(handle): ReadonlyMap<number, readonly number[]>` is exposed
+
+**Given** `InterruptionScorer.scoreWithCards()` called with an optional `activationLog` argument
+**When** a tagged card on the field is evaluated
+**Then** for each effect, `consumedCount` is computed from the log and `remainingUses = max(0, effect.usesPerTurn - consumedCount)` replaces `effect.usesPerTurn` in the breakdown count and weighted total
+**And** if the tag has `sharedOpt: true`, the cumulative consumed count is capped against `tag.totalUsesPerTurn ?? sum(effects.usesPerTurn)` — once exceeded, the card scores 0 across all remaining effects
+**And** when `activationLog` is omitted or empty, scoring matches the pre-1.8 behavior (backward compatible)
+
+**Given** `buildVerificationKey()` is called during a TT store/lookup
+**When** the function constructs the key
+**Then** it accepts `activationLog` as a second parameter and appends a deterministic `opt:cardId1=indices1;cardId2=indices2;...` segment, with sorted cardIds and sorted indices
+**And** two `FieldState` snapshots with identical board layout but different `activationLog` produce different verification keys
+**And** the existing TT lookup/store call sites in `dfs-solver.ts` are updated to pass the activation log
+
+**Given** the enriched `interruption-tags.json` schema
+**When** the loader reads a tag entry
+**Then** the schema accepts new optional fields per tag (`sharedOpt`, `totalUsesPerTurn`, `_generatedBy`, `_oracleVersion`, `_validated`) and per effect (`trigger`, `description`)
+**And** the loader passes validation regardless of whether a given entry has the new fields (backward compatible)
+
+**Given** the AI-assisted tag generation prompt persisted at `_bmad-output/solver-data/interruption-tag-generation-prompt.md`
+**When** a developer or Claude Code session needs to generate or regenerate tags
+**Then** the prompt file contains: system prompt, full TS schema with semantics, classification rules for ambiguous cases, few-shot examples (single-effect, multi-effect non-shared, multi-effect shared, continuous, null cases), and the expected output format
+**And** the existing 173 entries in `interruption-tags.json` are regenerated using this prompt during Story 1.8 implementation, preserving correct entries and enriching with new fields
+**And** the regeneration log is captured as a validation artifact
+
+**Given** the frontend `HeroResultBlockComponent` displaying the end board cards
+**When** a card has activations recorded in the result
+**Then** the card thumbnail shows a small badge "X/Y used" with a tooltip explaining the consumed OPT effects
+**And** the `EndBoardCard` type is extended with `consumedUses?: number` populated by the scorer when an activation log is present
+
+**Given** the smoke tests for the activation log feature
+**When** they run
+**Then** at minimum these assertions pass: empty log on fresh handle, log populated after Apollousa activation, fork isolates state, disambiguateEffect resolves Baronne omni-negate vs destruction, scorer reduces weighted score for consumed Baronne effect, sharedOpt card with full consumption returns 0, verification key differs for OPT-divergent states, identical for OPT-equivalent states
 
 ---
 

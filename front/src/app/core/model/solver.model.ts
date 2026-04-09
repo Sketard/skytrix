@@ -30,6 +30,10 @@ export interface ScoreBreakdown {
   bounce: number;
   handRip: number;
   sendToGy: number;
+  /** Tag-only score (excludes fallback heuristic). Brick detection uses this. */
+  weighted: number;
+  /** Fallback heuristic bonus (untagged face-up monsters). */
+  fallbackPoints: number;
   total: number;
 }
 
@@ -50,7 +54,8 @@ export const EMPTY_SCORE_BREAKDOWN: ScoreBreakdown = {
   omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
   controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-  bounce: 0, handRip: 0, sendToGy: 0, total: 0,
+  bounce: 0, handRip: 0, sendToGy: 0,
+  weighted: 0, fallbackPoints: 0, total: 0,
 };
 
 // =============================================================================
@@ -62,6 +67,8 @@ export interface SolverProgress {
   bestScore: number;
   elapsed: number;
   highComplexity?: boolean;
+  /** Set when no node-advancement has been observed for stalledWarningMs server-side. */
+  stalled?: boolean;
 }
 
 export interface SolverStats {
@@ -88,6 +95,8 @@ export interface EndBoardCard {
   zone: string;
   effects: { type: string; usesPerTurn: number }[];
   isFallback: boolean;
+  /** Number of OPT effects consumed by this card during the current turn. */
+  consumedUses?: number;
 }
 
 // =============================================================================

@@ -889,6 +889,10 @@ export interface SolverWsScoreBreakdown {
   bounce: number;
   handRip: number;
   sendToGy: number;
+  /** Tag-only score (excludes fallback heuristic). Brick detection uses this. */
+  weighted: number;
+  /** Fallback heuristic bonus (untagged face-up monsters). */
+  fallbackPoints: number;
   total: number;
 }
 
@@ -935,6 +939,8 @@ export interface SolverWsEndBoardCard {
   zone: string;
   effects: { type: string; usesPerTurn: number }[];
   isFallback: boolean;
+  /** Number of OPT effects consumed by this card during the current turn. */
+  consumedUses?: number;
 }
 
 export type SolverWsError =
@@ -974,6 +980,8 @@ export interface SolverProgressMessage {
   bestScore: number;
   elapsed: number;
   highComplexity?: boolean;
+  /** Set when no node-advancement has been observed for stalledWarningMs. */
+  stalled?: boolean;
 }
 
 export interface SolverResultMessage {

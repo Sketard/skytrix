@@ -6,6 +6,7 @@
 import type { GameOracle, DuelHandle } from './game-oracle.js';
 import type { SolverStrategy, ActionRanker } from './solver-strategy.js';
 import type {
+  ActivationLog,
   Action,
   DecisionNode,
   EndBoardCard,
@@ -112,6 +113,8 @@ export class DfsSolver implements SolverStrategy {
       totalChildren: 0,
       totalBranchingNodes: 0,
       totalTreeNodes: 0,
+      totalLegalActions: 0,
+      totalNodesWithActions: 0,
       lastProgressTime: startTime,
     };
 
@@ -134,8 +137,8 @@ export class DfsSolver implements SolverStrategy {
         algorithm: 'dfs',
         algorithmUsed: 'dfs',
         maxDepthReached: ctx.maxDepthReached,
-        averageBranchingFactor: ctx.totalBranchingNodes > 0
-          ? ctx.totalChildren / ctx.totalBranchingNodes
+        averageBranchingFactor: ctx.totalNodesWithActions > 0
+          ? ctx.totalLegalActions / ctx.totalNodesWithActions
           : 0,
         transpositionHits: this.table.getStats().hits,
         deckSeed: '',
@@ -188,11 +191,20 @@ export class DfsSolver implements SolverStrategy {
 
     // Cache field state ONCE per node
     const fieldState = ctx.oracle.getFieldState(handle);
+    // Story 1.8: also fetch the activation log so OPT-aware scoring and the
+    // verification key both see the same per-handle OPT state.
+    const activationLog = ctx.oracle.getActivationLog(handle);
 
     // Terminal: no legal actions or max depth
     if (actions.length === 0 || depth >= this.maxDepth) {
-      return this.scoreTerminal(ctx, fieldState, depth);
+      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
     }
+
+    // BF accounting: record actions.length BEFORE any descent. This metric
+    // is independent of how many children we actually explore, so it stays
+    // unbiased under nodeLimit/time-budget cutoffs (probe mode in particular).
+    ctx.totalLegalActions += actions.length;
+    ctx.totalNodesWithActions++;
 
     // Zobrist hash for loop detection & transposition
     const hash = this.hasher.computeHash(fieldState);
@@ -208,8 +220,10 @@ export class DfsSolver implements SolverStrategy {
       };
     }
 
-    // Transposition lookup
-    const vKey = buildVerificationKey(fieldState);
+    // Transposition lookup. Story 1.8: the verification key includes the
+    // activation log so OPT-divergent states (same board, different OPT
+    // consumption) do not collide in the TT.
+    const vKey = buildVerificationKey(fieldState, activationLog);
     const ttEntry = this.table.lookup(hash, vKey, depth);
     if (ttEntry) {
       const bestActionInLegal = actions.some(
@@ -271,7 +285,7 @@ export class DfsSolver implements SolverStrategy {
 
     // If no children were explored (abort + time budget), treat as terminal
     if (children.length === 0) {
-      return this.scoreTerminal(ctx, fieldState, depth);
+      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
     }
 
     // Sort children by score descending
@@ -305,11 +319,18 @@ export class DfsSolver implements SolverStrategy {
 
   private makeTerminal(ctx: DfsContext, handle: DuelHandle, depth: number, truncated?: boolean): DfsNodeResult {
     const fieldState = ctx.oracle.getFieldState(handle);
-    return this.scoreTerminal(ctx, fieldState, depth, truncated);
+    const activationLog = ctx.oracle.getActivationLog(handle);
+    return this.scoreTerminal(ctx, fieldState, depth, truncated, activationLog);
   }
 
-  private scoreTerminal(ctx: DfsContext, fieldState: FieldState, _depth: number, truncated?: boolean): DfsNodeResult {
-    const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState);
+  private scoreTerminal(
+    ctx: DfsContext,
+    fieldState: FieldState,
+    _depth: number,
+    truncated?: boolean,
+    activationLog?: ActivationLog,
+  ): DfsNodeResult {
+    const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
     ctx.totalTreeNodes++;
     if (score > ctx.bestScore) {
       ctx.bestScore = score;
@@ -357,6 +378,8 @@ export class DfsSolver implements SolverStrategy {
       totalChildren: 0,
       totalBranchingNodes: 0,
       totalTreeNodes: 0,
+      totalLegalActions: 0,
+      totalNodesWithActions: 0,
       lastProgressTime: startTime,
       nodeLimit,
     };
@@ -370,8 +393,8 @@ export class DfsSolver implements SolverStrategy {
     this.dfs(ctx, startHandle, 0, pathHashes);
 
     return {
-      averageBranchingFactor: ctx.totalBranchingNodes > 0
-        ? ctx.totalChildren / ctx.totalBranchingNodes
+      averageBranchingFactor: ctx.totalNodesWithActions > 0
+        ? ctx.totalLegalActions / ctx.totalNodesWithActions
         : 0,
       bestScore: ctx.bestScore,
       nodesExplored: ctx.nodesExplored,
@@ -455,7 +478,8 @@ export class DfsSolver implements SolverStrategy {
       omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
       controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-      bounce: 0, handRip: 0, sendToGy: 0, total: 0,
+      bounce: 0, handRip: 0, sendToGy: 0,
+      weighted: 0, fallbackPoints: 0, total: 0,
     };
   }
 }
@@ -499,6 +523,11 @@ interface DfsContext {
   totalChildren: number;
   totalBranchingNodes: number;
   totalTreeNodes: number;
+  /** Sum of `actions.length` across every node that enumerated legal actions.
+   *  Used for an unbiased branching-factor estimate (independent of how many
+   *  children were actually descended into — important for nodeLimit probes). */
+  totalLegalActions: number;
+  totalNodesWithActions: number;
   lastProgressTime: number;
   nodeLimit?: number; // for probe mode
 }

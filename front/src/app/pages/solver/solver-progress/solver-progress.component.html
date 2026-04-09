@@ -1,7 +1,9 @@
 <div class="progress-panel">
   <mat-spinner [diameter]="48"></mat-spinner>
 
-  <p class="progress-message">{{ 'solver.progress.exploring' | translate }}</p>
+  <p class="progress-message">
+    {{ (progress()?.stalled ? 'solver.progress.stalled' : 'solver.progress.exploring') | translate }}
+  </p>
 
   @if (progress(); as p) {
     <div class="progress-stats">

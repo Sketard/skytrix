@@ -104,7 +104,8 @@ console.log('\n🔬 Test 6.4: Result aggregation logic');
       omniNegate: 1, typedNegate: 0, targetedNegate: 0, floodgate: 0,
       controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-      bounce: 0, handRip: 0, sendToGy: 0, total: 15,
+      bounce: 0, handRip: 0, sendToGy: 0,
+      weighted: 15, fallbackPoints: 0, total: 15,
     },
     stats: {
       nodesExplored: 100, elapsed: 500, algorithm: 'dfs', algorithmUsed: 'dfs',

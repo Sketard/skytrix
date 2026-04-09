@@ -804,6 +804,123 @@ The duel infrastructure is already 2-player in all modes (PvP, solo, solver). Th
 
 **Key constraint:** The solver worker must configure `createDuel()` with valid decks for both players. Player 1's main deck = filler (40 cards) + handtraps loaded to hand post-creation. This is identical to the existing solo mode pattern — no architectural change, just different cards in the opponent's hand.
 
+### OPT Consumption Tracking (Story 1.8)
+
+The interruption scorer needs to know which once-per-turn (OPT) effects of each
+tagged card have already been activated during the current turn. Without this,
+two failure modes appear:
+
+1. **Score inflation.** A board final showing a Baronne that has already
+   activated its omni-negate to negate a handtrap mid-combo is scored as if
+   the omni-negate were still available — the user sees an inflated score
+   that doesn't reflect the real defensive value.
+2. **Transposition table false hits.** Two states reachable via different
+   action orderings can have identical visible board layouts (cardId, position,
+   overlay, face-down all match) but differ in OPT consumption. The
+   verification key must distinguish them; otherwise the TT reuses a stale
+   score across non-equivalent states.
+
+**Why we don't extract OPT state from OCGCore.** Investigation determined that
+the upstream `ocgcore` C++ engine masks `card.status` to 3 bits before
+serializing it via `OcgQueryFlags.STATUS` (`DISABLED`, `FORBIDDEN`,
+`PROC_COMPLETE`). The actual OPT counters live in `effect.count_limit` and the
+field-level `effect_count_code` map — neither is exposed to the WASM API.
+Reading them would require patching the upstream C++ and rebuilding the WASM
+blob, which is out of scope. Instead, the solver reconstructs the OPT state on
+the JS side by observing `applyAction` calls.
+
+**Data flow.**
+
+```
+applyAction(handle, action) ──► recordActivation(internal, action)
+                                       │
+                                       ▼
+                              tags[action.cardId] exists?
+                                       │ yes
+                                       ▼
+                            disambiguateEffect(tag, promptType, phase)
+                                       │
+                                       ▼
+                          internal.activationLog.get(cardId).push(idx)
+                                       │
+                                       ▼
+                       (later, at scoring time)
+                                       │
+                                       ▼
+            scorer.scoreWithCards(state, oracle.getActivationLog(handle))
+                                       │
+                                       ▼
+                       OPT-aware breakdown + endBoardCards
+```
+
+**Activation log shape.** `Map<cardId, number[]>` where the value array
+contains effect indices into `tag.effects[]`, in chronological order. Same
+index can appear multiple times when the effect's `usesPerTurn > 1`.
+
+**Per-handle isolation.** Each `InternalHandle` owns its own log. `forkViaReplay`
+deep-clones the parent's log into the child, so DFS branches do not share OPT
+state. The clone is `Map.entries() → new Map(entries.map([k, [...v]]))` —
+each value array is a fresh allocation.
+
+**Reset on NEW_TURN.** `runUntilPlayerPrompt` clears the log when an OCGCore
+`NEW_TURN` message is processed. The current goldfish solver only runs turn 1,
+so this clear is defensive — but Epic 2 (multi-turn adversarial) will rely on it.
+
+**Effect disambiguation.** Multi-effect cards (e.g., Baronne with omni-negate
++ destruction) need to map a runtime activation back to a specific effect index.
+The solver does this via the `trigger` field on each `InterruptionEffect`,
+matched against the prompt context at `applyAction` time:
+
+| `promptType` | Compatible `trigger` values |
+|--------------|----------------------------|
+| `SELECT_CHAIN` | `chain`, `quick` |
+| `SELECT_IDLECMD` | `main`, `quick` |
+| `SELECT_BATTLECMD` | `quick` |
+| `SELECT_EFFECTYN` | `trigger` |
+
+If exactly one effect matches, return its index. If multiple effects match
+(rare — typically only when a card has two effects of the same trigger type),
+return the lowest matching index and log a warning. If no effect matches
+(legacy entries without `trigger` fields, or unexpected prompt context),
+fall back to index 0 with a warning. This is a deliberate trade-off:
+89% of tagged cards are single-effect (no disambiguation needed), and the
+warnings surface mis-classification at runtime so the prompt can be improved
+incrementally.
+
+**OPT-aware scoring.** `InterruptionScorer.scoreWithCards(state, log?)` decrements
+each effect's `usesPerTurn` by the count of its index in the log entry. For
+`sharedOpt: true` cards, the cumulative consumption is also capped against
+`tag.totalUsesPerTurn ?? sum(effects.usesPerTurn)` — once exceeded, the card
+scores 0 across all remaining effects (hard OPT lockout). When `log` is
+omitted or empty, the function falls back to pre-1.8 behavior so legacy callers
+and tests continue to work.
+
+**Verification key extension.** `buildVerificationKey(state, log?)` appends an
+`opt:cardId1=indices1;cardId2=indices2;...` segment with sorted cardIds and
+sorted indices. Two states with identical board layout but different logs
+produce different keys, so the TT does not collide across OPT-divergent states.
+When `log` is omitted, the segment is appended as `opt:` (empty payload) —
+backward compatible for legacy call sites.
+
+**Known limitations.**
+
+- **No per-instance card identity.** The log keys by `cardId`, so two copies
+  of the same card on the field share a bucket. In practice, end-board negators
+  are mono-occurrence (no deck plays 2× Baronne side by side), so the impact
+  is bounded.
+- **No opponent-side tracking.** Story 1.8 only logs player-side activations.
+  Epic 2 will extend `applyAction` to track opponent activations the same way
+  (handtraps, opponent quick effects). The current `autoRespondOpponent` always
+  passes on `SELECT_CHAIN`, so there's nothing to log yet.
+- **Disambiguation depends on tag quality.** If `trigger` is missing or wrong
+  in `interruption-tags.json`, the index falls back to 0 with a warning. The
+  AI generation pipeline (`_bmad-output/solver-data/interruption-tag-generation-prompt.md`)
+  is the primary maintenance vector for keeping tags accurate as the pool
+  grows.
+- **OPT state is not part of `FieldState`.** It's a sidecar map fetched
+  separately via `oracle.getActivationLog(handle)`. Consumers must remember to
+  pass both to the scorer/verification-key builder.
+
 ### Cross-Cutting Concerns Mapping
 
 | Concern | Files |

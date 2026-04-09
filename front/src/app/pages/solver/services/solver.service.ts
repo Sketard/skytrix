@@ -44,6 +44,10 @@ const INIT_TIMEOUT_MS = 10_000;
 const RECONNECT_DELAY_MS = 2_000;
 const IDLE_CHECK_INTERVAL_MS = 60_000;
 const IDLE_TIMEOUT_MS = 5 * 60_000;
+/** After a reconnect, if the WS replies with SOLVER_HANDTRAPS but no cached
+ *  SOLVER_RESULT follows within this window, a previously-running solve is
+ *  considered orphaned (server-side cache evicted) and the page is unlocked. */
+const RECONNECT_RESULT_GRACE_MS = 1_500;
 
 @Injectable({ providedIn: 'root' })
 export class SolverService implements OnDestroy {
@@ -55,6 +59,9 @@ export class SolverService implements OnDestroy {
   readonly result = signal<SolverResult | null>(null);
   readonly error = signal<SolverErrorMessage | null>(null);
   readonly handtraps = signal<HandtrapConfig[] | null>(null);
+  /** True when SOLVER_HANDTRAPS failed to load after the init retry. Goldfish
+   *  mode stays usable; only adversarial features should disable themselves. */
+  readonly handtrapsLoadFailed = signal(false);
   readonly sessionHistory = signal<SolverResult[]>([]);
   readonly currentDeckId = signal<string | null>(null);
   readonly isPartialResult = computed(() => this.result()?.partial === true);
@@ -69,6 +76,7 @@ export class SolverService implements OnDestroy {
   private idleIntervalId: ReturnType<typeof setInterval> | null = null;
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private intentionalClose = false;
+  private reconnectResultGraceId: ReturnType<typeof setTimeout> | null = null;
 
   connect(): void {
     if (this.ws !== null && this.ws.readyState === WebSocket.OPEN) return;
@@ -184,6 +192,23 @@ export class SolverService implements OnDestroy {
         }
         const payload = msg as unknown as SolverHandtrapsMessage;
         this.handtraps.set(payload.handtraps as HandtrapConfig[]);
+        this.handtrapsLoadFailed.set(false);
+
+        // Reconnect-during-running guard: if the page was waiting on a solve
+        // when the WS dropped, the server replays the cached SOLVER_RESULT
+        // immediately after SOLVER_HANDTRAPS. If no result follows within the
+        // grace window, the cache was evicted and the spinner would otherwise
+        // hang forever — fall back to 'configuring' so the user can re-run.
+        if (this.solverState() === 'running') {
+          if (this.reconnectResultGraceId !== null) clearTimeout(this.reconnectResultGraceId);
+          this.reconnectResultGraceId = setTimeout(() => {
+            this.reconnectResultGraceId = null;
+            if (this.solverState() !== 'running') return;
+            this.solverState.set('configuring');
+            this.progress.set(null);
+            this.notify.error('solver.error.resultEvicted');
+          }, RECONNECT_RESULT_GRACE_MS);
+        }
         break;
       }
 
@@ -195,11 +220,17 @@ export class SolverService implements OnDestroy {
           bestScore: payload.bestScore,
           elapsed: payload.elapsed,
           highComplexity: payload.highComplexity,
+          stalled: payload.stalled,
         });
         break;
       }
 
       case SOLVER_RESULT: {
+        // Cancel the post-reconnect grace timer — a real result is arriving.
+        if (this.reconnectResultGraceId !== null) {
+          clearTimeout(this.reconnectResultGraceId);
+          this.reconnectResultGraceId = null;
+        }
         const payload = msg as unknown as SolverResultMessage;
         const result = this.mapResult(payload);
         this.addToHistory(result);
@@ -309,8 +340,11 @@ export class SolverService implements OnDestroy {
         this.disconnect();
         this.connect();
       } else {
-        this.solverState.set('error');
-        this.error.set({ error: 'INTERNAL_ERROR', message: 'Handtrap data unavailable — check server connection' });
+        // Goldfish (Epic 1) does not consume handtraps. Mark the failure on a
+        // dedicated signal so adversarial features (Epic 2) can self-disable,
+        // but keep the page usable for goldfish solves. Do NOT enter the
+        // global 'error' state, which would block everything.
+        this.handtrapsLoadFailed.set(true);
       }
     }, INIT_TIMEOUT_MS);
   }
@@ -350,6 +384,10 @@ export class SolverService implements OnDestroy {
     if (this.idleIntervalId !== null) {
       clearInterval(this.idleIntervalId);
       this.idleIntervalId = null;
+    }
+    if (this.reconnectResultGraceId !== null) {
+      clearTimeout(this.reconnectResultGraceId);
+      this.reconnectResultGraceId = null;
     }
   }
 }

@@ -15,5 +15,6 @@
   "ucb1C": 1.414,
   "backpropPolicy": "max",
   "rolloutEpsilon": 0.1,
-  "verificationBudgetRatio": 0.15
+  "verificationBudgetRatio": 0.15,
+  "stalledWarningMs": 3000
 }

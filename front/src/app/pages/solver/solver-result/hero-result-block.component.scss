@@ -64,6 +64,22 @@
   white-space: nowrap;
 }
 
+// Story 1.8: top-right corner badge showing "X/Y used" when one or more
+// once-per-turn effects of this card have been consumed during the combo.
+.card-consumed-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 1px 3px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(180, 60, 60, 0.85);
+  border-bottom-left-radius: 3px;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
 .partial-badge {
   margin-left: 0.5rem;
 }
