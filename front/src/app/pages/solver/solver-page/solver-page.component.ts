@@ -170,6 +170,12 @@ export class SolverPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.solverService.disconnect();
+    // Do NOT disconnect the SolverService here. The service is `providedIn:
+    // 'root'` precisely so a long-running solve can complete in the background
+    // while the user navigates elsewhere — and the result re-appears when they
+    // come back to this page (Story 1.5a result-resilience AC). The service's
+    // own idle-timer (5 min, see solver.service.ts:430) handles eventual
+    // teardown when the user truly stops interacting. Disconnecting here was
+    // the C4 finding in the Epic 1 review.
   }
 }

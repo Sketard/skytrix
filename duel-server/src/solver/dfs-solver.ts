@@ -223,19 +223,49 @@ export class DfsSolver implements SolverStrategy {
     // Transposition lookup. Story 1.8: the verification key includes the
     // activation log so OPT-divergent states (same board, different OPT
     // consumption) do not collide in the TT.
+    //
+    // C3 fix from Epic 1 review: when a TT entry hits, materialize ONE level
+    // of continuation by re-applying `bestAction` and recursing once. The
+    // pre-fix code returned an empty leaf with `ROOT_ACTION` placeholder,
+    // which broke `extractMainPath()` — any optimal line passing through a
+    // TT hit was silently truncated at the hit point. The user-visible
+    // breadcrumb / decision tree showed combos cut short with no warning.
+    //
+    // Materializing one level is enough because the recursive call into
+    // `dfs(child, depth+1, ...)` will itself walk the cached subtree (or hit
+    // another TT entry deeper, which materializes another level — cascading
+    // until the line is fully reconstructed). Cost: 1 fork+apply per TT hit
+    // on the chosen line, negligible compared to normal exploration.
     const vKey = buildVerificationKey(fieldState, activationLog);
     const ttEntry = this.table.lookup(hash, vKey, depth);
     if (ttEntry) {
-      const bestActionInLegal = actions.some(
-        a => a.responseIndex === ttEntry.bestAction.responseIndex && a.promptType === ttEntry.bestAction.promptType
+      const matchedAction = actions.find(
+        a => a.responseIndex === ttEntry.bestAction.responseIndex && a.promptType === ttEntry.bestAction.promptType,
       );
-      if (bestActionInLegal) {
-        ctx.totalTreeNodes++;
-        return {
-          node: this.makeNode(ROOT_ACTION, ttEntry.score, ttEntry.scoreBreakdown, 0.5, [], false),
-          score: ttEntry.score,
-          scoreBreakdown: ttEntry.scoreBreakdown,
-        };
+      if (matchedAction) {
+        // Materialize one continuation level instead of returning a bare leaf.
+        // Use the LIVE matched action (not the cached one) so its `_response`
+        // points at the current handle's prompt, not the original snapshot.
+        const child = ctx.oracle.fork(handle);
+        try {
+          ctx.oracle.applyAction(child, matchedAction);
+          const continuation = this.dfs(ctx, child, depth + 1, pathHashes);
+          ctx.totalTreeNodes++;
+          // Wrap the continuation as the SOLE child of the TT-hit node so
+          // `extractMainPath` can keep walking. Confidence stays at 0.5 to
+          // signal that this subtree is a partial reconstruction.
+          const childNode: DecisionNode = {
+            ...continuation.node,
+            action: this.adapter.enrichAction(matchedAction),
+          };
+          return {
+            node: this.makeNode(ROOT_ACTION, ttEntry.score, ttEntry.scoreBreakdown, 0.5, [childNode], false),
+            score: ttEntry.score,
+            scoreBreakdown: ttEntry.scoreBreakdown,
+          };
+        } finally {
+          ctx.oracle.destroyDuel(child);
+        }
       }
       this.table.recordStaleHit();
     }
@@ -401,6 +431,12 @@ export class DfsSolver implements SolverStrategy {
         : 0,
       bestScore: ctx.bestScore,
       nodesExplored: ctx.nodesExplored,
+      // H5 fix from Epic 1 review: expose the raw aggregates so the resumed
+      // solve can roll the probe contribution into ALL stats fields, not just
+      // nodesExplored.
+      maxDepthReached: ctx.maxDepthReached,
+      totalLegalActions: ctx.totalLegalActions,
+      totalNodesWithActions: ctx.totalNodesWithActions,
     };
   }
 
@@ -414,17 +450,36 @@ export class DfsSolver implements SolverStrategy {
     this._probeStats = probeResult;
   }
 
-  // Merge probe stats when resuming. Approximate: probe nodes that are TT hits
-  // during the resumed solve are counted twice, but overlap is bounded by probe
-  // size (~100 nodes) — negligible vs total solve exploration.
+  // Merge probe stats when resuming. H5 fix from Epic 1 review: previously
+  // only nodesExplored was rolled in, leaving maxDepth/BF post-probe-only —
+  // observability drift. Now all aggregates merge:
+  //   - nodesExplored: sum
+  //   - maxDepthReached: max
+  //   - averageBranchingFactor: weighted average over the two phases
+  //
+  // transpositionHits intentionally stays post-probe — the probe populates
+  // the TT and the resumed solve's hit count is the meaningful metric for
+  // "did the probe entries help downstream exploration".
   private mergeProbeStats(stats: SolverStats): SolverStats {
     if (!this._probeStats) return stats;
-    const merged = {
-      ...stats,
-      nodesExplored: stats.nodesExplored + this._probeStats.nodesExplored,
-    };
+    const probe = this._probeStats;
     this._probeStats = null;
-    return merged;
+
+    // Reconstruct a weighted-average BF. The resume's raw aggregates aren't
+    // exposed on SolverStats, so we approximate `resumeActions ≈ resumeBF *
+    // resumeNodes` — accurate enough for observability since the resume's
+    // node count dwarfs the probe's ~100 nodes.
+    const resumeNodes = stats.nodesExplored;
+    const resumeActions = stats.averageBranchingFactor * resumeNodes;
+    const totalNodes = probe.totalNodesWithActions + resumeNodes;
+    const totalActions = probe.totalLegalActions + resumeActions;
+
+    return {
+      ...stats,
+      nodesExplored: stats.nodesExplored + probe.nodesExplored,
+      maxDepthReached: Math.max(stats.maxDepthReached, probe.maxDepthReached),
+      averageBranchingFactor: totalNodes > 0 ? totalActions / totalNodes : 0,
+    };
   }
 
   // ===========================================================================
@@ -543,4 +598,9 @@ export interface ProbeResult {
   averageBranchingFactor: number;
   bestScore: number;
   nodesExplored: number;
+  /** H5 fix from Epic 1 review: probe contributions for full stat merging
+   *  in `mergeProbeStats` (not just nodesExplored). */
+  maxDepthReached: number;
+  totalLegalActions: number;
+  totalNodesWithActions: number;
 }

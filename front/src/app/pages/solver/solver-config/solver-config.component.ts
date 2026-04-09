@@ -201,12 +201,10 @@ export class SolverConfigComponent {
     }
 
     const deck = this.deck();
+    // Send only the deckId — the duel-server fetches the composition from
+    // Spring Boot via the user's JWT. C2 fix from Epic 1 review.
     this.solve.emit({
       deckId: String(deck.id!),
-      deck: {
-        main: deck.cleanSlotsAndMapIds(deck.mainDeck),
-        extra: deck.cleanSlotsAndMapIds(deck.extraDeck),
-      },
       hand,
       mode: 'goldfish',
       speed: this.speed(),

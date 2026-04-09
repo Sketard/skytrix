@@ -317,6 +317,17 @@ export class MCTSSolver implements SolverStrategy {
 
       if (!bestChild) break;
 
+      // Drain the duel to its next WAITING state BEFORE applying the next
+      // response. OCGCore requires the strict pattern
+      // `duelProcess → WAITING → setResponse → duelProcess → WAITING → ...`.
+      // Calling two `setResponse` in a row without an intervening `duelProcess`
+      // overwrites the buffered response — only the last one survives, and
+      // the tree-walk position diverges from the actual game state. The fix
+      // is to call `getLegalActions` (which internally drives `duelProcess`
+      // to the next prompt) between consecutive applies. The returned actions
+      // array is intentionally discarded — we already know which child to
+      // descend into, we just need the side effect of the duel advancing.
+      oracle.getLegalActions(handle);
       // Apply selected child's action on the handle to advance game state
       oracle.applyAction(handle, bestChild.action!);
       current = bestChild;

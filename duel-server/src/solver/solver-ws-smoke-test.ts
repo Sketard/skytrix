@@ -105,7 +105,9 @@ console.log('\n🔬 Test 9.2: ws-protocol.ts exports');
   assert(SOLVER_HANDTRAPS === 'SOLVER_HANDTRAPS', 'SOLVER_HANDTRAPS constant');
 
   // Verify payload interfaces are importable (compile-time check — if this file compiles, they exist)
-  const _start: SolverStartMessage = { type: SOLVER_START, deckId: 'x', deck: TEST_DECK, hand: TEST_HAND, mode: 'goldfish', speed: 'fast' };
+  // C2 fix: SolverStartMessage no longer carries `deck` — server fetches it from Spring Boot via JWT.
+  void TEST_DECK; // suppress unused warning while leaving the fixture for the integration tests below
+  const _start: SolverStartMessage = { type: SOLVER_START, deckId: 'x', hand: TEST_HAND, mode: 'goldfish', speed: 'fast' };
   const _init: SolverInitMessage = { type: SOLVER_INIT };
   const _cancel: SolverCancelMessage = { type: SOLVER_CANCEL };
   assert(!!_start && !!_init && !!_cancel, 'Client message interfaces importable');
@@ -204,7 +206,6 @@ async function runServerTests(): Promise<void> {
       const startMsg: SolverStartMessage = {
         type: SOLVER_START,
         deckId: 'test',
-        deck: TEST_DECK,
         hand: TEST_HAND,
         mode: 'goldfish',
         speed: 'fast',

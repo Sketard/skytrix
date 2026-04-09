@@ -955,8 +955,9 @@ export type SolverWsError =
 
 export interface SolverStartMessage {
   type: typeof SOLVER_START;
+  /** Spring Boot deck ID. Server fetches the composition via JWT — never
+   *  trust a client-supplied deck array. C2 fix from Epic 1 review. */
   deckId: string;
-  deck: { main: number[]; extra: number[] };
   hand: number[];
   mode: 'goldfish';
   speed: 'fast' | 'optimal';

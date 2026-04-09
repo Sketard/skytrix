@@ -645,33 +645,47 @@ export class OCGCoreAdapter implements GameOracle {
 
     for (const z of ALL_ZONE_IDS) zones[z] = [];
 
-    // Monster zones (player 0): M1-M5 = sequences 0-4, EMZ_L = 5, EMZ_R = 6
+    // Monster zones (player 0): M1-M5 = sequences 0-4, EMZ_L = 5, EMZ_R = 6.
+    // `duelQueryField()` returns ONLY the slot's `position` (occupancy bitmap),
+    // NOT the card code — that requires a separate `duelQuery` per occupied
+    // slot with `OcgQueryFlags.CODE`. Same pattern as duel-worker.ts queryCard.
+    // The pre-fix version checked `card.code` which was always undefined, so
+    // every occupied MZONE/SZONE slot was silently dropped → scorer always
+    // saw an empty field → score=0 on every solve. This was C6 in the review.
     for (let seq = 0; seq < p0.monsters.length; seq++) {
-      const card = p0.monsters[seq];
-      if (card && card.code && card.position) {
-        const zoneId = seq < 5 ? `M${seq + 1}` : (seq === 5 ? 'EMZ_L' : 'EMZ_R');
-        const overlayCount = this.queryOverlayCount(internal.nativeHandle, PLAYER, OcgLocation.MZONE, seq);
-        zones[zoneId] = [{
-          cardId: card.code,
-          cardName: this.getCardName(card.code),
-          position: POSITION_MAP[card.position] ?? 'faceup-atk',
-          overlayCount,
-        }];
-      }
+      const slot = p0.monsters[seq];
+      const pos = slot?.position as number ?? 0;
+      if (!slot || pos === 0) continue;
+
+      const cardCode = this.queryCardCode(internal.nativeHandle, PLAYER, OcgLocation.MZONE, seq);
+      if (!cardCode) continue;
+
+      const zoneId = seq < 5 ? `M${seq + 1}` : (seq === 5 ? 'EMZ_L' : 'EMZ_R');
+      const overlayCount = this.queryOverlayCount(internal.nativeHandle, PLAYER, OcgLocation.MZONE, seq);
+      zones[zoneId] = [{
+        cardId: cardCode,
+        cardName: this.getCardName(cardCode),
+        position: POSITION_MAP[pos] ?? 'faceup-atk',
+        overlayCount,
+      }];
     }
 
     // Spell/Trap zones (player 0): S1-S5 = sequences 0-4, FIELD = 5
     for (let seq = 0; seq < p0.spells.length; seq++) {
-      const card = p0.spells[seq];
-      if (card && card.code && card.position) {
-        const zoneId = seq < 5 ? `S${seq + 1}` : 'FIELD';
-        zones[zoneId] = [{
-          cardId: card.code,
-          cardName: this.getCardName(card.code),
-          position: POSITION_MAP[card.position] ?? 'facedown',
-          overlayCount: 0,
-        }];
-      }
+      const slot = p0.spells[seq];
+      const pos = slot?.position as number ?? 0;
+      if (!slot || pos === 0) continue;
+
+      const cardCode = this.queryCardCode(internal.nativeHandle, PLAYER, OcgLocation.SZONE, seq);
+      if (!cardCode) continue;
+
+      const zoneId = seq < 5 ? `S${seq + 1}` : 'FIELD';
+      zones[zoneId] = [{
+        cardId: cardCode,
+        cardName: this.getCardName(cardCode),
+        position: POSITION_MAP[pos] ?? 'facedown',
+        overlayCount: 0,
+      }];
     }
 
     // Pile zones via duelQueryLocation
@@ -698,7 +712,32 @@ export class OCGCoreAdapter implements GameOracle {
         sequence,
         overlaySequence: 0,
       } as never);
-      return (result as { overlay_cards?: number[] })?.overlay_cards?.length ?? 0;
+      // Both `overlay_cards` (snake) and `overlayCards` (camel) seen across
+      // bindings — accept either to stay forward-compatible.
+      const r = result as { overlay_cards?: unknown[]; overlayCards?: unknown[] };
+      return (r?.overlay_cards ?? r?.overlayCards)?.length ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Query a single occupied field slot's card code. `duelQueryField()` only
+   *  returns the slot occupancy bitmap (`position`), not the card code — that
+   *  requires a per-slot `duelQuery` with `OcgQueryFlags.CODE`. Mirrors the
+   *  PvP `duel-worker.ts` queryCard pattern. Returns 0 when the slot is empty
+   *  or the query fails. */
+  private queryCardCode(nativeHandle: OcgNativeHandle, controller: 0 | 1, location: number, sequence: number): number {
+    try {
+      const result = this.core.duelQuery(nativeHandle, {
+        flags: OcgQueryFlags.CODE as number,
+        controller,
+        location,
+        sequence,
+        overlaySequence: 0,
+      } as never);
+      const code = (result as { code?: number | bigint })?.code;
+      if (code === undefined || code === null) return 0;
+      return typeof code === 'bigint' ? Number(code) : code;
     } catch {
       return 0;
     }
@@ -780,7 +819,11 @@ export class OCGCoreAdapter implements GameOracle {
     const tag = this.tags[String(action.cardId)];
     if (!tag) return;
 
-    const effectIndex = disambiguateEffect(tag, action.cardId, action.promptType);
+    // Pass action.description through so disambiguateEffect can break trigger
+    // ties via keyword matching (e.g. Underworld Goddess omniNegate(quick) +
+    // controlChange(quick) — same trigger, distinguished by description).
+    // H1 fix from Epic 1 review.
+    const effectIndex = disambiguateEffect(tag, action.cardId, action.promptType, action.description);
     const log = internal.activationLog.get(action.cardId);
     if (log) {
       log.push(effectIndex);

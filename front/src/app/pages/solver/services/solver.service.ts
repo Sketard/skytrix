@@ -210,7 +210,6 @@ export class SolverService implements OnDestroy {
 
   solve(config: {
     deckId: string;
-    deck: { main: number[]; extra: number[] };
     hand: number[];
     mode: 'goldfish';
     speed: 'fast' | 'optimal';

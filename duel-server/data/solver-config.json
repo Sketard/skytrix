@@ -12,7 +12,7 @@
   "rateLimitIntervalMs": 2000,
   "ismctsDeterminizations": 3,
   "maxHandtraps": 5,
-  "ucb1C": 1.414,
+  "ucb1C": 1.0,
   "backpropPolicy": "max",
   "rolloutEpsilon": 0.1,
   "verificationBudgetRatio": 0.15,

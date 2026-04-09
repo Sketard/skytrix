@@ -191,6 +191,10 @@ if (dataReady) {
 const solverConnections = new Map<string, WebSocket>();
 const solverLastStart = new Map<string, number>();
 const solverResultCache = new Map<string, { message: SolverResultMessage; timer: ReturnType<typeof setTimeout>; createdAt: number }>();
+/** Per-user JWT, captured at WS handshake. Forwarded to Spring Boot when the
+ *  solver fetches the deck composition (C2 fix from Epic 1 review — never
+ *  trust the client-supplied deck array). Cleared on WS close. */
+const solverJwts = new Map<string, string>();
 
 // =============================================================================
 // HTTP Helpers
@@ -1580,6 +1584,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       existingWs.close(4001, 'Replaced by new connection');
     }
     solverConnections.set(userId, ws);
+    solverJwts.set(userId, jwt);
 
     // Heartbeat
     (ws as AliveWebSocket).isAlive = true;
@@ -1601,6 +1606,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     ws.on('close', () => {
       if (solverConnections.get(userId) === ws) {
         solverConnections.delete(userId);
+        solverJwts.delete(userId);
       }
     });
 
@@ -2744,6 +2750,62 @@ function handleSolverInit(userId: string, ws: WebSocket): void {
 
 // --- Task 5: SOLVER_START handler ---
 
+/**
+ * Fetch a deck composition from Spring Boot using the user's JWT.
+ * AC #4 of Story 1.4 — never trust the client-supplied deck array. C2 fix
+ * from the Epic 1 review. Returns the parsed main + extra cardId arrays, or
+ * null on error (404 / 403 / network failure / malformed payload). Caller
+ * sends the appropriate SOLVER_ERROR response.
+ *
+ * NOTE: ownership enforcement happens in Spring Boot's `DeckService.getById`
+ * via the JWT-bound SecurityContext. As of this commit, that method does NOT
+ * actually check ownership — any authenticated user can fetch any deck by ID.
+ * That gap is a separate Spring Boot security finding (tracked outside this
+ * solver review). The fix here closes the larger threat surface (client
+ * fabricating deck contents entirely) by routing through the canonical API.
+ */
+async function fetchDeckFromBackend(deckId: string, jwt: string): Promise<
+  | { ok: true; main: number[]; extra: number[] }
+  | { ok: false; error: 'DECK_NOT_FOUND' | 'DECK_ACCESS_DENIED' | 'INTERNAL_ERROR'; message: string }
+> {
+  try {
+    const response = await fetch(`${SPRING_BOOT_API_URL}/decks/${deckId}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    if (response.status === 404) return { ok: false, error: 'DECK_NOT_FOUND', message: 'Deck not found' };
+    if (response.status === 401 || response.status === 403) {
+      return { ok: false, error: 'DECK_ACCESS_DENIED', message: 'Not authorized for this deck' };
+    }
+    if (!response.ok) {
+      return { ok: false, error: 'INTERNAL_ERROR', message: `Backend returned ${response.status}` };
+    }
+    const body = await response.json() as {
+      mainDeck?: { card?: { card?: { id?: number } } }[];
+      extraDeck?: { card?: { card?: { id?: number } } }[];
+    };
+    const main: number[] = [];
+    for (const entry of body.mainDeck ?? []) {
+      const id = entry?.card?.card?.id;
+      if (typeof id === 'number' && id > 0) main.push(id);
+    }
+    const extra: number[] = [];
+    for (const entry of body.extraDeck ?? []) {
+      const id = entry?.card?.card?.id;
+      if (typeof id === 'number' && id > 0) extra.push(id);
+    }
+    if (main.length < 40 || main.length > 60) {
+      return { ok: false, error: 'INTERNAL_ERROR', message: `Invalid main deck size: ${main.length}` };
+    }
+    if (extra.length > 15) {
+      return { ok: false, error: 'INTERNAL_ERROR', message: `Invalid extra deck size: ${extra.length}` };
+    }
+    return { ok: true, main, extra };
+  } catch (err) {
+    console.error('[Solver] fetchDeckFromBackend failed', { deckId, err });
+    return { ok: false, error: 'INTERNAL_ERROR', message: 'Failed to fetch deck from backend' };
+  }
+}
+
 async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStartMessage): Promise<void> {
   try {
     // Rate limit check (AC #6) — set timestamp synchronously BEFORE first await
@@ -2760,16 +2822,8 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       sendSolverError(ws, 'INTERNAL_ERROR', 'Hand must be exactly 5 positive integers');
       return;
     }
-    if (!msg.deck || !Array.isArray(msg.deck.main) || !Array.isArray(msg.deck.extra)) {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Deck must have main and extra arrays');
-      return;
-    }
-    if (msg.deck.main.length < 40 || msg.deck.main.length > 60) {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Main deck must be 40-60 cards');
-      return;
-    }
-    if (msg.deck.extra.length > 15) {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Extra deck must be 0-15 cards');
+    if (!msg.deckId || typeof msg.deckId !== 'string') {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'deckId is required');
       return;
     }
     if (msg.mode !== 'goldfish') {
@@ -2786,8 +2840,24 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       return;
     }
 
+    // C2 fix: fetch the deck from Spring Boot via the user's JWT instead of
+    // trusting the client-supplied deck array. The pre-fix flow let any
+    // authenticated user solve any synthetic deck composition (including
+    // banned/illegal cards), and was a cost amplification vector against the
+    // worker pool. AC #4 of Story 1.4 explicitly required this fetch.
+    const jwt = solverJwts.get(userId);
+    if (!jwt) {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Missing JWT for solver session');
+      return;
+    }
+    const deckResult = await fetchDeckFromBackend(msg.deckId, jwt);
+    if (!deckResult.ok) {
+      sendSolverError(ws, deckResult.error, deckResult.message);
+      return;
+    }
+
     // Hand removal from deck (AC #4)
-    const mainDeck = [...msg.deck.main];
+    const mainDeck = [...deckResult.main];
     for (const cardId of msg.hand) {
       const idx = mainDeck.indexOf(cardId);
       if (idx === -1) {
@@ -2815,7 +2885,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
     // Build DuelConfig
     const duelConfig: DuelConfig = {
       mainDeck,
-      extraDeck: msg.deck.extra,
+      extraDeck: deckResult.extra,
       hand: msg.hand,
       deckSeed,
       opponentDeck: Array(40).fill(FILLER_CARD_ID),

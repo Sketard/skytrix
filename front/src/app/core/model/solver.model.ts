@@ -149,12 +149,14 @@ export interface SolverErrorMessage {
 // =============================================================================
 
 export interface SolverStartConfig {
+  /** Spring Boot deck ID — server fetches the composition via JWT. C2 fix
+   *  from Epic 1 review. The client no longer sends the deck contents. */
   deckId: string;
-  deck: { main: number[]; extra: number[] };
   hand: number[];
   mode: 'goldfish';
   speed: 'fast' | 'optimal';
   algorithm?: 'dfs' | 'mcts' | 'auto';
+  deckSeed?: string;
 }
 
 // =============================================================================

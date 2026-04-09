@@ -238,12 +238,14 @@ function verifyMainPath(
     for (let i = 0; i < mainPath.length; i++) {
       const action = mainPath[i];
       const legalActions = oracle.getLegalActions(handle);
-      // responseIndex is unique per prompt context in sequential replay.
-      // SolverAction doesn't carry promptType (stripped by enrichAction),
-      // but responseIndex alone suffices because getLegalActions returns
-      // actions for exactly one prompt, and replay is sequential.
+      // Match by both responseIndex AND cardId. responseIndex alone is the
+      // typical sequential-replay invariant, but if OCGCore's enumeration
+      // order shifts (e.g., via internal PRNG or chain link order), the same
+      // index slot can point to a different card. Adding the cardId check
+      // turns silent corruption into an explicit verification failure.
+      // H3 finding from the Epic 1 review.
       const match = legalActions.find(
-        a => a.responseIndex === action.responseIndex,
+        a => a.responseIndex === action.responseIndex && a.cardId === action.cardId,
       );
       if (!match) {
         // Surface enough state to localize the divergence in production logs.
