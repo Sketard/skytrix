@@ -257,6 +257,7 @@ export interface SolverConfigFile {
   rolloutEpsilon: number;
   verificationBudgetRatio: number;
   stalledWarningMs: number;
+  maxSolverConnections: number;
 }
 
 /** When/how an interruption effect can be activated. Used by the solver's

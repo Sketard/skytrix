@@ -47,6 +47,9 @@ export class GoldfishChainRanker implements ActionRanker {
 
     // HEURISTIC: single-activation auto-resolve. May miss anti-synergy edge cases.
     if (activations.length === 1 && pass.length === 1) {
+      if (process.env['LOG_LEVEL'] === 'debug') {
+        console.log(`[Solver:debug] ranker-pruned-pass cardId=${activations[0].cardId}`);
+      }
       return activations;
     }
 

@@ -60,7 +60,7 @@ const WS_RATE_LIMIT_WINDOW_MS = 60_000;
 const WS_RATE_LIMIT_MAX = 30;
 const MAX_INVALID_RESPONSES = 5;
 const MAX_REPLAY_CACHE_ENTRIES = 50;
-const MAX_SOLVER_CONNECTIONS = 10;
+let maxSolverConnections = 10; // overridden at boot from solver-config.json
 const MAX_SOLVER_CACHE_ENTRIES = 50;
 const SOLVER_RESULT_CACHE_TTL_MS = 5 * 60 * 1000;
 const FILLER_CARD_ID = 43096270; // Alexandrite Dragon — vanilla filler for goldfish opponent
@@ -164,7 +164,6 @@ let solverHandtraps: HandtrapConfig[] = [];
 let solverRateLimitIntervalMs = 2000;
 let solverTimeBudgetFastMs = 5000;
 let solverTimeBudgetOptimalMs = 30000;
-let solverBfComplexityThreshold = 100;
 
 if (dataReady) {
   try {
@@ -177,7 +176,7 @@ if (dataReady) {
     solverRateLimitIntervalMs = solverConfig.rateLimitIntervalMs;
     solverTimeBudgetFastMs = solverConfig.timeBudgetFastMs;
     solverTimeBudgetOptimalMs = solverConfig.timeBudgetOptimalMs;
-    solverBfComplexityThreshold = solverConfig.bfComplexityThreshold;
+    maxSolverConnections = solverConfig.maxSolverConnections;
 
     solverHandtraps = loadHandtraps(DATA_DIR);
   } catch (err) {
@@ -1570,7 +1569,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     }
 
     // Connection limit guard
-    if (solverConnections.size >= MAX_SOLVER_CONNECTIONS) {
+    if (solverConnections.size >= maxSolverConnections) {
       ws.close(4029, 'Too many solver connections');
       return;
     }
@@ -2840,18 +2839,14 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       const currentWs = solverConnections.get(userId);
       if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
 
-      // highComplexity WS-layer heuristic (AC #7)
-      const timeLimitMs = solverCfg.timeLimitMs;
-      const highComplexity = progress.nodesExplored > solverBfComplexityThreshold
-        && progress.bestScore === 0
-        && progress.elapsed > timeLimitMs * 0.3;
-
+      // highComplexity is set by the worker (Story 1.7 auto-probe BF check)
+      // and propagated by the orchestrator. The WS layer just forwards it.
       const progressMsg: SolverProgressMessage = {
         type: SOLVER_PROGRESS,
         nodesExplored: progress.nodesExplored,
         bestScore: progress.bestScore,
         elapsed: progress.elapsed,
-        ...(highComplexity ? { highComplexity: true } : {}),
+        ...(progress.highComplexity ? { highComplexity: true } : {}),
         ...(progress.stalled ? { stalled: true } : {}),
       };
       sendSolverMessage(currentWs, progressMsg);
@@ -2920,7 +2915,13 @@ function handleSolverCancel(userId: string): void {
 function cacheSolverResult(userId: string, resultMsg: SolverResultMessage): void {
   evictSolverResult(userId);
 
-  // Cache size cap
+  // Cache size cap. Eviction policy: oldest createdAt cross-user. The cache
+  // is keyed by userId and we always evict the same user above before
+  // inserting, so this LRU only kicks in when the cache holds entries from
+  // many distinct users at once. Under that pressure, an older user's cached
+  // result is dropped to make room for the newcomer — they will see no cached
+  // result on reconnect, which the frontend handles as the normal post-init
+  // state (see Story 1.4 reconnect-grace logic in solver.service.ts).
   if (solverResultCache.size >= MAX_SOLVER_CACHE_ENTRIES) {
     let oldestKey: string | null = null;
     let oldestTime = Infinity;

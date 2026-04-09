@@ -2,7 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
+  inject,
   input,
   output,
   signal,
@@ -15,6 +17,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Deck } from '../../../core/model/deck';
 import type { SolverState } from '../../../core/model/solver.model';
 import type { SolverStartConfig } from '../../../core/model/solver.model';
+import { SolverService } from '../services/solver.service';
 
 interface DeduplicatedCard {
   cardId: number;
@@ -32,16 +35,27 @@ interface DeduplicatedCard {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SolverConfigComponent {
+  private readonly solverService = inject(SolverService);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly deck = input.required<Deck>();
   readonly solverState = input.required<SolverState>();
 
   readonly solve = output<SolverStartConfig>();
 
   readonly selectedHand = signal<Record<number, number>>({});
-  readonly speed = signal<'fast' | 'optimal'>('fast');
-  readonly algorithm = signal<'dfs' | 'mcts' | 'auto'>('auto');
+  readonly speed = signal<'fast' | 'optimal'>(this.solverService.prefs().speed);
+  readonly algorithm = signal<'dfs' | 'mcts' | 'auto'>(this.solverService.prefs().algorithm);
 
+  // Tick every 250ms while a cooldown is pending so the disabled-state computed
+  // re-evaluates without waiting for the next user interaction. Cleared on
+  // destroy.
+  private readonly cooldownTick = signal(Date.now());
   readonly isLocked = computed(() => this.solverState() === 'running');
+  readonly inCooldown = computed(() => this.cooldownTick() < this.solverService.cooldownUntil());
+  readonly canSolve = computed(() =>
+    !this.isLocked() && !this.inCooldown() && this.totalSelected() === 5
+  );
 
   readonly deduplicatedCards = computed<DeduplicatedCard[]>(() => {
     const deck = this.deck();
@@ -73,10 +87,40 @@ export class SolverConfigComponent {
   );
 
   constructor() {
+    // Restore per-deck hand selection from the service when the deck context
+    // changes. Persisting the hand here keeps it stable across solver page
+    // navigation; switching to another deck still resets the hand.
     effect(() => {
-      this.deck();
-      this.selectedHand.set({});
+      const deck = this.deck();
+      const deckId = String(deck.id ?? '');
+      const stored = this.solverService.getHandForDeck(deckId);
+      this.selectedHand.set(stored);
     });
+
+    // Persist hand back to the service whenever it changes (without writing
+    // every keystroke to localStorage — hands are session-scoped only).
+    effect(() => {
+      const hand = this.selectedHand();
+      const deck = this.deck();
+      const deckId = String(deck.id ?? '');
+      this.solverService.setHandForDeck(deckId, hand);
+    });
+
+    // Persist speed/algorithm preferences to localStorage immediately on change.
+    effect(() => {
+      this.solverService.updatePrefs({
+        speed: this.speed(),
+        algorithm: this.algorithm(),
+      });
+    });
+
+    // Cooldown ticker — only runs while a cooldown is pending.
+    const tickerId = setInterval(() => {
+      if (Date.now() < this.solverService.cooldownUntil()) {
+        this.cooldownTick.set(Date.now());
+      }
+    }, 250);
+    this.destroyRef.onDestroy(() => clearInterval(tickerId));
   }
 
   selectedCount(cardId: number): number {
@@ -147,7 +191,7 @@ export class SolverConfigComponent {
   }
 
   onSolve(): void {
-    if (this.totalSelected() !== 5 || this.isLocked()) return;
+    if (!this.canSolve()) return;
 
     const hand: number[] = [];
     for (const [cardId, count] of Object.entries(this.selectedHand())) {

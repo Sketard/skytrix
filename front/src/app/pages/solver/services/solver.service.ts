@@ -48,6 +48,43 @@ const IDLE_TIMEOUT_MS = 5 * 60_000;
  *  SOLVER_RESULT follows within this window, a previously-running solve is
  *  considered orphaned (server-side cache evicted) and the page is unlocked. */
 const RECONNECT_RESULT_GRACE_MS = 1_500;
+/** Cooldown between Solve clicks — matches the server-side rate limit so the
+ *  Solve button stays visibly disabled instead of round-tripping a RATE_LIMITED
+ *  error (Story 1.5b). */
+const SOLVE_COOLDOWN_MS = 2_000;
+const PREFS_STORAGE_KEY = 'solver:prefs:v1';
+
+export interface SolverPrefs {
+  speed: 'fast' | 'optimal';
+  algorithm: 'dfs' | 'mcts' | 'auto';
+  mode: 'goldfish';
+  handtrapIds: number[];
+}
+
+const DEFAULT_PREFS: SolverPrefs = {
+  speed: 'fast',
+  algorithm: 'auto',
+  mode: 'goldfish',
+  handtrapIds: [],
+};
+
+function loadPrefs(): SolverPrefs {
+  try {
+    const raw = localStorage.getItem(PREFS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_PREFS };
+    const parsed = JSON.parse(raw) as Partial<SolverPrefs>;
+    return {
+      speed: parsed.speed === 'optimal' ? 'optimal' : 'fast',
+      algorithm: parsed.algorithm === 'dfs' || parsed.algorithm === 'mcts' || parsed.algorithm === 'auto'
+        ? parsed.algorithm
+        : 'auto',
+      mode: 'goldfish',
+      handtrapIds: Array.isArray(parsed.handtrapIds) ? parsed.handtrapIds.filter(n => Number.isInteger(n)) : [],
+    };
+  } catch {
+    return { ...DEFAULT_PREFS };
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class SolverService implements OnDestroy {
@@ -65,6 +102,36 @@ export class SolverService implements OnDestroy {
   readonly sessionHistory = signal<SolverResult[]>([]);
   readonly currentDeckId = signal<string | null>(null);
   readonly isPartialResult = computed(() => this.result()?.partial === true);
+
+  /** Persisted user preferences (mode/speed/algorithm/handtraps) — Story 1.5a. */
+  readonly prefs = signal<SolverPrefs>(loadPrefs());
+
+  /** Per-deck hand selection (cardId → copy count). Persists across navigation
+   *  for the lifetime of the SolverService singleton — resets when the deck
+   *  context changes (different deckId). Story 1.5a. */
+  private readonly handsByDeck = signal<Record<string, Record<number, number>>>({});
+
+  /** Timestamp of the most recent SOLVER_START send — used to enforce the
+   *  client-side 2s cooldown so the Solve button stays disabled instead of
+   *  round-tripping a RATE_LIMITED error from the server. Story 1.5b. */
+  readonly lastSolveAt = signal<number>(0);
+  readonly cooldownUntil = computed(() => this.lastSolveAt() + SOLVE_COOLDOWN_MS);
+
+  getHandForDeck(deckId: string): Record<number, number> {
+    return this.handsByDeck()[deckId] ?? {};
+  }
+
+  setHandForDeck(deckId: string, hand: Record<number, number>): void {
+    this.handsByDeck.update(prev => ({ ...prev, [deckId]: hand }));
+  }
+
+  updatePrefs(partial: Partial<SolverPrefs>): void {
+    const next: SolverPrefs = { ...this.prefs(), ...partial };
+    this.prefs.set(next);
+    try {
+      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(next));
+    } catch { /* quota / private mode — silently ignore */ }
+  }
 
   private ws: WebSocket | null = null;
   private lastSolveDeckId: string | null = null;
@@ -151,6 +218,7 @@ export class SolverService implements OnDestroy {
     deckSeed?: string;
   }): void {
     this.lastInteractionTs = Date.now();
+    this.lastSolveAt.set(Date.now());
     this.lastSolveDeckId = config.deckId;
     this.solverState.set('running');
     this.progress.set(null);

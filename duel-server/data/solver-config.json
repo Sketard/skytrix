@@ -16,5 +16,6 @@
   "backpropPolicy": "max",
   "rolloutEpsilon": 0.1,
   "verificationBudgetRatio": 0.15,
-  "stalledWarningMs": 3000
+  "stalledWarningMs": 3000,
+  "maxSolverConnections": 10
 }

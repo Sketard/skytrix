@@ -174,14 +174,15 @@ export class OCGCoreAdapter implements GameOracle {
 
   /**
    * Factory: initialize OCGCore WASM, run smoke test, return adapter.
-   * `tags` is optional for backward compat — when omitted, OPT-aware scoring
-   * is disabled (no activations are tracked). Production callers should pass
-   * the boot-loaded tags from `solver-config-loader.ts`.
+   * `tags` MUST be provided (boot-loaded from `solver-config-loader.ts`).
+   * Pass `{}` explicitly only in tests where OPT-aware scoring is irrelevant —
+   * this makes the silent OPT downgrade visible at the call site instead of
+   * happening implicitly via a default parameter.
    */
   static async create(
     cardDB: CardDB,
     scripts: ScriptDB,
-    tags: Record<string, InterruptionTag> = {},
+    tags: Record<string, InterruptionTag>,
   ): Promise<OCGCoreAdapter> {
     const core = await createCore({ sync: true });
     const version = core.getVersion();
@@ -223,7 +224,15 @@ export class OCGCoreAdapter implements GameOracle {
   applyAction(handle: DuelHandle, action: Action): void {
     const internal = this.resolveHandle(handle);
     const response = this.actionToResponse(action);
-    this.core.duelSetResponse(internal.nativeHandle, response as never);
+    try {
+      this.core.duelSetResponse(internal.nativeHandle, response as never);
+    } catch (err) {
+      // WASM threw — the handle is now in an unknown state. Mark it inactive
+      // so any subsequent fork/getLegalActions on the same handle fails fast
+      // instead of replaying corrupted history.
+      internal.isActive = false;
+      throw new Error(`[Solver] applyAction failed for action responseIndex=${action.responseIndex}: ${String(err)}`);
+    }
     internal.actionHistory.push(action);
     internal.responseHistory.push(response);
     // Story 1.8: track player-side activations of tagged cards.
@@ -722,10 +731,17 @@ export class OCGCoreAdapter implements GameOracle {
   private forkViaReplay(parent: InternalHandle): DuelHandle {
     const nativeHandle = this.createNativeDuel(parent.config);
 
-    // Replay all responses from parent
-    for (const resp of parent.responseHistory) {
-      this.runUntilWaitingRaw(nativeHandle);
-      this.core.duelSetResponse(nativeHandle, resp as never);
+    // Replay all responses from parent. If WASM throws mid-replay, the
+    // partially-built native duel must be released — otherwise it leaks
+    // outside `activeHandles`, never reaching `destroyAll()`.
+    try {
+      for (const resp of parent.responseHistory) {
+        this.runUntilWaitingRaw(nativeHandle);
+        this.core.duelSetResponse(nativeHandle, resp as never);
+      }
+    } catch (err) {
+      try { this.core.destroyDuel(nativeHandle); } catch { /* best effort */ }
+      throw new Error(`[Solver] forkViaReplay failed at step ${parent.responseHistory.length}: ${String(err)}`);
     }
 
     const id = this.nextHandleId++;

@@ -67,7 +67,7 @@
       </div>
 
       <button mat-raised-button color="primary"
-        [disabled]="isLocked() || totalSelected() !== 5"
+        [disabled]="!canSolve()"
         (click)="onSolve()">
         {{ 'solver.config.solve' | translate }}
       </button>

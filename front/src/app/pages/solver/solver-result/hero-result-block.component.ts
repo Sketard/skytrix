@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,56 +7,14 @@ import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import type { SolverResult, EndBoardCard } from '../../../core/model/solver.model';
-
-// =============================================================================
-// Chip Color Mapping
-// =============================================================================
-
-const CHIP_COLOR_MAP: Record<string, string> = {
-  omniNegate: 'var(--solver-chip-negate)',
-  typedNegate: 'var(--solver-chip-negate)',
-  targetedNegate: 'var(--solver-chip-negate)',
-  destruction: 'var(--solver-chip-removal)',
-  banish: 'var(--solver-chip-removal)',
-  banishFacedown: 'var(--solver-chip-removal)',
-  sendToGy: 'var(--solver-chip-removal)',
-  bounce: 'var(--solver-chip-control)',
-  spin: 'var(--solver-chip-control)',
-  controlChange: 'var(--solver-chip-control)',
-  attach: 'var(--solver-chip-control)',
-  moveToSt: 'var(--solver-chip-control)',
-  floodgate: 'var(--solver-chip-disable)',
-  flipFacedown: 'var(--solver-chip-disable)',
-  handRip: 'var(--solver-chip-hand)',
-};
-
-const AMBER_COLOR = 'var(--solver-chip-disable)';
-
-const DISPLAY_LABELS: Record<string, string> = {
-  omniNegate: 'omni-negate',
-  typedNegate: 'typed-negate',
-  targetedNegate: 'targeted-negate',
-  floodgate: 'floodgate',
-  controlChange: 'control-change',
-  banish: 'banish',
-  banishFacedown: 'banish-fd',
-  attach: 'attach',
-  spin: 'spin',
-  flipFacedown: 'flip-fd',
-  destruction: 'destruction',
-  moveToSt: 'move-to-st',
-  bounce: 'bounce',
-  handRip: 'hand-rip',
-  sendToGy: 'send-to-gy',
-};
-
-// Weight order for badge: highest-weight effect shown on card badge
-const EFFECT_WEIGHT_ORDER: readonly string[] = [
-  'omniNegate', 'typedNegate', 'targetedNegate', 'floodgate',
-  'controlChange', 'banish', 'banishFacedown', 'attach',
-  'spin', 'flipFacedown', 'destruction', 'moveToSt',
-  'bounce', 'handRip', 'sendToGy',
-];
+import {
+  CHIP_COLOR_MAP,
+  AMBER_COLOR,
+  DISPLAY_LABELS,
+  EFFECT_WEIGHT_ORDER,
+} from './interruption-display';
+import { onCardImgError } from './card-image-fallback';
+import { createHoverPopupController } from './hover-popup.controller';
 
 // =============================================================================
 // Display Types
@@ -99,12 +57,13 @@ interface EndBoardCardDisplay {
 })
 export class HeroResultBlockComponent {
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly result = input.required<SolverResult>();
   readonly isPartial = input(false);
   readonly cardImageMap = input.required<Map<number, string>>();
 
-  readonly hoverCard = signal<EndBoardCardDisplay | null>(null);
-  private hoverLeaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly hoverCtrl = createHoverPopupController<EndBoardCardDisplay>(this.destroyRef);
+  readonly hoverCard = this.hoverCtrl.hoverKey;
 
   readonly totalInterruptions = computed(() => {
     const bd = this.result().scoreBreakdown;
@@ -182,31 +141,16 @@ export class HeroResultBlockComponent {
   });
 
   onCardEnter(card: EndBoardCardDisplay): void {
-    if (this.hoverLeaveTimer) {
-      clearTimeout(this.hoverLeaveTimer);
-      this.hoverLeaveTimer = null;
-    }
-    this.hoverCard.set(card);
+    this.hoverCtrl.enter(card);
   }
 
   onCardLeave(): void {
-    this.hoverLeaveTimer = setTimeout(() => {
-      this.hoverCard.set(null);
-      this.hoverLeaveTimer = null;
-    }, 80);
+    this.hoverCtrl.leave();
   }
 
   onPopupEnter(): void {
-    if (this.hoverLeaveTimer) {
-      clearTimeout(this.hoverLeaveTimer);
-      this.hoverLeaveTimer = null;
-    }
+    this.hoverCtrl.popupEnter();
   }
 
-  onCardImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (!img.src.endsWith('card_back.jpg')) {
-      img.src = 'assets/images/card_back.jpg';
-    }
-  }
+  onCardImgError = onCardImgError;
 }

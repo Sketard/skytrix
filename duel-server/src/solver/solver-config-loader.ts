@@ -62,6 +62,7 @@ const SOLVER_CONFIG_RANGES: Record<string, RangeRule> = {
   rolloutEpsilon:          { min: 0.0,  max: 1.0 },
   verificationBudgetRatio: { min: 0.05, max: 0.30 },
   stalledWarningMs:        { min: 500,  max: 30000 },
+  maxSolverConnections:    { min: 1,    max: 1000 },
 };
 
 export function loadSolverConfig(dataDir: string): SolverConfigFile {

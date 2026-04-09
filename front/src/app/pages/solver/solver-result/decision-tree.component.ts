@@ -21,6 +21,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 import type { DecisionNode, SolverAction } from '../../../core/model/solver.model';
 import { duelAssert } from '../../../core/utilities/duel-assert';
+import { onCardImgError } from './card-image-fallback';
+import { createHoverPopupController } from './hover-popup.controller';
 
 // =============================================================================
 // Flat Tree Node
@@ -65,18 +67,14 @@ export class DecisionTreeComponent {
   readonly visibleNodes = signal<FlatTreeNode[]>([]);
   private expandedSet = new Set<DecisionNode>();
 
-  readonly hoverNodeId = signal<number | null>(null);
-  private hoverLeaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly hoverCtrl = createHoverPopupController<number>(this.destroyRef);
+  readonly hoverNodeId = this.hoverCtrl.hoverKey;
 
   readonly mainPathScore = computed(() => this.tree().children[0]?.score ?? this.tree().score);
 
   readonly isPrunedNode = (_: number, node: FlatTreeNode) => !!node.isPrunedPlaceholder;
 
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      if (this.hoverLeaveTimer) clearTimeout(this.hoverLeaveTimer);
-    });
-
     effect(() => {
       const root = this.tree();
       // Validate children sorted by score desc (dev-mode guard)
@@ -142,33 +140,18 @@ export class DecisionTreeComponent {
   }
 
   onNodeCardEnter(node: FlatTreeNode): void {
-    if (this.hoverLeaveTimer) {
-      clearTimeout(this.hoverLeaveTimer);
-      this.hoverLeaveTimer = null;
-    }
-    this.hoverNodeId.set(node.id);
+    this.hoverCtrl.enter(node.id);
   }
 
   onNodeCardLeave(): void {
-    this.hoverLeaveTimer = setTimeout(() => {
-      this.hoverNodeId.set(null);
-      this.hoverLeaveTimer = null;
-    }, 80);
+    this.hoverCtrl.leave();
   }
 
   onPopupEnter(): void {
-    if (this.hoverLeaveTimer) {
-      clearTimeout(this.hoverLeaveTimer);
-      this.hoverLeaveTimer = null;
-    }
+    this.hoverCtrl.popupEnter();
   }
 
-  onImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (!img.src.endsWith('card_back.jpg')) {
-      img.src = 'assets/images/card_back.jpg';
-    }
-  }
+  onImgError = onCardImgError;
 
   rebuildVisibleNodes(): void {
     this.visibleNodes.set(this.getVisibleNodes(this.tree()));

@@ -42,6 +42,7 @@ import { DecisionTreeComponent } from '../solver-result/decision-tree.component'
   templateUrl: './solver-page.component.html',
   styleUrl: './solver-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { tabindex: '0' },
 })
 export class SolverPageComponent implements OnInit, OnDestroy {
   protected readonly solverService = inject(SolverService);
@@ -51,6 +52,7 @@ export class SolverPageComponent implements OnInit, OnDestroy {
   private readonly notify = inject(NotificationService);
 
   readonly decisionTree = viewChild<DecisionTreeComponent>('decisionTree');
+  readonly solverConfig = viewChild(SolverConfigComponent);
 
   readonly collapsed = signal(false);
   readonly deck = signal<Deck | null>(null);
@@ -90,6 +92,30 @@ export class SolverPageComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onResize(): void {
     this.windowWidth.set(window.innerWidth);
+  }
+
+  @HostListener('keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    // Skip when the user is typing in a real input — no shortcut hijacking.
+    const target = event.target as HTMLElement | null;
+    const tag = target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+
+    // Ctrl/Cmd+Enter → solve (if config valid)
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      const cfg = this.solverConfig();
+      if (cfg && cfg.canSolve()) {
+        event.preventDefault();
+        cfg.onSolve();
+      }
+      return;
+    }
+
+    // Escape → cancel running solve
+    if (event.key === 'Escape' && this.solverState() === 'running') {
+      event.preventDefault();
+      this.onCancel();
+    }
   }
 
   ngOnInit(): void {

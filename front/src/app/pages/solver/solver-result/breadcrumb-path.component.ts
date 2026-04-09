@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, output } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 
 import type { SolverAction } from '../../../core/model/solver.model';
+import { onCardImgError } from './card-image-fallback';
+import { createHoverPopupController } from './hover-popup.controller';
 
 interface BreadcrumbItem {
   action: SolverAction;
@@ -25,14 +27,8 @@ export class BreadcrumbPathComponent {
   readonly cardImageMap = input.required<Map<number, string>>();
   readonly chipClick = output<SolverAction>();
 
-  readonly hoverChipIndex = signal<number | null>(null);
-  private hoverLeaveTimer: ReturnType<typeof setTimeout> | null = null;
-
-  constructor() {
-    this.destroyRef.onDestroy(() => {
-      if (this.hoverLeaveTimer) clearTimeout(this.hoverLeaveTimer);
-    });
-  }
+  private readonly hoverCtrl = createHoverPopupController<number>(this.destroyRef);
+  readonly hoverChipIndex = this.hoverCtrl.hoverKey;
 
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const path = this.mainPath();
@@ -44,31 +40,16 @@ export class BreadcrumbPathComponent {
   });
 
   onChipEnter(index: number): void {
-    if (this.hoverLeaveTimer) {
-      clearTimeout(this.hoverLeaveTimer);
-      this.hoverLeaveTimer = null;
-    }
-    this.hoverChipIndex.set(index);
+    this.hoverCtrl.enter(index);
   }
 
   onChipLeave(): void {
-    this.hoverLeaveTimer = setTimeout(() => {
-      this.hoverChipIndex.set(null);
-      this.hoverLeaveTimer = null;
-    }, 80);
+    this.hoverCtrl.leave();
   }
 
   onPopupEnter(): void {
-    if (this.hoverLeaveTimer) {
-      clearTimeout(this.hoverLeaveTimer);
-      this.hoverLeaveTimer = null;
-    }
+    this.hoverCtrl.popupEnter();
   }
 
-  onImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    if (!img.src.endsWith('card_back.jpg')) {
-      img.src = 'assets/images/card_back.jpg';
-    }
-  }
+  onImgError = onCardImgError;
 }

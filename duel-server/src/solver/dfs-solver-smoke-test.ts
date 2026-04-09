@@ -202,9 +202,8 @@ async function runIntegrationTests(): Promise<void> {
   const dataDir = join(import.meta.dirname, '..', '..', 'data');
   const cardDB = loadDatabase(join(dataDir, 'cards.cdb'));
   const scripts = loadScripts(join(dataDir, 'scripts_full'));
-  const adapter = await OCGCoreAdapter.create(cardDB, scripts);
-
   const tags = loadInterruptionTags(dataDir);
+  const adapter = await OCGCoreAdapter.create(cardDB, scripts, tags);
   const weights = loadInterruptionWeights(dataDir);
   const solverConfigFile = loadSolverConfig(dataDir);
 

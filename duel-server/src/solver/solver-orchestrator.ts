@@ -158,9 +158,11 @@ export class SolverOrchestrator {
     const aggregateAndEmit = (now: number, force: boolean): void => {
       let maxBestScore = -1;
       let sumNodes = 0;
+      let highComplexity = false;
       for (const p of workerProgress.values()) {
         if (p.bestScore > maxBestScore) maxBestScore = p.bestScore;
         sumNodes += p.nodesExplored;
+        if (p.highComplexity) highComplexity = true;
       }
 
       // Track node-advance for stall detection
@@ -184,6 +186,7 @@ export class SolverOrchestrator {
         bestScore: maxBestScore,
         elapsed: now - startTime,
         ...(stalledFlag ? { stalled: true } : {}),
+        ...(highComplexity ? { highComplexity: true } : {}),
       });
     };
 

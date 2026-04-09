@@ -298,8 +298,11 @@ export class DfsSolver implements SolverStrategy {
     }));
 
     ctx.totalTreeNodes++;
-    const allExplored = children.length === ranked.length && !ctx.signal.aborted;
-    const confidence = allExplored ? 1.0 : 0.5;
+    // Confidence = fraction of legal actions actually explored before
+    // abort/budget cutoff. 1.0 means exhaustive (top child is provably best);
+    // lower values reflect how much of the action space remains unexplored,
+    // so consumers can distinguish "90% explored" from "10% explored".
+    const confidence = ranked.length > 0 ? children.length / ranked.length : 1.0;
 
     // Store in transposition table
     if (bestAction) {
