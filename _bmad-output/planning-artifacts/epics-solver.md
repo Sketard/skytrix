@@ -16,7 +16,7 @@ This document provides the complete epic and story breakdown for the skytrix Com
 ### Functional Requirements
 
 FR1: Player can select an existing deck as solver input
-FR2: Player can define a fixed hand (5 chosen cards) or request a random hand
+FR2: Player can define a fixed hand (1–5 chosen cards) or request a random hand (Fill Random completes to 5)
 FR3: Player can choose solve mode: Goldfish (no interaction) or Adversarial (with handtraps)
 FR4: Player can choose solve speed: Fast (time-bounded) or Optimal (exhaustive)
 FR5: Player can select adverse handtraps from a predefined list (Ash Blossom, Nibiru, Effect Veiler, Maxx "C", Infinite Impermanence)
@@ -109,7 +109,7 @@ NFR17: Each solve is logged: nodes explored, final score, total time, algorithm,
 - Hero + end board fused block: goldfish = 1 line (score left, end board right), adversarial = 2 lines (score + minimax first, end board second)
 - Breadcrumb: mat-chip-listbox with card art thumbnail (32x46px) + chevron_right between chips. Horizontal scroll, never wraps. mat-tooltip for full annotation on hover. Click chip scrolls tree to corresponding node
 - Decision tree: CDK flat tree (CdkTree + CdkTreeNode), getLevel() for 24px indentation. Main path expanded + root children collapsed at load (~10-15 lines). Score delta on root-level alternatives ("+3" / "-5 vs main")
-- Hand selector: deduplicated card art grid (1 per unique card, xN counter), click = +1 copy. Main deck only. Fill Random completes to 5. Quick Solve = Fill Random + auto-launch
+- Hand selector: deduplicated card art grid (1 per unique card, xN counter), click = +1 copy. Main deck only. Solve enabled with 1–5 cards. Fill Random completes to 5. Quick Solve = Fill Random + auto-launch
 - Pin & compare: max 4 pins, visible across decks. Each pin card: score, mini hand cards, mini end board cards, mode label, deck name, deckSeed, unpin button. Flat list, no hide/restore logic
 - 5 interruption chip color families: Negate (purple), Removal (orange), Control (teal), Disable (amber), Hand (grey). SCSS variables $solver-chip-* in src/app/styles/. Chips use mat-chip with text label "type xN"
 - Two brick states: pure-brick ("No viable combo — try a different hand") and no-resilient-line ("No resilient line found" + goldfish score reference)
@@ -632,7 +632,8 @@ So that I can start exploring my deck's combo potential.
 **When** it renders
 **Then** it displays a deduplicated card art grid of main deck cards (1 art per unique card, ×N copy counter)
 **And** clicking a card selects/deselects 1 copy (multi-click for multiple copies of same card)
-**And** a counter shows "X/5 selected"
+**And** a counter shows "X / 5 max selected"
+**And** Solve is enabled with 1–5 cards selected
 **And** a "Fill Random" button completes the hand to 5 with random cards from remaining deck (local random)
 **And** mode toggle shows Goldfish only (Adversarial added in Epic 2)
 **And** speed toggle shows Fast / Optimal (mat-button-toggle)
@@ -649,8 +650,8 @@ So that I can start exploring my deck's combo potential.
 **Then** an error message "Not enough cards to form a hand" is displayed and Solve is disabled
 
 **Given** the user clicks Solve
-**When** 5/5 cards are selected
-**Then** SolverService sends SOLVER_START over WS with { deckId, hand (5 cardIds), mode: 'goldfish', speed, algorithm }
+**When** 1–5 cards are selected
+**Then** SolverService sends SOLVER_START over WS with { deckId, hand (1–5 cardIds), mode: 'goldfish', speed, algorithm }
 **And** state transitions from 'configuring' to 'running'
 **And** the config panel is locked (interactions disabled)
 
@@ -991,7 +992,7 @@ So that I can test my deck's resilience against specific disruptions.
 **And** previously selected handtraps are preserved in memory (re-shown if user switches back to Adversarial)
 
 **Given** the user clicks Solve in Adversarial mode
-**When** at least 1 handtrap is selected and 5/5 cards are in hand
+**When** at least 1 handtrap is selected and 1–5 cards are in hand
 **Then** SolverService sends SOLVER_START with mode: 'adversarial' and handtraps array (cardId + cardName for each selected handtrap)
 
 **Given** algorithm is set to DFS
@@ -1139,7 +1140,7 @@ So that I can revisit and compare earlier results without relying solely on pins
 **When** the result area renders
 **Then** a "History" mat-icon-button (history icon) is visible next to the Pin and Export buttons
 **And** clicking it opens a mat-menu dropdown listing previous results in reverse chronological order (most recent first)
-**And** each menu item displays: deck name, hand summary (5 card names truncated), score, mode label, and timestamp
+**And** each menu item displays: deck name, hand summary (1–5 card names truncated), score, mode label, and timestamp
 **And** adversarial results additionally show minimax score
 
 **Given** the user clicks a history entry
@@ -1168,13 +1169,13 @@ So that I can make data-driven build decisions instead of relying on gut feeling
 
 **Given** a solve result is displayed
 **When** the user clicks the Pin button (mat-icon-button, push_pin icon)
-**Then** a summary snapshot is captured: score, end board cards, hand cards (5), config (mode, speed, algorithm, handtraps), minimax (if adversarial), deck name, deckSeed
+**Then** a summary snapshot is captured: score, end board cards, hand cards (1–5), config (mode, speed, algorithm, handtraps), minimax (if adversarial), deck name, deckSeed
 **And** the snapshot is added to SolverService.pinnedResults signal
 
 **Given** PinnedResultsBar component
 **When** at least 1 pin exists
 **Then** a horizontal bar renders above the result area
-**And** each pin card (mat-card) displays: score, mini hand cards (5 thumbnails), mini end board cards (thumbnails), mode label, deck name, unpin button
+**And** each pin card (mat-card) displays: score, mini hand cards (1–5 thumbnails), mini end board cards (thumbnails), mode label, deck name, unpin button
 **And** max 4 pins are allowed — Pin button is disabled when 4 pins exist
 
 **Given** PinnedResultsBar
@@ -1212,7 +1213,7 @@ So that I can launch solves with minimal friction and navigate the solver effici
 **When** Story 3.3 is implemented
 **Then** a "Quick Solve" button (mat-raised-button, secondary placement above Solve) is displayed
 **And** clicking Quick Solve fills the hand to 5 with random cards from remaining deck (Fill Random) and immediately launches the solve
-**And** Quick Solve works from any hand state (0-4 cards selected — completes to 5 then solves)
+**And** Quick Solve works from any hand state (0–4 cards selected — completes to 5 then solves). Solve without Quick Solve works with 1–5 cards.
 
 **Given** Quick Solve in idle state (no cards selected)
 **When** clicked
@@ -1257,7 +1258,7 @@ So that I can keep a trace of my optimal combo path outside the app and share it
 
 **Given** the exported JSON
 **When** inspecting its content
-**Then** it contains: deckName, deckId, deckSeed, hand (5 cardIds + cardNames), mode, speed, algorithm, algorithmUsed (actual algorithm that ran: 'dfs' | 'mcts'), score, scoreBreakdown, minimax (if adversarial), handtraps (if adversarial), adversarialTimings (if adversarial — enables re-verification of exported results), mainPath (array of SolverAction with cardName + actionDescription), timestamp
+**Then** it contains: deckName, deckId, deckSeed, hand (1–5 cardIds + cardNames), mode, speed, algorithm, algorithmUsed (actual algorithm that ran: 'dfs' | 'mcts'), score, scoreBreakdown, minimax (if adversarial), handtraps (if adversarial), adversarialTimings (if adversarial — enables re-verification of exported results), mainPath (array of SolverAction with cardName + actionDescription), timestamp
 **And** it does NOT contain the full decision tree (too large for clipboard — mainPath only)
 **And** the JSON is human-readable (pretty-printed with 2-space indent)
 

@@ -461,7 +461,7 @@
     "backToDecks": "Retour aux decks",
     "config": {
       "title": "Configuration",
-      "selected": "{{count}}/5 sélectionnées",
+      "selected": "{{count}} / 5 max sélectionnées",
       "fillRandom": "Remplir aléatoirement",
       "clear": "Réinitialiser la sélection",
       "mode": "Mode",
@@ -511,6 +511,16 @@
       "connectionFailed": "Connexion au serveur échouée",
       "handtrapUnavailable": "Données handtrap indisponibles — vérifiez la connexion serveur",
       "resultEvicted": "Le résultat du solve précédent a expiré pendant la reconnexion — veuillez le relancer"
+    },
+    "history": {
+      "button": "Historique",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "minimax": "Minimax",
+      "partial": "Partiel",
+      "justNow": "A l'instant",
+      "minutesAgo": "il y a {{n}}m",
+      "hoursAgo": "il y a {{n}}h"
     }
   },
   "replay": {

@@ -627,7 +627,7 @@ _Minimum viable slice to prove feasibility._
 **MVP Scope:**
 1. **Single deck** (known combo deck, e.g., Branded Despia or Snake-Eye)
 2. **Goldfish mode** (no opponent interaction)
-3. **Fixed 5-card hand** (eliminates draw randomness)
+3. **Fixed 1–5-card hand** (eliminates draw randomness; fewer than 5 cards supported for partial-hand testing)
 4. **Goal: reach a specified board state** (e.g., "Baronne de Fleur + Mirrorjade + set Infinite Impermanence")
 5. **DFS with iterative deepening** as first algorithm — simplest to implement, debug, benchmark
 
@@ -675,7 +675,7 @@ _How to validate solver correctness and quality._
 2. Terminal state matches the declared goal
 3. Solution length is monotonically non-increasing as budget increases
 4. Transposition table consistency (same board state → same hash)
-5. Fuzzing: random 5-card hands from deck → solver finds valid path or reports "no solution" — never crashes or returns illegal sequence
+5. Fuzzing: random 1–5-card hands from deck → solver finds valid path or reports "no solution" — never crashes or returns illegal sequence
 
 **Golden Test Suite (Regression):**
 - Curate 20-50 hand/deck/goal triplets with known-optimal solutions (hand-verified by expert players)

@@ -375,8 +375,13 @@ export class SolverOrchestrator {
   // ===========================================================================
 
   private mergeResults(allResults: SolverResult[]): SolverResult {
-    // Sort by score descending
-    allResults.sort((a, b) => b.score - a.score);
+    // Adversarial results: sort by minimax (worst-case resilience) descending.
+    // Goldfish results: sort by score (optimistic) descending.
+    const isAdversarial = allResults[0]?.minimax !== undefined;
+    allResults.sort((a, b) => isAdversarial
+      ? (b.minimax ?? b.score) - (a.minimax ?? a.score)
+      : b.score - a.score,
+    );
 
     // Group by mainPath hash. Two workers can converge on the same recommended
     // path while exploring entirely different alternative branches below it —
@@ -406,7 +411,10 @@ export class SolverOrchestrator {
     }
     for (const r of emptyPathResults) merged.push(r);
 
-    merged.sort((a, b) => b.score - a.score);
+    merged.sort((a, b) => isAdversarial
+      ? (b.minimax ?? b.score) - (a.minimax ?? a.score)
+      : b.score - a.score,
+    );
 
     const topX = this.config.treePruningTopX;
     const best = merged[0];

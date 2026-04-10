@@ -2818,16 +2818,16 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
     solverLastStart.set(userId, now);
 
     // Input validation (AC #10)
-    if (!Array.isArray(msg.hand) || msg.hand.length !== 5 || !msg.hand.every(c => Number.isInteger(c) && c > 0)) {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Hand must be exactly 5 positive integers');
+    if (!Array.isArray(msg.hand) || msg.hand.length < 1 || msg.hand.length > 5 || !msg.hand.every(c => Number.isInteger(c) && c > 0)) {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Hand must be 1-5 positive integers');
       return;
     }
     if (!msg.deckId || typeof msg.deckId !== 'string') {
       sendSolverError(ws, 'INTERNAL_ERROR', 'deckId is required');
       return;
     }
-    if (msg.mode !== 'goldfish') {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Only goldfish mode is supported');
+    if (msg.mode !== 'goldfish' && msg.mode !== 'adversarial') {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'Mode must be goldfish or adversarial');
       return;
     }
     if (msg.speed !== 'fast' && msg.speed !== 'optimal') {
@@ -2838,6 +2838,22 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
     if (algorithm !== 'dfs' && algorithm !== 'mcts' && algorithm !== 'auto') {
       sendSolverError(ws, 'INTERNAL_ERROR', 'Algorithm must be dfs, mcts, or auto');
       return;
+    }
+    if (msg.mode === 'adversarial' && algorithm === 'dfs') {
+      sendSolverError(ws, 'INTERNAL_ERROR', 'DFS does not support adversarial mode');
+      return;
+    }
+    if (msg.mode === 'adversarial') {
+      if (!Array.isArray(msg.handtraps) || msg.handtraps.length === 0) {
+        sendSolverError(ws, 'INTERNAL_ERROR', 'Adversarial mode requires at least one handtrap');
+        return;
+      }
+      const validIds = new Set(solverHandtraps.map(h => h.cardId));
+      const invalidIds = msg.handtraps.filter(h => !validIds.has(h.cardId));
+      if (invalidIds.length > 0) {
+        sendSolverError(ws, 'INTERNAL_ERROR', `Invalid handtrap cardIds: ${invalidIds.map(h => h.cardId).join(', ')}`);
+        return;
+      }
     }
 
     // C2 fix: fetch the deck from Spring Boot via the user's JWT instead of
@@ -2889,6 +2905,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       hand: msg.hand,
       deckSeed,
       opponentDeck: Array(40).fill(FILLER_CARD_ID),
+      ...(msg.mode === 'adversarial' ? { handtraps: msg.handtraps } : {}),
     };
 
     // Build SolverConfig
@@ -2896,6 +2913,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       mode: msg.mode,
       speed: msg.speed,
       timeLimitMs: msg.speed === 'fast' ? solverTimeBudgetFastMs : solverTimeBudgetOptimalMs,
+      ...(msg.mode === 'adversarial' ? { handtraps: msg.handtraps } : {}),
     };
 
     // Evict previous cache

@@ -69,6 +69,11 @@ export interface Action {
    *  Synchro/Xyz/Link summon procedures, normal summons, sets, attacks, and
    *  SELECT_EFFECTYN "no" responses do NOT pollute the OPT log). Story 1.8. */
   _isEffectActivation?: boolean;
+  /** Team that owns this action: 0 = player, 1 = opponent. Default undefined
+   *  (= player 0) for backward-compat with DFS/SP-MCTS. In adversarial mode,
+   *  OCGCoreAdapter populates `team: 1` on opponent SELECT_CHAIN actions.
+   *  IS-MCTS uses this to tag nodes as max (player) or min (opponent). */
+  team?: 0 | 1;
 }
 
 export interface FieldCard {

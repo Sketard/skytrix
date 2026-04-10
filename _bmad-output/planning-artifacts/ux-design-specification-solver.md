@@ -249,7 +249,7 @@ The shift: from "I play to test" to "I read to decide". The solver replaces manu
 - Routes to `/decks/:id/solver`. Deck pre-loaded. Config panel ready.
 
 **2. Configuration:**
-- Hand selector: compact card art grid of deck cards, click-to-toggle, counter "3/5 selected". "Fill random" button completes the hand to 5 with random cards from remaining deck (local random, no server involved). Supports partial fix: select 1-3 key cards, fill the rest randomly.
+- Hand selector: compact card art grid of deck cards, click-to-toggle, counter "3 / 5 max selected". Solve enabled with 1–5 cards. "Fill random" button completes the hand to 5 with random cards from remaining deck (local random, no server involved). Supports partial fix: select 1-3 key cards, fill the rest randomly or solve immediately with fewer cards.
 - Mode toggle: Goldfish / Adversarial (button toggle group)
 - Speed toggle: Fast / Optimal (button toggle group)
 - Handtrap checkboxes: visible only when Adversarial selected. 5 predefined handtraps with card art + name.
@@ -383,7 +383,7 @@ Single design direction explored and refined.
 
 **Hand Selector:**
 - Deduplicated grid: 1 card art per unique card, ×N counter, multi-select (click = +1 copy). Main deck only (no extra deck).
-- Fill Random: completes to 5 from remaining cards (local random)
+- Fill Random: completes to 5 from remaining cards (local random). Solve also works with 1–4 cards.
 - Quick Solve: Fill Random + Solve in one click
 
 **Result Display:**
@@ -396,7 +396,7 @@ Single design direction explored and refined.
 - Two brick states: `pure-brick` vs `no-resilient-line` with distinct messages
 
 **Pins:**
-- Snapshot includes: score, end board cards, hand cards (5), config, minimax, **deck name**, deckSeed
+- Snapshot includes: score, end board cards, hand cards (1–5), config, minimax, **deck name**, deckSeed
 - Flat list visible across decks, each pin card shows its deck name. Max 4 pins. No hide/restore logic on deck switch.
 
 **Config Panel:**
@@ -567,9 +567,9 @@ flowchart TD
 
 **Purpose:** Select test hand cards from the deck
 **Content:** Deduplicated card art grid showing each unique main deck card with ×N copy counter. Main deck only (no extra deck).
-**Actions:** Click card = select/deselect 1 copy (multi-click for multiple copies of same card). "Fill Random" completes to 5. "Quick Solve" = Fill Random + auto-launch.
+**Actions:** Click card = select/deselect 1 copy (multi-click for multiple copies of same card). "Fill Random" completes to 5. "Quick Solve" = Fill Random + auto-launch. Solve enabled with 1–5 cards.
 **States:**
-- `idle` — no cards selected, counter "0/5", Solve disabled
+- `idle` — no cards selected, counter "0 / 5 max", Solve disabled
 - `partial` — 1-4 cards selected, Solve disabled
 - `complete` — 5/5 selected, Solve enabled
 - `locked` — during solve, clicks disabled
@@ -635,7 +635,7 @@ flowchart TD
 #### 7. PinnedResultsBar *(injects SolverService)*
 
 **Purpose:** Horizontal bar showing pinned solve snapshots for comparison
-**Content:** Max 4 pinned cards, each showing: score, mini hand cards (5), mini end board cards, mode label, unpin button
+**Content:** Max 4 pinned cards, each showing: score, mini hand cards (1–5), mini end board cards, mode label, unpin button
 **Actions:** Unpin button calls `solverService.unpinResult(index)`.
 **States:**
 - `empty` — bar hidden (no pins in session)
@@ -708,7 +708,7 @@ loading → idle → configuring → running → complete
 **States:**
 - `loading` — deck is being fetched from the route param `:id`. Displays a centered `mat-progress-spinner` (same pattern as existing deck loading). Transitions to `idle` once the deck is loaded. If deck fetch fails, transitions to `error`.
 - `idle` — first visit, no config. Transition to `configuring` on first interaction.
-- `configuring` — hand selected (complete or partial). Solve enabled only when 5/5.
+- `configuring` — hand selected (complete or partial). Solve enabled when 1–5 cards selected.
 - `running` — solve in progress. Config locked. Only action: Cancel or Escape.
 - `cancelled` — transitional. If `partialTree` exists → `complete` with partial badge. If not → `configuring`.
 - `complete` — result displayed. Config unlocked. User can adjust and re-solve.

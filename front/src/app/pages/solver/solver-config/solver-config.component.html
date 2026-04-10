@@ -40,7 +40,7 @@
     <div class="controls">
       <button mat-stroked-button
         (click)="fillRandom()"
-        [disabled]="isLocked() || totalSelected() >= 5">
+        [disabled]="isLocked() || totalSelected() >= 5 || deduplicatedCards().length === 0">
         {{ 'solver.config.fillRandom' | translate }}
       </button>
 

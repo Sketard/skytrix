@@ -54,7 +54,7 @@ export class SolverConfigComponent {
   readonly isLocked = computed(() => this.solverState() === 'running');
   readonly inCooldown = computed(() => this.cooldownTick() < this.solverService.cooldownUntil());
   readonly canSolve = computed(() =>
-    !this.isLocked() && !this.inCooldown() && this.totalSelected() === 5
+    !this.isLocked() && !this.inCooldown() && this.totalSelected() >= 1 && this.totalSelected() <= 5
   );
 
   readonly deduplicatedCards = computed<DeduplicatedCard[]>(() => {

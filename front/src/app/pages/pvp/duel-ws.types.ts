@@ -959,9 +959,10 @@ export interface SolverStartMessage {
    *  trust a client-supplied deck array. C2 fix from Epic 1 review. */
   deckId: string;
   hand: number[];
-  mode: 'goldfish';
+  mode: 'goldfish' | 'adversarial';
   speed: 'fast' | 'optimal';
   algorithm?: 'dfs' | 'mcts' | 'auto';
+  handtraps?: SolverWsHandtrapConfig[];
   deckSeed?: string;
 }
 

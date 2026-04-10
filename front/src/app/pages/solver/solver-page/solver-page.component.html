@@ -35,6 +35,14 @@
       }
       @if (solverState() === 'complete') {
         @if (solverService.result(); as r) {
+          @if (solverService.sessionHistory().length > 0) {
+            <div class="result-actions">
+              <app-solver-history-menu
+                [history]="solverService.sessionHistory()"
+                [currentResult]="solverService.result()"
+                (restore)="solverService.restoreHistoryEntry($event)" />
+            </div>
+          }
           @if (r.scoreBreakdown.weighted === 0 && !solverService.isPartialResult()) {
             <app-brick-state-block brickType="pure-brick" />
           } @else {

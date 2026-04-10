@@ -150,23 +150,40 @@ async function runServerTests(): Promise<void> {
     }
   }
 
-  // Test 9.5: SOLVER_START validation — invalid hand length
+  // Test 9.5: SOLVER_START validation — invalid hand length (0 and 6 cards)
   console.log('\n🔬 Test 9.5: SOLVER_START invalid hand length');
   {
     try {
-      const ws = await connectSolver('smoke-test-user-3');
-      ws.send(JSON.stringify({
+      // 0 cards — should fail
+      const ws0 = await connectSolver('smoke-test-user-3');
+      ws0.send(JSON.stringify({
         type: SOLVER_START,
         deckId: 'test',
         deck: TEST_DECK,
-        hand: [ALEXANDRITE_ID, ALEXANDRITE_ID, ALEXANDRITE_ID], // only 3
+        hand: [],
         mode: 'goldfish',
         speed: 'fast',
       }));
-      const msg = await waitForMessage<SolverErrorMessage>(ws, SOLVER_ERROR);
-      assert(msg.type === SOLVER_ERROR, 'Received SOLVER_ERROR');
-      assert(msg.error === 'INTERNAL_ERROR', `Error type is INTERNAL_ERROR (got ${msg.error})`);
-      ws.close();
+      const msg0 = await waitForMessage<SolverErrorMessage>(ws0, SOLVER_ERROR);
+      assert(msg0.type === SOLVER_ERROR, 'Empty hand: Received SOLVER_ERROR');
+      assert(msg0.error === 'INTERNAL_ERROR', `Empty hand: Error type is INTERNAL_ERROR (got ${msg0.error})`);
+      ws0.close();
+      await sleep(100);
+
+      // 6 cards — should fail
+      const ws6 = await connectSolver('smoke-test-user-3');
+      ws6.send(JSON.stringify({
+        type: SOLVER_START,
+        deckId: 'test',
+        deck: TEST_DECK,
+        hand: [ALEXANDRITE_ID, ALEXANDRITE_ID, ALEXANDRITE_ID, ALEXANDRITE_ID, ALEXANDRITE_ID, ALEXANDRITE_ID],
+        mode: 'goldfish',
+        speed: 'fast',
+      }));
+      const msg6 = await waitForMessage<SolverErrorMessage>(ws6, SOLVER_ERROR);
+      assert(msg6.type === SOLVER_ERROR, '6-card hand: Received SOLVER_ERROR');
+      assert(msg6.error === 'INTERNAL_ERROR', `6-card hand: Error type is INTERNAL_ERROR (got ${msg6.error})`);
+      ws6.close();
       await sleep(100);
     } catch (err) {
       console.error('  ❌ Invalid hand length test failed:', err);
@@ -420,6 +437,78 @@ async function runServerTests(): Promise<void> {
       await sleep(100);
     } catch (err) {
       console.error('  ❌ Integration e2e test failed:', err);
+      failed++;
+    }
+  }
+
+  // Test: Adversarial mode — DFS rejection
+  console.log('\n🔬 Test: Adversarial + DFS → SOLVER_ERROR');
+  {
+    try {
+      const ws = await connectSolver('smoke-test-adversarial-dfs');
+      ws.send(JSON.stringify({
+        type: SOLVER_START,
+        deckId: 'test',
+        hand: TEST_HAND,
+        mode: 'adversarial',
+        speed: 'fast',
+        algorithm: 'dfs',
+        handtraps: [{ cardId: 14558127, cardName: 'Ash Blossom & Joyous Spring' }],
+      }));
+      const msg = await waitForMessage<SolverErrorMessage>(ws, SOLVER_ERROR);
+      assert(msg.error === 'INTERNAL_ERROR', `DFS rejection error type (got ${msg.error})`);
+      assert(msg.message.includes('DFS does not support adversarial'), `DFS rejection message (got "${msg.message}")`);
+      ws.close();
+      await sleep(100);
+    } catch (err) {
+      console.error('  ❌ Adversarial DFS rejection test failed:', err);
+      failed++;
+    }
+  }
+
+  // Test: Adversarial mode — invalid handtrap cardIds
+  console.log('\n🔬 Test: Adversarial + invalid handtrap → SOLVER_ERROR');
+  {
+    try {
+      const ws = await connectSolver('smoke-test-adversarial-bad-ht');
+      ws.send(JSON.stringify({
+        type: SOLVER_START,
+        deckId: 'test',
+        hand: TEST_HAND,
+        mode: 'adversarial',
+        speed: 'fast',
+        handtraps: [{ cardId: 99999999, cardName: 'Fake Card' }],
+      }));
+      const msg = await waitForMessage<SolverErrorMessage>(ws, SOLVER_ERROR);
+      assert(msg.error === 'INTERNAL_ERROR', `Invalid handtrap error type (got ${msg.error})`);
+      assert(msg.message.includes('Invalid handtrap'), `Invalid handtrap message (got "${msg.message}")`);
+      ws.close();
+      await sleep(100);
+    } catch (err) {
+      console.error('  ❌ Adversarial invalid handtrap test failed:', err);
+      failed++;
+    }
+  }
+
+  // Test: Adversarial mode — missing handtraps array
+  console.log('\n🔬 Test: Adversarial + no handtraps → SOLVER_ERROR');
+  {
+    try {
+      const ws = await connectSolver('smoke-test-adversarial-no-ht');
+      ws.send(JSON.stringify({
+        type: SOLVER_START,
+        deckId: 'test',
+        hand: TEST_HAND,
+        mode: 'adversarial',
+        speed: 'fast',
+      }));
+      const msg = await waitForMessage<SolverErrorMessage>(ws, SOLVER_ERROR);
+      assert(msg.error === 'INTERNAL_ERROR', `Missing handtraps error type (got ${msg.error})`);
+      assert(msg.message.includes('at least one handtrap'), `Missing handtraps message (got "${msg.message}")`);
+      ws.close();
+      await sleep(100);
+    } catch (err) {
+      console.error('  ❌ Adversarial missing handtraps test failed:', err);
       failed++;
     }
   }

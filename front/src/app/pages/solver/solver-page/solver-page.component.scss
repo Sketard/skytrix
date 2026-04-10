@@ -44,3 +44,10 @@
   flex: 1;
   overflow: auto;
 }
+
+.result-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+  padding: 0 8px;
+}

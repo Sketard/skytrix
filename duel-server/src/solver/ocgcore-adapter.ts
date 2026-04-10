@@ -400,8 +400,26 @@ export class OCGCoreAdapter implements GameOracle {
         const promptType = MESSAGE_TO_PROMPT[selectMsg.type];
         const msgAny = selectMsg as unknown as Record<string, unknown>;
 
-        // Opponent prompts: always auto-respond
+        // Opponent prompts
         if ((msgAny['player'] as number) === OPPONENT) {
+          // Adversarial mode: yield opponent SELECT_CHAIN to the solver
+          const isAdversarial = (internal.config.handtraps?.length ?? 0) > 0;
+          if (isAdversarial && promptType === 'SELECT_CHAIN') {
+            const actions = this.enumerateActionsWithResponses(msgAny, promptType);
+            // Tag all actions as opponent (team: 1)
+            for (const a of actions) a.team = 1;
+            return actions;
+          }
+          // Adversarial: decline opponent SELECT_EFFECTYN to prevent handtraps
+          // bypassing the solver's determinization filter via trigger effects.
+          // Safe for MVP: opponent only has filler deck + handtraps (no field triggers).
+          if (isAdversarial && promptType === 'SELECT_EFFECTYN') {
+            const decline = { type: 2, yes: false };
+            this.core.duelSetResponse(internal.nativeHandle, decline as never);
+            internal.responseHistory.push(decline);
+            continue;
+          }
+          // All other opponent prompts: auto-respond
           const resp = this.autoRespondOpponent(msgAny);
           this.core.duelSetResponse(internal.nativeHandle, resp as never);
           internal.responseHistory.push(resp);

@@ -105,6 +105,9 @@ export class SolverService implements OnDestroy {
   readonly currentDeckId = signal<string | null>(null);
   readonly isPartialResult = computed(() => this.result()?.partial === true);
 
+  private readonly currentDeckName = signal('');
+  private readonly currentCardNames = signal<Map<number, string>>(new Map());
+
   /** Persisted user preferences (mode/speed/algorithm/handtraps) — Story 1.5a. */
   readonly prefs = signal<SolverPrefs>(loadPrefs());
 
@@ -127,6 +130,11 @@ export class SolverService implements OnDestroy {
 
   setHandForDeck(deckId: string, hand: Record<number, number>): void {
     this.handsByDeck.update(prev => ({ ...prev, [deckId]: hand }));
+  }
+
+  setDeckDisplayMeta(name: string, cardNames: Map<number, string>): void {
+    this.currentDeckName.set(name);
+    this.currentCardNames.set(cardNames);
   }
 
   updatePrefs(partial: Partial<SolverPrefs>): void {
@@ -231,6 +239,7 @@ export class SolverService implements OnDestroy {
 
     const solveConfig: HistoryEntryConfig = {
       deckId: config.deckId,
+      deckName: this.currentDeckName(),
       hand: { ...this.getHandForDeck(config.deckId) },
       mode: config.mode,
       speed: config.speed,
@@ -253,9 +262,25 @@ export class SolverService implements OnDestroy {
     this.sendMessage({ type: SOLVER_CANCEL });
   }
 
+  restoreHistoryEntry(entry: HistoryEntry): void {
+    if (this.solverState() === 'running') return;
+    this.result.set(entry.result);
+    this.solverState.set('complete');
+    this.updatePrefs({
+      speed: entry.config.speed,
+      algorithm: entry.config.algorithm,
+      handtrapIds: entry.config.handtraps,
+    });
+    if (entry.config.deckId === this.currentDeckId()) {
+      this.setHandForDeck(entry.config.deckId, entry.config.hand);
+    }
+  }
+
   setDeckContext(deckId: string): void {
     this.lastInteractionTs = Date.now();
     this.currentDeckId.set(deckId);
+    this.currentDeckName.set('');
+    this.currentCardNames.set(new Map());
     if (this.solverState() === 'loading') {
       this.solverState.set('idle');
     }
@@ -396,9 +421,16 @@ export class SolverService implements OnDestroy {
   private addToHistory(result: SolverResult): void {
     const config = this.lastSolveConfig();
     if (!config) return;
+    const names = this.currentCardNames();
+    const handCardNames = Object.entries(config.hand)
+      .flatMap(([cardId, count]) => {
+        const name = names.get(Number(cardId)) ?? `#${cardId}`;
+        return Array.from({ length: count }, () => name);
+      })
+      .slice(0, 5);
     this.sessionHistory.update(history => {
       const base = history.length >= SESSION_HISTORY_CAP ? history.slice(1) : history;
-      return [...base, { result, config, partial: result.partial }];
+      return [...base, { result, config, handCardNames, timestamp: Date.now(), partial: result.partial }];
     });
   }
 

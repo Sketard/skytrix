@@ -36,7 +36,7 @@ documents:
 | ID | Requirement |
 |---|---|
 | FR1 | Player can select an existing deck as solver input |
-| FR2 | Player can define a fixed hand (5 chosen cards) or request a random hand |
+| FR2 | Player can define a fixed hand (1–5 chosen cards) or request a random hand (Fill Random completes to 5) |
 | FR3 | Player can choose solve mode: Goldfish (no interaction) or Adversarial (with handtraps) |
 | FR4 | Player can choose solve speed: Fast (time-bounded) or Optimal (exhaustive) |
 | FR5 | Player can select adverse handtraps from a predefined list (Ash Blossom, Nibiru, Effect Veiler, Maxx "C", Infinite Impermanence) |

@@ -33,11 +33,12 @@ import { HeroResultBlockComponent } from '../solver-result/hero-result-block.com
 import { BrickStateBlockComponent } from '../solver-result/brick-state-block.component';
 import { BreadcrumbPathComponent } from '../solver-result/breadcrumb-path.component';
 import { DecisionTreeComponent } from '../solver-result/decision-tree.component';
+import { SolverHistoryMenuComponent } from '../solver-result/solver-history-menu.component';
 
 @Component({
   selector: 'app-solver-page',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent, BreadcrumbPathComponent, DecisionTreeComponent],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent, BreadcrumbPathComponent, DecisionTreeComponent, SolverHistoryMenuComponent],
   providers: [SolverDebugLogService],
   templateUrl: './solver-page.component.html',
   styleUrl: './solver-page.component.scss',
@@ -146,6 +147,14 @@ export class SolverPageComponent implements OnInit, OnDestroy {
       )
       .subscribe(dto => {
         this.deck.set(new Deck(dto));
+        const cardNameMap = new Map<number, string>();
+        const allCards = [...dto.mainDeck, ...dto.extraDeck];
+        for (const icd of allCards) {
+          if (icd.card.card.id != null && icd.card.card.name != null) {
+            cardNameMap.set(icd.card.card.id, icd.card.card.name);
+          }
+        }
+        this.solverService.setDeckDisplayMeta(dto.name, cardNameMap);
         if (this.solverService.solverState() === 'loading') {
           this.solverService.solverState.set('idle');
         }

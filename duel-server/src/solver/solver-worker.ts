@@ -15,6 +15,7 @@ import { TranspositionTable } from './transposition-table.js';
 import { InterruptionScorer } from './interruption-scorer.js';
 import { DfsSolver, extractMainPath } from './dfs-solver.js';
 import { MCTSSolver } from './mcts-solver.js';
+import { IsMctsSolver } from './ismcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import type {
   DuelConfig,
@@ -68,6 +69,7 @@ const scorer = new InterruptionScorer(
 const ranker = new GoldfishChainRanker();
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
+const ismctsSolver = new IsMctsSolver(scorer, adapter, ranker, allConfigs.solverConfig);
 
 // =============================================================================
 // Default Export — piscina calls this per task
@@ -123,7 +125,11 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     // Algorithm dispatch
     let result: SolverResult;
 
-    if (algorithm === 'dfs') {
+    // Adversarial mode: always use IS-MCTS (skip DFS probe, no warmStart)
+    if (solverConfig.mode === 'adversarial') {
+      ismctsSolver.setSeed(seed);
+      result = ismctsSolver.solve(adapter, solverConfig, signal, onProgress, startHandle);
+    } else if (algorithm === 'dfs') {
       result = dfsSolver.solve(adapter, solverConfig, signal, onProgress, startHandle);
     } else if (algorithm === 'mcts') {
       mctsSolver.setSeed(seed);

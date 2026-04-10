@@ -77,7 +77,7 @@ classification:
 
 **Axel** just finished a new Branded Despia build. He theorycrafted on paper but isn't sure of the real ceiling — does the hand Branded Fusion + Fallen of Albaz + a discard really open into a 3-negate board?
 
-He clicks **"Solve"** in Goldfish Fast mode with a 5-card test hand. In **3 seconds**, the result appears: **35 — 3 interruptions** with interruption type chips below (omni-negate ×2, destruction ×1) and an annotated main path from Normal Summon through Fusion Summon Mirrorjade to a 2-negate + 1-destruction board.
+He clicks **"Solve"** in Goldfish Fast mode with a test hand. In **3 seconds**, the result appears: **35 — 3 interruptions** with interruption type chips below (omni-negate ×2, destruction ×1) and an annotated main path from Normal Summon through Fusion Summon Mirrorjade to a 2-negate + 1-destruction board.
 
 At step 4, he spots an alternative Lubellion line (score 32, 2 negates + 1 floodgate) he hadn't considered — better against aggro. A second test with a 3-spell/2-trap hand confirms it's a brick in 2 seconds.
 
@@ -198,7 +198,7 @@ Solver runs as a Node.js worker thread pool managed by piscina, communicating vi
 ### Solve Configuration
 
 - **FR1:** Player can select an existing deck as solver input
-- **FR2:** Player can define a fixed hand (5 chosen cards) or request a random hand
+- **FR2:** Player can define a fixed hand (1–5 chosen cards) or request a random hand (Fill Random completes to 5)
 - **FR3:** Player can choose solve mode: Goldfish (no interaction) or Adversarial (with handtraps)
 - **FR4:** Player can choose solve speed: Fast (time-bounded) or Optimal (exhaustive)
 - **FR5:** Player can select adverse handtraps from a predefined list (Ash Blossom, Nibiru, Effect Veiler, Maxx "C", Infinite Impermanence)

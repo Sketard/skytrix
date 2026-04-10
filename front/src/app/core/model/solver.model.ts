@@ -179,6 +179,7 @@ export type SolverState =
 
 export interface HistoryEntryConfig {
   deckId: string;
+  deckName: string;
   hand: Record<number, number>;
   mode: 'goldfish' | 'adversarial';
   speed: 'fast' | 'optimal';
@@ -189,6 +190,8 @@ export interface HistoryEntryConfig {
 export interface HistoryEntry {
   result: SolverResult;
   config: HistoryEntryConfig;
+  handCardNames: string[];
+  timestamp: number;
   /** Set for cancelled solves with partial tree — lets history UI differentiate. */
   partial?: boolean;
 }

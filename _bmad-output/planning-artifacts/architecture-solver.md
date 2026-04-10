@@ -76,7 +76,7 @@ The PRD defines 31 FRs across 6 categories and 17 NFRs across 5 categories. See 
 interface DuelConfig {
   mainDeck: number[];         // player 0 main deck cardIds (remaining after hand removal, shuffled by deckSeed)
   extraDeck: number[];        // player 0 extra deck cardIds
-  hand: number[];             // player 0 starting hand (5 cardIds)
+  hand: number[];             // player 0 starting hand (1–5 cardIds)
   deckSeed: number;           // PRNG seed used to shuffle mainDeck
   opponentDeck: number[];     // player 1 main deck (40× filler for goldfish, filler for adversarial)
   handtraps?: number[];       // player 1 hand injection cardIds (adversarial only) — injected via duelNewCard() post-creation
@@ -380,7 +380,7 @@ interface SolverErrorMessage {
 ```
 SolverPageComponent (lazy-loaded /decks/:id/solver)
 ├── SolverConfigComponent (horizontal, full width, collapsible)
-│   ├── Hand selector (5 cards from deck, or random)
+│   ├── Hand selector (1–5 cards from deck, or Fill Random to 5)
 │   ├── Mode toggle (Goldfish / Adversarial)
 │   ├── Speed toggle (Fast / Optimal)
 │   ├── Algorithm select (DFS / MCTS / Auto)
