@@ -37,9 +37,11 @@ import type {
   SolverStats,
   AdversarialTiming,
   EndBoardCard,
+  HistoryEntry,
+  HistoryEntryConfig,
 } from '../../../core/model/solver.model';
 
-const SESSION_HISTORY_CAP = 20;
+const SESSION_HISTORY_CAP = 10;
 const INIT_TIMEOUT_MS = 10_000;
 const RECONNECT_DELAY_MS = 2_000;
 const IDLE_CHECK_INTERVAL_MS = 60_000;
@@ -99,7 +101,7 @@ export class SolverService implements OnDestroy {
   /** True when SOLVER_HANDTRAPS failed to load after the init retry. Goldfish
    *  mode stays usable; only adversarial features should disable themselves. */
   readonly handtrapsLoadFailed = signal(false);
-  readonly sessionHistory = signal<SolverResult[]>([]);
+  readonly sessionHistory = signal<HistoryEntry[]>([]);
   readonly currentDeckId = signal<string | null>(null);
   readonly isPartialResult = computed(() => this.result()?.partial === true);
 
@@ -116,6 +118,8 @@ export class SolverService implements OnDestroy {
    *  round-tripping a RATE_LIMITED error from the server. Story 1.5b. */
   readonly lastSolveAt = signal<number>(0);
   readonly cooldownUntil = computed(() => this.lastSolveAt() + SOLVE_COOLDOWN_MS);
+
+  private readonly lastSolveConfig = signal<HistoryEntryConfig | null>(null);
 
   getHandForDeck(deckId: string): Record<number, number> {
     return this.handsByDeck()[deckId] ?? {};
@@ -211,9 +215,10 @@ export class SolverService implements OnDestroy {
   solve(config: {
     deckId: string;
     hand: number[];
-    mode: 'goldfish';
+    mode: 'goldfish' | 'adversarial';
     speed: 'fast' | 'optimal';
     algorithm?: 'dfs' | 'mcts' | 'auto';
+    handtraps?: { cardId: number; cardName: string }[];
     deckSeed?: string;
   }): void {
     this.lastInteractionTs = Date.now();
@@ -224,8 +229,19 @@ export class SolverService implements OnDestroy {
     this.result.set(null);
     this.error.set(null);
 
+    const solveConfig: HistoryEntryConfig = {
+      deckId: config.deckId,
+      hand: { ...this.getHandForDeck(config.deckId) },
+      mode: config.mode,
+      speed: config.speed,
+      algorithm: config.algorithm ?? this.prefs().algorithm,
+      handtraps: this.prefs().handtrapIds,
+    };
+
     const msg: SolverStartMessage = { type: SOLVER_START, ...config };
-    if (!this.sendMessage(msg)) {
+    if (this.sendMessage(msg)) {
+      this.lastSolveConfig.set(solveConfig);
+    } else {
       this.solverState.set('error');
       this.error.set({ error: 'INTERNAL_ERROR', message: 'Connection not ready' });
       this.notify.error('solver.error.connectionFailed');
@@ -378,10 +394,11 @@ export class SolverService implements OnDestroy {
   }
 
   private addToHistory(result: SolverResult): void {
+    const config = this.lastSolveConfig();
+    if (!config) return;
     this.sessionHistory.update(history => {
-      const next = history.length >= SESSION_HISTORY_CAP ? history.slice(1) : [...history];
-      next.push(result);
-      return next;
+      const base = history.length >= SESSION_HISTORY_CAP ? history.slice(1) : history;
+      return [...base, { result, config, partial: result.partial }];
     });
   }
 

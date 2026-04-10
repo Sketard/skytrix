@@ -153,9 +153,10 @@ export interface SolverStartConfig {
    *  from Epic 1 review. The client no longer sends the deck contents. */
   deckId: string;
   hand: number[];
-  mode: 'goldfish';
+  mode: 'goldfish' | 'adversarial';
   speed: 'fast' | 'optimal';
   algorithm?: 'dfs' | 'mcts' | 'auto';
+  handtraps?: HandtrapConfig[];
   deckSeed?: string;
 }
 
@@ -171,3 +172,23 @@ export type SolverState =
   | 'cancelled'
   | 'complete'
   | 'error';
+
+// =============================================================================
+// Session History (Story 3.1)
+// =============================================================================
+
+export interface HistoryEntryConfig {
+  deckId: string;
+  hand: Record<number, number>;
+  mode: 'goldfish' | 'adversarial';
+  speed: 'fast' | 'optimal';
+  algorithm: 'dfs' | 'mcts' | 'auto';
+  handtraps: number[];
+}
+
+export interface HistoryEntry {
+  result: SolverResult;
+  config: HistoryEntryConfig;
+  /** Set for cancelled solves with partial tree — lets history UI differentiate. */
+  partial?: boolean;
+}
