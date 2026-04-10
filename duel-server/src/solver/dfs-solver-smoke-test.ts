@@ -9,6 +9,7 @@ import type { Action, DecisionNode, FieldCard, FieldState, SolverAction, SolverC
 import { ALL_ZONE_IDS } from './solver-types.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { DfsSolver, ROOT_ACTION } from './dfs-solver.js';
+import { MCTSSolver } from './mcts-solver.js';
 import { ZobristHasher } from './zobrist.js';
 import { TranspositionTable } from './transposition-table.js';
 import { InterruptionScorer } from './interruption-scorer.js';
@@ -285,6 +286,88 @@ async function runIntegrationTests(): Promise<void> {
     assert(typeof result.stats.maxDepthReached === 'number', `stats.maxDepthReached is number`);
     assert(typeof result.stats.averageBranchingFactor === 'number', `stats.averageBranchingFactor is number`);
     assert(result.stats.deckSeed === '', `stats.deckSeed = '${result.stats.deckSeed}' (expected '')`);
+  }
+
+  // ===========================================================================
+  // Test 4.12: Real combo deck — regression-net for C5/C6
+  // MUST produce score > 0 and non-empty endBoard. If this fails, the solver
+  // is unable to evaluate real meta decks (the bug that escaped all of Epic 1
+  // implementation). Added post-code-review as a permanent guard.
+  // ===========================================================================
+
+  // Test 4.12 uses MCTS (not DFS) because DFS is prohibitively slow on real
+  // combo decks: replay-from-scratch forks compound at each depth, and 14+
+  // actions at MP1 blow the time budget before any meaningful exploration.
+  // This matches the production auto-detection flow (BF ≥ 12 → MCTS).
+  console.log('\n🔬 Test 4.12: Real combo deck via MCTS (Branded Despia — regression-net C5/C6)');
+  {
+    // Branded Despia — 22nd Place @ DFW Regionals 2026 (ygoprodeck.com, validated against cards.cdb)
+    const brandedMain = [
+      73819701, 73819701, 68468459,
+      62962630, 62962630, 62962630,
+      25451383, 25451383,
+      95515789, 95515789,
+      45883110, 45883110,
+      55273560, 55273560,
+      60303688,
+      19096726, 19096726,
+      19304410, 19304410,
+      82489470,
+      42141493, 42141493, 42141493,
+      44362883, 44362883,
+      29948294, 29948294, 29948294,
+      82738008, 82738008,
+      34995106,
+      36637374, 36637374, 36637374,
+      24299458, 24299458, 24299458,
+      48130397, 48130397, 48130397,
+      75500286,
+      30271097, 30271097, 30271097,
+      17751597,
+    ];
+    const brandedExtra = [
+      3410461, 87746184, 87746184, 38811586, 18666161,
+      24915933, 24915933, 70534340, 44146295, 51409648,
+      76666602, 76666602, 41373230, 78397661, 74586817,
+    ];
+    // Hand: Branded Fusion + Aluber + Albion + Albaz + Mulcharmy Fuwalos
+    const hand = [44362883, 62962630, 25451383, 68468459, 42141493];
+    const mainDeck = [...brandedMain];
+    for (const id of hand) mainDeck.splice(mainDeck.indexOf(id), 1);
+
+    const comboConfig = {
+      mainDeck,
+      extraDeck: brandedExtra,
+      hand,
+      deckSeed: [12345n, 67890n, 111n, 222n],
+      opponentDeck: [],
+    };
+
+    const comboSolverConfig: SolverConfig = {
+      mode: 'goldfish' as const,
+      speed: 'fast' as const,
+      timeLimitMs: 10000, // generous budget — MCTS needs rollout depth on combo decks
+    };
+
+    const mcts = new MCTSSolver(scorer, adapter, ranker, solverConfigFile);
+    mcts.setSeed([12345n, 67890n]);
+
+    const handle = adapter.createDuel(comboConfig);
+    const result = mcts.solve(adapter, comboSolverConfig, AbortSignal.timeout(12000), () => {}, handle);
+    adapter.destroyAll();
+
+    assert(result.score > 0, `Real combo: score = ${result.score} (MUST be > 0 — C6 regression if 0)`);
+    assert(
+      (result.endBoardCards ?? []).length > 0,
+      `Real combo: endBoardCards.length = ${(result.endBoardCards ?? []).length} (MUST be > 0 — C6 regression if 0)`,
+    );
+    assert(result.mainPath.length >= 3, `Real combo: mainPath.length = ${result.mainPath.length} (MUST be ≥ 3 — C5 regression if shallow)`);
+    assert(
+      result.stats.averageBranchingFactor > 1,
+      `Real combo: BF = ${result.stats.averageBranchingFactor.toFixed(2)} (MUST be > 1 — C5 regression if 1.00)`,
+    );
+
+    console.log(`  📊 Real combo results: score=${result.score} endBoard=${(result.endBoardCards ?? []).length} mainPath=${result.mainPath.length} bf=${result.stats.averageBranchingFactor.toFixed(2)} nodes=${result.stats.nodesExplored}`);
   }
 
   console.log('\n✅ Integration tests complete');

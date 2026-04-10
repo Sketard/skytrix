@@ -30,7 +30,8 @@ interface CalibFile {
   hands: { id: string; deck: string; hand: number[]; deckSeed: string }[];
 }
 const calib = JSON.parse(readFileSync(HANDS_PATH, 'utf-8')) as CalibFile;
-const hand = calib.hands[0]; // branded-fusion-opener
+const handIdx = process.argv.includes('--hand') ? Number(process.argv[process.argv.indexOf('--hand') + 1]) : 0;
+const hand = calib.hands[handIdx]; // 0=branded-fusion, 2=snake-eye-ash, 4=snake-eye-diabellstar
 const deck = calib.decks[hand.deck];
 const mainDeck = [...deck.main];
 for (const cardId of hand.hand) {
