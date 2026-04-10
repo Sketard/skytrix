@@ -18,13 +18,23 @@ import { ALL_ZONE_IDS, INTERRUPTION_TYPES } from './solver-types.js';
 // Zone Constants (local to scorer)
 // =============================================================================
 
-const NON_FIELD_ZONES: ReadonlySet<ZoneId> = new Set(['GY', 'BANISHED', 'EXTRA', 'DECK', 'HAND']);
+/** Only DECK is excluded from scoring — cards not yet drawn are not
+ *  usable interruptions. All other zones contribute:
+ *  - MZONE/SZONE/FIELD/EMZ: on-board interruptions (primary)
+ *  - HAND: remaining hand-traps post-combo (Ash Blossom, Nibiru, etc.)
+ *  - GY: graveyard-active effects (Eldlich, Mirrorjade trigger, etc.)
+ *  - BANISHED: banished-zone effects ("when this card is banished...")
+ *  - EXTRA: face-up Pendulum monsters (recycled via Pendulum Summon)
+ *  The fallback heuristic (+1 per untagged face-up monster) still only
+ *  applies to MONSTER_ZONE_IDS — non-field tagged cards score but
+ *  untagged cards in GY/HAND/BANISHED/EXTRA do not. */
+const NON_SCORED_ZONES: ReadonlySet<ZoneId> = new Set(['DECK']);
 
 /** Monster zones — eligible for fallback heuristic. */
 const MONSTER_ZONE_IDS: readonly ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R'];
 
-/** All 13 field zones — scanned for tag-based scoring. Derived from ALL_ZONE_IDS. */
-const FIELD_ZONE_IDS: readonly ZoneId[] = ALL_ZONE_IDS.filter(z => !NON_FIELD_ZONES.has(z));
+/** All scored zones — 13 field zones + HAND. */
+const SCORED_ZONE_IDS: readonly ZoneId[] = ALL_ZONE_IDS.filter(z => !NON_SCORED_ZONES.has(z));
 
 // =============================================================================
 // InterruptionScorer
@@ -73,8 +83,9 @@ export class InterruptionScorer {
     const endBoardCards: EndBoardCard[] = [];
     const isMonsterZone = new Set(MONSTER_ZONE_IDS);
 
-    for (const zoneId of FIELD_ZONE_IDS) {
+    for (const zoneId of SCORED_ZONE_IDS) {
       const cards = fieldState.zones[zoneId];
+      const isHand = zoneId === 'HAND';
       for (const card of cards) {
         const isFaceDown = card.position === 'facedown-def' || card.position === 'facedown';
         const tag = this.tags[card.cardId];
@@ -104,8 +115,10 @@ export class InterruptionScorer {
             }
           }
 
-          // Face-down tagged cards score but are not shown on the end board
-          if (!isFaceDown) {
+          // Face-down tagged cards on field are hidden from endBoard display.
+          // Hand cards (always facedown in OCGCore) ARE shown — they represent
+          // the player's remaining hand-trap interruptions post-combo.
+          if (!isFaceDown || isHand) {
             const endCard: EndBoardCard = {
               cardId: card.cardId,
               cardName: card.cardName,
