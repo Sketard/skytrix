@@ -2956,7 +2956,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
           mainPath: [],
           score: 0,
           scoreBreakdown: { omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0, controlChange: 0, banish: 0, banishFacedown: 0, attach: 0, spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0, bounce: 0, handRip: 0, sendToGy: 0, weighted: 0, fallbackPoints: 0, total: 0 },
-          stats: { nodesExplored: 0, elapsed, algorithm: 'verify', algorithmUsed: 'verify', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
+          stats: { nodesExplored: 0, elapsed, algorithm: 'ismcts', algorithmUsed: 'ismcts', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
           verified: verifyResult.verified,
           isVerifyResult: true,
         };

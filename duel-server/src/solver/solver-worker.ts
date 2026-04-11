@@ -40,7 +40,7 @@ interface SolveTask {
   solverConfig: SolverConfig;
   seed: bigint[];
   algorithm: 'dfs' | 'mcts' | 'auto';
-  progressPort: MessagePort;
+  progressPort: MessagePort | null;
   type?: 'health-check' | 'verify';
   topK?: number;
   verifyPath?: SolverAction[];
@@ -91,7 +91,8 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     return verifyAdversarialPath(adapter, task.duelConfig, task.verifyPath!, task.verifyTimings!, task.verifyExpectedScore ?? 0);
   }
 
-  const { duelConfig, solverConfig, seed, algorithm, progressPort, topK = 3 } = task;
+  const { duelConfig, solverConfig, seed, algorithm, progressPort: rawPort, topK = 3 } = task;
+  const progressPort = rawPort!;
 
   // Anchor for time accounting. The 'auto' branch runs a probe BEFORE the
   // main solver, so the main solver must subtract probe elapsed from its own
@@ -305,12 +306,24 @@ function verifyAdversarialPath(
     timingMap.set(t.stepIndex, t);
   }
 
+  // Safety ceiling: prevent infinite loop if opponent prompts repeat endlessly
+  const MAX_VERIFY_ITERATIONS = 2000;
+
   const handle = oracle.createDuel(duelConfig);
   try {
     let playerStepIndex = 0;
     let pathIndex = 0;
+    let iterations = 0;
 
     while (pathIndex < verifyPath.length) {
+      if (++iterations > MAX_VERIFY_ITERATIONS) {
+        return {
+          verified: false,
+          divergenceStep: pathIndex,
+          reason: `Verification loop exceeded ceiling (${MAX_VERIFY_ITERATIONS} iterations)`,
+        };
+      }
+
       const legalActions = oracle.getLegalActions(handle);
 
       // Empty actions means duel ended
@@ -326,9 +339,10 @@ function verifyAdversarialPath(
       if (legalActions[0]?.team === 1) {
         const timing = timingMap.get(playerStepIndex);
         if (timing) {
-          // Inject the handtrap activation at this timing
+          // Inject the handtrap activation at this timing — dual-check
+          // responseIndex + cardId (same discipline as goldfish verifier)
           const match = legalActions.find(
-            a => a.responseIndex === timing.responseIndex,
+            a => a.responseIndex === timing.responseIndex && a.cardId === timing.handtrapCardId,
           );
           if (!match) {
             return {

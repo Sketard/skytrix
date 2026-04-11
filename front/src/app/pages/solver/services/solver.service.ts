@@ -411,14 +411,14 @@ export class SolverService implements OnDestroy {
     const r = this.result();
     if (!r || !r.adversarialTimings?.length) return;
 
+    const config = this.lastSolveConfig();
+    if (!config) return;
+
     this.lastInteractionTs = Date.now();
     this.isVerifying.set(true);
     this.solverState.set('running');
     this.progress.set(null);
     this.error.set(null);
-
-    const config = this.lastSolveConfig();
-    if (!config) return;
 
     const msg: SolverStartMessage = {
       type: SOLVER_START,
