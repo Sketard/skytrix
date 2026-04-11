@@ -481,7 +481,11 @@
       "handtrapsLoading": "Chargement des handtraps...",
       "handtrapsEmpty": "Aucun handtrap disponible",
       "dfsHint": "DFS ne supporte pas le mode adversarial — basculé sur Auto",
-      "selectHandtrap": "Sélectionnez au moins 1 handtrap pour le mode adversarial"
+      "selectHandtrap": "Sélectionnez au moins 1 handtrap pour le mode adversarial",
+      "deckSeed": "Seed du deck",
+      "deckSeedTooltip": "Reproduction exacte pour DFS sans effets aleatoires. Approximatif si le combo implique des recherches, melanges ou lancers de pieces. MCTS est toujours approximatif.",
+      "deckSeedInvalid": "Format attendu : deux entiers separes par une virgule",
+      "advancedOptions": "Options avancees"
     },
     "progress": {
       "exploring": "Exploration des lignes de combo...",
@@ -510,7 +514,12 @@
       "tree": {
         "pruned": "... et {{count}} autres branches",
         "truncated": "Sous-arbre tronqué pour la taille"
-      }
+      },
+      "worstCase": "Pire cas",
+      "noResilientLine": "Aucune ligne résiliente trouvée",
+      "noResilientLineMessage": "Toutes les lignes de combo sont brisées par les pièges de main sélectionnés.",
+      "goldfishScoreRef": "Score goldfish : {{score}}",
+      "worstCaseAria": "Résilience pire cas : {{minimax}}"
     },
     "error": {
       "deckNotFound": "Deck introuvable",
@@ -528,6 +537,11 @@
       "justNow": "A l'instant",
       "minutesAgo": "il y a {{n}}m",
       "hoursAgo": "il y a {{n}}h"
+    },
+    "export": {
+      "export": "Exporter",
+      "copied": "Resultat copie dans le presse-papiers",
+      "failed": "Echec de la copie dans le presse-papiers"
     },
     "pin": {
       "pin": "Epingler le resultat",

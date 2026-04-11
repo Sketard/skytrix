@@ -1,6 +1,13 @@
 <div class="brick-state" role="alert">
-  <mat-icon fontIcon="block" class="brick-icon"></mat-icon>
-  <h3 class="mat-headline-5">{{ 'solver.result.brick.title' | translate }}</h3>
-  <p class="mat-body-1">{{ 'solver.result.brick.message' | translate }}</p>
-  <p class="mat-body-2 brick-suggestion">{{ 'solver.result.brick.suggestion' | translate }}</p>
+  @if (brickType() === 'pure-brick') {
+    <mat-icon fontIcon="block" class="brick-icon"></mat-icon>
+    <h3 class="mat-headline-5">{{ 'solver.result.brick.title' | translate }}</h3>
+    <p class="mat-body-1">{{ 'solver.result.brick.message' | translate }}</p>
+    <p class="mat-body-2 brick-suggestion">{{ 'solver.result.brick.suggestion' | translate }}</p>
+  } @else if (brickType() === 'no-resilient-line') {
+    <mat-icon fontIcon="shield" class="brick-icon shield-icon"></mat-icon>
+    <h3 class="mat-headline-5">{{ 'solver.result.noResilientLine' | translate }}</h3>
+    <p class="mat-body-1">{{ 'solver.result.noResilientLineMessage' | translate }}</p>
+    <p class="mat-body-2 brick-suggestion">{{ 'solver.result.goldfishScoreRef' | translate:{ score: goldfishScore() } }}</p>
+  }
 </div>

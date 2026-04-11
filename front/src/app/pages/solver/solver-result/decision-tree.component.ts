@@ -16,6 +16,7 @@ import { CdkTreeModule } from '@angular/cdk/tree';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -23,10 +24,23 @@ import type { DecisionNode, SolverAction } from '../../../core/model/solver.mode
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { onCardImgError } from './card-image-fallback';
 import { createHoverPopupController } from './hover-popup.controller';
+import {
+  CHIP_COLOR_MAP,
+  AMBER_COLOR,
+  DISPLAY_LABELS,
+  EFFECT_WEIGHT_ORDER,
+} from './interruption-display';
 
 // =============================================================================
 // Flat Tree Node
 // =============================================================================
+
+interface BreakdownChip {
+  label: string;
+  count: number;
+  color: string;
+  isAmber: boolean;
+}
 
 interface FlatTreeNode {
   id: number;
@@ -36,6 +50,8 @@ interface FlatTreeNode {
   isMainPath: boolean;
   scoreDelta: string;
   imageUrl: string;
+  handtrapLabel?: string;
+  breakdownChips?: BreakdownChip[];
   isPrunedPlaceholder?: boolean;
   prunedCount?: number;
 }
@@ -43,7 +59,7 @@ interface FlatTreeNode {
 @Component({
   selector: 'app-decision-tree',
   standalone: true,
-  imports: [CdkTreeModule, CdkConnectedOverlay, CdkOverlayOrigin, MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe],
+  imports: [CdkTreeModule, CdkConnectedOverlay, CdkOverlayOrigin, MatIconModule, MatButtonModule, MatChipsModule, MatTooltipModule, TranslatePipe],
   templateUrl: './decision-tree.component.html',
   styleUrl: './decision-tree.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -202,6 +218,21 @@ export class DecisionTreeComponent {
       scoreDelta = delta >= 0 ? `+${delta}` : `${delta} vs main`;
     }
 
+    // Build breakdown chips for terminal nodes with scoreBreakdown
+    let breakdownChips: BreakdownChip[] | undefined;
+    if (node.isTerminal && node.scoreBreakdown) {
+      const bd = node.scoreBreakdown;
+      const chips: BreakdownChip[] = [];
+      for (const key of EFFECT_WEIGHT_ORDER) {
+        const count = (bd as unknown as Record<string, number>)[key];
+        if (count > 0) {
+          const color = CHIP_COLOR_MAP[key] ?? 'var(--solver-chip-hand)';
+          chips.push({ label: DISPLAY_LABELS[key] ?? key, count, color, isAmber: color === AMBER_COLOR });
+        }
+      }
+      if (chips.length > 0) breakdownChips = chips;
+    }
+
     const flatNode: FlatTreeNode = {
       id: out.length,
       node,
@@ -209,7 +240,11 @@ export class DecisionTreeComponent {
       expandable,
       isMainPath,
       scoreDelta,
-      imageUrl: imgMap.get(node.action?.cardId) ?? 'assets/images/card_back.jpg',
+      imageUrl: node.handtrapLabel
+        ? `/api/documents/small/code/${node.action!.cardId}`
+        : imgMap.get(node.action?.cardId) ?? 'assets/images/card_back.jpg',
+      handtrapLabel: node.handtrapLabel,
+      breakdownChips,
     };
     out.push(flatNode);
 

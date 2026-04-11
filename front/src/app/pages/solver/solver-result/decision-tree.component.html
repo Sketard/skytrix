@@ -15,34 +15,40 @@
       <span class="tree-node-spacer"></span>
     }
 
-    <div class="tree-card-art"
-      (mouseenter)="onNodeCardEnter(node)"
-      (mouseleave)="onNodeCardLeave()"
-      cdkOverlayOrigin
-      #nodeOrigin="cdkOverlayOrigin">
-      <img [src]="node.imageUrl"
-        [alt]="node.node.action.cardName"
-        (error)="onImgError($event)"
-        loading="lazy" />
+    <div class="node-content" [class.handtrap-node]="node.handtrapLabel">
+      <div class="tree-card-art"
+        (mouseenter)="onNodeCardEnter(node)"
+        (mouseleave)="onNodeCardLeave()"
+        cdkOverlayOrigin
+        #nodeOrigin="cdkOverlayOrigin">
+        <img [src]="node.imageUrl"
+          [alt]="node.node.action.cardName"
+          (error)="onImgError($event)"
+          loading="lazy" />
 
-      <ng-template cdkConnectedOverlay
-        [cdkConnectedOverlayOrigin]="nodeOrigin"
-        [cdkConnectedOverlayOpen]="hoverNodeId() === node.id"
-        [cdkConnectedOverlayOffsetX]="40"
-        cdkConnectedOverlayPanelClass="tree-card-popup">
-        <div class="card-popup"
-          (mouseenter)="onPopupEnter()"
-          (mouseleave)="onNodeCardLeave()">
-          <img [src]="node.imageUrl"
-            [alt]="node.node.action.cardName"
-            (error)="onImgError($event)" />
-          <span class="card-popup-name">{{ node.node.action.cardName }}</span>
-        </div>
-      </ng-template>
+        <ng-template cdkConnectedOverlay
+          [cdkConnectedOverlayOrigin]="nodeOrigin"
+          [cdkConnectedOverlayOpen]="hoverNodeId() === node.id"
+          [cdkConnectedOverlayOffsetX]="40"
+          cdkConnectedOverlayPanelClass="tree-card-popup">
+          <div class="card-popup"
+            (mouseenter)="onPopupEnter()"
+            (mouseleave)="onNodeCardLeave()">
+            <img [src]="node.imageUrl"
+              [alt]="node.node.action.cardName"
+              (error)="onImgError($event)" />
+            <span class="card-popup-name">{{ node.node.action.cardName }}</span>
+          </div>
+        </ng-template>
+      </div>
+
+      @if (node.handtrapLabel) {
+        <span class="handtrap-label mat-body-2">{{ node.handtrapLabel }}</span>
+      } @else {
+        <span class="tree-annotation"
+          [matTooltip]="node.node.annotation">{{ node.node.annotation }}</span>
+      }
     </div>
-
-    <span class="tree-annotation"
-      [matTooltip]="node.node.annotation">{{ node.node.annotation }}</span>
 
     <span class="tree-score mat-body-1">{{ node.node.score }}</span>
 
@@ -51,6 +57,18 @@
         [class.positive]="node.node.score > mainPathScore()"
         [class.negative]="node.node.score < mainPathScore()">
         {{ node.scoreDelta }}
+      </span>
+    }
+
+    @if (node.breakdownChips) {
+      <span class="tree-breakdown-chips">
+        @for (chip of node.breakdownChips; track chip.label) {
+          <mat-chip
+            [style.--mdc-chip-elevated-container-color]="chip.color"
+            [style.--mdc-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
+            {{ chip.label }} ×{{ chip.count }}
+          </mat-chip>
+        }
       </span>
     }
 

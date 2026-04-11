@@ -60,6 +60,32 @@
   }
 }
 
+.node-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.handtrap-label {
+  color: var(--mat-sys-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-breakdown-chips {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+
+  mat-chip {
+    --mdc-chip-container-height: 20px;
+    font-size: 0.65rem;
+  }
+}
+
 .truncated-icon {
   font-size: 18px;
   color: var(--text-secondary);
