@@ -24,6 +24,13 @@
   border-radius: 2px;
 }
 
+.handtrap-chip {
+  border: 1px dashed var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-variant, rgba(128, 128, 128, 0.08));
+  border-radius: 4px;
+  padding: 2px;
+}
+
 .breadcrumb-chevron {
   font-size: 18px;
   color: var(--text-secondary);

@@ -12,7 +12,9 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -32,7 +34,7 @@ interface DeduplicatedCard {
 @Component({
   selector: 'app-solver-config',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, TranslatePipe],
+  imports: [MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule, TranslatePipe],
   templateUrl: './solver-config.component.html',
   styleUrl: './solver-config.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,6 +55,9 @@ export class SolverConfigComponent {
   readonly algorithm = signal<'dfs' | 'mcts' | 'auto'>(this.solverService.prefs().algorithm);
   readonly mode = signal<'goldfish' | 'adversarial'>(this.solverService.prefs().mode);
   readonly selectedHandtraps = signal<number[]>([...this.solverService.prefs().handtrapIds]);
+  readonly deckSeed = signal('');
+  readonly showAdvanced = signal(false);
+  readonly deckSeedValid = computed(() => !this.deckSeed() || /^\d+,\d+$/.test(this.deckSeed().trim()));
   readonly dfsHint = signal(false);
   private _savedAlgorithm: 'dfs' | null = null;
   private _dfsHintTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -123,6 +128,7 @@ export class SolverConfigComponent {
       const deckId = String(deck.id ?? '');
       const stored = this.solverService.getHandForDeck(deckId);
       this.selectedHand.set(stored);
+      this.deckSeed.set('');
     });
 
     // Persist hand back to the service whenever it changes (without writing
@@ -291,6 +297,7 @@ export class SolverConfigComponent {
     }
 
     const deck = this.deck();
+    const seedValue = this.deckSeed().trim();
     this.solve.emit({
       deckId: String(deck.id!),
       hand,
@@ -298,6 +305,7 @@ export class SolverConfigComponent {
       speed: this.speed(),
       algorithm: this.algorithm(),
       handtraps,
+      deckSeed: seedValue && this.deckSeedValid() ? seedValue : undefined,
     });
   }
 }

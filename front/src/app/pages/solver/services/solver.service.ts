@@ -1,4 +1,5 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
 import { environment } from '../../../../environments/environment';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SolverDebugLogService } from './solver-debug-log.service';
@@ -114,6 +115,7 @@ function loadPins(): PinnedResult[] {
 @Injectable({ providedIn: 'root' })
 export class SolverService implements OnDestroy {
   private readonly notify = inject(NotificationService);
+  private readonly clipboard = inject(Clipboard);
   private readonly debugLog = inject(SolverDebugLogService, { optional: true });
 
   readonly solverState = signal<SolverState>('idle');
@@ -192,7 +194,7 @@ export class SolverService implements OnDestroy {
       handCards,
       config: { ...config },
       minimax: result.minimax,
-      deckSeed: undefined,
+      deckSeed: result.stats.deckSeed,
       savedAt: Date.now(),
     };
 
@@ -203,6 +205,75 @@ export class SolverService implements OnDestroy {
   unpinResult(index: number): void {
     this.pinnedResults.update(pins => pins.filter((_, i) => i !== index));
     this.persistPins(this.pinnedResults());
+  }
+
+  exportResult(): void {
+    const result = this.result();
+    const config = this.lastSolveConfig();
+    if (!result || !config) return;
+
+    const cardNames = this.currentCardNames();
+
+    const hand = Object.entries(config.hand).map(([idStr, count]) => ({
+      cardId: Number(idStr),
+      cardName: cardNames.get(Number(idStr)) ?? `#${idStr}`,
+      count,
+    }));
+
+    const bd = result.scoreBreakdown;
+    const scoreBreakdown = Object.fromEntries(
+      Object.entries(bd).filter(([k, v]) => v !== 0 || k === 'total' || k === 'weighted')
+    );
+
+    const exportObj: Record<string, unknown> = {
+      deckName: config.deckName,
+      deckId: config.deckId,
+      deckSeed: result.stats.deckSeed,
+      hand,
+      mode: config.mode,
+      speed: config.speed,
+      algorithm: config.algorithm,
+      algorithmUsed: result.stats.algorithmUsed,
+      score: result.score,
+      scoreBreakdown,
+      endBoardCards: (result.endBoardCards ?? []).map(c => ({ cardId: c.cardId, cardName: c.cardName, zone: c.zone })),
+    };
+
+    if (result.minimax != null) {
+      exportObj['minimax'] = result.minimax;
+    }
+
+    if (config.mode === 'adversarial' && config.handtraps) {
+      const htList = this.handtraps() ?? [];
+      exportObj['handtraps'] = config.handtraps.map(id => {
+        const ht = htList.find(h => h.cardId === id);
+        return { cardId: id, cardName: ht?.cardName ?? cardNames.get(id) ?? `#${id}` };
+      });
+    }
+
+    if (result.adversarialTimings) {
+      exportObj['adversarialTimings'] = result.adversarialTimings.map(t => ({
+        handtrapCardName: t.handtrapCardName,
+        usedAtStep: result.mainPath[t.stepIndex]?.cardName ?? `step ${t.stepIndex}`,
+      }));
+    }
+
+    exportObj['mainPath'] = result.mainPath.map(a => ({
+      cardName: a.cardName,
+      actionDescription: a.actionDescription,
+    }));
+
+    if (result.partial) {
+      exportObj['partial'] = true;
+    }
+
+    exportObj['timestamp'] = Date.now();
+
+    if (this.clipboard.copy(JSON.stringify(exportObj, null, 2))) {
+      this.notify.success('solver.export.copied');
+    } else {
+      this.notify.error('solver.export.failed');
+    }
   }
 
   private persistPins(pins: PinnedResult[]): void {
@@ -331,6 +402,7 @@ export class SolverService implements OnDestroy {
   restoreHistoryEntry(entry: HistoryEntry): void {
     if (this.solverState() === 'running') return;
     this.result.set(entry.result);
+    this.lastSolveConfig.set(entry.config);
     this.solverState.set('complete');
     this.updatePrefs({
       speed: entry.config.speed,

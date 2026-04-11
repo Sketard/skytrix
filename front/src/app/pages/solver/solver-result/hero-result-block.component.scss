@@ -3,6 +3,10 @@
   align-items: flex-start;
   gap: 1rem;
   padding: 1rem;
+
+  &.hero-adversarial {
+    flex-direction: column;
+  }
 }
 
 .score-section {
@@ -78,6 +82,12 @@
   border-bottom-left-radius: 3px;
   white-space: nowrap;
   pointer-events: auto;
+}
+
+.minimax-label {
+  color: var(--mat-sys-on-surface-variant);
+  margin-left: 0.5rem;
+  white-space: nowrap;
 }
 
 .partial-badge {

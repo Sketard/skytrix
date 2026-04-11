@@ -11,5 +11,6 @@ import { TranslatePipe } from '@ngx-translate/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BrickStateBlockComponent {
-  readonly brickType = input.required<'pure-brick'>();
+  readonly brickType = input.required<'pure-brick' | 'no-resilient-line'>();
+  readonly goldfishScore = input<number | undefined>();
 }

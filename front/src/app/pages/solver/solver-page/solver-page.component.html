@@ -48,6 +48,12 @@
               (click)="solverService.pinResult()">
               <mat-icon fontIcon="push_pin"></mat-icon>
             </button>
+            <button mat-icon-button
+              [attr.aria-label]="'solver.export.export' | translate"
+              [matTooltip]="'solver.export.export' | translate"
+              (click)="solverService.exportResult()">
+              <mat-icon fontIcon="content_copy"></mat-icon>
+            </button>
             @if (solverService.sessionHistory().length > 0) {
               <app-solver-history-menu
                 [history]="solverService.sessionHistory()"
@@ -62,6 +68,10 @@
               [result]="r"
               [isPartial]="solverService.isPartialResult()"
               [cardImageMap]="cardImageMap()" />
+
+            @if (r.minimax != null && r.minimax === 0 && r.scoreBreakdown.weighted > 0 && !solverService.isPartialResult()) {
+              <app-brick-state-block brickType="no-resilient-line" [goldfishScore]="r.score" />
+            }
 
             @if (r.mainPath.length > 0) {
               <app-breadcrumb-path

@@ -208,6 +208,6 @@ export interface PinnedResult {
   handCards: { cardId: number; cardName: string }[];
   config: HistoryEntryConfig;
   minimax?: number;
-  deckSeed?: number;
+  deckSeed?: string;
   savedAt: number;
 }

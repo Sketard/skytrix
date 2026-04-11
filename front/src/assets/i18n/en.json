@@ -481,7 +481,11 @@
       "handtrapsLoading": "Loading handtraps...",
       "handtrapsEmpty": "No handtraps available",
       "dfsHint": "DFS does not support adversarial — switched to Auto",
-      "selectHandtrap": "Select at least 1 handtrap for adversarial mode"
+      "selectHandtrap": "Select at least 1 handtrap for adversarial mode",
+      "deckSeed": "Deck Seed",
+      "deckSeedTooltip": "Exact reproduction for DFS without random effects. Approximate if the combo involves searches, shuffles, or coin flips. MCTS is always approximate.",
+      "deckSeedInvalid": "Expected format: two integers separated by comma",
+      "advancedOptions": "Advanced options"
     },
     "progress": {
       "exploring": "Exploring combo lines...",
@@ -510,7 +514,12 @@
       "tree": {
         "pruned": "... and {{count}} other branches",
         "truncated": "Subtree cut for size"
-      }
+      },
+      "worstCase": "Worst-case",
+      "noResilientLine": "No resilient line found",
+      "noResilientLineMessage": "All combo paths are broken by the selected handtraps.",
+      "goldfishScoreRef": "Goldfish score: {{score}}",
+      "worstCaseAria": "Worst-case resilience: {{minimax}}"
     },
     "error": {
       "deckNotFound": "Deck not found",
@@ -528,6 +537,11 @@
       "justNow": "Just now",
       "minutesAgo": "{{n}}m ago",
       "hoursAgo": "{{n}}h ago"
+    },
+    "export": {
+      "export": "Export",
+      "copied": "Result copied to clipboard",
+      "failed": "Failed to copy to clipboard"
     },
     "pin": {
       "pin": "Pin result",

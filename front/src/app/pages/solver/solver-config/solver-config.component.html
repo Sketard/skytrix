@@ -109,6 +109,25 @@
         </div>
       }
 
+      <button mat-button class="advanced-toggle" (click)="showAdvanced.set(!showAdvanced())">
+        {{ 'solver.config.advancedOptions' | translate }}
+        <mat-icon [fontIcon]="showAdvanced() ? 'expand_less' : 'expand_more'"></mat-icon>
+      </button>
+      @if (showAdvanced()) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'solver.config.deckSeed' | translate }}</mat-label>
+          <input #seedInput matInput
+            placeholder="e.g. 123456,789012"
+            [value]="deckSeed()"
+            (input)="deckSeed.set(seedInput.value)"
+            [disabled]="isLocked()"
+            [matTooltip]="'solver.config.deckSeedTooltip' | translate">
+        </mat-form-field>
+        @if (!deckSeedValid() && deckSeed()) {
+          <span class="seed-error">{{ 'solver.config.deckSeedInvalid' | translate }}</span>
+        }
+      }
+
       <div class="solve-actions">
         <button mat-raised-button color="accent"
           [disabled]="!canQuickSolve()"

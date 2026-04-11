@@ -10,6 +10,7 @@ import { createHoverPopupController } from './hover-popup.controller';
 interface BreadcrumbItem {
   action: SolverAction;
   imageUrl: string;
+  isHandtrap: boolean;
 }
 
 @Component({
@@ -33,10 +34,14 @@ export class BreadcrumbPathComponent {
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const path = this.mainPath();
     const imgMap = this.cardImageMap();
-    return path.map(action => ({
-      action,
-      imageUrl: imgMap.get(action.cardId) ?? 'assets/images/card_back.jpg',
-    }));
+    return path.map(action => {
+      const inDeck = imgMap.has(action.cardId);
+      return {
+        action,
+        imageUrl: inDeck ? imgMap.get(action.cardId)! : `/api/documents/small/code/${action.cardId}`,
+        isHandtrap: !inDeck,
+      };
+    });
   });
 
   onChipEnter(index: number): void {

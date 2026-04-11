@@ -1,6 +1,7 @@
 <div class="breadcrumb-container" role="navigation" [attr.aria-label]="'Combo path'">
   @for (crumb of breadcrumbs(); track $index; let last = $last, i = $index) {
     <div class="breadcrumb-chip"
+      [class.handtrap-chip]="crumb.isHandtrap"
       (click)="chipClick.emit(crumb.action)"
       (mouseenter)="onChipEnter(i)"
       (mouseleave)="onChipLeave()"

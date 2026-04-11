@@ -132,12 +132,20 @@ export class HeroResultBlockComponent {
 
   readonly hasFallbackCards = computed(() => this.endBoardDisplay().some(c => c.isFallback));
 
+  readonly isAdversarial = computed(() => this.result().minimax != null);
+
+  readonly showMinimax = computed(() => this.isAdversarial() && this.result().minimax !== this.result().score);
+
   readonly ariaLabel = computed(() => {
     const count = this.totalInterruptions();
     const label = count === 1
       ? this.translate.instant('solver.result.interruptionSingular')
       : this.translate.instant('solver.result.interruptions');
-    return `Score: ${this.result().score}, ${count} ${label}`;
+    let aria = `Score: ${this.result().score}, ${count} ${label}`;
+    if (this.showMinimax()) {
+      aria += `. ${this.translate.instant('solver.result.worstCaseAria', { minimax: this.result().minimax })}`;
+    }
+    return aria;
   });
 
   onCardEnter(card: EndBoardCardDisplay): void {

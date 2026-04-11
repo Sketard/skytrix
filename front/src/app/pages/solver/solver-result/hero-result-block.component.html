@@ -1,4 +1,5 @@
 <div class="hero-container"
+  [class.hero-adversarial]="isAdversarial()"
   [attr.aria-label]="ariaLabel()">
 
   <div class="score-section">
@@ -11,6 +12,9 @@
         <mat-icon class="fallback-icon"
           fontIcon="info_outline"
           [matTooltip]="'solver.result.fallbackHint' | translate"></mat-icon>
+      }
+      @if (showMinimax()) {
+        <span class="minimax-label mat-body-2">{{ 'solver.result.worstCase' | translate }}: {{ result().minimax }}</span>
       }
     </div>
 

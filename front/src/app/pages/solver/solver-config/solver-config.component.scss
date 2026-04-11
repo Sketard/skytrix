@@ -163,6 +163,18 @@
   white-space: nowrap;
 }
 
+.advanced-toggle {
+  font-size: 0.85em;
+  opacity: 0.7;
+  padding: 0;
+}
+
+.seed-error {
+  font-size: 0.75rem;
+  color: var(--mat-warn-color, #f44336);
+  margin-top: -0.5rem;
+}
+
 .solve-actions {
   width: 100%;
   display: flex;
