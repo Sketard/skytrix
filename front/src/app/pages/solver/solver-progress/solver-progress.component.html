@@ -2,7 +2,7 @@
   <mat-spinner [diameter]="48"></mat-spinner>
 
   <p class="progress-message">
-    {{ (progress()?.stalled ? 'solver.progress.stalled' : 'solver.progress.exploring') | translate }}
+    {{ (isVerifying() ? 'solver.verify.verifying' : progress()?.stalled ? 'solver.progress.stalled' : 'solver.progress.exploring') | translate }}
   </p>
 
   @if (progress(); as p) {

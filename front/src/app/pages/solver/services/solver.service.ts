@@ -129,6 +129,7 @@ export class SolverService implements OnDestroy {
   readonly sessionHistory = signal<HistoryEntry[]>([]);
   readonly currentDeckId = signal<string | null>(null);
   readonly isPartialResult = computed(() => this.result()?.partial === true);
+  readonly isVerifying = signal(false);
 
   private readonly currentDeckName = signal('');
   private readonly currentCardNames = signal<Map<number, string>>(new Map());
@@ -152,6 +153,10 @@ export class SolverService implements OnDestroy {
   readonly cooldownUntil = computed(() => this.lastSolveAt() + SOLVE_COOLDOWN_MS);
 
   private readonly lastSolveConfig = signal<HistoryEntryConfig | null>(null);
+  /** Card-name snapshot taken at solve time — survives deck navigation so
+   *  pinResult() and exportResult() resolve names correctly even if the
+   *  user navigated to a different deck before clicking Pin/Export. */
+  private readonly lastSolveCardNames = signal<Map<number, string>>(new Map());
 
   getHandForDeck(deckId: string): Record<number, number> {
     return this.handsByDeck()[deckId] ?? {};
@@ -179,7 +184,8 @@ export class SolverService implements OnDestroy {
     const config = this.lastSolveConfig();
     if (!result || !config || this.pinnedResults().length >= PINNED_RESULTS_CAP) return;
 
-    const cardNames = this.currentCardNames();
+    const saved = this.lastSolveCardNames();
+    const cardNames = saved.size > 0 ? saved : this.currentCardNames();
     const handCards = Object.entries(config.hand).flatMap(([idStr, count]) => {
       const cardId = Number(idStr);
       const cardName = cardNames.get(cardId) ?? `#${cardId}`;
@@ -212,7 +218,8 @@ export class SolverService implements OnDestroy {
     const config = this.lastSolveConfig();
     if (!result || !config) return;
 
-    const cardNames = this.currentCardNames();
+    const saved = this.lastSolveCardNames();
+    const cardNames = saved.size > 0 ? saved : this.currentCardNames();
 
     const hand = Object.entries(config.hand).map(([idStr, count]) => ({
       cardId: Number(idStr),
@@ -387,6 +394,7 @@ export class SolverService implements OnDestroy {
     const msg: SolverStartMessage = { type: SOLVER_START, ...config };
     if (this.sendMessage(msg)) {
       this.lastSolveConfig.set(solveConfig);
+      this.lastSolveCardNames.set(new Map(this.currentCardNames()));
     } else {
       this.solverState.set('error');
       this.error.set({ error: 'INTERNAL_ERROR', message: 'Connection not ready' });
@@ -399,10 +407,60 @@ export class SolverService implements OnDestroy {
     this.sendMessage({ type: SOLVER_CANCEL });
   }
 
+  verify(): void {
+    const r = this.result();
+    if (!r || !r.adversarialTimings?.length) return;
+
+    this.lastInteractionTs = Date.now();
+    this.isVerifying.set(true);
+    this.solverState.set('running');
+    this.progress.set(null);
+    this.error.set(null);
+
+    const config = this.lastSolveConfig();
+    if (!config) return;
+
+    const msg: SolverStartMessage = {
+      type: SOLVER_START,
+      deckId: config.deckId,
+      hand: Object.entries(config.hand).flatMap(([id, count]) =>
+        Array.from({ length: count }, () => Number(id)),
+      ),
+      mode: 'adversarial',
+      speed: config.speed,
+      algorithm: config.algorithm,
+      handtraps: (config.handtraps ?? []).map(id => {
+        const ht = this.handtraps()?.find(h => h.cardId === id);
+        return { cardId: id, cardName: ht?.cardName ?? '' };
+      }),
+      deckSeed: r.stats.deckSeed,
+      verifyPath: r.mainPath,
+      verifyTimings: r.adversarialTimings,
+      verifyExpectedScore: r.score,
+    };
+
+    if (!this.sendMessage(msg)) {
+      this.isVerifying.set(false);
+      this.solverState.set('error');
+      this.error.set({ error: 'INTERNAL_ERROR', message: 'Connection not ready' });
+      this.notify.error('solver.error.connectionFailed');
+    }
+  }
+
   restoreHistoryEntry(entry: HistoryEntry): void {
     if (this.solverState() === 'running') return;
     this.result.set(entry.result);
     this.lastSolveConfig.set(entry.config);
+    // Rebuild card name map from history entry for pin/export support
+    const nameMap = new Map<number, string>();
+    let nameIdx = 0;
+    for (const [idStr, count] of Object.entries(entry.config.hand)) {
+      if (nameIdx < entry.handCardNames.length) {
+        nameMap.set(Number(idStr), entry.handCardNames[nameIdx]);
+      }
+      nameIdx += count;
+    }
+    this.lastSolveCardNames.set(nameMap);
     this.solverState.set('complete');
     this.updatePrefs({
       speed: entry.config.speed,
@@ -478,6 +536,18 @@ export class SolverService implements OnDestroy {
           this.reconnectResultGraceId = null;
         }
         const payload = msg as unknown as SolverResultMessage;
+
+        // Verify result: patch in-place, do not replace full result or add to history
+        if (payload.isVerifyResult) {
+          this.isVerifying.set(false);
+          this.result.update(r => r ? { ...r, verified: payload.verified } : r);
+          this.solverState.set('complete');
+          if (payload.verified === false && payload.stats?.verifyDivergence) {
+            this.notify.error(payload.stats.verifyDivergence, undefined, 0);
+          }
+          break;
+        }
+
         const result = this.mapResult(payload);
         this.addToHistory(result);
 
@@ -496,6 +566,7 @@ export class SolverService implements OnDestroy {
       }
 
       case SOLVER_CANCELLED: {
+        this.isVerifying.set(false);
         const payload = msg as unknown as SolverCancelledMessage;
         if (payload.partialTree) {
           const partialResult: SolverResult = {
@@ -517,6 +588,7 @@ export class SolverService implements OnDestroy {
       }
 
       case SOLVER_ERROR: {
+        this.isVerifying.set(false);
         const payload = msg as unknown as SolverErrorWsMsg;
         this.error.set({ error: payload.error, message: payload.message });
         this.notify.error(payload.message, undefined, 0);

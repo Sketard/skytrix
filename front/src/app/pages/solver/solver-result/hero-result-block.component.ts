@@ -136,6 +136,11 @@ export class HeroResultBlockComponent {
 
   readonly showMinimax = computed(() => this.isAdversarial() && this.result().minimax !== this.result().score);
 
+  readonly verifiedStatus = computed<'verified' | 'failed' | null>(() => {
+    if (!this.isAdversarial() || this.result().verified == null) return null;
+    return this.result().verified ? 'verified' : 'failed';
+  });
+
   readonly ariaLabel = computed(() => {
     const count = this.totalInterruptions();
     const label = count === 1
@@ -144,6 +149,12 @@ export class HeroResultBlockComponent {
     let aria = `Score: ${this.result().score}, ${count} ${label}`;
     if (this.showMinimax()) {
       aria += `. ${this.translate.instant('solver.result.worstCaseAria', { minimax: this.result().minimax })}`;
+    }
+    const vs = this.verifiedStatus();
+    if (vs === 'verified') {
+      aria += `. ${this.translate.instant('solver.verify.verifiedAria')}`;
+    } else if (vs === 'failed') {
+      aria += `. ${this.translate.instant('solver.verify.failedAria')}`;
     }
     return aria;
   });

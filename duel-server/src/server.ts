@@ -2808,14 +2808,20 @@ async function fetchDeckFromBackend(deckId: string, jwt: string): Promise<
 
 async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStartMessage): Promise<void> {
   try {
-    // Rate limit check (AC #6) — set timestamp synchronously BEFORE first await
-    const now = Date.now();
-    const lastStart = solverLastStart.get(userId);
-    if (lastStart !== undefined && now - lastStart < solverRateLimitIntervalMs) {
-      sendSolverError(ws, 'RATE_LIMITED', 'Please wait before starting another solve');
-      return;
+    // Verify mode detection — skip rate limit (verify costs ~62ms, not a full solve)
+    const isVerifyMode = Array.isArray(msg.verifyPath) && msg.verifyPath.length > 0
+      && Array.isArray(msg.verifyTimings);
+
+    // Rate limit check (AC #6) — skip for verify mode
+    if (!isVerifyMode) {
+      const now = Date.now();
+      const lastStart = solverLastStart.get(userId);
+      if (lastStart !== undefined && now - lastStart < solverRateLimitIntervalMs) {
+        sendSolverError(ws, 'RATE_LIMITED', 'Please wait before starting another solve');
+        return;
+      }
+      solverLastStart.set(userId, now);
     }
-    solverLastStart.set(userId, now);
 
     // Input validation (AC #10)
     if (!Array.isArray(msg.hand) || msg.hand.length < 1 || msg.hand.length > 5 || !msg.hand.every(c => Number.isInteger(c) && c > 0)) {
@@ -2852,6 +2858,25 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       const invalidIds = msg.handtraps.filter(h => !validIds.has(h.cardId));
       if (invalidIds.length > 0) {
         sendSolverError(ws, 'INTERNAL_ERROR', `Invalid handtrap cardIds: ${invalidIds.map(h => h.cardId).join(', ')}`);
+        return;
+      }
+    }
+    // Verify-mode input validation
+    if (isVerifyMode) {
+      if (msg.mode !== 'adversarial') {
+        sendSolverError(ws, 'INTERNAL_ERROR', 'Verify mode requires adversarial mode');
+        return;
+      }
+      if (!msg.verifyPath!.every(a => typeof a.responseIndex === 'number' && typeof a.cardId === 'number')) {
+        sendSolverError(ws, 'INTERNAL_ERROR', 'verifyPath must contain valid SolverAction entries');
+        return;
+      }
+      if (!msg.verifyTimings!.every(t => typeof t.stepIndex === 'number' && typeof t.responseIndex === 'number' && typeof t.handtrapCardId === 'number')) {
+        sendSolverError(ws, 'INTERNAL_ERROR', 'verifyTimings must contain valid AdversarialTiming entries');
+        return;
+      }
+      if (typeof msg.verifyExpectedScore !== 'number') {
+        sendSolverError(ws, 'INTERNAL_ERROR', 'verifyExpectedScore is required for verify mode');
         return;
       }
     }
@@ -2915,6 +2940,34 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       timeLimitMs: msg.speed === 'fast' ? solverTimeBudgetFastMs : solverTimeBudgetOptimalMs,
       ...(msg.mode === 'adversarial' ? { handtraps: msg.handtraps } : {}),
     };
+
+    // Verify mode: fast single-worker dispatch, no caching, no progress
+    if (isVerifyMode) {
+      console.log('[Solver] verify-start', { userId, deckId: msg.deckId });
+      const startTime = Date.now();
+      try {
+        const verifyResult = await solverOrchestrator!.verify(duelConfig, msg.verifyPath!, msg.verifyTimings!, msg.verifyExpectedScore!);
+        const elapsed = Date.now() - startTime;
+        const deckSeedStr = deckSeed.map(String).join(',');
+        const currentWs = solverConnections.get(userId);
+        const resultMsg: SolverResultMessage = {
+          type: SOLVER_RESULT,
+          tree: { action: { responseIndex: 0, cardId: 0, cardName: '', actionDescription: '' }, annotation: '', score: 0, confidence: 0, children: [], isTerminal: true },
+          mainPath: [],
+          score: 0,
+          scoreBreakdown: { omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0, controlChange: 0, banish: 0, banishFacedown: 0, attach: 0, spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0, bounce: 0, handRip: 0, sendToGy: 0, weighted: 0, fallbackPoints: 0, total: 0 },
+          stats: { nodesExplored: 0, elapsed, algorithm: 'verify', algorithmUsed: 'verify', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
+          verified: verifyResult.verified,
+          isVerifyResult: true,
+        };
+        sendSolverMessage(currentWs, resultMsg);
+        console.log('[Solver] verify-complete', { userId, verified: verifyResult.verified, elapsed });
+      } catch (err) {
+        console.error('[Solver] verify-error', { userId, err });
+        sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'Verification failed unexpectedly');
+      }
+      return;
+    }
 
     // Evict previous cache
     evictSolverResult(userId);

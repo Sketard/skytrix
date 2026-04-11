@@ -31,6 +31,7 @@
       @if (solverState() === 'running') {
         <app-solver-progress
           [progress]="solverService.progress()"
+          [isVerifying]="solverService.isVerifying()"
           (cancel)="onCancel()" />
       }
       @if (solverState() === 'complete') {
@@ -54,6 +55,16 @@
               (click)="solverService.exportResult()">
               <mat-icon fontIcon="content_copy"></mat-icon>
             </button>
+            @if (r.adversarialTimings?.length) {
+              <button mat-stroked-button
+                [attr.aria-label]="'solver.verify.verify' | translate"
+                [matTooltip]="'solver.verify.prngWarning' | translate"
+                [disabled]="solverService.isVerifying() || solverState() === 'running' || r.verified != null"
+                (click)="onVerify()">
+                <mat-icon fontIcon="verified"></mat-icon>
+                {{ 'solver.verify.verify' | translate }}
+              </button>
+            }
             @if (solverService.sessionHistory().length > 0) {
               <app-solver-history-menu
                 [history]="solverService.sessionHistory()"

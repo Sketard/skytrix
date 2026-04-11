@@ -23,6 +23,8 @@ import type {
   SolverResult,
   SolverProgress,
   SolverAction,
+  AdversarialTiming,
+  VerifyResult,
 } from './solver-types.js';
 
 // =============================================================================
@@ -39,8 +41,11 @@ interface SolveTask {
   seed: bigint[];
   algorithm: 'dfs' | 'mcts' | 'auto';
   progressPort: MessagePort;
-  type?: 'health-check';
+  type?: 'health-check' | 'verify';
   topK?: number;
+  verifyPath?: SolverAction[];
+  verifyTimings?: AdversarialTiming[];
+  verifyExpectedScore?: number;
 }
 
 interface WorkerResult {
@@ -75,10 +80,15 @@ const ismctsSolver = new IsMctsSolver(scorer, adapter, ranker, allConfigs.solver
 // Default Export — piscina calls this per task
 // =============================================================================
 
-export default async function runSolve(task: SolveTask): Promise<WorkerResult | { ok: true }> {
+export default async function runSolve(task: SolveTask): Promise<WorkerResult | VerifyResult | { ok: true }> {
   // Health check guard
   if (!task || task.type === 'health-check') {
     return { ok: true };
+  }
+
+  // Verify mode: replay adversarial path on a fresh duel
+  if (task.type === 'verify') {
+    return verifyAdversarialPath(adapter, task.duelConfig, task.verifyPath!, task.verifyTimings!, task.verifyExpectedScore ?? 0);
   }
 
   const { duelConfig, solverConfig, seed, algorithm, progressPort, topK = 3 } = task;
@@ -271,6 +281,110 @@ function verifyMainPath(
   } catch (err) {
     console.warn('[Solver] verification-threw', { error: String(err) });
     return false;
+  } finally {
+    oracle.destroyDuel(handle);
+  }
+}
+
+// =============================================================================
+// Adversarial Verification — Replay with opponent handtrap injection at timings
+// =============================================================================
+
+function verifyAdversarialPath(
+  oracle: OCGCoreAdapter,
+  duelConfig: DuelConfig,
+  verifyPath: SolverAction[],
+  verifyTimings: AdversarialTiming[],
+  expectedScore: number,
+): VerifyResult {
+  if (verifyPath.length === 0) return { verified: true };
+
+  // Build a timing lookup: playerStepIndex → AdversarialTiming
+  const timingMap = new Map<number, AdversarialTiming>();
+  for (const t of verifyTimings) {
+    timingMap.set(t.stepIndex, t);
+  }
+
+  const handle = oracle.createDuel(duelConfig);
+  try {
+    let playerStepIndex = 0;
+    let pathIndex = 0;
+
+    while (pathIndex < verifyPath.length) {
+      const legalActions = oracle.getLegalActions(handle);
+
+      // Empty actions means duel ended
+      if (legalActions.length === 0) {
+        return {
+          verified: false,
+          divergenceStep: pathIndex,
+          reason: `Step ${pathIndex}: duel ended prematurely (expected ${verifyPath.length - pathIndex} more actions)`,
+        };
+      }
+
+      // Opponent prompt (team === 1): handle via timings or auto-pass
+      if (legalActions[0]?.team === 1) {
+        const timing = timingMap.get(playerStepIndex);
+        if (timing) {
+          // Inject the handtrap activation at this timing
+          const match = legalActions.find(
+            a => a.responseIndex === timing.responseIndex,
+          );
+          if (!match) {
+            return {
+              verified: false,
+              divergenceStep: pathIndex,
+              reason: `Step ${pathIndex}: opponent timing responseIndex ${timing.responseIndex} (${timing.handtrapCardName}) not in legal actions`,
+            };
+          }
+          oracle.applyAction(handle, match);
+        } else {
+          // No timing for this step — auto-pass (decline chain)
+          const pass = legalActions.find(a => a.responseIndex === -1);
+          if (pass) {
+            oracle.applyAction(handle, pass);
+          } else {
+            // No pass option — pick first action (shouldn't happen for SELECT_CHAIN)
+            oracle.applyAction(handle, legalActions[0]);
+          }
+        }
+        continue; // Don't increment pathIndex or playerStepIndex for opponent prompts
+      }
+
+      // Player prompt: match against verifyPath
+      const expected = verifyPath[pathIndex];
+      const match = legalActions.find(
+        a => a.responseIndex === expected.responseIndex && a.cardId === expected.cardId,
+      );
+      if (!match) {
+        return {
+          verified: false,
+          divergenceStep: pathIndex,
+          reason: `Step ${pathIndex}: expected ${expected.cardName} (idx ${expected.responseIndex}) but not in legal actions`,
+        };
+      }
+      oracle.applyAction(handle, match);
+      playerStepIndex++;
+      pathIndex++;
+    }
+
+    // All actions replayed — compare final board score
+    const fieldState = oracle.getFieldState(handle);
+    const { score: finalScore } = scorer.score(fieldState);
+    if (finalScore !== expectedScore) {
+      return {
+        verified: false,
+        divergenceStep: verifyPath.length,
+        reason: `Final board score mismatch: expected ${expectedScore}, got ${finalScore}`,
+      };
+    }
+    return { verified: true };
+  } catch (err) {
+    return {
+      verified: false,
+      divergenceStep: -1,
+      reason: `Verification threw: ${String(err)}`,
+    };
   } finally {
     oracle.destroyDuel(handle);
   }

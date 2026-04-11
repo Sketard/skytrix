@@ -196,6 +196,7 @@ export interface SolverStats {
   deckSeed: string;
   /** Set when a solver bails out early due to a streak of iteration errors. */
   abortedDueToFailures?: number;
+  verifyDivergence?: string;
 }
 
 export interface SolverProgress {
@@ -221,6 +222,12 @@ export interface AdversarialTiming {
   handtrapCardId: number;
   handtrapCardName: string;
   responseIndex: number;
+}
+
+export interface VerifyResult {
+  verified: boolean;
+  divergenceStep?: number;
+  reason?: string;
 }
 
 // =============================================================================

@@ -552,6 +552,15 @@
       "goldfish": "Goldfish",
       "adversarial": "Adversarial",
       "pinLimit": "Maximum pins reached (4)"
+    },
+    "verify": {
+      "verify": "Verify",
+      "verified": "Verified",
+      "failed": "Verification failed",
+      "prngWarning": "Verification may fail for combos involving search or shuffle effects (e.g., ROTA, Branded Fusion send-from-deck) — OCGCore's internal PRNG may produce different post-search deck orders. This does not invalidate the original result.",
+      "verifying": "Verifying recommended line...",
+      "verifiedAria": "Result verified",
+      "failedAria": "Verification failed"
     }
   },
   "replay": {

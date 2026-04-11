@@ -180,6 +180,10 @@ export class SolverPageComponent implements OnInit, OnDestroy {
     this.solverService.cancel();
   }
 
+  onVerify(): void {
+    this.solverService.verify();
+  }
+
   ngOnDestroy(): void {
     // Do NOT disconnect the SolverService here. The service is `providedIn:
     // 'root'` precisely so a long-running solve can complete in the background

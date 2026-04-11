@@ -27,6 +27,7 @@ export class SolverProgressComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly progress = input.required<SolverProgress | null>();
+  readonly isVerifying = input(false);
   readonly cancel = output<void>();
 
   readonly scoreHighlighted = signal(false);

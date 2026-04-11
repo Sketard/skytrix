@@ -918,6 +918,7 @@ export interface SolverWsStats {
   averageBranchingFactor: number;
   transpositionHits?: number;
   deckSeed: string;
+  verifyDivergence?: string;
 }
 
 export interface SolverWsHandtrapConfig {
@@ -964,6 +965,9 @@ export interface SolverStartMessage {
   algorithm?: 'dfs' | 'mcts' | 'auto';
   handtraps?: SolverWsHandtrapConfig[];
   deckSeed?: string;
+  verifyPath?: SolverWsAction[];
+  verifyTimings?: SolverWsAdversarialTiming[];
+  verifyExpectedScore?: number;
 }
 
 export interface SolverCancelMessage {
@@ -997,6 +1001,7 @@ export interface SolverResultMessage {
   adversarialTimings?: SolverWsAdversarialTiming[];
   stats: SolverWsStats;
   verified?: boolean;
+  isVerifyResult?: boolean;
 }
 
 export interface SolverCancelledMessage {

@@ -82,6 +82,7 @@ export interface SolverStats {
   deckSeed: string;
   /** Set when a solver bails out early due to a streak of iteration errors. */
   abortedDueToFailures?: number;
+  verifyDivergence?: string;
 }
 
 // =============================================================================

@@ -38,6 +38,10 @@ import { onCardImgError } from './card-image-fallback';
       color: var(--mat-sys-on-surface-variant);
       margin-top: 2px;
     }
+    .pin-minimax {
+      font-size: 11px;
+      opacity: 0.8;
+    }
     .pin-mode {
       font-size: 11px;
       padding: 1px 6px;
@@ -68,6 +72,9 @@ import { onCardImgError } from './card-image-fallback';
           <mat-card-content>
             <div class="pin-header">
               <span class="pin-score">{{ pin.score }}</span>
+              @if (pin.config.mode === 'adversarial' && pin.minimax != null) {
+                <span class="pin-minimax">minimax {{ pin.minimax }}</span>
+              }
               <span class="pin-mode">
                 {{ (pin.config.mode === 'adversarial' ? 'solver.pin.adversarial' : 'solver.pin.goldfish') | translate }}
               </span>

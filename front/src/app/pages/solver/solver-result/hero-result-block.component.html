@@ -8,6 +8,12 @@
       @if (isPartial()) {
         <mat-chip class="partial-badge" highlighted>{{ 'solver.result.partial' | translate }}</mat-chip>
       }
+      @if (verifiedStatus() === 'verified') {
+        <mat-chip class="verified-chip">{{ 'solver.verify.verified' | translate }}</mat-chip>
+      }
+      @if (verifiedStatus() === 'failed') {
+        <mat-chip class="verified-chip failed">{{ 'solver.verify.failed' | translate }}</mat-chip>
+      }
       @if (hasFallbackCards()) {
         <mat-icon class="fallback-icon"
           fontIcon="info_outline"

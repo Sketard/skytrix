@@ -18,6 +18,8 @@ import type {
   SolverAction,
   SolverError,
   DecisionNode,
+  AdversarialTiming,
+  VerifyResult,
 } from './solver-types.js';
 
 // =============================================================================
@@ -352,6 +354,32 @@ export class SolverOrchestrator {
       active.controller.abort();
       active.resolved = true;
     }
+  }
+
+  // ===========================================================================
+  // verify — Dispatch adversarial path verification to a single worker
+  // ===========================================================================
+
+  async verify(
+    duelConfig: DuelConfig,
+    verifyPath: SolverAction[],
+    verifyTimings: AdversarialTiming[],
+    expectedScore: number,
+  ): Promise<VerifyResult> {
+    const task = {
+      duelConfig,
+      solverConfig: { mode: 'adversarial' as const, speed: 'fast' as const, timeLimitMs: 10_000 },
+      seed: duelConfig.deckSeed,
+      algorithm: 'dfs' as const,
+      progressPort: null,
+      type: 'verify' as const,
+      verifyPath,
+      verifyTimings,
+      verifyExpectedScore: expectedScore,
+    };
+
+    const result = await this.pool.run(task) as VerifyResult;
+    return result;
   }
 
   // ===========================================================================

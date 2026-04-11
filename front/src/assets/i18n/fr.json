@@ -483,9 +483,9 @@
       "dfsHint": "DFS ne supporte pas le mode adversarial — basculé sur Auto",
       "selectHandtrap": "Sélectionnez au moins 1 handtrap pour le mode adversarial",
       "deckSeed": "Seed du deck",
-      "deckSeedTooltip": "Reproduction exacte pour DFS sans effets aleatoires. Approximatif si le combo implique des recherches, melanges ou lancers de pieces. MCTS est toujours approximatif.",
-      "deckSeedInvalid": "Format attendu : deux entiers separes par une virgule",
-      "advancedOptions": "Options avancees"
+      "deckSeedTooltip": "Reproduction exacte pour DFS sans effets aléatoires. Approximatif si le combo implique des recherches, mélanges ou lancers de pièces. MCTS est toujours approximatif.",
+      "deckSeedInvalid": "Format attendu : deux entiers séparés par une virgule",
+      "advancedOptions": "Options avancées"
     },
     "progress": {
       "exploring": "Exploration des lignes de combo...",
@@ -540,18 +540,27 @@
     },
     "export": {
       "export": "Exporter",
-      "copied": "Resultat copie dans le presse-papiers",
-      "failed": "Echec de la copie dans le presse-papiers"
+      "copied": "Résultat copié dans le presse-papiers",
+      "failed": "Échec de la copie dans le presse-papiers"
     },
     "pin": {
-      "pin": "Epingler le resultat",
+      "pin": "Épingler le résultat",
       "unpin": "Retirer",
-      "pinned": "Epingle",
+      "pinned": "Épinglé",
       "hand": "Main",
       "endBoard": "Plateau final",
       "goldfish": "Goldfish",
       "adversarial": "Adversarial",
-      "pinLimit": "Nombre maximum d'epingles atteint (4)"
+      "pinLimit": "Nombre maximum d'épingles atteint (4)"
+    },
+    "verify": {
+      "verify": "Vérifier",
+      "verified": "Vérifié",
+      "failed": "Échec de la vérification",
+      "prngWarning": "La vérification peut échouer pour les combos impliquant des effets de recherche ou de mélange (ex : ROTA, Branded Fusion envoi depuis le deck) — le PRNG interne d'OCGCore peut produire un ordre de deck différent après la recherche. Cela n'invalide pas le résultat original.",
+      "verifying": "Vérification de la ligne recommandée...",
+      "verifiedAria": "Résultat vérifié",
+      "failedAria": "Échec de la vérification"
     }
   },
   "replay": {
