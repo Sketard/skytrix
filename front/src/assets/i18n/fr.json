@@ -474,6 +474,7 @@
       "algorithmMcts": "MCTS",
       "algorithmAuto": "Auto",
       "solve": "Résoudre",
+      "quickSolve": "Résolution rapide",
       "notEnoughCards": "Pas assez de cartes pour former une main",
       "modeAdversarial": "Adversarial",
       "handtraps": "Handtraps",

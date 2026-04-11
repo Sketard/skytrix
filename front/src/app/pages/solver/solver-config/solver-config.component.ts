@@ -72,6 +72,12 @@ export class SolverConfigComponent {
     }
     return true;
   });
+  readonly canQuickSolve = computed(() =>
+    !this.isLocked() &&
+    !this.inCooldown() &&
+    this.deduplicatedCards().length > 0 &&
+    (this.mode() !== 'adversarial' || this.selectedHandtraps().length > 0)
+  );
 
   readonly solveTooltip = computed(() => {
     if (this.totalSelected() < 1 || this.totalSelected() > 5) return 'solver.config.notEnoughCards';
@@ -258,6 +264,12 @@ export class SolverConfigComponent {
     } else {
       this.selectedHandtraps.set(this.selectedHandtraps().filter(id => id !== cardId));
     }
+  }
+
+  quickSolve(): void {
+    if (!this.canQuickSolve()) return;
+    this.fillRandom();
+    this.onSolve();
   }
 
   onSolve(): void {

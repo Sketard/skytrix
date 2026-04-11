@@ -109,12 +109,22 @@
         </div>
       }
 
-      <button mat-raised-button color="primary"
-        [disabled]="!canSolve()"
-        [matTooltip]="!canSolve() ? (solveTooltip() | translate) : ''"
-        (click)="onSolve()">
-        {{ 'solver.config.solve' | translate }}
-      </button>
+      <div class="solve-actions">
+        <button mat-raised-button color="accent"
+          [disabled]="!canQuickSolve()"
+          [matTooltip]="mode() === 'adversarial' && selectedHandtraps().length === 0 ? ('solver.config.selectHandtrap' | translate) : ''"
+          (click)="quickSolve()">
+          {{ 'solver.config.quickSolve' | translate }}
+        </button>
+
+        <button mat-raised-button color="accent"
+          [disabled]="!canSolve()"
+          [matTooltip]="!canSolve() ? (solveTooltip() | translate) : ''"
+          aria-keyshortcuts="Control+Enter"
+          (click)="onSolve()">
+          {{ 'solver.config.solve' | translate }}
+        </button>
+      </div>
     </div>
   }
 </section>

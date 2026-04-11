@@ -162,3 +162,10 @@
   font-size: 0.8125rem;
   white-space: nowrap;
 }
+
+.solve-actions {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
