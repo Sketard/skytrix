@@ -11,13 +11,16 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { Deck } from '../../../core/model/deck';
-import type { SolverState } from '../../../core/model/solver.model';
-import type { SolverStartConfig } from '../../../core/model/solver.model';
+import type { SolverState, HandtrapConfig, SolverStartConfig } from '../../../core/model/solver.model';
 import { SolverService } from '../services/solver.service';
+import { onCardImgError } from '../solver-result/card-image-fallback';
 
 interface DeduplicatedCard {
   cardId: number;
@@ -29,13 +32,13 @@ interface DeduplicatedCard {
 @Component({
   selector: 'app-solver-config',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, TranslatePipe],
+  imports: [MatButtonModule, MatButtonToggleModule, MatCheckboxModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, TranslatePipe],
   templateUrl: './solver-config.component.html',
   styleUrl: './solver-config.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SolverConfigComponent {
-  private readonly solverService = inject(SolverService);
+  protected readonly solverService = inject(SolverService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly deck = input.required<Deck>();
@@ -43,9 +46,16 @@ export class SolverConfigComponent {
 
   readonly solve = output<SolverStartConfig>();
 
+  readonly onImgError = onCardImgError;
+
   readonly selectedHand = signal<Record<number, number>>({});
   readonly speed = signal<'fast' | 'optimal'>(this.solverService.prefs().speed);
   readonly algorithm = signal<'dfs' | 'mcts' | 'auto'>(this.solverService.prefs().algorithm);
+  readonly mode = signal<'goldfish' | 'adversarial'>(this.solverService.prefs().mode);
+  readonly selectedHandtraps = signal<number[]>([...this.solverService.prefs().handtrapIds]);
+  readonly dfsHint = signal(false);
+  private _savedAlgorithm: 'dfs' | null = null;
+  private _dfsHintTimerId: ReturnType<typeof setTimeout> | null = null;
 
   // Tick every 250ms while a cooldown is pending so the disabled-state computed
   // re-evaluates without waiting for the next user interaction. Cleared on
@@ -53,9 +63,21 @@ export class SolverConfigComponent {
   private readonly cooldownTick = signal(Date.now());
   readonly isLocked = computed(() => this.solverState() === 'running');
   readonly inCooldown = computed(() => this.cooldownTick() < this.solverService.cooldownUntil());
-  readonly canSolve = computed(() =>
-    !this.isLocked() && !this.inCooldown() && this.totalSelected() >= 1 && this.totalSelected() <= 5
-  );
+  readonly canSolve = computed(() => {
+    if (this.isLocked() || this.inCooldown()) return false;
+    if (this.totalSelected() < 1 || this.totalSelected() > 5) return false;
+    if (this.mode() === 'adversarial') {
+      if (!this.solverService.handtraps()) return false;
+      if (this.selectedHandtraps().length === 0) return false;
+    }
+    return true;
+  });
+
+  readonly solveTooltip = computed(() => {
+    if (this.totalSelected() < 1 || this.totalSelected() > 5) return 'solver.config.notEnoughCards';
+    if (this.mode() === 'adversarial' && this.selectedHandtraps().length === 0) return 'solver.config.selectHandtrap';
+    return '';
+  });
 
   readonly deduplicatedCards = computed<DeduplicatedCard[]>(() => {
     const deck = this.deck();
@@ -106,12 +128,30 @@ export class SolverConfigComponent {
       this.solverService.setHandForDeck(deckId, hand);
     });
 
-    // Persist speed/algorithm preferences to localStorage immediately on change.
+    // Persist speed/algorithm/mode/handtrap preferences to localStorage.
     effect(() => {
-      this.solverService.updatePrefs({
-        speed: this.speed(),
-        algorithm: this.algorithm(),
-      });
+      const speed = this.speed();
+      const algorithm = this.algorithm();
+      const mode = this.mode();
+      const handtrapIds = this.selectedHandtraps();
+      const current = this.solverService.prefs();
+      if (speed === current.speed && algorithm === current.algorithm
+        && mode === current.mode
+        && handtrapIds.length === current.handtrapIds.length
+        && handtrapIds.every((id, i) => id === current.handtrapIds[i])) return;
+      this.solverService.updatePrefs({ speed, algorithm, mode, handtrapIds });
+    });
+
+    // Prune orphaned handtrap selections when server handtrap list changes.
+    effect(() => {
+      const serverHandtraps = this.solverService.handtraps();
+      if (!serverHandtraps) return;
+      const validIds = new Set(serverHandtraps.map(h => h.cardId));
+      const current = this.selectedHandtraps();
+      const pruned = current.filter(id => validIds.has(id));
+      if (pruned.length !== current.length) {
+        this.selectedHandtraps.set(pruned);
+      }
     });
 
     // Cooldown ticker — only runs while a cooldown is pending.
@@ -120,7 +160,10 @@ export class SolverConfigComponent {
         this.cooldownTick.set(Date.now());
       }
     }, 250);
-    this.destroyRef.onDestroy(() => clearInterval(tickerId));
+    this.destroyRef.onDestroy(() => {
+      clearInterval(tickerId);
+      if (this._dfsHintTimerId !== null) clearTimeout(this._dfsHintTimerId);
+    });
   }
 
   selectedCount(cardId: number): number {
@@ -190,6 +233,33 @@ export class SolverConfigComponent {
     this.selectedHand.set({});
   }
 
+  onModeChange(mode: 'goldfish' | 'adversarial'): void {
+    if (mode === 'adversarial' && this.algorithm() === 'dfs') {
+      this._savedAlgorithm = 'dfs';
+      this.algorithm.set('auto');
+      this.dfsHint.set(true);
+      if (this._dfsHintTimerId !== null) clearTimeout(this._dfsHintTimerId);
+      this._dfsHintTimerId = setTimeout(() => { this._dfsHintTimerId = null; this.dfsHint.set(false); }, 3000);
+    }
+    if (mode === 'goldfish' && this._savedAlgorithm) {
+      this.algorithm.set(this._savedAlgorithm);
+      this._savedAlgorithm = null;
+    }
+    this.mode.set(mode);
+  }
+
+  handtrapImageUrl(cardId: number): string {
+    return `/api/documents/small/code/${cardId}`;
+  }
+
+  onHandtrapToggle(cardId: number, checked: boolean): void {
+    if (checked) {
+      this.selectedHandtraps.set([...this.selectedHandtraps(), cardId]);
+    } else {
+      this.selectedHandtraps.set(this.selectedHandtraps().filter(id => id !== cardId));
+    }
+  }
+
   onSolve(): void {
     if (!this.canSolve()) return;
 
@@ -200,15 +270,22 @@ export class SolverConfigComponent {
       }
     }
 
+    let handtraps: HandtrapConfig[] | undefined = undefined;
+    if (this.mode() === 'adversarial') {
+      if (!this.solverService.handtraps()) return;
+      handtraps = this.selectedHandtraps()
+        .map(id => this.solverService.handtraps()!.find(h => h.cardId === id))
+        .filter((h): h is HandtrapConfig => !!h);
+    }
+
     const deck = this.deck();
-    // Send only the deckId — the duel-server fetches the composition from
-    // Spring Boot via the user's JWT. C2 fix from Epic 1 review.
     this.solve.emit({
       deckId: String(deck.id!),
       hand,
-      mode: 'goldfish',
+      mode: this.mode(),
       speed: this.speed(),
       algorithm: this.algorithm(),
+      handtraps,
     });
   }
 }

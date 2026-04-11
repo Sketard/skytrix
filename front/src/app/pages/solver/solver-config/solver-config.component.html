@@ -24,7 +24,7 @@
             (click)="onCardClick(card)">
             <img [src]="card.imageUrl"
               [alt]="card.name"
-              (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+              (error)="onImgError($event)" />
             <span class="card-badge">
               @if (selectedCount(card.cardId) > 0) {
                 &times;{{ selectedCount(card.cardId) }}/{{ card.maxCopies }}
@@ -63,11 +63,55 @@
 
       <div class="toggle-group">
         <span class="toggle-label">{{ 'solver.config.mode' | translate }}</span>
-        <span class="mode-static">{{ 'solver.config.modeGoldfish' | translate }}</span>
+        <mat-button-toggle-group [value]="mode()" (change)="onModeChange($event.value)" [disabled]="isLocked()">
+          <mat-button-toggle value="goldfish">{{ 'solver.config.modeGoldfish' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="adversarial"
+            [disabled]="solverService.handtrapsLoadFailed()"
+            [matTooltip]="solverService.handtrapsLoadFailed() ? ('solver.error.handtrapUnavailable' | translate) : ''">
+            {{ 'solver.config.modeAdversarial' | translate }}
+          </mat-button-toggle>
+        </mat-button-toggle-group>
       </div>
+
+      @if (dfsHint()) {
+        <span class="dfs-hint">{{ 'solver.config.dfsHint' | translate }}</span>
+      }
+
+      @if (mode() === 'adversarial') {
+        <div class="handtrap-section">
+          <span class="toggle-label">{{ 'solver.config.handtraps' | translate }}</span>
+          @if (solverService.handtraps() === null) {
+            <div class="handtrap-loading">
+              <mat-spinner diameter="20"></mat-spinner>
+              <span>{{ 'solver.config.handtrapsLoading' | translate }}</span>
+            </div>
+          } @else if (solverService.handtraps()!.length === 0) {
+            <span class="handtrap-empty">{{ 'solver.config.handtrapsEmpty' | translate }}</span>
+          } @else {
+            <div class="handtrap-list" [class.disabled]="isLocked()">
+              @for (ht of solverService.handtraps()!; track ht.cardId) {
+                <label class="handtrap-item">
+                  <mat-checkbox
+                    [checked]="selectedHandtraps().includes(ht.cardId)"
+                    (change)="onHandtrapToggle(ht.cardId, $event.checked)">
+                  </mat-checkbox>
+                  <img [src]="handtrapImageUrl(ht.cardId)"
+                    [alt]="ht.cardName"
+                    loading="lazy"
+                    width="32" height="46"
+                    class="handtrap-thumb"
+                    (error)="onImgError($event)" />
+                  <span class="handtrap-name">{{ ht.cardName }}</span>
+                </label>
+              }
+            </div>
+          }
+        </div>
+      }
 
       <button mat-raised-button color="primary"
         [disabled]="!canSolve()"
+        [matTooltip]="!canSolve() ? (solveTooltip() | translate) : ''"
         (click)="onSolve()">
         {{ 'solver.config.solve' | translate }}
       </button>
