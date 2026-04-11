@@ -195,3 +195,19 @@ export interface HistoryEntry {
   /** Set for cancelled solves with partial tree — lets history UI differentiate. */
   partial?: boolean;
 }
+
+// =============================================================================
+// Pinned Results (Story 3.2)
+// =============================================================================
+
+export interface PinnedResult {
+  score: number;
+  scoreBreakdown: ScoreBreakdown;
+  mainPath: SolverAction[];
+  endBoardCards: { cardId: number; cardName: string }[];
+  handCards: { cardId: number; cardName: string }[];
+  config: HistoryEntryConfig;
+  minimax?: number;
+  deckSeed?: number;
+  savedAt: number;
+}

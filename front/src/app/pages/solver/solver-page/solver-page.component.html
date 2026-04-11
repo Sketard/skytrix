@@ -34,15 +34,27 @@
           (cancel)="onCancel()" />
       }
       @if (solverState() === 'complete') {
+        @if (solverService.pinnedResults().length > 0) {
+          <app-pinned-results-bar
+            [pins]="solverService.pinnedResults()"
+            (unpin)="solverService.unpinResult($event)" />
+        }
         @if (solverService.result(); as r) {
-          @if (solverService.sessionHistory().length > 0) {
-            <div class="result-actions">
+          <div class="result-actions">
+            <button mat-icon-button
+              [attr.aria-label]="'solver.pin.pin' | translate"
+              [disabled]="!solverService.canPin()"
+              [matTooltip]="solverService.canPin() ? ('solver.pin.pin' | translate) : ('solver.pin.pinLimit' | translate)"
+              (click)="solverService.pinResult()">
+              <mat-icon fontIcon="push_pin"></mat-icon>
+            </button>
+            @if (solverService.sessionHistory().length > 0) {
               <app-solver-history-menu
                 [history]="solverService.sessionHistory()"
                 [currentResult]="solverService.result()"
                 (restore)="solverService.restoreHistoryEntry($event)" />
-            </div>
-          }
+            }
+          </div>
           @if (r.scoreBreakdown.weighted === 0 && !solverService.isPartialResult()) {
             <app-brick-state-block brickType="pure-brick" />
           } @else {

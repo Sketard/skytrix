@@ -474,7 +474,13 @@
       "algorithmMcts": "MCTS",
       "algorithmAuto": "Auto",
       "solve": "Résoudre",
-      "notEnoughCards": "Pas assez de cartes pour former une main"
+      "notEnoughCards": "Pas assez de cartes pour former une main",
+      "modeAdversarial": "Adversarial",
+      "handtraps": "Handtraps",
+      "handtrapsLoading": "Chargement des handtraps...",
+      "handtrapsEmpty": "Aucun handtrap disponible",
+      "dfsHint": "DFS ne supporte pas le mode adversarial — basculé sur Auto",
+      "selectHandtrap": "Sélectionnez au moins 1 handtrap pour le mode adversarial"
     },
     "progress": {
       "exploring": "Exploration des lignes de combo...",
@@ -521,6 +527,16 @@
       "justNow": "A l'instant",
       "minutesAgo": "il y a {{n}}m",
       "hoursAgo": "il y a {{n}}h"
+    },
+    "pin": {
+      "pin": "Epingler le resultat",
+      "unpin": "Retirer",
+      "pinned": "Epingle",
+      "hand": "Main",
+      "endBoard": "Plateau final",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "pinLimit": "Nombre maximum d'epingles atteint (4)"
     }
   },
   "replay": {

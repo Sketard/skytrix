@@ -474,7 +474,13 @@
       "algorithmMcts": "MCTS",
       "algorithmAuto": "Auto",
       "solve": "Solve",
-      "notEnoughCards": "Not enough cards to form a hand"
+      "notEnoughCards": "Not enough cards to form a hand",
+      "modeAdversarial": "Adversarial",
+      "handtraps": "Handtraps",
+      "handtrapsLoading": "Loading handtraps...",
+      "handtrapsEmpty": "No handtraps available",
+      "dfsHint": "DFS does not support adversarial — switched to Auto",
+      "selectHandtrap": "Select at least 1 handtrap for adversarial mode"
     },
     "progress": {
       "exploring": "Exploring combo lines...",
@@ -521,6 +527,16 @@
       "justNow": "Just now",
       "minutesAgo": "{{n}}m ago",
       "hoursAgo": "{{n}}h ago"
+    },
+    "pin": {
+      "pin": "Pin result",
+      "unpin": "Unpin",
+      "pinned": "Pinned",
+      "hand": "Hand",
+      "endBoard": "End board",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "pinLimit": "Maximum pins reached (4)"
     }
   },
   "replay": {

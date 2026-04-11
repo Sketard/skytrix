@@ -39,6 +39,7 @@ import type {
   EndBoardCard,
   HistoryEntry,
   HistoryEntryConfig,
+  PinnedResult,
 } from '../../../core/model/solver.model';
 
 const SESSION_HISTORY_CAP = 10;
@@ -55,11 +56,13 @@ const RECONNECT_RESULT_GRACE_MS = 1_500;
  *  error (Story 1.5b). */
 const SOLVE_COOLDOWN_MS = 2_000;
 const PREFS_STORAGE_KEY = 'solver:prefs:v1';
+const PINNED_RESULTS_CAP = 4;
+const PINS_STORAGE_KEY = 'solver:pins:v1';
 
 export interface SolverPrefs {
   speed: 'fast' | 'optimal';
   algorithm: 'dfs' | 'mcts' | 'auto';
-  mode: 'goldfish';
+  mode: 'goldfish' | 'adversarial';
   handtrapIds: number[];
 }
 
@@ -80,11 +83,31 @@ function loadPrefs(): SolverPrefs {
       algorithm: parsed.algorithm === 'dfs' || parsed.algorithm === 'mcts' || parsed.algorithm === 'auto'
         ? parsed.algorithm
         : 'auto',
-      mode: 'goldfish',
+      mode: parsed.mode === 'goldfish' || parsed.mode === 'adversarial' ? parsed.mode : 'goldfish',
       handtrapIds: Array.isArray(parsed.handtrapIds) ? parsed.handtrapIds.filter(n => Number.isInteger(n)) : [],
     };
   } catch {
     return { ...DEFAULT_PREFS };
+  }
+}
+
+function loadPins(): PinnedResult[] {
+  try {
+    const raw = localStorage.getItem(PINS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (p: unknown): p is PinnedResult =>
+        p !== null && typeof p === 'object'
+        && typeof (p as PinnedResult).score === 'number'
+        && typeof (p as PinnedResult).savedAt === 'number'
+        && (p as PinnedResult).config !== undefined
+        && Array.isArray((p as PinnedResult).handCards)
+        && Array.isArray((p as PinnedResult).endBoardCards),
+    );
+  } catch {
+    return [];
   }
 }
 
@@ -110,6 +133,10 @@ export class SolverService implements OnDestroy {
 
   /** Persisted user preferences (mode/speed/algorithm/handtraps) — Story 1.5a. */
   readonly prefs = signal<SolverPrefs>(loadPrefs());
+
+  /** Pinned result snapshots for cross-deck comparison — Story 3.2. */
+  readonly pinnedResults = signal<PinnedResult[]>(loadPins());
+  readonly canPin = computed(() => this.pinnedResults().length < PINNED_RESULTS_CAP && this.result() !== null);
 
   /** Per-deck hand selection (cardId → copy count). Persists across navigation
    *  for the lifetime of the SolverService singleton — resets when the deck
@@ -142,6 +169,45 @@ export class SolverService implements OnDestroy {
     this.prefs.set(next);
     try {
       localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(next));
+    } catch { /* quota / private mode — silently ignore */ }
+  }
+
+  pinResult(): void {
+    const result = this.result();
+    const config = this.lastSolveConfig();
+    if (!result || !config || this.pinnedResults().length >= PINNED_RESULTS_CAP) return;
+
+    const cardNames = this.currentCardNames();
+    const handCards = Object.entries(config.hand).flatMap(([idStr, count]) => {
+      const cardId = Number(idStr);
+      const cardName = cardNames.get(cardId) ?? `#${cardId}`;
+      return Array.from({ length: count }, () => ({ cardId, cardName }));
+    }).slice(0, 5);
+
+    const pin: PinnedResult = {
+      score: result.score,
+      scoreBreakdown: result.scoreBreakdown,
+      mainPath: result.mainPath,
+      endBoardCards: (result.endBoardCards ?? []).map(c => ({ cardId: c.cardId, cardName: c.cardName })),
+      handCards,
+      config: { ...config },
+      minimax: result.minimax,
+      deckSeed: undefined,
+      savedAt: Date.now(),
+    };
+
+    this.pinnedResults.update(pins => [...pins, pin]);
+    this.persistPins(this.pinnedResults());
+  }
+
+  unpinResult(index: number): void {
+    this.pinnedResults.update(pins => pins.filter((_, i) => i !== index));
+    this.persistPins(this.pinnedResults());
+  }
+
+  private persistPins(pins: PinnedResult[]): void {
+    try {
+      localStorage.setItem(PINS_STORAGE_KEY, JSON.stringify(pins));
     } catch { /* quota / private mode — silently ignore */ }
   }
 

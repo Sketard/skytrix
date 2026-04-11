@@ -34,11 +34,13 @@ import { BrickStateBlockComponent } from '../solver-result/brick-state-block.com
 import { BreadcrumbPathComponent } from '../solver-result/breadcrumb-path.component';
 import { DecisionTreeComponent } from '../solver-result/decision-tree.component';
 import { SolverHistoryMenuComponent } from '../solver-result/solver-history-menu.component';
+import { PinnedResultsBarComponent } from '../solver-result/pinned-results-bar.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-solver-page',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent, BreadcrumbPathComponent, DecisionTreeComponent, SolverHistoryMenuComponent],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule, RouterLink, TranslatePipe, SolverConfigComponent, SolverProgressComponent, HeroResultBlockComponent, BrickStateBlockComponent, BreadcrumbPathComponent, DecisionTreeComponent, SolverHistoryMenuComponent, PinnedResultsBarComponent],
   providers: [SolverDebugLogService],
   templateUrl: './solver-page.component.html',
   styleUrl: './solver-page.component.scss',
