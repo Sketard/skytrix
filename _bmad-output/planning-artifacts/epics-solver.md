@@ -1149,6 +1149,13 @@ So that I can revisit and compare earlier results without relying solely on pins
 **And** the config panel updates to reflect the config of the restored result (hand, mode, speed, algorithm, handtraps) for easy re-solve with adjustments
 **And** the previously displayed result is NOT lost — it remains in the history list
 
+**Given** the user clicks a history entry from a different deck
+**When** the menu item is selected
+**Then** the result is loaded and state transitions to 'complete' (result display is self-contained)
+**And** mode, speed, algorithm, and handtrap preferences are updated (global prefs)
+**And** the hand selection is NOT restored (cards may not exist in the current deck)
+**And** the history menu item already displays the source deck name, so the user knows the result is cross-deck
+
 **Given** the history is empty (no previous results in this session)
 **When** the page renders
 **Then** the History button is hidden
@@ -1227,8 +1234,8 @@ So that I can launch solves with minimal friction and navigate the solver effici
 **And** events are not intercepted when focus is on input or textarea elements (guard)
 
 **Given** the keyboard shortcut Ctrl+Enter
-**When** pressed while state = 'configuring' and 5/5 cards selected and not in rate limit cooldown
-**Then** the solve launches (same as clicking Solve)
+**When** pressed while state = 'configuring' and 1–5 cards selected and not in rate limit cooldown
+**Then** the solve launches (same as clicking Solve — same `canSolve` guard)
 **And** the Solve button has aria-keyshortcuts="Control+Enter"
 
 **Given** the keyboard shortcut Escape
