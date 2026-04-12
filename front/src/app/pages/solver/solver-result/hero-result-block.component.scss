@@ -94,6 +94,14 @@
   margin-left: 0.5rem;
 }
 
+.fast-hint-icon {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  cursor: help;
+}
+
 .fallback-icon {
   color: var(--text-secondary);
   margin-left: 0.25rem;

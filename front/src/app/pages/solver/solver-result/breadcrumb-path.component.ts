@@ -3,7 +3,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
 
-import type { SolverAction } from '../../../core/model/solver.model';
+import type { SolverAction, AdversarialTiming } from '../../../core/model/solver.model';
 import { onCardImgError } from './card-image-fallback';
 import { createHoverPopupController } from './hover-popup.controller';
 
@@ -26,6 +26,7 @@ export class BreadcrumbPathComponent {
 
   readonly mainPath = input.required<SolverAction[]>();
   readonly cardImageMap = input.required<Map<number, string>>();
+  readonly adversarialTimings = input<AdversarialTiming[]>();
   readonly chipClick = output<SolverAction>();
 
   private readonly hoverCtrl = createHoverPopupController<number>(this.destroyRef);
@@ -34,12 +35,19 @@ export class BreadcrumbPathComponent {
   readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     const path = this.mainPath();
     const imgMap = this.cardImageMap();
+    const timings = this.adversarialTimings();
+    // Build a set of handtrap cardIds from adversarial timings for reliable
+    // opponent action detection — works even if the player main-decks a handtrap.
+    const handtrapCardIds = new Set(timings?.map(t => t.handtrapCardId));
     return path.map(action => {
       const inDeck = imgMap.has(action.cardId);
+      const isHandtrap = handtrapCardIds.size > 0
+        ? handtrapCardIds.has(action.cardId) && !inDeck
+        : !inDeck;
       return {
         action,
         imageUrl: inDeck ? imgMap.get(action.cardId)! : `/api/documents/small/code/${action.cardId}`,
-        isHandtrap: !inDeck,
+        isHandtrap,
       };
     });
   });

@@ -107,6 +107,9 @@
             </div>
           }
         </div>
+        @if (deckSwitchAdversarialHint()) {
+          <span class="dfs-hint">{{ 'solver.config.deckSwitchAdversarialHint' | translate }}</span>
+        }
       }
 
       <button mat-button class="advanced-toggle" (click)="showAdvanced.set(!showAdvanced())">

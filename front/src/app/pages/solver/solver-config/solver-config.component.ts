@@ -59,8 +59,11 @@ export class SolverConfigComponent {
   readonly showAdvanced = signal(false);
   readonly deckSeedValid = computed(() => !this.deckSeed() || /^\d+,\d+$/.test(this.deckSeed().trim()));
   readonly dfsHint = signal(false);
+  readonly deckSwitchAdversarialHint = signal(false);
   private _savedAlgorithm: 'dfs' | null = null;
   private _dfsHintTimerId: ReturnType<typeof setTimeout> | null = null;
+  private _deckSwitchHintTimerId: ReturnType<typeof setTimeout> | null = null;
+  private _previousDeckId: string | null = null;
 
   // Tick every 250ms while a cooldown is pending so the disabled-state computed
   // re-evaluates without waiting for the next user interaction. Cleared on
@@ -129,6 +132,14 @@ export class SolverConfigComponent {
       const stored = this.solverService.getHandForDeck(deckId);
       this.selectedHand.set(stored);
       this.deckSeed.set('');
+      // Show a transient hint when switching decks while in adversarial mode —
+      // handtrap selection persists across decks and may not be relevant (#11).
+      if (this._previousDeckId !== null && this._previousDeckId !== deckId && this.mode() === 'adversarial') {
+        this.deckSwitchAdversarialHint.set(true);
+        if (this._deckSwitchHintTimerId !== null) clearTimeout(this._deckSwitchHintTimerId);
+        this._deckSwitchHintTimerId = setTimeout(() => { this._deckSwitchHintTimerId = null; this.deckSwitchAdversarialHint.set(false); }, 5000);
+      }
+      this._previousDeckId = deckId;
     });
 
     // Persist hand back to the service whenever it changes (without writing
@@ -175,6 +186,7 @@ export class SolverConfigComponent {
     this.destroyRef.onDestroy(() => {
       clearInterval(tickerId);
       if (this._dfsHintTimerId !== null) clearTimeout(this._dfsHintTimerId);
+      if (this._deckSwitchHintTimerId !== null) clearTimeout(this._deckSwitchHintTimerId);
     });
   }
 

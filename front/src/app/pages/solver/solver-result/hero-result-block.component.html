@@ -22,6 +22,11 @@
       @if (showMinimax()) {
         <span class="minimax-label mat-body-2">{{ 'solver.result.worstCase' | translate }}: {{ result().minimax }}</span>
       }
+      @if (fastAdversarialHint()) {
+        <mat-icon class="fast-hint-icon"
+          fontIcon="speed"
+          [matTooltip]="'solver.result.fastAdversarialHint' | translate"></mat-icon>
+      }
     </div>
 
     <div class="chips-row">

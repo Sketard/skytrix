@@ -1086,6 +1086,22 @@ So that I can independently verify the solver's adversarial analysis before trus
 
 ---
 
+### Epic 2 Post-Implementation Review (2026-04-11)
+
+Adversarial review identified 12 findings (10 real). 7 code fixes applied, 1 already-correct-by-design (#10), 2 deferred for discussion (#5 verifyExpectedScore client-supplied, #9 uniform subset sampling):
+
+- **#1 (FIXED):** "Goldfish score" label in no-resilient-line brick was misleading — renamed to "Best score (without disruption)" since the value is IS-MCTS bestScore, not a true goldfish score.
+- **#3 (FIXED):** No Fast mode reliability indicator for adversarial results — added `fastAdversarialHint` tooltip icon on hero block when adversarial + Fast mode.
+- **#4 (DOCUMENTED):** Story 2.2 Task 8 (E2E WS verification) was never manually executed — all 7 subtasks unchecked. Documented as gap.
+- **#6 (FIXED):** Race condition where verify result could patch a stale result after a new solve. Added `verifyingResultRef` guard.
+- **#7 (FIXED):** Verify button permanently disabled after failed verification. Changed disable from `verified != null` to `verified === true` — allows re-verify after PRNG divergence.
+- **#8 (FIXED):** Breadcrumb opponent detection used fragile `!imgMap.has()` heuristic — now cross-references `adversarialTimings` handtrap cardIds for reliable detection even when player main-decks a handtrap.
+- **#10 (OK):** Cancel button already works during verify — `solverState` is `'running'`, progress panel with Cancel is visible.
+- **#11 (FIXED):** Handtrap selection persisted across deck switches without warning — added transient 5s hint when switching decks in adversarial mode.
+- **#12 (OK):** `mergeResults()` criterion was unspecified in epic but correctly implemented as minimax DESC in code.
+
+---
+
 ## Epic 3: Iterative Build Comparison
 
 User iterates rapidly between solves and compares builds: pin result snapshots for side-by-side mental comparison, consult session history, Quick Solve, config persistence per deck, and keyboard shortcuts.

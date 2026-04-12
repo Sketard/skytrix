@@ -482,6 +482,7 @@
       "handtrapsEmpty": "Aucun handtrap disponible",
       "dfsHint": "DFS ne supporte pas le mode adversarial — basculé sur Auto",
       "selectHandtrap": "Sélectionnez au moins 1 handtrap pour le mode adversarial",
+      "deckSwitchAdversarialHint": "Deck changé — vérifiez votre sélection de handtraps",
       "deckSeed": "Seed du deck",
       "deckSeedTooltip": "Reproduction exacte pour DFS sans effets aléatoires. Approximatif si le combo implique des recherches, mélanges ou lancers de pièces. MCTS est toujours approximatif.",
       "deckSeedInvalid": "Format attendu : deux entiers séparés par une virgule",
@@ -518,8 +519,9 @@
       "worstCase": "Pire cas",
       "noResilientLine": "Aucune ligne résiliente trouvée",
       "noResilientLineMessage": "Toutes les lignes de combo sont brisées par les pièges de main sélectionnés.",
-      "goldfishScoreRef": "Score goldfish : {{score}}",
-      "worstCaseAria": "Résilience pire cas : {{minimax}}"
+      "bestScoreRef": "Meilleur score (sans disruption) : {{score}}",
+      "worstCaseAria": "Résilience pire cas : {{minimax}}",
+      "fastAdversarialHint": "Le mode Fast donne des scores adversarial approximatifs. Utilisez Optimal pour des résultats minimax stables."
     },
     "error": {
       "deckNotFound": "Deck introuvable",

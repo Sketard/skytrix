@@ -59,7 +59,7 @@
               <button mat-stroked-button
                 [attr.aria-label]="'solver.verify.verify' | translate"
                 [matTooltip]="'solver.verify.prngWarning' | translate"
-                [disabled]="solverService.isVerifying() || solverState() === 'running' || r.verified != null"
+                [disabled]="solverService.isVerifying() || solverState() === 'running' || r.verified === true"
                 (click)="onVerify()">
                 <mat-icon fontIcon="verified"></mat-icon>
                 {{ 'solver.verify.verify' | translate }}
@@ -78,16 +78,18 @@
             <app-hero-result-block
               [result]="r"
               [isPartial]="solverService.isPartialResult()"
-              [cardImageMap]="cardImageMap()" />
+              [cardImageMap]="cardImageMap()"
+              [solveSpeed]="solverService.lastSolveSpeed()" />
 
             @if (r.minimax != null && r.minimax === 0 && r.scoreBreakdown.weighted > 0 && !solverService.isPartialResult()) {
-              <app-brick-state-block brickType="no-resilient-line" [goldfishScore]="r.score" />
+              <app-brick-state-block brickType="no-resilient-line" [bestScore]="r.score" />
             }
 
             @if (r.mainPath.length > 0) {
               <app-breadcrumb-path
                 [mainPath]="r.mainPath"
                 [cardImageMap]="cardImageMap()"
+                [adversarialTimings]="r.adversarialTimings"
                 (chipClick)="onBreadcrumbClick($event)" />
             }
 

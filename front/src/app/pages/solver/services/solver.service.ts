@@ -130,6 +130,10 @@ export class SolverService implements OnDestroy {
   readonly currentDeckId = signal<string | null>(null);
   readonly isPartialResult = computed(() => this.result()?.partial === true);
   readonly isVerifying = signal(false);
+  readonly lastSolveSpeed = signal<'fast' | 'optimal'>('optimal');
+  /** The result object that was sent for verification — used to guard against
+   *  patching a stale result if a new solve completes before verify returns. */
+  private verifyingResultRef: SolverResult | null = null;
 
   private readonly currentDeckName = signal('');
   private readonly currentCardNames = signal<Map<number, string>>(new Map());
@@ -376,6 +380,8 @@ export class SolverService implements OnDestroy {
     this.lastInteractionTs = Date.now();
     this.lastSolveAt.set(Date.now());
     this.lastSolveDeckId = config.deckId;
+    this.lastSolveSpeed.set(config.speed);
+    this.verifyingResultRef = null;
     this.solverState.set('running');
     this.progress.set(null);
     this.result.set(null);
@@ -415,6 +421,7 @@ export class SolverService implements OnDestroy {
     if (!config) return;
 
     this.lastInteractionTs = Date.now();
+    this.verifyingResultRef = r;
     this.isVerifying.set(true);
     this.solverState.set('running');
     this.progress.set(null);
@@ -537,10 +544,16 @@ export class SolverService implements OnDestroy {
         }
         const payload = msg as unknown as SolverResultMessage;
 
-        // Verify result: patch in-place, do not replace full result or add to history
+        // Verify result: patch in-place, do not replace full result or add to history.
+        // Guard: only patch if the current result is still the one we sent for
+        // verification — a new solve may have replaced it in the meantime (#6).
         if (payload.isVerifyResult) {
           this.isVerifying.set(false);
-          this.result.update(r => r ? { ...r, verified: payload.verified } : r);
+          const currentResult = this.result();
+          if (currentResult && currentResult === this.verifyingResultRef) {
+            this.result.update(r => r ? { ...r, verified: payload.verified } : r);
+          }
+          this.verifyingResultRef = null;
           this.solverState.set('complete');
           if (payload.verified === false && payload.stats?.verifyDivergence) {
             this.notify.error(payload.stats.verifyDivergence, undefined, 0);

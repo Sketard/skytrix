@@ -12,5 +12,5 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class BrickStateBlockComponent {
   readonly brickType = input.required<'pure-brick' | 'no-resilient-line'>();
-  readonly goldfishScore = input<number | undefined>();
+  readonly bestScore = input<number | undefined>();
 }

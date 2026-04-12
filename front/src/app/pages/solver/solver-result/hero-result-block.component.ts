@@ -61,6 +61,7 @@ export class HeroResultBlockComponent {
   readonly result = input.required<SolverResult>();
   readonly isPartial = input(false);
   readonly cardImageMap = input.required<Map<number, string>>();
+  readonly solveSpeed = input<'fast' | 'optimal'>('optimal');
 
   private readonly hoverCtrl = createHoverPopupController<EndBoardCardDisplay>(this.destroyRef);
   readonly hoverCard = this.hoverCtrl.hoverKey;
@@ -135,6 +136,8 @@ export class HeroResultBlockComponent {
   readonly isAdversarial = computed(() => this.result().minimax != null);
 
   readonly showMinimax = computed(() => this.isAdversarial() && this.result().minimax !== this.result().score);
+
+  readonly fastAdversarialHint = computed(() => this.isAdversarial() && this.solveSpeed() === 'fast');
 
   readonly verifiedStatus = computed<'verified' | 'failed' | null>(() => {
     if (!this.isAdversarial() || this.result().verified == null) return null;
