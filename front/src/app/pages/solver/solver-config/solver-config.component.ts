@@ -66,9 +66,9 @@ export class SolverConfigComponent {
   private _deckSwitchHintTimerId: ReturnType<typeof setTimeout> | null = null;
   private _previousDeckId: string | null = null;
 
-  // Tick every 250ms while a cooldown is pending so the disabled-state computed
-  // re-evaluates without waiting for the next user interaction. Cleared on
-  // destroy.
+  // Advanced once per cooldown to retrigger the `inCooldown` computed when
+  // the cooldown window elapses. Updated by a single setTimeout scheduled
+  // from `lastSolveAt`, not a polling interval.
   private readonly cooldownTick = signal(Date.now());
   readonly isLocked = computed(() => this.solverState() === 'running');
   readonly inCooldown = computed(() => this.cooldownTick() < this.solverService.cooldownUntil());
@@ -145,10 +145,13 @@ export class SolverConfigComponent {
 
     // Persist hand back to the service whenever it changes (without writing
     // every keystroke to localStorage — hands are session-scoped only).
+    // `deck` is read via `untracked` so this effect fires only on real hand
+    // mutations. Without it, every deck switch triggered a redundant write of
+    // the still-current hand to the new deckId before the restore effect
+    // (above) had a chance to load the deck's stored hand.
     effect(() => {
       const hand = this.selectedHand();
-      const deck = this.deck();
-      const deckId = String(deck.id ?? '');
+      const deckId = untracked(() => String(this.deck().id ?? ''));
       this.solverService.setHandForDeck(deckId, hand);
     });
 
@@ -208,14 +211,28 @@ export class SolverConfigComponent {
       }
     });
 
-    // Cooldown ticker — only runs while a cooldown is pending.
-    const tickerId = setInterval(() => {
-      if (Date.now() < this.solverService.cooldownUntil()) {
-        this.cooldownTick.set(Date.now());
+    // Cooldown ticker — schedules a single timeout aligned to the cooldown
+    // expiry. Replaces a 250ms polling interval that ran for the lifetime of
+    // the component AND had a latent bug: with `Date.now() < cooldownUntil`
+    // as the guard, `cooldownTick` could never advance past `cooldownUntil`,
+    // leaving `inCooldown` stuck true forever.
+    let cooldownTimerId: ReturnType<typeof setTimeout> | null = null;
+    effect(() => {
+      const last = this.solverService.lastSolveAt();
+      if (cooldownTimerId !== null) {
+        clearTimeout(cooldownTimerId);
+        cooldownTimerId = null;
       }
-    }, 250);
+      if (last === 0) return;
+      const remaining = untracked(() => this.solverService.cooldownUntil()) - Date.now();
+      if (remaining <= 0) return;
+      cooldownTimerId = setTimeout(() => {
+        cooldownTimerId = null;
+        this.cooldownTick.set(Date.now());
+      }, remaining);
+    });
     this.destroyRef.onDestroy(() => {
-      clearInterval(tickerId);
+      if (cooldownTimerId !== null) clearTimeout(cooldownTimerId);
       if (this._dfsHintTimerId !== null) clearTimeout(this._dfsHintTimerId);
       if (this._deckSwitchHintTimerId !== null) clearTimeout(this._deckSwitchHintTimerId);
     });

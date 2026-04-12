@@ -54,6 +54,9 @@ export function buildMctsStats(params: {
     averageBranchingFactor: totalBranchingNodes > 0
       ? totalChildren / totalBranchingNodes
       : 0,
+    // MCTS variants don't use a transposition table; surface 0 (not undefined)
+    // so consumers can safely sum / display the field without optional chaining.
+    transpositionHits: 0,
     deckSeed: '',
     ...(abortedDueToFailures !== undefined ? { abortedDueToFailures } : {}),
   };

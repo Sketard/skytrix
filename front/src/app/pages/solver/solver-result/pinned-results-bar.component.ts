@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import type { PinnedResult } from '../../../core/model/solver.model';
-import { onCardImgError } from './card-image-fallback';
+import { cardArtUrl, onCardImgError } from './card-image-fallback';
 
 @Component({
   selector: 'app-pinned-results-bar',
@@ -117,9 +117,7 @@ export class PinnedResultsBarComponent {
   readonly pins = input.required<PinnedResult[]>();
   readonly unpin = output<number>();
 
-  cardArtUrl(cardId: number): string {
-    return `https://images.ygoprodeck.com/images/cards_cropped/${cardId}.jpg`;
-  }
+  readonly cardArtUrl = cardArtUrl;
 
   imgError(event: Event): void {
     onCardImgError(event);

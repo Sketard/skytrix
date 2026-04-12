@@ -485,17 +485,22 @@ export class SolverOrchestrator {
     const topX = this.config.treePruningTopX;
     const best = merged[0];
 
-    // Prune the best result's tree
-    this.pruneTree(best.tree, topX, this.config.maxResultNodes);
+    // Prune the best result's tree. Adversarial trees are already pruned by
+    // minimax-mcts during solve (worst-case branches retained); re-pruning
+    // here would discard the resilience signal the minimax phase preserved.
+    if (!isAdversarial) {
+      this.pruneTree(best.tree, topX, this.config.maxResultNodes);
+    }
 
-    // Sum nodesExplored across all results for stats
+    // Sum nodesExplored across all results for stats. Return a new object
+    // rather than mutating `best.stats` in place — `best` may be referenced
+    // by upstream caches or test fixtures, and silently mutating its stats
+    // produces hard-to-track action-at-a-distance bugs.
     let totalNodes = 0;
     for (const r of allResults) {
       totalNodes += r.stats.nodesExplored;
     }
-    best.stats.nodesExplored = totalNodes;
-
-    return best;
+    return { ...best, stats: { ...best.stats, nodesExplored: totalNodes } };
   }
 
   // ===========================================================================

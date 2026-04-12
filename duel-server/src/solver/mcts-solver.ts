@@ -88,6 +88,10 @@ export class MCTSSolver implements SolverStrategy {
     ranker: ActionRanker,
     configFile: SolverConfigFile,
   ) {
+    if (!scorer) throw new Error('[Solver] MCTSSolver requires InterruptionScorer');
+    if (!adapter) throw new Error('[Solver] MCTSSolver requires OCGCoreAdapter');
+    if (!ranker) throw new Error('[Solver] MCTSSolver requires ActionRanker');
+    if (!configFile) throw new Error('[Solver] MCTSSolver requires SolverConfigFile');
     this.scorer = scorer;
     this.adapter = adapter;
     this.ranker = ranker;
@@ -153,6 +157,14 @@ export class MCTSSolver implements SolverStrategy {
     let totalBranchingNodes = 0;
     let consecutiveFailures = 0;
     let abortedDueToFailures: number | undefined;
+
+    if (process.env['LOG_LEVEL'] === 'debug') {
+      console.log('[Solver:mcts] solve-start', {
+        seed: this._seed.map(String),
+        timeLimitMs: config.timeLimitMs,
+        warmStart: root.bestScore,
+      });
+    }
 
     // Reserve verification budget
     const solveBudgetMs = config.timeLimitMs * (1 - this.configFile.verificationBudgetRatio);
@@ -538,6 +550,17 @@ export class MCTSSolver implements SolverStrategy {
     });
 
     const mainPath = extractMainPath(tree, this.configFile.maxDepth);
+
+    if (process.env['LOG_LEVEL'] === 'debug') {
+      console.log('[Solver:mcts] solve-end', {
+        nodesExplored,
+        elapsedMs: Date.now() - startTime,
+        bestScore: reportedScore(root),
+        mainPathLen: mainPath.length,
+        maxDepthReached,
+        abortedDueToFailures,
+      });
+    }
 
     return {
       tree,

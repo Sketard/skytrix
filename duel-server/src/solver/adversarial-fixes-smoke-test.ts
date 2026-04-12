@@ -1,28 +1,33 @@
 // =============================================================================
-// adversarial-fixes-smoke-test.ts — Regression harness for the 4 critical
-// Epic 2 fixes landed on 2026-04-12:
+// adversarial-fixes-smoke-test.ts — Regression harness for solver semantic
+// correctness. Originally created for the 4 critical Epic 2 fixes landed on
+// 2026-04-12 (C1/C2/H1), expanded on 2026-04-12 with goldfish E2E coverage,
+// verify divergence detection, and orchestrator merge dedup (REM-4).
 //
+// Original adversarial fixes:
 //   C1 — Minimax-MCTS `mainPath` must be player-only (no opponent activations,
 //        no opponent passes) so `verifyAdversarialPath` can replay it.
-//
 //   C2 — `verifyAdversarialPath` must pass the activation log to the scorer
 //        so OPT-aware scoring matches the original solve.
-//
 //   H1 — `walkRecommendedPath` must use `children[0].player` (not
 //        `current.player`) to decide min/max direction — consistent with
 //        `select()`'s UCB1 inversion convention.
 //
-// Verified at the public-API level (`MinimaxMctsSolver.solve()` +
-// `verifyAdversarialPath()`) so the tests survive all planned refactors
-// (AbstractMctsSolver, ocgcore-adapter split, etc.).
+// Verified at the public-API level (`solve()` + `verifyAdversarialPath()` +
+// `SolverOrchestrator.mergeResults`) so the tests survive planned refactors.
 //
 // Run: npx tsx src/solver/adversarial-fixes-smoke-test.ts
 // =============================================================================
 
 import { join } from 'node:path';
-import type { SolverConfig } from './solver-types.js';
+import type { SolverConfig, SolverResult, SolverAction } from './solver-types.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
+import { DfsSolver } from './dfs-solver.js';
+import { MCTSSolver } from './mcts-solver.js';
+import { ZobristHasher } from './zobrist.js';
+import { TranspositionTable } from './transposition-table.js';
+import { SolverOrchestrator, hashMainPath } from './solver-orchestrator.js';
 import { InterruptionScorer } from './interruption-scorer.js';
 import { loadInterruptionTags, loadInterruptionWeights, loadSolverConfig, loadHandtraps } from './solver-config-loader.js';
 import { OCGCoreAdapter } from './ocgcore-adapter.js';
@@ -282,6 +287,162 @@ console.log('\n📋 Test 5 — Score tolerance rejects beyond-tolerance drift');
     if (!beyond.verified) {
       console.log(`  ℹ️ rejection reason: ${beyond.reason}`);
     }
+  }
+}
+
+// =============================================================================
+// Goldfish helpers (REM-4 expansion)
+// =============================================================================
+
+function makeGoldfishConfig(): SolverConfig {
+  return {
+    mode: 'goldfish',
+    speed: 'fast',
+    timeLimitMs: 3000,
+    handtraps: [],
+  };
+}
+
+function makeGoldfishDuel() {
+  return adapter.createDuel({
+    mainDeck: testDeck,
+    extraDeck: testExtra,
+    hand: testHand,
+    deckSeed: [42n, 137n],
+    opponentDeck: Array(40).fill(ALEXANDRITE),
+    handtraps: [],
+  });
+}
+
+function runDfsGoldfish(): SolverResult {
+  const hasher = new ZobristHasher();
+  const table = new TranspositionTable(solverConfig.transpositionMaxEntries);
+  const solver = new DfsSolver(hasher, table, scorer, adapter, ranker, solverConfig);
+  const cfg = makeGoldfishConfig();
+  const handle = makeGoldfishDuel();
+  try {
+    return solver.solve(adapter, cfg, AbortSignal.timeout(cfg.timeLimitMs), () => {}, handle);
+  } finally {
+    adapter.destroyAll();
+  }
+}
+
+function runMctsGoldfish(): SolverResult {
+  const solver = new MCTSSolver(scorer, adapter, ranker, solverConfig);
+  solver.setSeed([42n, 137n]);
+  const cfg = makeGoldfishConfig();
+  const handle = makeGoldfishDuel();
+  try {
+    return solver.solve(adapter, cfg, AbortSignal.timeout(cfg.timeLimitMs), () => {}, handle);
+  } finally {
+    adapter.destroyAll();
+  }
+}
+
+// =============================================================================
+// Test 6 — DFS goldfish E2E (REM-4)
+// =============================================================================
+
+console.log('\n📋 Test 6 — DFS goldfish solve returns sane shape (REM-4)');
+{
+  const result = runDfsGoldfish();
+  assert(Number.isFinite(result.score), 'DFS goldfish score is finite');
+  assert(Array.isArray(result.mainPath), 'DFS goldfish mainPath is an array');
+  assert(result.stats.algorithmUsed === 'dfs', 'DFS reports algorithmUsed=dfs', `got ${result.stats.algorithmUsed}`);
+  assert(result.stats.nodesExplored > 0, 'DFS explored at least 1 node');
+  assert(result.minimax === undefined, 'goldfish result has no minimax field');
+  console.log(`  ℹ️ score=${result.score}, mainPath.length=${result.mainPath.length}, nodes=${result.stats.nodesExplored}`);
+}
+
+// =============================================================================
+// Test 7 — MCTS goldfish E2E (REM-4)
+// =============================================================================
+
+console.log('\n📋 Test 7 — MCTS goldfish solve returns sane shape (REM-4)');
+{
+  const result = runMctsGoldfish();
+  assert(Number.isFinite(result.score), 'MCTS goldfish score is finite');
+  assert(Array.isArray(result.mainPath), 'MCTS goldfish mainPath is an array');
+  assert(result.stats.algorithmUsed === 'mcts', 'MCTS reports algorithmUsed=mcts', `got ${result.stats.algorithmUsed}`);
+  assert(result.minimax === undefined, 'goldfish MCTS result has no minimax field');
+  console.log(`  ℹ️ score=${result.score}, mainPath.length=${result.mainPath.length}, nodes=${result.stats.nodesExplored}`);
+}
+
+// =============================================================================
+// Test 8 — Verify divergence detection on tampered mainPath (REM-4)
+// =============================================================================
+
+console.log('\n📋 Test 8 — verifyAdversarialPath rejects a tampered mainPath (REM-4)');
+{
+  const { config, result } = runSolve();
+
+  if (result.mainPath.length < 2) {
+    console.log('  ℹ️ mainPath too short to tamper — skipping');
+  } else {
+    const duelConfig = {
+      mainDeck: testDeck,
+      extraDeck: testExtra,
+      hand: testHand,
+      deckSeed: [42n, 137n] as [bigint, bigint],
+      opponentDeck: Array(40).fill(ALEXANDRITE),
+      handtraps: config.handtraps,
+    };
+    // Swap the first two actions — likely produces an illegal-action divergence
+    // at replay step 0 OR at worst a downstream score divergence.
+    const tampered: SolverAction[] = [...result.mainPath];
+    [tampered[0], tampered[1]] = [tampered[1], tampered[0]];
+
+    const verifyResult = verifyAdversarialPath(
+      adapter, scorer, duelConfig,
+      tampered, result.adversarialTimings ?? [], result.score,
+    );
+    assert(verifyResult.verified === false, 'tampered mainPath rejected by verify');
+    if (!verifyResult.verified) {
+      assert(typeof verifyResult.reason === 'string' && verifyResult.reason.length > 0,
+        'rejection reason is a non-empty string');
+      console.log(`  ℹ️ divergence: ${verifyResult.reason}`);
+    }
+  }
+}
+
+// =============================================================================
+// Test 9 — Orchestrator mergeResults dedup + node sum (REM-4 + REM-25)
+// Two SolverResults with the same mainPath hash must collapse into one
+// representative; nodesExplored must be summed; the original results must
+// NOT be mutated (REM-25 fix — return new stats object instead of in-place).
+// =============================================================================
+
+console.log('\n📋 Test 9 — Orchestrator.mergeResults dedup + non-mutation (REM-4 + REM-25)');
+{
+  const r1 = runMctsGoldfish();
+  const r2 = runMctsGoldfish();
+
+  if (r1.mainPath.length === 0 || hashMainPath(r1.mainPath) !== hashMainPath(r2.mainPath)) {
+    console.log('  ℹ️ Two deterministic solves diverged or empty — skipping dedup test');
+  } else {
+    const r1OriginalNodes = r1.stats.nodesExplored;
+    const r2OriginalNodes = r2.stats.nodesExplored;
+    const expectedSum = r1OriginalNodes + r2OriginalNodes;
+
+    // Instantiate orchestrator with minimal config (mergeResults reads
+    // config.treePruningTopX + config.maxResultNodes only)
+    const orch = new SolverOrchestrator();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (orch as any).config = { treePruningTopX: 3, maxResultNodes: 500 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const merged: SolverResult = (orch as any).mergeResults([r1, r2]);
+
+    assert(merged.stats.nodesExplored === expectedSum,
+      `merged.stats.nodesExplored = sum(${expectedSum})`,
+      `got ${merged.stats.nodesExplored}`);
+    assert(hashMainPath(merged.mainPath) === hashMainPath(r1.mainPath),
+      'merged.mainPath hash matches input');
+    // REM-25: original r1.stats must NOT have been mutated
+    assert(r1.stats.nodesExplored === r1OriginalNodes,
+      'r1.stats.nodesExplored unchanged (REM-25 no in-place mutation)',
+      `was ${r1OriginalNodes}, now ${r1.stats.nodesExplored}`);
+    assert(r2.stats.nodesExplored === r2OriginalNodes,
+      'r2.stats.nodesExplored unchanged (REM-25 no in-place mutation)');
   }
 }
 

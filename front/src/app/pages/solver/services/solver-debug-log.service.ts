@@ -7,6 +7,8 @@ export interface SolverDebugEntry {
   text: string;
 }
 
+const MAX_DEBUG_ENTRIES = 500;
+
 @Injectable()
 export class SolverDebugLogService {
   private readonly enabled = environment.debugTools;
@@ -19,7 +21,10 @@ export class SolverDebugLogService {
     if (!this.enabled) return;
     const { type, ...rest } = msg;
     const text = `[${type}] ${JSON.stringify(rest)}`;
-    this._entries.update(entries => [...entries, { timestamp: Date.now(), category, text }]);
+    this._entries.update(entries => {
+      const next = [...entries, { timestamp: Date.now(), category, text }];
+      return next.length > MAX_DEBUG_ENTRIES ? next.slice(-MAX_DEBUG_ENTRIES) : next;
+    });
   }
 
   clearLogs(): void {

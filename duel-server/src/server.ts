@@ -199,6 +199,14 @@ const solverResultCache = new Map<string, { message: SolverResultMessage; timer:
  *  trust the client-supplied deck array). Cleared on WS close. */
 const solverJwts = new Map<string, string>();
 
+/** TTL cache for deck fetches keyed by `${userId}:${deckId}`. Avoids hitting
+ *  Spring Boot on every verify click — verify is run within seconds of the
+ *  initial solve, so a short window is enough to short-circuit the round-trip.
+ *  Cleared per-user on WS close. */
+const DECK_FETCH_CACHE_TTL_MS = 60_000;
+interface DeckCacheEntry { main: number[]; extra: number[]; expiresAt: number; }
+const solverDeckCache = new Map<string, DeckCacheEntry>();
+
 // =============================================================================
 // HTTP Helpers
 // =============================================================================
@@ -1610,6 +1618,11 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       if (solverConnections.get(userId) === ws) {
         solverConnections.delete(userId);
         solverJwts.delete(userId);
+        // Drop the user's deck cache entries (TTL would expire them anyway,
+        // but this keeps the map bounded under churn).
+        for (const key of solverDeckCache.keys()) {
+          if (key.startsWith(`${userId}:`)) solverDeckCache.delete(key);
+        }
       }
     });
 
@@ -2767,6 +2780,23 @@ function handleSolverInit(userId: string, ws: WebSocket): void {
  * solver review). The fix here closes the larger threat surface (client
  * fabricating deck contents entirely) by routing through the canonical API.
  */
+async function fetchDeckCached(userId: string, deckId: string, jwt: string) {
+  const key = `${userId}:${deckId}`;
+  const cached = solverDeckCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { ok: true as const, main: [...cached.main], extra: [...cached.extra] };
+  }
+  const result = await fetchDeckFromBackend(deckId, jwt);
+  if (result.ok) {
+    solverDeckCache.set(key, {
+      main: result.main,
+      extra: result.extra,
+      expiresAt: Date.now() + DECK_FETCH_CACHE_TTL_MS,
+    });
+  }
+  return result;
+}
+
 async function fetchDeckFromBackend(deckId: string, jwt: string): Promise<
   | { ok: true; main: number[]; extra: number[] }
   | { ok: false; error: 'DECK_NOT_FOUND' | 'DECK_ACCESS_DENIED' | 'INTERNAL_ERROR'; message: string }
@@ -2810,6 +2840,10 @@ async function fetchDeckFromBackend(deckId: string, jwt: string): Promise<
 }
 
 async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStartMessage): Promise<void> {
+  // Per-solve correlation tag for log grep across the solve lifecycle.
+  // Workers run in their own threads and don't see this — it tags the
+  // main-thread logs only (start, error, completion).
+  const solveId = randomBytes(4).toString('hex');
   try {
     // Verify mode detection — skip rate limit (verify costs ~62ms, not a full solve)
     const isVerifyMode = Array.isArray(msg.verifyPath) && msg.verifyPath.length > 0
@@ -2907,7 +2941,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       sendSolverError(ws, 'INTERNAL_ERROR', 'Missing JWT for solver session');
       return;
     }
-    const deckResult = await fetchDeckFromBackend(msg.deckId, jwt);
+    const deckResult = await fetchDeckCached(userId, msg.deckId, jwt);
     if (!deckResult.ok) {
       sendSolverError(ws, deckResult.error, deckResult.message);
       return;
@@ -2959,7 +2993,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
 
     // Verify mode: fast single-worker dispatch, no caching, no progress
     if (isVerifyMode) {
-      console.log('[Solver] verify-start', { userId, deckId: msg.deckId });
+      console.log(`[Solver][${solveId}] verify-start`, { userId, deckId: msg.deckId });
       const startTime = Date.now();
       try {
         const verifyResult = await solverOrchestrator!.verify(duelConfig, msg.verifyPath!, msg.verifyTimings!, msg.verifyExpectedScore!);
@@ -2977,9 +3011,9 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
           isVerifyResult: true,
         };
         sendSolverMessage(currentWs, resultMsg);
-        console.log('[Solver] verify-complete', { userId, verified: verifyResult.verified, elapsed });
+        console.log(`[Solver][${solveId}] verify-complete`, { userId, verified: verifyResult.verified, elapsed });
       } catch (err) {
-        console.error('[Solver] verify-error', { userId, err });
+        console.error(`[Solver][${solveId}] verify-error`, { userId, err });
         sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'Verification failed unexpectedly');
       }
       return;
@@ -2988,7 +3022,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
     // Evict previous cache
     evictSolverResult(userId);
 
-    console.log('[Solver] solve-start', { userId, deckId: msg.deckId, mode: msg.mode, speed: msg.speed, algorithm });
+    console.log(`[Solver][${solveId}] solve-start`, { userId, deckId: msg.deckId, mode: msg.mode, speed: msg.speed, algorithm });
 
     // Progress callback — resolve CURRENT ws (not captured closure)
     // Throttling is handled by the orchestrator (config.progressThrottleMs) — no WS-layer throttle
@@ -3049,12 +3083,13 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       };
       cacheSolverResult(userId, resultMsg);
       sendSolverMessage(currentWs, resultMsg);
+      console.log(`[Solver][${solveId}] solve-complete`, { userId, score: result.score, nodes: result.stats.nodesExplored, elapsedMs: result.stats.elapsed });
     } else if (outcome.type === 'error') {
       sendSolverError(currentWs, outcome.error as SolverWsError, outcome.message);
-      console.error('[Solver] solve error', { userId, error: outcome.error, message: outcome.message });
+      console.error(`[Solver][${solveId}] solve error`, { userId, error: outcome.error, message: outcome.message });
     }
   } catch (err) {
-    console.error('[Solver] unexpected error', { userId, err });
+    console.error(`[Solver][${solveId}] unexpected error`, { userId, err });
     sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'An unexpected error occurred');
   }
 }

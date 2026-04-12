@@ -39,6 +39,7 @@ import {
   SELECT_MSG_TYPES,
 } from './ocg-constants.js';
 import { queryFieldState, decodeFieldMask } from './ocg-field-query.js';
+import { solverAssert } from './solver-assert.js';
 
 // =============================================================================
 // Internal Handle State
@@ -546,7 +547,16 @@ export class OCGCoreAdapter implements GameOracle {
         if (msg['can_finish']) return { type: 7, index: null };
         return { type: 7, index: 0 };
       default:
-        return { type: 4, index: 0 }; // Fallback: SELECT_OPTION first choice
+        // Latent risk on OCGCore upgrades: an unhandled prompt type silently
+        // falls back to SELECT_OPTION first choice. Throw in dev to surface
+        // it; keep the fallback in prod so live solves don't crash.
+        solverAssert(
+          false,
+          'OCGCoreAdapter.autoRespondMechanical',
+          `unhandled msg.type=${type} — falling back to SELECT_OPTION first choice`,
+          { msg },
+        );
+        return { type: 4, index: 0 };
     }
   }
 

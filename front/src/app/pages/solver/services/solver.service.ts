@@ -268,7 +268,7 @@ export class SolverService implements OnDestroy {
       mode: config.mode,
       speed: config.speed,
       algorithm: config.algorithm ?? this.prefs().algorithm,
-      handtraps: this.prefs().handtrapIds,
+      handtraps: config.mode === 'goldfish' ? [] : this.prefs().handtrapIds,
     };
 
     const msg: SolverStartMessage = { type: SOLVER_START, ...config };
@@ -332,7 +332,12 @@ export class SolverService implements OnDestroy {
     if (this.solverState() === 'running') return;
     this.result.set(entry.result);
     this.lastSolveConfig.set(entry.config);
-    // Rebuild card name map from history entry for pin/export support
+    // Rebuild card name map from history entry for pin/export support.
+    // Source 1: hand card names (paired with config.hand cardIds).
+    // Source 2: mainPath actions — each carries cardId+cardName already.
+    // Source 3: endBoardCards — same. Without sources 2/3, restored entries
+    // would render mainPath/endBoard cards as `#${cardId}` after a deck
+    // navigation drops the live currentCardNames context.
     const nameMap = new Map<number, string>();
     let nameIdx = 0;
     for (const [idStr, count] of Object.entries(entry.config.hand)) {
@@ -340,6 +345,16 @@ export class SolverService implements OnDestroy {
         nameMap.set(Number(idStr), entry.handCardNames[nameIdx]);
       }
       nameIdx += count;
+    }
+    for (const action of entry.result.mainPath) {
+      if (action.cardId && action.cardName) {
+        nameMap.set(action.cardId, action.cardName);
+      }
+    }
+    for (const card of entry.result.endBoardCards ?? []) {
+      if (card.cardId && card.cardName) {
+        nameMap.set(card.cardId, card.cardName);
+      }
     }
     this.lastSolveCardNames.set(nameMap);
     this.solverState.set('complete');

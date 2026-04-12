@@ -174,7 +174,6 @@ export type SolverState =
   | 'idle'
   | 'configuring'
   | 'running'
-  | 'cancelled'
   | 'complete'
   | 'error';
 

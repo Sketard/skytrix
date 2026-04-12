@@ -93,6 +93,10 @@ export class MinimaxMctsSolver implements SolverStrategy {
     ranker: ActionRanker,
     configFile: SolverConfigFile,
   ) {
+    if (!scorer) throw new Error('[Solver] MinimaxMctsSolver requires InterruptionScorer');
+    if (!adapter) throw new Error('[Solver] MinimaxMctsSolver requires OCGCoreAdapter');
+    if (!ranker) throw new Error('[Solver] MinimaxMctsSolver requires ActionRanker');
+    if (!configFile) throw new Error('[Solver] MinimaxMctsSolver requires SolverConfigFile');
     this.scorer = scorer;
     this.adapter = adapter;
     this.ranker = ranker;
@@ -138,6 +142,15 @@ export class MinimaxMctsSolver implements SolverStrategy {
 
     // Reserve verification budget
     const solveBudgetMs = config.timeLimitMs * (1 - this.configFile.verificationBudgetRatio);
+
+    if (process.env['LOG_LEVEL'] === 'debug') {
+      console.log('[Solver:minimax] solve-start', {
+        seed: this._seed.map(String),
+        timeLimitMs: config.timeLimitMs,
+        solveBudgetMs,
+        handtraps: handtraps.length,
+      });
+    }
 
     while (!signal.aborted && (Date.now() - startTime) < solveBudgetMs) {
       let handle: DuelHandle | undefined;
@@ -539,6 +552,19 @@ export class MinimaxMctsSolver implements SolverStrategy {
 
     // Minimax score is the root's score (minimax emerges from backpropagation)
     const minimax = root.score;
+
+    if (process.env['LOG_LEVEL'] === 'debug') {
+      console.log('[Solver:minimax] solve-end', {
+        nodesExplored,
+        elapsedMs: Date.now() - startTime,
+        bestScore: root.bestScore,
+        minimax,
+        mainPathLen: mainPath.length,
+        timings: adversarialTimings.length,
+        maxDepthReached,
+        abortedDueToFailures,
+      });
+    }
 
     return {
       tree,
