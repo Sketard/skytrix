@@ -26,6 +26,27 @@ import type { DecisionNode, SolverStats } from './solver-types.js';
 export const MAX_CONSECUTIVE_FAILURES = 10;
 
 // =============================================================================
+// MctsMetrics — Phase A/B instrumentation bag
+// =============================================================================
+
+/** Mutable bookkeeping for the per-iteration metrics that don't fit into the
+ *  existing `select/expand/simulate/backpropagate` return values. Threaded as
+ *  a parameter to expand() and simulate() in both SP-MCTS and Minimax-MCTS so
+ *  the main loop can build SolverStats without inspecting node-internal state.
+ *
+ *  - `maxBranchingFactor` — updated by expand() when it first enumerates legal
+ *    actions for a node (worst-case BF observed across the run).
+ *  - `depthHistogram` — incremented by expand() each time a new child node is
+ *    materialized (length = maxDepth + 1; indices clamped defensively).
+ *  - `depthCapHit` — set by simulate() when its rollout loop exits with the
+ *    depth cap still gating further actions (legal moves remained at maxDepth). */
+export interface MctsMetrics {
+  maxBranchingFactor: number;
+  depthHistogram: number[];
+  depthCapHit: boolean;
+}
+
+// =============================================================================
 // buildMctsStats — Shared SolverStats builder
 // =============================================================================
 
@@ -41,10 +62,17 @@ export function buildMctsStats(params: {
   maxDepthReached: number;
   totalChildren: number;
   totalBranchingNodes: number;
+  maxBranchingFactor: number;
+  budgetMs: number;
+  truncated: boolean;
+  terminationReason: SolverStats['terminationReason'];
+  depthHistogram: number[];
   abortedDueToFailures?: number;
 }): SolverStats {
   const { algorithm, algorithmUsed, nodesExplored, startTime,
-    maxDepthReached, totalChildren, totalBranchingNodes, abortedDueToFailures } = params;
+    maxDepthReached, totalChildren, totalBranchingNodes,
+    maxBranchingFactor, budgetMs, truncated, terminationReason,
+    depthHistogram, abortedDueToFailures } = params;
   return {
     nodesExplored,
     elapsed: Date.now() - startTime,
@@ -54,10 +82,15 @@ export function buildMctsStats(params: {
     averageBranchingFactor: totalBranchingNodes > 0
       ? totalChildren / totalBranchingNodes
       : 0,
+    maxBranchingFactor,
     // MCTS variants don't use a transposition table; surface 0 (not undefined)
     // so consumers can safely sum / display the field without optional chaining.
     transpositionHits: 0,
     deckSeed: '',
+    budgetMs,
+    truncated,
+    terminationReason,
+    depthHistogram,
     ...(abortedDueToFailures !== undefined ? { abortedDueToFailures } : {}),
   };
 }

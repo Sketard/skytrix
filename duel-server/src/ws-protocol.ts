@@ -916,9 +916,18 @@ export interface SolverWsStats {
   algorithmUsed: string;
   maxDepthReached: number;
   averageBranchingFactor: number;
+  maxBranchingFactor: number;
   transpositionHits?: number;
+  transpositionMisses?: number;
+  transpositionStores?: number;
+  transpositionEvictions?: number;
+  transpositionStaleHits?: number;
   deckSeed: string;
   verifyDivergence?: string;
+  budgetMs: number;
+  truncated: boolean;
+  terminationReason: 'completed' | 'timeout' | 'depth_cap' | 'failures' | 'aborted';
+  depthHistogram: number[];
 }
 
 export interface SolverWsHandtrapConfig {

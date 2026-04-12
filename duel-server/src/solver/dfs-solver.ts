@@ -113,6 +113,10 @@ export class DfsSolver implements SolverStrategy {
       totalTreeNodes: 0,
       totalLegalActions: 0,
       totalNodesWithActions: 0,
+      maxBranchingFactor: 0,
+      depthHistogram: new Array(this.maxDepth + 1).fill(0),
+      depthCapHit: false,
+      timedOut: false,
       lastProgressTime: startTime,
     };
 
@@ -129,6 +133,19 @@ export class DfsSolver implements SolverStrategy {
       const mainPath = this.extractMainPath(result.node);
       const elapsed = Date.now() - startTime;
 
+      // Termination reason precedence: depth_cap > timeout > aborted > completed.
+      // depth_cap dominates because hitting the cap is a structural signal even
+      // if the budget also expired — the user needs to know maxDepth is too low.
+      const ttStats = this.table.getStats();
+      const terminationReason: SolverStats['terminationReason'] = ctx.depthCapHit
+        ? 'depth_cap'
+        : ctx.timedOut
+          ? 'timeout'
+          : signal.aborted
+            ? 'aborted'
+            : 'completed';
+      const truncated = ctx.depthCapHit || ctx.timedOut || signal.aborted;
+
       let stats: SolverStats = {
         nodesExplored: ctx.nodesExplored,
         elapsed,
@@ -138,8 +155,17 @@ export class DfsSolver implements SolverStrategy {
         averageBranchingFactor: ctx.totalNodesWithActions > 0
           ? ctx.totalLegalActions / ctx.totalNodesWithActions
           : 0,
-        transpositionHits: this.table.getStats().hits,
+        maxBranchingFactor: ctx.maxBranchingFactor,
+        transpositionHits: ttStats.hits,
+        transpositionMisses: ttStats.misses,
+        transpositionStores: ttStats.stores,
+        transpositionEvictions: ttStats.evictions,
+        transpositionStaleHits: ttStats.staleHits,
         deckSeed: '',
+        budgetMs: timeBudget,
+        truncated,
+        terminationReason,
+        depthHistogram: ctx.depthHistogram,
       };
 
       // Merge probe stats if resuming from probe
@@ -175,6 +201,11 @@ export class DfsSolver implements SolverStrategy {
 
     ctx.nodesExplored++;
     if (depth > ctx.maxDepthReached) ctx.maxDepthReached = depth;
+    // Histogram: clamp to last bucket so out-of-range depths (shouldn't happen
+    // since dfs early-returns at depth >= maxDepth, but defensive) still count.
+    const bucket = depth < ctx.depthHistogram.length ? depth : ctx.depthHistogram.length - 1;
+    ctx.depthHistogram[bucket]++;
+
 
     // Progress emission
     this.emitProgress(ctx);
@@ -195,6 +226,9 @@ export class DfsSolver implements SolverStrategy {
 
     // Terminal: no legal actions or max depth
     if (actions.length === 0 || depth >= this.maxDepth) {
+      // Distinguish "natural end" (no actions) from "depth cap hit while
+      // actions remained" — the latter is a truncation signal.
+      if (actions.length > 0 && depth >= this.maxDepth) ctx.depthCapHit = true;
       return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
     }
 
@@ -203,13 +237,32 @@ export class DfsSolver implements SolverStrategy {
     // unbiased under nodeLimit/time-budget cutoffs (probe mode in particular).
     ctx.totalLegalActions += actions.length;
     ctx.totalNodesWithActions++;
+    if (actions.length > ctx.maxBranchingFactor) ctx.maxBranchingFactor = actions.length;
 
     // Zobrist hash for loop detection & transposition
     const hash = this.hasher.computeHash(fieldState);
     const hashKey = hashToKey(hash);
 
-    // Loop detection: same state on current path
-    if (pathHashes.has(hashKey)) {
+    // Loop detection is restricted to SELECT_IDLECMD prompts. Meta decks
+    // (Snake-Eye, Dracotail, Mitsurugi, D/D/D) expose a cascade of chain
+    // windows before the first Main Phase — several SELECT_CHAIN / YESNO /
+    // EFFECTYN prompts for handtrap triggers, OPT checks, and effect
+    // resolutions. Passing through these windows does NOT change the visible
+    // FieldState (no card moves), so the Zobrist hash stays identical across
+    // consecutive passes. Treating those as loops cuts the DFS off at
+    // depth 2-4 before Main Phase is reached, producing the empty-endBoard
+    // behaviour the validation harness surfaced (scores 0-48, mainPath 0-5,
+    // endBoardCards=[] on all three meta decks).
+    //
+    // True infinite loops in OCG require an IDLECMD re-entry (e.g. Special
+    // Summon → search → Special Summon → re-summon the same body), and those
+    // still get caught because the IDLECMD prompt is where the path hash
+    // is actually written. The transposition table still prunes revisits
+    // of equivalent states globally (independent of path), so we do not
+    // lose the big-O benefit of state deduplication.
+    const promptType = actions[0].promptType;
+    const isIdleCmd = promptType === 'SELECT_IDLECMD';
+    if (isIdleCmd && pathHashes.has(hashKey)) {
       ctx.totalTreeNodes++;
       return {
         node: this.makeNode(ROOT_ACTION, 0, undefined, 1.0, [], true),
@@ -234,8 +287,22 @@ export class DfsSolver implements SolverStrategy {
     // another TT entry deeper, which materializes another level — cascading
     // until the line is fully reconstructed). Cost: 1 fork+apply per TT hit
     // on the chosen line, negligible compared to normal exploration.
+    // Transposition table is only consulted at SELECT_IDLECMD prompts. Chain
+    // windows (SELECT_CHAIN, SELECT_YESNO, SELECT_EFFECTYN, ...) are not
+    // uniquely determined by (fieldState, activationLog) — OCGCore has an
+    // internal chain queue, effect resolution state, and per-window handtrap
+    // availability that the solver never observes. On meta decks with a
+    // turn-start handtrap cascade (Fuwalos/Maxx/Ash → pass → ...) every root
+    // branch produces the SAME Zobrist hash at d=1 because the field is
+    // unchanged, and a TT hit short-circuits subsequent branches with a
+    // cached shallow score. The harness run showed this as "Mitsurugi DFS
+    // completes in 1.2s at depth 3 with mainPath=2" — three of the four root
+    // children were served cached results.
+    //
+    // Restricting TT to IDLECMD matches the pathHashes policy and preserves
+    // deduplication at the real decision points (Main Phase branches).
     const vKey = buildVerificationKey(fieldState, activationLog);
-    const ttEntry = this.table.lookup(hash, vKey, depth);
+    const ttEntry = isIdleCmd ? this.table.lookup(hash, vKey, depth) : null;
     if (ttEntry) {
       const matchedAction = actions.find(
         a => a.responseIndex === ttEntry.bestAction.responseIndex && a.promptType === ttEntry.bestAction.promptType,
@@ -276,8 +343,10 @@ export class DfsSolver implements SolverStrategy {
       ranked = this.ranker.rank(actions, fieldState);
     }
 
-    // Explore children
-    pathHashes.add(hashKey);
+    // Explore children. Path-hash bookkeeping is only maintained for
+    // SELECT_IDLECMD (see loop-detection comment above) — for chain-window
+    // prompts we neither check nor record.
+    if (isIdleCmd) pathHashes.add(hashKey);
     const children: { action: Action; result: DfsNodeResult }[] = [];
     let bestScore = -1;
     let bestAction: Action | undefined;
@@ -285,7 +354,10 @@ export class DfsSolver implements SolverStrategy {
 
     for (const action of ranked) {
       // Time budget check BEFORE fork
-      if (Date.now() - ctx.startTime >= ctx.timeBudget) break;
+      if (Date.now() - ctx.startTime >= ctx.timeBudget) {
+        ctx.timedOut = true;
+        break;
+      }
 
       // Abort check
       if (ctx.signal.aborted) break;
@@ -307,7 +379,7 @@ export class DfsSolver implements SolverStrategy {
         ctx.oracle.destroyDuel(child);
       }
     }
-    pathHashes.delete(hashKey);
+    if (isIdleCmd) pathHashes.delete(hashKey);
 
     if (children.length > 0) ctx.totalBranchingNodes++;
 
@@ -332,8 +404,11 @@ export class DfsSolver implements SolverStrategy {
     // so consumers can distinguish "90% explored" from "10% explored".
     const confidence = ranked.length > 0 ? children.length / ranked.length : 1.0;
 
-    // Store in transposition table
-    if (bestAction) {
+    // Mirror of the lookup gate: only cache at IDLECMD prompts, and only
+    // positive scores. Chain-window entries are unreliable (see lookup
+    // comment) and 0-score entries tend to be cheap shallow terminals
+    // whose cache value is less than the contamination risk.
+    if (isIdleCmd && bestAction && bestScore > 0) {
       this.table.store(hash, depth, bestScore, bestAction, vKey, bestBreakdown ?? this.emptyBreakdown());
     }
 
@@ -411,6 +486,10 @@ export class DfsSolver implements SolverStrategy {
       totalTreeNodes: 0,
       totalLegalActions: 0,
       totalNodesWithActions: 0,
+      maxBranchingFactor: 0,
+      depthHistogram: new Array(this.maxDepth + 1).fill(0),
+      depthCapHit: false,
+      timedOut: false,
       lastProgressTime: startTime,
       nodeLimit,
     };
@@ -435,6 +514,8 @@ export class DfsSolver implements SolverStrategy {
       maxDepthReached: ctx.maxDepthReached,
       totalLegalActions: ctx.totalLegalActions,
       totalNodesWithActions: ctx.totalNodesWithActions,
+      maxBranchingFactor: ctx.maxBranchingFactor,
+      depthHistogram: ctx.depthHistogram,
     };
   }
 
@@ -472,11 +553,20 @@ export class DfsSolver implements SolverStrategy {
     const totalNodes = probe.totalNodesWithActions + resumeNodes;
     const totalActions = probe.totalLegalActions + resumeActions;
 
+    // Element-wise sum the depth histogram. Probe and resume share the same
+    // maxDepth so the arrays are the same length; defensive `Math.min` handles
+    // any drift without throwing.
+    const mergedHistogram = stats.depthHistogram.slice();
+    const minLen = Math.min(mergedHistogram.length, probe.depthHistogram.length);
+    for (let i = 0; i < minLen; i++) mergedHistogram[i] += probe.depthHistogram[i];
+
     return {
       ...stats,
       nodesExplored: stats.nodesExplored + probe.nodesExplored,
       maxDepthReached: Math.max(stats.maxDepthReached, probe.maxDepthReached),
       averageBranchingFactor: totalNodes > 0 ? totalActions / totalNodes : 0,
+      maxBranchingFactor: Math.max(stats.maxBranchingFactor, probe.maxBranchingFactor),
+      depthHistogram: mergedHistogram,
     };
   }
 
@@ -556,6 +646,16 @@ interface DfsContext {
    *  children were actually descended into — important for nodeLimit probes). */
   totalLegalActions: number;
   totalNodesWithActions: number;
+  /** Worst-case BF (max actions.length seen at any single node). */
+  maxBranchingFactor: number;
+  /** Per-depth visit count for the depth histogram. Length = maxDepth + 1. */
+  depthHistogram: number[];
+  /** Set when at least one node was forced terminal because depth >= maxDepth
+   *  while it still had legal actions to explore. Distinct from "ran out of
+   *  actions naturally" which is the normal terminal path. */
+  depthCapHit: boolean;
+  /** Set when the per-node time-budget guard fired mid-exploration. */
+  timedOut: boolean;
   lastProgressTime: number;
   nodeLimit?: number; // for probe mode
 }
@@ -573,4 +673,8 @@ export interface ProbeResult {
   maxDepthReached: number;
   totalLegalActions: number;
   totalNodesWithActions: number;
+  /** Phase A instrumentation: probe-side observability that needs to roll
+   *  forward into the resumed solve's final stats. */
+  maxBranchingFactor: number;
+  depthHistogram: number[];
 }

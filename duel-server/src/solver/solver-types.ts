@@ -215,11 +215,36 @@ export interface SolverStats {
   algorithmUsed: string;
   maxDepthReached: number;
   averageBranchingFactor: number;
+  /** Worst-case branching factor observed at any single node (legal actions
+   *  enumerated, pre-pruning). Reveals explosion points hidden by the average. */
+  maxBranchingFactor: number;
   transpositionHits?: number;
+  transpositionMisses?: number;
+  transpositionStores?: number;
+  transpositionEvictions?: number;
+  transpositionStaleHits?: number;
   deckSeed: string;
   /** Set when a solver bails out early due to a streak of iteration errors. */
   abortedDueToFailures?: number;
   verifyDivergence?: string;
+  /** Effective compute budget given to this solve (post verification reservation).
+   *  Use `elapsed / budgetMs` to compute utilization. */
+  budgetMs: number;
+  /** True when the search hit the depth cap OR ran out of time mid-exploration.
+   *  Indicates the result may be incomplete — the solver stopped before
+   *  finishing the search space, not because nothing was left to explore. */
+  truncated: boolean;
+  /** Why the search stopped:
+   *  - 'completed' — natural exhaustion (DFS) or expansion-only end (MCTS)
+   *  - 'timeout' — time budget elapsed mid-exploration
+   *  - 'depth_cap' — at least one node hit `maxDepth` with legal actions remaining
+   *  - 'failures' — circuit-breaker tripped (MAX_CONSECUTIVE_FAILURES)
+   *  - 'aborted' — external signal cancellation */
+  terminationReason: 'completed' | 'timeout' | 'depth_cap' | 'failures' | 'aborted';
+  /** Per-depth visit count. Index = depth, value = nodes visited at that depth.
+   *  Length = `maxDepth + 1`. Heat map of where the solver spent its budget;
+   *  a long tail at the cap indicates depth pressure. */
+  depthHistogram: number[];
 }
 
 export interface SolverProgress {

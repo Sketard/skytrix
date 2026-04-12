@@ -20,7 +20,7 @@ import type {
   SolverStats,
 } from './solver-types.js';
 import { cloneActivationLog, EMPTY_BREAKDOWN } from './solver-types.js';
-import { MAX_CONSECUTIVE_FAILURES, buildMctsStats, bfsPruneAndTruncate } from './mcts-core.js';
+import { MAX_CONSECUTIVE_FAILURES, buildMctsStats, bfsPruneAndTruncate, type MctsMetrics } from './mcts-core.js';
 import { solverAssert } from './solver-assert.js';
 import type { InterruptionScorer } from './interruption-scorer.js';
 import type { OCGCoreAdapter } from './ocgcore-adapter.js';
@@ -155,6 +155,11 @@ export class MCTSSolver implements SolverStrategy {
     let maxDepthReached = 0;
     let totalChildren = 0;
     let totalBranchingNodes = 0;
+    const metrics: MctsMetrics = {
+      maxBranchingFactor: 0,
+      depthHistogram: new Array(this.configFile.maxDepth + 1).fill(0),
+      depthCapHit: false,
+    };
     let consecutiveFailures = 0;
     let abortedDueToFailures: number | undefined;
 
@@ -178,7 +183,7 @@ export class MCTSSolver implements SolverStrategy {
         const selected = this.select(root, handle, oracle);
 
         // 2. Expansion — expand one untried action
-        const expanded = this.expand(selected, handle, oracle);
+        const expanded = this.expand(selected, handle, oracle, metrics);
 
         // Track branching stats
         if (expanded !== selected && expanded.parent) {
@@ -191,7 +196,7 @@ export class MCTSSolver implements SolverStrategy {
         }
 
         // 3. Simulation — rollout to terminal with epsilon-greedy
-        const { rolloutScore, maxDepth } = this.simulate(expanded, handle, oracle, prng);
+        const { rolloutScore, maxDepth } = this.simulate(expanded, handle, oracle, prng, metrics);
         if (maxDepth > maxDepthReached) maxDepthReached = maxDepth;
 
         // 4. Backpropagation — update stats up to root
@@ -231,10 +236,29 @@ export class MCTSSolver implements SolverStrategy {
       }
     }
 
+    // Termination reason precedence: depth_cap > failures > timeout > aborted > completed.
+    // depth_cap dominates because hitting the cap is a structural signal even
+    // if other budgets also expired — the user needs to know maxDepth is too low.
+    const elapsed = Date.now() - startTime;
+    const terminationReason: SolverStats['terminationReason'] = metrics.depthCapHit
+      ? 'depth_cap'
+      : abortedDueToFailures !== undefined
+        ? 'failures'
+        : elapsed >= solveBudgetMs
+          ? 'timeout'
+          : signal.aborted
+            ? 'aborted'
+            : 'completed';
+    const truncated = metrics.depthCapHit
+      || abortedDueToFailures !== undefined
+      || elapsed >= solveBudgetMs
+      || signal.aborted;
+
     // NOTE: do NOT destroy startHandle — the worker owns it
     return this.buildResult(
       root, nodesExplored, startTime, maxDepthReached,
-      totalChildren, totalBranchingNodes, abortedDueToFailures,
+      totalChildren, totalBranchingNodes, metrics, solveBudgetMs,
+      truncated, terminationReason, abortedDueToFailures,
     );
   }
 
@@ -318,7 +342,7 @@ export class MCTSSolver implements SolverStrategy {
   // Expansion (Task 4)
   // ===========================================================================
 
-  private expand(node: MCTSNode, handle: DuelHandle, oracle: GameOracle): MCTSNode {
+  private expand(node: MCTSNode, handle: DuelHandle, oracle: GameOracle, metrics: MctsMetrics): MCTSNode {
     if (node.isTerminal) return node;
 
     // First visit: populate untried actions
@@ -329,6 +353,9 @@ export class MCTSSolver implements SolverStrategy {
         node.isExpanded = true;
         return node;
       }
+      // Worst-case BF observed pre-ranking — rank can reorder but not add legal
+      // actions, so the raw count is the truthful explosion-point signal.
+      if (actions.length > metrics.maxBranchingFactor) metrics.maxBranchingFactor = actions.length;
       node.untriedActions = this.rankIfNeeded(actions, handle, oracle);
       if (node.untriedActions.length === 0) {
         node.isTerminal = true;
@@ -369,6 +396,14 @@ export class MCTSSolver implements SolverStrategy {
 
     node.children.push(child);
 
+    // Histogram bookkeeping: a new child = a new node visited at child.depth.
+    // Defensive bucket clamp; child.depth should never exceed maxDepth here
+    // because expansion only fires from non-terminal nodes < maxDepth.
+    const bucket = child.depth < metrics.depthHistogram.length
+      ? child.depth
+      : metrics.depthHistogram.length - 1;
+    metrics.depthHistogram[bucket]++;
+
     // Mark parent as fully expanded if no more untried actions
     if (node.untriedActions.length === 0) {
       node.isExpanded = true;
@@ -389,13 +424,16 @@ export class MCTSSolver implements SolverStrategy {
     handle: DuelHandle,
     oracle: GameOracle,
     prng: Xoshiro128SS,
+    metrics: MctsMetrics,
   ): { rolloutScore: number; maxDepth: number } {
     let depth = node.depth;
     const maxDepth = this.configFile.maxDepth;
     const epsilon = this.configFile.rolloutEpsilon;
+    let lastActionsLen = 0;
 
     while (depth < maxDepth) {
       const actions = oracle.getLegalActions(handle);
+      lastActionsLen = actions.length;
       if (actions.length === 0) break;
 
       const ranked = this.rankIfNeeded(actions, handle, oracle);
@@ -408,6 +446,11 @@ export class MCTSSolver implements SolverStrategy {
       oracle.applyAction(handle, action);
       depth++;
     }
+
+    // depth_cap signal: rollout exited because we hit `maxDepth` while there
+    // were still legal actions to play. A natural exit (actions.length === 0)
+    // is normal terminal — only the gated case is truncation.
+    if (depth >= maxDepth && lastActionsLen > 0) metrics.depthCapHit = true;
 
     const finalState = oracle.getFieldState(handle);
     // Story 1.8: snapshot the activation log for OPT-aware scoring AND for
@@ -458,6 +501,10 @@ export class MCTSSolver implements SolverStrategy {
     maxDepthReached: number,
     totalChildren: number,
     totalBranchingNodes: number,
+    metrics: MctsMetrics,
+    budgetMs: number,
+    truncated: boolean,
+    terminationReason: SolverStats['terminationReason'],
     abortedDueToFailures?: number,
   ): SolverResult {
     const useMax = this.configFile.backpropPolicy !== 'mean';
@@ -493,7 +540,10 @@ export class MCTSSolver implements SolverStrategy {
         score: hasBestTerminal ? this._bestTerminalScore : 0,
         scoreBreakdown: this._bestTerminalScoreBreakdown ?? EMPTY_BREAKDOWN,
         endBoardCards,
-        stats: this.buildStats(nodesExplored, startTime, maxDepthReached, 0, 0, abortedDueToFailures),
+        stats: this.buildStats(
+          nodesExplored, startTime, maxDepthReached, 0, 0,
+          metrics, budgetMs, truncated, terminationReason, abortedDueToFailures,
+        ),
       };
     }
 
@@ -570,7 +620,8 @@ export class MCTSSolver implements SolverStrategy {
       endBoardCards,
       stats: this.buildStats(
         nodesExplored, startTime, maxDepthReached,
-        totalChildren, totalBranchingNodes, abortedDueToFailures,
+        totalChildren, totalBranchingNodes,
+        metrics, budgetMs, truncated, terminationReason, abortedDueToFailures,
       ),
     };
   }
@@ -603,13 +654,21 @@ export class MCTSSolver implements SolverStrategy {
     maxDepthReached: number,
     totalChildren: number,
     totalBranchingNodes: number,
+    metrics: MctsMetrics,
+    budgetMs: number,
+    truncated: boolean,
+    terminationReason: SolverStats['terminationReason'],
     abortedDueToFailures?: number,
   ): SolverStats {
     return buildMctsStats({
       algorithm: 'mcts',
       algorithmUsed: 'mcts',
       nodesExplored, startTime, maxDepthReached,
-      totalChildren, totalBranchingNodes, abortedDueToFailures,
+      totalChildren, totalBranchingNodes,
+      maxBranchingFactor: metrics.maxBranchingFactor,
+      depthHistogram: metrics.depthHistogram,
+      budgetMs, truncated, terminationReason,
+      abortedDueToFailures,
     });
   }
 }

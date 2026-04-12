@@ -3006,7 +3006,18 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
           mainPath: [],
           score: 0,
           scoreBreakdown: EMPTY_BREAKDOWN,
-          stats: { nodesExplored: 0, elapsed, algorithm: 'minimax-mcts', algorithmUsed: 'minimax-mcts', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
+          stats: {
+            nodesExplored: 0, elapsed,
+            algorithm: 'minimax-mcts', algorithmUsed: 'minimax-mcts',
+            maxDepthReached: 0, averageBranchingFactor: 0, maxBranchingFactor: 0,
+            deckSeed: deckSeedStr,
+            // Verify path replays a known line — no search budget, no truncation surface.
+            budgetMs: 0,
+            truncated: false,
+            terminationReason: 'completed',
+            depthHistogram: [],
+            ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}),
+          },
           verified: verifyResult.verified,
           isVerifyResult: true,
         };

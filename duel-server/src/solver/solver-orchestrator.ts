@@ -496,11 +496,29 @@ export class SolverOrchestrator {
     // rather than mutating `best.stats` in place — `best` may be referenced
     // by upstream caches or test fixtures, and silently mutating its stats
     // produces hard-to-track action-at-a-distance bugs.
+    //
+    // Phase A instrumentation: also OR the `truncated` flag across workers
+    // so a lucky single worker that completed naturally cannot mask the fact
+    // that the rest of the pool hit depth caps or timeouts. Without this,
+    // the silent-failure mode the instrumentation is designed to surface
+    // would still hide behind multi-worker aggregation. The dominant
+    // `terminationReason` stays from `best` since each worker tracks its
+    // own and a single representative is the meaningful answer for the
+    // returned (best) result.
     let totalNodes = 0;
+    let anyTruncated = false;
     for (const r of allResults) {
       totalNodes += r.stats.nodesExplored;
+      if (r.stats.truncated) anyTruncated = true;
     }
-    return { ...best, stats: { ...best.stats, nodesExplored: totalNodes } };
+    return {
+      ...best,
+      stats: {
+        ...best.stats,
+        nodesExplored: totalNodes,
+        truncated: anyTruncated,
+      },
+    };
   }
 
   // ===========================================================================

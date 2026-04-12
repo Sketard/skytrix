@@ -1,0 +1,200 @@
+{
+  "_meta": {
+    "purpose": "Solver correctness validation fixtures — competitive decklists for benchmarking combo finding against known meta archetypes",
+    "createdAt": "2026-04-12",
+    "decks": {
+      "ddd-wcq-top4": {
+        "source": "ygoprodeck.com — D/D/D, Top 4 Cali WCQ Regional (John Ramírez Barberi, 2025-12-07)",
+        "url": "https://ygoprodeck.com/deck/d-d-d-674759",
+        "format": "TCG December 2025",
+        "validatedAgainstCardDb": true
+      },
+      "ryzeal-mitsurugi-hk-top8": {
+        "source": "ygoprodeck.com — Mitsurugi Ryzeal, Top 8 Yu-Gi-Oh! Open Tournament Hong Kong 2026 AE (Tu Kai-Hsiang, 2026-03-23)",
+        "url": "https://ygoprodeck.com/deck/mitsurugi-ryzeal-701763",
+        "format": "OCG March 2026",
+        "validatedAgainstCardDb": true
+      },
+      "branded-dracotail-mar26": {
+        "source": "ygoprodeck.com — Branded Dracotail (March 2026)",
+        "url": "https://ygoprodeck.com/deck/branded-dracotail-march-2026-699510",
+        "format": "OCG March 2026",
+        "validatedAgainstCardDb": true
+      }
+    },
+    "usage": "Solver correctness validation. Decklists extracted from ygoprodeck.com HTML (data-card attributes) and validated against duel-server/data/cards.cdb. Alias IDs normalized to canonical IDs (Ash Blossom 14558128→14558127, Harpie's Feather Duster 18144507→18144506). Feed hands to the DFS/MCTS solver and compare computed endBoardCards against expected boards.",
+    "expectedBoards": "Not yet populated — to be filled manually per hand after first solver runs, to serve as golden references for regression tests."
+  },
+  "decks": {
+    "ddd-wcq-top4": {
+      "main": [
+        20715411, 20715411, 20715411,
+        74069667,
+        11609969, 11609969, 11609969,
+        28406301, 28406301, 28406301,
+        5997110,
+        42382265, 42382265, 42382265,
+        72181263,
+        46796664,
+        67322708,
+        72291412,
+        42141493, 42141493, 42141493,
+        14558127, 14558127, 14558127,
+        94145021, 94145021, 94145021,
+        46372010, 46372010, 46372010,
+        32665564,
+        93729896,
+        65681983,
+        54693926, 54693926, 54693926,
+        24224830,
+        40366667, 40366667, 40366667,
+        9030160
+      ],
+      "extra": [
+        71398055,
+        74583607,
+        70576413,
+        44852429,
+        72402069,
+        3758046,
+        79559912,
+        32232538,
+        71612253,
+        46593546, 46593546,
+        62541668,
+        9024198, 9024198,
+        30998403
+      ],
+      "side": [
+        55063751, 55063751, 55063751,
+        84192580, 84192580, 84192580,
+        73642296, 73642296, 73642296,
+        18144506,
+        25311006,
+        58921041,
+        41420027,
+        37209439,
+        91781484
+      ]
+    },
+    "ryzeal-mitsurugi-hk-top8": {
+      "main": [
+        13332685, 13332685, 13332685,
+        55397172,
+        19899073,
+        20295753,
+        40543231,
+        82782870,
+        18176525,
+        8633261, 8633261,
+        34022970,
+        84433129,
+        35844557,
+        72238166,
+        27204311,
+        14558127, 14558127,
+        23434538, 23434538,
+        42141493, 42141493, 42141493,
+        94145021, 94145021, 94145021,
+        45171524, 45171524, 45171524,
+        81560239,
+        6798031,
+        7477101, 7477101, 7477101,
+        85106525,
+        24224830, 24224830,
+        65681983,
+        13048472,
+        49721684,
+        17954937
+      ],
+      "extra": [
+        73898890,
+        8165596,
+        9940036,
+        40673853,
+        1269512,
+        66011101,
+        90590303,
+        61399402,
+        32530043,
+        7511613,
+        34909328,
+        11398059,
+        49678559,
+        45852939,
+        5088741
+      ],
+      "side": [
+        84192580, 84192580, 84192580,
+        18144506,
+        23002292, 23002292,
+        40366667, 40366667, 40366667,
+        41420027, 41420027, 41420027,
+        84749824, 84749824, 84749824
+      ]
+    },
+    "branded-dracotail-mar26": {
+      "main": [
+        27204311,
+        44482554, 44482554, 44482554,
+        70871153, 70871153,
+        1498449, 1498449, 1498449,
+        75003700, 75003700, 75003700,
+        68468459,
+        95515789, 95515789,
+        42141493, 42141493, 42141493,
+        7375867, 7375867, 7375867,
+        14558127, 14558127, 14558127,
+        73642296, 73642296,
+        84477320,
+        23434538,
+        97268402,
+        44362883, 44362883,
+        6153210, 6153210, 6153210,
+        32548318, 32548318, 32548318,
+        5431722,
+        69932023,
+        80208225
+      ],
+      "extra": [
+        38811586,
+        33760966, 33760966, 33760966,
+        70538272,
+        44146295,
+        89851827,
+        70534340,
+        87746184,
+        51409648,
+        79755671,
+        29301450,
+        42097666,
+        24361622,
+        70369116
+      ],
+      "side": []
+    }
+  },
+  "hands": [
+    {
+      "id": "ddd-pendulum-opener",
+      "deck": "ddd-wcq-top4",
+      "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Expected to establish a Pendulum Scale and summon D/D/D boss monster(s) via Gryphon/Scale Surveyor.",
+      "hand": [11609969, 46796664, 42382265, 46372010, 42141493],
+      "deckSeed": "11111,22222"
+    },
+    {
+      "id": "ryzeal-mitsurugi-opener",
+      "deck": "ryzeal-mitsurugi-hk-top8",
+      "description": "Mitsurugi+Ryzeal opener: Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Expected to set up Rank 4 Xyz plus Mitsurugi control shell.",
+      "hand": [13332685, 8633261, 35844557, 45171524, 42141493],
+      "deckSeed": "33333,44444"
+    },
+    {
+      "id": "branded-dracotail-opener",
+      "deck": "branded-dracotail-mar26",
+      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Dracotail Pan + Branded Fusion + Blazing Cartesia. Expected to fusion-summon Mirrorjade/Albion line and establish Dracotail Arthalion endboard.",
+      "hand": [1498449, 75003700, 44482554, 44362883, 95515789],
+      "deckSeed": "55555,66666"
+    }
+  ]
+}

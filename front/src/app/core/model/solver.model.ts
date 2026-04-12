@@ -82,11 +82,24 @@ export interface SolverStats {
   algorithmUsed: string;
   maxDepthReached: number;
   averageBranchingFactor: number;
+  /** Worst-case branching factor observed at any single node. */
+  maxBranchingFactor: number;
   transpositionHits?: number;
+  transpositionMisses?: number;
+  transpositionStores?: number;
+  transpositionEvictions?: number;
+  transpositionStaleHits?: number;
   deckSeed: string;
   /** Set when a solver bails out early due to a streak of iteration errors. */
   abortedDueToFailures?: number;
   verifyDivergence?: string;
+  /** Effective compute budget for this solve (post verification reservation). */
+  budgetMs: number;
+  /** True when the search hit the depth cap OR ran out of time mid-exploration. */
+  truncated: boolean;
+  terminationReason: 'completed' | 'timeout' | 'depth_cap' | 'failures' | 'aborted';
+  /** Per-depth visit count, length = maxDepth + 1. */
+  depthHistogram: number[];
 }
 
 // =============================================================================
