@@ -45,6 +45,7 @@ import * as logger from './logger.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
+import { EMPTY_BREAKDOWN } from './solver/solver-types.js';
 
 // =============================================================================
 // Configuration
@@ -2970,7 +2971,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
           tree: { action: { responseIndex: 0, cardId: 0, cardName: '', actionDescription: '' }, annotation: '', score: 0, confidence: 0, children: [], isTerminal: true },
           mainPath: [],
           score: 0,
-          scoreBreakdown: { omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0, controlChange: 0, banish: 0, banishFacedown: 0, attach: 0, spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0, bounce: 0, handRip: 0, sendToGy: 0, weighted: 0, fallbackPoints: 0, total: 0 },
+          scoreBreakdown: EMPTY_BREAKDOWN,
           stats: { nodesExplored: 0, elapsed, algorithm: 'minimax-mcts', algorithmUsed: 'minimax-mcts', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
           verified: verifyResult.verified,
           isVerifyResult: true,

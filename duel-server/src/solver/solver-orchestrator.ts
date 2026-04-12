@@ -21,6 +21,34 @@ import type {
   AdversarialTiming,
   VerifyResult,
 } from './solver-types.js';
+import { solverAssert } from './solver-assert.js';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Multiplier applied to `timeLimitMs` to get the hard-kill deadline. After
+ *  this deadline, the orchestrator aborts all workers even if they're still
+ *  running. Gives the solver a 50% margin over its self-reported budget. */
+const HARD_KILL_MULTIPLIER = 1.5;
+
+/** Grace window (ms) after abort for workers to settle before we snapshot
+ *  whatever results have been collected. Short enough that cancelled solves
+ *  still return snappily, long enough to pick up any result already in-flight. */
+const ABORT_SETTLE_MS = 500;
+
+/** Total time budget (ms) for verify mode. Verify is a single-worker deterministic
+ *  replay — sub-100ms in practice, but we give 10s headroom for decks with
+ *  many chain windows / large activation logs. */
+const VERIFY_TIME_LIMIT_MS = 10_000;
+
+/** Top-K alternative combo lines extracted per solve. Each alternative is
+ *  the root child at index [0..K-1]. Must match the worker's default. */
+const TOP_K_ALTERNATIVES = 3;
+
+/** Worker pool health-check timeout (ms). If the pool doesn't respond to a
+ *  no-op task within this window at boot, the pool is marked degraded. */
+const POOL_HEALTH_CHECK_MS = 10_000;
 
 // =============================================================================
 // Types
@@ -99,10 +127,11 @@ export class SolverOrchestrator {
       snapshotMode: false,
     });
 
-    // Health check: dispatch a no-op task and verify it resolves within 10s
+    // Health check: dispatch a no-op task and verify it resolves within the
+    // configured pool-health-check window.
     try {
       const healthPromise = this.pool.run({ type: 'health-check' });
-      const timeout = new Promise<'timeout'>(r => setTimeout(() => r('timeout'), 10_000));
+      const timeout = new Promise<'timeout'>(r => setTimeout(() => r('timeout'), POOL_HEALTH_CHECK_MS));
       const race = await Promise.race([healthPromise, timeout]);
       if (race === 'timeout') {
         console.warn('[Solver] pool-degraded — worker boot failed (timeout)');
@@ -225,7 +254,7 @@ export class SolverOrchestrator {
         seed: seeds[i],
         algorithm,
         progressPort: port2,
-        topK: 3,
+        topK: TOP_K_ALTERNATIVES,
       };
 
       workerPromises.push(
@@ -239,8 +268,8 @@ export class SolverOrchestrator {
       );
     }
 
-    // Hard-kill timeout: timeLimitMs * 1.5
-    const hardKillMs = solverConfig.timeLimitMs * 1.5;
+    // Hard-kill timeout: timeLimitMs * HARD_KILL_MULTIPLIER (1.5×)
+    const hardKillMs = solverConfig.timeLimitMs * HARD_KILL_MULTIPLIER;
     let hardKillTimer: ReturnType<typeof setTimeout>;
     const hardKillPromise = new Promise<'hard-kill'>(r => {
       hardKillTimer = setTimeout(() => r('hard-kill'), hardKillMs);
@@ -260,7 +289,7 @@ export class SolverOrchestrator {
         const settled = await Promise.race([
           allSettled,
           new Promise<PromiseSettledResult<WorkerResult>[]>(r =>
-            setTimeout(() => r([]), 500),
+            setTimeout(() => r([]), ABORT_SETTLE_MS),
           ),
         ]);
         settledResults = settled;
@@ -368,7 +397,7 @@ export class SolverOrchestrator {
   ): Promise<VerifyResult> {
     const task = {
       duelConfig,
-      solverConfig: { mode: 'adversarial' as const, speed: 'fast' as const, timeLimitMs: 10_000 },
+      solverConfig: { mode: 'adversarial' as const, speed: 'fast' as const, timeLimitMs: VERIFY_TIME_LIMIT_MS },
       seed: duelConfig.deckSeed,
       algorithm: 'dfs' as const,
       progressPort: null,
@@ -403,6 +432,15 @@ export class SolverOrchestrator {
   // ===========================================================================
 
   private mergeResults(allResults: SolverResult[]): SolverResult {
+    // Invariant: callers upstream filter empty result arrays into error paths
+    // before reaching merge. A zero-length array here means a regression in
+    // solve() result collection.
+    solverAssert(
+      allResults.length > 0,
+      'SolverOrchestrator.mergeResults',
+      'called with empty result array — upstream filter broken',
+    );
+
     // Adversarial results: sort by minimax (worst-case resilience) descending.
     // Goldfish results: sort by score (optimistic) descending.
     const isAdversarial = allResults[0]?.minimax !== undefined;

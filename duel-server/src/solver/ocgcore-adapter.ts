@@ -9,14 +9,13 @@ import createCore, {
   OcgPosition,
   OcgProcessResult,
   OcgMessageType,
-  OcgQueryFlags,
   type OcgCoreSync,
   type OcgDuelHandle as OcgNativeHandle,
   type OcgMessage,
 } from '@n1xx1/ocgcore-wasm';
 
 import type { CardDB, ScriptDB } from '../types.js';
-import type { Phase, ZoneId } from '../ws-protocol.js';
+import type { Phase } from '../ws-protocol.js';
 import { STARTUP_SCRIPTS } from '../ocg-scripts.js';
 import { createCardReader, createScriptReader } from '../ocg-callbacks.js';
 import type { GameOracle, DuelHandle } from './game-oracle.js';
@@ -24,7 +23,6 @@ import type {
   ActivationLog,
   Action,
   DuelConfig,
-  FieldCard,
   FieldState,
   InterruptionTag,
   PromptType,
@@ -32,85 +30,15 @@ import type {
 } from './solver-types.js';
 import { EXPLORATORY_PROMPTS, cloneActivationLog } from './solver-types.js';
 import { disambiguateEffect, isFieldActivation } from './interruption-disambiguation.js';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const PLAYER = 0 as const;
-const OPPONENT = 1 as const;
-const FILLER_CARD = 43096270; // Alexandrite Dragon (vanilla Lv4)
-
-const PHASE_MAP: Record<number, Phase> = {
-  0x01: 'DRAW',
-  0x02: 'STANDBY',
-  0x04: 'MAIN1',
-  0x08: 'BATTLE_START',
-  0x10: 'BATTLE_STEP',
-  0x20: 'DAMAGE',
-  0x40: 'DAMAGE_CALC',
-  0x80: 'BATTLE',
-  0x100: 'MAIN2',
-  0x200: 'END',
-};
-
-const POSITION_MAP: Record<number, FieldCard['position']> = {
-  [OcgPosition.FACEUP_ATTACK]: 'faceup-atk',
-  [OcgPosition.FACEUP_DEFENSE]: 'faceup-def',
-  [OcgPosition.FACEDOWN_DEFENSE]: 'facedown-def',
-  [OcgPosition.FACEDOWN_ATTACK]: 'facedown',
-};
-
-// OCGCore SELECT_* message types mapped to our PromptType
-const MESSAGE_TO_PROMPT: Record<number, PromptType> = {
-  [OcgMessageType.SELECT_IDLECMD]: 'SELECT_IDLECMD',
-  [OcgMessageType.SELECT_BATTLECMD]: 'SELECT_BATTLECMD',
-  [OcgMessageType.SELECT_CHAIN]: 'SELECT_CHAIN',
-  [OcgMessageType.SELECT_EFFECTYN]: 'SELECT_EFFECTYN',
-  [OcgMessageType.SELECT_YESNO]: 'SELECT_YESNO',
-  [OcgMessageType.SELECT_OPTION]: 'SELECT_OPTION',
-  [OcgMessageType.SELECT_CARD]: 'SELECT_CARD',
-  [OcgMessageType.SELECT_UNSELECT_CARD]: 'SELECT_UNSELECT_CARD',
-  [OcgMessageType.SELECT_POSITION]: 'SELECT_POSITION',
-  [OcgMessageType.SELECT_PLACE]: 'SELECT_PLACE',
-  [OcgMessageType.SELECT_TRIBUTE]: 'SELECT_TRIBUTE',
-  [OcgMessageType.SELECT_SUM]: 'SELECT_SUM',
-  [OcgMessageType.SELECT_COUNTER]: 'SELECT_COUNTER',
-  [OcgMessageType.SELECT_DISFIELD]: 'SELECT_DISFIELD',
-};
-
-// SELECT_* message types that we recognize
-const SELECT_MSG_TYPES = new Set(Object.keys(MESSAGE_TO_PROMPT).map(Number));
-
-// All ZoneId values — kept in sync with ws-protocol.ts ZoneId type
-const ALL_ZONE_IDS: readonly ZoneId[] = [
-  'M1', 'M2', 'M3', 'M4', 'M5',
-  'S1', 'S2', 'S3', 'S4', 'S5',
-  'FIELD', 'EMZ_L', 'EMZ_R',
-  'GY', 'BANISHED', 'EXTRA', 'DECK', 'HAND',
-] satisfies readonly ZoneId[];
-
-// =============================================================================
-// Runtime field types (richer than @n1xx1/ocgcore-wasm type defs)
-// =============================================================================
-
-interface RuntimeFieldCard {
-  code: number;
-  position: number;
-  materials: number;
-}
-
-interface RuntimeFieldPlayer {
-  lp: number;
-  monsters: (RuntimeFieldCard | null)[];
-  spells: (RuntimeFieldCard | null)[];
-  deck_size: number;
-  hand_size: number;
-  grave_size: number;
-  banish_size: number;
-  extra_size: number;
-  extra_faceup_count: number;
-}
+import {
+  PLAYER,
+  OPPONENT,
+  FILLER_CARD,
+  PHASE_MAP,
+  MESSAGE_TO_PROMPT,
+  SELECT_MSG_TYPES,
+} from './ocg-constants.js';
+import { queryFieldState, decodeFieldMask } from './ocg-field-query.js';
 
 // =============================================================================
 // Internal Handle State
@@ -603,9 +531,9 @@ export class OCGCoreAdapter implements GameOracle {
       case OcgMessageType.SELECT_POSITION:
         return { type: 11, position: OcgPosition.FACEUP_ATTACK };
       case OcgMessageType.SELECT_PLACE:
-        return { type: 10, places: this.decodeFieldMask(msg['field_mask'] as number, msg['count'] as number) };
+        return { type: 10, places: decodeFieldMask(msg['field_mask'] as number, msg['count'] as number) };
       case OcgMessageType.SELECT_DISFIELD:
-        return { type: 9, places: this.decodeFieldMask(msg['field_mask'] as number, msg['count'] as number) };
+        return { type: 9, places: decodeFieldMask(msg['field_mask'] as number, msg['count'] as number) };
       case OcgMessageType.SELECT_TRIBUTE:
         return { type: 12, indicies: Array.from({ length: (msg['min'] as number) ?? 1 }, (_, i) => i) };
       case OcgMessageType.SELECT_SUM:
@@ -641,137 +569,17 @@ export class OCGCoreAdapter implements GameOracle {
   }
 
   // ===========================================================================
-  // Internal: Field State Query
+  // Internal: Field State Query (delegated to ocg-field-query.ts)
   // ===========================================================================
 
-  // Runtime field card shape (richer than @n1xx1/ocgcore-wasm type defs)
   private queryFieldState(internal: InternalHandle): FieldState {
-    const field = this.core.duelQueryField(internal.nativeHandle);
-
-    const zones: Record<string, FieldCard[]> = {};
-
-    // @n1xx1/ocgcore-wasm type defs are incomplete — cast through unknown
-    const p0 = field.players[PLAYER] as unknown as RuntimeFieldPlayer;
-    const p1 = field.players[OPPONENT] as unknown as RuntimeFieldPlayer;
-
-    for (const z of ALL_ZONE_IDS) zones[z] = [];
-
-    // Monster zones (player 0): M1-M5 = sequences 0-4, EMZ_L = 5, EMZ_R = 6.
-    // `duelQueryField()` returns ONLY the slot's `position` (occupancy bitmap),
-    // NOT the card code — that requires a separate `duelQuery` per occupied
-    // slot with `OcgQueryFlags.CODE`. Same pattern as duel-worker.ts queryCard.
-    // The pre-fix version checked `card.code` which was always undefined, so
-    // every occupied MZONE/SZONE slot was silently dropped → scorer always
-    // saw an empty field → score=0 on every solve. This was C6 in the review.
-    for (let seq = 0; seq < p0.monsters.length; seq++) {
-      const slot = p0.monsters[seq];
-      const pos = slot?.position as number ?? 0;
-      if (!slot || pos === 0) continue;
-
-      const cardCode = this.queryCardCode(internal.nativeHandle, PLAYER, OcgLocation.MZONE, seq);
-      if (!cardCode) continue;
-
-      const zoneId = seq < 5 ? `M${seq + 1}` : (seq === 5 ? 'EMZ_L' : 'EMZ_R');
-      const overlayCount = this.queryOverlayCount(internal.nativeHandle, PLAYER, OcgLocation.MZONE, seq);
-      zones[zoneId] = [{
-        cardId: cardCode,
-        cardName: this.getCardName(cardCode),
-        position: POSITION_MAP[pos] ?? 'faceup-atk',
-        overlayCount,
-      }];
-    }
-
-    // Spell/Trap zones (player 0): S1-S5 = sequences 0-4, FIELD = 5
-    for (let seq = 0; seq < p0.spells.length; seq++) {
-      const slot = p0.spells[seq];
-      const pos = slot?.position as number ?? 0;
-      if (!slot || pos === 0) continue;
-
-      const cardCode = this.queryCardCode(internal.nativeHandle, PLAYER, OcgLocation.SZONE, seq);
-      if (!cardCode) continue;
-
-      const zoneId = seq < 5 ? `S${seq + 1}` : 'FIELD';
-      zones[zoneId] = [{
-        cardId: cardCode,
-        cardName: this.getCardName(cardCode),
-        position: POSITION_MAP[pos] ?? 'facedown',
-        overlayCount: 0,
-      }];
-    }
-
-    // Pile zones via duelQueryLocation
-    zones['HAND'] = this.queryPileZone(internal.nativeHandle, PLAYER, OcgLocation.HAND);
-    zones['GY'] = this.queryPileZone(internal.nativeHandle, PLAYER, OcgLocation.GRAVE);
-    zones['BANISHED'] = this.queryPileZone(internal.nativeHandle, PLAYER, OcgLocation.REMOVED);
-    zones['DECK'] = this.queryPileZone(internal.nativeHandle, PLAYER, OcgLocation.DECK);
-    zones['EXTRA'] = this.queryPileZone(internal.nativeHandle, PLAYER, OcgLocation.EXTRA);
-
-    return {
-      zones: zones as Record<ZoneId, FieldCard[]>,
-      lifePoints: [p0.lp, p1.lp],
+    return queryFieldState({
+      core: this.core,
+      nativeHandle: internal.nativeHandle,
       turn: internal.turn,
       phase: internal.phase,
-    };
-  }
-
-  private queryOverlayCount(nativeHandle: OcgNativeHandle, controller: 0 | 1, location: number, sequence: number): number {
-    try {
-      const result = this.core.duelQuery(nativeHandle, {
-        flags: OcgQueryFlags.OVERLAY_CARD as number,
-        controller,
-        location,
-        sequence,
-        overlaySequence: 0,
-      } as never);
-      // Both `overlay_cards` (snake) and `overlayCards` (camel) seen across
-      // bindings — accept either to stay forward-compatible.
-      const r = result as { overlay_cards?: unknown[]; overlayCards?: unknown[] };
-      return (r?.overlay_cards ?? r?.overlayCards)?.length ?? 0;
-    } catch {
-      return 0;
-    }
-  }
-
-  /** Query a single occupied field slot's card code. `duelQueryField()` only
-   *  returns the slot occupancy bitmap (`position`), not the card code — that
-   *  requires a per-slot `duelQuery` with `OcgQueryFlags.CODE`. Mirrors the
-   *  PvP `duel-worker.ts` queryCard pattern. Returns 0 when the slot is empty
-   *  or the query fails. */
-  private queryCardCode(nativeHandle: OcgNativeHandle, controller: 0 | 1, location: number, sequence: number): number {
-    try {
-      const result = this.core.duelQuery(nativeHandle, {
-        flags: OcgQueryFlags.CODE as number,
-        controller,
-        location,
-        sequence,
-        overlaySequence: 0,
-      } as never);
-      const code = (result as { code?: number | bigint })?.code;
-      if (code === undefined || code === null) return 0;
-      return typeof code === 'bigint' ? Number(code) : code;
-    } catch {
-      return 0;
-    }
-  }
-
-  private queryPileZone(nativeHandle: OcgNativeHandle, controller: 0 | 1, location: number): FieldCard[] {
-    try {
-      const cards = this.core.duelQueryLocation(nativeHandle, {
-        flags: (OcgQueryFlags.CODE as number) | (OcgQueryFlags.POSITION as number),
-        controller,
-        location,
-      } as never);
-      return (cards as ({ code?: number; position?: number } | null)[])
-        .filter((c): c is { code: number; position: number } => c != null && c.code !== undefined && c.code > 0)
-        .map(c => ({
-          cardId: c.code,
-          cardName: this.getCardName(c.code),
-          position: POSITION_MAP[c.position] ?? 'facedown',
-          overlayCount: 0,
-        }));
-    } catch {
-      return [];
-    }
+      getCardName: (code) => this.getCardName(code),
+    });
   }
 
   // ===========================================================================
@@ -849,29 +657,6 @@ export class OCGCoreAdapter implements GameOracle {
       const status = this.core.duelProcess(nativeHandle);
       if (status === OcgProcessResult.END || status === OcgProcessResult.WAITING) return;
     }
-  }
-
-  // ===========================================================================
-  // Internal: Field Mask Decoding
-  // ===========================================================================
-
-  private decodeFieldMask(mask: number, count: number): { player: number; location: number; sequence: number }[] {
-    const places: { player: number; location: number; sequence: number }[] = [];
-    for (let p = 0; p < 2 && places.length < count; p++) {
-      for (let seq = 0; seq < 5 && places.length < count; seq++) {
-        const bit = p * 16 + seq;
-        if (!(mask & (1 << bit))) {
-          places.push({ player: p, location: OcgLocation.MZONE, sequence: seq });
-        }
-      }
-      for (let seq = 0; seq < 5 && places.length < count; seq++) {
-        const bit = p * 16 + 8 + seq;
-        if (!(mask & (1 << bit))) {
-          places.push({ player: p, location: OcgLocation.SZONE, sequence: seq });
-        }
-      }
-    }
-    return places;
   }
 
   // ===========================================================================

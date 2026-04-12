@@ -8,6 +8,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -151,18 +152,48 @@ export class SolverConfigComponent {
       this.solverService.setHandForDeck(deckId, hand);
     });
 
-    // Persist speed/algorithm/mode/handtrap preferences to localStorage.
+    // local → prefs: persist speed/algorithm/mode/handtrap changes to prefs
+    // (which writes to localStorage). `prefs()` is read via `untracked()` so
+    // this effect only re-fires when LOCAL signals change — never when prefs
+    // is updated externally (e.g. by `SolverService.restoreHistoryEntry`).
+    // Without `untracked`, an external prefs update would re-trigger this
+    // effect, find local != prefs, and roll back the external update by
+    // writing stale local values to prefs.
     effect(() => {
       const speed = this.speed();
       const algorithm = this.algorithm();
       const mode = this.mode();
       const handtrapIds = this.selectedHandtraps();
-      const current = this.solverService.prefs();
+      const current = untracked(() => this.solverService.prefs());
       if (speed === current.speed && algorithm === current.algorithm
         && mode === current.mode
         && handtrapIds.length === current.handtrapIds.length
         && handtrapIds.every((id, i) => id === current.handtrapIds[i])) return;
       this.solverService.updatePrefs({ speed, algorithm, mode, handtrapIds });
+    });
+
+    // prefs → local: hydrate local signals when prefs changes externally
+    // (e.g. `restoreHistoryEntry` updating the prefs snapshot to reflect the
+    // restored entry's config). Only `prefs()` is tracked; local signals are
+    // read via `untracked()` so this effect fires exclusively on prefs updates.
+    // The no-op guards on each branch prevent redundant set() calls when the
+    // local signal already matches prefs (no write loops with the effect above).
+    effect(() => {
+      const current = this.solverService.prefs();
+      if (untracked(() => this.speed()) !== current.speed) {
+        this.speed.set(current.speed);
+      }
+      if (untracked(() => this.algorithm()) !== current.algorithm) {
+        this.algorithm.set(current.algorithm);
+      }
+      if (untracked(() => this.mode()) !== current.mode) {
+        this.mode.set(current.mode);
+      }
+      const localHt = untracked(() => this.selectedHandtraps());
+      if (localHt.length !== current.handtrapIds.length
+        || !localHt.every((id, i) => id === current.handtrapIds[i])) {
+        this.selectedHandtraps.set([...current.handtrapIds]);
+      }
     });
 
     // Prune orphaned handtrap selections when server handtrap list changes.

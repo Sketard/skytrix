@@ -13,6 +13,7 @@ import type {
   ScoreBreakdown,
 } from './solver-types.js';
 import { ALL_ZONE_IDS, INTERRUPTION_TYPES } from './solver-types.js';
+import { solverAssert } from './solver-assert.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -154,6 +155,18 @@ export class InterruptionScorer {
     breakdown.weighted = weighted;
     breakdown.fallbackPoints = fallbackPoints;
     breakdown.total = total;
+
+    // Invariant: total is the sum of the two component scores. Brick
+    // detection uses `weighted` specifically (excluding fallback) so any
+    // drift between `total` and `weighted + fallbackPoints` corrupts both
+    // score display and brick classification.
+    solverAssert(
+      Math.abs(breakdown.total - (breakdown.weighted + breakdown.fallbackPoints)) < 1e-9,
+      'InterruptionScorer.scoreWithCards',
+      'total !== weighted + fallbackPoints',
+      { total: breakdown.total, weighted: breakdown.weighted, fallbackPoints: breakdown.fallbackPoints },
+    );
+
     return { score: total, scoreBreakdown: breakdown, endBoardCards };
   }
 }

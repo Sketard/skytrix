@@ -1,9 +1,10 @@
-import { inject, Injectable, OnDestroy } from '@angular/core';
-import { Clipboard } from '@angular/cdk/clipboard';
+import { inject, Injectable, OnDestroy, computed, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SolverDebugLogService } from './solver-debug-log.service';
-import { computed, signal } from '@angular/core';
+import { SolverPrefsService, type SolverPrefs } from './solver-prefs.service';
+import { SolverPinsService } from './solver-pins.service';
+import { SolverExportService } from './solver-export.service';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import type {
   SolverStartMessage,
@@ -37,11 +38,14 @@ import type {
   ScoreBreakdown,
   SolverStats,
   AdversarialTiming,
-  EndBoardCard,
   HistoryEntry,
   HistoryEntryConfig,
-  PinnedResult,
 } from '../../../core/model/solver.model';
+
+// Re-export SolverPrefs so existing imports of it from 'solver.service'
+// keep working after the prefs extraction. New code should import from
+// './solver-prefs.service' directly.
+export type { SolverPrefs } from './solver-prefs.service';
 
 const SESSION_HISTORY_CAP = 10;
 const INIT_TIMEOUT_MS = 10_000;
@@ -56,67 +60,14 @@ const RECONNECT_RESULT_GRACE_MS = 1_500;
  *  Solve button stays visibly disabled instead of round-tripping a RATE_LIMITED
  *  error (Story 1.5b). */
 const SOLVE_COOLDOWN_MS = 2_000;
-const PREFS_STORAGE_KEY = 'solver:prefs:v1';
-const PINNED_RESULTS_CAP = 4;
-const PINS_STORAGE_KEY = 'solver:pins:v1';
-
-export interface SolverPrefs {
-  speed: 'fast' | 'optimal';
-  algorithm: 'dfs' | 'mcts' | 'auto';
-  mode: 'goldfish' | 'adversarial';
-  handtrapIds: number[];
-}
-
-const DEFAULT_PREFS: SolverPrefs = {
-  speed: 'fast',
-  algorithm: 'auto',
-  mode: 'goldfish',
-  handtrapIds: [],
-};
-
-function loadPrefs(): SolverPrefs {
-  try {
-    const raw = localStorage.getItem(PREFS_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_PREFS };
-    const parsed = JSON.parse(raw) as Partial<SolverPrefs>;
-    return {
-      speed: parsed.speed === 'optimal' ? 'optimal' : 'fast',
-      algorithm: parsed.algorithm === 'dfs' || parsed.algorithm === 'mcts' || parsed.algorithm === 'auto'
-        ? parsed.algorithm
-        : 'auto',
-      mode: parsed.mode === 'goldfish' || parsed.mode === 'adversarial' ? parsed.mode : 'goldfish',
-      handtrapIds: Array.isArray(parsed.handtrapIds) ? parsed.handtrapIds.filter(n => Number.isInteger(n)) : [],
-    };
-  } catch {
-    return { ...DEFAULT_PREFS };
-  }
-}
-
-function loadPins(): PinnedResult[] {
-  try {
-    const raw = localStorage.getItem(PINS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (p: unknown): p is PinnedResult =>
-        p !== null && typeof p === 'object'
-        && typeof (p as PinnedResult).score === 'number'
-        && typeof (p as PinnedResult).savedAt === 'number'
-        && (p as PinnedResult).config !== undefined
-        && Array.isArray((p as PinnedResult).handCards)
-        && Array.isArray((p as PinnedResult).endBoardCards),
-    );
-  } catch {
-    return [];
-  }
-}
 
 @Injectable({ providedIn: 'root' })
 export class SolverService implements OnDestroy {
   private readonly notify = inject(NotificationService);
-  private readonly clipboard = inject(Clipboard);
   private readonly debugLog = inject(SolverDebugLogService, { optional: true });
+  private readonly prefsService = inject(SolverPrefsService);
+  private readonly pinsService = inject(SolverPinsService);
+  private readonly exportService = inject(SolverExportService);
 
   readonly solverState = signal<SolverState>('idle');
   readonly progress = signal<SolverProgress | null>(null);
@@ -138,12 +89,15 @@ export class SolverService implements OnDestroy {
   private readonly currentDeckName = signal('');
   private readonly currentCardNames = signal<Map<number, string>>(new Map());
 
-  /** Persisted user preferences (mode/speed/algorithm/handtraps) — Story 1.5a. */
-  readonly prefs = signal<SolverPrefs>(loadPrefs());
+  /** Persisted user preferences (mode/speed/algorithm/handtraps) — Story 1.5a.
+   *  Delegates to SolverPrefsService; exposed here for backward-compat with
+   *  existing components. New code should inject SolverPrefsService directly. */
+  readonly prefs = this.prefsService.prefs;
 
-  /** Pinned result snapshots for cross-deck comparison — Story 3.2. */
-  readonly pinnedResults = signal<PinnedResult[]>(loadPins());
-  readonly canPin = computed(() => this.pinnedResults().length < PINNED_RESULTS_CAP && this.result() !== null);
+  /** Pinned result snapshots for cross-deck comparison — Story 3.2.
+   *  Delegates to SolverPinsService. */
+  readonly pinnedResults = this.pinsService.pinnedResults;
+  readonly canPin = this.pinsService.canPinFor(this.result);
 
   /** Per-deck hand selection (cardId → copy count). Persists across navigation
    *  for the lifetime of the SolverService singleton — resets when the deck
@@ -176,121 +130,41 @@ export class SolverService implements OnDestroy {
   }
 
   updatePrefs(partial: Partial<SolverPrefs>): void {
-    const next: SolverPrefs = { ...this.prefs(), ...partial };
-    this.prefs.set(next);
-    try {
-      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify(next));
-    } catch { /* quota / private mode — silently ignore */ }
+    this.prefsService.updatePrefs(partial);
   }
 
+  /** Pin the current result — delegates to SolverPinsService with a
+   *  resolved context snapshot. The card name map prefers the solve-time
+   *  snapshot (survives deck navigation) but falls back to the current
+   *  deck context when no snapshot is available (fresh page load with
+   *  cached result on reconnect). */
   pinResult(): void {
     const result = this.result();
     const config = this.lastSolveConfig();
-    if (!result || !config || this.pinnedResults().length >= PINNED_RESULTS_CAP) return;
-
+    if (!result || !config) return;
     const saved = this.lastSolveCardNames();
     const cardNames = saved.size > 0 ? saved : this.currentCardNames();
-    const handCards = Object.entries(config.hand).flatMap(([idStr, count]) => {
-      const cardId = Number(idStr);
-      const cardName = cardNames.get(cardId) ?? `#${cardId}`;
-      return Array.from({ length: count }, () => ({ cardId, cardName }));
-    }).slice(0, 5);
-
-    const pin: PinnedResult = {
-      score: result.score,
-      scoreBreakdown: result.scoreBreakdown,
-      mainPath: result.mainPath,
-      endBoardCards: (result.endBoardCards ?? []).map(c => ({ cardId: c.cardId, cardName: c.cardName })),
-      handCards,
-      config: { ...config },
-      minimax: result.minimax,
-      deckSeed: result.stats.deckSeed,
-      savedAt: Date.now(),
-    };
-
-    this.pinnedResults.update(pins => [...pins, pin]);
-    this.persistPins(this.pinnedResults());
+    this.pinsService.pin({ result, config, cardNames });
   }
 
   unpinResult(index: number): void {
-    this.pinnedResults.update(pins => pins.filter((_, i) => i !== index));
-    this.persistPins(this.pinnedResults());
+    this.pinsService.unpin(index);
   }
 
+  /** Export the current result as JSON to the clipboard. Delegates to
+   *  SolverExportService with a resolved context snapshot. */
   exportResult(): void {
     const result = this.result();
     const config = this.lastSolveConfig();
     if (!result || !config) return;
-
     const saved = this.lastSolveCardNames();
     const cardNames = saved.size > 0 ? saved : this.currentCardNames();
-
-    const hand = Object.entries(config.hand).map(([idStr, count]) => ({
-      cardId: Number(idStr),
-      cardName: cardNames.get(Number(idStr)) ?? `#${idStr}`,
-      count,
-    }));
-
-    const bd = result.scoreBreakdown;
-    const scoreBreakdown = Object.fromEntries(
-      Object.entries(bd).filter(([k, v]) => v !== 0 || k === 'total' || k === 'weighted')
-    );
-
-    const exportObj: Record<string, unknown> = {
-      deckName: config.deckName,
-      deckId: config.deckId,
-      deckSeed: result.stats.deckSeed,
-      hand,
-      mode: config.mode,
-      speed: config.speed,
-      algorithm: config.algorithm,
-      algorithmUsed: result.stats.algorithmUsed,
-      score: result.score,
-      scoreBreakdown,
-      endBoardCards: (result.endBoardCards ?? []).map(c => ({ cardId: c.cardId, cardName: c.cardName, zone: c.zone })),
-    };
-
-    if (result.minimax != null) {
-      exportObj['minimax'] = result.minimax;
-    }
-
-    if (config.mode === 'adversarial' && config.handtraps) {
-      const htList = this.handtraps() ?? [];
-      exportObj['handtraps'] = config.handtraps.map(id => {
-        const ht = htList.find(h => h.cardId === id);
-        return { cardId: id, cardName: ht?.cardName ?? cardNames.get(id) ?? `#${id}` };
-      });
-    }
-
-    if (result.adversarialTimings) {
-      exportObj['adversarialTimings'] = result.adversarialTimings.map(t => ({
-        handtrapCardName: t.handtrapCardName,
-        usedAtStep: result.mainPath[t.stepIndex]?.cardName ?? `step ${t.stepIndex}`,
-      }));
-    }
-
-    exportObj['mainPath'] = result.mainPath.map(a => ({
-      cardName: a.cardName,
-      actionDescription: a.actionDescription,
-    }));
-
-    if (result.partial) {
-      exportObj['partial'] = true;
-    }
-
-    exportObj['timestamp'] = Date.now();
-
-    if (this.clipboard.copy(JSON.stringify(exportObj, null, 2))) {
-      this.notify.success('solver.export.copied');
-    } else {
-      this.notify.error('solver.export.failed');
-    }
-  }
-
-  private persistPins(pins: PinnedResult[]): void {
-    try {
-      localStorage.setItem(PINS_STORAGE_KEY, JSON.stringify(pins));
-    } catch { /* quota / private mode — silently ignore */ }
+    this.exportService.export({
+      result,
+      config,
+      cardNames,
+      handtrapList: this.handtraps(),
+    });
   }
 
   private ws: WebSocket | null = null;
@@ -470,6 +344,7 @@ export class SolverService implements OnDestroy {
     this.lastSolveCardNames.set(nameMap);
     this.solverState.set('complete');
     this.updatePrefs({
+      mode: entry.config.mode,
       speed: entry.config.speed,
       algorithm: entry.config.algorithm,
       handtrapIds: entry.config.handtraps,

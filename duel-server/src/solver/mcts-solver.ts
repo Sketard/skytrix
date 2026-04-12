@@ -19,24 +19,15 @@ import type {
   SolverResult,
   SolverStats,
 } from './solver-types.js';
-import { cloneActivationLog } from './solver-types.js';
+import { cloneActivationLog, EMPTY_BREAKDOWN } from './solver-types.js';
+import { MAX_CONSECUTIVE_FAILURES, buildMctsStats, bfsPruneAndTruncate } from './mcts-core.js';
+import { solverAssert } from './solver-assert.js';
 import type { InterruptionScorer } from './interruption-scorer.js';
 import type { OCGCoreAdapter } from './ocgcore-adapter.js';
-import { extractMainPath, ROOT_ACTION } from './dfs-solver.js';
+import { extractMainPath, ROOT_ACTION } from './tree-utils.js';
 import { Xoshiro128SS } from './prng.js';
 
-// Bail out of MCTS main loop after this many consecutive iteration failures.
-// Protects against WASM corruption / adapter bad state spinning the budget.
-const MAX_CONSECUTIVE_FAILURES = 10;
-
-// Frozen zero-breakdown sentinel — avoids per-call allocations.
-const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
-  omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
-  controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
-  spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-  bounce: 0, handRip: 0, sendToGy: 0,
-  weighted: 0, fallbackPoints: 0, total: 0,
-});
+// MAX_CONSECUTIVE_FAILURES is shared via mcts-core.ts
 
 // =============================================================================
 // MCTSNode — Internal tree node (not exported)
@@ -266,6 +257,18 @@ export class MCTSSolver implements SolverStrategy {
       }
 
       if (!bestChild) break;
+
+      // Invariant: selected child must have been visited at least once.
+      // Unvisited children force-select via Infinity UCB and always
+      // backpropagate before the next select pass, so visits >= 1 when
+      // we reach here. A failure means expand() returned a child without
+      // calling simulate/backpropagate — C5-class regression.
+      solverAssert(
+        bestChild.visits >= 1,
+        'MCTSSolver.select',
+        'selected child has zero visits — expand/simulate/backprop cycle broken',
+        { cardName: bestChild.cardName, depth: bestChild.depth },
+      );
 
       // Drain the duel to its next WAITING state BEFORE applying the next
       // response. OCGCore requires the strict pattern
@@ -520,36 +523,20 @@ export class MCTSSolver implements SolverStrategy {
       };
     };
 
-    // BFS tree conversion — every sibling gets a slot before we descend deeper,
-    // avoiding the original DFS behavior where the first child's subtree could
-    // exhaust the entire budget before later siblings were even visited.
+    // BFS tree conversion via shared helper — every sibling gets a slot before
+    // we descend, avoiding the original DFS behavior where the first child's
+    // subtree could exhaust the budget before siblings were visited.
     const tree = makeShallow(root, true);
-    let nodeCount = 1;
-    const queue: { mNode: MCTSNode; decision: DecisionNode }[] = [{ mNode: root, decision: tree }];
+    bfsPruneAndTruncate<MCTSNode>({
+      root,
+      tree,
+      getChildren: n => n.children,
+      sortChildren: () => sortChildren,
+      makeShallow,
+      maxNodes,
+      topX,
+    });
 
-    while (queue.length > 0) {
-      const { mNode, decision } = queue.shift()!;
-
-      const sortedChildren = [...mNode.children].sort(sortChildren);
-      const pruned = sortedChildren.length > topX ? sortedChildren.slice(0, topX) : sortedChildren;
-      const prunedCount = sortedChildren.length - pruned.length;
-      if (prunedCount > 0) decision.prunedChildren = prunedCount;
-
-      for (const mChild of pruned) {
-        if (nodeCount >= maxNodes) {
-          decision.truncated = true;
-          break;
-        }
-        const childDecision = makeShallow(mChild, false);
-        decision.children.push(childDecision);
-        queue.push({ mNode: mChild, decision: childDecision });
-        nodeCount++;
-      }
-
-      // A node with output children is not terminal even if pruning left some
-      // siblings behind; matches the original defensive semantics.
-      if (decision.children.length > 0) decision.isTerminal = false;
-    }
     const mainPath = extractMainPath(tree, this.configFile.maxDepth);
 
     return {
@@ -595,17 +582,11 @@ export class MCTSSolver implements SolverStrategy {
     totalBranchingNodes: number,
     abortedDueToFailures?: number,
   ): SolverStats {
-    return {
-      nodesExplored,
-      elapsed: Date.now() - startTime,
+    return buildMctsStats({
       algorithm: 'mcts',
       algorithmUsed: 'mcts',
-      maxDepthReached,
-      averageBranchingFactor: totalBranchingNodes > 0
-        ? totalChildren / totalBranchingNodes
-        : 0,
-      deckSeed: '',
-      ...(abortedDueToFailures !== undefined ? { abortedDueToFailures } : {}),
-    };
+      nodesExplored, startTime, maxDepthReached,
+      totalChildren, totalBranchingNodes, abortedDueToFailures,
+    });
   }
 }

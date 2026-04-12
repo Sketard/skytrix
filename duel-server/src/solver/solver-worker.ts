@@ -13,7 +13,9 @@ import { OCGCoreAdapter } from './ocgcore-adapter.js';
 import { ZobristHasher } from './zobrist.js';
 import { TranspositionTable } from './transposition-table.js';
 import { InterruptionScorer } from './interruption-scorer.js';
-import { DfsSolver, extractMainPath } from './dfs-solver.js';
+import { DfsSolver } from './dfs-solver.js';
+import { extractMainPath } from './tree-utils.js';
+import { verifyAdversarialPath } from './solver-verifier.js';
 import { MCTSSolver } from './mcts-solver.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
@@ -26,6 +28,26 @@ import type {
   AdversarialTiming,
   VerifyResult,
 } from './solver-types.js';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Number of alternative combo lines extracted alongside the main result.
+ *  The worker returns the top-K root children as separate SolverResult entries
+ *  and the orchestrator aggregates them. */
+const TOP_K_ALTERNATIVES = 3;
+
+/** Node budget for the auto-detection BF probe. 100 is small enough to
+ *  finish in <50ms on real decks but large enough to sample 2-3 tree depths. */
+const DFS_PROBE_NODE_LIMIT = 100;
+
+/** Branching factor threshold at which `auto` mode switches from DFS to MCTS.
+ *  Distinct from `bfComplexityThreshold` in solver-config.json which controls
+ *  when the UI starts warning about complexity. The switch threshold is
+ *  intentionally higher (hysteresis) so the UI can flag "getting complex"
+ *  before the solver actually changes algorithms. */
+const DFS_TO_MCTS_BF_SWITCH = 12;
 
 // =============================================================================
 // Worker Boot Types
@@ -88,10 +110,10 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {
-    return verifyAdversarialPath(adapter, task.duelConfig, task.verifyPath!, task.verifyTimings!, task.verifyExpectedScore ?? 0);
+    return verifyAdversarialPath(adapter, scorer, task.duelConfig, task.verifyPath!, task.verifyTimings!, task.verifyExpectedScore ?? 0);
   }
 
-  const { duelConfig, solverConfig, seed, algorithm, progressPort: rawPort, topK = 3 } = task;
+  const { duelConfig, solverConfig, seed, algorithm, progressPort: rawPort, topK = TOP_K_ALTERNATIVES } = task;
   const progressPort = rawPort!;
 
   // Anchor for time accounting. The 'auto' branch runs a probe BEFORE the
@@ -153,7 +175,7 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
       // a wide opening with a narrow combo continuation can flip MCTS on when
       // DFS would have been fine). Revisit the sample size and/or threshold
       // once we have empirical data on mis-dispatch rates per deck archetype.
-      const probeResult = dfsSolver.probe(adapter, solverConfig, signal, 100, startHandle);
+      const probeResult = dfsSolver.probe(adapter, solverConfig, signal, DFS_PROBE_NODE_LIMIT, startHandle);
       const avgBF = probeResult.averageBranchingFactor;
 
       postDebug('auto-probe', { avgBF, bestScore: probeResult.bestScore, nodes: probeResult.nodesExplored });
@@ -174,7 +196,7 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
       const remainingMs = Math.max(0, solverConfig.timeLimitMs - (Date.now() - taskStartTime));
       const adjustedConfig: SolverConfig = { ...solverConfig, timeLimitMs: remainingMs };
 
-      if (avgBF >= 12) {
+      if (avgBF >= DFS_TO_MCTS_BF_SWITCH) {
         // High BF → switch to MCTS with warm-start from probe stats
         mctsSolver.setSeed(seed);
         mctsSolver.warmStart(probeResult);
@@ -287,119 +309,5 @@ function verifyMainPath(
   }
 }
 
-// =============================================================================
-// Adversarial Verification — Replay with opponent handtrap injection at timings
-// =============================================================================
-
-function verifyAdversarialPath(
-  oracle: OCGCoreAdapter,
-  duelConfig: DuelConfig,
-  verifyPath: SolverAction[],
-  verifyTimings: AdversarialTiming[],
-  expectedScore: number,
-): VerifyResult {
-  if (verifyPath.length === 0) return { verified: true };
-
-  // Build a timing lookup: playerStepIndex → AdversarialTiming
-  const timingMap = new Map<number, AdversarialTiming>();
-  for (const t of verifyTimings) {
-    timingMap.set(t.stepIndex, t);
-  }
-
-  // Safety ceiling: prevent infinite loop if opponent prompts repeat endlessly
-  const MAX_VERIFY_ITERATIONS = 2000;
-
-  const handle = oracle.createDuel(duelConfig);
-  try {
-    let playerStepIndex = 0;
-    let pathIndex = 0;
-    let iterations = 0;
-
-    while (pathIndex < verifyPath.length) {
-      if (++iterations > MAX_VERIFY_ITERATIONS) {
-        return {
-          verified: false,
-          divergenceStep: pathIndex,
-          reason: `Verification loop exceeded ceiling (${MAX_VERIFY_ITERATIONS} iterations)`,
-        };
-      }
-
-      const legalActions = oracle.getLegalActions(handle);
-
-      // Empty actions means duel ended
-      if (legalActions.length === 0) {
-        return {
-          verified: false,
-          divergenceStep: pathIndex,
-          reason: `Step ${pathIndex}: duel ended prematurely (expected ${verifyPath.length - pathIndex} more actions)`,
-        };
-      }
-
-      // Opponent prompt (team === 1): handle via timings or auto-pass
-      if (legalActions[0]?.team === 1) {
-        const timing = timingMap.get(playerStepIndex);
-        if (timing) {
-          // Inject the handtrap activation at this timing — dual-check
-          // responseIndex + cardId (same discipline as goldfish verifier)
-          const match = legalActions.find(
-            a => a.responseIndex === timing.responseIndex && a.cardId === timing.handtrapCardId,
-          );
-          if (!match) {
-            return {
-              verified: false,
-              divergenceStep: pathIndex,
-              reason: `Step ${pathIndex}: opponent timing responseIndex ${timing.responseIndex} (${timing.handtrapCardName}) not in legal actions`,
-            };
-          }
-          oracle.applyAction(handle, match);
-        } else {
-          // No timing for this step — auto-pass (decline chain)
-          const pass = legalActions.find(a => a.responseIndex === -1);
-          if (pass) {
-            oracle.applyAction(handle, pass);
-          } else {
-            // No pass option — pick first action (shouldn't happen for SELECT_CHAIN)
-            oracle.applyAction(handle, legalActions[0]);
-          }
-        }
-        continue; // Don't increment pathIndex or playerStepIndex for opponent prompts
-      }
-
-      // Player prompt: match against verifyPath
-      const expected = verifyPath[pathIndex];
-      const match = legalActions.find(
-        a => a.responseIndex === expected.responseIndex && a.cardId === expected.cardId,
-      );
-      if (!match) {
-        return {
-          verified: false,
-          divergenceStep: pathIndex,
-          reason: `Step ${pathIndex}: expected ${expected.cardName} (idx ${expected.responseIndex}) but not in legal actions`,
-        };
-      }
-      oracle.applyAction(handle, match);
-      playerStepIndex++;
-      pathIndex++;
-    }
-
-    // All actions replayed — compare final board score
-    const fieldState = oracle.getFieldState(handle);
-    const { score: finalScore } = scorer.score(fieldState);
-    if (finalScore !== expectedScore) {
-      return {
-        verified: false,
-        divergenceStep: verifyPath.length,
-        reason: `Final board score mismatch: expected ${expectedScore}, got ${finalScore}`,
-      };
-    }
-    return { verified: true };
-  } catch (err) {
-    return {
-      verified: false,
-      divergenceStep: -1,
-      reason: `Verification threw: ${String(err)}`,
-    };
-  } finally {
-    oracle.destroyDuel(handle);
-  }
-}
+// Adversarial verify is implemented in solver-verifier.ts so smoke tests can
+// import it without booting the piscina worker (which requires workerData).

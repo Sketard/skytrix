@@ -136,6 +136,25 @@ export const INTERRUPTION_TYPES = [
 
 export type InterruptionType = (typeof INTERRUPTION_TYPES)[number];
 
+/** Frozen zero-breakdown sentinel. Single source of truth for all solver
+ *  strategies and the WS verify stub. Frozen so accidental mutation throws
+ *  in dev (instead of silently corrupting the next scorer pass).
+ *
+ *  Use `cloneEmptyBreakdown()` when you need a mutable fresh instance (e.g.,
+ *  the scorer builds one per call then mutates it). */
+export const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
+  omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
+  controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
+  spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
+  bounce: 0, handRip: 0, sendToGy: 0,
+  weighted: 0, fallbackPoints: 0, total: 0,
+});
+
+/** Allocate a fresh mutable ScoreBreakdown with all fields = 0. */
+export function cloneEmptyBreakdown(): ScoreBreakdown {
+  return { ...EMPTY_BREAKDOWN };
+}
+
 export interface DecisionNode {
   action: SolverAction;
   annotation: string;

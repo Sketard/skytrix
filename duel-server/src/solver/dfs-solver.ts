@@ -19,6 +19,8 @@ import type {
   SolverResult,
   SolverStats,
 } from './solver-types.js';
+import { cloneEmptyBreakdown } from './solver-types.js';
+import { ROOT_ACTION, extractMainPath } from './tree-utils.js';
 import type { ZobristHash } from './zobrist.js';
 import { ZobristHasher, hashToKey } from './zobrist.js';
 import { TranspositionTable, buildVerificationKey } from './transposition-table.js';
@@ -27,15 +29,11 @@ import type { OCGCoreAdapter } from './ocgcore-adapter.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 
 // =============================================================================
-// Constants
+// Re-export tree-utils sentinels/walkers for backward-compat. New callers
+// should import directly from `./tree-utils.js`.
 // =============================================================================
 
-export const ROOT_ACTION: SolverAction = {
-  responseIndex: -1,
-  cardId: 0,
-  cardName: '',
-  actionDescription: 'root',
-};
+export { ROOT_ACTION, extractMainPath } from './tree-utils.js';
 
 // =============================================================================
 // Internal Types
@@ -532,36 +530,8 @@ export class DfsSolver implements SolverStrategy {
   }
 
   private emptyBreakdown(): ScoreBreakdown {
-    return {
-      omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
-      controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
-      spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-      bounce: 0, handRip: 0, sendToGy: 0,
-      weighted: 0, fallbackPoints: 0, total: 0,
-    };
+    return cloneEmptyBreakdown();
   }
-}
-
-// =============================================================================
-// extractMainPath — Public free function for top-K extraction by workers
-// =============================================================================
-
-export function extractMainPath(root: DecisionNode, maxDepth = 50): SolverAction[] {
-  if (root.children.length === 0) return [];
-
-  const path: SolverAction[] = [];
-  let current = root;
-  let guard = maxDepth;
-
-  while (current.children.length > 0 && guard-- > 0) {
-    const next = current.children[0];
-    if (next.action.actionDescription !== ROOT_ACTION.actionDescription) {
-      path.push(next.action);
-    }
-    current = next;
-  }
-
-  return path;
 }
 
 // =============================================================================

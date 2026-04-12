@@ -24,22 +24,15 @@ import type {
   SolverResult,
   SolverStats,
 } from './solver-types.js';
-import { cloneActivationLog } from './solver-types.js';
+import { cloneActivationLog, EMPTY_BREAKDOWN } from './solver-types.js';
+import { MAX_CONSECUTIVE_FAILURES, buildMctsStats, bfsPruneAndTruncate } from './mcts-core.js';
+import { solverAssert } from './solver-assert.js';
 import type { InterruptionScorer } from './interruption-scorer.js';
 import type { OCGCoreAdapter } from './ocgcore-adapter.js';
-import { extractMainPath, ROOT_ACTION } from './dfs-solver.js';
+import { ROOT_ACTION } from './tree-utils.js';
 import { Xoshiro128SS } from './prng.js';
 
-// Bail after this many consecutive iteration failures.
-const MAX_CONSECUTIVE_FAILURES = 10;
-
-const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
-  omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
-  controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
-  spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
-  bounce: 0, handRip: 0, sendToGy: 0,
-  weighted: 0, fallbackPoints: 0, total: 0,
-});
+// MAX_CONSECUTIVE_FAILURES is shared via mcts-core.ts
 
 // =============================================================================
 // MinimaxNode — Internal tree node with player tagging
@@ -522,37 +515,27 @@ export class MinimaxMctsSolver implements SolverStrategy {
       };
     };
 
-    // BFS tree conversion with budget cap
+    // BFS tree conversion via shared helper (same one SP-MCTS uses).
+    // Opponent-parent nodes get ASC sort via sortChildren(parent); everything
+    // else DESC. Walker preserves the minimax sort invariant.
     const tree = makeShallow(root, true);
-    let nodeCount = 1;
-    const queue: { mNode: MinimaxNode; decision: DecisionNode }[] = [{ mNode: root, decision: tree }];
+    bfsPruneAndTruncate<MinimaxNode>({
+      root,
+      tree,
+      getChildren: n => n.children,
+      sortChildren,
+      makeShallow,
+      maxNodes,
+      topX,
+    });
 
-    while (queue.length > 0) {
-      const { mNode, decision } = queue.shift()!;
-
-      const sorted = [...mNode.children].sort(sortChildren(mNode));
-      const pruned = sorted.length > topX ? sorted.slice(0, topX) : sorted;
-      const prunedCount = sorted.length - pruned.length;
-      if (prunedCount > 0) decision.prunedChildren = prunedCount;
-
-      for (const mChild of pruned) {
-        if (nodeCount >= maxNodes) {
-          decision.truncated = true;
-          break;
-        }
-        const childDecision = makeShallow(mChild, false);
-        decision.children.push(childDecision);
-        queue.push({ mNode: mChild, decision: childDecision });
-        nodeCount++;
-      }
-
-      if (decision.children.length > 0) decision.isTerminal = false;
-    }
-
-    const mainPath = extractMainPath(tree, this.configFile.maxDepth);
-
-    // Build adversarialTimings from mainPath
-    const adversarialTimings = this.extractAdversarialTimings(root, handtrapNames);
+    // Single walk produces BOTH mainPath (player-only) AND adversarialTimings,
+    // using the same min/max direction as `buildResult`'s sortChildren. The
+    // previous implementation used `extractMainPath(tree)` (which included
+    // opponent nodes, breaking verify) + a separate `extractAdversarialTimings`
+    // walk that inverted min/max via `current.player` instead of
+    // `children[0].player`. Both bugs collapsed into one correct walk here.
+    const { mainPath, adversarialTimings } = this.walkRecommendedPath(root, handtrapNames);
 
     // Minimax score is the root's score (minimax emerges from backpropagation)
     const minimax = root.score;
@@ -573,46 +556,101 @@ export class MinimaxMctsSolver implements SolverStrategy {
   }
 
   // ===========================================================================
-  // Extract adversarial timings from the main path walk
+  // Walk the recommended (children[0]-after-sort) chain once, producing BOTH
+  // the player-only mainPath AND the adversarialTimings parallel structure.
+  //
+  // Direction rule (mirrors buildResult sortChildren): the chooser FROM current
+  // is determined by children[0].player (all children share one actor). When
+  // children are opponent-reached (player=1) the opponent minimizes worstScore;
+  // when they are player-reached (player=0) the player maximizes bestScore.
+  //
+  // Output contract:
+  // - mainPath contains player actions ONLY (opponent activations AND opponent
+  //   passes are omitted). The verifier at `solver-worker.ts verifyAdversarialPath`
+  //   expects this — it advances pathIndex exclusively on player prompts.
+  // - adversarialTimings records opponent activations with stepIndex = number
+  //   of player actions already applied when the opponent fires. Matches the
+  //   verifier's playerStepIndex counter.
   // ===========================================================================
 
-  private extractAdversarialTimings(
+  private walkRecommendedPath(
     root: MinimaxNode,
     handtrapNames: Map<number, string>,
-  ): AdversarialTiming[] {
-    const timings: AdversarialTiming[] = [];
-    let current: MinimaxNode = root;
+  ): { mainPath: SolverAction[]; adversarialTimings: AdversarialTiming[] } {
+    const mainPath: SolverAction[] = [];
+    const adversarialTimings: AdversarialTiming[] = [];
     let playerStepIndex = 0;
+    let current: MinimaxNode = root;
+    let guard = this.configFile.maxDepth;
 
-    while (current.children.length > 0) {
-      // Pick best child (children[0] after sort is the recommended choice)
-      // Walk the internal tree following the recommendation policy
+    while (current.children.length > 0 && guard-- > 0) {
+      // All siblings at one level share the same actor (one getLegalActions
+      // call, one team). Read from children[0] — not from current.player.
+      const childrenPlayer = current.children[0].player;
+
+      // Invariant: all children MUST share the same player. Fires if
+      // expand() somehow mixed player and opponent actions at one node
+      // (would only happen if getLegalActions returned mixed-team actions
+      // for a single prompt, which is structurally impossible — but if
+      // it ever does, the min/max walk is wrong and timings corrupt).
+      solverAssert(
+        current.children.every(c => c.player === childrenPlayer),
+        'MinimaxMctsSolver.walkRecommendedPath',
+        'mixed-team children at one node — expand/getLegalActions contract broken',
+        { depth: current.depth, childCount: current.children.length },
+      );
+
       let best: MinimaxNode;
-      if (current.player === 1) {
-        // Opponent: pick lowest score (worst-case)
-        best = current.children.reduce((a, b) => a.worstScore <= b.worstScore ? a : b);
+      if (childrenPlayer === 1) {
+        // Opponent chooses: minimize worstScore (matches buildResult ASC sort).
+        // Tie-break on visits (more visits = more confidence).
+        best = current.children.reduce((a, b) => {
+          if (a.worstScore !== b.worstScore) return a.worstScore < b.worstScore ? a : b;
+          return a.visits >= b.visits ? a : b;
+        });
       } else {
-        // Player: pick highest score
-        best = current.children.reduce((a, b) => a.bestScore >= b.bestScore ? a : b);
+        // Player chooses: maximize bestScore (matches buildResult DESC sort).
+        best = current.children.reduce((a, b) => {
+          if (a.bestScore !== b.bestScore) return a.bestScore > b.bestScore ? a : b;
+          return a.visits >= b.visits ? a : b;
+        });
       }
 
-      if (best.player === 1 && best.action && best.action.actionTag !== 'pass') {
-        timings.push({
+      if (best.player === 0 && best.action) {
+        // Player action → mainPath. stepIndex increments AFTER push so the
+        // next opponent window sees the correct count of prior player moves.
+        mainPath.push({
+          responseIndex: best.action.responseIndex,
+          cardId: best.action.cardId,
+          cardName: best.cardName,
+          actionDescription: best.actionDescription,
+        });
+        playerStepIndex++;
+      } else if (best.player === 1 && best.action && best.action.actionTag !== 'pass') {
+        // Opponent activation → timing entry, NOT mainPath.
+        adversarialTimings.push({
           stepIndex: playerStepIndex,
           handtrapCardId: best.action.cardId,
           handtrapCardName: handtrapNames.get(best.action.cardId) ?? best.cardName,
           responseIndex: best.action.responseIndex,
         });
       }
-
-      if (best.player === 0) {
-        playerStepIndex++;
-      }
+      // Opponent pass: silent traversal, neither mainPath nor timing.
 
       current = best;
     }
 
-    return timings;
+    if (process.env['LOG_LEVEL'] === 'debug') {
+      console.log('[Solver:minimax] walkRecommendedPath', {
+        mainPathLen: mainPath.length,
+        mainPath: mainPath.map(a => `${a.cardName}#${a.responseIndex}`),
+        timings: adversarialTimings.map(t => `step${t.stepIndex}:${t.handtrapCardName}#${t.responseIndex}`),
+        rootBestScore: root.bestScore,
+        rootScore: root.score,
+      });
+    }
+
+    return { mainPath, adversarialTimings };
   }
 
   // ===========================================================================
@@ -647,17 +685,11 @@ export class MinimaxMctsSolver implements SolverStrategy {
     totalBranchingNodes: number,
     abortedDueToFailures?: number,
   ): SolverStats {
-    return {
-      nodesExplored,
-      elapsed: Date.now() - startTime,
+    return buildMctsStats({
       algorithm: 'mcts',
       algorithmUsed: 'minimax-mcts',
-      maxDepthReached,
-      averageBranchingFactor: totalBranchingNodes > 0
-        ? totalChildren / totalBranchingNodes
-        : 0,
-      deckSeed: '',
-      ...(abortedDueToFailures !== undefined ? { abortedDueToFailures } : {}),
-    };
+      nodesExplored, startTime, maxDepthReached,
+      totalChildren, totalBranchingNodes, abortedDueToFailures,
+    });
   }
 }
