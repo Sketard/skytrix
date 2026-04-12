@@ -87,8 +87,19 @@ export class InterruptionScorer {
     for (const zoneId of SCORED_ZONE_IDS) {
       const cards = fieldState.zones[zoneId];
       const isHand = zoneId === 'HAND';
+      const isExtra = zoneId === 'EXTRA';
       for (const card of cards) {
         const isFaceDown = card.position === 'facedown-def' || card.position === 'facedown';
+        // Face-down cards in EXTRA are un-summoned Fusion/Synchro/Xyz/Link
+        // monsters waiting to be played from the Extra Deck — they are NOT
+        // active interruptions. The validation harness on Branded Dracotail
+        // surfaced this: a 2-action "minimal combo" (Normal Summon Faimena,
+        // pass) scored 46 because the 6 tagged cards in EXTRA were credited
+        // even though none of them were ever brought to the field. The
+        // intent of scoring EXTRA was face-up Pendulum monsters (recycled
+        // via Pendulum Summon — those still count); skipping face-downs
+        // here preserves that case while removing the un-summoned bias.
+        if (isExtra && isFaceDown) continue;
         const tag = this.tags[card.cardId];
         if (tag) {
           // Story 1.8: OPT-aware scoring. Read the activation log for this

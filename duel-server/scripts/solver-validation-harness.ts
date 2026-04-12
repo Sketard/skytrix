@@ -16,6 +16,173 @@
 //   npx tsx scripts/solver-validation-harness.ts --algo=dfs
 //   npx tsx scripts/solver-validation-harness.ts --speed=optimal
 // =============================================================================
+//
+// =============================================================================
+// Fixture decklists (human-readable mirror — source of truth is the JSON at
+// _bmad-output/planning-artifacts/research/solver-validation-decks.json).
+// Keep in sync manually when the fixture changes.
+// =============================================================================
+//
+// ═══ ddd-wcq-top4 ═══
+// ygoprodeck.com — D/D/D, Top 4 Cali WCQ Regional (John Ramírez Barberi, 2025-12-07)
+// https://ygoprodeck.com/deck/d-d-d-674759
+// Main (41):
+//   3x Ash Blossom & Joyous Spring
+//   1x Called by the Grave
+//   1x Crossout Designator
+//   1x D/D Count Surveyor
+//   3x D/D Gryphon
+//   1x D/D Lance Soldier
+//   1x D/D Necro Slime
+//   1x D/D Orthros
+//   1x D/D Savant Copernicus
+//   3x D/D Savant Kepler
+//   3x D/D Scale Surveyor
+//   1x D/D/D Oblivion King Abyss Ragnarok
+//   3x D/D/D Zero Doom Queen Machinex
+//   1x Dark Contract with the Eternal Darkness
+//   3x Dark Contract with the Gate
+//   1x Dark Contract with the Zero King
+//   3x Dark Ruler No More
+//   3x Dominus Impulse
+//   3x Droll & Lock Bird
+//   3x Mulcharmy Fuwalos
+//   1x Nightmare Throne
+// Extra (15):
+//   2x D/D/D Abyss King Gilgamesh
+//   1x D/D/D Cursed King Siegfried
+//   2x D/D/D Deviser King Deus Machinex
+//   1x D/D/D First King Clovis
+//   1x D/D/D Flame King Genghis
+//   1x D/D/D Marksman King Tell
+//   1x D/D/D Sky King Zeus Ragnarok
+//   1x D/D/D Super Doom King Bright Armageddon
+//   1x D/D/D Wave High King Caesar
+//   1x D/D/D Wave King Caesar
+//   1x D/D/D Wise King Solomon
+//   1x D/D/D/D Dimensional King Arc Crisis
+//   1x Number 77: The Seven Sins
+// Side (15):
+//   1x Anti-Spell Fragrance
+//   1x D/D/D Headhunt
+//   1x Dark Contract with Errors
+//   3x Gameciel, the Sea Turtle Kaiju
+//   3x Ghost Belle & Haunted Mansion
+//   1x Harpie's Feather Duster
+//   3x Mulcharmy Purulia
+//   1x Solemn Judgment
+//   1x Triple Tactics Talent
+//
+// ═══ ryzeal-mitsurugi-hk-top8 ═══
+// ygoprodeck.com — Mitsurugi Ryzeal, Top 8 Yu-Gi-Oh! Open Tournament Hong Kong 2026 AE (Tu Kai-Hsiang, 2026-03-23)
+// https://ygoprodeck.com/deck/mitsurugi-ryzeal-701763
+// Main (41):
+//   3x Ame no Habakiri no Mitsurugi
+//   1x Ame no Murakumo no Mitsurugi
+//   2x Ash Blossom & Joyous Spring
+//   1x Bonfire
+//   2x Called by the Grave
+//   1x Crossout Designator
+//   3x Droll & Lock Bird
+//   1x Ext Ryzeal
+//   1x Futsu no Mitama no Mitsurugi
+//   2x Ice Ryzeal
+//   2x Maxx "C"
+//   1x Mitsurugi Great Purification
+//   1x Mitsurugi Mirror
+//   1x Mitsurugi no Mikoto, Aramasa
+//   1x Mitsurugi no Mikoto, Kusanagi
+//   1x Mitsurugi no Mikoto, Saji
+//   3x Mitsurugi Prayers
+//   1x Mitsurugi Ritual
+//   3x Mulcharmy Fuwalos
+//   1x Nibiru, the Primal Being
+//   1x Night Sword Serpent
+//   1x Node Ryzeal
+//   1x Pre-Preparation of Rites
+//   1x Ryzeal Cross
+//   3x Seventh Tachyon
+//   1x Star Ryzeal
+//   1x Sword Ryzeal
+// Extra (15):
+//   1x Code Igniter
+//   1x Dyna Mondo
+//   1x Eclipse Twins
+//   1x Full Armored Utopic Ray Lancer
+//   1x Gallant Granite
+//   1x King of the Feral Imps
+//   1x Light Dragon @Ignister
+//   1x Mereologic Aggregator
+//   1x Number 102: Star Seraph Sentry
+//   1x Number 41: Bagooska the Terribly Tired Tapir
+//   1x Number 60: Dugares the Timeless
+//   1x Number 90: Galaxy-Eyes Photon Lord
+//   1x Ryzeal Detonator
+//   1x Ryzeal Duo Drive
+//   1x Vallon, the Super Psy Skyblaster
+// Side (15):
+//   3x Dominus Impulse
+//   1x Harpie's Feather Duster
+//   3x Mulcharmy Purulia
+//   2x Red Reboot
+//   3x Solemn Judgment
+//   3x Solemn Warning
+//
+// ═══ branded-dracotail-bainbridge-2nd ═══
+// ygoprodeck.com — Branded Dracotail, 2nd Place Bainbridge WCQ Regional
+// https://ygoprodeck.com/deck/branded-dracotail-705277
+// Main (40):
+//   3x Ash Blossom & Joyous Spring
+//   1x Blazing Cartesia, the Virtuous
+//   2x Branded Fusion
+//   1x Called by the Grave
+//   3x Dracotail Faimena
+//   1x Dracotail Flame
+//   1x Dracotail Horn
+//   3x Dracotail Lukias
+//   1x Dracotail Mululu
+//   1x Dracotail Pan
+//   1x Dracotail Phryxul
+//   1x Dracotail Sting
+//   1x Dracotail Urgula
+//   1x Droll & Lock Bird
+//   2x Effect Veiler
+//   1x Fallen of Albaz
+//   2x Fallen of the White Dragon
+//   2x Ghost Belle & Haunted Mansion
+//   1x Incredible Ecclesia, the Virtuous
+//   1x Ketu Dracotail
+//   3x Mulcharmy Fuwalos
+//   2x Nibiru, the Primal Being
+//   3x Rahu Dracotail
+//   2x The Fallen & The Virtuous
+// Extra (15):
+//   1x Alba-Lenatus the Abyss Dragon
+//   1x Albion the Branded Dragon
+//   1x Albion the Sanctifire Dragon
+//   2x Dracotail Arthalion
+//   1x Dracotail Gulamel
+//   1x Dracotail Shaulas
+//   1x Ecclesia and the Dark Dragon
+//   1x Filia Regis
+//   1x Khaos Starsource Dragon
+//   1x Lubellion the Searing Dragon
+//   1x Mirrorjade the Iceblade Dragon
+//   1x Rindbrumm the Striking Dragon
+//   1x Secreterion Dragon
+//   1x The Dragon that Devours the Dogma
+// Side (15):
+//   1x Dragon's Mind
+//   1x Droll & Lock Bird
+//   3x Forbidden Droplet
+//   1x Harpie's Feather Duster
+//   2x Kashtira Fenrir
+//   2x Lightning Storm
+//   2x Mulcharmy Purulia
+//   1x Skill Drain
+//   1x Titaniklad the Ash Dragon
+//   1x Triple Tactics Talent
+// =============================================================================
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -26,6 +193,7 @@ import { SolverOrchestrator } from '../src/solver/solver-orchestrator.js';
 import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import type {
   DuelConfig,
+  SolverAction,
   SolverConfig,
   SolverResult,
   SolverStats,
@@ -333,6 +501,17 @@ async function main(): Promise<void> {
           }
         } else {
           printResult(outcome.result, maxDepthConfig, cardDB.stmt);
+          // Replay the recommended mainPath through a diagnostic adapter so
+          // we can show what the scorer credited — including face-down
+          // tagged cards that the display filter hides. This is the only
+          // way to interpret a non-zero score with an empty endBoard.
+          if (outcome.result.mainPath.length > 0) {
+            try {
+              await dumpFinalFieldState(duelConfig, outcome.result.mainPath, cardDB, DATA_DIR);
+            } catch (err) {
+              console.log(`    ${DIM}(replay dump failed: ${err instanceof Error ? err.message : String(err)})${RESET}`);
+            }
+          }
         }
       } catch (err) {
         console.log(`    ${RED}THROWN${RESET} ${err instanceof Error ? err.message : String(err)}`);
@@ -354,8 +533,112 @@ function printResult(
 ): void {
   console.log(`    ${DIM}score${RESET}    ${BOLD}${result.score}${RESET}   ${DIM}mainPath${RESET} length=${result.mainPath.length}${result.verified !== undefined ? ` verified=${result.verified}` : ''}${result.minimax !== undefined ? ` minimax=${result.minimax}` : ''}`);
   console.log(formatStats(result.stats, maxDepthConfig));
+  // Score breakdown — surfaces what the scorer credited (tagged effects by
+  // type + fallback heuristic). Lets us interpret empty end boards: a
+  // positive score with no rendered cards means the contributions came
+  // from face-down tagged cards (hidden from endBoard display) or from
+  // the hand. Non-zero categories are listed in descending value.
+  const bd = result.scoreBreakdown;
+  if (bd && bd.total > 0) {
+    const entries: [string, number][] = [
+      ['omniNegate', bd.omniNegate], ['typedNegate', bd.typedNegate],
+      ['targetedNegate', bd.targetedNegate], ['floodgate', bd.floodgate],
+      ['controlChange', bd.controlChange], ['banish', bd.banish],
+      ['banishFacedown', bd.banishFacedown], ['attach', bd.attach],
+      ['spin', bd.spin], ['flipFacedown', bd.flipFacedown],
+      ['destruction', bd.destruction], ['moveToSt', bd.moveToSt],
+      ['bounce', bd.bounce], ['handRip', bd.handRip],
+      ['sendToGy', bd.sendToGy], ['fallbackPoints', bd.fallbackPoints],
+    ].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    if (entries.length > 0) {
+      const pairs = entries.map(([k, v]) => `${k}=${v}`).join(' ');
+      console.log(`    ${DIM}breakdown${RESET} ${pairs}`);
+    }
+  }
   console.log(`    ${DIM}endBoard${RESET}`);
   console.log(formatEndBoard(result.endBoardCards, stmt));
+}
+
+// =============================================================================
+// dumpFinalFieldState — diagnostic replay
+// Boots its own OCGCoreAdapter (so it doesn't fight the worker pool), creates
+// a fresh duel with the same config, applies the recommended mainPath step by
+// step, and prints the raw field state afterwards. This is the only way to
+// see face-down tagged cards that `InterruptionScorer.scoreWithCards` credits
+// to the score but hides from `endBoardCards` (UI leakage filter). A solver
+// that reports "score=46 endBoard=[]" is almost always in that bucket.
+// =============================================================================
+
+let _sharedAdapter: OCGCoreAdapter | null = null;
+
+async function getSharedAdapter(
+  cardDB: ReturnType<typeof loadDatabase>,
+  dataDir: string,
+): Promise<OCGCoreAdapter> {
+  if (_sharedAdapter) return _sharedAdapter;
+  const scripts = loadScripts(join(dataDir, 'scripts_full'));
+  const allConfigs = loadAllSolverConfigs(dataDir, cardDB);
+  _sharedAdapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
+  return _sharedAdapter;
+}
+
+async function dumpFinalFieldState(
+  duelConfig: DuelConfig,
+  mainPath: SolverAction[],
+  cardDB: ReturnType<typeof loadDatabase>,
+  dataDir: string,
+): Promise<void> {
+  const adapter = await getSharedAdapter(cardDB, dataDir);
+  const nameOf = (id: number): string => {
+    if (!id) return '(no card)';
+    const row = cardDB.stmt.get(id) as { name?: string } | undefined;
+    return row?.name ?? `#${id}`;
+  };
+
+  const handle = adapter.createDuel(duelConfig);
+  try {
+    // Replay the recommended line. extractMainPath returns player-prompted
+    // actions only (IDLECMD/CHAIN/YESNO etc. where the walker chose). We
+    // match against OCGCore's live legal-action list by (responseIndex,
+    // cardId) — same discipline as solver-worker verifyMainPath.
+    for (let i = 0; i < mainPath.length; i++) {
+      const legal = adapter.getLegalActions(handle);
+      if (legal.length === 0) break;
+      const step = mainPath[i];
+      const match = legal.find(
+        a => a.responseIndex === step.responseIndex && a.cardId === step.cardId,
+      );
+      if (!match) {
+        console.log(`    ${YELLOW}replay diverged at step ${i}: no legal action with responseIndex=${step.responseIndex} cardId=${step.cardId}${RESET}`);
+        return;
+      }
+      adapter.applyAction(handle, match);
+    }
+
+    // Drain any trailing mechanical prompts so the post-combo state
+    // reflects what the scorer actually saw at the terminal.
+    adapter.getLegalActions(handle);
+
+    const state = adapter.getFieldState(handle);
+    console.log(`    ${DIM}── replayed field state (all cards, incl. face-down) ──${RESET}`);
+    const order: readonly string[] = [
+      'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
+      'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD',
+      'HAND', 'GY', 'BANISHED', 'EXTRA',
+    ];
+    for (const zone of order) {
+      const cards = state.zones[zone as keyof typeof state.zones];
+      if (!cards || cards.length === 0) continue;
+      const labels = cards.map(c => {
+        const pos = c.position.replace('faceup-', '').replace('facedown-', 'fd-').replace('facedown', 'fd');
+        return `${nameOf(c.cardId)} [${pos}]`;
+      });
+      console.log(`    ${DIM}${zone.padEnd(8)}${RESET} ${labels.join(', ')}`);
+    }
+    console.log(`    ${DIM}turn=${state.turn} phase=${state.phase}${RESET}`);
+  } finally {
+    adapter.destroyDuel(handle);
+  }
 }
 
 // =============================================================================
