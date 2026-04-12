@@ -44,6 +44,12 @@
 
       @if (node.handtrapLabel) {
         <span class="handtrap-label mat-body-2">{{ node.handtrapLabel }}</span>
+        @if (node.alternativeCount && node.alternativeCount > 1) {
+          <span class="alternative-count mat-caption"
+            [matTooltip]="'solver.result.alternativeCountTooltip' | translate:{ count: node.alternativeCount }">
+            {{ 'solver.result.alternativeCountBadge' | translate:{ count: node.alternativeCount } }}
+          </span>
+        }
       } @else {
         <span class="tree-annotation"
           [matTooltip]="node.node.annotation">{{ node.node.annotation }}</span>

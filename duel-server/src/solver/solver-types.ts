@@ -72,7 +72,7 @@ export interface Action {
   /** Team that owns this action: 0 = player, 1 = opponent. Default undefined
    *  (= player 0) for backward-compat with DFS/SP-MCTS. In adversarial mode,
    *  OCGCoreAdapter populates `team: 1` on opponent SELECT_CHAIN actions.
-   *  IS-MCTS uses this to tag nodes as max (player) or min (opponent). */
+   *  Minimax MCTS uses this to tag nodes as max (player) or min (opponent). */
   team?: 0 | 1;
 }
 
@@ -147,6 +147,10 @@ export interface DecisionNode {
   handtrapLabel?: string;
   prunedChildren?: number;
   truncated?: boolean;
+  /** For opponent nodes (handtrapLabel set): total number of legal activations
+   *  the opponent could choose from at this chain window (including pass).
+   *  Lets the UI show "chose among N options" when this value > 1. */
+  alternativeCount?: number;
 }
 
 // =============================================================================
@@ -262,7 +266,6 @@ export interface SolverConfigFile {
   memoryBudgetMb: number;
   bfComplexityThreshold: number;
   rateLimitIntervalMs: number;
-  ismctsDeterminizations: number;
   maxHandtraps: number;
   ucb1C: number;
   backpropPolicy: 'max' | 'mean';

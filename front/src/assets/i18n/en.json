@@ -521,7 +521,9 @@
       "noResilientLineMessage": "All combo paths are broken by the selected handtraps.",
       "bestScoreRef": "Best score (without disruption): {{score}}",
       "worstCaseAria": "Worst-case resilience: {{minimax}}",
-      "fastAdversarialHint": "Fast mode provides approximate adversarial scores. Use Optimal for stable minimax results."
+      "fastAdversarialHint": "Fast mode explores fewer combo branches. Use Optimal for a more thorough minimax search.",
+      "alternativeCountBadge": "{{count}} options",
+      "alternativeCountTooltip": "Opponent chose this activation among {{count}} legal options at this chain window"
     },
     "error": {
       "deckNotFound": "Deck not found",

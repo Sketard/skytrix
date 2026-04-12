@@ -164,6 +164,7 @@ let solverHandtraps: HandtrapConfig[] = [];
 let solverRateLimitIntervalMs = 2000;
 let solverTimeBudgetFastMs = 5000;
 let solverTimeBudgetOptimalMs = 30000;
+let solverMaxHandtraps = 5;
 
 if (dataReady) {
   try {
@@ -176,6 +177,7 @@ if (dataReady) {
     solverRateLimitIntervalMs = solverConfig.rateLimitIntervalMs;
     solverTimeBudgetFastMs = solverConfig.timeBudgetFastMs;
     solverTimeBudgetOptimalMs = solverConfig.timeBudgetOptimalMs;
+    solverMaxHandtraps = solverConfig.maxHandtraps;
     maxSolverConnections = solverConfig.maxSolverConnections;
 
     solverHandtraps = loadHandtraps(DATA_DIR);
@@ -2854,12 +2856,25 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
         sendSolverError(ws, 'INTERNAL_ERROR', 'Adversarial mode requires at least one handtrap');
         return;
       }
+      if (msg.handtraps.length > solverMaxHandtraps) {
+        sendSolverError(ws, 'INTERNAL_ERROR', `Too many handtraps (got ${msg.handtraps.length}, max ${solverMaxHandtraps})`);
+        return;
+      }
       const validIds = new Set(solverHandtraps.map(h => h.cardId));
       const invalidIds = msg.handtraps.filter(h => !validIds.has(h.cardId));
       if (invalidIds.length > 0) {
         sendSolverError(ws, 'INTERNAL_ERROR', `Invalid handtrap cardIds: ${invalidIds.map(h => h.cardId).join(', ')}`);
         return;
       }
+      // Dedupe by cardId (first occurrence wins) — prevents client from
+      // injecting duplicated handtraps into the opponent's hand, which would
+      // inflate branching factor and mislead minimax scoring.
+      const seen = new Set<number>();
+      msg.handtraps = msg.handtraps.filter(h => {
+        if (seen.has(h.cardId)) return false;
+        seen.add(h.cardId);
+        return true;
+      });
     }
     // Verify-mode input validation
     if (isVerifyMode) {
@@ -2956,7 +2971,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
           mainPath: [],
           score: 0,
           scoreBreakdown: { omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0, controlChange: 0, banish: 0, banishFacedown: 0, attach: 0, spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0, bounce: 0, handRip: 0, sendToGy: 0, weighted: 0, fallbackPoints: 0, total: 0 },
-          stats: { nodesExplored: 0, elapsed, algorithm: 'ismcts', algorithmUsed: 'ismcts', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
+          stats: { nodesExplored: 0, elapsed, algorithm: 'minimax-mcts', algorithmUsed: 'minimax-mcts', maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr, ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}) },
           verified: verifyResult.verified,
           isVerifyResult: true,
         };

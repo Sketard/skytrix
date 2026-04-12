@@ -75,6 +75,18 @@
   white-space: nowrap;
 }
 
+.alternative-count {
+  color: var(--mat-sys-on-surface-variant);
+  margin-left: 0.5rem;
+  padding: 1px 6px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  font-size: 0.7rem;
+  cursor: help;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .tree-breakdown-chips {
   display: flex;
   gap: 2px;

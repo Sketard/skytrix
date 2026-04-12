@@ -10,7 +10,6 @@
   "memoryBudgetMb": 512,
   "bfComplexityThreshold": 25,
   "rateLimitIntervalMs": 2000,
-  "ismctsDeterminizations": 3,
   "maxHandtraps": 5,
   "ucb1C": 1.0,
   "backpropPolicy": "max",

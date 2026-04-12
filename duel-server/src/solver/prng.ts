@@ -1,5 +1,5 @@
 // =============================================================================
-// prng.ts — Xoshiro128** PRNG (shared by SP-MCTS and IS-MCTS)
+// prng.ts — Xoshiro128** PRNG (shared by SP-MCTS and Minimax MCTS)
 // Seeded, deterministic, period 2^128 - 1
 // Consumes the full bigint[] worker seed instead of truncating to 32 bits.
 // =============================================================================

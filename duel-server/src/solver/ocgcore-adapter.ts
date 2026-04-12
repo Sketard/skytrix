@@ -402,22 +402,15 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Opponent prompts
         if ((msgAny['player'] as number) === OPPONENT) {
-          // Adversarial mode: yield opponent SELECT_CHAIN to the solver
+          // Adversarial mode: yield opponent SELECT_CHAIN to the solver so
+          // the minimax tree can explore opponent activation timing. All
+          // configured handtraps are always available (no subset filter).
           const isAdversarial = (internal.config.handtraps?.length ?? 0) > 0;
           if (isAdversarial && promptType === 'SELECT_CHAIN') {
             const actions = this.enumerateActionsWithResponses(msgAny, promptType);
             // Tag all actions as opponent (team: 1)
             for (const a of actions) a.team = 1;
             return actions;
-          }
-          // Adversarial: decline opponent SELECT_EFFECTYN to prevent handtraps
-          // bypassing the solver's determinization filter via trigger effects.
-          // Safe for MVP: opponent only has filler deck + handtraps (no field triggers).
-          if (isAdversarial && promptType === 'SELECT_EFFECTYN') {
-            const decline = { type: 2, yes: false };
-            this.core.duelSetResponse(internal.nativeHandle, decline as never);
-            internal.responseHistory.push(decline);
-            continue;
           }
           // All other opponent prompts: auto-respond
           const resp = this.autoRespondOpponent(msgAny);

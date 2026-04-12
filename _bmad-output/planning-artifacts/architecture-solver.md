@@ -167,7 +167,7 @@ interface SolverProgress {
 
 **Adversarial support per strategy:**
 - **DFS** — `supportsAdversarial: false`. DFS explores exhaustively; branching on every opponent `SELECT_CHAIN` window (activate × N handtraps + pass) would make the tree intractable. DFS is goldfish-only.
-- **MCTS (IS-MCTS)** — `supportsAdversarial: true`. IS-MCTS naturally handles adversarial via determinization and sampling — purpose-built for hidden information games.
+- **MCTS (Minimax MCTS)** — `supportsAdversarial: true`. Minimax MCTS with two-player backpropagation (player=max, opponent=min) handles the deterministic stress-test model: the opponent is assumed to have ALL configured handtraps in hand and activates at optimal timing. No determinization or subset sampling — the uncertainty being modeled is *timing*, not *hand contents*.
 - **Auto mode** with adversarial: always dispatches to MCTS regardless of measured BF.
 
 **Rollout policy (critical for combo decks):**
@@ -179,7 +179,7 @@ Pure random rollouts will almost never produce a coherent combo line in Yu-Gi-Oh
 
 **Backpropagation policy:**
 - **Goldfish (SP-MCTS):** Max backpropagation — parent score = best child score. Prioritizes high-ceiling combo paths (we care about the best board, not the average). UCB1 exploration constant C may need to be higher than standard (√2) to compensate for max-backprop inflation.
-- **Adversarial (IS-MCTS):** Two-player minimax backpropagation — player nodes propagate max (best action for the player), opponent nodes propagate min (worst-case handtrap timing for the player). The `minimax` field in `SolverResult` is the root score of this minimax tree, not a post-hoc traversal. The tree is inherently minimax — opponent `SELECT_CHAIN` nodes select the child that minimizes the player's score.
+- **Adversarial (Minimax MCTS):** Two-player minimax backpropagation — player nodes propagate max (best action for the player), opponent nodes propagate min (worst-case handtrap timing for the player). The `minimax` field in `SolverResult` is the root score of this minimax tree, not a post-hoc traversal. The tree is inherently minimax — opponent `SELECT_CHAIN` nodes select the child that minimizes the player's score. The opponent always has access to ALL selected handtraps in hand (no subset filtering).
 
 **Affects:** DFS solver, SP-MCTS solver, future algorithm additions, orchestrator validation.
 
@@ -410,7 +410,7 @@ SolverPageComponent (lazy-loaded /decks/:id/solver)
 
 | File | Content | Reload |
 |---|---|---|
-| `duel-server/data/solver-config.json` | Pool size, max depth, time budgets (fast/optimal), progress throttle interval, tree pruning top-X, maxResultNodes (500), transposition table max entries (25K), memory budget (512MB), BF complexity threshold (25), rate limit interval (2s), IS-MCTS determinizationsPerIteration (3), maxHandtraps (5), ucb1C (float, default √2 ≈ 1.414), backpropPolicy ('max' \| 'mean', default 'max'), rolloutEpsilon (float, default 0.1), verificationBudgetRatio (float, default 0.15) | At boot |
+| `duel-server/data/solver-config.json` | Pool size, max depth, time budgets (fast/optimal), progress throttle interval, tree pruning top-X, maxResultNodes (500), transposition table max entries (25K), memory budget (512MB), BF complexity threshold (25), rate limit interval (2s), maxHandtraps (5), ucb1C (float, default √2 ≈ 1.414), backpropPolicy ('max' \| 'mean', default 'max'), rolloutEpsilon (float, default 0.1), verificationBudgetRatio (float, default 0.15) | At boot |
 | `duel-server/data/interruption-tags.json` | cardId → effects[] (type, usesPerTurn) for 150 end-board cards. No per-card weight — weight comes from interruption-weights.json by type | At boot |
 | `duel-server/data/interruption-weights.json` | Default weights for 15 interruption types | At boot |
 | `duel-server/data/handtraps.json` | 5 MVP handtraps (cardId, cardName) | At boot |
@@ -663,7 +663,7 @@ File: `duel-server/data/golden-tests.json`. Each test hand-verified by Axel. Run
 
 5. **Verify mode (FR31) is unreliable for search-heavy combo decks.** Verification replays the exact action sequence on a fresh duel (same deckSeed), but OCGCore's internal PRNG may produce a different post-search deck order, causing downstream actions to become illegal. This affects **both DFS and MCTS** results — any combo involving ROTA, Branded Fusion's send-from-deck, or similar search effects may produce `verified: false` even though the original solve was correct. The UI must display a warning for DFS results too (not just the MCTS tooltip): "Verification may fail for combos involving search or shuffle effects — this does not invalidate the original result." **Phase 2:** capture OCGCore PRNG state alongside deckSeed for exact replay.
 
-6. **IS-MCTS adversarial convergence in Fast mode is best-effort.** With `determinizationsPerIteration = 3` and 31 possible handtrap subsets (2^5 - 1), Fast mode (5s) produces ~2K-3.5K effective MCTS iterations. Each iteration samples 3 subsets, giving ~6K-10.5K total samples from 31 possible information sets. This provides roughly 200-340 samples per subset on average — adequate for broad coverage but insufficient for fine-grained timing analysis. Fast adversarial results should be treated as directional (which handtraps are most dangerous) rather than precise (exact minimax score). Optimal mode (60s) provides ~12x more samples, which is sufficient for stable IS-MCTS averaging. The UI should NOT display confidence intervals for Fast adversarial — the result is the best estimate available within the time budget.
+6. **Minimax MCTS adversarial convergence in Fast mode is best-effort.** Fast mode (5s) produces ~2K-3.5K MCTS iterations. Each iteration explores one path through the tree, where opponent SELECT_CHAIN nodes branch on (N handtraps + pass) — the full combinatorial space of "which handtrap at which window" grows quickly for long combos. Fast mode provides broad coverage of the most-visited branches but may not converge on the exact minimax score for deep trees. Optimal mode (60s) provides ~12x more iterations, which is sufficient for stable convergence. A UI hint icon on adversarial + Fast results signals this to the user. The UI does NOT display confidence intervals — the displayed minimax score is the current best estimate within the time budget.
 
 7. **FR12 (transposition / avoid re-exploring equivalent states) applies to DFS only.** MCTS uses independent rollouts from root and does not use the transposition table. This means MCTS repeatedly traverses the same forced early-game states, consuming simulation budget on already-evaluated positions. Acceptable for MVP — MCTS compensates with sampling breadth rather than deduplication depth. **Phase 2:** lightweight MCTS transposition cache for early-game states (depth < 5) to avoid redundant rollout prefixes.
 
@@ -688,7 +688,7 @@ duel-server/
 │   │   ├── solver-strategy.ts            # SolverStrategy + ActionRanker interfaces
 │   │   ├── strategies/
 │   │   │   ├── dfs-solver.ts             # DFS with iterative deepening
-│   │   │   └── mcts-solver.ts            # SP-MCTS + IS-MCTS for adversarial
+│   │   │   └── mcts-solver.ts            # SP-MCTS (goldfish) + Minimax MCTS (adversarial)
 │   │   ├── goldfish-chain-ranker.ts      # Default ActionRanker: SELECT_CHAIN goldfish pruning heuristic
 │   │   ├── zobrist.ts                    # Zobrist hasher (dual 32-bit, incremental)
 │   │   ├── transposition-table.ts        # Transposition table with verification key
@@ -798,9 +798,11 @@ The duel infrastructure is already 2-player in all modes (PvP, solo, solver). Th
 
 2. **Legal activation windows** — OCGCore presents `SELECT_CHAIN` to player 1 whenever a handtrap can legally chain. The engine enforces all activation conditions natively (Ash Blossom only chains to draw/search/mill effects, Nibiru triggers after 5th summon, Impermanence targets face-up monsters, etc.). No manual timing rules needed.
 
-3. **IS-MCTS decision routing** — When `SELECT_CHAIN` arrives for player 1 during MCTS, the solver's adversarial policy decides whether to activate (maximize disruption) or pass. In DFS adversarial mode, both branches (activate / pass) are explored. The `autoPassOpponent()` function is replaced by the adversarial decision function for `SELECT_CHAIN` only — all other opponent prompts remain auto-passed.
+3. **Minimax MCTS decision routing** — When `SELECT_CHAIN` arrives for player 1 during MCTS, the `OCGCoreAdapter` yields the legal actions (activate each handtrap + pass) to the solver as opponent-tagged actions (`team: 1`). The solver's minimax tree search decides which branch is optimal for the opponent — minimizing the player's score. The `autoPassOpponent()` function is replaced by this yield-back behavior for `SELECT_CHAIN` only — all other opponent prompts remain auto-passed. In DFS adversarial mode, the same branching applies, but DFS is blocked for adversarial because exhaustive exploration of all (N+1) opponent branches per chain window is intractable.
 
-4. **Determinization** — IS-MCTS samples which handtraps the opponent "has" from the configured set (per `determinizationsPerIteration`). Each determinization loads a different subset into hand, creating varied disruption scenarios across rollouts. **Default `determinizationsPerIteration = 3`** — provides true IS-MCTS averaging over handtrap subsets. Values below 3 degrade to vanilla MCTS with noisy single-sample draws, producing inconsistent adversarial results across re-solves of the same hand. Increase to 5 for decks with many handtrap slots. Higher values improve adversarial accuracy at the cost of throughput (linear scaling).
+4. **Deterministic stress-test model** — The opponent is assumed to have **ALL** selected handtraps in hand and activate them at the optimal disruption timing. There is no determinization or subset sampling: the minimax score is the guaranteed worst-case under the configured handtrap set. Semantically, the score answers the question *"if my opponent has these handtraps, what is the best combo I can still reach?"* The score is monotone decreasing in the number of selected handtraps — adding a handtrap can only equal or reduce the worst-case minimax.
+
+   The uncertainty being modeled is **timing** (which chain window will the opponent exploit?), not **hand contents** (which handtraps does the opponent possess?). The user controls the hand contents directly via the handtrap selection UI.
 
 **Key constraint:** The solver worker must configure `createDuel()` with valid decks for both players. Player 1's main deck = filler (40 cards) + handtraps loaded to hand post-creation. This is identical to the existing solo mode pattern — no architectural change, just different cards in the opponent's hand.
 

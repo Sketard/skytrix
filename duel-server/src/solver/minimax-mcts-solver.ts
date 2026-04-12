@@ -1,7 +1,10 @@
 // =============================================================================
-// ismcts-solver.ts — Information Set Monte Carlo Tree Search for adversarial
-// mode. Uses determinization (handtrap subset sampling), two-player minimax
-// backpropagation, and epsilon-greedy rollouts with greedy-activate opponent.
+// minimax-mcts-solver.ts — Minimax MCTS for adversarial mode. Assumes the
+// opponent has ALL selected handtraps in hand and always activates optimally.
+// No determinization, no subset sampling: a deterministic stress-test where
+// the minimax score is the guaranteed worst-case against the configured
+// handtraps. Two-player minimax backpropagation (player=max, opponent=min),
+// epsilon-greedy rollouts with random-uniform opponent activation.
 // =============================================================================
 
 import type { GameOracle, DuelHandle } from './game-oracle.js';
@@ -39,13 +42,13 @@ const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
 });
 
 // =============================================================================
-// IsMctsNode — Internal tree node with player tagging
+// MinimaxNode — Internal tree node with player tagging
 // =============================================================================
 
-interface IsMctsNode {
+interface MinimaxNode {
   action: Action | null;
-  parent: IsMctsNode | null;
-  children: IsMctsNode[];
+  parent: MinimaxNode | null;
+  children: MinimaxNode[];
   visits: number;
   totalScore: number;
   bestScore: number;
@@ -60,14 +63,22 @@ interface IsMctsNode {
   scoreBreakdown?: ScoreBreakdown;
   /** 0 = player (maximizer), 1 = opponent (minimizer). Root defaults to 0. */
   player: 0 | 1;
+  /** On opponent nodes only: total number of legal actions (activations + pass)
+   *  the opponent could choose from at this window. Surfaced to the UI so the
+   *  user can see "chose among N" when more than 1. */
+  alternativeCount?: number;
+  /** Set on a parent node when its next expansion enumerated an opponent
+   *  SELECT_CHAIN — counts how many options the opponent was offered. Each
+   *  child created from this enumeration inherits it as `alternativeCount`. */
+  childrenAlternativeCount?: number;
 }
 
 // =============================================================================
-// IsMctsSolver
+// MinimaxMctsSolver
 // =============================================================================
 
-export class IsMctsSolver implements SolverStrategy {
-  readonly name = 'ismcts';
+export class MinimaxMctsSolver implements SolverStrategy {
+  readonly name = 'minimax-mcts';
   readonly supportsAdversarial = true;
 
   private readonly scorer: InterruptionScorer;
@@ -100,7 +111,7 @@ export class IsMctsSolver implements SolverStrategy {
   }
 
   // ===========================================================================
-  // Solve — IS-MCTS main loop with determinization
+  // Solve — Minimax MCTS main loop (no determinization)
   // ===========================================================================
 
   solve(
@@ -110,11 +121,10 @@ export class IsMctsSolver implements SolverStrategy {
     onProgress: (progress: SolverProgress) => void,
     startHandle?: DuelHandle,
   ): SolverResult {
-    if (!startHandle) throw new Error('[Solver] IsMctsSolver requires startHandle');
+    if (!startHandle) throw new Error('[Solver] MinimaxMctsSolver requires startHandle');
 
     const prng = new Xoshiro128SS(this._seed);
     const handtraps = config.handtraps ?? [];
-    const determinizations = this.configFile.ismctsDeterminizations;
 
     // Reset per-solve state
     this._bestTerminalScore = -Infinity;
@@ -137,63 +147,56 @@ export class IsMctsSolver implements SolverStrategy {
     const solveBudgetMs = config.timeLimitMs * (1 - this.configFile.verificationBudgetRatio);
 
     while (!signal.aborted && (Date.now() - startTime) < solveBudgetMs) {
-      // Sample a handtrap subset for this determinization batch
-      const subset = this.sampleHandtrapSubset(handtraps, prng);
-      const subsetIds = new Set(subset.map(h => h.cardId));
+      let handle: DuelHandle | undefined;
+      try {
+        handle = oracle.fork(startHandle);
 
-      // Run `determinizations` iterations sharing the same subset
-      for (let d = 0; d < determinizations && !signal.aborted && (Date.now() - startTime) < solveBudgetMs; d++) {
-        let handle: DuelHandle | undefined;
-        try {
-          handle = oracle.fork(startHandle);
+        // 1. Selection
+        const selected = this.select(root, handle, oracle);
 
-          // 1. Selection
-          const selected = this.select(root, handle, oracle, subsetIds);
+        // 2. Expansion
+        const expanded = this.expand(selected, handle, oracle);
 
-          // 2. Expansion
-          const expanded = this.expand(selected, handle, oracle, subsetIds);
-
-          if (expanded !== selected && expanded.parent) {
-            const parent = expanded.parent;
-            if (parent.children.length === 1) totalBranchingNodes++;
-            totalChildren++;
-          }
-
-          // 3. Simulation
-          const { rolloutScore, maxDepth } = this.simulate(expanded, handle, oracle, prng, subsetIds);
-          if (maxDepth > maxDepthReached) maxDepthReached = maxDepth;
-
-          // 4. Backpropagation (minimax)
-          this.backpropagate(expanded, rolloutScore);
-
-          nodesExplored++;
-          consecutiveFailures = 0;
-        } catch (err) {
-          consecutiveFailures++;
-          console.warn(
-            `[Solver] IS-MCTS iteration failed (consecutive=${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
-            err,
-          );
-          if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            console.error(`[Solver] IS-MCTS aborted after ${consecutiveFailures} consecutive failures`);
-            abortedDueToFailures = consecutiveFailures;
-            break;
-          }
-          continue;
-        } finally {
-          if (handle) oracle.destroyDuel(handle);
+        if (expanded !== selected && expanded.parent) {
+          const parent = expanded.parent;
+          if (parent.children.length === 1) totalBranchingNodes++;
+          totalChildren++;
         }
 
-        // Progress
-        const now = Date.now();
-        if (nodesExplored % 100 === 0 || now - lastProgressTime > 200) {
-          onProgress({
-            nodesExplored,
-            bestScore: root.bestScore,
-            elapsed: now - startTime,
-          });
-          lastProgressTime = now;
+        // 3. Simulation
+        const { rolloutScore, maxDepth } = this.simulate(expanded, handle, oracle, prng);
+        if (maxDepth > maxDepthReached) maxDepthReached = maxDepth;
+
+        // 4. Backpropagation (minimax)
+        this.backpropagate(expanded, rolloutScore);
+
+        nodesExplored++;
+        consecutiveFailures = 0;
+      } catch (err) {
+        consecutiveFailures++;
+        console.warn(
+          `[Solver] Minimax MCTS iteration failed (consecutive=${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
+          err,
+        );
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.error(`[Solver] Minimax MCTS aborted after ${consecutiveFailures} consecutive failures`);
+          abortedDueToFailures = consecutiveFailures;
+          break;
         }
+        continue;
+      } finally {
+        if (handle) oracle.destroyDuel(handle);
+      }
+
+      // Progress
+      const now = Date.now();
+      if (nodesExplored % 100 === 0 || now - lastProgressTime > 200) {
+        onProgress({
+          nodesExplored,
+          bestScore: root.bestScore,
+          elapsed: now - startTime,
+        });
+        lastProgressTime = now;
       }
 
       if (abortedDueToFailures !== undefined) break;
@@ -206,54 +209,19 @@ export class IsMctsSolver implements SolverStrategy {
   }
 
   // ===========================================================================
-  // Determinization — Sample a non-empty handtrap subset
-  // ===========================================================================
-
-  private sampleHandtrapSubset(handtraps: HandtrapConfig[], prng: Xoshiro128SS): HandtrapConfig[] {
-    if (handtraps.length === 0) return [];
-    const n = handtraps.length;
-    // Uniform over 2^N - 1 non-empty subsets
-    const totalSubsets = (1 << n) - 1;
-    const bits = Math.floor(prng.next() * totalSubsets) + 1; // 1..2^N-1
-    const result: HandtrapConfig[] = [];
-    for (let i = 0; i < n; i++) {
-      if (bits & (1 << i)) result.push(handtraps[i]);
-    }
-    return result;
-  }
-
-  // ===========================================================================
-  // Filter opponent SELECT_CHAIN actions to the current determinization subset
-  // ===========================================================================
-
-  private filterOpponentActions(actions: Action[], subsetIds: Set<number>): Action[] {
-    return actions.filter(a => {
-      // Always keep "pass" (responseIndex === -1 or actionTag === 'pass')
-      if (a.actionTag === 'pass') return true;
-      // Only keep activations for handtraps in the current subset
-      return subsetIds.has(a.cardId);
-    });
-  }
-
-  // ===========================================================================
   // UCB1 Selection — minimax-aware
   // ===========================================================================
 
-  private select(node: IsMctsNode, handle: DuelHandle, oracle: GameOracle, subsetIds: Set<number>): IsMctsNode {
+  private select(node: MinimaxNode, handle: DuelHandle, oracle: GameOracle): MinimaxNode {
     let current = node;
 
     while (current.isExpanded && !current.isTerminal && current.children.length > 0) {
       const C = this.configFile.ucb1C;
       const lnParentVisits = Math.log(current.visits);
       let bestUcb = -Infinity;
-      let bestChild: IsMctsNode | null = null;
+      let bestChild: MinimaxNode | null = null;
 
       for (const child of current.children) {
-        // Skip opponent children whose handtrap is not in the current subset
-        if (child.player === 1 && child.action && child.action.actionTag !== 'pass' && !subsetIds.has(child.action.cardId)) {
-          continue;
-        }
-
         // UCB1 exploitation uses average reward for stable convergence.
         // Minimax (bestScore/worstScore) is kept for backprop & result only.
         const exploitation = child.visits === 0
@@ -302,7 +270,7 @@ export class IsMctsSolver implements SolverStrategy {
   // Expansion
   // ===========================================================================
 
-  private expand(node: IsMctsNode, handle: DuelHandle, oracle: GameOracle, subsetIds: Set<number>): IsMctsNode {
+  private expand(node: MinimaxNode, handle: DuelHandle, oracle: GameOracle): MinimaxNode {
     if (node.isTerminal) return node;
 
     if (!node.isExpanded && node.untriedActions.length === 0) {
@@ -316,24 +284,11 @@ export class IsMctsSolver implements SolverStrategy {
       // Determine if these are opponent actions
       const isOpponent = actions[0].team === 1;
 
-      let ranked: Action[];
-      if (isOpponent) {
-        // Filter to current determinization subset
-        ranked = this.filterOpponentActions(actions, subsetIds);
-        if (ranked.length === 0) {
-          // All handtraps filtered out — auto-pass
-          const pass = actions.find(a => a.actionTag === 'pass');
-          if (pass) {
-            oracle.applyAction(handle, pass);
-            return node; // Continue without expanding
-          }
-          node.isTerminal = true;
-          node.isExpanded = true;
-          return node;
-        }
-      } else {
-        ranked = this.rankIfNeeded(actions, handle, oracle);
-      }
+      // Player actions get ranked; opponent actions are kept as-is (all
+      // handtraps are always available — no subset filtering).
+      const ranked: Action[] = isOpponent
+        ? actions
+        : this.rankIfNeeded(actions, handle, oracle);
 
       if (ranked.length === 0) {
         node.isTerminal = true;
@@ -342,6 +297,9 @@ export class IsMctsSolver implements SolverStrategy {
       }
 
       node.untriedActions = ranked;
+      // Remember opponent branching size so every child expanded from this
+      // enumeration carries the same alternativeCount (surfaced to the UI).
+      if (isOpponent) node.childrenAlternativeCount = ranked.length;
     }
 
     if (node.untriedActions.length === 0) {
@@ -353,7 +311,7 @@ export class IsMctsSolver implements SolverStrategy {
     const enriched = this.adapter.enrichAction(action);
     const player = action.team ?? 0;
 
-    const child: IsMctsNode = {
+    const child: MinimaxNode = {
       action,
       parent: node,
       children: [],
@@ -369,6 +327,9 @@ export class IsMctsSolver implements SolverStrategy {
       cardName: enriched.cardName,
       actionDescription: enriched.actionDescription,
       player,
+      ...(player === 1 && node.childrenAlternativeCount !== undefined
+        ? { alternativeCount: node.childrenAlternativeCount }
+        : {}),
     };
 
     node.children.push(child);
@@ -382,15 +343,14 @@ export class IsMctsSolver implements SolverStrategy {
   }
 
   // ===========================================================================
-  // Epsilon-Greedy Rollout — greedy-activate for opponent
+  // Epsilon-Greedy Rollout — random-uniform opponent activation
   // ===========================================================================
 
   private simulate(
-    node: IsMctsNode,
+    node: MinimaxNode,
     handle: DuelHandle,
     oracle: GameOracle,
     prng: Xoshiro128SS,
-    subsetIds: Set<number>,
   ): { rolloutScore: number; maxDepth: number } {
     let depth = node.depth;
     const maxDepth = this.configFile.maxDepth;
@@ -404,10 +364,16 @@ export class IsMctsSolver implements SolverStrategy {
 
       let action: Action;
       if (isOpponent) {
-        // Greedy-activate: always activate the first legal handtrap in subset, pass if none
-        const filtered = this.filterOpponentActions(actions, subsetIds);
-        const activation = filtered.find(a => a.actionTag !== 'pass');
-        action = activation ?? filtered.find(a => a.actionTag === 'pass') ?? actions[actions.length - 1];
+        // Random-uniform among activations (unbiased w.r.t. OCGCore's internal
+        // ordering of the opponent's hand). If no activation is legal, pass.
+        // The true minimax still emerges from MCTS selection + backprop; the
+        // rollout policy just needs to be unbiased and cheap.
+        const activations = actions.filter(a => a.actionTag !== 'pass');
+        if (activations.length > 0) {
+          action = activations[Math.floor(prng.next() * activations.length)];
+        } else {
+          action = actions.find(a => a.actionTag === 'pass') ?? actions[0];
+        }
       } else {
         // Player: epsilon-greedy with ranker
         const ranked = this.rankIfNeeded(actions, handle, oracle);
@@ -438,8 +404,8 @@ export class IsMctsSolver implements SolverStrategy {
   // Minimax Backpropagation
   // ===========================================================================
 
-  private backpropagate(node: IsMctsNode, score: number): void {
-    let current: IsMctsNode | null = node;
+  private backpropagate(node: MinimaxNode, score: number): void {
+    let current: MinimaxNode | null = node;
 
     while (current !== null) {
       current.visits++;
@@ -461,7 +427,7 @@ export class IsMctsSolver implements SolverStrategy {
   // ===========================================================================
 
   private buildResult(
-    root: IsMctsNode,
+    root: MinimaxNode,
     nodesExplored: number,
     startTime: number,
     maxDepthReached: number,
@@ -509,8 +475,8 @@ export class IsMctsSolver implements SolverStrategy {
     for (const h of handtraps) handtrapNames.set(h.cardId, h.cardName);
 
     // Sort: player nodes DESC by bestScore, opponent nodes ASC by worstScore
-    const sortChildren = (parent: IsMctsNode) =>
-      (a: IsMctsNode, b: IsMctsNode) => {
+    const sortChildren = (parent: MinimaxNode) =>
+      (a: MinimaxNode, b: MinimaxNode) => {
         if (parent.player === 1) {
           // Opponent's children are player nodes — sort DESC
           return (b.bestScore - a.bestScore) || (b.visits - a.visits);
@@ -523,7 +489,7 @@ export class IsMctsSolver implements SolverStrategy {
         return (b.bestScore - a.bestScore) || (b.visits - a.visits);
       };
 
-    const makeShallow = (mNode: IsMctsNode, isRoot: boolean): DecisionNode => {
+    const makeShallow = (mNode: MinimaxNode, isRoot: boolean): DecisionNode => {
       const action: SolverAction = isRoot
         ? ROOT_ACTION
         : {
@@ -552,13 +518,14 @@ export class IsMctsSolver implements SolverStrategy {
         children: [],
         isTerminal: mNode.isTerminal,
         ...(handtrapLabel ? { handtrapLabel } : {}),
+        ...(mNode.alternativeCount !== undefined ? { alternativeCount: mNode.alternativeCount } : {}),
       };
     };
 
     // BFS tree conversion with budget cap
     const tree = makeShallow(root, true);
     let nodeCount = 1;
-    const queue: { mNode: IsMctsNode; decision: DecisionNode }[] = [{ mNode: root, decision: tree }];
+    const queue: { mNode: MinimaxNode; decision: DecisionNode }[] = [{ mNode: root, decision: tree }];
 
     while (queue.length > 0) {
       const { mNode, decision } = queue.shift()!;
@@ -610,17 +577,17 @@ export class IsMctsSolver implements SolverStrategy {
   // ===========================================================================
 
   private extractAdversarialTimings(
-    root: IsMctsNode,
+    root: MinimaxNode,
     handtrapNames: Map<number, string>,
   ): AdversarialTiming[] {
     const timings: AdversarialTiming[] = [];
-    let current: IsMctsNode = root;
+    let current: MinimaxNode = root;
     let playerStepIndex = 0;
 
     while (current.children.length > 0) {
       // Pick best child (children[0] after sort is the recommended choice)
       // Walk the internal tree following the recommendation policy
-      let best: IsMctsNode;
+      let best: MinimaxNode;
       if (current.player === 1) {
         // Opponent: pick lowest score (worst-case)
         best = current.children.reduce((a, b) => a.worstScore <= b.worstScore ? a : b);
@@ -652,7 +619,7 @@ export class IsMctsSolver implements SolverStrategy {
   // Helpers
   // ===========================================================================
 
-  private createRootNode(): IsMctsNode {
+  private createRootNode(): MinimaxNode {
     return {
       action: null,
       parent: null,
@@ -684,7 +651,7 @@ export class IsMctsSolver implements SolverStrategy {
       nodesExplored,
       elapsed: Date.now() - startTime,
       algorithm: 'mcts',
-      algorithmUsed: 'ismcts',
+      algorithmUsed: 'minimax-mcts',
       maxDepthReached,
       averageBranchingFactor: totalBranchingNodes > 0
         ? totalChildren / totalBranchingNodes

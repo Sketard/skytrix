@@ -521,7 +521,9 @@
       "noResilientLineMessage": "Toutes les lignes de combo sont brisées par les pièges de main sélectionnés.",
       "bestScoreRef": "Meilleur score (sans disruption) : {{score}}",
       "worstCaseAria": "Résilience pire cas : {{minimax}}",
-      "fastAdversarialHint": "Le mode Fast donne des scores adversarial approximatifs. Utilisez Optimal pour des résultats minimax stables."
+      "fastAdversarialHint": "Le mode Fast explore moins de branches de combo. Utilisez Optimal pour une recherche minimax plus approfondie.",
+      "alternativeCountBadge": "{{count}} options",
+      "alternativeCountTooltip": "L'adversaire a choisi cette activation parmi {{count}} options légales à cette fenêtre de chaîne"
     },
     "error": {
       "deckNotFound": "Deck introuvable",

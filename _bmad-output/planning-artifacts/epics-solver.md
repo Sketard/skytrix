@@ -89,7 +89,7 @@ NFR17: Each solve is logged: nodes explored, final score, total time, algorithm,
 - SOLVER_CANCELLED returns partialTree if solver found at least one result (anytime behavior)
 - 4 config JSON files loaded at boot: solver-config.json, interruption-tags.json, interruption-weights.json, handtraps.json
 - Config validation at boot with typed schema, exit on invalid
-- Adversarial mode: OCGCore 2-player duel with handtraps injected into opponent hand via duelNewCard(). SELECT_CHAIN routed to adversarial policy. IS-MCTS determinization samples handtrap subsets
+- Adversarial mode: OCGCore 2-player duel with ALL selected handtraps injected into opponent hand via duelNewCard(). SELECT_CHAIN routed to adversarial policy. Minimax MCTS with two-player backpropagation — opponent always has access to the full handtrap set, minimax emerges from tree search over activation timing
 - Golden test suite: 30 standardized JSON fixtures (15 combo, 15 brick), 100% concordance
 - SolverDebugLogService: client-side debug logging gated by environment.debugTools, same pattern as PvP DebugLogService
 - Solver logging: console.log/warn/error with [Solver] prefix, matching existing duel-server pattern (e.g., [UpdateData])
@@ -167,7 +167,7 @@ User selects a deck and hand, launches a goldfish solve (Fast or Optimal), and s
 **FRs covered:** FR1, FR2, FR3 (goldfish), FR4, FR6, FR7, FR8, FR9, FR10, FR11, FR12, FR14, FR15, FR16, FR17, FR18, FR19, FR20, FR21, FR24, FR25, FR27, FR28, FR29, FR30
 
 ### Epic 2: Handtrap Resilience Analysis
-User switches to adversarial mode, selects handtraps from a predefined list, and sees the resilience analysis: global minimax score, handtrap branches annotated in the decision tree with activation timing, and no-resilient-line brick state. Extends the goldfish engine with IS-MCTS adversarial, handtrap injection via OCGCore 2-player duel, and adversarial UI elements.
+User switches to adversarial mode, selects handtraps from a predefined list, and sees the resilience analysis: global minimax score, handtrap branches annotated in the decision tree with activation timing, and no-resilient-line brick state. Extends the goldfish engine with Minimax MCTS adversarial, handtrap injection via OCGCore 2-player duel, and adversarial UI elements.
 **FRs covered:** FR3 (adversarial), FR5, FR13, FR22, FR23, FR31
 
 ### Epic 3: Iterative Build Comparison
@@ -200,7 +200,7 @@ So that all subsequent solver stories build on a validated, type-safe foundation
 
 **Given** the 4 config JSON files in `duel-server/data/`
 **When** the duel-server boots
-**Then** `solver-config.json` is loaded and validated against the typed schema (poolSize 1-32, maxDepth 10-100, timeBudgetFastMs 1000-30000, timeBudgetOptimalMs 5000-300000, progressThrottleMs 50-2000, treePruningTopX 1-50, maxResultNodes 50-5000, transpositionMaxEntries 1000-100000 default 25000, memoryBudgetMb 128-4096, bfComplexityThreshold 5-100, rateLimitIntervalMs 500-10000, ismctsDeterminizations 1-10, maxHandtraps 1-10, ucb1C 0.5-3.0, backpropPolicy 'max'|'mean', rolloutEpsilon 0.0-1.0 default 0.1, verificationBudgetRatio 0.05-0.30 default 0.15)
+**Then** `solver-config.json` is loaded and validated against the typed schema (poolSize 1-32, maxDepth 10-100, timeBudgetFastMs 1000-30000, timeBudgetOptimalMs 5000-300000, progressThrottleMs 50-2000, treePruningTopX 1-50, maxResultNodes 50-5000, transpositionMaxEntries 1000-100000 default 25000, memoryBudgetMb 128-4096, bfComplexityThreshold 5-100, rateLimitIntervalMs 500-10000, maxHandtraps 1-10, ucb1C 0.5-3.0, backpropPolicy 'max'|'mean', rolloutEpsilon 0.0-1.0 default 0.1, verificationBudgetRatio 0.05-0.30 default 0.15)
 **And** `interruption-weights.json` is loaded and validated (each of 15 types has weight 0-100)
 **And** `interruption-tags.json` is loaded and validated (cardId → effects[] with type in 15 types, usesPerTurn 1-10). Weights are NOT stored per-card — they come from `interruption-weights.json` (global per-type)
 **And** at boot, each cardId in `interruption-tags.json` is verified against the loaded card pool; unknown cardIds produce a WARNING log listing the stale entries (cards may have been banned, errata'd, or removed between updates)
@@ -913,7 +913,7 @@ So that the score of a board final reflects the real defensive value of cards th
 
 User switches to adversarial mode, selects handtraps from a predefined list, and sees the resilience analysis: global minimax score, handtrap branches annotated in the decision tree with activation timing, and no-resilient-line brick state.
 
-### Story 2.1: Adversarial Engine — Handtrap Injection & IS-MCTS
+### Story 2.1: Adversarial Engine — Handtrap Injection & Minimax MCTS
 
 As a developer,
 I want the solver engine to model a virtual opponent who activates handtraps at optimal timing,
@@ -936,16 +936,15 @@ So that the solver can find combo lines that survive disruption and compute resi
 
 **Given** algorithm = 'auto' or 'mcts' with mode = 'adversarial'
 **When** the orchestrator validates strategy/mode compatibility
-**Then** IS-MCTS is selected (supportsAdversarial: true)
+**Then** the Minimax MCTS solver is selected (supportsAdversarial: true)
 **And** DFS is never dispatched for adversarial mode (supportsAdversarial: false)
 **And** auto-detection in adversarial mode bypasses the BF probe entirely and always dispatches MCTS (no 100-node DFS probe)
 
-**Given** an IS-MCTS solve in adversarial mode
-**When** a determinization is performed
-**Then** a subset of the configured handtraps is sampled into the opponent's hand (per ismctsDeterminizations config, default 3)
-**And** each determinization creates a different disruption scenario across rollouts
-**And** the opponent policy emerges from the MCTS tree search itself (minimax over rollout scores) — not from a manually coded greedy heuristic
-**And** **convergence note:** with 5 handtraps, 31 possible subsets (2^5-1), and 3 determinizations per iteration, Fast mode (~2K-3.5K iterations) provides ~6K-10.5K total samples across 31 subsets — adequate for directional results (which handtraps are most dangerous) but insufficient for precise minimax timing. Optimal mode (60s, ~12x more iterations) is required for stable IS-MCTS averaging. Fast adversarial results are best-effort
+**Given** a Minimax MCTS solve in adversarial mode
+**When** the opponent's hand is set up
+**Then** all configured handtraps are injected into the opponent's hand via `duelNewCard()` — the opponent always has access to the full set (no subset sampling, no determinization)
+**And** the opponent policy emerges from the minimax tree search itself (player=max, opponent=min over rollout scores) — not from a manually coded activation heuristic
+**And** **convergence note:** Fast mode (~2K-3.5K iterations) provides broad coverage of the most-visited opponent branches but may not fully converge on deep trees with many chain windows. Optimal mode (60s, ~12x more iterations) is required for stable convergence. Fast adversarial results are best-effort and flagged with a UI hint
 
 **Given** an adversarial solve completing
 **When** the result tree is built
@@ -1099,6 +1098,36 @@ Adversarial review identified 12 findings (10 real). 7 code fixes applied, 1 alr
 - **#10 (OK):** Cancel button already works during verify — `solverState` is `'running'`, progress panel with Cancel is visible.
 - **#11 (FIXED):** Handtrap selection persisted across deck switches without warning — added transient 5s hint when switching decks in adversarial mode.
 - **#12 (OK):** `mergeResults()` criterion was unspecified in epic but correctly implemented as minimax DESC in code.
+
+### Epic 2 Algorithm Refactor: IS-MCTS → Minimax MCTS (2026-04-12)
+
+Post-review, the adversarial algorithm was simplified from Information Set MCTS (with handtrap subset determinization) to **deterministic Minimax MCTS**. This aligns the implementation with the intended stress-test semantics: "assume the opponent has ALL selected handtraps in hand and activates optimally."
+
+**Rationale:**
+- IS-MCTS's uniform subset sampling overweighted unrealistic scenarios (e.g., 5 handtraps simultaneously active, ~3% of realistic hands) while underweighting the realistic 1-2 handtrap cases, producing pessimistic and non-actionable minimax scores.
+- The original "information set" framing modeled uncertainty about which handtraps the opponent *possesses*, but the user explicitly wants a deterministic stress-test: "if I added these handtraps to the test, assume the opponent has all of them."
+- Removing determinization simplifies the algorithm, eliminates sampling-induced variance between runs, and provides a monotone guarantee: adding a handtrap can only decrease (never increase) the minimax score.
+
+**Changes:**
+- `ismcts-solver.ts` — removed `sampleHandtrapSubset()` and `filterOpponentActions()` methods, removed the outer determinization loop, simplified the main iteration to a single tree descent per iteration. `select()`, `expand()`, `simulate()` no longer take `subsetIds`. Two-player minimax backpropagation unchanged.
+- `ocgcore-adapter.ts` — removed the SELECT_EFFECTYN auto-decline path (which existed to prevent "leaked" handtrap triggers from bypassing the subset filter). Opponent SELECT_CHAIN still yields to the solver; other opponent prompts still auto-respond normally.
+- `solver-config.json` / `solver-types.ts` / `solver-config-loader.ts` — removed the `ismctsDeterminizations` config field (no longer used).
+- UI Fast mode hint updated — the hint text now reflects the real reason (fewer iterations = less exploration), not the old IS-MCTS averaging concern.
+
+**Semantics of the new minimax score:**
+
+"If the opponent has the selected handtraps in hand and activates them at the optimal timing to disrupt your combo, your best achievable score is X."
+
+The score is monotone decreasing in the number of selected handtraps (adding handtraps can only equal or reduce the minimax).
+
+**What was preserved:**
+- Two-player minimax backpropagation (player=max, opponent=min)
+- UCB1 with minimax inversion on opponent nodes
+- Epsilon-greedy rollouts with greedy-activate opponent heuristic
+- `handtrapLabel` generation on opponent activation nodes
+- `adversarialTimings` extraction for the Verify feature
+- Tree sorting: opponent children ASC by worst-case, player children DESC by best-case
+- `stats.algorithmUsed: 'ismcts'` (kept for backward-compat with frontend display — semantically it's now minimax-mcts, but the string is a stable API surface)
 
 ---
 

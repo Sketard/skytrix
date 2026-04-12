@@ -56,7 +56,6 @@ const SOLVER_CONFIG_RANGES: Record<string, RangeRule> = {
   memoryBudgetMb:          { min: 128,  max: 4096 },
   bfComplexityThreshold:   { min: 5,    max: 100 },
   rateLimitIntervalMs:     { min: 500,  max: 10000 },
-  ismctsDeterminizations:  { min: 1,    max: 10 },
   maxHandtraps:            { min: 1,    max: 10 },
   ucb1C:                   { min: 0.5,  max: 3.0 },
   rolloutEpsilon:          { min: 0.0,  max: 1.0 },

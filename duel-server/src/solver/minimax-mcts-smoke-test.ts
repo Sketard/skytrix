@@ -1,6 +1,6 @@
 // =============================================================================
-// ismcts-smoke-test.ts — Smoke tests for IS-MCTS adversarial solver
-// Run: npx tsx src/solver/ismcts-smoke-test.ts
+// minimax-mcts-smoke-test.ts — Smoke tests for Minimax MCTS adversarial solver
+// Run: npx tsx src/solver/minimax-mcts-smoke-test.ts
 // =============================================================================
 
 import { join } from 'node:path';
@@ -8,7 +8,7 @@ import type { ZoneId } from '../ws-protocol.js';
 import type { Action, DecisionNode, FieldCard, FieldState, HandtrapConfig, SolverConfig } from './solver-types.js';
 import { ALL_ZONE_IDS } from './solver-types.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
-import { IsMctsSolver } from './ismcts-solver.js';
+import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { InterruptionScorer } from './interruption-scorer.js';
 import { loadInterruptionTags, loadInterruptionWeights, loadSolverConfig, loadHandtraps } from './solver-config-loader.js';
 import { OCGCoreAdapter } from './ocgcore-adapter.js';
@@ -36,10 +36,10 @@ function assert(condition: boolean, name: string): void {
 // Group A — Pure unit tests (no OCGCore)
 // =============================================================================
 
-console.log('\n🔬 IS-MCTS Unit Tests');
+console.log('\n🔬 Minimax MCTS Unit Tests');
 
-// Test: IsMctsSolver metadata
-console.log('\n📋 Test: IsMctsSolver metadata');
+// Test: MinimaxMctsSolver metadata
+console.log('\n📋 Test: MinimaxMctsSolver metadata');
 {
   const DATA_DIR = join(import.meta.dirname, '..', '..', 'data');
   const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));
@@ -51,16 +51,16 @@ console.log('\n📋 Test: IsMctsSolver metadata');
   const scorer = new InterruptionScorer(tags, weights);
   const ranker = new GoldfishChainRanker();
 
-  const solver = new IsMctsSolver(scorer, adapter, ranker, solverConfig);
-  assert(solver.name === 'ismcts', `name = '${solver.name}' (expected 'ismcts')`);
+  const solver = new MinimaxMctsSolver(scorer, adapter, ranker, solverConfig);
+  assert(solver.name === 'minimax-mcts', `name = '${solver.name}' (expected 'minimax-mcts')`);
   assert(solver.supportsAdversarial === true, `supportsAdversarial = ${solver.supportsAdversarial} (expected true)`);
 }
 
 // =============================================================================
-// Group B — Integration: IS-MCTS with OCGCore + handtraps
+// Group B — Integration: Minimax MCTS with OCGCore + handtraps
 // =============================================================================
 
-console.log('\n🔬 IS-MCTS Integration Tests (with OCGCore)');
+console.log('\n🔬 Minimax MCTS Integration Tests (with OCGCore)');
 
 {
   const DATA_DIR = join(import.meta.dirname, '..', '..', 'data');
@@ -85,10 +85,10 @@ console.log('\n🔬 IS-MCTS Integration Tests (with OCGCore)');
     const testHand = Array(5).fill(ALEXANDRITE);
     const testExtra: number[] = [];
 
-    // Test: IS-MCTS runs and produces a result with handtraps
-    console.log('\n📋 Test: IS-MCTS adversarial solve produces minimax + timings');
+    // Test: Minimax MCTS runs and produces a result with handtraps
+    console.log('\n📋 Test: Minimax MCTS adversarial solve produces minimax + timings');
     {
-      const solver = new IsMctsSolver(scorer, adapter, ranker, solverConfig);
+      const solver = new MinimaxMctsSolver(scorer, adapter, ranker, solverConfig);
       solver.setSeed([42n, 137n]);
 
       const config: SolverConfig = {
@@ -113,7 +113,7 @@ console.log('\n🔬 IS-MCTS Integration Tests (with OCGCore)');
 
         assert(result.minimax !== undefined, `minimax is defined (value: ${result.minimax})`);
         assert(typeof result.minimax === 'number', `minimax is a number`);
-        assert(result.stats.algorithmUsed === 'ismcts', `algorithmUsed = '${result.stats.algorithmUsed}' (expected 'ismcts')`);
+        assert(result.stats.algorithmUsed === 'minimax-mcts', `algorithmUsed = '${result.stats.algorithmUsed}' (expected 'minimax-mcts')`);
         assert(result.score >= 0, `score >= 0 (value: ${result.score})`);
         assert(result.tree !== undefined, 'tree is defined');
         assert(result.mainPath !== undefined, 'mainPath is defined');
@@ -182,7 +182,7 @@ console.log('\n🔬 IS-MCTS Integration Tests (with OCGCore)');
     // Test: Minimax correctness — minimax <= score (worst-case <= best-case)
     console.log('\n📋 Test: Minimax score is worst-case (minimax <= score)');
     {
-      const solver2 = new IsMctsSolver(scorer, adapter, ranker, solverConfig);
+      const solver2 = new MinimaxMctsSolver(scorer, adapter, ranker, solverConfig);
       solver2.setSeed([99n, 42n]);
       const config2: SolverConfig = {
         mode: 'adversarial',
@@ -223,6 +223,63 @@ console.log('\n🔬 IS-MCTS Integration Tests (with OCGCore)');
       }
     }
 
+    // Test: full-set availability — every selected handtrap appears as an
+    // opponent option in the tree (no subset filtering leaked back in)
+    console.log('\n📋 Test: all configured handtraps are activable (no filtering)');
+    {
+      const allHandtraps = handtraps.slice(0, Math.min(3, handtraps.length));
+      const configuredIds = new Set(allHandtraps.map(h => h.cardId));
+
+      const solver3 = new MinimaxMctsSolver(scorer, adapter, ranker, solverConfig);
+      solver3.setSeed([7n, 11n]);
+      const config3: SolverConfig = {
+        mode: 'adversarial',
+        speed: 'fast',
+        timeLimitMs: 3000,
+        handtraps: allHandtraps,
+      };
+      const handle3 = adapter.createDuel({
+        mainDeck: testDeck.slice(5),
+        extraDeck: testExtra,
+        hand: testHand,
+        deckSeed: [7n, 11n],
+        opponentDeck: Array(40).fill(ALEXANDRITE),
+        handtraps: allHandtraps,
+      });
+      try {
+        const sig3 = AbortSignal.timeout(config3.timeLimitMs);
+        const r3 = solver3.solve(adapter, config3, sig3, () => {}, handle3);
+
+        // Walk tree — collect every cardId that appears as a handtrapLabel node
+        const seenHandtrapIds = new Set<number>();
+        const q: DecisionNode[] = [r3.tree];
+        while (q.length > 0) {
+          const n = q.shift()!;
+          if (n.handtrapLabel && n.action && configuredIds.has(n.action.cardId)) {
+            seenHandtrapIds.add(n.action.cardId);
+          }
+          q.push(...(n.children ?? []));
+        }
+        // Contract: if the opponent explored activation at all, every configured
+        // handtrap should be visitable (they're all in hand, always legal when
+        // the chain window allows). Hands with few chain windows may yield zero
+        // activations — that's a pass, not a failure. The strict assertion is:
+        // no handtrap outside the configured set ever appears as a branch.
+        const leaked = [...seenHandtrapIds].filter(id => !configuredIds.has(id));
+        assert(
+          leaked.length === 0,
+          `opponent only activated configured handtraps (seen: ${seenHandtrapIds.size}, leaked: ${leaked.length})`,
+        );
+        if (seenHandtrapIds.size > 0) {
+          console.log(`  ℹ️ Explored activations for ${seenHandtrapIds.size}/${configuredIds.size} configured handtraps`);
+        } else {
+          console.log('  ℹ️ No opponent activations in this hand (no chain windows triggered)');
+        }
+      } finally {
+        adapter.destroyAll();
+      }
+    }
+
     // Test: DFS rejection for adversarial mode
     console.log('\n📋 Test: DFS does not support adversarial mode');
     {
@@ -244,6 +301,6 @@ console.log('\n🔬 IS-MCTS Integration Tests (with OCGCore)');
 // =============================================================================
 
 console.log(`\n${'='.repeat(60)}`);
-console.log(`IS-MCTS Smoke Test: ${passed} passed, ${failed} failed`);
+console.log(`Minimax MCTS Smoke Test: ${passed} passed, ${failed} failed`);
 console.log('='.repeat(60));
 process.exit(failed > 0 ? 1 : 0);

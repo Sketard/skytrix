@@ -51,6 +51,7 @@ interface FlatTreeNode {
   scoreDelta: string;
   imageUrl: string;
   handtrapLabel?: string;
+  alternativeCount?: number;
   breakdownChips?: BreakdownChip[];
   isPrunedPlaceholder?: boolean;
   prunedCount?: number;
@@ -244,6 +245,7 @@ export class DecisionTreeComponent {
         ? `/api/documents/small/code/${node.action!.cardId}`
         : imgMap.get(node.action?.cardId) ?? 'assets/images/card_back.jpg',
       handtrapLabel: node.handtrapLabel,
+      alternativeCount: node.alternativeCount,
       breakdownChips,
     };
     out.push(flatNode);

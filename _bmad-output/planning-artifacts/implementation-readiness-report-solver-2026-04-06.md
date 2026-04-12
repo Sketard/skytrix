@@ -18,6 +18,8 @@ documents:
 **Date:** 2026-04-06
 **Project:** skytrix — Solver Module
 
+> **Supersession note (2026-04-12):** Findings #58, #69, and related IS-MCTS tuning items in this report (determinization defaults, IS-MCTS Fast mode convergence) are **obsolete**. The adversarial algorithm was refactored from IS-MCTS to Minimax MCTS post-Epic 2 implementation, removing determinization entirely. The refactor is documented in `epics-solver.md` §"Epic 2 Algorithm Refactor: IS-MCTS → Minimax MCTS (2026-04-12)" and in the Story 2.1 change log. IR report entries are retained for historical traceability only — do not treat them as current architecture.
+
 ## Document Inventory
 
 | Document Type | File | Format |

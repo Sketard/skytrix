@@ -48,6 +48,10 @@ export interface DecisionNode {
   handtrapLabel?: string;
   prunedChildren?: number;
   truncated?: boolean;
+  /** For opponent nodes (handtrapLabel set): total number of legal activations
+   *  the opponent could choose from at this chain window (including pass).
+   *  Lets the UI show "chose among N options" when this value > 1. */
+  alternativeCount?: number;
 }
 
 export const EMPTY_SCORE_BREAKDOWN: ScoreBreakdown = {

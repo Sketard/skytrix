@@ -116,7 +116,9 @@ He runs Adversarial Fast on **Build A** (with Aluber): goldfish 38, minimax 12. 
 
 ### Innovation Areas
 
-1. **IS-MCTS with Determinization for Handtrap Modeling** — Information Set MCTS (poker/Hanabi technique) applied to model adverse handtrap timings. MCTS has been applied to Yu-Gi-Oh! (melvinzhang/yugioh-ai), but **IS-MCTS with determinization for handtrap resilience is novel**. MVP default `determinizationsPerIteration = 3` provides true IS-MCTS averaging over handtrap subsets. Increase to 5 for decks with many handtrap slots if results are inconsistent. A tuning AC (Story 1.7) validates MCTS score stability against the golden suite.
+1. **Minimax MCTS for Handtrap Stress-Testing** — Two-player minimax Monte Carlo Tree Search applied to model worst-case handtrap timing. MCTS has been applied to Yu-Gi-Oh! (melvinzhang/yugioh-ai), but **minimax MCTS for adversarial handtrap resilience is novel**. The opponent is assumed to hold ALL selected handtraps in hand and activate them at the optimal timing (the timing that most damages the player's combo). The `minimax` score is monotone decreasing in the number of selected handtraps — adding a handtrap can only equal or reduce the worst-case score. A tuning AC (Story 1.7) validates MCTS score stability against the golden suite.
+
+   *Design note:* The original design used Information Set MCTS with handtrap subset determinization, but post-implementation review showed the uniform subset sampling produced biased pessimistic results that didn't match realistic game scenarios. The simpler minimax-MCTS model was adopted because it matches the intended user mental model ("assume the worst — opponent has everything I selected") and provides deterministic, interpretable results.
 
 2. **Handtraps as Natural Pruning** — Counter-intuitive insight: adverse interactions reduce the exploration tree. An Ash that cuts a line eliminates all downstream branches. Makes minimax viable.
 
@@ -130,7 +132,7 @@ He runs Adversarial Fast on **Build A** (with Aluber): goldfish 38, minimax 12. 
 | YGO-Combo-Simulator | Monte Carlo hand sampling | Probabilities, not paths |
 | DeckLens / MDM Deck Tester | Hand probability calculator | No simulation |
 | **Players themselves** | **Manual testing in solo simulator** | **Know goldfish but not all fallback lines** |
-| **skytrix Solver** | **Tree search + IS-MCTS + OCGCore oracle** | **Deck-agnostic within perf constraints** |
+| **skytrix Solver** | **Tree search + Minimax MCTS + OCGCore oracle** | **Deck-agnostic within perf constraints** |
 
 ### Validation Approach
 
@@ -180,7 +182,7 @@ Solver runs as a Node.js worker thread pool managed by piscina, communicating vi
 | Risk | Severity | Mitigation |
 |---|---|---|
 | WASM snapshot relies on Emscripten impl. detail | HIGH | CI smoke test + automatic fallback to replay if hook fails |
-| IS-MCTS unsuitable for Yu-Gi-Oh! | MEDIUM | Fallback to DFS with heuristic pruning (Strategy pattern swap) |
+| Minimax MCTS unsuitable for Yu-Gi-Oh! | MEDIUM | Fallback to DFS with heuristic pruning (Strategy pattern swap) |
 | OCGCore too slow for some decks (BF 30+) | HIGH | Complexity detection + progressive widening + user guidance |
 | "Deck-agnostic" not met in practice | MEDIUM | Target top 20 meta decks < 60s, complexity warning for outliers |
 | Interruption scoring inaccurate | LOW | Manual tagging database, user-adjustable |
@@ -190,7 +192,7 @@ Solver runs as a Node.js worker thread pool managed by piscina, communicating vi
 | MCTS random rollouts produce meaningless scores on combo decks | HIGH | Epsilon-greedy rollout policy (default ε=0.1) uses GoldfishChainRanker to bias rollouts toward coherent combo lines. Without domain-aware rollouts, UCB1 statistics collapse to noise. |
 | Transposition table memory exceeds per-worker V8 heap cap | MEDIUM | Default reduced from 100K to 25K entries. Memory estimation: ~300-400 bytes/entry × 25K = ~7-10MB per worker, well within 65MB V8 cap. |
 | Verify mode (FR31) unreliable for search-heavy decks | MEDIUM | OCGCore internal PRNG divergence causes `verified: false` on combos with search/shuffle effects (affects both DFS and MCTS). UI warning displayed for all algorithm types. Phase 2: capture OCGCore PRNG state for exact replay. |
-| IS-MCTS adversarial convergence insufficient in Fast mode | LOW | Fast mode (~2K-3.5K iterations × 3 determinizations) provides directional results, not precise minimax. Acceptable as best-effort. Optimal mode (60s) provides 12x more samples. Documented as known limitation. |
+| Minimax MCTS convergence insufficient in Fast mode | LOW | Fast mode (~2K-3.5K iterations) explores fewer combo branches than Optimal (60s, ~12x more iterations). Fast results are a best-effort upper bound, Optimal is recommended for stable minimax scores. Documented via UI hint on adversarial + Fast results. |
 | Interruption tags data (50 cards) will rot without maintenance | LOW | MVP: manual update at each banlist (~4x/year). CI validates cardId existence but not data correctness. Phase 2: PostgreSQL migration + community tags. |
 
 ## Functional Requirements
