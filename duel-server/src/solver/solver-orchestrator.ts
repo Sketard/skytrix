@@ -4,7 +4,6 @@
 // aggregates top-K results, enforces 1 solve per user concurrency.
 // =============================================================================
 
-import { randomBytes } from 'node:crypto';
 import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
@@ -173,10 +172,28 @@ export class SolverOrchestrator {
     // the BF probe, so it needs full parallelism upfront).
     const dispatchCount = algorithm === 'dfs' ? 1 : this.poolSize;
 
-    // Seed diversity: generate unique seeds per worker
-    const seeds = Array.from({ length: dispatchCount }, () => {
-      const buf = randomBytes(16);
-      return [buf.readBigUInt64LE(0), buf.readBigUInt64LE(8)];
+    // Determinism (constraint 3.3): per-worker seeds are derived from
+    // duelConfig.deckSeed so that two solves on the same (deck, hand, seed)
+    // are bit-reproducible — a prerequisite for regression tests, ES weight
+    // tuning, and human debug sessions. Worker 0 reuses the base seed
+    // verbatim; workers 1..N mix the worker index into each seed word so
+    // parallel MCTS rollouts still explore diverse regions without breaking
+    // reproducibility for a fixed pool size.
+    const baseSeed = duelConfig.deckSeed;
+    solverAssert(
+      baseSeed.length > 0,
+      'SolverOrchestrator.solve',
+      'duelConfig.deckSeed must be non-empty — upstream caller is responsible for seed generation',
+    );
+    const U64_MASK = 0xffffffffffffffffn;
+    const seeds: bigint[][] = Array.from({ length: dispatchCount }, (_, workerIdx) => {
+      if (workerIdx === 0) return [...baseSeed];
+      const mix = (BigInt(workerIdx) * 0x9e3779b97f4a7c15n) & U64_MASK;
+      return baseSeed.map((word, j) => {
+        const rot = BigInt((j * 17 + workerIdx * 7) & 63);
+        const spread = ((mix << rot) | (mix >> (64n - rot))) & U64_MASK;
+        return (word ^ spread) & U64_MASK;
+      });
     });
 
     // Progress aggregation state

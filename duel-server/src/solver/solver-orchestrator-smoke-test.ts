@@ -403,6 +403,56 @@ if (hasData) {
         }
       }
 
+      // Test 6.13: Seed propagation (constraint 3.3) — SolverOrchestrator.solve
+      // must respect duelConfig.deckSeed instead of silently overriding it with
+      // randomBytes. We verify propagation (reported deckSeed echoes input) and
+      // negative-control (different input → different reported seed). True
+      // bit-identical DFS determinism is asserted in solver-determinism-smoke-test.ts
+      // at the DfsSolver level, where Date.now()-based budget cutoffs and piscina
+      // worker-dispatch variance do not add noise.
+      console.log('\n🔬 Test 6.13: Seed propagation through orchestrator');
+      {
+        const duelConfig: DuelConfig = {
+          mainDeck: Array(40).fill(43096270),
+          extraDeck: [],
+          hand: [43096270, 43096270, 43096270, 43096270, 43096270],
+          deckSeed: [0xdeadbeefcafebaben, 0x1234567890abcdefn],
+          opponentDeck: [],
+        };
+
+        const solverConfig: SolverConfig = {
+          mode: 'goldfish',
+          speed: 'fast',
+          timeLimitMs: 2000,
+        };
+
+        const expectedSeedStr = duelConfig.deckSeed.map(String).join(',');
+        const runA = await orchestrator.solve('determinism-user-a', duelConfig, solverConfig, 'dfs', () => {});
+
+        if (runA.type === 'result') {
+          assert(
+            runA.result.stats.deckSeed === expectedSeedStr,
+            `deckSeed propagated verbatim (got ${runA.result.stats.deckSeed}, expected ${expectedSeedStr})`,
+          );
+        } else {
+          assert(false, `Expected orchestrator result, got ${runA.type}`);
+        }
+
+        const altConfig: DuelConfig = { ...duelConfig, deckSeed: [0xaaaaaaaaaaaaaaaan, 0x5555555555555555n] };
+        const expectedAltSeedStr = altConfig.deckSeed.map(String).join(',');
+        const runB = await orchestrator.solve('determinism-user-b', altConfig, solverConfig, 'dfs', () => {});
+        if (runB.type === 'result') {
+          assert(
+            runB.result.stats.deckSeed === expectedAltSeedStr,
+            `Alt deckSeed propagated verbatim (got ${runB.result.stats.deckSeed}, expected ${expectedAltSeedStr})`,
+          );
+          assert(
+            runA.type === 'result' && runA.result.stats.deckSeed !== runB.result.stats.deckSeed,
+            'Different input deckSeed → different reported deckSeed (negative control)',
+          );
+        }
+      }
+
       await orchestrator.destroy();
       assert(true, 'Pool destroyed without error');
     } catch (err) {

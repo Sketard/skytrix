@@ -1,9 +1,14 @@
 // =============================================================================
 // zobrist.ts — Zobrist hashing for game state fingerprinting
 // Dual 32-bit hash (no BigInt — V8 perf penalty). Per-worker instance.
+//
+// Determinism (constraint 3.3): hashes are derived via splitmix32 keyed by the
+// (cardId, zoneIdx, posIdx) / zone / phase / turn / count tuple — NOT by a
+// per-instance randomBytes stream. This guarantees that every worker across
+// every run produces the same zobrist table, so transposition-table hits are
+// reproducible across solves with the same (deck, hand, deckSeed).
 // =============================================================================
 
-import { randomBytes } from 'node:crypto';
 import type { ZoneId, Phase } from '../ws-protocol.js';
 import { ALL_ZONE_IDS } from './solver-types.js';
 import type { FieldCard, FieldState } from './solver-types.js';
@@ -55,13 +60,41 @@ const TURN_MODULO = 4;
 // Helpers
 // =============================================================================
 
-function randomHash(): ZobristHash {
-  const buf = randomBytes(8);
-  return { hi: buf.readUInt32LE(0), lo: buf.readUInt32LE(4) };
+/** splitmix32 — deterministic, avalanche-quality integer hash. Same input
+ *  always yields the same 32-bit output. Used as the underlying PRF for all
+ *  zobrist slots so the table is 100% reproducible across workers and runs. */
+function splitmix32(x: number): number {
+  x = (x + 0x9e3779b9) | 0;
+  x = Math.imul(x ^ (x >>> 16), 0x85ebca6b);
+  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35);
+  return (x ^ (x >>> 16)) >>> 0;
 }
+
+/** Domain-separated hash for a tagged tuple. The `domain` byte ensures that
+ *  the zone-base / phase / turn / count / card namespaces do not collide. */
+function domainHash(domain: number, a: number, b: number): ZobristHash {
+  const base = ((domain & 0xff) << 24) ^ Math.imul(a | 0, 0x85ebca6b) ^ (b | 0);
+  return { hi: splitmix32(base * 2), lo: splitmix32(base * 2 + 1) };
+}
+
+// Domain tags (arbitrary distinct constants).
+const DOMAIN_SEED = 0x01;
+const DOMAIN_ZONE = 0x02;
+const DOMAIN_PHASE = 0x03;
+const DOMAIN_TURN = 0x04;
+const DOMAIN_DECK_COUNT = 0x05;
+const DOMAIN_CARD = 0x06;
 
 function xorHash(a: ZobristHash, b: ZobristHash): ZobristHash {
   return { hi: (a.hi ^ b.hi) >>> 0, lo: (a.lo ^ b.lo) >>> 0 };
+}
+
+// Stable integer index for each ZoneId — used as a component in card hashes
+// so that domainHash is keyed by a plain number. Frozen at module init.
+const ZONE_INDEX: Record<string, number> = {};
+{
+  let i = 0;
+  for (const z of ALL_ZONE_IDS) ZONE_INDEX[z] = i++;
 }
 
 // =============================================================================
@@ -88,25 +121,25 @@ export class ZobristHasher {
   private seed: ZobristHash;
 
   constructor() {
-    this.seed = randomHash();
+    this.seed = domainHash(DOMAIN_SEED, 0, 0);
 
-    // Zone base hashes
+    // Zone base hashes — keyed by ZONE_INDEX
     this.zoneBaseHash = {} as Record<string, ZobristHash>;
     for (const z of ALL_ZONE_IDS) {
-      this.zoneBaseHash[z] = randomHash();
+      this.zoneBaseHash[z] = domainHash(DOMAIN_ZONE, ZONE_INDEX[z], 0);
     }
 
-    // Phase hashes
+    // Phase hashes — keyed by phase ordinal
     this.phaseHash = {} as Record<string, ZobristHash>;
-    for (const p of ALL_PHASES) {
-      this.phaseHash[p] = randomHash();
+    for (let i = 0; i < ALL_PHASES.length; i++) {
+      this.phaseHash[ALL_PHASES[i]] = domainHash(DOMAIN_PHASE, i, 0);
     }
 
     // Turn modulo hashes
-    this.turnModHash = Array.from({ length: TURN_MODULO }, () => randomHash());
+    this.turnModHash = Array.from({ length: TURN_MODULO }, (_, i) => domainHash(DOMAIN_TURN, i, 0));
 
     // Deck count hashes
-    this.deckCountHash = Array.from({ length: MAX_DECK_COUNT + 1 }, () => randomHash());
+    this.deckCountHash = Array.from({ length: MAX_DECK_COUNT + 1 }, (_, i) => domainHash(DOMAIN_DECK_COUNT, i, 0));
   }
 
   // ===========================================================================
@@ -228,7 +261,9 @@ export class ZobristHasher {
 
     let h = byPos.get(positionIndex);
     if (!h) {
-      h = randomHash();
+      const zoneIdx = ZONE_INDEX[zoneId] ?? 0;
+      const packed = ((cardId | 0) * 64) + (zoneIdx * 4) + (positionIndex & 3);
+      h = domainHash(DOMAIN_CARD, packed, cardId | 0);
       byPos.set(positionIndex, h);
     }
 
