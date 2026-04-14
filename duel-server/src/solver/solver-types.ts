@@ -288,6 +288,11 @@ export interface DfsDiagnostic {
    *  `bestScore` / tree-propagated `score` when states beyond the turn-1
    *  boundary outscore every turn-1 state seen. */
   bestTurn1Score: number;
+  /** Phase A #4: hint from the heuristic suggester (terminal reason
+   *  distribution → suggested maxDepth for next run). Pure observability;
+   *  does not affect the current run. Callers may use it to rerun with an
+   *  adjusted bound when tuning fixtures. */
+  suggestedMaxDepth: number;
   /** Prompt type counts observed at nodes with legal actions (exploratory
    *  prompts only — mechanical prompts are auto-resolved by the adapter). */
   promptTypeCounts: Record<string, number>;

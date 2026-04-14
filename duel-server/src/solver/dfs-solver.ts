@@ -192,6 +192,7 @@ export class DfsSolver implements SolverStrategy {
             turn2: ctx.terminalTurn2,
           },
           bestTurn1Score: ctx.bestTurn1Score,
+          suggestedMaxDepth: this.suggestMaxDepth(ctx),
           promptTypeCounts: ctx.promptTypeCounts,
           bfByDepthSum: ctx.bfByDepthSum,
           bfByDepthCount: ctx.bfByDepthCount,
@@ -550,6 +551,41 @@ export class DfsSolver implements SolverStrategy {
       score,
       scoreBreakdown,
     };
+  }
+
+  /**
+   * Phase A #4: suggest a maxDepth for the NEXT run based on the terminal
+   * reason distribution observed in this run. Returns a positive integer
+   * multiplier semantics absent — the caller treats it as "maxDepth the
+   * next solve should use" when deciding whether to rerun with a different
+   * config. Pure observability; does not affect the current run.
+   *
+   * Heuristic:
+   * - If `depthCap` is >= 30% of all terminals → current maxDepth is too
+   *   low (the solver is truncating at the bound), suggest ×1.5.
+   * - If `actionsZero` is >= 60% of all terminals → current maxDepth is
+   *   probably sufficient (the solver reaches natural ends), suggest ×0.8
+   *   to free budget for breadth.
+   * - Else → suggest current value (nothing obvious to change).
+   */
+  private suggestMaxDepth(ctx: DfsContext): number {
+    const reasons = {
+      actionsZero: ctx.terminalActionsZero,
+      depthCap: ctx.terminalDepthCap,
+      loopDetected: ctx.terminalLoopDetected,
+      treeSizeLimit: ctx.terminalTreeSizeLimit,
+      abortOrNodeLimit: ctx.terminalAbortOrNodeLimit,
+      budgetCutoff: ctx.terminalBudgetCutoff,
+      ttHit: ctx.terminalTtHit,
+      turn2: ctx.terminalTurn2,
+    };
+    const total = Object.values(reasons).reduce((a, b) => a + b, 0);
+    if (total === 0) return this.maxDepth;
+    const depthCapRatio = reasons.depthCap / total;
+    const actionsZeroRatio = reasons.actionsZero / total;
+    if (depthCapRatio >= 0.3) return Math.round(this.maxDepth * 1.5);
+    if (actionsZeroRatio >= 0.6) return Math.round(this.maxDepth * 0.8);
+    return this.maxDepth;
   }
 
   /**

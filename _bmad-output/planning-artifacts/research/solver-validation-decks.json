@@ -198,6 +198,7 @@
       "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Expected to establish a Pendulum Scale and summon D/D/D boss monster(s) via Gryphon/Scale Surveyor.",
       "hand": [11609969, 46796664, 42382265, 46372010, 42141493],
       "deckSeed": "11111,22222",
+      "maxDepth": 50,
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 79559912, "cardName": "D/D/D Wave High King Caesar" },
         { "zone": "MZONE", "cardId": 72402069, "cardName": "D/D/D Super Doom King Bright Armageddon" },
@@ -212,6 +213,7 @@
       "description": "Mitsurugi+Ryzeal opener: Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Expected to set up Rank 4 Xyz plus Mitsurugi control shell.",
       "hand": [13332685, 8633261, 35844557, 45171524, 42141493],
       "deckSeed": "33333,44444",
+      "maxDepth": 75,
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 34909328, "cardName": "Ryzeal Detonator" },
         { "zone": "MZONE", "cardId": 7511613, "cardName": "Ryzeal Duo Drive" },
@@ -224,13 +226,31 @@
     {
       "id": "branded-dracotail-opener",
       "deck": "branded-dracotail-bainbridge-2nd",
-      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
+      "description": "Branded Dracotail opener (Arthalion line): Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
       "hand": [1498449, 75003700, 73819701, 44362883, 95515789],
       "deckSeed": "55555,66666",
+      "maxDepth": 100,
       "preferredIntermediates": [7375867, 55273560],
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 33760966, "cardName": "Dracotail Arthalion" },
         { "zone": "MZONE", "cardId": 78397661, "cardName": "Ecclesia and the Dark Dragon" },
+        { "zone": "SZONE", "cardId": 5431722, "cardName": "Dracotail Flame" },
+        { "zone": "SZONE", "cardId": 69932023, "cardName": "Dracotail Horn" },
+        { "zone": "SZONE", "cardId": 80208225, "cardName": "Dracotail Sting" },
+        { "zone": "HAND", "cardId": 1498449, "cardName": "Dracotail Faimena" }
+      ]
+    },
+    {
+      "id": "branded-dracotail-opener-mirrorjade-line",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener (Mirrorjade line): same opening hand as branded-dracotail-opener, but expected to execute the alternate canonical line where Branded Fusion produces Lubellion → Mirrorjade the Iceblade Dragon instead of chain-setting the Dracotail trap package. Added 2026-04-14 after Phase A #3 SELECT_CARD exploratory revealed the solver naturally finds this variant via Lukias→Mululu→Branded Fusion→Lubellion→Mirrorjade→Devours the Dogma. Both lines are valid meta Branded Dracotail endboards; `matched` on EITHER fixture indicates canonical reach.",
+      "hand": [1498449, 75003700, 73819701, 44362883, 95515789],
+      "deckSeed": "55555,66666",
+      "maxDepth": 100,
+      "preferredIntermediates": [7375867, 55273560],
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 44146295, "cardName": "Mirrorjade the Iceblade Dragon" },
+        { "zone": "MZONE", "cardId": 38811586, "cardName": "Albion the Sanctifire Dragon" },
         { "zone": "SZONE", "cardId": 5431722, "cardName": "Dracotail Flame" },
         { "zone": "SZONE", "cardId": 69932023, "cardName": "Dracotail Horn" },
         { "zone": "SZONE", "cardId": 80208225, "cardName": "Dracotail Sting" },

@@ -56,6 +56,13 @@ interface HandFixture {
    *  intermediates (e.g. Dracotail Mululu on Branded — not on the final
    *  endboard but required as a fusion material for Arthalion). */
   preferredIntermediates?: number[];
+  /** Phase A #4 — per-fixture maxDepth override. At fixed time budget,
+   *  deeper search trades breadth for depth; the right bound depends on
+   *  deck structure (D/D/D is breadth-heavy at depth ~30, Branded needs
+   *  depth ~100 for the canonical fusion chain). Overrides the CLI
+   *  `--max-depth` if both are set. Falls back to the solver config
+   *  default (50) if neither is set. */
+  maxDepth?: number;
 }
 
 interface FixtureFile {
@@ -268,26 +275,27 @@ async function main(): Promise<void> {
   const timeLimitMs = opts.budgetMsOverride ?? (opts.speed === 'fast'
     ? allConfigs.solverConfig.timeBudgetFastMs
     : allConfigs.solverConfig.timeBudgetOptimalMs);
-  // Apply maxDepth override + auto-scale maxResultNodes proportionally
-  // so the tree-size safety net doesn't pre-empt the depth budget.
-  const overriddenSolverConfig = opts.maxDepthOverride !== undefined
-    ? {
-        ...allConfigs.solverConfig,
-        maxDepth: opts.maxDepthOverride,
-        maxResultNodes: Math.max(
-          allConfigs.solverConfig.maxResultNodes,
-          opts.maxDepthOverride * 20,
-        ),
-      }
-    : allConfigs.solverConfig;
-  const maxDepthConfig = overriddenSolverConfig.maxDepth;
-  console.log(`[Spike] maxDepth=${maxDepthConfig} maxResultNodes=${overriddenSolverConfig.maxResultNodes}`);
+
+  // Phase A #4 — resolve per-fixture maxDepth. Precedence (highest wins):
+  // 1. `hand.maxDepth` from the fixture JSON (deck-specific tuning)
+  // 2. `--max-depth` CLI override (spike-wide sweep)
+  // 3. `solverConfig.maxDepth` default (50)
+  // maxResultNodes auto-scales with maxDepth so the tree-size safety net
+  // doesn't pre-empt the depth budget.
+  const resolveConfig = (handMaxDepth?: number) => {
+    const maxDepth = handMaxDepth ?? opts.maxDepthOverride ?? allConfigs.solverConfig.maxDepth;
+    return {
+      ...allConfigs.solverConfig,
+      maxDepth,
+      maxResultNodes: Math.max(allConfigs.solverConfig.maxResultNodes, maxDepth * 20),
+    };
+  };
 
   const hands = opts.handFilter
     ? fixture.hands.filter(h => h.id === opts.handFilter)
     : fixture.hands;
 
-  console.log(`[Spike] Running ${hands.length} hand(s) at speed=${opts.speed} budget=${timeLimitMs}ms maxDepth=${maxDepthConfig}\n`);
+  console.log(`[Spike] Running ${hands.length} hand(s) at speed=${opts.speed} budget=${timeLimitMs}ms (per-fixture maxDepth)\n`);
 
   const results: FixtureResult[] = [];
 
@@ -342,13 +350,18 @@ async function main(): Promise<void> {
       return { cardId: cid, cardName: row?.name ?? `#${cid}` };
     });
 
+    // Phase A #4: resolve per-fixture solver config (hand.maxDepth > CLI > default).
+    const perFixtureConfig = resolveConfig(hand.maxDepth);
+    const maxDepthConfig = perFixtureConfig.maxDepth;
+
     console.log(`═══ ${hand.id} (${hand.deck}) ═══`);
     console.log(`  hand: ${handCards.map(c => c.cardName).join(', ')}`);
+    console.log(`  maxDepth=${maxDepthConfig} maxResultNodes=${perFixtureConfig.maxResultNodes}`);
 
     // Fresh solver instances per fixture so TT/Zobrist state doesn't bleed.
     const hasher = new ZobristHasher();
-    const table = new TranspositionTable(overriddenSolverConfig.transpositionMaxEntries);
-    const dfs = new DfsSolver(hasher, table, scorer, adapter, ranker, overriddenSolverConfig);
+    const table = new TranspositionTable(perFixtureConfig.transpositionMaxEntries);
+    const dfs = new DfsSolver(hasher, table, scorer, adapter, ranker, perFixtureConfig);
 
     const startHandle = adapter.createDuel(duelConfig);
     const signal = AbortSignal.timeout(timeLimitMs + 5000);
@@ -889,7 +902,10 @@ async function main(): Promise<void> {
     date: new Date().toISOString(),
     speed: opts.speed,
     timeLimitMs,
-    maxDepth: maxDepthConfig,
+    // Phase A #4: each fixture may carry its own maxDepth override.
+    // The run-level `maxDepth` field is retained for backward-compat but
+    // reports the effective `results[*].maxDepthConfig` per fixture.
+    maxDepth: results.map(r => `${r.handId}=${r.maxDepthConfig}`).join(', '),
     instrumentationEnabled: instrumentationEnabled(),
     solverConfigFile: allConfigs.solverConfig,
     fixtures: results,
