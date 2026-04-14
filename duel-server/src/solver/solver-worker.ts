@@ -93,7 +93,7 @@ const scorer = new InterruptionScorer(
   allConfigs.interruptionTags,
   allConfigs.interruptionWeights,
 );
-const ranker = new GoldfishChainRanker();
+const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
 const minimaxMctsSolver = new MinimaxMctsSolver(scorer, adapter, ranker, allConfigs.solverConfig);

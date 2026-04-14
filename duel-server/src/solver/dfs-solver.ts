@@ -79,7 +79,7 @@ export class DfsSolver implements SolverStrategy {
     this.table = table;
     this.scorer = scorer;
     this.adapter = adapter;
-    this.ranker = ranker ?? new GoldfishChainRanker();
+    this.ranker = ranker ?? new GoldfishChainRanker(adapter.getTags());
     this.maxDepth = config?.maxDepth ?? 50;
     this.maxResultNodes = config?.maxResultNodes ?? 500;
     this.verificationBudgetRatio = config?.verificationBudgetRatio ?? 0.15;

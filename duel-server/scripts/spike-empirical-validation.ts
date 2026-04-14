@@ -269,7 +269,7 @@ async function main(): Promise<void> {
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
   const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights);
-  const ranker = new GoldfishChainRanker();
+  const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
   const stmt = cardDB.stmt;
 
   const timeLimitMs = opts.budgetMsOverride ?? (opts.speed === 'fast'

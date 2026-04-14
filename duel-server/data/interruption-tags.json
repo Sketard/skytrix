@@ -541,6 +541,27 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "19899073": {
+    "cardName": "Ame no Murakumo no Mitsurugi",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On SS: destroy all opponent monsters"
+      },
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Quick: opponent discards 1 or activation is negated"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
   "20292186": {
     "cardName": "Artifact Scythe",
     "effects": [

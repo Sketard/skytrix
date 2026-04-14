@@ -88,6 +88,14 @@ export class OCGCoreAdapter implements GameOracle {
     return this._snapshotAvailable;
   }
 
+  /** Accessor for boot-loaded interruption tags, consumed by ranker
+   *  heuristics that promote "Set <card>" / "Activate <card>" actions for
+   *  cards with tagged interruption effects. Returns the raw backing map —
+   *  callers must not mutate. */
+  getTags(): Record<string, InterruptionTag> {
+    return this.tags;
+  }
+
   private constructor(
     core: OcgCoreSync,
     cardDB: CardDB,
@@ -483,23 +491,23 @@ export class OCGCoreAdapter implements GameOracle {
         let idx = 0;
         for (let i = 0; i < ((msg['summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['summons'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 0, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'summon' }, { type: 1, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['special_summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['special_summons'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 1, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'ss' }, { type: 1, action: 1, index: i });
         }
         for (let i = 0; i < ((msg['pos_changes'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['pos_changes'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 2, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'pos' }, { type: 1, action: 2, index: i });
         }
         for (let i = 0; i < ((msg['monster_sets'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['monster_sets'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 3, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'mset' }, { type: 1, action: 3, index: i });
         }
         for (let i = 0; i < ((msg['spell_sets'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['spell_sets'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory }, { type: 1, action: 4, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'sset' }, { type: 1, action: 4, index: i });
         }
         for (let i = 0; i < ((msg['activates'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['activates'] as { code: number; location?: number }[])[i]);
@@ -510,10 +518,10 @@ export class OCGCoreAdapter implements GameOracle {
           }, { type: 1, action: 5, index: i });
         }
         if (msg['to_bp']) {
-          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory }, { type: 1, action: 6 });
+          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory, actionTag: 'to_bp' }, { type: 1, action: 6 });
         }
         if (msg['to_ep']) {
-          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory }, { type: 1, action: 7 });
+          pushAction({ responseIndex: idx++, cardId: 0, promptType, isExploratory, actionTag: 'to_ep' }, { type: 1, action: 7 });
         }
         break;
       }
