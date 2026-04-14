@@ -617,6 +617,15 @@ export class OCGCoreAdapter implements GameOracle {
         this.runUntilWaitingRaw(nativeHandle);
         this.core.duelSetResponse(nativeHandle, resp as never);
       }
+      // After all replayed responses, advance the engine to its next
+      // waiting state so the caller (applyAction) can immediately set the
+      // next response. Without this, a fork from a parent with empty
+      // responseHistory would hand back an engine still at its initial
+      // pre-duel state — subsequent duelSetResponse would either no-op or
+      // misalign with what OCGCore expects. Empirically isolated via the
+      // empirical-validation spike (SELECT_EFFECTYN never surfaced through
+      // DFS even though direct-apply probes saw it).
+      this.runUntilWaitingRaw(nativeHandle);
     } catch (err) {
       try { this.core.destroyDuel(nativeHandle); } catch { /* best effort */ }
       throw new Error(`[Solver] forkViaReplay failed at step ${parent.responseHistory.length}: ${String(err)}`);

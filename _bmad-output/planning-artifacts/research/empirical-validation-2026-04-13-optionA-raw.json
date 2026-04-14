@@ -1,0 +1,675 @@
+{
+  "date": "2026-04-14T16:30:30.335Z",
+  "speed": "optimal",
+  "timeLimitMs": 60000,
+  "maxDepth": 50,
+  "instrumentationEnabled": true,
+  "solverConfigFile": {
+    "poolSize": 6,
+    "maxDepth": 50,
+    "timeBudgetFastMs": 5000,
+    "timeBudgetOptimalMs": 60000,
+    "progressThrottleMs": 200,
+    "treePruningTopX": 10,
+    "maxResultNodes": 500,
+    "transpositionMaxEntries": 25000,
+    "memoryBudgetMb": 512,
+    "bfComplexityThreshold": 25,
+    "rateLimitIntervalMs": 2000,
+    "maxHandtraps": 5,
+    "ucb1C": 1,
+    "rolloutEpsilon": 0.1,
+    "verificationBudgetRatio": 0.15,
+    "stalledWarningMs": 3000,
+    "maxSolverConnections": 10,
+    "backpropPolicy": "max"
+  },
+  "fixtures": [
+    {
+      "handId": "branded-dracotail-opener",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Dracotail Pan + Branded Fusion + Blazing Cartesia. Expected to fusion-summon the Albion line and establish Dracotail Arthalion + Ecclesia and the Dark Dragon endboard with full backrow and Faimena quickplay in hand.",
+      "handCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "#1498449"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "#75003700"
+        },
+        {
+          "cardId": 44482554,
+          "cardName": "#44482554"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "#44362883"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "#95515789"
+        }
+      ],
+      "speed": "optimal",
+      "timeLimitMs": 60000,
+      "score": 18,
+      "mainPathLength": 22,
+      "nodesExplored": 591,
+      "maxDepthReached": 50,
+      "maxDepthConfig": 50,
+      "averageBranchingFactor": 2.172316384180791,
+      "maxBranchingFactor": 13,
+      "terminationReason": "depth_cap",
+      "truncated": true,
+      "elapsedMs": 38013,
+      "depthHistogram": [
+        1,
+        8,
+        1,
+        2,
+        1,
+        1,
+        2,
+        1,
+        2,
+        1,
+        5,
+        1,
+        4,
+        1,
+        1,
+        3,
+        1,
+        3,
+        1,
+        1,
+        2,
+        1,
+        4,
+        1,
+        1,
+        2,
+        1,
+        3,
+        1,
+        1,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        9,
+        1,
+        2,
+        1,
+        1,
+        7,
+        4,
+        16,
+        21,
+        40,
+        48,
+        82,
+        102,
+        191
+      ],
+      "diagnostic": {
+        "terminalReasons": {
+          "actionsZero": 0,
+          "depthCap": 191,
+          "loopDetected": 0,
+          "treeSizeLimit": 46,
+          "abortOrNodeLimit": 0,
+          "budgetCutoff": 0,
+          "ttHit": 32
+        },
+        "promptTypeCounts": {
+          "SELECT_IDLECMD": 77,
+          "SELECT_CHAIN": 259,
+          "SELECT_EFFECTYN": 3,
+          "SELECT_YESNO": 3,
+          "SELECT_BATTLECMD": 12
+        },
+        "bfByDepthSum": [
+          8,
+          1,
+          2,
+          2,
+          1,
+          2,
+          1,
+          2,
+          1,
+          5,
+          1,
+          4,
+          1,
+          1,
+          3,
+          1,
+          3,
+          2,
+          1,
+          2,
+          1,
+          4,
+          2,
+          1,
+          2,
+          1,
+          3,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          9,
+          1,
+          2,
+          1,
+          1,
+          7,
+          4,
+          16,
+          28,
+          44,
+          66,
+          127,
+          147,
+          248,
+          0
+        ],
+        "bfByDepthCount": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          4,
+          4,
+          16,
+          16,
+          40,
+          48,
+          82,
+          102,
+          0
+        ],
+        "actionsZeroByDepth": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroSamples": []
+      },
+      "scoreBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 1,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 1,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 16,
+        "fallbackPoints": 2,
+        "total": 18
+      },
+      "transpositionHits": 32,
+      "transpositionMisses": 45,
+      "transpositionStores": 45,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 590,
+        "forkMsTotal": 34797.626,
+        "forkMsMean": 58.97902711864406,
+        "forkMsMax": 81.17,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 18
+          },
+          {
+            "label": "50ms+",
+            "count": 572
+          }
+        ],
+        "applies": 590,
+        "applyMsTotal": 6.846,
+        "applyMsMean": 0.011603389830508475,
+        "scores": 237,
+        "scoreMsTotal": 4.442,
+        "scoreMsMean": 0.018742616033755276
+      },
+      "forkPctOfWall": 91.54138321100676,
+      "applyPctOfWall": 0.018009628285060374,
+      "scorePctOfWall": 0.011685476021361114,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "cardId": 44482554,
+          "cardName": "Dracotail Pan"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        }
+      ],
+      "deltaScore": 18,
+      "deltaBreakdown": {
+        "typedNegate": 1,
+        "bounce": 1,
+        "weighted": 16,
+        "fallbackPoints": 2,
+        "total": 18
+      },
+      "actualBoard": [
+        {
+          "zone": "M1",
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon",
+          "isFallback": false
+        },
+        {
+          "zone": "M2",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "isFallback": true
+        },
+        {
+          "zone": "M3",
+          "cardId": 42125140,
+          "cardName": "Dracotail Shaulas",
+          "isFallback": true
+        }
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "matched": [],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting",
+          "tagged": true
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena",
+          "tagged": false
+        }
+      ],
+      "extra": [
+        {
+          "zone": "M1",
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "M2",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "tagged": false
+        },
+        {
+          "zone": "M3",
+          "cardId": 42125140,
+          "cardName": "Dracotail Shaulas",
+          "tagged": false
+        }
+      ],
+      "missingTaggedCount": 5,
+      "missingUntaggedCount": 1,
+      "expectedAtBaseline": [],
+      "expectedEarned": [],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "mainPathActions": [
+        {
+          "respIdx": 0,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 44482554,
+          "cardName": "Dracotail Pan"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 32548318,
+          "cardName": "Rahu Dracotail"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 70871153,
+          "cardName": "Dracotail Urgula"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 70871153,
+          "cardName": "Dracotail Urgula"
+        }
+      ]
+    }
+  ]
+}

@@ -118,6 +118,18 @@ export class DfsSolver implements SolverStrategy {
       depthCapHit: false,
       timedOut: false,
       lastProgressTime: startTime,
+      terminalActionsZero: 0,
+      terminalDepthCap: 0,
+      terminalLoopDetected: 0,
+      terminalTreeSizeLimit: 0,
+      terminalAbortOrNodeLimit: 0,
+      terminalBudgetCutoff: 0,
+      terminalTtHit: 0,
+      promptTypeCounts: {},
+      bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
+      bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
+      actionsZeroByDepth: new Array(this.maxDepth + 1).fill(0),
+      actionsZeroSamples: [],
     };
 
     try {
@@ -166,6 +178,22 @@ export class DfsSolver implements SolverStrategy {
         truncated,
         terminationReason,
         depthHistogram: ctx.depthHistogram,
+        diagnostic: {
+          terminalReasons: {
+            actionsZero: ctx.terminalActionsZero,
+            depthCap: ctx.terminalDepthCap,
+            loopDetected: ctx.terminalLoopDetected,
+            treeSizeLimit: ctx.terminalTreeSizeLimit,
+            abortOrNodeLimit: ctx.terminalAbortOrNodeLimit,
+            budgetCutoff: ctx.terminalBudgetCutoff,
+            ttHit: ctx.terminalTtHit,
+          },
+          promptTypeCounts: ctx.promptTypeCounts,
+          bfByDepthSum: ctx.bfByDepthSum,
+          bfByDepthCount: ctx.bfByDepthCount,
+          actionsZeroByDepth: ctx.actionsZeroByDepth,
+          actionsZeroSamples: ctx.actionsZeroSamples,
+        },
       };
 
       // Merge probe stats if resuming from probe
@@ -196,6 +224,7 @@ export class DfsSolver implements SolverStrategy {
   ): DfsNodeResult {
     // Abort check + node limit (probe mode)
     if (ctx.signal.aborted || (ctx.nodeLimit !== undefined && ctx.nodesExplored >= ctx.nodeLimit)) {
+      ctx.terminalAbortOrNodeLimit++;
       return this.makeTerminal(ctx, handle, depth);
     }
 
@@ -212,6 +241,7 @@ export class DfsSolver implements SolverStrategy {
 
     // Tree size safety net: force-terminal beyond maxResultNodes
     if (ctx.totalTreeNodes >= this.maxResultNodes) {
+      ctx.terminalTreeSizeLimit++;
       return this.makeTerminal(ctx, handle, depth, true);
     }
 
@@ -228,9 +258,37 @@ export class DfsSolver implements SolverStrategy {
     if (actions.length === 0 || depth >= this.maxDepth) {
       // Distinguish "natural end" (no actions) from "depth cap hit while
       // actions remained" — the latter is a truncation signal.
-      if (actions.length > 0 && depth >= this.maxDepth) ctx.depthCapHit = true;
+      if (actions.length > 0 && depth >= this.maxDepth) {
+        ctx.depthCapHit = true;
+        ctx.terminalDepthCap++;
+      } else {
+        ctx.terminalActionsZero++;
+        if (depth < ctx.actionsZeroByDepth.length) ctx.actionsZeroByDepth[depth]++;
+        // Sample the first 10 actionsZero terminals so we can diagnose
+        // WHY OCGCore reports 0 legal actions (game ended vs stalemate
+        // vs stuck mid-turn). Low cost, ultra-high diagnostic value.
+        if (ctx.actionsZeroSamples.length < 10) {
+          ctx.actionsZeroSamples.push({
+            depth,
+            phase: fieldState.phase,
+            turn: fieldState.turn,
+            lp0: fieldState.lifePoints[0],
+            lp1: fieldState.lifePoints[1],
+            handSize: fieldState.zones.HAND?.length ?? 0,
+          });
+        }
+      }
       return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
     }
+
+    // Record BF + prompt type now that we know this is a non-terminal node
+    // with at least one legal action.
+    if (depth < ctx.bfByDepthSum.length) {
+      ctx.bfByDepthSum[depth] += actions.length;
+      ctx.bfByDepthCount[depth]++;
+    }
+    const pt = actions[0].promptType;
+    ctx.promptTypeCounts[pt] = (ctx.promptTypeCounts[pt] ?? 0) + 1;
 
     // BF accounting: record actions.length BEFORE any descent. This metric
     // is independent of how many children we actually explore, so it stays
@@ -264,6 +322,7 @@ export class DfsSolver implements SolverStrategy {
     const isIdleCmd = promptType === 'SELECT_IDLECMD';
     if (isIdleCmd && pathHashes.has(hashKey)) {
       ctx.totalTreeNodes++;
+      ctx.terminalLoopDetected++;
       return {
         node: this.makeNode(ROOT_ACTION, 0, undefined, 1.0, [], true),
         score: 0,
@@ -311,6 +370,7 @@ export class DfsSolver implements SolverStrategy {
         // Materialize one continuation level instead of returning a bare leaf.
         // Use the LIVE matched action (not the cached one) so its `_response`
         // points at the current handle's prompt, not the original snapshot.
+        ctx.terminalTtHit++;
         const child = ctx.oracle.fork(handle);
         try {
           ctx.oracle.applyAction(child, matchedAction);
@@ -385,6 +445,7 @@ export class DfsSolver implements SolverStrategy {
 
     // If no children were explored (abort + time budget), treat as terminal
     if (children.length === 0) {
+      ctx.terminalBudgetCutoff++;
       return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
     }
 
@@ -658,6 +719,21 @@ interface DfsContext {
   timedOut: boolean;
   lastProgressTime: number;
   nodeLimit?: number; // for probe mode
+  /** Diagnostic counters for Exp 1-bis (empirical validation spike) — track
+   *  WHY the search tree terminates where it does. Populated unconditionally
+   *  (cost is negligible) and surfaced via SolverStats.diagnostic. */
+  terminalActionsZero: number;
+  terminalDepthCap: number;
+  terminalLoopDetected: number;
+  terminalTreeSizeLimit: number;
+  terminalAbortOrNodeLimit: number;
+  terminalBudgetCutoff: number;
+  terminalTtHit: number;
+  promptTypeCounts: Record<string, number>;
+  bfByDepthSum: number[];
+  bfByDepthCount: number[];
+  actionsZeroByDepth: number[];
+  actionsZeroSamples: { depth: number; phase: string; turn: number; lp0: number; lp1: number; handSize: number }[];
 }
 
 // =============================================================================

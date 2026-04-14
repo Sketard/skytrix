@@ -28,6 +28,18 @@ export class GoldfishChainRanker implements ActionRanker {
       return this.rankBattleCmd(actions);
     }
 
+    // SELECT_EFFECTYN / SELECT_YESNO: OCGCore convention is resp=1=yes,
+    // resp=0=no. In goldfish mode, declining a triggered effect is almost
+    // never correct (there's no opponent to counter it). Prefer yes.
+    // Test 2 from the empirical-validation spike: DFS explored both paths
+    // but the "no" branches dominated bestScore because they terminated
+    // sooner with equivalent "do nothing" boards. Putting "yes" first
+    // does not change what's explored (DFS visits all children) but
+    // aligns the enumeration order with the one the heuristic walker uses.
+    if (promptType === 'SELECT_EFFECTYN' || promptType === 'SELECT_YESNO') {
+      return this.rankYesNo(actions);
+    }
+
     return actions;
   }
 
@@ -38,7 +50,20 @@ export class GoldfishChainRanker implements ActionRanker {
    * heuristics that DO read state don't silently bypass the FieldState fetch.
    */
   needsState(promptType: PromptType): boolean {
-    return promptType === 'SELECT_CHAIN' || promptType === 'SELECT_BATTLECMD';
+    return promptType === 'SELECT_CHAIN'
+      || promptType === 'SELECT_BATTLECMD'
+      || promptType === 'SELECT_EFFECTYN'
+      || promptType === 'SELECT_YESNO';
+  }
+
+  private rankYesNo(actions: Action[]): Action[] {
+    // Put resp=1 (yes) first, resp=0 (no) second. If the list has other
+    // shapes (shouldn't for Y/N), leave untouched.
+    const yes = actions.filter(a => a.responseIndex === 1);
+    const no = actions.filter(a => a.responseIndex === 0);
+    const other = actions.filter(a => a.responseIndex !== 0 && a.responseIndex !== 1);
+    if (yes.length === 0 && no.length === 0) return actions;
+    return [...yes, ...no, ...other];
   }
 
   private rankChain(actions: Action[]): Action[] {

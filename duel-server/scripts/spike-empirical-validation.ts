@@ -92,6 +92,7 @@ interface FixtureResult {
   truncated: boolean;
   elapsedMs: number;
   depthHistogram: number[];
+  diagnostic?: unknown;
   scoreBreakdown: Record<string, number>;
   transpositionHits: number;
   transpositionMisses: number;
@@ -133,6 +134,7 @@ interface FixtureResult {
 interface CliOpts {
   handFilter?: string;
   speed: 'fast' | 'optimal';
+  budgetMsOverride?: number;
   outPath: string;
 }
 
@@ -149,9 +151,10 @@ function parseCli(argv: string[]): CliOpts {
     if (arg.startsWith('--hand=')) opts.handFilter = arg.slice(7);
     else if (arg === '--speed=fast') opts.speed = 'fast';
     else if (arg === '--speed=optimal') opts.speed = 'optimal';
+    else if (arg.startsWith('--budget-ms=')) opts.budgetMsOverride = Number(arg.slice(12));
     else if (arg.startsWith('--out=')) opts.outPath = arg.slice(6);
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: npx tsx scripts/spike-empirical-validation.ts [--hand=ID] [--speed=fast|optimal] [--out=PATH]');
+      console.log('Usage: npx tsx scripts/spike-empirical-validation.ts [--hand=ID] [--speed=fast|optimal] [--budget-ms=N] [--out=PATH]');
       process.exit(0);
     } else {
       console.error(`[Spike] Unknown arg: ${arg}`);
@@ -236,9 +239,9 @@ async function main(): Promise<void> {
   const ranker = new GoldfishChainRanker();
   const stmt = cardDB.stmt;
 
-  const timeLimitMs = opts.speed === 'fast'
+  const timeLimitMs = opts.budgetMsOverride ?? (opts.speed === 'fast'
     ? allConfigs.solverConfig.timeBudgetFastMs
-    : allConfigs.solverConfig.timeBudgetOptimalMs;
+    : allConfigs.solverConfig.timeBudgetOptimalMs);
   const maxDepthConfig = allConfigs.solverConfig.maxDepth;
 
   const hands = opts.handFilter
@@ -276,14 +279,12 @@ async function main(): Promise<void> {
       deckSeed: hand.deckSeed.split(',').map(s => BigInt(s.trim())),
       opponentDeck: [],
       // Spike-only: suppress OCGCore's default 5-card auto-draw on top of
-      // the explicit `hand`. Without this, every solve starts with a
-      // 10-card hand (5 scripted + 5 random from post-shuffle deck), which
-      // silently polluted every prior measurement. Setting this to 0 makes
-      // the fixture hand authoritative. `drawCountPerTurn: 0` removes the
-      // per-turn draw that would otherwise add 1 more interruption-tagged
-      // card to hand each turn the solver explores.
+      // the explicit `hand`. Keep drawCountPerTurn at 1 (turn-start draw)
+      // — setting it to 0 was observed to cause OCGCore to end the duel
+      // early after 2-3 empty turn cycles, which collapsed the search to
+      // ~40 actionsZero terminals at depth 3 on Branded.
       startingDrawCount: 0,
-      drawCountPerTurn: 0,
+      drawCountPerTurn: 1,
     };
 
     const handCards = hand.hand.map(cid => {
@@ -402,6 +403,7 @@ async function main(): Promise<void> {
       truncated: result.stats.truncated,
       elapsedMs: wallMs,
       depthHistogram: result.stats.depthHistogram,
+      diagnostic: (result.stats as unknown as { diagnostic?: unknown }).diagnostic,
       scoreBreakdown: result.scoreBreakdown as unknown as Record<string, number>,
       transpositionHits: result.stats.transpositionHits ?? 0,
       transpositionMisses: result.stats.transpositionMisses ?? 0,
@@ -458,6 +460,298 @@ async function main(): Promise<void> {
     console.log(`  endBoard: ${actualBoard.length} cards`);
     for (const c of actualBoard.slice(0, 10)) {
       console.log(`    [${c.zone}] ${c.cardName}${c.isFallback ? ' (fallback)' : ''}${c.consumedUses ? ` used=${c.consumedUses}` : ''}`);
+    }
+    // Diagnostic: terminal reasons + prompt type distribution + BF-by-depth
+    const diag = (result.stats as unknown as { diagnostic?: {
+      terminalReasons: Record<string, number>;
+      promptTypeCounts: Record<string, number>;
+      bfByDepthSum: number[];
+      bfByDepthCount: number[];
+      actionsZeroByDepth: number[];
+      actionsZeroSamples: { depth: number; phase: string; turn: number; lp0: number; lp1: number; handSize: number }[];
+    } }).diagnostic;
+    if (diag) {
+      const tr = diag.terminalReasons;
+      const trTotal = Object.values(tr).reduce((a, b) => a + b, 0);
+      const trPairs = Object.entries(tr)
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${k}=${v}(${trTotal > 0 ? (100 * v / trTotal).toFixed(0) : 0}%)`);
+      console.log(`  TERMINAL reasons [Σ=${trTotal}]: ${trPairs.join(' ')}`);
+      const ptPairs = Object.entries(diag.promptTypeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `${k}=${v}`);
+      console.log(`  PROMPT types: ${ptPairs.join(' ')}`);
+      // BF by depth — only non-zero depths
+      const bfLines: string[] = [];
+      for (let d = 0; d < diag.bfByDepthSum.length; d++) {
+        if (diag.bfByDepthCount[d] > 0) {
+          const avg = diag.bfByDepthSum[d] / diag.bfByDepthCount[d];
+          bfLines.push(`d${d}:${avg.toFixed(1)}×${diag.bfByDepthCount[d]}`);
+        }
+      }
+      console.log(`  BF by depth: ${bfLines.join(' ')}`);
+      // actionsZero by depth
+      const azLines: string[] = [];
+      for (let d = 0; d < diag.actionsZeroByDepth.length; d++) {
+        if (diag.actionsZeroByDepth[d] > 0) azLines.push(`d${d}:${diag.actionsZeroByDepth[d]}`);
+      }
+      if (azLines.length > 0) console.log(`  actionsZero by depth: ${azLines.join(' ')}`);
+      // Terminal state samples — what does the game look like at actionsZero?
+      if (diag.actionsZeroSamples.length > 0) {
+        console.log(`  actionsZero samples (first ${diag.actionsZeroSamples.length}):`);
+        for (const s of diag.actionsZeroSamples) {
+          console.log(`    d${s.depth} turn=${s.turn} phase=${s.phase} LP=${s.lp0}/${s.lp1} hand=${s.handSize}`);
+        }
+      }
+    }
+
+    // Root children walk — for each d0 action, what depth/score did the
+    // subtree reach? This tells us WHICH root action the solver dedicated
+    // its search budget to and whether any promising lines died shallow.
+    // Walks only the top-1 child path per node (= the best-score sub-line).
+    type TreeNode = { action: { cardName?: string; actionDescription?: string }; score: number; children?: TreeNode[]; isTerminal?: boolean };
+    const root = result.tree as unknown as TreeNode;
+    if (root && Array.isArray(root.children) && root.children.length > 0) {
+      console.log(`  ROOT CHILDREN (${root.children.length}):`);
+      const walkSubtree = (node: TreeNode): { maxDepth: number; nodeCount: number; bestPath: string[] } => {
+        if (!node.children || node.children.length === 0) {
+          return { maxDepth: 0, nodeCount: 1, bestPath: [] };
+        }
+        let maxDepth = 0;
+        let nodeCount = 1;
+        let bestPath: string[] = [];
+        let bestChildScore = -Infinity;
+        for (const c of node.children) {
+          const sub = walkSubtree(c);
+          nodeCount += sub.nodeCount;
+          if (1 + sub.maxDepth > maxDepth) maxDepth = 1 + sub.maxDepth;
+          if (c.score > bestChildScore) {
+            bestChildScore = c.score;
+            bestPath = [c.action.cardName ?? `(resp)`, ...sub.bestPath];
+          }
+        }
+        return { maxDepth, nodeCount, bestPath };
+      };
+      // Sort by score descending, then by nodeCount descending
+      const childSummaries = root.children.map((c, idx) => {
+        const sub = walkSubtree(c);
+        return {
+          idx,
+          action: c.action.cardName ?? '(unknown)',
+          score: c.score,
+          maxDepth: 1 + sub.maxDepth,
+          nodeCount: sub.nodeCount + 1,
+          bestSubPath: [c.action.cardName ?? '(root action)', ...sub.bestPath],
+        };
+      });
+      childSummaries.sort((a, b) => b.score - a.score || b.nodeCount - a.nodeCount);
+      for (const s of childSummaries) {
+        console.log(`    [${s.idx}] score=${s.score} depth=${s.maxDepth} nodes=${s.nodeCount}  "${s.action}"`);
+        console.log(`         best: ${s.bestSubPath.slice(0, 14).join(' → ')}${s.bestSubPath.length > 14 ? ' ...' : ''}`);
+      }
+
+      // DEEP TRACE — start with NS Lukias (resp=0) and auto-walk forward
+      // 20 steps, picking activate > summon > pass, printing each prompt's
+      // options and the state after each apply. This is the closest we
+      // have to "what does OCGCore show a naive combo player after
+      // Normal Summoning Lukias".
+      console.log(`\n  === DEEP TRACE — resp=0 (Lukias) + 20 steps auto-walk ===`);
+      const traceHandle = adapter.createDuel(duelConfig);
+      const printState = (label: string): void => {
+        const fs = adapter.getFieldState(traceHandle);
+        const hand = (fs.zones.HAND ?? []).map(c => c.cardName || `#${c.cardId}`);
+        const mz = (['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'}(${c.position.slice(0, 6)})`));
+        const sz = (['S1', 'S2', 'S3', 'S4', 'S5'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'}(${c.position.slice(0, 6)})`));
+        const gy = (fs.zones.GY ?? []).map(c => c.cardName || `#${c.cardId}`);
+        console.log(`    ${label} turn=${fs.turn} phase=${fs.phase} LP=${fs.lifePoints[0]}/${fs.lifePoints[1]}`);
+        console.log(`      HAND(${hand.length}): ${hand.join(', ')}`);
+        if (mz.length > 0) console.log(`      MZONE: ${mz.join(', ')}`);
+        if (sz.length > 0) console.log(`      SZONE: ${sz.join(', ')}`);
+        if (gy.length > 0) console.log(`      GY(${gy.length}): ${gy.join(', ')}`);
+      };
+      const pickAction = (actions: { responseIndex: number; cardId: number; actionTag?: string; promptType: string }[]): number => {
+        // SELECT_EFFECTYN: OCGCore convention is resp=1 = yes (activate),
+        // resp=0 = no (decline). Prefer yes to keep triggered effects firing.
+        // Same for SELECT_YESNO.
+        if (actions[0]?.promptType === 'SELECT_EFFECTYN' || actions[0]?.promptType === 'SELECT_YESNO') {
+          const yesIdx = actions.findIndex(a => a.responseIndex === 1);
+          if (yesIdx >= 0) return yesIdx;
+        }
+        // Preference: activate > non-activate non-pass > pass
+        const activateIdx = actions.findIndex(a => a.actionTag === 'activate');
+        if (activateIdx >= 0) return activateIdx;
+        const nonPassIdx = actions.findIndex(a => a.actionTag !== 'pass' && a.cardId > 0);
+        if (nonPassIdx >= 0) return nonPassIdx;
+        return 0;
+      };
+      try {
+        printState('[initial]');
+        // Step 0: apply resp=0 (first Lukias at root)
+        const rootActs = adapter.getLegalActions(traceHandle);
+        console.log(`    root prompt: ${rootActs.length} actions, type=${rootActs[0]?.promptType}`);
+        for (let i = 0; i < rootActs.length; i++) {
+          const a = rootActs[i];
+          const cn = a.cardId ? (stmt.get(a.cardId) as { name?: string } | undefined)?.name ?? '?' : '(pass)';
+          console.log(`      [${i}] resp=${a.responseIndex} ${cn} tag=${a.actionTag ?? '-'}`);
+        }
+        const lukiasAct = rootActs[0]; // resp=0 Lukias
+        console.log(`    → APPLY [0] (resp=0 Lukias)`);
+        adapter.applyAction(traceHandle, lukiasAct);
+        printState('[step 0 after]');
+
+        for (let step = 1; step <= 20; step++) {
+          const acts = adapter.getLegalActions(traceHandle);
+          if (acts.length === 0) {
+            console.log(`    [step ${step}] TERMINAL — 0 legal actions`);
+            break;
+          }
+          const pt = acts[0].promptType;
+          console.log(`    [step ${step}] prompt=${pt} (${acts.length} options):`);
+          for (let i = 0; i < Math.min(10, acts.length); i++) {
+            const a = acts[i];
+            const cn = a.cardId ? (stmt.get(a.cardId) as { name?: string } | undefined)?.name ?? '?' : '(pass)';
+            console.log(`      [${i}] resp=${a.responseIndex} ${cn} tag=${a.actionTag ?? '-'} desc="${(a.description ?? '').slice(0, 40)}"`);
+          }
+          const pickIdx = pickAction(acts);
+          const picked = acts[pickIdx];
+          const pname = picked.cardId ? (stmt.get(picked.cardId) as { name?: string } | undefined)?.name ?? '?' : '(pass)';
+          console.log(`      → PICK [${pickIdx}] resp=${picked.responseIndex} ${pname}`);
+          adapter.applyAction(traceHandle, picked);
+          printState(`      [after]`);
+        }
+      } catch (err) {
+        console.log(`    TRACE ERROR: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        adapter.destroyAll();
+      }
+
+      // ROOT ACTION INSPECTION — for each of the 8 d0 actions, create a
+      // fresh duel, apply ONLY that action, and dump the resulting state.
+      // This tells us what each action ACTUALLY does (NS vs Set vs activate
+      // vs phase transition), because the tree's cardName label is derived
+      // from cardId and does not distinguish action semantics.
+      console.log(`\n  === ROOT ACTIONS — semantic probe (1 apply each) ===`);
+      const probeHandle0 = adapter.createDuel(duelConfig);
+      const probeRootActions = adapter.getLegalActions(probeHandle0);
+      console.log(`  Root prompt: ${probeRootActions.length} actions, type=${probeRootActions[0]?.promptType ?? '(none)'}`);
+      for (let i = 0; i < probeRootActions.length; i++) {
+        const a = probeRootActions[i];
+        const cn = a.cardId ? (stmt.get(a.cardId) as { name?: string } | undefined)?.name ?? '?' : '(pass)';
+        console.log(`    [${i}] resp=${a.responseIndex} cardId=${a.cardId} "${cn}" tag=${a.actionTag ?? '-'} desc="${(a.description ?? '').slice(0, 60)}"`);
+      }
+      adapter.destroyAll();
+
+      console.log(`\n  === ROOT ACTIONS — post-apply state probe ===`);
+      for (let i = 0; i < 8; i++) {
+        const fresh = adapter.createDuel(duelConfig);
+        try {
+          const legal = adapter.getLegalActions(fresh);
+          if (i >= legal.length) { console.log(`    [${i}] no action`); continue; }
+          const a = legal[i];
+          const cn = a.cardId ? (stmt.get(a.cardId) as { name?: string } | undefined)?.name ?? '?' : '(pass)';
+          adapter.applyAction(fresh, a);
+          const fs = adapter.getFieldState(fresh);
+          const hand = (fs.zones.HAND ?? []).map(c => c.cardName || `#${c.cardId}`);
+          const mz = (['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'} (${c.position})`));
+          const sz = (['S1', 'S2', 'S3', 'S4', 'S5'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'} (${c.position})`));
+          const gy = (fs.zones.GY ?? []).map(c => c.cardName || `#${c.cardId}`);
+          console.log(`    [${i}] resp=${a.responseIndex} "${cn}" tag=${a.actionTag ?? '-'}`);
+          console.log(`         → turn=${fs.turn} phase=${fs.phase} handSize=${hand.length}`);
+          if (hand.length !== 5) console.log(`         → HAND: ${hand.join(', ')}`);
+          if (mz.length > 0) console.log(`         → MZONE: ${mz.join(', ')}`);
+          if (sz.length > 0) console.log(`         → SZONE: ${sz.join(', ')}`);
+          if (gy.length > 0) console.log(`         → GY: ${gy.join(', ')}`);
+          // Next prompt after applying this action
+          const next = adapter.getLegalActions(fresh);
+          console.log(`         → next prompt: ${next.length} actions, type=${next[0]?.promptType ?? '(none)'}`);
+        } catch (err) {
+          console.log(`    [${i}] ERROR: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+          adapter.destroyAll();
+        }
+      }
+
+      // FULL DUMP: for the first "Dracotail Lukias" root child, print the
+      // entire subtree (up to 18 nodes) as indented text, showing every
+      // action, and then replay the DEEPEST path through a fresh duel and
+      // dump state after each step.
+      type ActionLike = { responseIndex: number; cardId: number; cardName?: string; actionDescription?: string };
+      type FullTreeNode = { action: ActionLike; score: number; children?: FullTreeNode[]; isTerminal?: boolean };
+      const lukiasIdx = root.children.findIndex(c => (c.action.cardName ?? '').includes('Lukias'));
+      if (lukiasIdx >= 0) {
+        const lukiasRoot = root.children[lukiasIdx] as unknown as FullTreeNode;
+        console.log(`\n  === NS LUKIAS SUBTREE (idx ${lukiasIdx}) — full dump ===`);
+        const dumpIndented = (node: FullTreeNode, depth: number, prefix: string): void => {
+          const cn = node.action.cardName || '(pass/empty)';
+          const ri = node.action.responseIndex;
+          const term = node.isTerminal ? ' [TERM]' : '';
+          console.log(`${prefix}d${depth} resp=${ri} score=${node.score} "${cn}"${term}`);
+          if (node.children) {
+            for (const c of node.children) dumpIndented(c, depth + 1, prefix + '  ');
+          }
+        };
+        dumpIndented(lukiasRoot, 1, '  ');
+
+        // Collect all leaf paths, pick the deepest one.
+        type Path = { actions: ActionLike[]; depth: number; leafScore: number };
+        const allPaths: Path[] = [];
+        const walkPaths = (node: FullTreeNode, pathSoFar: ActionLike[]): void => {
+          const nextPath = [...pathSoFar, node.action];
+          if (!node.children || node.children.length === 0) {
+            allPaths.push({ actions: nextPath, depth: nextPath.length, leafScore: node.score });
+            return;
+          }
+          for (const c of node.children) walkPaths(c, nextPath);
+        };
+        walkPaths(lukiasRoot, []);
+        allPaths.sort((a, b) => b.depth - a.depth || b.leafScore - a.leafScore);
+        const deepest = allPaths[0];
+        console.log(`\n  === REPLAY deepest NS Lukias path (${deepest.depth} steps, leaf score ${deepest.leafScore}) ===`);
+
+        // Replay via a fresh duel. Use responseIndex matching against
+        // live-enumerated actions at each prompt.
+        const replayHandle = adapter.createDuel(duelConfig);
+        const dumpState = (label: string): void => {
+          const fs = adapter.getFieldState(replayHandle);
+          const hand = (fs.zones.HAND ?? []).map(c => c.cardName || `#${c.cardId}`);
+          const m = (['M1', 'M2', 'M3', 'M4', 'M5'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'}`));
+          const s = (['S1', 'S2', 'S3', 'S4', 'S5'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'} (${c.position})`));
+          const emz = (['EMZ_L', 'EMZ_R'] as const).flatMap(z => (fs.zones[z] ?? []).map(c => `${z}:${c.cardName || '?'}`));
+          const gy = (fs.zones.GY ?? []).map(c => c.cardName || `#${c.cardId}`);
+          console.log(`    ${label} turn=${fs.turn} phase=${fs.phase} LP=${fs.lifePoints[0]}/${fs.lifePoints[1]}`);
+          console.log(`      HAND(${hand.length}): ${hand.join(', ')}`);
+          if (m.length > 0 || emz.length > 0) console.log(`      MZONE: ${[...m, ...emz].join(', ')}`);
+          if (s.length > 0) console.log(`      SZONE: ${s.join(', ')}`);
+          if (gy.length > 0) console.log(`      GY: ${gy.join(', ')}`);
+        };
+        try {
+          dumpState('[d0 before]');
+          for (let i = 0; i < deepest.actions.length; i++) {
+            const a = deepest.actions[i];
+            if (!a || a.responseIndex === undefined) {
+              console.log(`    [step ${i}] SKIP — no action`);
+              continue;
+            }
+            const legal = adapter.getLegalActions(replayHandle);
+            if (legal.length === 0) {
+              console.log(`    [step ${i}] STOP — 0 legal actions returned by adapter`);
+              break;
+            }
+            const match = legal.find(x => x.responseIndex === a.responseIndex);
+            if (!match) {
+              console.log(`    [step ${i}] NO MATCH — looking for resp=${a.responseIndex} "${a.cardName}" among ${legal.length} legal: ${legal.slice(0, 6).map(x => `resp=${x.responseIndex} ${(stmt.get(x.cardId) as { name?: string } | undefined)?.name ?? '?'}`).join(' | ')}`);
+              break;
+            }
+            const matchName = (stmt.get(match.cardId) as { name?: string } | undefined)?.name ?? `#${match.cardId}`;
+            console.log(`    [step ${i}] APPLY resp=${a.responseIndex} promptType=${match.promptType} card=${matchName} tag=${match.actionTag ?? '-'}`);
+            adapter.applyAction(replayHandle, match);
+            dumpState(`    [after step ${i}]`);
+          }
+        } catch (err) {
+          console.log(`    REPLAY ERROR: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
     }
     console.log(`  EXPECTED decomposition: atBaseline=${expectedAtBaseline.length} earned=${expectedEarned.length} stillMissing=${expectedStillMissing.length} / ${hand.expectedBoard?.length ?? 0}`);
     if (expectedEarned.length > 0) {

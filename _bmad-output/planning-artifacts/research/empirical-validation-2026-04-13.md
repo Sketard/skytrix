@@ -688,6 +688,201 @@ sequencing-gated behind Phase A.
 - The fixture hand / draw config changes shipped in §7.5.3 stay in the
   spike (not reverted).
 
+## 7.8bis Round 3 — The fork-replay bug
+
+After §7.6's clean delta measurement, a follow-up investigation into *why*
+the Branded Dracotail search stopped so early (completed at 7 s / 131 nodes
+on a 60 s budget) revealed a deeper issue. Sections 7.8bis.1-7.8bis.3
+document how it was isolated; §7.8bis.4 shows the fix and its impact.
+
+### 7.8bis.1 The first clue — `SELECT_EFFECTYN = 0`
+
+Adding a per-prompt-type counter to the DFS (`promptTypeCounts` in the
+new `SolverStats.diagnostic` field) produced this distribution on the
+clean Branded run:
+
+```
+SELECT_CHAIN=64  SELECT_IDLECMD=10  SELECT_YESNO=3  SELECT_EFFECTYN=0
+```
+
+**Zero SELECT_EFFECTYN prompts across the entire search.** That was
+suspicious because `EXPLORATORY_PROMPTS` in
+[solver-types.ts](../../../duel-server/src/solver/solver-types.ts)
+explicitly includes `SELECT_EFFECTYN`, meaning the adapter is supposed
+to expose them to the solver rather than auto-resolve them.
+
+A manual probe (createDuel → applyAction(resp=0 Lukias) → loop
+getLegalActions + auto-pick) immediately hit SELECT_EFFECTYN at step 2
+and again at step 5. Two different code paths hitting the same duel
+produced two different prompt sequences.
+
+### 7.8bis.2 The smoking gun — tree vs probe divergence
+
+Adding a full-subtree walker for the Lukias root child (`idx 4`, original
+score=0) produced this:
+
+```
+d1 resp=0 "Dracotail Lukias"
+  d2 resp=0 "Dracotail Lukias"
+  d2 resp=1 "Blazing Cartesia"
+  d2 resp=2 "Dracotail Lukias"
+  d2 resp=3 "Blazing Cartesia"
+  d2 resp=4 "Branded Fusion"
+  d2 resp=5 "Dracotail Faimena"
+  d2 resp=6 "Branded Fusion"
+  d2 resp=7 "(pass)"
+```
+
+Eight d2 children with `responseIndex` 0-7 and the **exact same card
+names as the root IDLECMD**. A direct-apply probe from the same state
+returned **one** action (a single SELECT_CHAIN pass). The DFS was
+somehow seeing a different prompt sequence than the probe.
+
+### 7.8bis.3 The bug — empty-responseHistory fork leaves engine unadvanced
+
+[OCGCoreAdapter.forkViaReplay](../../../duel-server/src/solver/ocgcore-adapter.ts)
+creates a fresh native duel and then replays the parent's response
+history:
+
+```typescript
+for (const resp of parent.responseHistory) {
+  this.runUntilWaitingRaw(nativeHandle);
+  this.core.duelSetResponse(nativeHandle, resp as never);
+}
+```
+
+When the parent has an empty `responseHistory` (the common case for
+forks taken from the root — `getLegalActions` does not mutate the
+history), **the loop body does not execute and `runUntilWaitingRaw` is
+never called**. The fork hands back a native duel still at its initial
+pre-turn state.
+
+The caller (`dfs`) then does:
+
+```typescript
+const child = ctx.oracle.fork(handle);
+ctx.oracle.applyAction(child, action);   // duelSetResponse — no advance
+const result = this.dfs(ctx, child, depth + 1, pathHashes);
+```
+
+`applyAction` is `duelSetResponse` only — it assumes the engine is
+already at a WAITING state. For a fresh fork, it is not. The response
+is stored but OCGCore has not yet reached the SELECT_IDLECMD prompt, so
+the response effectively lands at an earlier queue position. When
+`dfs(child)` then calls `getLegalActions`, the engine advances and
+produces a *second* SELECT_IDLECMD (because the first one was
+consumed by the mis-aligned response) — which is why the tree's "d2
+children" looked identical to the root IDLECMD.
+
+The resulting tree was a ghost-walk: the solver thought it was
+exploring combo lines but OCGCore kept re-yielding the same IDLECMD
+prompt with no board progress. Eventually OCGCore hit turn 2 with no
+state change and returned END (per §7.5's `actionsZero turn=2 phase=MAIN1`
+samples).
+
+Critically, **Branded Dracotail's root-child tree was mostly ghost
+branches**, which is why `score=11` was the best the solver could find
+even though the manual deep trace (bypassing fork) reached score-11+
+states. The fork bug was bounding the solver's reach to ~100 nodes of
+ghost exploration and producing misleading "completed" terminations.
+
+### 7.8bis.4 The fix — one line in `forkViaReplay`
+
+Add a final `runUntilWaitingRaw(nativeHandle)` after the replay loop,
+so the fork is guaranteed to hand back a handle already parked at its
+next waiting state:
+
+```typescript
+for (const resp of parent.responseHistory) {
+  this.runUntilWaitingRaw(nativeHandle);
+  this.core.duelSetResponse(nativeHandle, resp as never);
+}
+// NEW: advance the engine after all replayed responses so applyAction
+// can immediately set the next response at a valid WAITING state.
+this.runUntilWaitingRaw(nativeHandle);
+```
+
+### 7.8bis.5 Impact — delta at optimal after the fix
+
+Artifact: `empirical-validation-2026-04-13-optionA-all-raw.json`
+
+| Fixture | score (pre → post) | depth (pre → post) | nodes (pre → post) | term (pre → post) | promptTypes SELECT_EFFECTYN |
+|---------|--------------------|--------------------|--------------------|-------------------|---------------------------|
+| D/D/D | 1 → **19** | 30 → **50 (cap)** | 521 → 590 | completed → **depth_cap** | 0 → **3** |
+| Mitsurugi | 1 → **5** | 11 → **50 (cap)** | 89 → **633** | completed → **depth_cap** | 0 → **3** |
+| Branded Dracotail | 11 → **18** | 13 → **50 (cap)** | 131 → 591 | completed → **depth_cap** | 0 → **3** |
+
+Every fixture now **hits the depth cap** (50/50) — the depth cap is the
+real remaining ceiling, not a spurious ghost-walk terminal. The
+`terminalReasons` breakdown shifted from `actionsZero=55-95%` (pre-fix)
+to `depthCap=47-71%` + `treeSizeLimit=16-20%` (post-fix), which is the
+healthy pattern you expect from a search that actually reaches its
+budget limits.
+
+**Root child scores flipped across the board**:
+- D/D/D winning line starts with `Mulcharmy Fuwalos` (Fuwalos has no
+  trigger in goldfish — a dead activation but the rest of the mainPath
+  reaches a depth-50 state scoring 19 via `targetedNegate+1 attach+1
+  fallbackPoints+2`)
+- Mitsurugi winning line starts with **`Mitsurugi Prayers`** (a real
+  Mitsurugi starter) with `BFmax=17` — the solver now reaches wide
+  main-phase branches previously invisible
+- Branded Dracotail winning line starts with **`Dracotail Lukias`** —
+  the line the human-curated expectation pointed at. The tree walk
+  shows: `Lukias → pass → Lukias(trigger) → Faimena → pass → Pan →
+  Branded Fusion → Branded Fusion → Rahu → Lukias → Urgula → Shaulas`,
+  a 22-action main path that fires Lukias's search, chains Faimena's
+  fusion, resolves Branded Fusion, and ends with a substantial board.
+
+The `matched/expected` metric still reports **0/17** on all three
+fixtures, but for a new reason: the fixture golden boards include cards
+unreachable from the given hand (Ecclesia needs Fallen of the White
+Dragon, which isn't in the Branded hand), and `SELECT_CARD` targeting
+inside the adapter auto-picks the first valid option rather than the
+semantically correct one (Lukias searches Urgula, not Mululu, because
+Urgula appears first in enumeration order). Neither of these is a
+solver-correctness blocker — they are a fixture correctness issue
+and a solver-quality issue respectively.
+
+### 7.8bis.6 Fork-cost share dropped into sanity
+
+With the fix, fork cost as fraction of wall clock dropped from **90.4 %**
+to **78-82 %** across fixtures (still dominant, but no longer a pure
+ghost-walk wall). The absolute per-fork cost rose slightly to 53-59 ms
+because forks now reach deeper states (longer replay histories), but
+the solver is getting real work done per fork instead of re-exploring
+the root.
+
+### 7.8bis.7 Implications for Phase A
+
+The §7.7 Phase A recommendation needs one more update:
+
+- **Fork cost is still the remaining dominant blocker**, but its
+  severity is now bounded more tightly. At ~590 nodes / 50 ms per fork
+  in 35-40 seconds of search, the solver hits `maxDepth=50` before
+  running out of budget on all three fixtures. Bumping `maxDepth` to
+  80-100 and rerunning would tell us how much deeper the solver can
+  go *before* fork cost becomes the true limit — that is a 5-minute
+  measurement worth doing before committing to Phase A scope.
+- **Move ordering (constraint 2.1)** was wholly unmeasurable before
+  this fix. It is now measurable: the solver reaches depths 30-50 with
+  branching factors 6-17 at main-phase prompts, which is exactly where
+  move ordering matters. Any future ranker improvement can now be
+  benchmarked against a working baseline.
+- **SELECT_CARD auto-pick** is a newly visible scorer-adjacent gap:
+  when Lukias fires its search, the adapter auto-picks the first valid
+  target instead of the card that best advances the combo. This is
+  not in any of the three research docs and deserves a fourth look
+  (probably a cheap heuristic: prefer cards that are listed in the
+  expected-board of the deck's canonical combo, or simply randomize
+  and track best-of-N).
+
+The §7.7 Phase A plan (fork cost + tag coverage) stays valid; the
+addition above is **add `maxDepth` probing + SELECT_CARD heuristic to
+Phase A scoping discussion** before committing the 5-11 weeks.
+
+---
+
 ## 7.8 Takeaway for the spike methodology itself
 
 The 10-card hand bug was invisible for the entire history of the solver's

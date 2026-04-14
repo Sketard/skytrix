@@ -254,6 +254,40 @@ export interface SolverStats {
    *  Length = `maxDepth + 1`. Heat map of where the solver spent its budget;
    *  a long tail at the cap indicates depth pressure. */
   depthHistogram: number[];
+  /** Optional diagnostic bundle — populated only by DFS when the
+   *  empirical-validation spike requests it. Absent in production paths.
+   *  Used to answer "why did the search tree stop where it did". */
+  diagnostic?: DfsDiagnostic;
+}
+
+export interface DfsDiagnostic {
+  /** Count of terminal nodes reached per reason. The sum over all reasons
+   *  equals `totalTreeNodes` (roughly — every path ends in exactly one
+   *  terminal). Used to diagnose whether the tree is bounded by natural
+   *  exhaustion, loop detection, depth cap, or external cutoff. */
+  terminalReasons: {
+    actionsZero: number;     // OCGCore returned 0 legal actions at a player prompt
+    depthCap: number;        // hit `maxDepth`
+    loopDetected: number;    // pathHashes already contained this IDLECMD state
+    treeSizeLimit: number;   // totalTreeNodes >= maxResultNodes
+    abortOrNodeLimit: number; // signal abort OR probe nodeLimit reached
+    budgetCutoff: number;    // 0 children explored after loop (time budget or abort mid-branch)
+    ttHit: number;           // transposition table lookup short-circuited further exploration
+  };
+  /** Prompt type counts observed at nodes with legal actions (exploratory
+   *  prompts only — mechanical prompts are auto-resolved by the adapter). */
+  promptTypeCounts: Record<string, number>;
+  /** Per-depth sum of legal-action counts and per-depth count of nodes
+   *  with at least one action. `bfByDepthSum[d] / bfByDepthCount[d]` yields
+   *  the average BF at depth `d`. */
+  bfByDepthSum: number[];
+  bfByDepthCount: number[];
+  /** Per-depth count of terminals with 0 legal actions. Reveals how deep
+   *  the "stuck" states are. */
+  actionsZeroByDepth: number[];
+  /** First N sampled `actionsZero` terminals — captures phase/turn/LP so
+   *  we can tell whether OCGCore ends the duel early or stalls mid-turn. */
+  actionsZeroSamples: { depth: number; phase: string; turn: number; lp0: number; lp1: number; handSize: number }[];
 }
 
 export interface SolverProgress {
