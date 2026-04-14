@@ -346,7 +346,7 @@ export class OCGCoreAdapter implements GameOracle {
           // configured handtraps are always available (no subset filter).
           const isAdversarial = (internal.config.handtraps?.length ?? 0) > 0;
           if (isAdversarial && promptType === 'SELECT_CHAIN') {
-            const actions = this.enumerateActionsWithResponses(msgAny, promptType);
+            const actions = this.enumerateActionsWithResponses(msgAny, promptType, internal.config);
             // Tag all actions as opponent (team: 1)
             for (const a of actions) a.team = 1;
             return actions;
@@ -360,6 +360,21 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Mechanical prompts: auto-resolve with defaults
         if (promptType && !EXPLORATORY_PROMPTS.has(promptType)) {
+          // Phase A #3 — constraint 2.1 / SELECT_CARD context-aware: when the
+          // SELECT_CARD prompt is a small-pool single-pick (≤
+          // SELECT_CARD_EXPLORATORY_MAX candidates, min=max=1), expose it as
+          // an exploratory branch point instead of auto-resolving. The DFS
+          // then branches on each candidate and discovers which pick unlocks
+          // the real combo line (e.g. Lukias → Mululu vs other Dracotail
+          // search targets, Arthalion's bounce target selection, Faimena
+          // fusion material picks). Larger pools or multi-pick prompts fall
+          // through to the mechanical path with the existing DECK-only
+          // preferredSearchTargets heuristic — branching a 20-candidate
+          // SELECT_CARD would blow up the tree. See synthesis §7.10.6.
+          if (promptType === 'SELECT_CARD'
+            && this.selectCardIsExploratory(msgAny)) {
+            return this.enumerateActionsWithResponses(msgAny, promptType, internal.config);
+          }
           const resp = this.autoRespondMechanical(msgAny, internal.config);
           this.core.duelSetResponse(internal.nativeHandle, resp as never);
           internal.responseHistory.push(resp);
@@ -368,13 +383,39 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Exploratory prompt for player 0 — enumerate legal actions
         if (promptType) {
-          return this.enumerateActionsWithResponses(msgAny, promptType);
+          return this.enumerateActionsWithResponses(msgAny, promptType, internal.config);
         }
 
         return [];
       }
       // CONTINUE → loop
     }
+  }
+
+  // ===========================================================================
+  // Phase A #3 — SELECT_CARD exploratory gate
+  // ===========================================================================
+
+  /** Maximum pool size for which SELECT_CARD becomes a DFS branch point.
+   *  6 balances coverage (Lukias search: 3-6 Dracotails; Arthalion bounce:
+   *  1-5 opponent+own targets; Faimena fusion: 2-5 dragons) against tree
+   *  explosion (6^N multiplier on multi-SELECT_CARD combos). Raising this
+   *  risks budget starvation; lowering loses the Arthalion/Ecclesia line.
+   *  Validated empirically in the 2026-04-14 Phase A #3 spike. */
+  private static readonly SELECT_CARD_EXPLORATORY_MAX = 6;
+
+  /** Return true when a SELECT_CARD prompt should be surfaced to the DFS
+   *  as a branch point instead of auto-resolved. Single-pick only —
+   *  multi-pick (min>1 or max>1) creates a combinatorial subset-selection
+   *  problem that isn't amenable to per-candidate branching. */
+  private selectCardIsExploratory(msg: Record<string, unknown>): boolean {
+    const selects = (msg['selects'] as unknown[] | undefined) ?? [];
+    const min = (msg['min'] as number) ?? 1;
+    const max = (msg['max'] as number) ?? 1;
+    return min === 1
+      && max === 1
+      && selects.length > 0
+      && selects.length <= OCGCoreAdapter.SELECT_CARD_EXPLORATORY_MAX;
   }
 
   // ===========================================================================
@@ -398,6 +439,11 @@ export class OCGCoreAdapter implements GameOracle {
         return { type: 3, yes: action.responseIndex === 1 };
       case 'SELECT_OPTION':
         return { type: 4, index: action.responseIndex };
+      case 'SELECT_CARD':
+        // Phase A #3: reached only if `_response` was not preserved across a
+        // fork/replay boundary. The enumerator sets `_response` on every
+        // pushed action, so this fallback is defensive.
+        return { type: 5, indicies: [action.responseIndex] };
       default:
         throw new Error(`[Solver] Cannot convert action with promptType ${action.promptType}`);
     }
@@ -413,7 +459,7 @@ export class OCGCoreAdapter implements GameOracle {
    * The response cache is used by actionToResponse() to convert Actions back
    * to the format OCGCore expects (which varies per prompt type and sub-action).
    */
-  private enumerateActionsWithResponses(msg: Record<string, unknown>, promptType: PromptType): Action[] {
+  private enumerateActionsWithResponses(msg: Record<string, unknown>, promptType: PromptType, config?: DuelConfig): Action[] {
     this._lastActionResponses.clear();
     const actions: Action[] = [];
     const isExploratory = true;
@@ -524,6 +570,39 @@ export class OCGCoreAdapter implements GameOracle {
         const options = (msg['options'] ?? []) as unknown[];
         for (let i = 0; i < options.length; i++) {
           pushAction({ responseIndex: i, cardId: 0, promptType, isExploratory }, { type: 4, index: i });
+        }
+        break;
+      }
+      case 'SELECT_CARD': {
+        // Phase A #3: one action per candidate. The dispatch in
+        // `runUntilPlayerPrompt` has already vetted that the prompt is a
+        // small-pool single-pick; `selectCardIsExploratory` gates it.
+        // Ordering: candidates whose `code` is in `preferredSearchTargets`
+        // come first, so the DFS explores the likely-correct pick before
+        // burning budget on alternatives. Ranker doesn't touch SELECT_CARD
+        // (see GoldfishChainRanker.needsState) so the enumeration order
+        // here is the order the solver walks.
+        const selects = (msg['selects'] ?? []) as { code?: number; location?: number }[];
+        const preferred = config?.preferredSearchTargets;
+        const preferredSet = preferred && preferred.length > 0 ? new Set(preferred) : null;
+        const preferredFirst: number[] = [];
+        const rest: number[] = [];
+        for (let i = 0; i < selects.length; i++) {
+          const code = selects[i].code;
+          if (preferredSet && code !== undefined && preferredSet.has(code)) {
+            preferredFirst.push(i);
+          } else {
+            rest.push(i);
+          }
+        }
+        for (const i of [...preferredFirst, ...rest]) {
+          pushAction({
+            responseIndex: i,
+            cardId: selects[i].code ?? 0,
+            promptType,
+            isExploratory,
+            actionTag: 'pick',
+          }, { type: 5, indicies: [i] });
         }
         break;
       }
