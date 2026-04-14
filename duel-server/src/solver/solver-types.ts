@@ -25,6 +25,14 @@ export interface DuelConfig {
    *  harnesses that want a truly fixed hand across all turns (no per-turn
    *  draws contaminating the scored state). */
   drawCountPerTurn?: number;
+  /** Preferred cardIds for `SELECT_CARD` auto-resolution. When the adapter
+   *  must pick N cards out of a pool (e.g. Lukias searching a Dracotail
+   *  to hand), it first tries to select any card whose `code` appears in
+   *  this list before falling back to the default "pick first N" policy.
+   *  Used by the empirical-validation spike to bias search targets toward
+   *  the fixture's expected-combo endboard, so we can measure whether the
+   *  solver *could* reach the canonical line given correct target picks. */
+  preferredSearchTargets?: number[];
 }
 
 // =============================================================================

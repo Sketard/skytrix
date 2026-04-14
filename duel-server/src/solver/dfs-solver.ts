@@ -254,6 +254,24 @@ export class DfsSolver implements SolverStrategy {
     // verification key both see the same per-handle OPT state.
     const activationLog = ctx.oracle.getActivationLog(handle);
 
+    // Constraint 3.2-light: score every visited state, not just terminals.
+    // Without this, `ctx.bestScore` only captures terminal scores, and
+    // raising `maxDepth` can paradoxically *lower* the reported best score
+    // because the deeper exploration passes through the optimal mid-combo
+    // endboard state without ever freezing its value. Scoring every node
+    // guarantees `ctx.bestScore` is monotone with respect to `maxDepth`
+    // (more exploration can only ever find equal or better states).
+    //
+    // Mid-chain-resolution states (SELECT_CHAIN / SELECT_EFFECTYN) may
+    // over-credit transient staging positions, but `ctx.bestScore` is a
+    // `max`, so over-crediting an unreal state is safer than missing a
+    // real terminal. Cost: ~15µs × nodes visited ≈ 10-15ms per solve.
+    const interim = this.scorer.scoreWithCards(fieldState, activationLog);
+    if (interim.score > ctx.bestScore) {
+      ctx.bestScore = interim.score;
+      ctx.bestEndBoardCards = interim.endBoardCards;
+    }
+
     // Terminal: no legal actions or max depth
     if (actions.length === 0 || depth >= this.maxDepth) {
       // Distinguish "natural end" (no actions) from "depth cap hit while

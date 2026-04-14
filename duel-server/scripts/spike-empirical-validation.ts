@@ -51,6 +51,11 @@ interface HandFixture {
   hand: number[];
   deckSeed: string;
   expectedBoard?: ExpectedBoardEntry[];
+  /** Spike-only: extra cardIds that should be preferred by SELECT_CARD
+   *  auto-resolution, beyond what `expectedBoard` lists. Used for combo
+   *  intermediates (e.g. Dracotail Mululu on Branded — not on the final
+   *  endboard but required as a fusion material for Arthalion). */
+  preferredIntermediates?: number[];
 }
 
 interface FixtureFile {
@@ -135,6 +140,7 @@ interface CliOpts {
   handFilter?: string;
   speed: 'fast' | 'optimal';
   budgetMsOverride?: number;
+  maxDepthOverride?: number;
   outPath: string;
 }
 
@@ -152,9 +158,10 @@ function parseCli(argv: string[]): CliOpts {
     else if (arg === '--speed=fast') opts.speed = 'fast';
     else if (arg === '--speed=optimal') opts.speed = 'optimal';
     else if (arg.startsWith('--budget-ms=')) opts.budgetMsOverride = Number(arg.slice(12));
+    else if (arg.startsWith('--max-depth=')) opts.maxDepthOverride = Number(arg.slice(12));
     else if (arg.startsWith('--out=')) opts.outPath = arg.slice(6);
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: npx tsx scripts/spike-empirical-validation.ts [--hand=ID] [--speed=fast|optimal] [--budget-ms=N] [--out=PATH]');
+      console.log('Usage: npx tsx scripts/spike-empirical-validation.ts [--hand=ID] [--speed=fast|optimal] [--budget-ms=N] [--max-depth=N] [--out=PATH]');
       process.exit(0);
     } else {
       console.error(`[Spike] Unknown arg: ${arg}`);
@@ -168,24 +175,38 @@ function parseCli(argv: string[]): CliOpts {
 // Diff logic
 // =============================================================================
 
+/** Normalize a zone label from the expected-board fixture format
+ *  ("MZONE" / "SZONE") to the family it represents. The diff then matches
+ *  any specific zone (M1-M5, EMZ_L/R, S1-S5) belonging to that family. */
+function zoneFamily(zone: string): string {
+  if (zone === 'MZONE' || zone === 'M1' || zone === 'M2' || zone === 'M3' || zone === 'M4' || zone === 'M5' || zone === 'EMZ_L' || zone === 'EMZ_R') return 'MZONE';
+  if (zone === 'SZONE' || zone === 'S1' || zone === 'S2' || zone === 'S3' || zone === 'S4' || zone === 'S5') return 'SZONE';
+  return zone; // HAND, GY, DECK, EXTRA, BANISHED — pass through
+}
+
 function diffBoards(
   expected: ExpectedBoardEntry[],
   actual: EndBoardCard[],
   tags: Record<string, InterruptionTag>,
 ): { matched: ExpectedBoardEntry[]; missing: DiffEntry[]; extra: DiffEntry[] } {
-  const key = (zone: string, cardId: number): string => `${zone}::${cardId}`;
+  // Match by (zone family, cardId) so that expected "MZONE" matches any
+  // of M1-M5/EMZ_L/R, and expected "SZONE" matches any of S1-S5.
+  // Expected entries may use either a family label or a specific slot.
+  const key = (zone: string, cardId: number): string => `${zoneFamily(zone)}::${cardId}`;
   const expectedMap = new Map<string, ExpectedBoardEntry>();
   for (const e of expected) expectedMap.set(key(e.zone, e.cardId), e);
 
-  const actualMap = new Map<string, EndBoardCard>();
-  for (const a of actual) actualMap.set(key(a.zone, a.cardId), a);
+  // Multiple actual slots may map to the same family key (e.g. two monsters
+  // in MZONE with the same cardId). Track all keys present.
+  const actualKeys = new Set<string>();
+  for (const a of actual) actualKeys.add(key(a.zone, a.cardId));
 
   const matched: ExpectedBoardEntry[] = [];
   const missing: DiffEntry[] = [];
   const extra: DiffEntry[] = [];
 
   for (const [k, e] of expectedMap) {
-    if (actualMap.has(k)) {
+    if (actualKeys.has(k)) {
       matched.push(e);
     } else {
       missing.push({
@@ -196,7 +217,12 @@ function diffBoards(
       });
     }
   }
-  for (const [k, a] of actualMap) {
+  // For `extra`, we report a card as extra only if it is not in the expected
+  // set at all (by family+cardId). This means e.g. having a Dracotail Flame
+  // in any MZONE won't be flagged as extra if the expected listed it in any
+  // MZONE — the family-matched tolerance is symmetric.
+  for (const a of actual) {
+    const k = key(a.zone, a.cardId);
     if (!expectedMap.has(k)) {
       extra.push({
         zone: a.zone,
@@ -242,7 +268,20 @@ async function main(): Promise<void> {
   const timeLimitMs = opts.budgetMsOverride ?? (opts.speed === 'fast'
     ? allConfigs.solverConfig.timeBudgetFastMs
     : allConfigs.solverConfig.timeBudgetOptimalMs);
-  const maxDepthConfig = allConfigs.solverConfig.maxDepth;
+  // Apply maxDepth override + auto-scale maxResultNodes proportionally
+  // so the tree-size safety net doesn't pre-empt the depth budget.
+  const overriddenSolverConfig = opts.maxDepthOverride !== undefined
+    ? {
+        ...allConfigs.solverConfig,
+        maxDepth: opts.maxDepthOverride,
+        maxResultNodes: Math.max(
+          allConfigs.solverConfig.maxResultNodes,
+          opts.maxDepthOverride * 20,
+        ),
+      }
+    : allConfigs.solverConfig;
+  const maxDepthConfig = overriddenSolverConfig.maxDepth;
+  console.log(`[Spike] maxDepth=${maxDepthConfig} maxResultNodes=${overriddenSolverConfig.maxResultNodes}`);
 
   const hands = opts.handFilter
     ? fixture.hands.filter(h => h.id === opts.handFilter)
@@ -272,6 +311,16 @@ async function main(): Promise<void> {
     }
     if (missing) continue;
 
+    // Build preferred-search-target list: endboard card IDs plus any
+    // explicit combo intermediates the fixture lists. SELECT_CARD
+    // auto-resolution will bias toward these when the selectable pool
+    // contains a match. Spike-only — test whether the solver can reach
+    // the canonical line given correct target picks.
+    const preferredSearchTargets = [
+      ...(hand.expectedBoard ?? []).map(e => e.cardId),
+      ...(hand.preferredIntermediates ?? []),
+    ];
+
     const duelConfig: DuelConfig = {
       mainDeck,
       extraDeck: deck.extra,
@@ -285,6 +334,7 @@ async function main(): Promise<void> {
       // ~40 actionsZero terminals at depth 3 on Branded.
       startingDrawCount: 0,
       drawCountPerTurn: 1,
+      preferredSearchTargets,
     };
 
     const handCards = hand.hand.map(cid => {
@@ -297,8 +347,8 @@ async function main(): Promise<void> {
 
     // Fresh solver instances per fixture so TT/Zobrist state doesn't bleed.
     const hasher = new ZobristHasher();
-    const table = new TranspositionTable(allConfigs.solverConfig.transpositionMaxEntries);
-    const dfs = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
+    const table = new TranspositionTable(overriddenSolverConfig.transpositionMaxEntries);
+    const dfs = new DfsSolver(hasher, table, scorer, adapter, ranker, overriddenSolverConfig);
 
     const startHandle = adapter.createDuel(duelConfig);
     const signal = AbortSignal.timeout(timeLimitMs + 5000);
@@ -364,7 +414,8 @@ async function main(): Promise<void> {
     // it was in HAND/board before any solver action), "earned during solve"
     // (appeared in the final endboard but not in baseline — real combo
     // execution), and "still missing" (never reached).
-    const keyOf = (z: string, cid: number): string => `${z}::${cid}`;
+    // Uses zone-family matching so expected "MZONE" matches any M1-M5/EMZ.
+    const keyOf = (z: string, cid: number): string => `${zoneFamily(z)}::${cid}`;
     const baselineKeys = new Set(baselineBoard.map(c => keyOf(c.zone, c.cardId)));
     const finalKeys = new Set(actualBoard.map(c => keyOf(c.zone, c.cardId)));
     const expectedAtBaseline: ExpectedBoardEntry[] = [];

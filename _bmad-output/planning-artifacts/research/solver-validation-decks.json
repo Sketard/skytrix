@@ -15,15 +15,15 @@
         "format": "OCG March 2026",
         "validatedAgainstCardDb": true
       },
-      "branded-dracotail-mar26": {
-        "source": "ygoprodeck.com — Branded Dracotail (March 2026)",
-        "url": "https://ygoprodeck.com/deck/branded-dracotail-march-2026-699510",
-        "format": "OCG March 2026",
+      "branded-dracotail-bainbridge-2nd": {
+        "source": "ygoprodeck.com — Branded Dracotail, 2nd Place Bainbridge WCQ Regional",
+        "url": "https://ygoprodeck.com/deck/branded-dracotail-705277",
+        "format": "TCG 2026",
         "validatedAgainstCardDb": true
       }
     },
     "usage": "Solver correctness validation. Decklists extracted from ygoprodeck.com HTML (data-card attributes) and validated against duel-server/data/cards.cdb. Alias IDs normalized to canonical IDs (Ash Blossom 14558128→14558127, Harpie's Feather Duster 18144507→18144506). Feed hands to the DFS/MCTS solver and compare computed endBoardCards against expected boards.",
-    "expectedBoards": "Not yet populated — to be filled manually per hand after first solver runs, to serve as golden references for regression tests."
+    "expectedBoards": "Populated per hand with human-confirmed target boards. Each hand entry has an 'expectedBoard' field listing { zone, cardId, cardName } entries that the solver should reproduce. These are curated, not auto-generated — treat as golden references."
   },
   "decks": {
     "ddd-wcq-top4": {
@@ -40,7 +40,7 @@
         72291412,
         42141493, 42141493, 42141493,
         14558127, 14558127, 14558127,
-        94145021, 94145021, 94145021,
+        94145021, 94145021,
         46372010, 46372010, 46372010,
         32665564,
         93729896,
@@ -48,7 +48,8 @@
         54693926, 54693926, 54693926,
         24224830,
         40366667, 40366667, 40366667,
-        9030160
+        9030160,
+        91781484
       ],
       "extra": [
         71398055,
@@ -74,7 +75,7 @@
         58921041,
         41420027,
         37209439,
-        91781484
+        94145021
       ]
     },
     "ryzeal-mitsurugi-hk-top8": {
@@ -133,45 +134,61 @@
         84749824, 84749824, 84749824
       ]
     },
-    "branded-dracotail-mar26": {
+    "branded-dracotail-bainbridge-2nd": {
       "main": [
-        27204311,
-        44482554, 44482554, 44482554,
-        70871153, 70871153,
-        1498449, 1498449, 1498449,
         75003700, 75003700, 75003700,
+        1498449, 1498449, 1498449,
+        84477320,
+        7375867,
+        70871153,
+        44482554,
+        73819701, 73819701,
         68468459,
-        95515789, 95515789,
+        95515789,
+        55273560,
         42141493, 42141493, 42141493,
-        7375867, 7375867, 7375867,
+        97268402, 97268402,
         14558127, 14558127, 14558127,
         73642296, 73642296,
-        84477320,
-        23434538,
-        97268402,
-        44362883, 44362883,
-        6153210, 6153210, 6153210,
+        94145021,
+        27204311, 27204311,
+        6153210,
         32548318, 32548318, 32548318,
-        5431722,
+        44362883, 44362883,
+        30271097, 30271097,
+        24224830,
+        80208225,
         69932023,
-        80208225
+        5431722
       ],
       "extra": [
-        38811586,
-        33760966, 33760966, 33760966,
-        70538272,
-        44146295,
-        89851827,
-        70534340,
-        87746184,
-        51409648,
+        33760966, 33760966,
         79755671,
-        29301450,
-        42097666,
-        24361622,
-        70369116
+        42125140,
+        89851827,
+        87746184,
+        44146295,
+        38811586,
+        70534340,
+        3410461,
+        51409648,
+        76666602,
+        72578374,
+        70538272,
+        78397661
       ],
-      "side": []
+      "side": [
+        32909498, 32909498,
+        84192580, 84192580,
+        94145021,
+        18144506,
+        14532163, 14532163,
+        24299458, 24299458, 24299458,
+        25311006,
+        85442146,
+        82732705,
+        41373230
+      ]
     }
   },
   "hands": [
@@ -180,21 +197,45 @@
       "deck": "ddd-wcq-top4",
       "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Expected to establish a Pendulum Scale and summon D/D/D boss monster(s) via Gryphon/Scale Surveyor.",
       "hand": [11609969, 46796664, 42382265, 46372010, 42141493],
-      "deckSeed": "11111,22222"
+      "deckSeed": "11111,22222",
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 79559912, "cardName": "D/D/D Wave High King Caesar" },
+        { "zone": "MZONE", "cardId": 72402069, "cardName": "D/D/D Super Doom King Bright Armageddon" },
+        { "zone": "MZONE", "cardId": 30998403, "cardName": "D/D/D Sky King Zeus Ragnarok" },
+        { "zone": "MZONE", "cardId": 44852429, "cardName": "D/D/D Cursed King Siegfried" },
+        { "zone": "SZONE", "cardId": 91781484, "cardName": "D/D/D Headhunt" }
+      ]
     },
     {
       "id": "ryzeal-mitsurugi-opener",
       "deck": "ryzeal-mitsurugi-hk-top8",
       "description": "Mitsurugi+Ryzeal opener: Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Expected to set up Rank 4 Xyz plus Mitsurugi control shell.",
       "hand": [13332685, 8633261, 35844557, 45171524, 42141493],
-      "deckSeed": "33333,44444"
+      "deckSeed": "33333,44444",
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 34909328, "cardName": "Ryzeal Detonator" },
+        { "zone": "MZONE", "cardId": 7511613, "cardName": "Ryzeal Duo Drive" },
+        { "zone": "MZONE", "cardId": 55397172, "cardName": "Futsu no Mitama no Mitsurugi" },
+        { "zone": "MZONE", "cardId": 8165596, "cardName": "Number 90: Galaxy-Eyes Photon Lord" },
+        { "zone": "SZONE", "cardId": 6798031, "cardName": "Ryzeal Cross" },
+        { "zone": "SZONE", "cardId": 17954937, "cardName": "Mitsurugi Great Purification" }
+      ]
     },
     {
       "id": "branded-dracotail-opener",
-      "deck": "branded-dracotail-mar26",
-      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Dracotail Pan + Branded Fusion + Blazing Cartesia. Expected to fusion-summon Mirrorjade/Albion line and establish Dracotail Arthalion endboard.",
-      "hand": [1498449, 75003700, 44482554, 44362883, 95515789],
-      "deckSeed": "55555,66666"
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
+      "hand": [1498449, 75003700, 73819701, 44362883, 95515789],
+      "deckSeed": "55555,66666",
+      "preferredIntermediates": [7375867],
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 33760966, "cardName": "Dracotail Arthalion" },
+        { "zone": "MZONE", "cardId": 78397661, "cardName": "Ecclesia and the Dark Dragon" },
+        { "zone": "SZONE", "cardId": 5431722, "cardName": "Dracotail Flame" },
+        { "zone": "SZONE", "cardId": 69932023, "cardName": "Dracotail Horn" },
+        { "zone": "SZONE", "cardId": 80208225, "cardName": "Dracotail Sting" },
+        { "zone": "HAND", "cardId": 1498449, "cardName": "Dracotail Faimena" }
+      ]
     }
   ]
 }

@@ -360,7 +360,7 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Mechanical prompts: auto-resolve with defaults
         if (promptType && !EXPLORATORY_PROMPTS.has(promptType)) {
-          const resp = this.autoRespondMechanical(msgAny);
+          const resp = this.autoRespondMechanical(msgAny, internal.config);
           this.core.duelSetResponse(internal.nativeHandle, resp as never);
           internal.responseHistory.push(resp);
           continue;
@@ -536,7 +536,7 @@ export class OCGCoreAdapter implements GameOracle {
   // Internal: Mechanical & Opponent Auto-Responses
   // ===========================================================================
 
-  private autoRespondMechanical(msg: Record<string, unknown>): unknown {
+  private autoRespondMechanical(msg: Record<string, unknown>, config?: DuelConfig): unknown {
     const type = (msg as { type: number }).type;
     switch (type) {
       case OcgMessageType.SELECT_POSITION:
@@ -551,8 +551,38 @@ export class OCGCoreAdapter implements GameOracle {
         return { type: 14, indicies: Array.from({ length: (msg['min'] as number) ?? 1 }, (_, i) => i) };
       case OcgMessageType.SELECT_COUNTER:
         return { type: 13, counters: ((msg['cards'] ?? []) as unknown[]).map(() => 0) };
-      case OcgMessageType.SELECT_CARD:
-        return { type: 5, indicies: Array.from({ length: (msg['min'] as number) ?? 1 }, (_, i) => i) };
+      case OcgMessageType.SELECT_CARD: {
+        const min = (msg['min'] as number) ?? 1;
+        const selects = (msg['selects'] as { code?: number; location?: number }[] | undefined) ?? [];
+        // Spike-only: apply `config.preferredSearchTargets` ONLY when every
+        // candidate is located in the DECK (i.e. this is a search-from-deck
+        // prompt like Dracotail Lukias's "add 1 Dracotail monster from your
+        // Deck to your hand"). For fusion-material / cost / GY-target
+        // prompts, the candidates come from other zones and the preferred
+        // list would incorrectly bias toward endboard cards that are not
+        // the right material (e.g. picking Arthalion as Branded Fusion
+        // material, consuming it instead of keeping it on the field).
+        const preferred = config?.preferredSearchTargets;
+        const allFromDeck = selects.length > 0
+          && selects.every(s => s.location === OcgLocation.DECK);
+        if (allFromDeck && preferred && preferred.length > 0) {
+          const preferredSet = new Set(preferred);
+          const preferredIdx: number[] = [];
+          for (let i = 0; i < selects.length && preferredIdx.length < min; i++) {
+            const code = selects[i].code;
+            if (code !== undefined && preferredSet.has(code)) preferredIdx.push(i);
+          }
+          // Top up with remaining indices (first available non-preferred)
+          // if we didn't find `min` preferred matches.
+          if (preferredIdx.length < min) {
+            for (let i = 0; i < selects.length && preferredIdx.length < min; i++) {
+              if (!preferredIdx.includes(i)) preferredIdx.push(i);
+            }
+          }
+          return { type: 5, indicies: preferredIdx };
+        }
+        return { type: 5, indicies: Array.from({ length: min }, (_, i) => i) };
+      }
       case OcgMessageType.SELECT_UNSELECT_CARD:
         if (msg['can_finish']) return { type: 7, index: null };
         return { type: 7, index: 0 };
