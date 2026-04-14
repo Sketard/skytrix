@@ -1,0 +1,916 @@
+{
+  "date": "2026-04-14T17:49:37.440Z",
+  "speed": "optimal",
+  "timeLimitMs": 60000,
+  "maxDepth": 100,
+  "instrumentationEnabled": true,
+  "solverConfigFile": {
+    "poolSize": 6,
+    "maxDepth": 50,
+    "timeBudgetFastMs": 5000,
+    "timeBudgetOptimalMs": 60000,
+    "progressThrottleMs": 200,
+    "treePruningTopX": 10,
+    "maxResultNodes": 500,
+    "transpositionMaxEntries": 25000,
+    "memoryBudgetMb": 512,
+    "bfComplexityThreshold": 25,
+    "rateLimitIntervalMs": 2000,
+    "maxHandtraps": 5,
+    "ucb1C": 1,
+    "rolloutEpsilon": 0.1,
+    "verificationBudgetRatio": 0.15,
+    "stalledWarningMs": 3000,
+    "maxSolverConnections": 10,
+    "backpropPolicy": "max"
+  },
+  "fixtures": [
+    {
+      "handId": "branded-dracotail-opener",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
+      "handCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "#1498449"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "#75003700"
+        },
+        {
+          "cardId": 73819701,
+          "cardName": "#73819701"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "#44362883"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "#95515789"
+        }
+      ],
+      "speed": "optimal",
+      "timeLimitMs": 60000,
+      "score": 24,
+      "mainPathLength": 100,
+      "nodesExplored": 714,
+      "maxDepthReached": 100,
+      "maxDepthConfig": 100,
+      "averageBranchingFactor": 2.1104166666666666,
+      "maxBranchingFactor": 13,
+      "terminationReason": "depth_cap",
+      "truncated": true,
+      "elapsedMs": 51165,
+      "depthHistogram": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        6,
+        6,
+        8,
+        10,
+        10,
+        11,
+        22,
+        22,
+        42,
+        60,
+        66,
+        127,
+        234
+      ],
+      "diagnostic": {
+        "terminalReasons": {
+          "actionsZero": 0,
+          "depthCap": 234,
+          "loopDetected": 0,
+          "treeSizeLimit": 0,
+          "abortOrNodeLimit": 0,
+          "budgetCutoff": 0,
+          "ttHit": 20
+        },
+        "promptTypeCounts": {
+          "SELECT_IDLECMD": 86,
+          "SELECT_CHAIN": 349,
+          "SELECT_EFFECTYN": 4,
+          "SELECT_YESNO": 19,
+          "SELECT_BATTLECMD": 21,
+          "SELECT_OPTION": 1
+        },
+        "bfByDepthSum": [
+          11,
+          1,
+          2,
+          2,
+          1,
+          1,
+          3,
+          1,
+          2,
+          1,
+          1,
+          1,
+          2,
+          2,
+          1,
+          2,
+          1,
+          1,
+          1,
+          10,
+          1,
+          2,
+          1,
+          2,
+          1,
+          1,
+          5,
+          1,
+          4,
+          1,
+          3,
+          2,
+          1,
+          2,
+          1,
+          2,
+          3,
+          1,
+          2,
+          2,
+          1,
+          2,
+          1,
+          1,
+          1,
+          10,
+          1,
+          3,
+          1,
+          2,
+          1,
+          1,
+          3,
+          1,
+          2,
+          4,
+          1,
+          2,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          2,
+          1,
+          10,
+          1,
+          1,
+          5,
+          1,
+          4,
+          1,
+          3,
+          1,
+          3,
+          2,
+          2,
+          1,
+          2,
+          2,
+          2,
+          6,
+          10,
+          8,
+          12,
+          26,
+          11,
+          27,
+          34,
+          47,
+          70,
+          133,
+          138,
+          309,
+          0
+        ],
+        "bfByDepthCount": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          6,
+          6,
+          8,
+          10,
+          10,
+          11,
+          22,
+          22,
+          42,
+          60,
+          66,
+          127,
+          0
+        ],
+        "actionsZeroByDepth": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroSamples": []
+      },
+      "scoreBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 1,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 2,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 22,
+        "fallbackPoints": 2,
+        "total": 24
+      },
+      "transpositionHits": 20,
+      "transpositionMisses": 66,
+      "transpositionStores": 66,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 713,
+        "forkMsTotal": 47200.735,
+        "forkMsMean": 66.20018934081347,
+        "forkMsMax": 90.712,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 0
+          },
+          {
+            "label": "50ms+",
+            "count": 713
+          }
+        ],
+        "applies": 713,
+        "applyMsTotal": 8.015,
+        "applyMsMean": 0.011241234221598879,
+        "scores": 948,
+        "scoreMsTotal": 11.282,
+        "scoreMsMean": 0.01190084388185654
+      },
+      "forkPctOfWall": 92.25199843643117,
+      "applyPctOfWall": 0.01566500537476791,
+      "scorePctOfWall": 0.02205022964917424,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "cardId": 73819701,
+          "cardName": "Fallen of the White Dragon"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        }
+      ],
+      "deltaScore": 24,
+      "deltaBreakdown": {
+        "typedNegate": 1,
+        "bounce": 2,
+        "weighted": 22,
+        "fallbackPoints": 2,
+        "total": 24
+      },
+      "actualBoard": [
+        {
+          "zone": "M1",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "isFallback": true
+        },
+        {
+          "zone": "M2",
+          "cardId": 3410461,
+          "cardName": "Alba-Lenatus the Abyss Dragon",
+          "isFallback": true
+        },
+        {
+          "zone": "M3",
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon",
+          "isFallback": false
+        }
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "matched": [],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting",
+          "tagged": true
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena",
+          "tagged": false
+        }
+      ],
+      "extra": [
+        {
+          "zone": "M1",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "tagged": false
+        },
+        {
+          "zone": "M2",
+          "cardId": 3410461,
+          "cardName": "Alba-Lenatus the Abyss Dragon",
+          "tagged": false
+        },
+        {
+          "zone": "M3",
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon",
+          "tagged": true
+        }
+      ],
+      "missingTaggedCount": 5,
+      "missingUntaggedCount": 1,
+      "expectedAtBaseline": [],
+      "expectedEarned": [],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "mainPathActions": [
+        {
+          "respIdx": 0,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        }
+      ]
+    }
+  ]
+}

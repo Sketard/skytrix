@@ -555,13 +555,16 @@ export class OCGCoreAdapter implements GameOracle {
         const min = (msg['min'] as number) ?? 1;
         const selects = (msg['selects'] as { code?: number; location?: number }[] | undefined) ?? [];
         // Spike-only: apply `config.preferredSearchTargets` ONLY when every
-        // candidate is located in the DECK (i.e. this is a search-from-deck
-        // prompt like Dracotail Lukias's "add 1 Dracotail monster from your
-        // Deck to your hand"). For fusion-material / cost / GY-target
-        // prompts, the candidates come from other zones and the preferred
-        // list would incorrectly bias toward endboard cards that are not
-        // the right material (e.g. picking Arthalion as Branded Fusion
-        // material, consuming it instead of keeping it on the field).
+        // candidate is located in the DECK — i.e. this is a pure search-
+        // from-deck prompt like Dracotail Lukias or Mitsurugi Prayers.
+        //
+        // Broadening the gate to include GY or FIELD pools was attempted
+        // in the 2026-04-13 spike round 4 and rolled back: adding FIELD
+        // caused self-bounce on Arthalion (Arthalion on player field was
+        // in its own bounce pool and got picked as a preferred cardId),
+        // and adding GY-only caused regressions on other GY-sourced
+        // selections. DECK-only is the only gate that gave a stable
+        // Arthalion match on Branded Dracotail.
         const preferred = config?.preferredSearchTargets;
         const allFromDeck = selects.length > 0
           && selects.every(s => s.location === OcgLocation.DECK);

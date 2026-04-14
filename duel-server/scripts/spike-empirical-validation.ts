@@ -512,6 +512,75 @@ async function main(): Promise<void> {
     for (const c of actualBoard.slice(0, 10)) {
       console.log(`    [${c.zone}] ${c.cardName}${c.isFallback ? ' (fallback)' : ''}${c.consumedUses ? ` used=${c.consumedUses}` : ''}`);
     }
+
+    // Full-zone replay dump: re-execute the mainPath on a fresh duel,
+    // scoring at each step to find the PEAK state along the path. The
+    // solver's `ctx.bestScore` is from this peak; the mainPath's final
+    // step is not necessarily that peak (with 3.2-light, scores are
+    // tracked across all visited states, not just terminals).
+    // Dumping the peak state reveals what *actually* earned matched=1:
+    // what cards (including face-down S/Ts) were on the board when the
+    // solver achieved its best score.
+    if (result.mainPath.length > 0) {
+      try {
+        // Phase 1: find peak by replaying + scoring at each step
+        const probe = adapter.createDuel(duelConfig);
+        let bestStep = 0;
+        let bestStepScore = -1;
+        let stepsDone = 0;
+        // Score the initial state too (step 0)
+        {
+          const fs0 = adapter.getFieldState(probe);
+          const log0 = adapter.getActivationLog(probe);
+          const s0 = scorer.scoreWithCards(fs0, log0).score;
+          if (s0 > bestStepScore) { bestStepScore = s0; bestStep = 0; }
+        }
+        for (const mpAction of result.mainPath) {
+          const legal = adapter.getLegalActions(probe);
+          if (legal.length === 0) break;
+          const m = legal.find(x => x.responseIndex === mpAction.responseIndex);
+          if (!m) break;
+          try { adapter.applyAction(probe, m); stepsDone++; }
+          catch { break; }
+          const fs = adapter.getFieldState(probe);
+          const log = adapter.getActivationLog(probe);
+          const s = scorer.scoreWithCards(fs, log).score;
+          if (s > bestStepScore) { bestStepScore = s; bestStep = stepsDone; }
+        }
+        adapter.destroyAll();
+
+        // Phase 2: replay up to bestStep and dump the full field state
+        console.log(`  PEAK STATE (step ${bestStep}/${stepsDone}, score=${bestStepScore}):`);
+        const peak = adapter.createDuel(duelConfig);
+        for (let i = 0; i < bestStep; i++) {
+          const legal = adapter.getLegalActions(peak);
+          if (legal.length === 0) break;
+          const m = legal.find(x => x.responseIndex === result.mainPath[i].responseIndex);
+          if (!m) break;
+          adapter.applyAction(peak, m);
+        }
+        const fs = adapter.getFieldState(peak);
+        console.log(`    turn=${fs.turn} phase=${fs.phase} LP=${fs.lifePoints[0]}/${fs.lifePoints[1]}`);
+        const zoneOrder = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'HAND', 'GY', 'BANISHED', 'EXTRA'] as const;
+        for (const z of zoneOrder) {
+          const cards = fs.zones[z] ?? [];
+          if (cards.length === 0) continue;
+          // Abridge GY/EXTRA/BANISHED to just card names + count (face-down
+          // position in those zones is noise — they're never really "set").
+          if (z === 'GY' || z === 'EXTRA' || z === 'BANISHED') {
+            const names = cards.map(c => c.cardName || `#${c.cardId}`);
+            console.log(`    ${z.padEnd(8)} (${cards.length}): ${names.join(', ')}`);
+          } else {
+            const summary = cards.map(c => `${c.cardName || `#${c.cardId}`}(${c.position})`).join(', ');
+            console.log(`    ${z.padEnd(8)} (${cards.length}): ${summary}`);
+          }
+        }
+        adapter.destroyAll();
+      } catch (err) {
+        console.log(`    REPLAY ERROR: ${err instanceof Error ? err.message : String(err)}`);
+        adapter.destroyAll();
+      }
+    }
     // Diagnostic: terminal reasons + prompt type distribution + BF-by-depth
     const diag = (result.stats as unknown as { diagnostic?: {
       terminalReasons: Record<string, number>;

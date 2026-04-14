@@ -227,7 +227,7 @@
       "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
       "hand": [1498449, 75003700, 73819701, 44362883, 95515789],
       "deckSeed": "55555,66666",
-      "preferredIntermediates": [7375867],
+      "preferredIntermediates": [7375867, 55273560],
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 33760966, "cardName": "Dracotail Arthalion" },
         { "zone": "MZONE", "cardId": 78397661, "cardName": "Ecclesia and the Dark Dragon" },
