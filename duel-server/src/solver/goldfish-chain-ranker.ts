@@ -70,20 +70,36 @@ export class GoldfishChainRanker implements ActionRanker {
     const activations = actions.filter(a => a.actionTag !== 'pass');
     const pass = actions.filter(a => a.actionTag === 'pass');
 
-    // HEURISTIC: single-activation auto-resolve. May miss anti-synergy edge cases.
-    if (activations.length === 1 && pass.length === 1) {
-      if (process.env['LOG_LEVEL'] === 'debug') {
-        console.log(`[Solver:debug] ranker-pruned-pass cardId=${activations[0].cardId}`);
-      }
-      return activations;
-    }
-
-    // Multi-activation: all activations before pass.
-    // Currently all activations are classified as beneficial (unrecognized defaults
-    // to beneficial). When non-beneficial patterns are added, split activations
-    // into beneficial/other buckets here.
+    // Phase C — SELECT_CHAIN pass-first ordering.
+    //
+    // Previous behavior (round 5 and earlier): activations-first with a
+    // single-activation auto-prune (if only 1 activation + 1 pass, drop
+    // pass entirely and force the activation). That heuristic assumed any
+    // activatable chain effect is beneficial — which is true for the core
+    // combo line (Cartesia, Branded Fusion activate in chain), but FALSE
+    // for turn-start trigger-chain effects (Fuwalos, Maxx "C", Ash Blossom,
+    // other handtrap-style mandatory-offer cards that appear in the
+    // player's SELECT_CHAIN list without being beneficial on the player's
+    // own turn). D/D/D and Mitsurugi were stuck in
+    // `mainPath=[Fuwalos, Fuwalos, pass, ...]` because the auto-prune
+    // force-activated Fuwalos twice before the DFS ever reached the first
+    // IDLECMD where Savant Kepler could be Normal Summoned (synthesis
+    // Appendix A).
+    //
+    // Phase C fix: pass FIRST, activations after. DFS still explores
+    // every activation because both branches are returned, but `pass` is
+    // tried first — which means time-budget-constrained searches reach
+    // the post-chain IDLECMD sooner. Beneficial activations (Cartesia,
+    // Branded Fusion) still get picked later in the enumeration if they
+    // outscore pass, because tree propagation uses `max` over children
+    // regardless of order.
+    //
+    // Single-activation prune removed entirely: the 2x chain-window cost
+    // is acceptable because (a) TT dedupes equivalent post-chain states,
+    // (b) the DFS time budget is 60 s and even Branded (heavy chain-
+    // window load) completes without depth cap at this config.
     this.warnMissingDescriptions(activations);
-    return [...activations, ...pass];
+    return [...pass, ...activations];
   }
 
   private rankBattleCmd(actions: Action[]): Action[] {
