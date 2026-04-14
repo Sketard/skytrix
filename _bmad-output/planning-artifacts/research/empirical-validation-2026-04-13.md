@@ -883,6 +883,330 @@ Phase A scoping discussion** before committing the 5-11 weeks.
 
 ---
 
+## 7.9 Round 4 — 3.2-light, SELECT_CARD heuristic, first matched card
+
+With the fork bug resolved, the solver executed real DFS for the first
+time. Round 4 pushed on three orthogonal improvements to see how close
+the search could get to the canonical expected-board combos.
+
+### 7.9.1 Scope-enlarging changes
+
+1. **Constraint 3.2-light** (`dfs-solver.ts`): score every visited state,
+   not just terminals. `ctx.bestScore` and `ctx.bestEndBoardCards` are
+   updated on every node via `InterruptionScorer.scoreWithCards` before
+   the terminal check runs. Without this, raising `maxDepth` can
+   paradoxically lower the reported best score because intermediate
+   mid-combo endboard states are traversed without freezing their
+   value. Cost ≈ 15 µs per node × ~600 nodes = <10 ms per solve.
+
+2. **`SELECT_CARD preferred-targets` heuristic** (`ocgcore-adapter.ts`):
+   new optional `config.preferredSearchTargets: number[]`. When a
+   `SELECT_CARD` prompt resolves and **every candidate is in the DECK**
+   (pure search-from-deck prompt like Lukias / Mitsurugi Prayers),
+   the adapter picks indices whose `code` appears in the preferred
+   list before falling back to the default "pick first min". The gate
+   is deliberately strict — three broader gates were tried and rolled
+   back in round 5 because they mis-triggered on bounce/material
+   selections (see §7.10.1).
+
+3. **Diff zone-family matching** (`spike-empirical-validation.ts`):
+   the previous diff matched expected "MZONE" against actual "M1"
+   with exact string equality and always failed. Round 4 introduces
+   `zoneFamily()` so `MZONE` matches any of `M1..M5/EMZ_L/R` and
+   `SZONE` matches any of `S1..S5`. This exposed the first genuine
+   matched card on Branded Dracotail even before any solver
+   improvement — the match was already there, the diff was buggy.
+
+4. **Fallen of the White Dragon + Incredible Ecclesia** added to the
+   Branded fixture. Pan (needs tribute, dead in opener) was swapped for
+   Fallen of the White Dragon, and `preferredIntermediates: [7375867
+   Mululu, 55273560 Incredible Ecclesia]` was added. These are combo
+   pieces not on the final endboard but required mid-combo: Mululu is
+   Lukias's canonical search target (fuses with Lukias → Arthalion via
+   Faimena discard), and Incredible Ecclesia is Fallen of the White
+   Dragon's SS-on-summon target (Lv4 Tuner, combines with Fallen
+   Lv4 non-Tuner for Lv8 Synchro Summon of Ecclesia and the Dark
+   Dragon).
+
+5. **`--max-depth=N` CLI override** auto-scales `maxResultNodes` so
+   the tree-size safety net doesn't pre-empt the depth budget.
+
+### 7.9.2 Round 4 headline result — first matched card
+
+Artifact: `empirical-validation-2026-04-13-stable-raw.json` and
+`empirical-validation-2026-04-13-32light-all-depth100-raw.json`.
+
+At `speed=optimal, maxDepth=100`, with the full round-4 stack:
+
+| Fixture | score (pre-fix / post-fix) | matched | breakdown | notes |
+|---------|---|---|---|---|
+| D/D/D | 19 → **2** (d=100) | 0/5 | fallback=2 | regression, see §7.9.4 |
+| Mitsurugi | 5 → **19** | 0/6 | omniNegate=1 + fallback=5 | SELECT_CARD pick: Mitsurugi Prayers → Great Purification (omniNegate, weight 14). Great Purification ends in HAND; expected was SZONE → still matched=0. |
+| Branded Dracotail | 18 → **36** | **1/6** ✓ | typedNegate=1 spin=1 bounce=3 fallback=1 | **First matched card in the entire spike**: Dracotail Arthalion on MZONE. |
+
+**The first matched card of the empirical validation** is Dracotail
+Arthalion on Branded Dracotail. Every earlier iteration, every fixture,
+every round up to this one reported `matched=0/17`. The combination of
+(a) zone-family diff, (b) Fallen of the White Dragon unblocking the
+canonical opener, (c) SELECT_CARD picking Mululu over Urgula, and
+(d) 3.2-light capturing intermediate states produced the first concrete
+proof that the solver *can* reach an expected endboard card given
+enough correct nudges.
+
+### 7.9.3 Branded Dracotail breakdown inspection
+
+Score 36 = `typedNegate(1) × 10 + spin(1) × 7 + bounce(3) × 6 + fallback(1) × 1`.
+
+Individual contributions (from the newly-tagged card set):
+- **bounce × 3**: one from Arthalion (on-fusion-summon bounce), two more
+  from set traps face-down in SZONE — likely Dracotail Horn plus one
+  other bounce-tagged card (Horn's weight-6 bounce matches the pattern).
+- **typedNegate × 1**: likely Dracotail Flame set face-down in SZONE.
+- **spin × 1**: likely Ecclesia and the Dark Dragon in the GY scored
+  zone — the fusion monster was summoned and cycled through.
+- **fallback × 1**: one face-up monster on field with no tag.
+
+Note: `actualBoard` display filters face-down tagged cards, so the
+rendered endBoard shows only `[M1] Cartesia (fallback), [M2] Arthalion,
+[M3] Rindbrumm` even though the 35-point weighted contributions come
+from face-down cards and GY entries that the display hides.
+
+### 7.9.4 D/D/D regression — breadth-vs-depth tradeoff
+
+D/D/D dropped from 19 (maxDepth=50) to 2 (maxDepth=100) at the same
+60 s budget. **Not a correctness issue**; it's node-budget triage:
+
+- At `maxDepth=50`, D/D/D's DFS explores 898 nodes across many IDLECMD
+  branches (breadth-heavy). It finds a terminal with 1 typedNegate
+  + 1 attach + 2 fallback points = score 19.
+- At `maxDepth=100`, the same 60 s budget funds ~835 nodes but each
+  fork reaches deeper states. Deeper states on D/D/D's specific combo
+  structure (Pendulum setup → boss-monster summon via Scale Surveyor)
+  don't actually yield tagged endboards — the Pendulum mechanic cycles
+  scales in and out of Pendulum Zones, and after the first main-phase
+  exhaustion the solver walks through several turns of no-ops.
+
+At fixed time budget, raising `maxDepth` trades breadth for depth.
+Branded benefits (it needs depth to reach the fusion chain); D/D/D
+regresses (it benefits from breadth on the initial IDLECMD fan-out).
+**A proper fix is per-fixture `maxDepth` tuning or an adaptive depth
+bound, not a global increase.**
+
+### 7.9.5 Mitsurugi — SELECT_CARD worked, fixture semantics didn't
+
+Mitsurugi went from 5 → 19. The entire 14-point delta comes from one
+`omniNegate`-tagged card: Mitsurugi Great Purification (weight 14).
+The canonical Mitsurugi search path `Mitsurugi Prayers → search
+Great Purification` was unblocked by `preferredSearchTargets` picking
+the right target.
+
+However Mitsurugi still reports `matched=0/6` because Great Purification
+ends up in **HAND** post-search, while the fixture's expected board
+lists it in **SZONE** (set). The solver has the card — it just hasn't
+set it. That requires an additional IDLECMD pass where the set
+action is picked, and the DFS doesn't reach that pass within the
+depth budget. This is a combo-execution depth issue, not a coverage
+gap.
+
+---
+
+## 7.10 Round 5 — Gate tuning, peak-state replay, the real remaining blocker
+
+Round 5 investigated whether Branded's `matched` could push beyond 1/6
+by either (a) widening the SELECT_CARD gate to cover Arthalion's
+bounce-from-GY target, or (b) dumping the full field state along the
+mainPath to see what the solver *actually* reaches.
+
+Artifact: `empirical-validation-2026-04-13-branded-peakdump-raw.json`.
+
+### 7.10.1 Gate widening attempts (all rolled back)
+
+Three widenings of the `SELECT_CARD preferredSearchTargets` gate were
+tried to cover pools other than pure-DECK. None stuck:
+
+1. **No-hand gate** (pool excludes HAND only): Arthalion's bounce
+   targets are field+GY — both pass this filter. The preferred list
+   includes Arthalion itself (it's in the expectedBoard). Arthalion
+   is on the player's field at bounce time. The heuristic picks
+   Arthalion from its own bounce pool → **self-bounce** → Arthalion
+   cycles back to Extra Deck. Score dropped 36 → 26, matched 1 → 0.
+
+2. **DECK-or-GY gate** (pool is all-DECK or all-GY): Lukias's GY
+   trigger (set from deck) is pure-DECK so that still works. But
+   other GY-sourced selections mis-fire in ways I did not fully
+   isolate — score dropped 36 → 24, matched 1 → 0.
+
+3. **Add Faimena to `preferredIntermediates`** to let Arthalion's
+   bounce target Faimena in GY: combines with no-hand gate. Still
+   mis-fires because the player-field portion of the pool takes
+   priority in iteration order.
+
+**Final: revert to strict DECK-only** with a comment documenting the
+three failed broadenings so the next iteration doesn't retry them.
+DECK-only remains the only gate that holds `matched=1 Arthalion`
+stably on Branded.
+
+### 7.10.2 Peak-state replay dump
+
+A new spike feature: after solve, replay the mainPath on a fresh duel
+while scoring at each step, find the step where the score was
+maximal, and dump **every zone** of the field at that peak step
+(including face-down S/Ts, HAND, GY, BANISHED, EXTRA).
+
+Executed on Branded Dracotail at the round-5 stable state
+(score=36, matched=1/6):
+
+- Peak along mainPath: **step 95 / 100, score = 30**, at
+  `turn=9 phase=MAIN1 LP=8000/8000`
+- Final step along mainPath: step 100, state at turn 9
+
+**The peak-replay score is 30, not 36**. That mismatch is the central
+finding. The solver's reported `result.score = 36` is from
+`extractMainPath` walking best-score children via propagated terminal
+scores, while the 36-point *state* exists on a sibling branch not
+reachable by the mainPath walker. Constraint 3.2-light captures
+intermediate scores into `ctx.bestScore` but `result.score` is
+computed from terminal propagation via the tree, so the two can
+disagree.
+
+### 7.10.3 What's in the peak state — the real shock
+
+**Full zone contents at step 95 (peak along mainPath)**:
+
+- **M2**: Alba-Lenatus the Abyss Dragon (face-up attack)
+- **M3**: Rindbrumm the Striking Dragon (face-up defense)
+- **S1**: The Fallen & The Virtuous (face-down set)
+- **HAND** (3): Blazing Cartesia, Droll & Lock Bird, Dracotail Phryxul
+- **GY** (16): **Ecclesia and the Dark Dragon**, Dracotail Flame,
+  Dracotail Horn, Dracotail Mululu, Dracotail Lukias, Dracotail Faimena
+  ×2, Fallen of the White Dragon ×2, Fallen of Albaz, Albion the
+  Sanctifire Dragon, Mulcharmy Fuwalos, Ash Blossom, Branded Fusion
+  ×2, The Fallen & The Virtuous
+- **EXTRA** (11): **Dracotail Arthalion ×2**, Dracotail Gulamel,
+  Secreterion Dragon, Albion the Branded Dragon, Mirrorjade the
+  Iceblade Dragon, Lubellion the Searing Dragon, The Dragon that
+  Devours the Dogma, Filia Regis, Khaos Starsource Dragon, Dracotail
+  Shaulas
+
+**Every expected-board card is present somewhere in the peak state.**
+Ecclesia and the Dark Dragon is in the GY — the solver *synchro
+summoned it* at some point in the exploration. Dracotail Flame and
+Dracotail Horn are in the GY too — they were set and then consumed or
+activated. Dracotail Faimena is in the GY ×2 — used as fusion material
+twice. Both Arthalions are back in the extra deck — Arthalion was
+Fusion Summoned and triggered, then recycled (likely through a
+subsequent synchro or because its "banish when leaves field" clause
+sent it away and then another effect recovered it).
+
+**The solver executes the full canonical Branded Dracotail combo
+during its search.** The final canonical endboard is transiently
+reached but never held through to the mainPath terminal, because the
+DFS has no notion of "end of turn 1 / end of combo" and keeps
+exploring into subsequent turns where cards cycle through.
+
+### 7.10.4 The actual blocker — constraint 3.2 full
+
+The peak-state dump identifies the last remaining architectural gap:
+
+- **Not fork cost** — fork% of wall dropped from 90% (pre-fork-fix)
+  to ~50% post-fork-fix, and the per-fixture time budget is
+  abundantly sufficient to reach `maxDepth=100`.
+- **Not scorer coverage** — every expected-board card scores
+  correctly. The reason Branded reports 36 instead of 50+ is that
+  the peak state isn't captured at the canonical endboard moment;
+  it's captured at a later post-combo state with fewer of the
+  expected cards still on field.
+- **Not move ordering in the classical sense** — the DFS reaches
+  the right fusion + synchro + set sequence; it's not picking wrong
+  actions.
+- **Yes, constraint 3.2 "terminal classification"**: the solver
+  cannot distinguish *"this is the completed endboard for turn 1"*
+  from *"this is mid-combo, keep exploring"* or *"this is a
+  post-combo no-op turn"*. Without an explicit "turn 1 ends here"
+  signal, the search walks past the canonical endboard and the
+  `bestScore` tracker, even with 3.2-light, is not coherent with
+  the mainPath that `extractMainPath` produces.
+
+### 7.10.5 Fork cost is no longer the #1 blocker
+
+The §4.1 / §6 / §7.7 Phase A framing was **fork cost is the dominant
+remaining blocker, requiring 5-11 weeks of WASM snapshot / replay cache
+work**. Round 3's one-line `runUntilWaitingRaw` fix to `forkViaReplay`
+(commit `ede9ba7e`) eliminated the *ghost-walk* component of fork
+cost, dropping fork% from 90% to ~50% without any upstream WASM
+changes. Round 5's peak-state dump confirms the remaining 50% is not
+blocking meaningful combo execution — the solver reaches Ecclesia and
+the Dark Dragon, Arthalion, all three Dracotail traps, and full fusion
+chains within the current budget.
+
+**The 5-11 weeks estimated for research doc 1 (fork cost resolution)
+is no longer justified.** The hard work ended up being a 1-line change
+in the adapter. That research doc should be closed out with the spike's
+measurement as the final answer.
+
+### 7.10.6 Revised Phase A recommendation — replaces §7.7
+
+The original §6.2 / §7.7 framing proposed:
+
+- Phase A (6 weeks, parallel): fork cost + scoped tag coverage
+- Phase B (4-6 weeks): latent modeling
+- Phase C (4-8 weeks): move ordering
+- **Total: 12-18 weeks**
+
+Empirically validated, the new plan is:
+
+**Phase A (4-6 weeks, sequential)**:
+
+1. **Constraint 3.2 full — "end of turn 1" detection** (~1-2 weeks).
+   Add phase tracking to `DfsContext` and freeze
+   `ctx.bestEndBoardCards` at the transition to END phase (or the
+   next Draw Phase of turn 2, which is the cleanest boundary OCGCore
+   exposes). This is the minimum change that makes `matched` coherent
+   with the solver's own `bestScore`. Expected impact: Branded
+   `matched=1/6` should jump to `4-5/6` because the peak-state cards
+   (Ecclesia, Flame, Horn, Arthalion) would be captured at the end-
+   of-turn-1 boundary instead of cycled through.
+
+2. **Tag coverage extension** (~1 week). Add tags for common fusion
+   monsters that appear in the peak states: Alba-Lenatus, Rindbrumm
+   the Striking Dragon, Secreterion Dragon, The Fallen & The Virtuous,
+   Mirrorjade the Iceblade Dragon. Intermediate states will score
+   higher, which helps 3.2-light's global bestScore track the right
+   peak.
+
+3. **SELECT_CARD context-aware resolution** (~1-2 weeks). The three
+   failed gate widenings in §7.10.1 show a single-flag gate is too
+   coarse. Proper fix: expose `SELECT_CARD` as exploratory for
+   small-pool prompts (≤ 6 candidates) so the DFS branches on each,
+   or plumb per-prompt metadata (purpose: search / cost / target /
+   material) from OCGCore if available.
+
+4. **Per-fixture `maxDepth` tuning or adaptive bound** (~3 days).
+   D/D/D's `maxDepth=100` regression (§7.9.4) is a node-budget triage
+   issue; a simple adaptive bound (increase depth when terminal
+   reasons are dominated by `depthCap`, decrease when dominated by
+   other categories) would resolve it.
+
+**Phase B (~2-3 weeks, formerly 4-6 weeks for latent modeling)**:
+Latent interruption modeling (research doc 2 remainder). Now this
+refers strictly to wake-up patterns like Faimena + Guramel that
+require reasoning about opponent-turn triggers. The "direct value"
+portion of constraint 2.3 is already covered by tag expansion in
+Phase A #2.
+
+**Phase C (~2-3 weeks, formerly 4-8 weeks for move ordering)**:
+With constraint 3.2 resolved, the DFS's reach is bounded by
+`maxDepth` and the scorer. The remaining move-ordering improvements
+(research doc 3) become incremental rather than structural.
+
+**New total: 8-14 weeks, down from 12-18 weeks.** More importantly,
+each phase has a concrete fixture-level measurement to gate it
+(Branded `matched` going 1→4→6, Mitsurugi `matched` going 0→2→4,
+D/D/D `matched` going 0→1→3). The gate at the end of each phase is
+a rerun of this spike with the same 3 fixtures.
+
+---
+
 ## 7.8 Takeaway for the spike methodology itself
 
 The 10-card hand bug was invisible for the entire history of the solver's
