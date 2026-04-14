@@ -50,8 +50,10 @@ back/images/
 # BMAD ephemeral artifacts (stories, sprints, retros)
 _bmad-output/implementation-artifacts/
 
-# Duel server external data (downloaded at setup, ~100 MB)
-duel-server/data/
+# Duel server external data (downloaded at setup, ~100 MB).
+# Use `data/*` (not `data/`) so git can re-include specific files —
+# a trailing-slash directory exclude cannot be overridden per-file.
+duel-server/data/*
 !duel-server/data/solver-config.json
 !duel-server/data/interruption-weights.json
 !duel-server/data/interruption-tags.json
