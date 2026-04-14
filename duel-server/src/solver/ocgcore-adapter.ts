@@ -40,6 +40,7 @@ import {
 } from './ocg-constants.js';
 import { queryFieldState, decodeFieldMask } from './ocg-field-query.js';
 import { solverAssert } from './solver-assert.js';
+import { time as instrumentTime } from './solver-instrumentation.js';
 
 // =============================================================================
 // Internal Handle State
@@ -151,6 +152,10 @@ export class OCGCoreAdapter implements GameOracle {
   }
 
   applyAction(handle: DuelHandle, action: Action): void {
+    return instrumentTime('apply', () => this._applyActionImpl(handle, action));
+  }
+
+  private _applyActionImpl(handle: DuelHandle, action: Action): void {
     const internal = this.resolveHandle(handle);
     const response = this.actionToResponse(action);
     try {
@@ -172,11 +177,13 @@ export class OCGCoreAdapter implements GameOracle {
   }
 
   fork(handle: DuelHandle): DuelHandle {
-    const internal = this.resolveHandle(handle);
-    // WASM Memory snapshot not available in current @n1xx1/ocgcore-wasm v0.1.1.
-    // When snapshot API becomes available, try snapshot here with
-    // try/catch fallback to forkViaReplay on failure.
-    return this.forkViaReplay(internal);
+    return instrumentTime('fork', () => {
+      const internal = this.resolveHandle(handle);
+      // WASM Memory snapshot not available in current @n1xx1/ocgcore-wasm v0.1.1.
+      // When snapshot API becomes available, try snapshot here with
+      // try/catch fallback to forkViaReplay on failure.
+      return this.forkViaReplay(internal);
+    });
   }
 
   getFieldState(handle: DuelHandle): FieldState {
@@ -230,11 +237,14 @@ export class OCGCoreAdapter implements GameOracle {
       ? [config.deckSeed[0], config.deckSeed[1], config.deckSeed[2], config.deckSeed[3]]
       : [42n, 123n, 456n, 789n];
 
+    const startingDrawCount = config.startingDrawCount ?? 5;
+    const drawCountPerTurn = config.drawCountPerTurn ?? 1;
+
     const duel = this.core.createDuel({
       flags: OcgDuelMode.MODE_MR5,
       seed,
-      team1: { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 },
-      team2: { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 },
+      team1: { startingLP: 8000, startingDrawCount, drawCountPerTurn },
+      team2: { startingLP: 8000, startingDrawCount, drawCountPerTurn },
       cardReader: this.cardReader as never,
       scriptReader: this.scriptReader,
       errorHandler: () => {},

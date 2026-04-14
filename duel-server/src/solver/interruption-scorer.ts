@@ -14,6 +14,7 @@ import type {
 } from './solver-types.js';
 import { ALL_ZONE_IDS, INTERRUPTION_TYPES } from './solver-types.js';
 import { solverAssert } from './solver-assert.js';
+import { time as instrumentTime } from './solver-instrumentation.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -68,6 +69,13 @@ export class InterruptionScorer {
   }
 
   scoreWithCards(
+    fieldState: FieldState,
+    activationLog?: ActivationLog,
+  ): { score: number; scoreBreakdown: ScoreBreakdown; endBoardCards: EndBoardCard[] } {
+    return instrumentTime('score', () => this._scoreWithCardsImpl(fieldState, activationLog));
+  }
+
+  private _scoreWithCardsImpl(
     fieldState: FieldState,
     activationLog?: ActivationLog,
   ): { score: number; scoreBreakdown: ScoreBreakdown; endBoardCards: EndBoardCard[] } {

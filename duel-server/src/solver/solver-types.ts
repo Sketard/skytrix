@@ -16,6 +16,15 @@ export interface DuelConfig {
   deckSeed: bigint[];
   opponentDeck: number[];
   handtraps?: HandtrapConfig[];
+  /** Override OCGCore's startingDrawCount. Defaults to 5 (standard TCG/OCG
+   *  opening hand). Set to 0 in test harnesses that push an exact starter
+   *  hand via `hand` — otherwise OCGCore draws 5 additional cards on top,
+   *  producing a 10-card hand and polluting measurements. */
+  startingDrawCount?: number;
+  /** Override OCGCore's drawCountPerTurn. Defaults to 1. Set to 0 in test
+   *  harnesses that want a truly fixed hand across all turns (no per-turn
+   *  draws contaminating the scored state). */
+  drawCountPerTurn?: number;
 }
 
 // =============================================================================

@@ -1,0 +1,342 @@
+{
+  "date": "2026-04-13T20:25:46.704Z",
+  "speed": "fast",
+  "timeLimitMs": 5000,
+  "maxDepth": 50,
+  "instrumentationEnabled": true,
+  "solverConfigFile": {
+    "poolSize": 6,
+    "maxDepth": 50,
+    "timeBudgetFastMs": 5000,
+    "timeBudgetOptimalMs": 60000,
+    "progressThrottleMs": 200,
+    "treePruningTopX": 10,
+    "maxResultNodes": 500,
+    "transpositionMaxEntries": 25000,
+    "memoryBudgetMb": 512,
+    "bfComplexityThreshold": 25,
+    "rateLimitIntervalMs": 2000,
+    "maxHandtraps": 5,
+    "ucb1C": 1,
+    "rolloutEpsilon": 0.1,
+    "verificationBudgetRatio": 0.15,
+    "stalledWarningMs": 3000,
+    "maxSolverConnections": 10,
+    "backpropPolicy": "max"
+  },
+  "fixtures": [
+    {
+      "handId": "branded-dracotail-opener",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener: Dracotail Faimena + Dracotail Lukias + Dracotail Pan + Branded Fusion + Blazing Cartesia. Expected to fusion-summon the Albion line and establish Dracotail Arthalion + Ecclesia and the Dark Dragon endboard with full backrow and Faimena quickplay in hand.",
+      "handCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "#1498449"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "#75003700"
+        },
+        {
+          "cardId": 44482554,
+          "cardName": "#44482554"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "#44362883"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "#95515789"
+        }
+      ],
+      "speed": "fast",
+      "timeLimitMs": 5000,
+      "score": 0,
+      "mainPathLength": 0,
+      "nodesExplored": 1,
+      "maxDepthReached": 0,
+      "maxDepthConfig": 50,
+      "averageBranchingFactor": 0,
+      "maxBranchingFactor": 0,
+      "terminationReason": "completed",
+      "truncated": false,
+      "elapsedMs": 9,
+      "depthHistogram": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "scoreBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "transpositionHits": 0,
+      "transpositionMisses": 0,
+      "transpositionStores": 0,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 0,
+        "forkMsTotal": 0,
+        "forkMsMean": 0,
+        "forkMsMax": 0,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 0
+          },
+          {
+            "label": "50ms+",
+            "count": 0
+          }
+        ],
+        "applies": 0,
+        "applyMsTotal": 0,
+        "applyMsMean": 0,
+        "scores": 1,
+        "scoreMsTotal": 0.033,
+        "scoreMsMean": 0.033
+      },
+      "forkPctOfWall": 0,
+      "applyPctOfWall": 0,
+      "scorePctOfWall": 0.3666666666666667,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "cardId": 44482554,
+          "cardName": "Dracotail Pan"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        }
+      ],
+      "deltaScore": 0,
+      "deltaBreakdown": {},
+      "actualBoard": [],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "matched": [],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting",
+          "tagged": true
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena",
+          "tagged": false
+        }
+      ],
+      "extra": [],
+      "missingTaggedCount": 5,
+      "missingUntaggedCount": 1,
+      "expectedAtBaseline": [],
+      "expectedEarned": [],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "mainPathActions": []
+    }
+  ]
+}
