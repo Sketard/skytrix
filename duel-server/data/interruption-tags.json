@@ -806,6 +806,22 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "30271097": {
+    "cardName": "The Fallen & The Virtuous",
+    "sharedOpt": true,
+    "totalUsesPerTurn": 1,
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Send Albaz-mention Fusion from Extra to GY, destroy 1 face-up card on field"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-14",
+    "_validated": false
+  },
   "30674956": {
     "cardName": "Wynn the Wind Charmer, Verdant",
     "effects": [
@@ -1375,15 +1391,17 @@
   },
   "51409648": {
     "cardName": "Rindbrumm the Striking Dragon",
+    "sharedOpt": false,
     "effects": [
       {
-        "type": "bounce",
+        "type": "typedNegate",
         "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "quick",
+        "description": "Negate Fusion/Synchro/Xyz/Link monster effect, optional bounce"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
+    "_oracleVersion": "2026-04-14",
     "_validated": false
   },
   "52331012": {
@@ -2238,6 +2256,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "89851827": {
+    "cardName": "Secreterion Dragon",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous",
+        "description": "Opponent cannot activate effects of Special Summoned Dragon/Spellcaster monsters"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-14",
     "_validated": false
   },
   "90448279": {
