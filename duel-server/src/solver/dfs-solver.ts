@@ -106,6 +106,7 @@ export class DfsSolver implements SolverStrategy {
       timeBudget,
       nodesExplored: 0,
       bestScore: -1,
+      bestTurn1Score: -1,
       bestEndBoardCards: [],
       maxDepthReached: 0,
       totalChildren: 0,
@@ -125,6 +126,7 @@ export class DfsSolver implements SolverStrategy {
       terminalAbortOrNodeLimit: 0,
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
+      terminalTurn2: 0,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
       bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
@@ -187,7 +189,9 @@ export class DfsSolver implements SolverStrategy {
             abortOrNodeLimit: ctx.terminalAbortOrNodeLimit,
             budgetCutoff: ctx.terminalBudgetCutoff,
             ttHit: ctx.terminalTtHit,
+            turn2: ctx.terminalTurn2,
           },
+          bestTurn1Score: ctx.bestTurn1Score,
           promptTypeCounts: ctx.promptTypeCounts,
           bfByDepthSum: ctx.bfByDepthSum,
           bfByDepthCount: ctx.bfByDepthCount,
@@ -266,10 +270,32 @@ export class DfsSolver implements SolverStrategy {
     // over-credit transient staging positions, but `ctx.bestScore` is a
     // `max`, so over-crediting an unreal state is safer than missing a
     // real terminal. Cost: ~15µs × nodes visited ≈ 10-15ms per solve.
+    //
+    // Constraint 3.2 full: `bestEndBoardCards` is gated to `turn <= 1` so
+    // the reported endboard is the canonical end-of-turn-1 state, not a
+    // post-combo or opponent-turn state where cards have cycled through.
+    // `bestScore` stays ungated for observability. Round 5's peak-state
+    // replay on Branded found every expected-board card present mid-combo
+    // but absent from the mainPath terminal — the solver executes the
+    // canonical line then walks past it. This gate freezes capture at the
+    // right moment. See synthesis §7.10.4 / §7.10.6.
     const interim = this.scorer.scoreWithCards(fieldState, activationLog);
-    if (interim.score > ctx.bestScore) {
-      ctx.bestScore = interim.score;
-      ctx.bestEndBoardCards = interim.endBoardCards;
+    this.updateBest(ctx, interim.score, interim.endBoardCards, fieldState.turn);
+
+    // Constraint 3.2 full: virtual terminal at turn-2 entry. The solver's
+    // search horizon is end-of-turn-1; exploring into opponent turn wastes
+    // budget and has no validation signal (`matched` is measured against
+    // turn-1 endboards). Score the turn-2 state for tree propagation so
+    // branches that *reach* turn 2 still carry the interim score upward,
+    // but stop exploring children.
+    if (fieldState.turn >= 2) {
+      ctx.terminalTurn2++;
+      ctx.totalTreeNodes++;
+      return {
+        node: this.makeNode(ROOT_ACTION, interim.score, interim.scoreBreakdown, 1.0, [], true),
+        score: interim.score,
+        scoreBreakdown: interim.scoreBreakdown,
+      };
     }
 
     // Terminal: no legal actions or max depth
@@ -517,16 +543,35 @@ export class DfsSolver implements SolverStrategy {
   ): DfsNodeResult {
     const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
     ctx.totalTreeNodes++;
-    if (score > ctx.bestScore) {
-      ctx.bestScore = score;
-      ctx.bestEndBoardCards = endBoardCards;
-    }
+    this.updateBest(ctx, score, endBoardCards, fieldState.turn);
 
     return {
       node: this.makeNode(ROOT_ACTION, score, scoreBreakdown, truncated ? 0.5 : 1.0, [], true, truncated),
       score,
       scoreBreakdown,
     };
+  }
+
+  /**
+   * Constraint 3.2 full: gated best-state update. `bestScore` tracks the
+   * global max unconditionally (observability). `bestEndBoardCards` is
+   * only captured for states where `turn <= 1`, so the reported endboard
+   * reflects the canonical player-turn-1 peak rather than cycled
+   * post-combo or opponent-turn states. See synthesis §7.10.6.
+   */
+  private updateBest(
+    ctx: DfsContext,
+    score: number,
+    endBoardCards: EndBoardCard[],
+    turn: number,
+  ): void {
+    if (score > ctx.bestScore) {
+      ctx.bestScore = score;
+    }
+    if (turn <= 1 && score > ctx.bestTurn1Score) {
+      ctx.bestTurn1Score = score;
+      ctx.bestEndBoardCards = endBoardCards;
+    }
   }
 
   // ===========================================================================
@@ -558,6 +603,7 @@ export class DfsSolver implements SolverStrategy {
       timeBudget: config.timeLimitMs,
       nodesExplored: 0,
       bestScore: -1,
+      bestTurn1Score: -1,
       bestEndBoardCards: [],
       maxDepthReached: 0,
       totalChildren: 0,
@@ -570,6 +616,19 @@ export class DfsSolver implements SolverStrategy {
       depthCapHit: false,
       timedOut: false,
       lastProgressTime: startTime,
+      terminalActionsZero: 0,
+      terminalDepthCap: 0,
+      terminalLoopDetected: 0,
+      terminalTreeSizeLimit: 0,
+      terminalAbortOrNodeLimit: 0,
+      terminalBudgetCutoff: 0,
+      terminalTtHit: 0,
+      terminalTurn2: 0,
+      promptTypeCounts: {},
+      bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
+      bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
+      actionsZeroByDepth: new Array(this.maxDepth + 1).fill(0),
+      actionsZeroSamples: [],
       nodeLimit,
     };
 
@@ -715,6 +774,12 @@ interface DfsContext {
   timeBudget: number;
   nodesExplored: number;
   bestScore: number;
+  /** Constraint 3.2 full: max score observed at any `turn <= 1` state.
+   *  Gated companion to `bestScore` so that `bestEndBoardCards` reflects
+   *  the canonical end-of-turn-1 peak rather than post-combo / opponent-turn
+   *  cycling. `bestScore` stays as the unconditional global max for
+   *  observability (diagnostic + progress emission). */
+  bestTurn1Score: number;
   bestEndBoardCards: EndBoardCard[];
   maxDepthReached: number;
   totalChildren: number;
@@ -747,6 +812,10 @@ interface DfsContext {
   terminalAbortOrNodeLimit: number;
   terminalBudgetCutoff: number;
   terminalTtHit: number;
+  /** Constraint 3.2 full: nodes cut off because `fieldState.turn >= 2`.
+   *  The solver's search horizon is end of player turn 1; reaching opponent
+   *  turn is a virtual terminal. */
+  terminalTurn2: number;
   promptTypeCounts: Record<string, number>;
   bfByDepthSum: number[];
   bfByDepthCount: number[];

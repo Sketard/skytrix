@@ -281,7 +281,13 @@ export interface DfsDiagnostic {
     abortOrNodeLimit: number; // signal abort OR probe nodeLimit reached
     budgetCutoff: number;    // 0 children explored after loop (time budget or abort mid-branch)
     ttHit: number;           // transposition table lookup short-circuited further exploration
+    turn2: number;           // constraint 3.2 full: reached `fieldState.turn >= 2` (beyond search horizon)
   };
+  /** Constraint 3.2 full: max score observed at `turn <= 1` states. Paired
+   *  with `bestEndBoardCards` on the solver result. Diverges from
+   *  `bestScore` / tree-propagated `score` when states beyond the turn-1
+   *  boundary outscore every turn-1 state seen. */
+  bestTurn1Score: number;
   /** Prompt type counts observed at nodes with legal actions (exploratory
    *  prompts only — mechanical prompts are auto-resolved by the adapter). */
   promptTypeCounts: Record<string, number>;
