@@ -697,14 +697,16 @@ export class OCGCoreAdapter implements GameOracle {
     return actions;
   }
 
-  /** 2026-04-15 large-pool tutor branching. Emits at most
-   *  SELECT_CARD_PREFERRED_EXPOSURE_K branch actions, each corresponding
-   *  to a candidate whose `code` matches `preferredSearchTargets`. The
-   *  iteration order is `preferredSearchTargets` priority (same discipline
-   *  as `autoRespondMechanical`'s Phase G-iv ordering), so the DFS
-   *  explores the likely-correct target first. Non-preferred candidates
-   *  are NOT surfaced — the mechanical fallback path is reserved for
-   *  pools with zero preferred matches (see gating comments). */
+  /** 2026-04-15 large-pool tutor branching. Emits up to
+   *  SELECT_CARD_PREFERRED_EXPOSURE_K preferred matches plus one OCG-index-0
+   *  fallback branch (Phase M.2). The preferred matches iterate in
+   *  `preferredSearchTargets` priority (same discipline as
+   *  `autoRespondMechanical`'s Phase G-iv ordering). The fallback branch
+   *  preserves access to the OCG-index-0 candidate that the mechanical
+   *  path historically resolved to — without it, Phase M.1 documented a
+   *  D/D/D structural regression (2/5 → 1/5) caused by forcing preferred-
+   *  only exposure and excluding the serendipitous Clovis fusion material
+   *  path that the baseline relied on. */
   private enumeratePreferredSelectCard(
     msg: Record<string, unknown>,
     config?: DuelConfig,
@@ -735,6 +737,16 @@ export class OCGCoreAdapter implements GameOracle {
           break;
         }
       }
+    }
+
+    // Phase M.2 (2026-04-15): append OCG-index-0 as a fallback branch
+    // unless it's already in the preferred matches. This is the structural
+    // fix for the Phase M.1 D/D/D regression — the baseline path's Clovis
+    // fusion material sits at OCG-index-0 in the Gate tutor pool and must
+    // remain reachable by the DFS even when preferredIntermediates are set.
+    if (selects.length > 0 && !picked.has(0)) {
+      matches.push(0);
+      picked.add(0);
     }
 
     for (const i of matches) {

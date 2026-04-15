@@ -1384,6 +1384,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "49105782": {
+    "cardName": "Hraesvelgr, the Desperate Doom Eagle",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Target 1 monster in opponent's GY; shuffle it into the Deck"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
   "49202162": {
     "cardName": "Black Luster Soldier - Soldier of Chaos",
     "effects": [
@@ -1474,6 +1488,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "53813120": {
+    "cardName": "Radiant Typhoon Mandate",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "When Mystical Space Typhoon is activated: target 1 face-up opponent card; negate its effects (conditional on MST trigger)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
     "_validated": false
   },
   "54498517": {
@@ -1793,6 +1821,34 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "71068247": {
+    "cardName": "Totem Bird",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Detach 2 materials; negate Spell/Trap activation and destroy it"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
+  "71166481": {
+    "cardName": "Number 75: Bamboozling Gossip Shadow",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Detach 2 materials; opponent monster effect becomes 'both players draw 1 card' (modal negate)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
     "_validated": false
   },
   "71564252": {
