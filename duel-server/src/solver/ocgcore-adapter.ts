@@ -400,6 +400,14 @@ export class OCGCoreAdapter implements GameOracle {
             && this.selectCardIsExploratory(msgAny)) {
             return this.enumerateActionsWithResponses(msgAny, promptType, internal.config);
           }
+          // 2026-04-15 large-pool tutor exposure: when the pool exceeds
+          // SELECT_CARD_EXPLORATORY_MAX but `preferredSearchTargets`
+          // contains matches, surface the top-K preferred matches as
+          // branches. See SELECT_CARD_PREFERRED_EXPOSURE_K comment.
+          if (promptType === 'SELECT_CARD'
+            && this.selectCardIsPreferredExploratory(msgAny, internal.config)) {
+            return this.enumeratePreferredSelectCard(msgAny, internal.config);
+          }
           const resp = this.autoRespondMechanical(msgAny, internal.config);
           this.core.duelSetResponse(internal.nativeHandle, resp as never);
           internal.responseHistory.push(resp);
@@ -429,6 +437,18 @@ export class OCGCoreAdapter implements GameOracle {
    *  Validated empirically in the 2026-04-14 Phase A #3 spike. */
   private static readonly SELECT_CARD_EXPLORATORY_MAX = 6;
 
+  /** 2026-04-15 large-pool tutor branching cap. When a SELECT_CARD pool
+   *  exceeds SELECT_CARD_EXPLORATORY_MAX but `preferredSearchTargets`
+   *  contains K+ matches in the pool, expose the top-K preferred matches
+   *  as DFS branch points instead of collapsing to a single mechanical
+   *  pick. K=4 bounds multi-Gate branching (D/D/D: Gate x3) while still
+   *  covering alternative combo lines. See the 2026-04-15 SELECT_CARD
+   *  dump audit — D/D/D mainPath showed 2 Gate activations with ZERO
+   *  SELECT_CARD branches exposed because pool > 6, preventing the DFS
+   *  from discovering combo lines that require different per-activation
+   *  tutor targets. */
+  private static readonly SELECT_CARD_PREFERRED_EXPOSURE_K = 4;
+
   /** Return true when a SELECT_CARD prompt should be surfaced to the DFS
    *  as a branch point instead of auto-resolved. Single-pick only —
    *  multi-pick (min>1 or max>1) creates a combinatorial subset-selection
@@ -441,6 +461,34 @@ export class OCGCoreAdapter implements GameOracle {
       && max === 1
       && selects.length > 0
       && selects.length <= OCGCoreAdapter.SELECT_CARD_EXPLORATORY_MAX;
+  }
+
+  /** Return true when a LARGE-pool SELECT_CARD should be exposed as a
+   *  DFS branch over top-K preferred targets. Complementary to
+   *  `selectCardIsExploratory`: small pools handled there, large
+   *  DECK-only pools with at least one preferred match handled here.
+   *
+   *  Gates (all must pass):
+   *  - single-pick (min === max === 1)
+   *  - pool > SELECT_CARD_EXPLORATORY_MAX (else regular exploratory path)
+   *  - DECK-only location (same safety as autoRespondMechanical's gate —
+   *    see round 4 regressions on FIELD/GY broadening)
+   *  - at least 1 preferred-match in pool (else mechanical fallback is
+   *    indistinguishable from first-index pick) */
+  private selectCardIsPreferredExploratory(
+    msg: Record<string, unknown>,
+    config?: DuelConfig,
+  ): boolean {
+    const selects = (msg['selects'] as { code?: number; location?: number }[] | undefined) ?? [];
+    const min = (msg['min'] as number) ?? 1;
+    const max = (msg['max'] as number) ?? 1;
+    if (min !== 1 || max !== 1) return false;
+    if (selects.length <= OCGCoreAdapter.SELECT_CARD_EXPLORATORY_MAX) return false;
+    const preferred = config?.preferredSearchTargets;
+    if (!preferred || preferred.length === 0) return false;
+    if (!selects.every(s => s.location === OcgLocation.DECK)) return false;
+    const preferredSet = new Set(preferred);
+    return selects.some(s => s.code !== undefined && preferredSet.has(s.code));
   }
 
   // ===========================================================================
@@ -644,6 +692,59 @@ export class OCGCoreAdapter implements GameOracle {
         }
         break;
       }
+    }
+
+    return actions;
+  }
+
+  /** 2026-04-15 large-pool tutor branching. Emits at most
+   *  SELECT_CARD_PREFERRED_EXPOSURE_K branch actions, each corresponding
+   *  to a candidate whose `code` matches `preferredSearchTargets`. The
+   *  iteration order is `preferredSearchTargets` priority (same discipline
+   *  as `autoRespondMechanical`'s Phase G-iv ordering), so the DFS
+   *  explores the likely-correct target first. Non-preferred candidates
+   *  are NOT surfaced — the mechanical fallback path is reserved for
+   *  pools with zero preferred matches (see gating comments). */
+  private enumeratePreferredSelectCard(
+    msg: Record<string, unknown>,
+    config?: DuelConfig,
+  ): Action[] {
+    this._lastActionResponses.clear();
+    const actions: Action[] = [];
+    const selects = (msg['selects'] ?? []) as { code?: number; location?: number }[];
+    const preferred = config?.preferredSearchTargets;
+    if (!preferred || preferred.length === 0) return actions;
+
+    const pushAction = (action: Action, response: unknown): void => {
+      action._response = response;
+      this._lastActionResponses.set(action.responseIndex, response);
+      actions.push(action);
+    };
+
+    // Collect up to K distinct candidate indices whose code matches a
+    // preferred target, iterating in preferred-list priority order.
+    const picked = new Set<number>();
+    const matches: number[] = [];
+    for (const prefCode of preferred) {
+      if (matches.length >= OCGCoreAdapter.SELECT_CARD_PREFERRED_EXPOSURE_K) break;
+      for (let i = 0; i < selects.length; i++) {
+        if (picked.has(i)) continue;
+        if (selects[i].code === prefCode) {
+          matches.push(i);
+          picked.add(i);
+          break;
+        }
+      }
+    }
+
+    for (const i of matches) {
+      pushAction({
+        responseIndex: i,
+        cardId: selects[i].code ?? 0,
+        promptType: 'SELECT_CARD',
+        isExploratory: true,
+        actionTag: 'pick',
+      }, { type: 5, indicies: [i] });
     }
 
     return actions;

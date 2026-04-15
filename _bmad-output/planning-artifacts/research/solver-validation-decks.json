@@ -199,6 +199,7 @@
       "hand": [11609969, 46796664, 42382265, 46372010, 42141493],
       "deckSeed": "11111,22222",
       "maxDepth": 50,
+      "preferredIntermediates": [20715411, 5997110, 67322708, 72291412],
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 46593546, "cardName": "D/D/D Deviser King Deus Machinex" },
         { "zone": "MZONE", "cardId": 79559912, "cardName": "D/D/D Wave High King Caesar" },
