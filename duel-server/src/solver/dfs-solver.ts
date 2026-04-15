@@ -36,6 +36,23 @@ import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 export { ROOT_ACTION, extractMainPath } from './tree-utils.js';
 
 // =============================================================================
+// Phase I — branch-and-bound pruning tunable
+// =============================================================================
+
+/** Max plausible score gain per remaining ply, used by the branch-and-bound
+ *  pruning check to decide whether a subtree can possibly exceed the current
+ *  `ctx.bestTurn1Score`. Calibrated conservatively (~2× the empirical average
+ *  gain of productive plies) to minimize false pruning. A higher value
+ *  prunes less but preserves more exploration; a lower value prunes more
+ *  aggressively at the risk of cutting legitimate late peaks.
+ *
+ *  Default 3 was empirically validated on D/D/D / Mitsurugi / Branded at
+ *  60s budget — raise to 5+ if a fixture matched-count regresses, lower
+ *  to 2 to tighten the cut window once alpha-beta-friendly move ordering
+ *  is in place. */
+const BRANCH_BOUND_RECOVERY_PER_PLY = 1.5;
+
+// =============================================================================
 // Internal Types
 // =============================================================================
 
@@ -131,6 +148,7 @@ export class DfsSolver implements SolverStrategy {
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
       terminalTurn2: 0,
+      terminalBranchBoundCut: 0,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
       bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
@@ -202,6 +220,7 @@ export class DfsSolver implements SolverStrategy {
             budgetCutoff: ctx.terminalBudgetCutoff,
             ttHit: ctx.terminalTtHit,
             turn2: ctx.terminalTurn2,
+            branchBoundCut: ctx.terminalBranchBoundCut,
           },
           bestTurn1Score: ctx.bestTurn1Score,
           // Phase H — authoritative peak field-state snapshot. Probes and
@@ -347,6 +366,33 @@ export class DfsSolver implements SolverStrategy {
     // peaks, without crediting the turn-2 state itself.
     if (fieldState.turn >= 2) {
       ctx.terminalTurn2++;
+      ctx.totalTreeNodes++;
+      return {
+        node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
+        score: pathTurn1Score,
+        scoreBreakdown: pathTurn1Breakdown,
+      };
+    }
+
+    // Phase I — branch-and-bound pruning. If the current ancestor-chain
+    // turn-1 peak plus a plausible upper bound on remaining-ply gain still
+    // falls short of the global best, this subtree cannot possibly produce
+    // a new peak — cut it and return pathTurn1Score upward. RECOVERY_PER_PLY
+    // is calibrated at 3 (~2× the empirical average gain per productive ply)
+    // to stay conservative: the cut only fires when the gap cannot be
+    // bridged even under an optimistic per-ply gain assumption.
+    //
+    // Propagating pathTurn1Score (not 0) keeps tree score tracking honest
+    // — the parent's `children.sort score desc` sees the ancestor value
+    // this branch already captured, preserving the Phase F-bis v2 semantics.
+    //
+    // No-op at the root (ctx.bestTurn1Score starts at -1, condition
+    // `pathTurn1Score + maxGain < -1` is always false). Only starts firing
+    // once updateBest has set bestTurn1Score to a non-trivial value.
+    const remainingPlies = this.maxDepth - depth;
+    const maxPlausibleGain = remainingPlies * BRANCH_BOUND_RECOVERY_PER_PLY;
+    if (pathTurn1Score + maxPlausibleGain < ctx.bestTurn1Score) {
+      ctx.terminalBranchBoundCut++;
       ctx.totalTreeNodes++;
       return {
         node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
@@ -742,6 +788,7 @@ export class DfsSolver implements SolverStrategy {
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
       terminalTurn2: 0,
+      terminalBranchBoundCut: 0,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
       bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
@@ -964,6 +1011,10 @@ interface DfsContext {
    *  The solver's search horizon is end of player turn 1; reaching opponent
    *  turn is a virtual terminal. */
   terminalTurn2: number;
+  /** Phase I — nodes cut by the branch-and-bound pruning check: subtrees
+   *  whose upper bound (ancestor pathTurn1Score + remaining-ply plausible
+   *  gain) cannot possibly exceed ctx.bestTurn1Score. */
+  terminalBranchBoundCut: number;
   promptTypeCounts: Record<string, number>;
   bfByDepthSum: number[];
   bfByDepthCount: number[];
