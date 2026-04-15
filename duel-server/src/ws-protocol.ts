@@ -893,6 +893,10 @@ export interface SolverWsScoreBreakdown {
   weighted: number;
   /** Fallback heuristic bonus (untagged face-up monsters). */
   fallbackPoints: number;
+  /** Phase 2.3 V1 — turn-1 combo-progress bonus (Dark Contracts in S/T,
+   *  Doom Queen Machinex in PZONE). Hardcoded to D/D-family card IDs.
+   *  Optional for backwards compatibility with older clients. */
+  latentPoints?: number;
   total: number;
 }
 

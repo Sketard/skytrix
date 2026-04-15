@@ -140,7 +140,14 @@ export interface ScoreBreakdown {
   /** Bonus points awarded by the fallback heuristic (untagged face-up monsters).
    *  Used for tie-breaking between non-brick paths only. */
   fallbackPoints: number;
-  /** weighted + fallbackPoints. Surfaced as the headline score in the UI. */
+  /** Phase 2.3 V1 — bonus points awarded to turn-1 intermediate combo-progress
+   *  state features (Dark Contracts in S/T, Doom Queen Machinex in PZONE). Gives
+   *  the DFS a non-zero score gradient for mid-combo states so subsequent
+   *  phases (alpha-beta pruning) have a bound to work with. Hardcoded to
+   *  D/D-family card IDs for zero-regression-by-construction on non-D/D decks.
+   *  Separate from `weighted` so brick detection ignores it. */
+  latentPoints: number;
+  /** weighted + fallbackPoints + latentPoints. Surfaced as the headline score in the UI. */
   total: number;
 }
 
@@ -164,7 +171,7 @@ export const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
   controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
-  weighted: 0, fallbackPoints: 0, total: 0,
+  weighted: 0, fallbackPoints: 0, latentPoints: 0, total: 0,
 });
 
 /** Allocate a fresh mutable ScoreBreakdown with all fields = 0. */

@@ -39,6 +39,49 @@ const MONSTER_ZONE_IDS: readonly ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_
 const SCORED_ZONE_IDS: readonly ZoneId[] = ALL_ZONE_IDS.filter(z => !NON_SCORED_ZONES.has(z));
 
 // =============================================================================
+// Phase 2.3 V1 latent scoring — turn-1 combo-progress state bonus
+// =============================================================================
+
+/** Hardcoded D/D-family card IDs that earn latent combo-progress bonuses.
+ *  Narrowly scoped to the D/D archetype so Branded/Mitsurugi intermediate
+ *  states are unaffected by construction (neither archetype uses Dark
+ *  Contracts or Doom Queen Machinex).
+ *
+ *  Rationale: the canonical D/D/D turn-1 peak (Siegfried + Deus Machinex
+ *  endboard, confirmed via `probe-ddd-mainpath-autopsy.ts` on 2026-04-17)
+ *  has 2 Dark Contracts in the S/T zone + Doom Queen Machinex in PZONE.
+ *  Rewarding this shape gives the DFS a gradient between "bare field" (0
+ *  latent) and "mid-combo progress" (5-11 latent), which downstream phases
+ *  (alpha-beta pruning, iterative deepening) can exploit for cutoffs.
+ *
+ *  DO NOT widen this set to generic continuous spells or "any monster on
+ *  field" — both would leak into Branded (Cartesia ritual) and Mitsurugi
+ *  (continuous trap shell), reintroducing regression risk. */
+const DARK_CONTRACT_IDS: ReadonlySet<number> = new Set([
+  46372010, // Dark Contract with the Gate
+  32665564, // Dark Contract with the Zero King
+  9030160,  // Dark Contract with the Eternal Darkness
+  73360025, // Dark Contract with the Swamp King
+]);
+
+const DOOM_QUEEN_MACHINEX_ID = 20715411; // D/D/D Zero Doom Queen Machinex
+
+/** Pendulum scale zones under Master Rule 5 (S1/S5 double as P_L/P_R). */
+const PZONE_IDS: readonly ZoneId[] = ['S1', 'S5'];
+
+/** S/T zones where continuous spells (Dark Contracts) live. */
+const ST_ZONE_IDS: readonly ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
+
+/** Per-contract latent bonus. */
+const DARK_CONTRACT_BONUS = 2;
+/** Maximum contracts counted (caps at 4 to prevent pathological
+ *  duplicate-contract paths from dominating). */
+const DARK_CONTRACT_MAX_COUNT = 4;
+/** Doom Queen in PZONE bonus — one-shot (at most one can be in each PZONE
+ *  slot but the combo only needs one to mark canonical progress). */
+const DOOM_QUEEN_PZONE_BONUS = 3;
+
+// =============================================================================
 // InterruptionScorer
 // =============================================================================
 
@@ -84,7 +127,7 @@ export class InterruptionScorer {
       controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
       bounce: 0, handRip: 0, sendToGy: 0,
-      weighted: 0, fallbackPoints: 0, total: 0,
+      weighted: 0, fallbackPoints: 0, latentPoints: 0, total: 0,
     };
 
     let weighted = 0;
@@ -189,20 +232,50 @@ export class InterruptionScorer {
       }
     }
 
-    const total = weighted + fallbackPoints;
+    // Phase 2.3 V1 — turn-1 latent combo-progress bonus. Gated on
+    // `turn === 1` so turn-0 baseline and turn>=2 virtual terminals are
+    // unaffected. Hardcoded to D/D card IDs for zero-regression-by-
+    // construction on Branded/Mitsurugi. Capped at
+    // DARK_CONTRACT_BONUS * DARK_CONTRACT_MAX_COUNT + DOOM_QUEEN_PZONE_BONUS
+    // = 2*4 + 3 = 11 points to prevent dominating the tagged-weighted peak.
+    let latentPoints = 0;
+    if (fieldState.turn === 1) {
+      let contractCount = 0;
+      for (const zoneId of ST_ZONE_IDS) {
+        const cards = fieldState.zones[zoneId];
+        for (const card of cards) {
+          if (DARK_CONTRACT_IDS.has(card.cardId)) contractCount++;
+        }
+      }
+      const contractBonus = DARK_CONTRACT_BONUS * Math.min(contractCount, DARK_CONTRACT_MAX_COUNT);
+      latentPoints += contractBonus;
+
+      let doomQueenInPzone = false;
+      for (const zoneId of PZONE_IDS) {
+        const cards = fieldState.zones[zoneId];
+        for (const card of cards) {
+          if (card.cardId === DOOM_QUEEN_MACHINEX_ID) { doomQueenInPzone = true; break; }
+        }
+        if (doomQueenInPzone) break;
+      }
+      if (doomQueenInPzone) latentPoints += DOOM_QUEEN_PZONE_BONUS;
+    }
+
+    const total = weighted + fallbackPoints + latentPoints;
     breakdown.weighted = weighted;
     breakdown.fallbackPoints = fallbackPoints;
+    breakdown.latentPoints = latentPoints;
     breakdown.total = total;
 
-    // Invariant: total is the sum of the two component scores. Brick
-    // detection uses `weighted` specifically (excluding fallback) so any
-    // drift between `total` and `weighted + fallbackPoints` corrupts both
-    // score display and brick classification.
+    // Invariant: total is the sum of the three component scores. Brick
+    // detection uses `weighted` specifically (excluding fallback and latent)
+    // so any drift between `total` and `weighted + fallbackPoints + latentPoints`
+    // corrupts both score display and brick classification.
     solverAssert(
-      Math.abs(breakdown.total - (breakdown.weighted + breakdown.fallbackPoints)) < 1e-9,
+      Math.abs(breakdown.total - (breakdown.weighted + breakdown.fallbackPoints + breakdown.latentPoints)) < 1e-9,
       'InterruptionScorer.scoreWithCards',
-      'total !== weighted + fallbackPoints',
-      { total: breakdown.total, weighted: breakdown.weighted, fallbackPoints: breakdown.fallbackPoints },
+      'total !== weighted + fallbackPoints + latentPoints',
+      { total: breakdown.total, weighted: breakdown.weighted, fallbackPoints: breakdown.fallbackPoints, latentPoints: breakdown.latentPoints },
     );
 
     return { score: total, scoreBreakdown: breakdown, endBoardCards };
