@@ -109,6 +109,9 @@ export class DfsSolver implements SolverStrategy {
       bestTurn1Score: -1,
       bestEndBoardCards: [],
       bestTurn1Breakdown: cloneEmptyBreakdown(),
+      currentActionStack: [],
+      bestTurn1Path: undefined,
+      bestTurn1FieldState: undefined,
       maxDepthReached: 0,
       totalChildren: 0,
       totalBranchingNodes: 0,
@@ -145,7 +148,15 @@ export class DfsSolver implements SolverStrategy {
       const pathHashes = new Set<string>();
       const result = this.dfs(ctx, startHandle, 0, pathHashes);
 
-      const mainPath = this.extractMainPath(result.node);
+      // Phase H — mainPath prefers `ctx.bestTurn1Path` (exact replay to peak
+      // state) over the old `extractMainPath` tree walk, which drifts into
+      // arbitrary post-peak tied branches due to Phase F-bis v2 ancestor-
+      // chain score propagation. Fallback to extractMainPath only when no
+      // turn<=1 state was ever visited (pathological — shouldn't happen in
+      // normal solves). See Phase H diagnostic / probe-ddd-mainpath-autopsy.
+      const mainPath: SolverAction[] = ctx.bestTurn1Path !== undefined
+        ? ctx.bestTurn1Path.map(a => this.adapter.enrichAction(a))
+        : this.extractMainPath(result.node);
       const elapsed = Date.now() - startTime;
 
       // Termination reason precedence: depth_cap > timeout > aborted > completed.
@@ -193,6 +204,10 @@ export class DfsSolver implements SolverStrategy {
             turn2: ctx.terminalTurn2,
           },
           bestTurn1Score: ctx.bestTurn1Score,
+          // Phase H — authoritative peak field-state snapshot. Probes and
+          // diagnostics should read this instead of attempting to replay
+          // the mainPath (which may desync under forkViaReplay semantics).
+          bestTurn1FieldState: ctx.bestTurn1FieldState,
           suggestedMaxDepth: this.suggestMaxDepth(ctx),
           promptTypeCounts: ctx.promptTypeCounts,
           bfByDepthSum: ctx.bfByDepthSum,
@@ -302,7 +317,7 @@ export class DfsSolver implements SolverStrategy {
     // canonical line then walks past it. This gate freezes capture at the
     // right moment. See synthesis §7.10.4 / §7.10.6.
     const interim = this.scorer.scoreWithCards(fieldState, activationLog);
-    this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn);
+    this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn, fieldState);
 
     // Phase F-bis v2: fold the current interim into the ancestor chain
     // parameter ONLY if this state is turn<=1. This value is what the
@@ -509,6 +524,12 @@ export class DfsSolver implements SolverStrategy {
       if (ctx.signal.aborted) break;
 
       const child = ctx.oracle.fork(handle);
+      // Phase H — maintain the live descent stack. The push must happen
+      // BEFORE the recursive call so that `updateBest` at the child node
+      // sees the complete root→child path. The pop MUST run in the
+      // `finally` block to stay symmetric even if the recursive call
+      // throws (current code never does, but defensive).
+      ctx.currentActionStack.push(action);
       try {
         ctx.oracle.applyAction(child, action);
         const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1Score, pathTurn1Breakdown);
@@ -522,6 +543,7 @@ export class DfsSolver implements SolverStrategy {
           bestBreakdown = result.scoreBreakdown;
         }
       } finally {
+        ctx.currentActionStack.pop();
         ctx.oracle.destroyDuel(child);
       }
     }
@@ -642,6 +664,7 @@ export class DfsSolver implements SolverStrategy {
     scoreBreakdown: ScoreBreakdown,
     endBoardCards: EndBoardCard[],
     turn: number,
+    fieldState: FieldState,
   ): void {
     if (score > ctx.bestScore) {
       ctx.bestScore = score;
@@ -650,6 +673,18 @@ export class DfsSolver implements SolverStrategy {
       ctx.bestTurn1Score = score;
       ctx.bestEndBoardCards = endBoardCards;
       ctx.bestTurn1Breakdown = scoreBreakdown;
+      // Phase H — clone the live descent stack so consumers can inspect the
+      // action sequence the DFS took to reach the peak. NOTE: replaying this
+      // path on a fresh engine may desync due to `forkViaReplay` vs fresh
+      // `createDuel + applyAction` divergence in OCGCore chain-window
+      // materialization. Use `bestTurn1FieldState` below for authoritative
+      // peak state inspection.
+      ctx.bestTurn1Path = [...ctx.currentActionStack];
+      // Phase H — authoritative peak state snapshot. FieldState is a plain
+      // object returned by `getFieldState` (pure query, no engine mutation),
+      // so storing the reference is safe. The caller does not mutate it
+      // after passing it in.
+      ctx.bestTurn1FieldState = fieldState;
     }
   }
 
@@ -685,6 +720,9 @@ export class DfsSolver implements SolverStrategy {
       bestTurn1Score: -1,
       bestEndBoardCards: [],
       bestTurn1Breakdown: cloneEmptyBreakdown(),
+      currentActionStack: [],
+      bestTurn1Path: undefined,
+      bestTurn1FieldState: undefined,
       maxDepthReached: 0,
       totalChildren: 0,
       totalBranchingNodes: 0,
@@ -870,6 +908,27 @@ interface DfsContext {
    *  `score=3 weighted=0 fallback=3` alongside an actualBoard of 2 tagged
    *  bosses that should have contributed 27 weighted. */
   bestTurn1Breakdown: ScoreBreakdown;
+  /** Phase H — live DFS descent stack. Maintained via push/pop around each
+   *  recursive `dfs()` call in the child exploration loop. At the top of any
+   *  `dfs()` call the stack contains the ordered list of Actions that transition
+   *  the root state to the current node's state. Used by `updateBest` to capture
+   *  the exact replay path when `bestTurn1Score` improves. */
+  currentActionStack: Action[];
+  /** Phase H — clone of `currentActionStack` taken at the moment `bestTurn1Score`
+   *  improved. Represents the ordered exploratory actions the DFS took from
+   *  root to the peak node. NOTE: this is NOT guaranteed to replay exactly
+   *  on a fresh `createDuel + applyAction` engine because the DFS uses
+   *  `forkViaReplay` semantics that may surface different chain windows than
+   *  fresh replay. Use `bestTurn1FieldState` for authoritative peak state;
+   *  use `bestTurn1Path` for understanding the solver's decision sequence.
+   *  `undefined` means no turn<=1 state was ever visited (solve() falls back
+   *  to the old tree-walk `extractMainPath`). */
+  bestTurn1Path: Action[] | undefined;
+  /** Phase H — snapshot of `fieldState` at the moment `bestTurn1Score` improved.
+   *  Authoritative peak state, untouched by fork/replay divergence. Consumers
+   *  (probes, diagnostics) should prefer this over replaying `bestTurn1Path`
+   *  when they want to inspect the peak. */
+  bestTurn1FieldState: FieldState | undefined;
   maxDepthReached: number;
   totalChildren: number;
   totalBranchingNodes: number;
