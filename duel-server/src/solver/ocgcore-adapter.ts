@@ -669,14 +669,33 @@ export class OCGCoreAdapter implements GameOracle {
         const allFromDeck = selects.length > 0
           && selects.every(s => s.location === OcgLocation.DECK);
         if (allFromDeck && preferred && preferred.length > 0) {
-          const preferredSet = new Set(preferred);
+          // Phase G-iv: iterate `preferred` in priority ORDER (not `selects`
+          // in OCG index order). Multi-step combos need different SELECT_CARD
+          // targets at each prompt (Gate → Doom Queen, Zero Contract SS →
+          // Count Surveyor, Copernicus dump → Lance Soldier, Tell dump →
+          // Necro Slime, etc.). Each preferred card is "consumed" naturally
+          // by the game state as the combo advances, so priority order gives
+          // per-prompt resolution without stateful tracking:
+          //   - Gate's pool contains Doom Queen Mach → picked first (in
+          //     preferred list) → combo step 1 unlocked.
+          //   - Next prompt (Zero Contract's SS from deck): Doom Queen Mach
+          //     already SS'd, not in pool → skip. Count Surveyor (next in
+          //     preferred list) IS in pool → picked → step 3 unlocked.
+          //   - ...and so on.
+          // Backward compatible: single-card preferred lists (Branded Mululu)
+          // behave identically to the old OCG-index-first logic.
           const preferredIdx: number[] = [];
-          for (let i = 0; i < selects.length && preferredIdx.length < min; i++) {
-            const code = selects[i].code;
-            if (code !== undefined && preferredSet.has(code)) preferredIdx.push(i);
+          for (const prefCode of preferred) {
+            if (preferredIdx.length >= min) break;
+            for (let i = 0; i < selects.length; i++) {
+              if (selects[i].code === prefCode && !preferredIdx.includes(i)) {
+                preferredIdx.push(i);
+                break;
+              }
+            }
           }
-          // Top up with remaining indices (first available non-preferred)
-          // if we didn't find `min` preferred matches.
+          // Top up with remaining OCG-order indices if we didn't find `min`
+          // preferred matches.
           if (preferredIdx.length < min) {
             for (let i = 0; i < selects.length && preferredIdx.length < min; i++) {
               if (!preferredIdx.includes(i)) preferredIdx.push(i);
