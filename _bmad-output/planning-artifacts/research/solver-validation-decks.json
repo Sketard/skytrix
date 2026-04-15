@@ -20,6 +20,21 @@
         "url": "https://ygoprodeck.com/deck/branded-dracotail-705277",
         "format": "TCG 2026",
         "validatedAgainstCardDb": true
+      },
+      "radiant-typhoon-ygoprodeck-2026": {
+        "source": "ygoprodeck.com — Radiant Typhoon, competitive 2026 build (April 2026)",
+        "url": "https://ygoprodeck.com/deck/radiant-typhoon-705676",
+        "format": "TCG April 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Control deck paradigm — coverage of non-combo endboard (3 cards vs typical 5-6). Opener + endboard validated by user 2026-04-15."
+      },
+      "yummy-pure-striker-2026": {
+        "source": "ygoprodeck.com — Yummy (Synchro Festival variant adapted with Herald of the Arc Light for canonical combo endboard)",
+        "url": "https://ygoprodeck.com/deck/yummy-696212",
+        "format": "TCG April 2026",
+        "validatedAgainstCardDb": true,
+        "_draft": true,
+        "notes": "DRAFT — DO NOT INCLUDE IN BASELINE MATCHED AGGREGATION. Yummy pure combo fixture — Herald of the Arc Light swapped into Extra (replaces 1 Goyo Defender) to enable the canonical 6-card endboard. Combo source: ygo101 image 2c5615c3. KNOWN ISSUE (2026-04-15 smoke test): opener [Lollipo + 4 handtraps] does NOT execute the combo — DFS terminates at 3 plies because the Sky Striker engine (Hornet Drones + Engage + Kagari) is absent from this deck and the combo requires a Link-1 token for the chain. Fixture needs either (a) Sky Striker engine added to main/extra, or (b) different opener that truly works 1-card from Lollipo alone. Score 1 / matched 0/6."
       }
     },
     "usage": "Solver correctness validation. Decklists extracted from ygoprodeck.com HTML (data-card attributes) and validated against duel-server/data/cards.cdb. Alias IDs normalized to canonical IDs (Ash Blossom 14558128→14558127, Harpie's Feather Duster 18144507→18144506). Feed hands to the DFS/MCTS solver and compare computed endBoardCards against expected boards.",
@@ -134,6 +149,103 @@
         84749824, 84749824, 84749824
       ]
     },
+    "radiant-typhoon-ygoprodeck-2026": {
+      "main": [
+        85315450,
+        80538047, 80538047, 80538047,
+        16922142, 16922142, 16922142,
+        54143349, 54143349, 54143349,
+        53927851,
+        27755794,
+        12197223, 12197223, 12197223,
+        34242278,
+        42141493, 42141493, 42141493,
+        25940932,
+        67115133, 67115133, 67115133,
+        20508881, 20508881, 20508881,
+        5318639, 5318639, 5318639,
+        24224830,
+        30271097, 30271097, 30271097,
+        24299458, 24299458, 24299458,
+        48130397, 48130397, 48130397,
+        53813120
+      ],
+      "extra": [
+        39341885, 39341885,
+        30674956,
+        29301450,
+        90512490,
+        49105782,
+        71068247,
+        71166481,
+        93039339,
+        54757758,
+        11765832,
+        89851827,
+        87746184, 87746184,
+        78397661
+      ],
+      "side": [
+        102380, 102380,
+        84192580, 84192580, 84192580,
+        14558127, 14558127, 14558127,
+        94145021, 94145021,
+        27204311, 27204311,
+        18144506,
+        14532163,
+        25311006
+      ]
+    },
+    "yummy-pure-striker-2026": {
+      "main": [
+        31425736, 31425736, 31425736,
+        10966439, 10966439, 10966439,
+        68810435, 68810435, 68810435,
+        4215180, 4215180, 4215180,
+        46502744, 46502744, 46502744,
+        49036338,
+        38814750,
+        74203495, 74203495,
+        14558127, 14558127, 14558127,
+        97268402, 97268402, 97268402,
+        73642296, 73642296, 73642296,
+        29369059,
+        66975205,
+        93360904,
+        42141493, 42141493, 42141493,
+        33907039, 33907039, 33907039,
+        10045474, 10045474, 10045474,
+        97045737, 97045737, 97045737,
+        86762958
+      ],
+      "extra": [
+        31603289,
+        93192592,
+        67098897,
+        15123983,
+        76524506,
+        58901502, 58901502,
+        79606837,
+        33158448,
+        80993256,
+        41999284,
+        60303245,
+        29301450,
+        23656668,
+        30581601
+      ],
+      "side": [
+        84192580, 84192580, 84192580,
+        27204311, 27204311, 27204311,
+        25311006,
+        65681983,
+        24224830,
+        84749824, 84749824,
+        41420027,
+        18144506,
+        94145021, 94145021
+      ]
+    },
     "branded-dracotail-bainbridge-2nd": {
       "main": [
         75003700, 75003700, 75003700,
@@ -221,6 +333,36 @@
         { "zone": "MZONE", "cardId": 8165596, "cardName": "Number 90: Galaxy-Eyes Photon Lord" },
         { "zone": "SZONE", "cardId": 6798031, "cardName": "Ryzeal Cross" },
         { "zone": "SZONE", "cardId": 17954937, "cardName": "Mitsurugi Great Purification" }
+      ]
+    },
+    {
+      "id": "radiant-typhoon-opener",
+      "deck": "radiant-typhoon-ygoprodeck-2026",
+      "description": "Radiant Typhoon opener (validated 2026-04-15): Eldam + Chant + Krosea + Vision + Mulcharmy Fuwalos. Control deck paradigm — 3-card endboard (vs 5-6 for combo decks). Expected: Totem Bird (Rank 3 Xyz, summon denial via bounce) + Hraesvelgr the Desperate Doom Eagle (Link 3) + Radiant Typhoon Mandate set (facedown Trap). This fixture validates the solver on non-combo control paradigm where the endboard has fewer cards but higher per-card disruption value.",
+      "hand": [54143349, 67115133, 16922142, 20508881, 42141493],
+      "deckSeed": "99999,10101",
+      "maxDepth": 60,
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 71068247, "cardName": "Totem Bird" },
+        { "zone": "EMZ_L", "cardId": 49105782, "cardName": "Hraesvelgr, the Desperate Doom Eagle" },
+        { "zone": "SZONE", "cardId": 53813120, "cardName": "Radiant Typhoon Mandate" }
+      ]
+    },
+    {
+      "id": "yummy-opener",
+      "deck": "yummy-pure-striker-2026",
+      "_draft": true,
+      "description": "DRAFT — Yummy pure combo opener. KNOWN BUG: with this opener [Lollipo + 4 handtraps] the DFS terminates at 3 plies and scores 1/6 matched because the Sky Striker engine (Hornet Drones + Kagari) is missing from the deck — required for the canonical Link-1 token generation feeding Cupsy★Yummy Way. Fixture must be revised (add Sky Striker engine OR change opener) before inclusion in baseline. Canonical combo source: ygo101 image 2c5615c3. Target 6-card endboard: Yummy★Snatchy (Link-1 EMZ) + Lollipo★Yummy Way (Synchro L2 MZONE) + Marshmao♦Yummy (MZONE) + Herald of the Arc Light (Synchro L4 MZONE omni-negate) + Yummy♦Surprise (trap set SZONE) + Yummyusment♦Mignon (field spell).",
+      "hand": [4215180, 42141493, 14558127, 97268402, 73642296],
+      "deckSeed": "20202,30303",
+      "maxDepth": 75,
+      "expectedBoard": [
+        { "zone": "EMZ_L", "cardId": 30581601, "cardName": "Yummy★Snatchy" },
+        { "zone": "MZONE", "cardId": 93192592, "cardName": "Lollipo★Yummy Way" },
+        { "zone": "MZONE", "cardId": 10966439, "cardName": "Marshmao♦Yummy" },
+        { "zone": "MZONE", "cardId": 79606837, "cardName": "Herald of the Arc Light" },
+        { "zone": "SZONE", "cardId": 29369059, "cardName": "Yummy♦Surprise" },
+        { "zone": "FIELD", "cardId": 66975205, "cardName": "Yummyusment♦Mignon" }
       ]
     },
     {

@@ -284,6 +284,7 @@ async function main(): Promise<void> {
   console.log(`\n[audit] ════════ F) EXPECTED vs AUTHORITATIVE PEAK (bestTurn1FieldState) ════════`);
   const peakFs = diag.bestTurn1FieldState as undefined | {
     turn: number;
+    phase?: string;
     zones: Record<string, { cardId: number; cardName?: string; position: string }[]>;
   };
   if (!peakFs) {
@@ -293,17 +294,39 @@ async function main(): Promise<void> {
     for (const e of hand.expectedBoard ?? []) {
       expected.set(e.cardId, { zone: e.zone, name: e.cardName });
     }
-    const present = new Set<number>();
-    for (const zs of Object.values(peakFs.zones)) {
-      for (const c of zs) present.add(c.cardId);
+    // Field-only zones for matched check (exclude EXTRA/DECK/HAND/GY/BANISHED
+    // which would otherwise false-positive on every unused extra deck card).
+    const FIELD_ZONES = new Set(['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD']);
+    const presentOnField = new Set<number>();
+    for (const [zoneName, zs] of Object.entries(peakFs.zones)) {
+      if (!FIELD_ZONES.has(zoneName)) continue;
+      for (const c of zs) presentOnField.add(c.cardId);
     }
-    console.log(`  expected cards (${expected.size}):`);
+    console.log(`  expected cards (${expected.size}) — FIELD-ONLY check:`);
     for (const [cid, info] of expected) {
-      const hit = present.has(cid) ? '✓ PRESENT' : '✗ MISSING';
+      const hit = presentOnField.has(cid) ? '✓ PRESENT' : '✗ MISSING';
       console.log(`    ${hit}  #${cid} ${info.name} (target zone ${info.zone})`);
     }
-    const matchedCount = Array.from(expected.keys()).filter(cid => present.has(cid)).length;
-    console.log(`  matched: ${matchedCount} / ${expected.size}`);
+    const matchedCount = Array.from(expected.keys()).filter(cid => presentOnField.has(cid)).length;
+    console.log(`  matched (field-only): ${matchedCount} / ${expected.size}`);
+
+    // F2) Full peak field dump — zone-by-zone, all occupancy. Critical for
+    // diagnosing peak state shape vs expected combo endboard.
+    console.log(`\n[audit] ════════ F2) FULL PEAK FIELD DUMP ════════`);
+    console.log(`  turn=${peakFs.turn} phase=${peakFs.phase ?? '?'}`);
+    const ZONE_ORDER = [
+      'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
+      'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD',
+      'HAND', 'GY', 'BANISHED', 'EXTRA',
+    ];
+    for (const z of ZONE_ORDER) {
+      const cards = peakFs.zones[z] ?? [];
+      if (cards.length === 0) continue;
+      const summary = cards
+        .map(c => `${c.cardName ?? `#${c.cardId}`}(${c.position.slice(0, 6)})`)
+        .join(', ');
+      console.log(`  ${z.padEnd(9)} (${String(cards.length).padStart(2)}): ${summary}`);
+    }
   }
 
   console.log(`\n[audit] done. wallMs=${wallMs}`);
