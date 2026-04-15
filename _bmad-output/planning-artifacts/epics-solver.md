@@ -2,6 +2,8 @@
 stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories', 'step-04-final-validation']
 status: 'complete'
 completedAt: '2026-04-06'
+implementationStatus: 'complete'
+implementationCompletedAt: '2026-04-12'
 inputDocuments: ['prd-solver.md', 'architecture-solver.md', 'ux-design-specification-solver.md']
 ---
 
@@ -10,6 +12,18 @@ inputDocuments: ['prd-solver.md', 'architecture-solver.md', 'ux-design-specifica
 ## Overview
 
 This document provides the complete epic and story breakdown for the skytrix Combo Path Solver, decomposing the requirements from the PRD, UX Design, and Architecture into implementable stories.
+
+## Implementation Status
+
+**All 3 epics shipped as of 2026-04-12.** 21 stories total, all implemented. The acceptance criteria below remain the authoritative specification — sections marked "Post-Implementation Review" / "Refactor" capture deviations from the original spec where the implementation diverged.
+
+| Epic | Stories | Status | Notes |
+|---|---|---|---|
+| Epic 1 — Goldfish Combo Discovery | 12 (1.1, 1.2a/b/c, 1.3, 1.4, 1.5a/b, 1.6a/b, 1.7, 1.8) | ✅ Implemented | DFS + MCTS + auto-detect, worker pool, WS protocol, full frontend, OPT-aware scoring |
+| Epic 2 — Handtrap Resilience Analysis | 4 (2.1, 2.2, 2.3, 2.4) | ✅ Implemented | Algorithm refactored IS-MCTS → Minimax MCTS post-review (see Epic 2 sections) |
+| Epic 3 — Iterative Build Comparison | 5 (3.1, 3.1b, 3.2, 3.3, 3.4) | ✅ Implemented | Session history, pin & compare, Quick Solve, keyboard shortcuts, export |
+
+Per-story ✅ markers appear on each story heading below. Epic 2 is the only epic with a dedicated post-implementation review section (review ran 2026-04-11, refactor on 2026-04-12) — Epic 1 and Epic 3 did not surface findings requiring a formal retrospective block in this document.
 
 ## Requirements Inventory
 
@@ -184,7 +198,7 @@ User selects a deck and hand, launches a goldfish solve (Fast or Optimal), and s
 
 > **Post-implementation validation:** golden-tests.json (30 hand-verified test cases: 15 combo, 15 brick) and its runner must be created as a validation artifact after all stories are implemented. NFR13 concordance is verified during big bang testing, not within individual stories. **Golden tests run DFS only** (`algorithm: 'dfs'`) — DFS is deterministic given a deckSeed, so 100% concordance is well-defined. MCTS coverage is via manual validation (NFR14). At least 1 golden test case must involve a multi-chain combo with OPT effects (e.g., Baronne), run with and without WASM snapshot to detect restore divergence.
 
-### Story 1.1: Solver Types, Config & GameOracle
+### Story 1.1: Solver Types, Config & GameOracle ✅
 
 As a developer,
 I want the solver's foundational types, configuration system, and game oracle adapter in place,
@@ -254,7 +268,7 @@ So that all subsequent solver stories build on a validated, type-safe foundation
 
 ---
 
-### Story 1.2a: Zobrist Hashing & Transposition Table
+### Story 1.2a: Zobrist Hashing & Transposition Table ✅
 
 As a developer,
 I want Zobrist hashing for game state fingerprinting and a transposition table for memoization,
@@ -288,7 +302,7 @@ So that the DFS solver can detect loops and avoid re-exploring equivalent game s
 
 ---
 
-### Story 1.2b: Interruption Scorer & Tags Data
+### Story 1.2b: Interruption Scorer & Tags Data ✅
 
 As a developer,
 I want a board evaluation system that scores end boards by interruption quality,
@@ -320,7 +334,7 @@ So that the solver can rank combo paths by the defensive value of their final bo
 
 ---
 
-### Story 1.2c: DFS Solver Algorithm
+### Story 1.2c: DFS Solver Algorithm ✅
 
 As a developer,
 I want a DFS exploration algorithm that uses the Zobrist hasher, transposition table, and interruption scorer,
@@ -375,7 +389,7 @@ So that the solver can find optimal combo paths from any game state via exhausti
 
 ---
 
-### Story 1.3: Worker Pool & Orchestrator
+### Story 1.3: Worker Pool & Orchestrator ✅
 
 As a developer,
 I want the solver orchestrator to manage a piscina worker pool with root parallelism and result aggregation,
@@ -462,7 +476,7 @@ So that solves are parallelized across cores and the best result is returned eff
 
 ---
 
-### Story 1.4: WS Protocol & Server Integration
+### Story 1.4: WS Protocol & Server Integration ✅
 
 As a developer,
 I want the solver WebSocket protocol integrated into the duel-server,
@@ -556,7 +570,7 @@ So that clients can start, monitor, and cancel solves over the existing WS conne
 
 ---
 
-### Story 1.5a: SolverService, Route & Page Scaffold
+### Story 1.5a: SolverService, Route & Page Scaffold ✅
 
 As a developer,
 I want the SolverService, route, page scaffold, and frontend models in place,
@@ -620,7 +634,7 @@ So that all frontend solver stories build on a working service layer and page st
 
 ---
 
-### Story 1.5b: Solver Config & Progress Components
+### Story 1.5b: Solver Config & Progress Components ✅
 
 As a player,
 I want to select my hand and launch a goldfish solve with real-time feedback,
@@ -673,7 +687,7 @@ So that I can start exploring my deck's combo potential.
 
 ---
 
-### Story 1.6a: Hero Result & Brick State
+### Story 1.6a: Hero Result & Brick State ✅
 
 As a player,
 I want to see my solve score, end board, and interruption breakdown immediately after a solve completes,
@@ -719,7 +733,7 @@ So that I can understand at a glance how good my combo is.
 
 ---
 
-### Story 1.6b: Breadcrumb & Decision Tree
+### Story 1.6b: Breadcrumb & Decision Tree ✅
 
 As a player,
 I want to see the recommended combo path as a breadcrumb and explore alternative lines via an interactive decision tree,
@@ -768,7 +782,7 @@ So that I can discover unknown lines and understand all my options.
 
 ---
 
-### Story 1.7: MCTS Algorithm & Auto-Detection
+### Story 1.7: MCTS Algorithm & Auto-Detection ✅
 
 As a developer,
 I want an SP-MCTS algorithm and automatic algorithm selection based on branching factor,
@@ -846,7 +860,7 @@ So that the solver can handle high-branching-factor decks that DFS cannot tracta
 
 ---
 
-### Story 1.8: ActivationLog Tracking & OPT-Aware Scoring
+### Story 1.8: ActivationLog Tracking & OPT-Aware Scoring ✅
 
 As a developer,
 I want the solver to track which interruption effects each card has already used during a turn and apply that knowledge to scoring + transposition table fingerprinting,
@@ -913,7 +927,7 @@ So that the score of a board final reflects the real defensive value of cards th
 
 User switches to adversarial mode, selects handtraps from a predefined list, and sees the resilience analysis: global minimax score, handtrap branches annotated in the decision tree with activation timing, and no-resilient-line brick state.
 
-### Story 2.1: Adversarial Engine — Handtrap Injection & Minimax MCTS
+### Story 2.1: Adversarial Engine — Handtrap Injection & Minimax MCTS ✅
 
 As a developer,
 I want the solver engine to model a virtual opponent who activates handtraps at optimal timing,
@@ -962,7 +976,7 @@ So that the solver can find combo lines that survive disruption and compute resi
 
 ---
 
-### Story 2.2: Adversarial UI — Handtrap Selection & Mode Toggle
+### Story 2.2: Adversarial UI — Handtrap Selection & Mode Toggle ✅
 
 As a player,
 I want to select handtraps and switch to adversarial mode in the solver config,
@@ -1001,7 +1015,7 @@ So that I can test my deck's resilience against specific disruptions.
 
 ---
 
-### Story 2.3: Adversarial Result Display — Minimax & Handtrap Branches
+### Story 2.3: Adversarial Result Display — Minimax & Handtrap Branches ✅
 
 As a player,
 I want to see the minimax resilience score and handtrap branch labels in the decision tree,
@@ -1037,7 +1051,7 @@ So that I can identify exactly where my combo breaks and what the best fallback 
 
 ---
 
-### Story 2.4: Verify Adversarial Path
+### Story 2.4: Verify Adversarial Path ✅
 
 As a player,
 I want to replay the recommended combo line with a handtrap at the declared timing and confirm the result,
@@ -1135,7 +1149,7 @@ The score is monotone decreasing in the number of selected handtraps (adding han
 
 User iterates rapidly between solves and compares builds: pin result snapshots for side-by-side mental comparison, consult session history, Quick Solve, config persistence per deck, and keyboard shortcuts.
 
-### Story 3.1: Session History & Config Persistence
+### Story 3.1: Session History & Config Persistence ✅
 
 As a player,
 I want my solve results to be kept in memory during my session and my config to persist across solves,
@@ -1173,7 +1187,7 @@ So that I can iterate rapidly without reconfiguring from scratch each time.
 
 ---
 
-### Story 3.1b: Session History UI
+### Story 3.1b: Session History UI ✅
 
 As a player,
 I want to browse my previous solve results from this session,
@@ -1211,7 +1225,7 @@ So that I can revisit and compare earlier results without relying solely on pins
 
 ---
 
-### Story 3.2: Pin & Compare
+### Story 3.2: Pin & Compare ✅
 
 As a player,
 I want to pin solve result snapshots for side-by-side mental comparison across decks,
@@ -1253,7 +1267,7 @@ So that I can make data-driven build decisions instead of relying on gut feeling
 
 ---
 
-### Story 3.3: Quick Solve & Keyboard Shortcuts
+### Story 3.3: Quick Solve & Keyboard Shortcuts ✅
 
 As a player,
 I want one-click Quick Solve and keyboard shortcuts,
@@ -1295,7 +1309,7 @@ So that I can launch solves with minimal friction and navigate the solver effici
 
 ---
 
-### Story 3.4: Export Result to Clipboard
+### Story 3.4: Export Result to Clipboard ✅
 
 As a player,
 I want to copy my solve result as a compact JSON to share or archive,
