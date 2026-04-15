@@ -195,15 +195,15 @@
     {
       "id": "ddd-pendulum-opener",
       "deck": "ddd-wcq-top4",
-      "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Expected to establish a Pendulum Scale and summon D/D/D boss monster(s) via Gryphon/Scale Surveyor.",
+      "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Canonical 1-card Gate combo produces the FULL endboard: Deus Machinex+1 contract, Wave High King Caesar, Cursed King Siegfried, Sky King Zeus Ragnarok, Headhunt. See ddd-combo-reference.md.",
       "hand": [11609969, 46796664, 42382265, 46372010, 42141493],
       "deckSeed": "11111,22222",
       "maxDepth": 50,
       "expectedBoard": [
+        { "zone": "MZONE", "cardId": 46593546, "cardName": "D/D/D Deviser King Deus Machinex" },
         { "zone": "MZONE", "cardId": 79559912, "cardName": "D/D/D Wave High King Caesar" },
-        { "zone": "MZONE", "cardId": 72402069, "cardName": "D/D/D Super Doom King Bright Armageddon" },
-        { "zone": "MZONE", "cardId": 30998403, "cardName": "D/D/D Sky King Zeus Ragnarok" },
         { "zone": "MZONE", "cardId": 44852429, "cardName": "D/D/D Cursed King Siegfried" },
+        { "zone": "MZONE", "cardId": 30998403, "cardName": "D/D/D Sky King Zeus Ragnarok" },
         { "zone": "SZONE", "cardId": 91781484, "cardName": "D/D/D Headhunt" }
       ]
     },
