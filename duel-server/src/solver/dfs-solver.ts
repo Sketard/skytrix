@@ -238,6 +238,15 @@ export class DfsSolver implements SolverStrategy {
     handle: DuelHandle,
     depth: number,
     pathHashes: Set<string>,
+    /** Phase F-bis (v2): best (score, breakdown) observed at a `turn <= 1`
+     *  state along the ancestor chain from root to this node. Used as the
+     *  return value when this subtree hits the `turn >= 2` virtual terminal,
+     *  so the propagated score reflects "best turn-1 reachable from this
+     *  branch" instead of the polluted turn-2 boundary state. Root call
+     *  starts at 0 / empty; each recursive call receives the max over
+     *  (parent's ancestor value, parent's interim value at turn<=1). */
+    ancestorTurn1Score: number = 0,
+    ancestorTurn1Breakdown: ScoreBreakdown = this.emptyBreakdown(),
   ): DfsNodeResult {
     // Abort check + node limit (probe mode)
     if (ctx.signal.aborted || (ctx.nodeLimit !== undefined && ctx.nodesExplored >= ctx.nodeLimit)) {
@@ -295,19 +304,39 @@ export class DfsSolver implements SolverStrategy {
     const interim = this.scorer.scoreWithCards(fieldState, activationLog);
     this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn);
 
-    // Constraint 3.2 full: virtual terminal at turn-2 entry. The solver's
-    // search horizon is end-of-turn-1; exploring into opponent turn wastes
-    // budget and has no validation signal (`matched` is measured against
-    // turn-1 endboards). Score the turn-2 state for tree propagation so
-    // branches that *reach* turn 2 still carry the interim score upward,
-    // but stop exploring children.
+    // Phase F-bis v2: fold the current interim into the ancestor chain
+    // parameter ONLY if this state is turn<=1. This value is what the
+    // virtual terminal at turn>=2 propagates upward, and what gets passed
+    // down to children as their `ancestorTurn1Score`.
+    let pathTurn1Score = ancestorTurn1Score;
+    let pathTurn1Breakdown = ancestorTurn1Breakdown;
+    if (fieldState.turn <= 1 && interim.score > pathTurn1Score) {
+      pathTurn1Score = interim.score;
+      pathTurn1Breakdown = interim.scoreBreakdown;
+    }
+
+    // Constraint 3.2 full + Phase F-bis v2: virtual terminal at turn-2
+    // entry. The solver's search horizon is end-of-turn-1; exploring into
+    // opponent turn wastes budget and has no validation signal (`matched`
+    // is measured against turn-1 endboards).
+    //
+    // Instead of propagating either `interim.score` from the polluted
+    // turn-2 boundary state (original Phase A #1 — leaked turn-2 value
+    // into tree propagation and TT cache) or hard-coded 0 (Phase F-bis v1
+    // — dropped the guidance signal that helped D/D/D find its Siegfried
+    // subtree, causing -8 score / -1 matched regression), we propagate
+    // `pathTurn1Score` — the best turn-1 state observed along the ancestor
+    // chain from root to here. This is the "best turn-1 commitment
+    // reachable from this branch" — an honest ceiling that drives child
+    // selection toward subtrees whose ancestors already hit real turn-1
+    // peaks, without crediting the turn-2 state itself.
     if (fieldState.turn >= 2) {
       ctx.terminalTurn2++;
       ctx.totalTreeNodes++;
       return {
-        node: this.makeNode(ROOT_ACTION, interim.score, interim.scoreBreakdown, 1.0, [], true),
-        score: interim.score,
-        scoreBreakdown: interim.scoreBreakdown,
+        node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
+        score: pathTurn1Score,
+        scoreBreakdown: pathTurn1Breakdown,
       };
     }
 
@@ -431,7 +460,7 @@ export class DfsSolver implements SolverStrategy {
         const child = ctx.oracle.fork(handle);
         try {
           ctx.oracle.applyAction(child, matchedAction);
-          const continuation = this.dfs(ctx, child, depth + 1, pathHashes);
+          const continuation = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1Score, pathTurn1Breakdown);
           ctx.totalTreeNodes++;
           // Wrap the continuation as the SOLE child of the TT-hit node so
           // `extractMainPath` can keep walking. Confidence stays at 0.5 to
@@ -482,7 +511,7 @@ export class DfsSolver implements SolverStrategy {
       const child = ctx.oracle.fork(handle);
       try {
         ctx.oracle.applyAction(child, action);
-        const result = this.dfs(ctx, child, depth + 1, pathHashes);
+        const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1Score, pathTurn1Breakdown);
 
         children.push({ action, result });
         ctx.totalChildren++;
