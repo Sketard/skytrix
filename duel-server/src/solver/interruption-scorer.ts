@@ -127,6 +127,17 @@ export class InterruptionScorer {
           if (!sharedBudgetExhausted) {
             for (let i = 0; i < tag.effects.length; i++) {
               const effect = tag.effects[i];
+              // HAND gate: tagged effects in the HAND zone only score if
+              // `activatableFromHand` is explicitly true. Default false keeps
+              // Normal Traps / Ritual Monsters / field-bound quick effects
+              // (Mitsurugi Purification, D/D/D Siegfried, etc.) from being
+              // credited while still in the player's hand — they have to
+              // reach the field (Set / Summon) to matter. Handtraps (Ash,
+              // Maxx "C", Fuwalos, Effect Veiler) opt in explicitly.
+              // See 2026-04-15 diagnostic — scorer was treating
+              // "HAND Purification" = "SZONE Purification" = +14 omniNegate,
+              // removing the DFS incentive to Set it.
+              if (isHand && effect.activatableFromHand !== true) continue;
               const consumedCount = countOccurrences(consumedIndices, i);
               const remainingUses = Math.max(0, effect.usesPerTurn - consumedCount);
               if (remainingUses === 0) continue;
@@ -135,10 +146,18 @@ export class InterruptionScorer {
             }
           }
 
-          // Face-down tagged cards on field are hidden from endBoard display.
-          // Hand cards (always facedown in OCGCore) ARE shown — they represent
-          // the player's remaining hand-trap interruptions post-combo.
-          if (!isFaceDown || isHand) {
+          // Tagged cards on field/hand go to endBoard display regardless
+          // of face-up/face-down status — a Set Normal Trap in SZONE is a
+          // legitimate end-board interruption piece even though it's
+          // physically face-down, and must be included for the `matched`
+          // metric to count fixtures that expect Set traps (Mitsurugi
+          // Great Purification, Infinite Impermanence, etc.). Earlier
+          // versions filtered face-down non-HAND cards out of the display;
+          // the 2026-04-15 hand-gate diagnostic revealed this hid valid
+          // Set-Trap peaks from matched even when the scorer correctly
+          // credited their weighted value. Consumers that need to
+          // distinguish face-up vs face-down can read `card.position`.
+          {
             const endCard: EndBoardCard = {
               cardId: card.cardId,
               cardName: card.cardName,

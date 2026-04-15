@@ -399,6 +399,16 @@ export interface InterruptionEffect {
    *  Optional for backward compat — missing trigger falls back to index 0 with
    *  a warning when multiple effects exist. */
   trigger?: InterruptionTrigger;
+  /** True iff this effect can be activated while the card is in the HAND
+   *  zone (handtraps: Ash Blossom, Maxx "C", Fuwalos, Effect Veiler, etc.).
+   *  Default false — most tagged cards (Normal Traps, monsters with Quick
+   *  Effects, Pendulums, Ritual Monsters) require being on the field before
+   *  their interruption effect can fire. Consumed by the scorer's HAND
+   *  visibility gate: tagged HAND cards with ALL effects marked false are
+   *  excluded from endboard scoring, preventing the solver from treating
+   *  "searched Normal Trap sitting in hand" as equivalent to "Set in SZONE".
+   *  See 2026-04-15 Mitsurugi diagnostic. */
+  activatableFromHand?: boolean;
   /** Human-readable summary for debugging and UI tooltips. ≤120 chars. */
   description?: string;
 }
