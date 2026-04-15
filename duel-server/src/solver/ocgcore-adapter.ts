@@ -194,6 +194,23 @@ export class OCGCoreAdapter implements GameOracle {
     });
   }
 
+  /** Phase K — create a fresh pristine duel matching an existing handle's
+   *  config, without advancing the engine past its initial state. Unlike
+   *  `fork()` which pre-advances to the first WAITING prompt (and thus
+   *  corrupts a subsequent `runUntilPlayerPrompt` call that would normally
+   *  drive the advance itself), this returns a handle identical to one
+   *  produced by `createDuel(config)` — the caller must still call
+   *  `getLegalActions()` to drive the first advance.
+   *
+   *  Used by iterative deepening to create a fresh iteration handle for
+   *  each DFS pass, since the adapter's `runUntilPlayerPrompt` consumes
+   *  engine messages on its first call and cannot be invoked twice on the
+   *  same DuelHandle. */
+  cloneFromConfig(handle: DuelHandle): DuelHandle {
+    const internal = this.resolveHandle(handle);
+    return this.createDuel(internal.config);
+  }
+
   getFieldState(handle: DuelHandle): FieldState {
     const internal = this.resolveHandle(handle);
     return this.queryFieldState(internal);

@@ -149,6 +149,7 @@ export class DfsSolver implements SolverStrategy {
       terminalTtHit: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
+      iterationMaxDepth: this.maxDepth,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
       bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
@@ -163,8 +164,104 @@ export class DfsSolver implements SolverStrategy {
       }
       if ('resetWarnFlag' in this.ranker) (this.ranker as GoldfishChainRanker).resetWarnFlag();
 
-      const pathHashes = new Set<string>();
-      const result = this.dfs(ctx, startHandle, 0, pathHashes);
+      // Phase K — iterative deepening. Run a shallow DFS pass first to
+      // establish a `bestTurn1Score` floor, then a full pass that benefits
+      // from Phase I branch-bound pruning against that floor. The TT is
+      // cleared BETWEEN iterations because this solver's TT semantics
+      // (`entry.depth >= currentDepth` for hits, with `depth` = depth-from-
+      // root) treat cached scores as authoritative, not as bounds. Leaving
+      // shallow-iteration entries in the table poisons deep-iteration
+      // lookups — the deep search receives the shallow score as the answer
+      // and never re-explores. Empirically verified on D/D/D: TT-persistent
+      // iterative deepening regressed 34→10 because the deep iteration hit
+      // cached shallow scores at every shared state. Clearing between
+      // iterations costs the warm-cache benefit but preserves correctness
+      // and keeps the primary goal — `ctx.bestTurn1Score` floor — which
+      // accumulates naturally in ctx fields (not TT).
+      //
+      // First attempt capped at `ceil(maxDepth/2)`; final pass uses the
+      // full `this.maxDepth`. Each iteration runs until the global time
+      // budget expires, at which point the outer loop bails and the best
+      // result across completed iterations is reported.
+      //
+      // Motivation: Phase 2.1 / Phase J combo-enabler ranker promotion
+      // regressed catastrophically (D/D/D 27→3 and 34→7) because the
+      // Gate subtree was explored first and consumed all budget before
+      // the NS-first line could run. With iterative deepening, the
+      // shallow pass reaches NS-first's partial peak FAST (even if the
+      // final combo state isn't hit), setting a non-trivial floor. The
+      // deep pass then has that floor available when exploring Gate-first
+      // branches, and Phase I pruning trims dead Gate sub-branches early.
+      const iterationDepths = [
+        Math.max(10, Math.ceil(this.maxDepth / 2)),
+        this.maxDepth,
+      ];
+      // Phase K — budget split. The shallow iteration gets a small slice
+      // (20% of total) because it only needs to establish a bestTurn1Score
+      // floor, not find the full peak. Deep iteration receives the
+      // remainder. Without this split, the shallow iteration (whose own
+      // search tree is still large at d=25) consumes the entire global
+      // budget and the deep iteration never runs. Empirically observed
+      // on D/D/D: without budget split, deep iteration got ~1s and
+      // never reached depth>25, collapsing score 34→10.
+      const shallowBudgetMs = Math.floor(timeBudget * 0.2);
+      // Save the original ctx.timeBudget so we can restore it for the
+      // deep iteration. ctx.timeBudget is consumed by the per-node time
+      // check inside `dfs()` (line 635).
+      const originalCtxBudget = ctx.timeBudget;
+      let lastResultNode: DecisionNode | null = null;
+      let lastResultScore = 0;
+      let lastResultBreakdown: ScoreBreakdown = cloneEmptyBreakdown();
+      for (let i = 0; i < iterationDepths.length; i++) {
+        // Global budget guard — don't start a new iteration if time's up.
+        if (Date.now() - startTime >= timeBudget) break;
+        if (signal.aborted) break;
+
+        ctx.iterationMaxDepth = iterationDepths[i];
+        // Per-iteration time budget: shallow capped to `shallowBudgetMs`,
+        // deep gets the full original budget (= up to the global deadline).
+        ctx.timeBudget = i === 0 ? shallowBudgetMs : originalCtxBudget;
+        // Per-iteration state reset:
+        // - currentActionStack: push/pop discipline is symmetric under
+        //   try/finally, so it's always empty at the end of a completed
+        //   iteration. Reset defensively in case of mid-iteration abort.
+        // - depthCapHit: only the FINAL iteration's depth-cap signal
+        //   belongs in the termination reason (shallow always caps by
+        //   design). Reset before the last iteration to avoid spurious
+        //   'depth_cap' labels.
+        // - TT: cleared BEFORE non-first iteration (see phase comment
+        //   above — shallow-iteration entries poison the deep lookup).
+        // NOT reset: bestTurn1Score/Path/FieldState (accumulate — that's
+        // the whole point), nodesExplored / histograms / counters
+        // (accumulate for stats).
+        ctx.currentActionStack = [];
+        if (i === iterationDepths.length - 1) ctx.depthCapHit = false;
+        if (i > 0) this.table.reset();
+
+        // Fresh handle per iteration. The adapter's `runUntilPlayerPrompt`
+        // consumes engine messages on its first call, so calling it twice
+        // on the same DuelHandle returns an empty action list on the
+        // second call (messages already drained). `fork()` doesn't help
+        // because it pre-advances the engine past the first WAITING
+        // prompt, which corrupts the subsequent runUntilPlayerPrompt
+        // invocation. `cloneFromConfig` creates a handle identical to a
+        // fresh `createDuel(config)` call — the DFS then drives the
+        // advance via its own getLegalActions call as normal.
+        //
+        // Cost: one extra createDuel per iteration (negligible vs total
+        // DFS walltime). startHandle is left in whatever state the DFS
+        // put it in; since we only use it as a config source, that's OK.
+        const iterHandle = this.adapter.cloneFromConfig(startHandle);
+        try {
+          const pathHashes = new Set<string>();
+          const iterResult = this.dfs(ctx, iterHandle, 0, pathHashes);
+          lastResultNode = iterResult.node;
+          lastResultScore = iterResult.score;
+          lastResultBreakdown = iterResult.scoreBreakdown;
+        } finally {
+          ctx.oracle.destroyDuel(iterHandle);
+        }
+      }
 
       // Phase H — mainPath prefers `ctx.bestTurn1Path` (exact replay to peak
       // state) over the old `extractMainPath` tree walk, which drifts into
@@ -174,7 +271,7 @@ export class DfsSolver implements SolverStrategy {
       // normal solves). See Phase H diagnostic / probe-ddd-mainpath-autopsy.
       const mainPath: SolverAction[] = ctx.bestTurn1Path !== undefined
         ? ctx.bestTurn1Path.map(a => this.adapter.enrichAction(a))
-        : this.extractMainPath(result.node);
+        : (lastResultNode ? this.extractMainPath(lastResultNode) : []);
       const elapsed = Date.now() - startTime;
 
       // Termination reason precedence: depth_cap > timeout > aborted > completed.
@@ -248,10 +345,18 @@ export class DfsSolver implements SolverStrategy {
       // inflates the number past the canonical end-of-turn-1 peak.
       // Fallback to tree propagation when no turn<=1 state was ever reached
       // (pathological — shouldn't happen in normal solves, but defensive).
-      const reportScore = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Score : result.score;
-      const reportBreakdown = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Breakdown : result.scoreBreakdown;
+      const reportScore = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Score : lastResultScore;
+      const reportBreakdown = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Breakdown : lastResultBreakdown;
+      // Phase K — tree comes from the deepest iteration that completed
+      // (or was in-progress when budget expired). `lastResultNode` is
+      // guaranteed non-null when at least one iteration ran, which is the
+      // normal case. Defensive empty-tree fallback for the degenerate
+      // "budget expired before first iteration could start" path.
+      const reportTree: DecisionNode = lastResultNode ?? this.makeNode(
+        ROOT_ACTION, 0, this.emptyBreakdown(), 0, [], true, true,
+      );
       return {
-        tree: result.node,
+        tree: reportTree,
         mainPath,
         score: reportScore,
         scoreBreakdown: reportBreakdown,
@@ -389,7 +494,7 @@ export class DfsSolver implements SolverStrategy {
     // No-op at the root (ctx.bestTurn1Score starts at -1, condition
     // `pathTurn1Score + maxGain < -1` is always false). Only starts firing
     // once updateBest has set bestTurn1Score to a non-trivial value.
-    const remainingPlies = this.maxDepth - depth;
+    const remainingPlies = ctx.iterationMaxDepth - depth;
     const maxPlausibleGain = remainingPlies * BRANCH_BOUND_RECOVERY_PER_PLY;
     if (pathTurn1Score + maxPlausibleGain < ctx.bestTurn1Score) {
       ctx.terminalBranchBoundCut++;
@@ -402,10 +507,10 @@ export class DfsSolver implements SolverStrategy {
     }
 
     // Terminal: no legal actions or max depth
-    if (actions.length === 0 || depth >= this.maxDepth) {
+    if (actions.length === 0 || depth >= ctx.iterationMaxDepth) {
       // Distinguish "natural end" (no actions) from "depth cap hit while
       // actions remained" — the latter is a truncation signal.
-      if (actions.length > 0 && depth >= this.maxDepth) {
+      if (actions.length > 0 && depth >= ctx.iterationMaxDepth) {
         ctx.depthCapHit = true;
         ctx.terminalDepthCap++;
       } else {
@@ -789,6 +894,7 @@ export class DfsSolver implements SolverStrategy {
       terminalTtHit: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
+      iterationMaxDepth: this.maxDepth,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
       bfByDepthCount: new Array(this.maxDepth + 1).fill(0),
@@ -1015,6 +1121,12 @@ interface DfsContext {
    *  whose upper bound (ancestor pathTurn1Score + remaining-ply plausible
    *  gain) cannot possibly exceed ctx.bestTurn1Score. */
   terminalBranchBoundCut: number;
+  /** Phase K — iterative deepening. Current iteration's max depth bound.
+   *  Set before each DFS pass in `solve()`; the DFS reads this instead of
+   *  `this.maxDepth` for terminal checks and Phase I remaining-ply math.
+   *  Shallow iterations use a fraction of this.maxDepth; the final iteration
+   *  uses the full this.maxDepth. Always <= this.maxDepth. */
+  iterationMaxDepth: number;
   promptTypeCounts: Record<string, number>;
   bfByDepthSum: number[];
   bfByDepthCount: number[];
