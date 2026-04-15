@@ -494,8 +494,21 @@ export class OCGCoreAdapter implements GameOracle {
           pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'summon' }, { type: 1, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['special_summons'] ?? []) as unknown[]).length; i++) {
-          const card = ((msg['special_summons'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'ss' }, { type: 1, action: 1, index: i });
+          const card = ((msg['special_summons'] as { code: number; location?: number; sequence?: number }[])[i]);
+          // Phase G-ii: Pendulum Summon trigger detection. `proc_pendulum.lua`
+          // registers `EFFECT_SPSUMMON_PROC_G` on the LEFT pendulum zone card.
+          // In MR5, pendulum zones are merged into SZONE at sequence 0 (left)
+          // and sequence 4 (right); in MR4 they use LOCATION_PZONE. Either
+          // location/sequence signature unambiguously marks an SS entry as a
+          // Pendulum Summon trigger (regular SS procedures source from HAND,
+          // EXTRA, or GY). Tag them `psummon` so the ranker can prioritize
+          // combo motifs separately from Synchro/Xyz/Link/Fusion/Ritual SS.
+          const loc = card.location;
+          const seq = card.sequence ?? 0;
+          const isPsummon = (loc === OcgLocation.PZONE)
+            || (loc === OcgLocation.SZONE && (seq === 0 || seq === 4));
+          const tag = isPsummon ? 'psummon' : 'ss';
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: tag }, { type: 1, action: 1, index: i });
         }
         for (let i = 0; i < ((msg['pos_changes'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['pos_changes'] as { code: number }[])[i]);

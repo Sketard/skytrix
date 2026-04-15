@@ -92,19 +92,29 @@ export class GoldfishChainRanker implements ActionRanker {
    *  Tier reference:
    *    2 — Set an interruption-tagged spell/trap (e.g. Mitsurugi Purification),
    *        OR activate a main-phase ignition effect of a tagged card
+   *    1 — Pendulum Summon trigger (SS entry on a PZONE card, tagged `psummon`
+   *        by the adapter). Always promoted above tier 0 because the pendulum
+   *        cycle is a mass-summon combo motif in pendulum decks (D/D/D, Odd-
+   *        Eyes, Endymion). When scales are set AND valid hand targets exist,
+   *        pendulum summoning is virtually always the intended line — OCGCore
+   *        only emits this entry when the procedure's condition passes.
    *    0 — Normal summon, special summon, pos change, monster set, plain set/activate
    *   -1 — Phase advance (to_bp, to_ep) — explore in-phase options first
    *
-   *  Note: SS is NOT promoted above NS. Initial tier 1 promotion for SS
-   *  caused Mitsurugi regression (-9 score) by commuting the opening from
+   *  Note: generic SS is NOT promoted above NS. Initial tier 1 promotion for
+   *  SS caused Mitsurugi regression (-9 score) by commuting the opening from
    *  the Ryzeal NS-first line to a Habakiri reveal-SS line that found one
    *  canonical card but lost the Bagooska end-board tower (empirical
-   *  2026-04-15 IDLECMD-ordering run). Baseline raw OCG order is preserved
-   *  for all untagged-card paths via stable sort on original index. */
+   *  2026-04-15 IDLECMD-ordering run). The Phase G-ii `psummon` tier is a
+   *  NARROWER promotion — only triggered by the pendulum summon procedure,
+   *  not by generic Synchro/Xyz/Link/Fusion/Ritual/self-SS. Non-pendulum
+   *  fixtures (Mitsurugi, Branded) never see a `psummon` entry, so the
+   *  regression surface is zero. */
   private idleCmdPriority(a: Action): number {
     const tag = a.actionTag;
     if (tag === 'sset' && this.hasPriorityTag(a.cardId)) return 2;
     if (tag === 'activate' && this.hasPriorityTag(a.cardId)) return 2;
+    if (tag === 'psummon') return 1;
     if (tag === 'to_bp' || tag === 'to_ep') return -1;
     return 0;
   }
