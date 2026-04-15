@@ -108,6 +108,7 @@ export class DfsSolver implements SolverStrategy {
       bestScore: -1,
       bestTurn1Score: -1,
       bestEndBoardCards: [],
+      bestTurn1Breakdown: cloneEmptyBreakdown(),
       maxDepthReached: 0,
       totalChildren: 0,
       totalBranchingNodes: 0,
@@ -204,11 +205,22 @@ export class DfsSolver implements SolverStrategy {
       // Merge probe stats if resuming from probe
       stats = this.mergeProbeStats(stats);
 
+      // 2026-04-15 triplet-sync: report the turn-1 peak as the external
+      // result. `ctx.bestTurn1Score` / `bestTurn1Breakdown` / `bestEndBoardCards`
+      // are always captured together via `updateBest`, so the reported
+      // (score, scoreBreakdown, endBoardCards) triplet describes ONE state.
+      // Tree-internal `result.score` still drives action ordering and TT
+      // caching, but it can include turn>=2 terminal propagation which
+      // inflates the number past the canonical end-of-turn-1 peak.
+      // Fallback to tree propagation when no turn<=1 state was ever reached
+      // (pathological — shouldn't happen in normal solves, but defensive).
+      const reportScore = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Score : result.score;
+      const reportBreakdown = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Breakdown : result.scoreBreakdown;
       return {
         tree: result.node,
         mainPath,
-        score: result.score,
-        scoreBreakdown: result.scoreBreakdown,
+        score: reportScore,
+        scoreBreakdown: reportBreakdown,
         endBoardCards: ctx.bestEndBoardCards,
         stats,
       };
@@ -281,7 +293,7 @@ export class DfsSolver implements SolverStrategy {
     // canonical line then walks past it. This gate freezes capture at the
     // right moment. See synthesis §7.10.4 / §7.10.6.
     const interim = this.scorer.scoreWithCards(fieldState, activationLog);
-    this.updateBest(ctx, interim.score, interim.endBoardCards, fieldState.turn);
+    this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn);
 
     // Constraint 3.2 full: virtual terminal at turn-2 entry. The solver's
     // search horizon is end-of-turn-1; exploring into opponent turn wastes
@@ -544,7 +556,7 @@ export class DfsSolver implements SolverStrategy {
   ): DfsNodeResult {
     const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
     ctx.totalTreeNodes++;
-    this.updateBest(ctx, score, endBoardCards, fieldState.turn);
+    this.updateBest(ctx, score, scoreBreakdown, endBoardCards, fieldState.turn);
 
     return {
       node: this.makeNode(ROOT_ACTION, score, scoreBreakdown, truncated ? 0.5 : 1.0, [], true, truncated),
@@ -598,6 +610,7 @@ export class DfsSolver implements SolverStrategy {
   private updateBest(
     ctx: DfsContext,
     score: number,
+    scoreBreakdown: ScoreBreakdown,
     endBoardCards: EndBoardCard[],
     turn: number,
   ): void {
@@ -607,6 +620,7 @@ export class DfsSolver implements SolverStrategy {
     if (turn <= 1 && score > ctx.bestTurn1Score) {
       ctx.bestTurn1Score = score;
       ctx.bestEndBoardCards = endBoardCards;
+      ctx.bestTurn1Breakdown = scoreBreakdown;
     }
   }
 
@@ -641,6 +655,7 @@ export class DfsSolver implements SolverStrategy {
       bestScore: -1,
       bestTurn1Score: -1,
       bestEndBoardCards: [],
+      bestTurn1Breakdown: cloneEmptyBreakdown(),
       maxDepthReached: 0,
       totalChildren: 0,
       totalBranchingNodes: 0,
@@ -817,6 +832,15 @@ interface DfsContext {
    *  observability (diagnostic + progress emission). */
   bestTurn1Score: number;
   bestEndBoardCards: EndBoardCard[];
+  /** 2026-04-15 triplet-sync fix: scoreBreakdown companion to
+   *  `bestEndBoardCards` so the externally reported (score, scoreBreakdown,
+   *  endBoardCards) triplet always describes the SAME captured peak state.
+   *  Previously the report mixed tree-propagation score/breakdown (best
+   *  durable terminal, possibly turn>1) with peak endBoardCards (interim
+   *  turn<=1 snapshot), causing D/D/D to surface
+   *  `score=3 weighted=0 fallback=3` alongside an actualBoard of 2 tagged
+   *  bosses that should have contributed 27 weighted. */
+  bestTurn1Breakdown: ScoreBreakdown;
   maxDepthReached: number;
   totalChildren: number;
   totalBranchingNodes: number;
