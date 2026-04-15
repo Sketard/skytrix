@@ -289,6 +289,8 @@ export interface DfsDiagnostic {
     budgetCutoff: number;    // 0 children explored after loop (time budget or abort mid-branch)
     ttHit: number;           // transposition table lookup short-circuited further exploration
     turn2: number;           // constraint 3.2 full: reached `fieldState.turn >= 2` (beyond search horizon)
+    branchBoundCut: number;  // Phase I: upper-bound pruning (ancestor pathTurn1 + remaining-ply gain < bestTurn1)
+    rootChildBudgetCut: number; // Phase L: first-level root-child branch exceeded its wall-clock slice without progress
   };
   /** Constraint 3.2 full: max score observed at `turn <= 1` states. Paired
    *  with `bestEndBoardCards` on the solver result. Diverges from

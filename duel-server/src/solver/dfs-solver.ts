@@ -53,6 +53,58 @@ export { ROOT_ACTION, extractMainPath } from './tree-utils.js';
 const BRANCH_BOUND_RECOVERY_PER_PLY = 1.5;
 
 // =============================================================================
+// Phase L — per-subtree soft budget guard tunables
+// =============================================================================
+
+/** Fraction of the global solve `timeBudget` that any single first-level
+ *  (depth==0) root-child branch is allowed to stall without producing a
+ *  new `bestTurn1Score` peak. Once a branch has gone `rootChildBudgetMs`
+ *  milliseconds without any strict improvement to the turn-1 peak, nodes
+ *  in that subtree early-return so the DFS unwinds and moves on to the
+ *  next root child. The clock is sliding (reset on every peak update
+ *  inside the branch — see `branchLastPeakTime`) — NOT a fixed "elapsed
+ *  since branch start" window.
+ *
+ *  Applied against `timeBudget` (the solve-level deadline), NOT
+ *  `ctx.timeBudget` which is re-scoped per iteration under Phase K
+ *  iterative deepening.
+ *
+ *  Calibration: **45% of timeBudget**, empirically tuned against the D/D/D
+ *  `ddd-pendulum-opener` fixture at 60s / d=50:
+ *  - **35% (≈18s window)**: D/D/D **regressed 34 → 6** (55 rootChildBudgetCut
+ *    fires). NS-first has a "late-climb" segment where the peak plateaus
+ *    for ≈18-20s between intermediate latent bonuses and the final fusion
+ *    chain peak. An 18s stall window is inside that plateau.
+ *  - **40% (≈20.4s window)**: D/D/D held 34 with zero cuts — the plateau
+ *    is under 20.4s.
+ *  - **45% (≈22.95s window)**: D/D/D held 34 with zero cuts; ≈5s margin
+ *    above the empirical plateau ceiling. Mitsurugi / Branded both fired
+ *    cuts (72 / 34 / 35) without score regression. **Shipped value.**
+ *  - **50%+**: zero regression but progressively less useful for future
+ *    Phase J-on-L variants (Gate-first subtree would be given too long
+ *    before being cut).
+ *
+ *  If a future fixture regresses, raise this fraction BEFORE lowering any
+ *  of the calibrations above — the floor is "the longest peak-update
+ *  plateau on any fixture in this budget". */
+const ROOT_CHILD_BUDGET_FRACTION = 0.45;
+
+/** Phase L — the guard uses a sliding "time since last peak improvement"
+ *  clock rather than a fixed "elapsed since branch start" window. The
+ *  clock resets on every strict improvement of `ctx.bestTurn1Score` while
+ *  inside a tracked root-child branch; the guard fires only if the clock
+ *  has been running without reset for longer than `ctx.rootChildBudgetMs`.
+ *
+ *  This is critical for depth-bound combos (e.g. D/D/D NS-first, which
+ *  climbs 0 → 34 in many small latent-bonus + final-boss-fusion increments
+ *  over the full 51s budget). A fixed "16.8s since branch start" window
+ *  would cut NS-first around step 27/43 because the score hasn't yet
+ *  reached its final peak at that point. The sliding clock lets NS-first
+ *  continue as long as it keeps discovering new peaks (even small +1-2
+ *  bumps), while still cutting Gate-first after it has stalled without
+ *  any improvement for the allotted window. */
+
+// =============================================================================
 // Internal Types
 // =============================================================================
 
@@ -149,6 +201,10 @@ export class DfsSolver implements SolverStrategy {
       terminalTtHit: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
+      terminalRootChildBudgetCut: 0,
+      rootChildBudgetMs: Math.floor(timeBudget * ROOT_CHILD_BUDGET_FRACTION),
+      currentRootChildStart: undefined,
+      branchLastPeakTime: undefined,
       iterationMaxDepth: this.maxDepth,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
@@ -318,6 +374,7 @@ export class DfsSolver implements SolverStrategy {
             ttHit: ctx.terminalTtHit,
             turn2: ctx.terminalTurn2,
             branchBoundCut: ctx.terminalBranchBoundCut,
+            rootChildBudgetCut: ctx.terminalRootChildBudgetCut,
           },
           bestTurn1Score: ctx.bestTurn1Score,
           // Phase H — authoritative peak field-state snapshot. Probes and
@@ -506,6 +563,59 @@ export class DfsSolver implements SolverStrategy {
       };
     }
 
+    // Phase L — per-subtree soft budget guard. The currently-explored
+    // first-level root-child branch is cut when it has been running for
+    // longer than `ctx.rootChildBudgetMs` without producing ANY new
+    // `bestTurn1Score` peak. The clock is a sliding "time since last peak
+    // improvement" reference (`ctx.branchLastPeakTime`), not a fixed
+    // "elapsed since branch start" window — this is essential for
+    // depth-bound combos (e.g. D/D/D NS-first) that climb their peak in
+    // many small increments over the whole global budget. A fixed window
+    // would cut those branches mid-climb; the sliding clock keeps them
+    // alive as long as they keep discovering new peaks, while still
+    // cutting branches that stall entirely (e.g. a combo-enabler Gate
+    // subtree that has exhausted its latent bonus and now wastes time
+    // in a deep dead-end).
+    //
+    // Motivation: Phase 2.1 / Phase J / Phase J-on-K all catastrophically
+    // regressed when a ranker change promoted `Dark Contract with the Gate`
+    // (or any combo-enabler) to the front of the root enumeration. The Gate
+    // subtree has an enormous branching factor and, at the current 60s /
+    // d=50 budget, consumes the entire global budget before the NS-first
+    // line (which actually reaches the tagged boss peak) ever runs. Phase K
+    // iterative deepening did NOT rescue this because D/D/D's canonical
+    // combo requires depth ~43 and the shallow iter at d=25 can't establish
+    // a meaningful bestTurn1Score floor. A per-subtree stall detector is
+    // the only known mechanism that forces Gate-first exploration to yield
+    // without requiring a working shallow-iter floor.
+    //
+    // The guard fires at `depth > 0` only (the root node itself is outside
+    // any tracked branch). `branchLastPeakTime` is `undefined` outside of
+    // tracked branches (scoreTerminal on root, probe mode with
+    // rootChildBudgetMs = +Infinity gated via the isFinite check), so the
+    // condition is trivially false in those cases.
+    //
+    // Propagates `pathTurn1Score` (not 0) to preserve Phase F-bis v2
+    // ancestor-chain semantics — the parent sorts children by score and
+    // this branch's ancestor value is still the honest turn-1 floor it
+    // observed along its descent.
+    if (
+      depth > 0 &&
+      ctx.branchLastPeakTime !== undefined &&
+      Number.isFinite(ctx.rootChildBudgetMs)
+    ) {
+      const elapsedSinceLastPeak = Date.now() - ctx.branchLastPeakTime;
+      if (elapsedSinceLastPeak > ctx.rootChildBudgetMs) {
+        ctx.terminalRootChildBudgetCut++;
+        ctx.totalTreeNodes++;
+        return {
+          node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
+          score: pathTurn1Score,
+          scoreBreakdown: pathTurn1Breakdown,
+        };
+      }
+    }
+
     // Terminal: no legal actions or max depth
     if (actions.length === 0 || depth >= ctx.iterationMaxDepth) {
       // Distinguish "natural end" (no actions) from "depth cap hit while
@@ -681,6 +791,20 @@ export class DfsSolver implements SolverStrategy {
       // `finally` block to stay symmetric even if the recursive call
       // throws (current code never does, but defensive).
       ctx.currentActionStack.push(action);
+      // Phase L — track first-level root-child branches. Set the branch
+      // start timestamp + sliding-clock reference on entry, clear on exit.
+      // Deeper recursive dfs() calls never touch these fields; they
+      // inherit the outer branch's tracking transparently. `branchLastPeakTime`
+      // is reset to now at each new root-child entry (so the previous
+      // branch's last-peak timestamp doesn't leak into the new branch's
+      // budget) and subsequently advanced by `updateBest` whenever
+      // `bestTurn1Score` strictly improves while this branch is active.
+      const isRootChild = depth === 0;
+      if (isRootChild) {
+        const branchStart = Date.now();
+        ctx.currentRootChildStart = branchStart;
+        ctx.branchLastPeakTime = branchStart;
+      }
       try {
         ctx.oracle.applyAction(child, action);
         const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1Score, pathTurn1Breakdown);
@@ -695,6 +819,10 @@ export class DfsSolver implements SolverStrategy {
         }
       } finally {
         ctx.currentActionStack.pop();
+        if (isRootChild) {
+          ctx.currentRootChildStart = undefined;
+          ctx.branchLastPeakTime = undefined;
+        }
         ctx.oracle.destroyDuel(child);
       }
     }
@@ -836,6 +964,14 @@ export class DfsSolver implements SolverStrategy {
       // so storing the reference is safe. The caller does not mutate it
       // after passing it in.
       ctx.bestTurn1FieldState = fieldState;
+      // Phase L — advance the sliding "time since last peak improvement"
+      // clock. Only updated while a tracked root-child branch is active
+      // (`currentRootChildStart` defined) so that the guard measures
+      // elapsed stall INSIDE the current branch, independent of peaks
+      // found in prior branches.
+      if (ctx.currentRootChildStart !== undefined) {
+        ctx.branchLastPeakTime = Date.now();
+      }
     }
   }
 
@@ -894,6 +1030,14 @@ export class DfsSolver implements SolverStrategy {
       terminalTtHit: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
+      terminalRootChildBudgetCut: 0,
+      // Probe mode: disable Phase L guard. Probes are short (100 nodes)
+      // and don't need per-subtree pacing; setting rootChildBudgetMs = 0
+      // would fire immediately, so we set Infinity instead to make the
+      // guard inactive.
+      rootChildBudgetMs: Number.POSITIVE_INFINITY,
+      currentRootChildStart: undefined,
+      branchLastPeakTime: undefined,
       iterationMaxDepth: this.maxDepth,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
@@ -1121,6 +1265,31 @@ interface DfsContext {
    *  whose upper bound (ancestor pathTurn1Score + remaining-ply plausible
    *  gain) cannot possibly exceed ctx.bestTurn1Score. */
   terminalBranchBoundCut: number;
+  /** Phase L — nodes cut by the per-subtree soft budget guard: the current
+   *  first-level root-child branch has exceeded its allotted time slice
+   *  without producing a non-trivial `bestTurn1Score` improvement, so the
+   *  DFS is forced to unwind and move on to the next root child. */
+  terminalRootChildBudgetCut: number;
+  /** Phase L — per first-level root-child branch wall-clock budget (ms).
+   *  Computed once in `solve()` as `Math.floor(timeBudget * ROOT_CHILD_BUDGET_FRACTION)`.
+   *  Read by every dfs() call to decide whether the current branch has
+   *  overstayed its welcome. `0` disables the guard (probe mode). */
+  rootChildBudgetMs: number;
+  /** Phase L — timestamp at which the currently-explored first-level
+   *  root-child branch began. Set in the child loop at `depth === 0`
+   *  before the recursive call, cleared in the `finally` after the pop.
+   *  `undefined` means we are NOT currently inside a tracked branch
+   *  (root dfs() itself, between branches, or terminal scoreTerminal).
+   *  Used by the Phase L guard to compute elapsed-in-branch. */
+  currentRootChildStart: number | undefined;
+  /** Phase L — sliding "time since last peak improvement" clock.
+   *  Initialized at `Date.now()` at each first-level root-child branch
+   *  entry. Updated to `Date.now()` inside `updateBest` whenever
+   *  `bestTurn1Score` strictly increases while a tracked branch is
+   *  active (i.e. `currentRootChildStart !== undefined`). The guard
+   *  fires when `Date.now() - branchLastPeakTime > rootChildBudgetMs`.
+   *  `undefined` when no branch is currently tracked. */
+  branchLastPeakTime: number | undefined;
   /** Phase K — iterative deepening. Current iteration's max depth bound.
    *  Set before each DFS pass in `solve()`; the DFS reads this instead of
    *  `this.maxDepth` for terminal checks and Phase I remaining-ply math.
