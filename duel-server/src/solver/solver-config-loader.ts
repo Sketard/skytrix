@@ -13,6 +13,7 @@ import type {
   HandtrapConfig,
 } from './solver-types.js';
 import { INTERRUPTION_TYPES } from './solver-types.js';
+import type { StructuralWeights } from './structural-value-computer.js';
 
 // =============================================================================
 // Range Validation Helpers
@@ -251,6 +252,35 @@ export interface AllSolverConfigs {
   interruptionWeights: Record<InterruptionType, number>;
   interruptionTags: Record<string, InterruptionTag>;
   handtraps: HandtrapConfig[];
+  structuralWeights: StructuralWeights;
+}
+
+const STRUCTURAL_WEIGHT_RANGES: Record<string, RangeRule> = {
+  F1_W:                   { min: 0, max: 20 },
+  F1_CAP:                 { min: 0, max: 10 },
+  F1_tributeFodderBonus:  { min: 0, max: 5 },
+  F2_W:                   { min: 0, max: 20 },
+  F2_CAP:                 { min: 0, max: 20 },
+  F3_W:                   { min: 0, max: 20 },
+  F3_CAP:                 { min: 0, max: 10 },
+  F4_W:                   { min: 0, max: 5 },
+  F4_CAP:                 { min: 0, max: 20 },
+  globalCap:              { min: 0, max: 50 },
+};
+
+export function loadStructuralWeights(dataDir: string): StructuralWeights {
+  const filePath = join(dataDir, 'structural-weights.json');
+  const raw = JSON.parse(readFileSync(filePath, 'utf-8')) as Record<string, unknown>;
+
+  const weights: Record<string, number | boolean | string | undefined> = {};
+  for (const [field, rule] of Object.entries(STRUCTURAL_WEIGHT_RANGES)) {
+    weights[field] = validateRange(raw[field], field, rule);
+  }
+  if (raw._validated !== undefined) weights._validated = Boolean(raw._validated);
+  if (raw._notes !== undefined) weights._notes = String(raw._notes);
+
+  console.log('[Solver] structural-weights.json loaded and validated');
+  return weights as unknown as StructuralWeights;
 }
 
 export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolverConfigs {
@@ -258,8 +288,9 @@ export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolver
   const interruptionWeights = loadInterruptionWeights(dataDir);
   const interruptionTags = loadInterruptionTags(dataDir);
   const handtraps = loadHandtraps(dataDir);
+  const structuralWeights = loadStructuralWeights(dataDir);
 
   validateInterruptionTagsAgainstCardPool(interruptionTags, cardDB);
 
-  return { solverConfig, interruptionWeights, interruptionTags, handtraps };
+  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights };
 }

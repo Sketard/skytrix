@@ -92,7 +92,12 @@ async function main(): Promise<void> {
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
   const cardMetadata = buildCardMetadataMap(cardDB, [...deck.main, ...deck.extra, ...hand.hand]);
-  const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights, cardMetadata);
+  const scorer = new InterruptionScorer(
+    allConfigs.interruptionTags,
+    allConfigs.interruptionWeights,
+    cardMetadata,
+    allConfigs.structuralWeights,
+  );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
   const stmt = cardDB.stmt;
   const cardName = (cid: number): string => {

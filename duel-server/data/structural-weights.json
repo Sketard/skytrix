@@ -1,0 +1,19 @@
+{
+  "F1_W": 3,
+  "F1_CAP": 2,
+  "F1_tributeFodderBonus": 1,
+
+  "F2_W": 0,
+  "F2_CAP": 0,
+
+  "F3_W": 0,
+  "F3_CAP": 0,
+
+  "F4_W": 0,
+  "F4_CAP": 0,
+
+  "globalCap": 15,
+
+  "_validated": false,
+  "_notes": "Step 1 S1.2 seed — F1 (Ritual Unlock Co-Presence) only. F2/F3/F4 remain at 0 until their respective sub-phases ship. Values inspection-seeded; no tuning. F1 max contribution = F1_W * F1_CAP + tributeFodderBonus = 3*2 + 1 = 7 points."
+}

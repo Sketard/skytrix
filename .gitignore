@@ -64,6 +64,7 @@ duel-server/data/*
 !duel-server/data/interruption-weights.json
 !duel-server/data/interruption-tags.json
 !duel-server/data/handtraps.json
+!duel-server/data/structural-weights.json
 duel-server/node_modules/
 duel-server/dist/
 

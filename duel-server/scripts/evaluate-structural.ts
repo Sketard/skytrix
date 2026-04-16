@@ -246,7 +246,12 @@ async function main(): Promise<void> {
   }
   const cardMetadata = buildCardMetadataMap(cardDB, metadataCardIds);
 
-  const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights, cardMetadata);
+  const scorer = new InterruptionScorer(
+    allConfigs.interruptionTags,
+    allConfigs.interruptionWeights,
+    cardMetadata,
+    allConfigs.structuralWeights,
+  );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 
   const timeLimitMs = budgetOverride ?? allConfigs.solverConfig.timeBudgetOptimalMs;

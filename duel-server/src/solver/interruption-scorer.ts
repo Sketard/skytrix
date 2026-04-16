@@ -16,6 +16,8 @@ import { ALL_ZONE_IDS, INTERRUPTION_TYPES } from './solver-types.js';
 import { solverAssert } from './solver-assert.js';
 import { time as instrumentTime } from './solver-instrumentation.js';
 import type { CardMetadataMap } from './card-metadata.js';
+import type { StructuralWeights } from './structural-value-computer.js';
+import { computeStructuralValue } from './structural-value-computer.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -90,11 +92,13 @@ export class InterruptionScorer {
   private readonly tags: Record<string, InterruptionTag>;
   private readonly weights: Record<InterruptionType, number>;
   private readonly cardMetadata: CardMetadataMap | undefined;
+  private readonly structuralWeights: StructuralWeights | undefined;
 
   constructor(
     tags: Record<string, InterruptionTag>,
     weights: Record<InterruptionType, number>,
     cardMetadata?: CardMetadataMap,
+    structuralWeights?: StructuralWeights,
   ) {
     if (Object.keys(tags).length === 0) {
       throw new Error('[Solver] InterruptionScorer: tags must not be empty');
@@ -105,6 +109,7 @@ export class InterruptionScorer {
     this.tags = tags;
     this.weights = weights;
     this.cardMetadata = cardMetadata;
+    this.structuralWeights = structuralWeights;
   }
 
   score(
@@ -263,6 +268,22 @@ export class InterruptionScorer {
         if (doomQueenInPzone) break;
       }
       if (doomQueenInPzone) latentPoints += DOOM_QUEEN_PZONE_BONUS;
+    }
+
+    // Step 1 structural value function — deck-agnostic features that score
+    // combo-enabling latent states (ritual unlock, tutor chain, material
+    // pool). Additive into `latentPoints` on top of Phase 2.3 V1. Gated on
+    // `cardMetadata` presence (S1.1 plumbing) AND `turn === 1` (inside
+    // computeStructuralValue). Returns 0 when either gate is unmet, so
+    // production paths without wired metadata see zero behavioral change.
+    if (this.cardMetadata !== undefined && this.structuralWeights !== undefined) {
+      const structural = computeStructuralValue(
+        fieldState,
+        activationLog,
+        this.cardMetadata,
+        this.structuralWeights,
+      );
+      latentPoints += structural.totalStructural;
     }
 
     const total = weighted + fallbackPoints + latentPoints;
