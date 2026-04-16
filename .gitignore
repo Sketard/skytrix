@@ -53,6 +53,8 @@ _bmad-output/implementation-artifacts/
 # Solver probe/validation raw JSON outputs — reproducible via probe scripts,
 # findings are persisted in spike memory docs. Exclude from git to avoid noise.
 _bmad-output/planning-artifacts/research/empirical-validation-*-raw.json
+duel-server/audit-*.log
+duel-server/eval-*.log
 
 # Duel server external data (downloaded at setup, ~100 MB).
 # Use `data/*` (not `data/`) so git can re-include specific files —
