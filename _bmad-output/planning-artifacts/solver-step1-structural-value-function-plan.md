@@ -209,6 +209,41 @@ Start with V1 simple.
 
 ---
 
+## 4bis. Regression-gate fragility (documented 2026-04-16 post-S1.1)
+
+**Finding from S1.1 shakedown**: the wall-clock budget (60s) combined with
+Phase L's `Date.now()`-based per-subtree cutoff makes the baseline
+**non-deterministic under CPU thermal variance**. After ~30 minutes of heavy
+compute, the solver's throughput drops 10-15% (thermal throttling), causing
+fixtures that were reaching `depth_cap` to instead `timeout` — producing
+materially different scores/matched values for the same code.
+
+Observed: D/D/D 34/2-5 → 11/0-5 on cooled → hot CPU with identical code.
+Resolved: verified S1.1 against pre-step1 baseline under same CPU state =
+5/5 stable, 0 regressions.
+
+**Implications for the gate**:
+- Always run `--compare` regression checks in a **freshly started session**
+  to avoid accumulated thermal state.
+- A PASS on `--compare` is necessary but not sufficient: functional delta
+  matters more than diagnostic delta.
+- Cumulative matched + cumulative score are the primary signals. Per-fixture
+  score wiggle within ±3 points is acceptable under the same thermal state.
+
+**Deferred infra improvement**: migrate Phase L's per-subtree cutoff from
+wall-clock (`Date.now() - ctx.branchLastPeakTime > rootChildBudgetMs`) to
+node-count (`ctx.totalTreeNodes - ctx.branchLastPeakNodes > rootChildBudgetNodes`).
+This would unlock a truly deterministic `--node-budget=N` mode in
+`evaluate-structural.ts`. Prototyped during S1.1 and reverted — Phase L
+disabled under pure node-budget mode, DFS explored wide not deep, baseline
+regressed further. Proper fix tracked as pre-S2 infra work.
+
+**Interim gate discipline** for S1.2+:
+1. Run `--compare` against the last-known-good baseline.
+2. If PASS: merge + re-capture baseline (fresh CPU) as the new reference.
+3. If FAIL: re-run after 2-min cooldown to rule out thermal; if fails again,
+   the code change is the cause.
+
 ## 5. Evaluation Harness
 
 ### Current state
