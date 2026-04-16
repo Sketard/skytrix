@@ -91,7 +91,7 @@ const DOOM_QUEEN_PZONE_BONUS = 3;
 export class InterruptionScorer {
   private readonly tags: Record<string, InterruptionTag>;
   private readonly weights: Record<InterruptionType, number>;
-  private readonly cardMetadata: CardMetadataMap | undefined;
+  private cardMetadata: CardMetadataMap | undefined;
   private readonly structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
 
@@ -113,6 +113,14 @@ export class InterruptionScorer {
     this.cardMetadata = cardMetadata;
     this.structuralWeights = structuralWeights;
     this.tutorCards = tutorCards;
+  }
+
+  /** Rebuild the per-duel card metadata. Called by solver-worker at the
+   *  start of each solve request since metadata varies per duelConfig
+   *  while `structuralWeights`/`tutorCards` are shared config. Piscina
+   *  serializes tasks per worker so no concurrent mutation. */
+  setCardMetadata(map: CardMetadataMap | undefined): void {
+    this.cardMetadata = map;
   }
 
   score(

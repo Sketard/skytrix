@@ -13,6 +13,7 @@ import { OCGCoreAdapter } from './ocgcore-adapter.js';
 import { ZobristHasher } from './zobrist.js';
 import { TranspositionTable } from './transposition-table.js';
 import { InterruptionScorer } from './interruption-scorer.js';
+import { buildCardMetadataMap } from './card-metadata.js';
 import { DfsSolver } from './dfs-solver.js';
 import { extractMainPath } from './tree-utils.js';
 import { verifyAdversarialPath } from './solver-verifier.js';
@@ -92,6 +93,9 @@ const table = new TranspositionTable(allConfigs.solverConfig.transpositionMaxEnt
 const scorer = new InterruptionScorer(
   allConfigs.interruptionTags,
   allConfigs.interruptionWeights,
+  undefined, // cardMetadata — set per-solve in runSolve
+  allConfigs.structuralWeights,
+  allConfigs.structuralTutorCards,
 );
 const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
@@ -107,6 +111,17 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   if (!task || task.type === 'health-check') {
     return { ok: true };
   }
+
+  // Step 1 structural value function — rebuild card metadata for the new
+  // duelConfig so F1 (isRitualMonster/isRitualSpell), F3 (level pairing) and
+  // the metadata-gated entry in computeStructuralValue all fire. Shared
+  // structuralWeights + tutorCards were set at boot.
+  const duelCards = [
+    ...task.duelConfig.mainDeck,
+    ...task.duelConfig.extraDeck,
+    ...task.duelConfig.hand,
+  ];
+  scorer.setCardMetadata(buildCardMetadataMap(cardDB, duelCards));
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {
