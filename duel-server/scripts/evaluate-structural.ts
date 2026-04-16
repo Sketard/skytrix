@@ -251,6 +251,7 @@ async function main(): Promise<void> {
     allConfigs.interruptionWeights,
     cardMetadata,
     allConfigs.structuralWeights,
+    allConfigs.structuralTutorCards,
   );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 

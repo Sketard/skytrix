@@ -13,7 +13,7 @@
 //
 // Features (S1.2+ sub-phases):
 //   F1 — Ritual Unlock Co-Presence  (SHIPPED S1.2)
-//   F2 — Tutor Chain Potency        (planned S1.5)
+//   F2 — Tutor Chain Potency        (SHIPPED S1.3)
 //   F3 — Extra Deck Material Pool   (planned S1.4)
 //   F4 — (dropped — redundant with existing OPT-aware scoring)
 //
@@ -50,6 +50,18 @@ export interface StructuralWeights {
 
   _validated?: boolean;
   _notes?: string;
+}
+
+export interface StructuralTutorCardEntry {
+  name: string;
+  weight: number;
+  archetype: string;
+  role: 'combo-starter' | 'engine-glue' | 'utility';
+}
+
+export interface StructuralTutorCards {
+  /** cardId (as string) → entry */
+  cards: Record<string, StructuralTutorCardEntry>;
 }
 
 export interface StructuralComputeResult {
@@ -95,6 +107,16 @@ const RITUAL_SPELL_SCAN_ZONES: readonly ZoneId[] = [
 const TRIBUTE_FODDER_ZONES: readonly ZoneId[] = [
   'HAND',
   'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
+];
+
+/** Tutors fire from the hand (activate/normal-summon path) or from the
+ *  field (on-summon / ignition triggers). GY-only effects are rare in v1
+ *  scope and excluded. Pendulum Zone (S1/S5) is included since Scales
+ *  can tutor on activation. */
+const TUTOR_SCAN_ZONES: readonly ZoneId[] = [
+  'HAND',
+  'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
+  'S1', 'S2', 'S3', 'S4', 'S5',
 ];
 
 // =============================================================================
@@ -170,6 +192,57 @@ function computeF1RitualUnlock(
 }
 
 // =============================================================================
+// F2 — Tutor Chain Potency
+// =============================================================================
+
+/**
+ * Scores states where a known tutor (from the curated whitelist) is
+ * present and its effect is still fresh (not in `activationLog`). This
+ * rewards intermediate states where DFS has set up a multi-step tutor
+ * chain — the signal the audit identified as missing for the Ryzeal
+ * Saji → Mitsurugi Ritual → Futsu summon line.
+ *
+ * V1 simplification: "fresh" means `activationLog` has no entries for
+ * this cardId. A single consumed effect marks the card as spent for
+ * scoring purposes, even if the card has multiple effects with separate
+ * OPTs — the over-conservative gate is fine for v1 because tutors we
+ * whitelist typically have a single tutor effect per turn.
+ *
+ * Dedup: same cardId in multiple zones (rare — e.g. Pendulum-summoned
+ * copies in EMZ and MZ) counts once to avoid multi-copy inflation.
+ */
+function computeF2TutorChain(
+  fieldState: FieldState,
+  activationLog: ActivationLog | undefined,
+  tutorCards: StructuralTutorCards | undefined,
+  weights: StructuralWeights,
+): number {
+  if (weights.F2_W === 0 || tutorCards === undefined) return 0;
+
+  const seen = new Set<number>();
+  let totalWeight = 0;
+
+  for (const zoneId of TUTOR_SCAN_ZONES) {
+    const cards = fieldState.zones[zoneId];
+    for (const card of cards) {
+      if (seen.has(card.cardId)) continue;
+      const entry = tutorCards.cards[String(card.cardId)];
+      if (!entry) continue;
+
+      // OPT-fresh gate: any prior activation marks the card as spent.
+      const consumed = activationLog?.get(card.cardId) ?? [];
+      if (consumed.length > 0) continue;
+
+      seen.add(card.cardId);
+      totalWeight += entry.weight;
+    }
+  }
+
+  const raw = weights.F2_W * totalWeight;
+  return Math.min(raw, weights.F2_CAP);
+}
+
+// =============================================================================
 // Public Entry Point
 // =============================================================================
 
@@ -186,15 +259,16 @@ function computeF1RitualUnlock(
  */
 export function computeStructuralValue(
   fieldState: FieldState,
-  _activationLog: ActivationLog | undefined,
+  activationLog: ActivationLog | undefined,
   cardMetadata: CardMetadataMap | undefined,
   weights: StructuralWeights,
+  tutorCards?: StructuralTutorCards,
 ): StructuralComputeResult {
   if (cardMetadata === undefined) return EMPTY_RESULT;
   if (fieldState.turn !== 1) return EMPTY_RESULT;
 
   const F1 = computeF1RitualUnlock(fieldState, cardMetadata, weights);
-  const F2 = 0; // planned S1.5
+  const F2 = computeF2TutorChain(fieldState, activationLog, tutorCards, weights);
   const F3 = 0; // planned S1.4
   const F4 = 0; // dropped
 

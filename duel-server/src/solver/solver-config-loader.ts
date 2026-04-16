@@ -13,7 +13,7 @@ import type {
   HandtrapConfig,
 } from './solver-types.js';
 import { INTERRUPTION_TYPES } from './solver-types.js';
-import type { StructuralWeights } from './structural-value-computer.js';
+import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 
 // =============================================================================
 // Range Validation Helpers
@@ -253,6 +253,7 @@ export interface AllSolverConfigs {
   interruptionTags: Record<string, InterruptionTag>;
   handtraps: HandtrapConfig[];
   structuralWeights: StructuralWeights;
+  structuralTutorCards: StructuralTutorCards;
 }
 
 const STRUCTURAL_WEIGHT_RANGES: Record<string, RangeRule> = {
@@ -283,14 +284,44 @@ export function loadStructuralWeights(dataDir: string): StructuralWeights {
   return weights as unknown as StructuralWeights;
 }
 
+const TUTOR_ROLES = ['combo-starter', 'engine-glue', 'utility'] as const;
+
+export function loadStructuralTutorCards(dataDir: string): StructuralTutorCards {
+  const filePath = join(dataDir, 'structural-tutor-cards.json');
+  const raw = JSON.parse(readFileSync(filePath, 'utf-8')) as { cards?: Record<string, unknown> };
+  const cardsRaw = raw.cards;
+  if (!cardsRaw || typeof cardsRaw !== 'object') {
+    console.error(`[Solver] Invalid structural-tutor-cards.json: missing 'cards' object`);
+    process.exit(1);
+  }
+
+  const cards: Record<string, { name: string; weight: number; archetype: string; role: 'combo-starter' | 'engine-glue' | 'utility' }> = {};
+  for (const [cidStr, rawEntry] of Object.entries(cardsRaw)) {
+    if (!/^\d+$/.test(cidStr)) {
+      console.error(`[Solver] Invalid tutor cardId '${cidStr}' — must be a decimal number string`);
+      process.exit(1);
+    }
+    const entry = rawEntry as Record<string, unknown>;
+    const weight = validateRange(entry.weight, `tutor.${cidStr}.weight`, { min: 0, max: 10 });
+    const role = validateEnum(entry.role, `tutor.${cidStr}.role`, TUTOR_ROLES);
+    const name = typeof entry.name === 'string' ? entry.name : `#${cidStr}`;
+    const archetype = typeof entry.archetype === 'string' ? entry.archetype : 'unknown';
+    cards[cidStr] = { name, weight, archetype, role };
+  }
+
+  console.log(`[Solver] structural-tutor-cards.json loaded (${Object.keys(cards).length} entries)`);
+  return { cards };
+}
+
 export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolverConfigs {
   const solverConfig = loadSolverConfig(dataDir);
   const interruptionWeights = loadInterruptionWeights(dataDir);
   const interruptionTags = loadInterruptionTags(dataDir);
   const handtraps = loadHandtraps(dataDir);
   const structuralWeights = loadStructuralWeights(dataDir);
+  const structuralTutorCards = loadStructuralTutorCards(dataDir);
 
   validateInterruptionTagsAgainstCardPool(interruptionTags, cardDB);
 
-  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights };
+  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights, structuralTutorCards };
 }

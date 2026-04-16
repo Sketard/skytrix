@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "purpose": "F2 Tutor Chain Potency whitelist — cards whose activation unlocks deterministic deck-to-hand/field plays. Step 1 S1.3 seed focused on Mitsurugi + Ryzeal fixtures; expand to cover more archetypes as fixture suite grows (step 2).",
+    "weightScale": {
+      "combo-starter": 3,
+      "engine-glue": 2,
+      "utility": 1
+    },
+    "_validated": false,
+    "_notes": "Inspection-seeded. Tuning deferred to step 3. Exclude D/D cards already scored by Phase 2.3 V1 (DARK_CONTRACT_IDS + Doom Queen 20715411) to avoid double-counting per ADR-S1-1 R6."
+  },
+  "cards": {
+    "18176525": { "name": "Mitsurugi no Mikoto, Saji",  "weight": 3, "archetype": "Mitsurugi", "role": "combo-starter" },
+    "45171524": { "name": "Mitsurugi Prayers",           "weight": 2, "archetype": "Mitsurugi", "role": "engine-glue"   },
+    "8633261":  { "name": "Ice Ryzeal",                  "weight": 2, "archetype": "Ryzeal",    "role": "engine-glue"   },
+    "35844557": { "name": "Sword Ryzeal",                "weight": 2, "archetype": "Ryzeal",    "role": "engine-glue"   },
+    "34909328": { "name": "Ryzeal Detonator",            "weight": 2, "archetype": "Ryzeal",    "role": "engine-glue"   }
+  }
+}
