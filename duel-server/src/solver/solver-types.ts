@@ -205,6 +205,12 @@ export interface SolverConfig {
   speed: 'fast' | 'optimal';
   timeLimitMs: number;
   handtraps?: HandtrapConfig[];
+  /** Pre-S2 infra — Phase L node-budget override (deterministic regression
+   *  gate mode). When set, the per-root-child Phase L guard uses
+   *  `totalTreeNodes` instead of wall-clock. `undefined` keeps wall-clock
+   *  (production default). Typically driven by `--node-budget=N` in
+   *  `evaluate-structural.ts`. */
+  rootChildBudgetNodes?: number;
 }
 
 export interface EndBoardCard {

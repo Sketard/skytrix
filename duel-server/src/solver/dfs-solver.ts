@@ -203,8 +203,10 @@ export class DfsSolver implements SolverStrategy {
       terminalBranchBoundCut: 0,
       terminalRootChildBudgetCut: 0,
       rootChildBudgetMs: Math.floor(timeBudget * ROOT_CHILD_BUDGET_FRACTION),
+      rootChildBudgetNodes: config.rootChildBudgetNodes,
       currentRootChildStart: undefined,
       branchLastPeakTime: undefined,
+      branchLastPeakNodes: undefined,
       iterationMaxDepth: this.maxDepth,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
@@ -599,20 +601,42 @@ export class DfsSolver implements SolverStrategy {
     // ancestor-chain semantics — the parent sorts children by score and
     // this branch's ancestor value is still the honest turn-1 floor it
     // observed along its descent.
-    if (
-      depth > 0 &&
-      ctx.branchLastPeakTime !== undefined &&
-      Number.isFinite(ctx.rootChildBudgetMs)
-    ) {
-      const elapsedSinceLastPeak = Date.now() - ctx.branchLastPeakTime;
-      if (elapsedSinceLastPeak > ctx.rootChildBudgetMs) {
-        ctx.terminalRootChildBudgetCut++;
-        ctx.totalTreeNodes++;
-        return {
-          node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
-          score: pathTurn1Score,
-          scoreBreakdown: pathTurn1Breakdown,
-        };
+    if (depth > 0) {
+      // Node-budget mode (pre-S2 infra) takes precedence over wall-clock
+      // when `rootChildBudgetNodes` is set. Both modes use identical
+      // sliding-window semantics: measure progress since last peak
+      // improvement inside the current root-child branch, cut if it
+      // exceeds the allotted budget. Node-count is deterministic across
+      // CPU throttling states (unlike Date.now()), unlocking reproducible
+      // regression gates in evaluate-structural.ts.
+      if (
+        ctx.rootChildBudgetNodes !== undefined &&
+        ctx.branchLastPeakNodes !== undefined
+      ) {
+        const nodesSinceLastPeak = ctx.totalTreeNodes - ctx.branchLastPeakNodes;
+        if (nodesSinceLastPeak > ctx.rootChildBudgetNodes) {
+          ctx.terminalRootChildBudgetCut++;
+          ctx.totalTreeNodes++;
+          return {
+            node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
+            score: pathTurn1Score,
+            scoreBreakdown: pathTurn1Breakdown,
+          };
+        }
+      } else if (
+        ctx.branchLastPeakTime !== undefined &&
+        Number.isFinite(ctx.rootChildBudgetMs)
+      ) {
+        const elapsedSinceLastPeak = Date.now() - ctx.branchLastPeakTime;
+        if (elapsedSinceLastPeak > ctx.rootChildBudgetMs) {
+          ctx.terminalRootChildBudgetCut++;
+          ctx.totalTreeNodes++;
+          return {
+            node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
+            score: pathTurn1Score,
+            scoreBreakdown: pathTurn1Breakdown,
+          };
+        }
       }
     }
 
@@ -804,6 +828,7 @@ export class DfsSolver implements SolverStrategy {
         const branchStart = Date.now();
         ctx.currentRootChildStart = branchStart;
         ctx.branchLastPeakTime = branchStart;
+        ctx.branchLastPeakNodes = ctx.totalTreeNodes;
       }
       try {
         ctx.oracle.applyAction(child, action);
@@ -822,6 +847,7 @@ export class DfsSolver implements SolverStrategy {
         if (isRootChild) {
           ctx.currentRootChildStart = undefined;
           ctx.branchLastPeakTime = undefined;
+          ctx.branchLastPeakNodes = undefined;
         }
         ctx.oracle.destroyDuel(child);
       }
@@ -964,13 +990,16 @@ export class DfsSolver implements SolverStrategy {
       // so storing the reference is safe. The caller does not mutate it
       // after passing it in.
       ctx.bestTurn1FieldState = fieldState;
-      // Phase L — advance the sliding "time since last peak improvement"
-      // clock. Only updated while a tracked root-child branch is active
-      // (`currentRootChildStart` defined) so that the guard measures
-      // elapsed stall INSIDE the current branch, independent of peaks
-      // found in prior branches.
+      // Phase L — advance the sliding "since last peak improvement"
+      // counters (both wall-clock and node-count). Only updated while a
+      // tracked root-child branch is active (`currentRootChildStart`
+      // defined) so that the guard measures stall INSIDE the current
+      // branch, independent of peaks found in prior branches. Both
+      // counters advance together so the active mode (selected in the
+      // guard) sees a consistent reset.
       if (ctx.currentRootChildStart !== undefined) {
         ctx.branchLastPeakTime = Date.now();
+        ctx.branchLastPeakNodes = ctx.totalTreeNodes;
       }
     }
   }
@@ -1034,10 +1063,14 @@ export class DfsSolver implements SolverStrategy {
       // Probe mode: disable Phase L guard. Probes are short (100 nodes)
       // and don't need per-subtree pacing; setting rootChildBudgetMs = 0
       // would fire immediately, so we set Infinity instead to make the
-      // guard inactive.
+      // guard inactive. Node-budget mode is also off during probe — the
+      // node-budget branch in the guard only fires when `rootChildBudgetNodes`
+      // is defined.
       rootChildBudgetMs: Number.POSITIVE_INFINITY,
+      rootChildBudgetNodes: undefined,
       currentRootChildStart: undefined,
       branchLastPeakTime: undefined,
+      branchLastPeakNodes: undefined,
       iterationMaxDepth: this.maxDepth,
       promptTypeCounts: {},
       bfByDepthSum: new Array(this.maxDepth + 1).fill(0),
@@ -1275,6 +1308,12 @@ interface DfsContext {
    *  Read by every dfs() call to decide whether the current branch has
    *  overstayed its welcome. `0` disables the guard (probe mode). */
   rootChildBudgetMs: number;
+  /** Phase L node-budget (pre-S2 infra) — deterministic alternative to
+   *  `rootChildBudgetMs`. When defined, supersedes the wall-clock guard:
+   *  branch cut fires at `totalTreeNodes - branchLastPeakNodes > rootChildBudgetNodes`.
+   *  Unlocks reproducible regression gates in `evaluate-structural.ts` by
+   *  removing CPU-throughput sensitivity. `undefined` = wall-clock mode (default). */
+  rootChildBudgetNodes: number | undefined;
   /** Phase L — timestamp at which the currently-explored first-level
    *  root-child branch began. Set in the child loop at `depth === 0`
    *  before the recursive call, cleared in the `finally` after the pop.
@@ -1290,6 +1329,13 @@ interface DfsContext {
    *  fires when `Date.now() - branchLastPeakTime > rootChildBudgetMs`.
    *  `undefined` when no branch is currently tracked. */
   branchLastPeakTime: number | undefined;
+  /** Phase L node-budget — sliding "nodes since last peak improvement"
+   *  counter. Parallels `branchLastPeakTime` but in node-count space
+   *  (reads `ctx.totalTreeNodes` as the progress clock). Seeded at
+   *  root-child entry, advanced inside `updateBest` on peak improvement,
+   *  compared against `rootChildBudgetNodes` in the Phase L guard.
+   *  `undefined` when no branch is tracked or node-budget mode is off. */
+  branchLastPeakNodes: number | undefined;
   /** Phase K — iterative deepening. Current iteration's max depth bound.
    *  Set before each DFS pass in `solve()`; the DFS reads this instead of
    *  `this.maxDepth` for terminal checks and Phase I remaining-ply math.

@@ -16,6 +16,14 @@
 //
 //   SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
 //     --compare=../_bmad-output/planning-artifacts/research/baselines/pre-step1-baseline.json
+//
+// Deterministic regression gate (pre-S2 infra): --node-budget=N swaps the
+// Phase L per-root-child wall-clock guard for a node-count guard, removing
+// CPU-throughput sensitivity across runs. Pair with a large --budget-ms to
+// prevent the global time budget from kicking in before the node-budget does:
+//   SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
+//     --node-budget=400 --budget-ms=3600000 \
+//     --compare=../_bmad-output/planning-artifacts/research/baselines/<baseline>.json
 // =============================================================================
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -69,6 +77,10 @@ interface BaselineFile {
     budgetMs: number;
     scorerVersion: string;
     gitHead?: string;
+    /** Pre-S2 infra — present when the run used deterministic node-budget
+     *  mode instead of the default wall-clock Phase L guard. Recorded for
+     *  baseline traceability; `compareBaselines` does not key off it. */
+    rootChildBudgetNodes?: number;
   };
   fixtures: Record<string, FixtureResult>;
   aggregate: {
@@ -104,6 +116,7 @@ async function runFixture(
   hand: HandFixture,
   allConfigs: ReturnType<typeof loadAllSolverConfigs>,
   timeLimitMs: number,
+  rootChildBudgetNodes: number | undefined,
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
   if (!deck) throw new Error(`Deck '${hand.deck}' not found`);
@@ -142,7 +155,12 @@ async function runFixture(
   const dfs = new DfsSolver(hasher, table, scorer, adapter, ranker, perFixtureConfig);
   const startHandle = adapter.createDuel(duelConfig);
   const signal = AbortSignal.timeout(timeLimitMs + 5000);
-  const solverConfig: SolverConfig = { mode: 'goldfish', speed: 'optimal', timeLimitMs };
+  const solverConfig: SolverConfig = {
+    mode: 'goldfish',
+    speed: 'optimal',
+    timeLimitMs,
+    rootChildBudgetNodes,
+  };
 
   const t0 = Date.now();
   const result = dfs.solve(adapter, solverConfig, signal, () => {}, startHandle);
@@ -214,6 +232,7 @@ async function main(): Promise<void> {
   const outPath = parseStringArg('out');
   const comparePath = parseStringArg('compare');
   const budgetOverride = parseNumArg('budget-ms');
+  const nodeBudget = parseNumArg('node-budget');
   const fixtureFilter = parseStringArg('only');
   const scorerVersion = parseStringArg('label') ?? 'unspecified';
 
@@ -257,13 +276,16 @@ async function main(): Promise<void> {
 
   const timeLimitMs = budgetOverride ?? allConfigs.solverConfig.timeBudgetOptimalMs;
 
-  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${timeLimitMs}ms  label='${scorerVersion}'  metadataCards=${cardMetadata.size}`);
+  const modeTag = nodeBudget !== undefined
+    ? `node-budget=${nodeBudget}`
+    : `phase-L=wall-clock`;
+  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${timeLimitMs}ms  ${modeTag}  label='${scorerVersion}'  metadataCards=${cardMetadata.size}`);
 
   const fixtureResults: Record<string, FixtureResult> = {};
   for (const hand of validHands) {
     console.log(`\n[evaluate] ─── ${hand.id} (${hand.deck})`);
     try {
-      const res = await runFixture(adapter, scorer, ranker, fixture, hand, allConfigs, timeLimitMs);
+      const res = await runFixture(adapter, scorer, ranker, fixture, hand, allConfigs, timeLimitMs, nodeBudget);
       fixtureResults[hand.id] = res;
       console.log(`  score=${res.score}  matched=${res.matched}/${res.matchedTotal}  ` +
         `nodes=${res.nodesExplored}  depth=${res.maxDepthReached}  ` +
@@ -284,6 +306,7 @@ async function main(): Promise<void> {
       timestamp: new Date().toISOString(),
       budgetMs: timeLimitMs,
       scorerVersion,
+      ...(nodeBudget !== undefined ? { rootChildBudgetNodes: nodeBudget } : {}),
     },
     fixtures: fixtureResults,
     aggregate: {
