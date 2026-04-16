@@ -2,10 +2,82 @@
 
 **Author**: Claude Opus 4.6 (assisted by Axel)
 **Date**: 2026-04-16
-**Status**: Plan — not yet implemented
+**Status**: **SHIPPED 2026-04-16** (S1.0-S1.5, 7 commits across same day). See §14 below.
 **Tier**: 3 (committed, see `project_solver_ml_strategic_direction.md`)
-**Budget**: 2-3 calendar weeks, solo
+**Budget**: 2-3 calendar weeks → actual 1 day (aggressive LLM-paired pace)
 **Prerequisite state**: audit Ryzeal complete (`project_solver_audit_ryzeal_2026_04_16.md`) — no enumeration bug, scorer myopia confirmed as root cause.
+
+---
+
+## §14. FINAL SUMMARY (added post-ship 2026-04-16)
+
+### Shipped commits
+
+| Phase | Commit | Content |
+|---|---|---|
+| S1.0 | `ff3210ff` | Batch eval harness + `pre-step1-baseline.json` |
+| S1.1 | `d3fa0758` | `CardMetadataMap` plumbing (zero behavioral change) |
+| plan §4bis | `85232843` | Thermal variance documentation |
+| S1.2 | `1968d3b9` | F1 Ritual Unlock Co-Presence |
+| S1.3 | `f0f52a82` | F2 Tutor Chain Potency |
+| S1.4 | `f183e825` | F3 Extra Deck Material Pool |
+| S1.5 | `e1cb5d19` | solver-worker prod wiring |
+
+### Final results vs pre-step1 baseline
+
+| Fixture | Baseline | Step 1 shipped | Δ |
+|---|---:|---:|---:|
+| D/D/D | 34 / 2-5 | 34 / 2-5 | = |
+| Mitsurugi | 35 / 2-6 | **42.58 / 2-6** | **+7.58** |
+| Radiant Typhoon | 33 / 2-3 | **34.58 / 2-3** | **+1.58** |
+| Branded Arth | 41 / 2-6 | 41 / 2-6 | = |
+| Branded Mirr | 32 / 3-6 | 32 / 3-6 | = |
+| **Cumulative** | **175** | **184.17** | **+9.17** |
+
+**Matched**: unchanged at 11/26. Primary success criterion (Mitsurugi 2→4 matched) NOT met at current budget — throughput-bound, not scoring-bound. See §14.2.
+
+**Sanity**: 20/20 passing (6 F1 + 6 F2 + 6 F3 + 2 Combined).
+**Regressions**: 0.
+
+### §14.1 Plan deviations from original
+
+1. **F4 dropped** — Story 1.8's existing OPT-aware scoring in `InterruptionScorer._scoreWithCardsImpl:160-194` already applies `weight × remainingUses` for tagged cards. F4 as originally specified would double-count. Decision made at S1.2 start.
+2. **F3 before F2** was plan order; shipped F2 before F3 because empirical motivation (Mitsurugi Saji audit) pointed to tutor-chain signal.
+3. **Whitelist minimal (5 entries)** vs plan's ~30 — scoped to current 5 fixtures. Will expand organically with step 2 fixture additions.
+4. **Solver-worker prod wiring separated into S1.5** — originally bundled into S1.1, separated to keep S1.1 truly zero-behavioral.
+
+### §14.2 Why matched unchanged (empirical finding)
+
+F1+F2+F3 raise score on the SAME peak states DFS was already finding. They did NOT unlock new peaks because:
+
+- Saji-branch intermediate states score ~4-7 (F1+F2 bonuses at best)
+- Ryzeal-direct intermediate states score ~8-15 (existing tagged effects)
+- Phase I bound-cut prunes Saji-branch before it can accumulate the score needed to compete with Ryzeal-direct
+- Canonical Saji→Ritual→Futsu→Habakiri chain requires ~40 actions deep, ~1200+ nodes
+- At 15 nodes/sec (OCG-bound throughput), 60s budget = 900 nodes — insufficient
+
+**Unblock requires**: either budget expansion (120s+), throughput fix (constraint 1.3 WASM snapshot, deferred), or weight tuning that specifically tilts DFS toward deep tutor chains. All three belong to steps 2/3+.
+
+### §14.3 Key side-findings
+
+- **Baseline fragility under CPU thermal throttling** (§4bis above) — wall-clock budget + Phase L's `Date.now()` cutoff → non-deterministic gate across long sessions. Documented; `--node-budget` mode prototyped and reverted (disabled Phase L).
+- **F3 produces fractional scores** (via `Math.log2`). Internal total-consistency assertion uses 1e-9 tolerance; fractions handled.
+- **CardMetadata bitmask path** (Habakiri 0xa1, Mitsurugi Ritual 0x82) decodes correctly — path validated with 14 sanity cases (including synthetic Mitsurugi canonical chain).
+- **F2 counts Ryzeal engine cards as "fresh" at peak** — the activationLog path and tag-scoring path differ; Ryzeal engine effects fire via OCG mechanics that don't all land in `activationLog`. Not a bug, but a consequence of the existing instrumentation. Produces +6 F2 signal on Mitsurugi peak (Sword+Ice+Detonator at 2 each).
+
+### §14.4 Handoff to step 2/3
+
+Step 1 is CLOSED. When step 2 begins, the solver has:
+- 3 structural features live in production via solver-worker
+- CardMetadata infrastructure ready to extend (just add new feature slots)
+- Evaluation harness with `--compare` regression gating
+- 5-fixture baseline pinned as `pre-step1-baseline.json`
+- Sanity test suite (20 assertions) reusable for step 3 tuning validation
+- Complete Do-NOT list to avoid known traps
+
+See [project_solver_step1_complete_2026_04_16.md](../../memory/project_solver_step1_complete_2026_04_16.md) for the detailed handoff memory.
+
+---
 
 ---
 
