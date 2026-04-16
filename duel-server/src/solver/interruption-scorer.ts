@@ -15,6 +15,7 @@ import type {
 import { ALL_ZONE_IDS, INTERRUPTION_TYPES } from './solver-types.js';
 import { solverAssert } from './solver-assert.js';
 import { time as instrumentTime } from './solver-instrumentation.js';
+import type { CardMetadataMap } from './card-metadata.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -88,10 +89,12 @@ const DOOM_QUEEN_PZONE_BONUS = 3;
 export class InterruptionScorer {
   private readonly tags: Record<string, InterruptionTag>;
   private readonly weights: Record<InterruptionType, number>;
+  private readonly cardMetadata: CardMetadataMap | undefined;
 
   constructor(
     tags: Record<string, InterruptionTag>,
     weights: Record<InterruptionType, number>,
+    cardMetadata?: CardMetadataMap,
   ) {
     if (Object.keys(tags).length === 0) {
       throw new Error('[Solver] InterruptionScorer: tags must not be empty');
@@ -101,6 +104,7 @@ export class InterruptionScorer {
     }
     this.tags = tags;
     this.weights = weights;
+    this.cardMetadata = cardMetadata;
   }
 
   score(

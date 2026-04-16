@@ -29,6 +29,7 @@ import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
+import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
 import type { DuelConfig, SolverConfig } from '../src/solver/solver-types.js';
 
 interface HandFixture {
@@ -228,10 +229,6 @@ async function main(): Promise<void> {
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
-  const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights);
-  const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
-
-  const timeLimitMs = budgetOverride ?? allConfigs.solverConfig.timeBudgetOptimalMs;
 
   const validHands = fixture.hands.filter(h => {
     if (h._draft === true) return false;
@@ -239,7 +236,22 @@ async function main(): Promise<void> {
     return true;
   });
 
-  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${timeLimitMs}ms  label='${scorerVersion}'`);
+  // Scorer is shared across fixtures — build metadata as the union of every
+  // valid fixture's cards. O(130 cards × 1 stmt.get) at startup only.
+  const metadataCardIds: number[] = [];
+  for (const h of validHands) {
+    const deck = fixture.decks[h.deck];
+    if (!deck) continue;
+    metadataCardIds.push(...deck.main, ...deck.extra, ...h.hand);
+  }
+  const cardMetadata = buildCardMetadataMap(cardDB, metadataCardIds);
+
+  const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights, cardMetadata);
+  const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
+
+  const timeLimitMs = budgetOverride ?? allConfigs.solverConfig.timeBudgetOptimalMs;
+
+  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${timeLimitMs}ms  label='${scorerVersion}'  metadataCards=${cardMetadata.size}`);
 
   const fixtureResults: Record<string, FixtureResult> = {};
   for (const hand of validHands) {

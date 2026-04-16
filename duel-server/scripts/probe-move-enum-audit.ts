@@ -27,6 +27,7 @@ import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
 import { instrumentationEnabled } from '../src/solver/solver-instrumentation.js';
+import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
 import type { DuelConfig, SolverConfig } from '../src/solver/solver-types.js';
 
 interface HandFixture {
@@ -90,7 +91,8 @@ async function main(): Promise<void> {
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
-  const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights);
+  const cardMetadata = buildCardMetadataMap(cardDB, [...deck.main, ...deck.extra, ...hand.hand]);
+  const scorer = new InterruptionScorer(allConfigs.interruptionTags, allConfigs.interruptionWeights, cardMetadata);
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
   const stmt = cardDB.stmt;
   const cardName = (cid: number): string => {
