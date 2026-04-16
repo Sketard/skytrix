@@ -14,7 +14,7 @@
 // Features (S1.2+ sub-phases):
 //   F1 — Ritual Unlock Co-Presence  (SHIPPED S1.2)
 //   F2 — Tutor Chain Potency        (SHIPPED S1.3)
-//   F3 — Extra Deck Material Pool   (planned S1.4)
+//   F3 — Extra Deck Material Pool   (SHIPPED S1.4)
 //   F4 — (dropped — redundant with existing OPT-aware scoring)
 //
 // Design: deck-agnostic, reads from `CardMetadataMap` (pre-computed at
@@ -117,6 +117,11 @@ const TUTOR_SCAN_ZONES: readonly ZoneId[] = [
   'HAND',
   'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
   'S1', 'S2', 'S3', 'S4', 'S5',
+];
+
+/** Monster zones eligible as Xyz/Link/Synchro/Fusion material. */
+const MATERIAL_ZONES: readonly ZoneId[] = [
+  'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
 ];
 
 // =============================================================================
@@ -243,6 +248,70 @@ function computeF2TutorChain(
 }
 
 // =============================================================================
+// F3 — Extra Deck Material Pool Accessibility
+// =============================================================================
+
+/**
+ * Scores states with face-up MAIN-DECK monsters on MZONE whose level
+ * pairings unlock extra-deck summons (Rank-N Xyz, Link-2). Extra deck
+ * monsters already on field (Xyz/Synchro/Fusion/Link) are excluded —
+ * they're end products, not materials for further F3 opportunities.
+ *
+ * V1 simplification — measures only two opportunity kinds:
+ *   1. Same-level pairs → 1 Rank-N Xyz opportunity per pair
+ *   2. ≥2 monsters of any level → 1 Link-2 opportunity
+ * Synchro opportunities (tuner + non-tuner level match) are deferred.
+ *
+ * The raw opportunity count is passed through log2(1+n) to dampen
+ * board-spam inflation — 1 opportunity = 1 raw unit, 2 = 1.58, 4 = 2.32,
+ * 15 = 4. Then multiplied by F3_W and capped at F3_CAP.
+ */
+function computeF3ExtraDeckMaterial(
+  fieldState: FieldState,
+  cardMetadata: CardMetadataMap,
+  weights: StructuralWeights,
+): number {
+  if (weights.F3_W === 0) return 0;
+
+  const levelToCount = new Map<number, number>();
+  let materialMonsterCount = 0;
+
+  for (const zoneId of MATERIAL_ZONES) {
+    const cards = fieldState.zones[zoneId];
+    for (const card of cards) {
+      const isFaceUp = card.position === 'faceup-atk' || card.position === 'faceup-def';
+      if (!isFaceUp) continue;
+      const meta = cardMetadata.get(card.cardId);
+      if (!meta || !meta.isMonster) continue;
+      // Extra deck monsters already on field are end products; excluding
+      // them keeps F3 a measure of FUTURE combo-expansion potential.
+      if (meta.isExtraDeckMonster) continue;
+
+      materialMonsterCount++;
+      const level = meta.level || 0;
+      if (level > 0) {
+        levelToCount.set(level, (levelToCount.get(level) ?? 0) + 1);
+      }
+    }
+  }
+
+  let opportunities = 0;
+
+  // Rank-N Xyz opportunities: one per same-level pair.
+  for (const count of levelToCount.values()) {
+    opportunities += Math.floor(count / 2);
+  }
+
+  // Link-2 opportunity: any two monsters on field cover this.
+  if (materialMonsterCount >= 2) opportunities += 1;
+
+  if (opportunities === 0) return 0;
+
+  const raw = weights.F3_W * Math.log2(1 + opportunities);
+  return Math.min(raw, weights.F3_CAP);
+}
+
+// =============================================================================
 // Public Entry Point
 // =============================================================================
 
@@ -269,7 +338,7 @@ export function computeStructuralValue(
 
   const F1 = computeF1RitualUnlock(fieldState, cardMetadata, weights);
   const F2 = computeF2TutorChain(fieldState, activationLog, tutorCards, weights);
-  const F3 = 0; // planned S1.4
+  const F3 = computeF3ExtraDeckMaterial(fieldState, cardMetadata, weights);
   const F4 = 0; // dropped
 
   const uncapped = F1 + F2 + F3 + F4;

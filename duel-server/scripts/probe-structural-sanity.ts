@@ -179,6 +179,67 @@ console.log('\n[sanity] ─── F2 Tutor Chain Potency ───');
 }
 
 // =============================================================================
+// F3 — Extra Deck Material Pool Accessibility
+// =============================================================================
+
+console.log('\n[sanity] ─── F3 Extra Deck Material Pool ───');
+
+// Case F3.A: empty field
+{
+  const fs = emptyFieldState();
+  const r = computeStructuralValue(fs, undefined, cardMetadata, allConfigs.structuralWeights, allConfigs.structuralTutorCards);
+  check('F3.A empty field', r.featureScores.F3_materialPool, 0);
+}
+
+// Case F3.B: 1 face-up monster (no pair, no link-2)
+{
+  const fs = emptyFieldState();
+  fs.zones.M1.push({ cardId: ICE_RYZEAL, cardName: 'Ice Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  const r = computeStructuralValue(fs, undefined, cardMetadata, allConfigs.structuralWeights, allConfigs.structuralTutorCards);
+  check('F3.B 1 monster (no pair, no link)', r.featureScores.F3_materialPool, 0);
+}
+
+// Case F3.C: 2 same-level monsters (1 Rank-N pair + 1 Link-2 = 2 ops)
+// log2(1+2) ≈ 1.585
+{
+  const fs = emptyFieldState();
+  fs.zones.M1.push({ cardId: ICE_RYZEAL, cardName: 'Ice Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  fs.zones.M2.push({ cardId: SWORD_RYZEAL, cardName: 'Sword Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  const r = computeStructuralValue(fs, undefined, cardMetadata, allConfigs.structuralWeights, allConfigs.structuralTutorCards);
+  const ok = Math.abs(r.featureScores.F3_materialPool - Math.log2(3)) < 0.01;
+  console.log(`  ${ok ? '✓' : '✗'} F3.C 2 same-lvl monsters (1 xyz+1 link=2 ops): expected≈${Math.log2(3).toFixed(3)} actual=${r.featureScores.F3_materialPool.toFixed(3)}`);
+  if (ok) passed++; else failed++;
+}
+
+// Case F3.D: 2 different-level monsters (no Xyz pair, just Link-2)
+// log2(1+1) = 1
+{
+  const fs = emptyFieldState();
+  fs.zones.M1.push({ cardId: ICE_RYZEAL, cardName: 'Ice Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  fs.zones.M2.push({ cardId: HABAKIRI, cardName: 'Habakiri', position: 'faceup-atk', overlayCount: 0 });
+  const r = computeStructuralValue(fs, undefined, cardMetadata, allConfigs.structuralWeights, allConfigs.structuralTutorCards);
+  check('F3.D 2 diff-lvl (link-2 only)', r.featureScores.F3_materialPool, 1);
+}
+
+// Case F3.E: face-down monster excluded
+{
+  const fs = emptyFieldState();
+  fs.zones.M1.push({ cardId: ICE_RYZEAL, cardName: 'Ice Ryzeal', position: 'facedown-def', overlayCount: 0 });
+  fs.zones.M2.push({ cardId: SWORD_RYZEAL, cardName: 'Sword Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  const r = computeStructuralValue(fs, undefined, cardMetadata, allConfigs.structuralWeights, allConfigs.structuralTutorCards);
+  check('F3.E face-down excluded (1 monster left → 0)', r.featureScores.F3_materialPool, 0);
+}
+
+// Case F3.F: monster in HAND (not MZONE) excluded
+{
+  const fs = emptyFieldState();
+  fs.zones.HAND.push({ cardId: ICE_RYZEAL, cardName: 'Ice Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  fs.zones.HAND.push({ cardId: SWORD_RYZEAL, cardName: 'Sword Ryzeal', position: 'faceup-atk', overlayCount: 0 });
+  const r = computeStructuralValue(fs, undefined, cardMetadata, allConfigs.structuralWeights, allConfigs.structuralTutorCards);
+  check('F3.F hand monsters excluded', r.featureScores.F3_materialPool, 0);
+}
+
+// =============================================================================
 // Combined F1 + F2 — canonical Mitsurugi opening states
 // =============================================================================
 
