@@ -1786,7 +1786,7 @@
     {
       "id": "labrynth-opener",
       "deck": "labrynth-2026",
-      "description": "Labrynth opener (Jan 2026 TCG): Labrynth Stovie Torbie + Welcome Labrynth + Arias the Labrynth Butler + Arianna the Labrynth Servant + Infinite Impermanence. Added 2026-04-17 for step 2 Phase 2. Control paradigm — trap-heavy Fiend archetype. Stovie Torbie is the iconic 1-card extender (flip-trigger tutors normal trap + Labrynth Fiend). Expected turn-1 endboard: Lady Labrynth (Level 8 boss, +1 trap/turn) + 2-3 set traps (Welcome/Big Welcome Labrynth + Transaction Rollback). Conservative 4-card endboard for control paradigm, matched secondary.",
+      "description": "Labrynth opener (Jan 2026 TCG): Labrynth Stovie Torbie + Welcome Labrynth + Arias the Labrynth Butler + Arianna the Labrynth Servant + Infinite Impermanence. Ground-truthed 2026-04-17 against [labrynth-combo-reference.md](labrynth-combo-reference.md). Hand KEPT as-is after probe experiment (2026-04-17): attempted realism refinement to [Stovie + 2 engine traps + Rollback + Imperm] dropped score 8→6, depth 31→17, matched 2/4→0/4 (t2 jumped 40.5%→77.3% indicating engine-stall). Diagnosis: Labrynth's Big Welcome Labrynth trap has a bounce-SS clause that RE-TRIGGERS Labrynth monster effects when owned monsters are bounced. Multiple Labrynth monsters in hand (Arias + Arianna + Stovie) form a CHAIN of triggers when bounced by Big Welcome, NOT redundancy. The original 3-Labrynth-monster hand is the realistic engine-dense opener. Endboard kept: Lady Labrynth + 3 set traps (Welcome + Big Welcome + Transaction Rollback).",
       "hand": [
         74018812,
         5380979,
