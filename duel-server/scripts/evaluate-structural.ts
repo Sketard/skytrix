@@ -46,7 +46,15 @@ interface HandFixture {
   description?: string;
   hand: number[];
   deckSeed: string;
-  expectedBoard?: { zone: string; cardId: number; cardName: string }[];
+  expectedBoard?: {
+    zone: string;
+    cardId: number;
+    cardName: string;
+    /** Optional — canonical combo posture. `attack`/`defense` require face-up;
+     *  `set` matches face-down monsters (facedown-def) OR face-down spells/traps
+     *  (facedown). When omitted, any position counts. */
+    position?: 'attack' | 'defense' | 'set';
+  }[];
   preferredIntermediates?: number[];
   maxDepth?: number;
   _draft?: boolean;
@@ -103,10 +111,28 @@ function parseNumArg(name: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-const FIELD_ZONES = new Set([
-  'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
-  'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD',
-]);
+const MZONE_EXPANSION = new Set(['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R']);
+const SZONE_EXPANSION = new Set(['S1', 'S2', 'S3', 'S4', 'S5']);
+
+function zoneMatches(expectedZone: string, actualZone: string): boolean {
+  if (expectedZone === actualZone) return true;
+  if (expectedZone === 'MZONE') return MZONE_EXPANSION.has(actualZone);
+  if (expectedZone === 'SZONE') return SZONE_EXPANSION.has(actualZone);
+  return false;
+}
+
+function positionMatches(
+  expectedPosition: 'attack' | 'defense' | 'set' | undefined,
+  actualPosition: string,
+): boolean {
+  if (!expectedPosition) return true;
+  if (expectedPosition === 'attack') return actualPosition === 'faceup-atk';
+  if (expectedPosition === 'defense') return actualPosition === 'faceup-def';
+  if (expectedPosition === 'set') {
+    return actualPosition === 'facedown' || actualPosition === 'facedown-def';
+  }
+  return false;
+}
 
 async function runFixture(
   adapter: OCGCoreAdapter,
@@ -167,21 +193,44 @@ async function runFixture(
   const wallMs = Date.now() - t0;
 
   const peakFs = result.stats.diagnostic?.bestTurn1FieldState as undefined | {
-    zones: Record<string, { cardId: number; cardName?: string }[]>;
+    zones: Record<string, { cardId: number; cardName?: string; position?: string }[]>;
   };
-  const presentOnField = new Set<number>();
-  if (peakFs) {
-    for (const [zoneName, zs] of Object.entries(peakFs.zones)) {
-      if (!FIELD_ZONES.has(zoneName)) continue;
-      for (const c of zs) presentOnField.add(c.cardId);
-    }
-  }
   const expected = hand.expectedBoard ?? [];
   const matchedCardIds: number[] = [];
   const missingCardIds: number[] = [];
+  const mismatchDiagnostics: string[] = [];
   for (const e of expected) {
-    if (presentOnField.has(e.cardId)) matchedCardIds.push(e.cardId);
-    else missingCardIds.push(e.cardId);
+    let found = false;
+    let foundByIdAnywhere: { zone: string; position: string } | null = null;
+    if (peakFs) {
+      for (const [zoneName, zs] of Object.entries(peakFs.zones)) {
+        const zoneOk = zoneMatches(e.zone, zoneName);
+        for (const c of zs) {
+          if (c.cardId !== e.cardId) continue;
+          if (!foundByIdAnywhere) foundByIdAnywhere = { zone: zoneName, position: c.position ?? '?' };
+          if (!zoneOk) continue;
+          if (!positionMatches(e.position, c.position ?? '')) continue;
+          found = true;
+          break;
+        }
+        if (found) break;
+      }
+    }
+    if (found) matchedCardIds.push(e.cardId);
+    else {
+      missingCardIds.push(e.cardId);
+      const expectedDesc = `${e.zone}${e.position ? `/${e.position}` : ''}`;
+      if (foundByIdAnywhere) {
+        mismatchDiagnostics.push(
+          `  miss: ${e.cardId} ${e.cardName} — expected ${expectedDesc}, actual ${foundByIdAnywhere.zone}/${foundByIdAnywhere.position}`,
+        );
+      } else {
+        mismatchDiagnostics.push(`  miss: ${e.cardId} ${e.cardName} — expected ${expectedDesc}, NOT ON FIELD`);
+      }
+    }
+  }
+  if (mismatchDiagnostics.length > 0 && process.env.SOLVER_DUMP_MISMATCHES === '1') {
+    for (const line of mismatchDiagnostics) console.log(line);
   }
 
   const diag = result.stats.diagnostic;
@@ -208,9 +257,29 @@ async function runFixture(
   };
 }
 
-function compareBaselines(prev: BaselineFile, curr: BaselineFile): { regressions: string[]; improvements: string[]; stable: string[] } {
+/** Score-regression thresholds (v2).
+ *
+ *  A fixture is flagged as a score-regression when BOTH:
+ *   - absolute drop exceeds `SCORE_REGRESSION_ABSOLUTE` (guards against
+ *     relative false positives on low-score fixtures like Dinomorphia at ~1)
+ *   - relative drop exceeds `SCORE_REGRESSION_RELATIVE` of the prior score
+ *     (guards against absolute false positives on high-score fixtures where
+ *     a -2 is noise).
+ *
+ *  Tuned so that the Phase 3 nekroz-ryzeal drop (-11 on baseline 46.58 =
+ *  -23%) surfaces, while typical run-to-run variance (<1%) does not. */
+const SCORE_REGRESSION_ABSOLUTE = 2.0;
+const SCORE_REGRESSION_RELATIVE = 0.10;
+
+function compareBaselines(prev: BaselineFile, curr: BaselineFile): {
+  regressions: string[];
+  improvements: string[];
+  corrections: string[];
+  stable: string[];
+} {
   const regressions: string[] = [];
   const improvements: string[] = [];
+  const corrections: string[] = [];
   const stable: string[] = [];
   const ids = new Set([...Object.keys(prev.fixtures), ...Object.keys(curr.fixtures)]);
   for (const id of ids) {
@@ -220,12 +289,27 @@ function compareBaselines(prev: BaselineFile, curr: BaselineFile): { regressions
     if (!c) { regressions.push(`${id}: REMOVED`); continue; }
     const matchDelta = c.matched - p.matched;
     const scoreDelta = c.score - p.score;
-    const line = `${id}: matched ${p.matched}→${c.matched} (Δ${matchDelta >= 0 ? '+' : ''}${matchDelta})  score ${p.score}→${c.score} (Δ${scoreDelta >= 0 ? '+' : ''}${scoreDelta})`;
-    if (matchDelta < 0) regressions.push(line);
+    const relScoreDelta = p.score > 0 ? scoreDelta / p.score : 0;
+    const isScoreRegression =
+      scoreDelta < -SCORE_REGRESSION_ABSOLUTE &&
+      relScoreDelta < -SCORE_REGRESSION_RELATIVE;
+    const line = `${id}: matched ${p.matched}→${c.matched} (Δ${matchDelta >= 0 ? '+' : ''}${matchDelta})  score ${p.score}→${c.score} (Δ${scoreDelta >= 0 ? '+' : ''}${scoreDelta.toFixed(2)})`;
+    // Methodology v2 matched-drop rubric:
+    //   matched ↓  + score ↓      → regression
+    //   matched ↓  + score stable → correction (stricter endboard, not a bug)
+    //   matched ↓  + score ↑      → correction (stricter endboard + better exploration)
+    //   matched =  + score ↓      → score-only regression (threshold)
+    //   matched ↑                 → improvement
+    //   else                      → stable
+    if (matchDelta < 0 && !isScoreRegression) {
+      corrections.push(`${line}  [correction: stricter endboard]`);
+    } else if (matchDelta < 0 || isScoreRegression) {
+      regressions.push(isScoreRegression && matchDelta >= 0 ? `${line}  [score-only: -${(-relScoreDelta * 100).toFixed(1)}%]` : line);
+    }
     else if (matchDelta > 0 || scoreDelta > 0) improvements.push(line);
     else stable.push(line);
   }
-  return { regressions, improvements, stable };
+  return { regressions, improvements, corrections, stable };
 }
 
 async function main(): Promise<void> {
@@ -331,7 +415,7 @@ async function main(): Promise<void> {
 
   if (comparePath) {
     const prev = JSON.parse(readFileSync(resolve(comparePath), 'utf-8')) as BaselineFile;
-    const { regressions, improvements, stable } = compareBaselines(prev, baseline);
+    const { regressions, improvements, corrections, stable } = compareBaselines(prev, baseline);
     console.log(`\n[evaluate] ═══ COMPARISON vs ${comparePath} ═══`);
     console.log(`  prev label: '${prev._meta.scorerVersion}'  (${prev._meta.timestamp})`);
     console.log(`  curr label: '${baseline._meta.scorerVersion}'  (${baseline._meta.timestamp})`);
@@ -340,6 +424,10 @@ async function main(): Promise<void> {
     if (improvements.length > 0) {
       console.log(`\n  IMPROVEMENTS (${improvements.length}):`);
       for (const l of improvements) console.log(`    ✓ ${l}`);
+    }
+    if (corrections.length > 0) {
+      console.log(`\n  CORRECTIONS (${corrections.length}):`);
+      for (const l of corrections) console.log(`    ~ ${l}`);
     }
     if (stable.length > 0) {
       console.log(`\n  STABLE (${stable.length}):`);

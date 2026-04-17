@@ -912,7 +912,7 @@ export class DfsSolver implements SolverStrategy {
   ): DfsNodeResult {
     const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
     ctx.totalTreeNodes++;
-    this.updateBest(ctx, score, scoreBreakdown, endBoardCards, fieldState.turn);
+    this.updateBest(ctx, score, scoreBreakdown, endBoardCards, fieldState.turn, fieldState);
 
     return {
       node: this.makeNode(ROOT_ACTION, score, scoreBreakdown, truncated ? 0.5 : 1.0, [], true, truncated),

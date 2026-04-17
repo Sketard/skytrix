@@ -303,6 +303,11 @@ export interface DfsDiagnostic {
    *  `bestScore` / tree-propagated `score` when states beyond the turn-1
    *  boundary outscore every turn-1 state seen. */
   bestTurn1Score: number;
+  /** Phase H: authoritative peak field-state snapshot captured when
+   *  `bestTurn1Score` was updated. Probes and diagnostics should read this
+   *  instead of replaying the mainPath (which may desync under
+   *  forkViaReplay semantics). Undefined when no turn-1 peak was recorded. */
+  bestTurn1FieldState?: FieldState;
   /** Phase A #4: hint from the heuristic suggester (terminal reason
    *  distribution → suggested maxDepth for next run). Pure observability;
    *  does not affect the current run. Callers may use it to rerun with an
