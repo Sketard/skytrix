@@ -1031,15 +1031,15 @@
     {
       "id": "tearlaments-opener",
       "deck": "tearlaments-2026-fafnirymd",
-      "description": "Tearlaments opener (Feb 2026 build): Tearlaments Reinoheart + Tearlaments Scheiren + Tearlaments Havnis + Tearlaments Grief + Mulcharmy Fuwalos. Added 2026-04-17 for step 2 Phase 3. Reinoheart discards Scheiren to mill and chain-summon milled Tearlaments, triggering Fusion from GY. GY-fusion paradigm distinct from Branded's in-hand fusion. Expected endboard: Kitkallos (Level 10 omni-negate Fusion) + Rulkallos (Level 8 Fusion backup) + S:P Little Knight (Link-2) + Tearlaments Scream (trap set).",
-      "hand": [73956664, 572850, 37961969, 33878367, 42141493],
+      "description": "Tearlaments opener (Feb 2026 fafnirymd build): Tearlaments Reinoheart + Tearlaments Scheiren + Fabled Lurrie + Fiendsmith Engraver + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [tearlaments-combo-reference.md](tearlaments-combo-reference.md). Hand corrected from 4-Tearlaments-over-loaded to 2-Tearlaments-core + Fiendsmith engine + handtrap (realistic tournament hand). GY-fusion paradigm: Reinoheart mills Scheiren → Scheiren SS + mills 3 → multiple Tearlaments in GY → Fusion chain into Kitkallos → second Fusion into Kaleido-Heart via Scream recycle → Fiendsmith engine via Engraver+Lurrie discards. Corrected expectedBoard: Kitkallos + Kaleido-Heart + Fiendsmith's Requiem + S:P Little Knight. Rulkallos removed (typically consumed as Kaleido-Heart material, not terminal). Scream set removed (it's a field spell active in FIELD zone not set trap). Paradigm caveat for step 3: GY-fusion shows high az% because engine self-terminates quickly once Fusions land — worth cross-paradigm scoring normalization research.",
+      "hand": [73956664, 572850, 97651498, 60764609, 42141493],
       "deckSeed": "78787,89898",
       "maxDepth": 75,
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 92731385, "cardName": "Tearlaments Kitkallos" },
-        { "zone": "MZONE", "cardId": 84330567, "cardName": "Tearlaments Rulkallos" },
-        { "zone": "MZONE", "cardId": 29301450, "cardName": "S:P Little Knight" },
-        { "zone": "SZONE", "cardId": 6767771, "cardName": "Tearlaments Scream" }
+        { "zone": "MZONE", "cardId": 28226490, "cardName": "Tearlaments Kaleido-Heart" },
+        { "zone": "MZONE", "cardId": 2463794, "cardName": "Fiendsmith's Requiem" },
+        { "zone": "MZONE", "cardId": 29301450, "cardName": "S:P Little Knight" }
       ]
     },
     {
