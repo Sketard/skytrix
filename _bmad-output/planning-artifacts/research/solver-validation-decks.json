@@ -28,6 +28,20 @@
         "validatedAgainstCardDb": true,
         "notes": "Added 2026-04-17 for step 2 Phase 1. Ritual archetype fixture — validates F1 Ritual Unlock Co-Presence generalization beyond Mitsurugi Prayers. Nekroz uses distinct ritual spells (Kaleidoscope, Cycle, Mirror) and distinct ritual monsters (Brionac, Trishula, Unicore, Areadbhair). Ryzeal engine co-presence is incidental (hybrid tournament build); F1 signal isolates on Nekroz-specific ritual metadata. Aliases normalized: Bagooska 90590304→90590303, Harpie's Feather Duster 18144507→18144506."
       },
+      "labrynth-2026": {
+        "source": "ygoprodeck.com — Labrynth 2026 (competitive Jan 2026 build with Dogmatika engine)",
+        "url": "https://ygoprodeck.com/deck/labrynth-2026-682215",
+        "format": "TCG January 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 2. Control paradigm fixture (trap-heavy Fiend archetype with Dogmatika sub-engine). Diversifies control representation beyond Radiant Typhoon. Aliases normalized: Droll & Lock Bird 94145022→94145021. Note: the modern Fydraulis/Solemn Report/Dominus Spark variant (labrynth-jan-2026-v2-685973) was rejected as those cards are absent from cards.cdb; this older build trades none of its control identity."
+      },
+      "stun-runick-melbourne-top8": {
+        "source": "ygoprodeck.com — Stun Runick (Melbourne WCQ Regional Top 8)",
+        "url": "https://ygoprodeck.com/deck/stun-runick-664328",
+        "format": "TCG 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 2. Stall paradigm fixture — pure Runick (no Sky Striker / Paleo hybrid) with floodgate suite (Rivalry of Warlords, There Can Be Only One, Gozen Match, Synchro Zone). Tests the solver on a non-summoning engine: wins via banishing opponent's deck through Runick quick-play spells. F1/F2/F3 structural value function should mostly NOT fire (no rituals, no tutor chain, no extra-deck material pool beyond Hugin/Munin Link-1 wings). Useful negative control for step 3 ES tuning — confirms structural weights don't hallucinate bonus on an engine-less deck."
+      },
       "radiant-typhoon-ygoprodeck-2026": {
         "source": "ygoprodeck.com — Radiant Typhoon, competitive 2026 build (April 2026)",
         "url": "https://ygoprodeck.com/deck/radiant-typhoon-705676",
@@ -307,6 +321,103 @@
         41420027
       ]
     },
+    "labrynth-2026": {
+      "main": [
+        81497285,
+        2347656,
+        73355772, 73355772,
+        73602965, 73602965, 73602965,
+        75730490,
+        1225009,
+        60303688,
+        37629703, 37629703, 37629703,
+        74018812, 74018812, 74018812,
+        60990740, 60990740, 60990740,
+        92714517, 92714517, 92714517,
+        30748475, 30748475,
+        31849106, 31849106,
+        82956214, 82956214,
+        20899496, 20899496,
+        10045474, 10045474, 10045474,
+        16693934,
+        63086455, 63086455,
+        49299410,
+        6351147, 6351147,
+        80101899, 80101899,
+        11429811, 11429811,
+        5380979, 5380979
+      ],
+      "extra": [
+        41373230,
+        11765832,
+        80532587,
+        22850702,
+        93039339,
+        40673853,
+        66011101,
+        10019086,
+        98127546,
+        8264361,
+        33781156,
+        29301450,
+        71607202,
+        94259633,
+        9940036
+      ],
+      "side": [
+        102380,
+        14558127, 14558127, 14558127,
+        94145021, 94145021, 94145021,
+        24224830,
+        65681983,
+        42141493, 42141493, 42141493,
+        98645731, 98645731, 98645731
+      ]
+    },
+    "stun-runick-melbourne-top8": {
+      "main": [
+        15397015, 15397015,
+        92107604, 92107604,
+        94445733, 94445733, 94445733,
+        68957034, 68957034, 68957034,
+        31562086, 31562086, 31562086,
+        30430448, 30430448, 30430448,
+        67835547, 67835547, 67835547,
+        66712905,
+        93229151,
+        20618850,
+        35261759, 35261759, 35261759,
+        20508881, 20508881, 20508881,
+        33782437,
+        77066768,
+        98645731, 98645731, 98645731,
+        59750328,
+        73628505,
+        90846359,
+        24207889,
+        53334471,
+        60306277, 60306277
+      ],
+      "extra": [
+        74659582,
+        47219274, 47219274, 47219274,
+        28373620, 28373620, 28373620,
+        55990317, 55990317, 55990317,
+        92385016, 92385016,
+        93039339,
+        90590303,
+        29301450
+      ],
+      "side": [
+        32181268,
+        16922142, 16922142, 16922142,
+        10000080, 10000080, 10000080,
+        1372887, 1372887, 1372887,
+        5318639,
+        41420027,
+        15693423, 15693423, 15693423
+      ]
+    },
     "branded-dracotail-bainbridge-2nd": {
       "main": [
         75003700, 75003700, 75003700,
@@ -441,6 +552,33 @@
         { "zone": "SZONE", "cardId": 69932023, "cardName": "Dracotail Horn" },
         { "zone": "SZONE", "cardId": 80208225, "cardName": "Dracotail Sting" },
         { "zone": "HAND", "cardId": 1498449, "cardName": "Dracotail Faimena" }
+      ]
+    },
+    {
+      "id": "labrynth-opener",
+      "deck": "labrynth-2026",
+      "description": "Labrynth opener (Jan 2026 TCG): Labrynth Stovie Torbie + Welcome Labrynth + Arias the Labrynth Butler + Arianna the Labrynth Servant + Infinite Impermanence. Added 2026-04-17 for step 2 Phase 2. Control paradigm — trap-heavy Fiend archetype. Stovie Torbie is the iconic 1-card extender (flip-trigger tutors normal trap + Labrynth Fiend). Expected turn-1 endboard: Lady Labrynth (Level 8 boss, +1 trap/turn) + 2-3 set traps (Welcome/Big Welcome Labrynth + Transaction Rollback). Conservative 4-card endboard for control paradigm, matched secondary.",
+      "hand": [74018812, 5380979, 73602965, 1225009, 10045474],
+      "deckSeed": "12121,23232",
+      "maxDepth": 60,
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 81497285, "cardName": "Lady Labrynth of the Silver Castle" },
+        { "zone": "SZONE", "cardId": 92714517, "cardName": "Big Welcome Labrynth" },
+        { "zone": "SZONE", "cardId": 5380979, "cardName": "Welcome Labrynth" },
+        { "zone": "SZONE", "cardId": 6351147, "cardName": "Transaction Rollback" }
+      ]
+    },
+    {
+      "id": "stun-runick-opener",
+      "deck": "stun-runick-melbourne-top8",
+      "description": "Stun Runick opener (Melbourne WCQ Top 8): Runick Fountain + Runick Destruction + Runick Flashing Fire + Runick Tip + Pot of Duality. Added 2026-04-17 for step 2 Phase 2. Stall paradigm — non-summoning engine that banishes opponent's deck via quick-play Runick spells. Deliberately starves F1/F2/F3 (no rituals, no tutor chain beyond Tip's search, Extra Deck is Link-1 wings only). Useful negative control for step 3: structural weights should NOT inflate score here. Expected turn-1 endboard: Hugin/Munin the Runick Wings (Link-1) + Runick Fountain (Field Spell active) + 1 set Runick quick-play.",
+      "hand": [92107604, 94445733, 68957034, 31562086, 98645731],
+      "deckSeed": "34343,45454",
+      "maxDepth": 50,
+      "expectedBoard": [
+        { "zone": "EMZ_L", "cardId": 55990317, "cardName": "Hugin the Runick Wings" },
+        { "zone": "FIELD", "cardId": 92107604, "cardName": "Runick Fountain" },
+        { "zone": "SZONE", "cardId": 30430448, "cardName": "Runick Freezing Curses" }
       ]
     },
     {
