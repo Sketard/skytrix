@@ -1018,15 +1018,15 @@
     {
       "id": "snake-eye-yummy-opener",
       "deck": "snake-eye-yummy-sarcophagus-hollywood-wcq",
-      "description": "Snake-Eye Yummy Sarcophagus opener (Hollywood WCQ winner Mar 2026): Snake-Eye Ash + WANTED: Seeker of Sinful Spoils + Bonfire + Fabled Lurrie + Mulcharmy Fuwalos. Added 2026-04-17 for step 2 Phase 3. Snake-Eye Ash + Bonfire is the iconic 2-card starter that tutors Snake-Eyes Poplar + builds to Flamberge Dragon. Fabled Lurrie adds Fiendsmith access (discard fodder for Engraver). Expected endboard: Flamberge Dragon (omni-negate) + Fiendsmith's Requiem (Link boss, search Fiendsmith engine) + S:P Little Knight (Link-2 banish) + Sinful Spoils of Subversion set (Snake-Eye trap).",
-      "hand": [9674034, 80845034, 85106525, 97651498, 42141493],
+      "description": "Snake-Eye Yummy Sarcophagus opener (Hollywood WCQ winner Mar 2026, Jad Andary): Snake-Eye Ash + Ash Blossom + Mulcharmy Fuwalos + Fabled Lurrie + Fiendsmith Engraver. Ground-truthed 2026-04-17 against [snake-eye-combo-reference.md](snake-eye-combo-reference.md). Pure 1-card Snake-Eye Ash opener with 2 handtraps + Fiendsmith engine support (Fabled Lurrie discard fodder + Engraver in hand for deterministic engine activation). Expected endboard (reachable from THIS deck's extra): Flamberge Dragon (Snake-Eye boss, continuous-spell revival loop) + Fiendsmith's Desirae (Fusion omni-negate via Lacrima) + S:P Little Knight (Link-2 banish) + Snake-Eyes Doomed Dragon (Fusion finisher on 2x Lvl 1 FIRE). I:P Masquerena excluded — side-deck only, not extra. Promethean Princess excluded — not in this deck.",
+      "hand": [9674034, 14558127, 42141493, 97651498, 60764609],
       "deckSeed": "56565,67676",
       "maxDepth": 75,
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 48452496, "cardName": "Snake-Eyes Flamberge Dragon" },
-        { "zone": "MZONE", "cardId": 2463794, "cardName": "Fiendsmith's Requiem" },
+        { "zone": "MZONE", "cardId": 82135803, "cardName": "Fiendsmith's Desirae" },
         { "zone": "MZONE", "cardId": 29301450, "cardName": "S:P Little Knight" },
-        { "zone": "SZONE", "cardId": 24081957, "cardName": "Sinful Spoils of Subversion - Snake-Eye" }
+        { "zone": "MZONE", "cardId": 58071334, "cardName": "Snake-Eyes Doomed Dragon" }
       ]
     },
     {
