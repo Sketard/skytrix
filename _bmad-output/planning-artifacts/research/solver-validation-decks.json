@@ -990,15 +990,14 @@
     {
       "id": "dinomorphia-opener",
       "deck": "dinomorphia-696904",
-      "description": "Dinomorphia opener (Mar 2026 LP-divider build): Dinomorphia Therizia + Dinomorphia Diplos + Card of Demise + Dinomorphia Frenzy + Dinomorphia Domain. Added 2026-04-17 for step 2 Phase 4. LP-sacrifice paradigm — pay 50% LP to activate Dinomorphia effects, stabilize at low LP. Therizia is the core Dino searcher, Diplos special-summons from hand, Card of Demise draws 2 (at cost of EP hand dump), Frenzy sets any trap, Domain pays LP to tutor. Expected endboard: Dinomorphia Rexterm (Fusion boss L10) + Dinomorphia Kentregina (Fusion boss L10 backup) + Domain set + Frenzy set.",
-      "hand": [92133240, 38628859, 59750328, 78420796, 26631975],
+      "description": "Dinomorphia opener (Mar 2026 'When the dinos are dividing their LP' build): Dinomorphia Therizia + Dinomorphia Frenzy + Card of Demise + Pot of Duality + Iron Thunder. Ground-truthed 2026-04-17 against [dinomorphia-combo-reference.md](dinomorphia-combo-reference.md). LP-sacrifice paradigm — compact 5-card opener where Therizia starts the fusion chain and Card of Demise provides +3 turn-1 card advantage. Canonical endboard is MINIMALIST by design (Rexterm alone + 2 set traps, NOT 2 fusion bosses simultaneously). Kentregina is CONSUMED as Rexterm's fusion material in the canonical chain, so listing both was structurally wrong in the previous fixture.",
+      "hand": [92133240, 78420796, 59750328, 98645731, 12682213],
       "deckSeed": "27182,81828",
       "maxDepth": 40,
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 92798873, "cardName": "Dinomorphia Rexterm" },
-        { "zone": "MZONE", "cardId": 48832775, "cardName": "Dinomorphia Kentregina" },
         { "zone": "SZONE", "cardId": 26631975, "cardName": "Dinomorphia Domain" },
-        { "zone": "SZONE", "cardId": 78420796, "cardName": "Dinomorphia Frenzy" }
+        { "zone": "SZONE", "cardId": 7336745, "cardName": "Dinomorphia Intact" }
       ]
     },
     {
