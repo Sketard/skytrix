@@ -899,7 +899,7 @@
     {
       "id": "ryzeal-mitsurugi-opener",
       "deck": "ryzeal-mitsurugi-hk-top8",
-      "description": "Mitsurugi+Ryzeal opener: Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Expected to set up Rank 4 Xyz plus Mitsurugi control shell.",
+      "description": "Mitsurugi+Ryzeal opener (HK Top 8 Mar 2026, Tu Kai-Hsiang): Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [mitsurugi-ryzeal-combo-reference.md](mitsurugi-ryzeal-combo-reference.md). Hand and endboard kept as-is from pre-existing fixture (already user-validated in step 1 calibration cycle). Realistic hybrid 2-engine 1+2-card opener: Habakiri starter + 2 Ryzeal extenders + Mitsurugi Prayers ritual spell + 1 handtrap. Canonical 6-piece endboard (Rank 4 Detonator + Rank 4 Duo Drive + Futsu no Mitama ritual + Rank 8 Photon Lord + Ryzeal Cross set + Great Purification trap set) matches research-documented Hong Kong Top 8 finish pattern. Structural sanity checks pass: no consumed-piece conflicts, no intermediate set traps, no side-deck contamination. Step 1 structural value function delta: score 35 → 42.58 (+7.58 from F1 Ritual + F2 Tutor + F3 ED Pool features).",
       "hand": [13332685, 8633261, 35844557, 45171524, 42141493],
       "deckSeed": "33333,44444",
       "maxDepth": 75,
