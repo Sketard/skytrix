@@ -1365,7 +1365,8 @@
           "cardName": "D/D/D Headhunt",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "ryzeal-mitsurugi-opener",
@@ -1417,7 +1418,8 @@
           "cardName": "Mitsurugi Great Purification",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "radiant-typhoon-opener",
@@ -1451,13 +1453,14 @@
           "cardName": "Radiant Typhoon Mandate",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "yummy-opener",
       "deck": "yummy-pure-striker-2026",
       "_draft": true,
-      "description": "DRAFT — Yummy pure combo opener. KNOWN BUG: with this opener [Lollipo + 4 handtraps] the DFS terminates at 3 plies and scores 1/6 matched because the Sky Striker engine (Hornet Drones + Kagari) is missing from the deck — required for the canonical Link-1 token generation feeding Cupsy★Yummy Way. Fixture must be revised (add Sky Striker engine OR change opener) before inclusion in baseline. Canonical combo source: ygo101 image 2c5615c3. Target 6-card endboard: Yummy★Snatchy (Link-1 EMZ) + Lollipo★Yummy Way (Synchro L2 MZONE) + Marshmao♦Yummy (MZONE) + Herald of the Arc Light (Synchro L4 MZONE omni-negate) + Yummy♦Surprise (trap set SZONE) + Yummyusment♦Mignon (field spell).",
+      "description": "DRAFT — Yummy pure combo opener. KNOWN BUG: with this opener [Lollipo + 4 handtraps] the DFS terminates at 3 plies and scores 1/6 matched because the Sky Striker engine (Hornet Drones + Kagari) is missing from the deck — required for the canonical Link-1 token generation feeding Cupsy★Yummy Way. Fixture must be revised (add Sky Striker engine OR change opener) before inclusion in baseline. Canonical combo source: ygo101 image 2c5615c3. Target 6-card endboard: Yummy★Snatchy (Link-1 EMZ) + Lollipo★Yummy Way (Synchro L2 MZONE) + Marshmao♦Yummy (MZONE) + Herald of the Arc Light (Synchro L4 MZONE omni-negate) + Yummy♦Surprise (trap set SZONE) + Yummyusment♦Mignon (field spell). DRAFT TTL (methodology v2): introduced 2026-04-15, expires 2026-05-13 — must be promoted (ground-truthed with yummy-combo-reference.md, Sky Striker engine added to deck OR opener rewritten for current deck composition) OR deleted before that date. Yummy archetype coverage is already partially provided by snake-eye-yummy-sarcophagus-hollywood-wcq fixture (which includes the full Yummy engine — Cupsy/Marshmao/Cooky/Lollipo + Yummy★Snatchy in extra), so removal is viable if promotion is not prioritized.",
       "hand": [
         4215180,
         42141493,
@@ -1558,7 +1561,8 @@
           "cardId": 1498449,
           "cardName": "Dracotail Faimena"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "kashtira-azamina-opener",
@@ -1598,7 +1602,8 @@
           "cardName": "WANTED: Seeker of Sinful Spoils",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "horus-crystron-opener",
@@ -1637,7 +1642,8 @@
           "cardId": 16528181,
           "cardName": "King's Sarcophagus"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "dinomorphia-opener",
@@ -1671,7 +1677,8 @@
           "cardName": "Dinomorphia Intact",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "spright-opener",
@@ -1711,7 +1718,8 @@
           "cardName": "Toadally Awesome",
           "position": "attack"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "snake-eye-yummy-opener",
@@ -1751,7 +1759,8 @@
           "cardName": "Snake-Eyes Doomed Dragon",
           "position": "attack"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "tearlaments-opener",
@@ -1791,7 +1800,8 @@
           "cardName": "S:P Little Knight",
           "position": "attack"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "floowandereeze-opener",
@@ -1830,7 +1840,8 @@
           "cardId": 28126717,
           "cardName": "Floowandereeze and the Magnificent Map"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "labrynth-opener",
@@ -1870,7 +1881,8 @@
           "cardName": "Transaction Rollback",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "stun-runick-opener",
@@ -1909,7 +1921,8 @@
           "cardName": "Runick Freezing Curses",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "nekroz-ryzeal-opener",
@@ -1949,7 +1962,8 @@
           "cardName": "Nekroz Kaleidoscope",
           "position": "set"
         }
-      ]
+      ],
+      "_seedFrozen": true
     },
     {
       "id": "branded-dracotail-opener-mirrorjade-line",
@@ -2004,7 +2018,8 @@
           "cardId": 1498449,
           "cardName": "Dracotail Faimena"
         }
-      ]
+      ],
+      "_seedFrozen": true
     }
   ]
 }
