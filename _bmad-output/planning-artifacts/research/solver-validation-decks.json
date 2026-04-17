@@ -1086,14 +1086,14 @@
     {
       "id": "nekroz-ryzeal-opener",
       "deck": "nekroz-ryzeal-jan2026-tcg-1st",
-      "description": "Nekroz Ryzeal opener (Jan 2026 TCG): Emilia (Dance Priestess) + Avance (Swordsman) + Preparation of Rites + Mulcharmy Fuwalos + Ash Blossom. Added 2026-04-17 for step 2 Phase 1 — validates F1 Ritual Unlock Co-Presence generalization on Nekroz ritual engine (distinct from Mitsurugi Prayers). Expected: canonical 2026 Nekroz Ryzeal turn-1 endboard = Herald of the Arc Light (omni-negate Ritual Synchro L4) + Nekroz of Unicore (Extra-Deck floodgate ritual body) + Ryzeal Duo Drive (Rank 4 Xyz second threat) + Nekroz Kaleidoscope set via GY search trigger. Conservative 4-card endboard — matched secondary to structural score signal for F1 test.",
+      "description": "Nekroz Ryzeal opener (Jan 2026 TCG 1st Place Undefeated): Emilia (Dance Priestess) + Avance (Swordsman) + Preparation of Rites + Mulcharmy Fuwalos + Ash Blossom. Ground-truthed 2026-04-17 against [nekroz-ryzeal-combo-reference.md](nekroz-ryzeal-combo-reference.md). Hand matches the canonical 2026 Nekroz Ryzeal core 2-card combo per YGOrganization CDP (Emilia + Avance = Level 4 Nekroz pair). Corrected expectedBoard: Herald of the Arc Light REMOVED (it's consumed as Kaleidoscope's Extra-Deck ritual tribute → GY, not on-field at end). Added Nekroz of Trishula (terminal ritual boss with 3-card banish) + Ryzeal Detonator (terminal Rank 4 finisher) in place. Fixture was originally added in step 2 Phase 1 to validate F1 Ritual Unlock Co-Presence generalization on Nekroz's distinct ritual spells (Kaleidoscope/Cycle/Mirror/Divinemirror) — F1 generalization confirmed via score=46.58 pre-validation smoke.",
       "hand": [87003671, 51618973, 96729612, 42141493, 14558127],
       "deckSeed": "70707,80808",
       "maxDepth": 75,
       "expectedBoard": [
-        { "zone": "MZONE", "cardId": 79606837, "cardName": "Herald of the Arc Light" },
-        { "zone": "MZONE", "cardId": 89463537, "cardName": "Nekroz of Unicore" },
         { "zone": "MZONE", "cardId": 7511613, "cardName": "Ryzeal Duo Drive" },
+        { "zone": "MZONE", "cardId": 34909328, "cardName": "Ryzeal Detonator" },
+        { "zone": "MZONE", "cardId": 52068432, "cardName": "Nekroz of Trishula" },
         { "zone": "SZONE", "cardId": 51124303, "cardName": "Nekroz Kaleidoscope" }
       ]
     },
