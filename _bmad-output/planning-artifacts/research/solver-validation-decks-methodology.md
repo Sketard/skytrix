@@ -2,8 +2,10 @@
 
 **Methodology version:** 2 (bumped 2026-04-17 after adversarial review —
 zone-aware matcher, `position` schema field, canonical source tiebreaker,
-matched-drop rubric, determinism rules). Bump on every structural change so
-existing `<archetype>-combo-reference.md` docs can be audited for drift.
+matched-drop rubric, determinism rules, expectedBoard scope pinned to
+on-field zones with `score`/`matched` duality documented). Bump on every
+structural change so existing `<archetype>-combo-reference.md` docs can be
+audited for drift.
 
 How to add a new competitive decklist fixture to
 [`solver-validation-decks.json`](solver-validation-decks.json) for benchmarking
@@ -81,6 +83,44 @@ meaningful — each element is one physical copy.
 - **Deduce `position` from the canonical combo line (reference doc), NEVER
   from solver output.** expectedBoard is a ground-truth target independent of
   the solver's current exploration budget.
+
+### expectedBoard scope — on-field only, by design
+
+`expectedBoard` is restricted to on-field zones (`MZONE`, `EMZ_L`, `EMZ_R`,
+`SZONE`, `FIELD`, `HAND`). Entries in `GY`, `BANISHED`, or face-up `EXTRA`
+are **intentionally excluded** even though these zones can legitimately host
+disruption-active cards — the canonical example being **Bystial Druiswurm**
+(banish self from GY on opp monster-effect activation → banish 1 LIGHT/DARK
+monster from either GY). The effect is a *resource-denial banish*, not a
+negate, but it disrupts GY-dependent combos (e.g. banishing Herald cuts off
+Kaleidoscope recursion).
+
+Face-up `EXTRA` (Pendulum monsters destroyed returning to Extra) does NOT host
+disruption — Pendulum re-summoning is a combo/tempo tool, not opp-turn
+interruption. Most "GY combo pieces" (Lacrima-to-Desirae, Herald-to-Kaleidoscope,
+milled Tearlaments fusion materials) are COMBO enablers, NOT disruption. Only
+cards with a direct quick-effect or trigger that banishes/bounces/destroys an
+opponent card FROM the non-field zone count as disruption-active.
+
+The duality with the `score` metric is intentional and complementary:
+
+| Metric | Captures | Source of truth |
+|---|---|---|
+| `matched` | Physical on-field presence at turn-1 peak — did the solver *materialize* the canonical visible board? | `expectedBoard` entries in the fixture |
+| `score` | Total disruption value across ALL zones (on-field + GY + banished + EXTRA face-up + hand) via tagged effect triggers | [`interruption-tags.json`](../../../duel-server/data/interruption-tags.json) |
+
+Extending `expectedBoard` to non-field zones would require per-card
+audit of which GY / banished / face-up Extra presences are load-bearing
+disruption (Lacrima counts; Scheiren-as-fusion-material does not; Herald
+as Kaleidoscope-recycle-enabler does not) — duplicating the infrastructure
+already present in `interruption-tags.json`. `score` covers this
+automatically: any tagged card at its tagged trigger zone feeds the
+weighted sum regardless of on-field status.
+
+**Rule**: if a combo line's turn-1 end-state relies on a GY / banished /
+face-up-Extra card for opp-turn disruption, that card must be TAGGED in
+`interruption-tags.json` with the correct `trigger` zone, and its
+contribution is captured by `score`, NOT by `matched`.
 
 ## Step-by-step
 
@@ -441,23 +481,33 @@ SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
 
 Expected outcomes after validation (vs pre-validation smoke).
 
-**Matched-drop rubric (v2)** — a drop is NOT automatically "not a regression":
+**Regression rubric (v2)** — matched drop AND score drop are BOTH gates:
 
 | score Δ | matched Δ | Verdict |
 |---|---|---|
 | stable or ↑ | ↓ | **Correction.** Old expectedBoard was inflated (intermediate/consumed/side-contaminated pieces). Commit with rationale. |
-| ↓ | ↓ | **Real regression.** The stricter endboard does NOT explain the score drop. Investigate solver path changes before committing. |
+| ↓ significantly* | ↓ | **Real regression.** Both on-field materialization AND disruption value lost. Investigate solver path changes before committing. |
+| ↓ significantly* | 0 | **Score-only regression.** On-field pieces stable, but non-field disruption (GY/banished/HAND interruption-tags) lost. Flagged automatically by the harness. Investigate interruption-tags coverage and solver path changes. |
 | stable | 0 | No-op. Re-examine whether the validation actually changed anything. |
 | ↑ | ↑ | **Improvement.** Stricter endboard + better exploration. Commit. |
 
+*"Significantly" = **BOTH** conditions below (automatic harness gates):
+- absolute drop `scoreDelta < -2.0` (noise floor — avoids false positives
+  on low-score fixtures like Dinomorphia at ~1)
+- relative drop `scoreDelta / prevScore < -10%` (intensity floor — avoids
+  false positives on high-score fixtures where -2 is noise)
+
 Concrete sub-rules:
-- `score` stable means |Δ| < 1.0 on the v2 scorer. Larger deltas always
-  require investigation even if matched is unchanged.
 - `depth` drop of >5 with stable score = exploration sensitivity, not a
   regression; note it but do not block.
 - `az%` / `t2%`: investigate any shift >10 percentage points. Smaller shifts
   are noise. Direction of "good" depends on paradigm — do NOT read shifts
   as universally positive.
+- **Paradigm caveat**: for decks whose strength is non-field disruption
+  (Bystial pure, Runick stall, trap-heavy control), `matched` stays low
+  by design — `score` becomes the primary regression gate. Document this
+  in the ref doc's paradigm caveat section so reviewers read the verdict
+  correctly.
 
 **Step 8 — Commit per archetype**
 
