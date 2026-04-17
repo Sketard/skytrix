@@ -1422,7 +1422,7 @@
     {
       "id": "radiant-typhoon-opener",
       "deck": "radiant-typhoon-ygoprodeck-2026",
-      "description": "Radiant Typhoon opener (validated 2026-04-15): Eldam + Chant + Krosea + Vision + Mulcharmy Fuwalos. Control deck paradigm — 3-card endboard (vs 5-6 for combo decks). Expected: Totem Bird (Rank 3 Xyz, summon denial via bounce) + Hraesvelgr the Desperate Doom Eagle (Link 3) + Radiant Typhoon Mandate set (facedown Trap). This fixture validates the solver on non-combo control paradigm where the endboard has fewer cards but higher per-card disruption value.",
+      "description": "Radiant Typhoon opener (validated 2026-04-15, re-validated 2026-04-17): Eldam + Chant + Krosea + Vision + Mulcharmy Fuwalos. Ground-truthed against [radiant-typhoon-combo-reference.md](radiant-typhoon-combo-reference.md). Hand and expectedBoard KEPT from user's original validation — all 3 pieces match the canonical 2026 Radiant Typhoon control endboard (Totem Bird Rank 3 Xyz + Hraesvelgr Link-3 + Mandate Continuous Trap). Control deck paradigm — 3-card endboard (vs 5-6 for combo decks). Control paradigm gold standard for step 3 ES tuning — 3-piece endboard demonstrates high per-card disruption value vs combo's wider pile. Methodology v2 position fields already applied (attack/attack/set).",
       "hand": [
         54143349,
         67115133,
