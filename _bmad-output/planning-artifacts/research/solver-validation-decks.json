@@ -1003,8 +1003,8 @@
     {
       "id": "spright-opener",
       "deck": "spright-greenville-wcq-top8",
-      "description": "Spright opener (Greenville WCQ Top 8 Jan 2026): Spright Blue + Spright Red + Spright Jet + Spright Starter + Nimble Angler. Added 2026-04-17 for step 2 Phase 4. Level/Rank 2 toolbox — Blue searches Spright, Jet extends to Rank 2 Xyz, Starter special-summons Level 2, Nimble Angler extends Level 2 bodies from deck when SS'd. Expected endboard: Spright Red (negate) + Spright Carrot (opp-effect negate) + Gigantic Spright (Rank 2 link to extra Spright) + Toadally Awesome (omni-negate Rank 2 Xyz).",
-      "hand": [76145933, 75922381, 13533678, 15443125, 88686573],
+      "description": "Spright opener (Greenville WCQ Top 8 Jan 2026, Ivan Villa): Spright Blue + Swap Frog + Spright Starter + Ash Blossom + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [spright-combo-reference.md](spright-combo-reference.md). Hand corrected from 4-Spright-starters + Nimble (over-loaded) to 1 Spright starter + 1 Frog extender + 1 engine spell + 2 handtraps (realistic tournament hand). Swap Frog is the dedicated Lvl 2 Aqua extender required to reach Toadally Awesome (Rank 2 WATER Aqua Xyz). Level/Rank 2 toolbox paradigm: Blue searches Starter → Starter SS Jet from deck → Blue+Jet Rank 2 into Gigantic → Gigantic SS Swap Frog → Swap Frog + Jet into Toadally. Expected endboard kept identical to pre-validation (already canonically correct): Spright Red + Carrot + Gigantic + Toadally, dual-negate + toolbox setup.",
+      "hand": [76145933, 9126351, 15443125, 14558127, 42141493],
       "deckSeed": "13579,24680",
       "maxDepth": 60,
       "expectedBoard": [
