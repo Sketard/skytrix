@@ -1,5 +1,10 @@
 # Solver Validation Decks — Methodology
 
+**Methodology version:** 2 (bumped 2026-04-17 after adversarial review —
+zone-aware matcher, `position` schema field, canonical source tiebreaker,
+matched-drop rubric, determinism rules). Bump on every structural change so
+existing `<archetype>-combo-reference.md` docs can be audited for drift.
+
 How to add a new competitive decklist fixture to
 [`solver-validation-decks.json`](solver-validation-decks.json) for benchmarking
 the solver against real meta decks.
@@ -43,7 +48,15 @@ the solver against real meta decks.
       "deck": "<deck-key>",
       "description": "which opener + what board it should build",
       "hand": [<5 card_ids from the deck>],
-      "deckSeed": "<seed1>,<seed2>"
+      "deckSeed": "<seed1>,<seed2>",
+      "expectedBoard": [
+        {
+          "zone": "MZONE|EMZ_L|EMZ_R|SZONE|FIELD|HAND",
+          "cardId": <number>,
+          "cardName": "<human name>",
+          "position": "attack|defense|set"
+        }
+      ]
     }
   ]
 }
@@ -51,6 +64,23 @@ the solver against real meta decks.
 
 Cards are numeric IDs (OCGCore passcodes). Duplicates in an array are
 meaningful — each element is one physical copy.
+
+### expectedBoard semantics (matcher-enforced)
+
+- `zone` is **required** and zone-aware in the matcher. `MZONE` expands to any
+  of `M1..M5, EMZ_L, EMZ_R`; `SZONE` expands to `S1..S5`. Specific zones
+  (`EMZ_L`, `EMZ_R`, `FIELD`, `HAND`) match only themselves.
+- `position` is **optional**. When present, match requires `position` parity:
+  - `attack` ↔ `faceup-atk`
+  - `defense` ↔ `faceup-def`
+  - `set` ↔ `facedown` OR `facedown-def` (monsters face-down OR spells/traps
+    face-down; the underlying solver tracks both).
+- When `position` is omitted, any position counts. Omit for face-up activated
+  Continuous Spells (no canonical ATK/DEF) and whenever the combo line
+  legitimately branches between positions.
+- **Deduce `position` from the canonical combo line (reference doc), NEVER
+  from solver output.** expectedBoard is a ground-truth target independent of
+  the solver's current exploration budget.
 
 ## Step-by-step
 
@@ -96,8 +126,13 @@ Use this Node snippet (works from `duel-server/`, no new deps required):
 const DECK_URL = 'https://ygoprodeck.com/deck/<deck-slug-and-id>';
 
 (async () => {
-  const html = await (await fetch(DECK_URL)).text();
+  const res = await fetch(DECK_URL, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (fixture-audit)' },
+  });
+  if (!res.ok) throw new Error(`fetch failed ${res.status} ${res.statusText}`);
+  const html = await res.text();
   const mainIdx = html.indexOf('id="main_deck"');
+  if (mainIdx < 0) throw new Error('main_deck section not found — page layout changed?');
   const extraIdx = html.indexOf('id="extra_deck"');
   const sideIdx = html.indexOf('id="side_deck"');
   const sections = {
@@ -115,13 +150,19 @@ const DECK_URL = 'https://ygoprodeck.com/deck/<deck-slug-and-id>';
     }
     return ids;
   };
-  for (const [k, s] of Object.entries(sections)) {
-    console.log(k, extract(s).length, JSON.stringify(extract(s)));
+  const results = Object.fromEntries(
+    Object.entries(sections).map(([k, s]) => [k, extract(s)])
+  );
+  if (results.main.length < 40) throw new Error(`main deck too small: ${results.main.length} — scrape likely broken`);
+  for (const [k, ids] of Object.entries(results)) {
+    console.log(k, ids.length, JSON.stringify(ids));
   }
 })();
 ```
 
-Expected sizes: main 40–60, extra 0–15, side 0–15. Mismatch = broken parse.
+Expected sizes: main 40–60, extra 0–15, side 0–15. The runtime guards above
+abort on 4xx/5xx, layout change, or suspiciously small main. A silent empty
+main array is the most common root cause of broken fixtures.
 
 ### 3. Validate every ID against cards.cdb
 
@@ -158,14 +199,16 @@ card. `datas.alias != 0` means "this id is an alias for datas.alias".
 fixture uses canonical IDs, and using alias IDs in a deck is a source of
 subtle bugs (effects that check `card.code == canonical_id` won't match).
 
-Known aliases seen so far:
+**NON-EXHAUSTIVE reference table** (known from past fixtures — always run
+the detection script below, do not trust this table alone):
 
 | Alias ID | Canonical ID | Card |
 |---|---|---|
 | 14558128 | 14558127 | Ash Blossom & Joyous Spring |
 | 18144507 | 18144506 | Harpie's Feather Duster |
 
-To detect them in bulk:
+Konami reprints produce new alias IDs on every set release, so the table
+below lags reality by months. The detection script is authoritative:
 
 ```js
 for (const id of allCardIds) {
@@ -191,8 +234,21 @@ solver will crash otherwise — it treats `hand` as cards dealt from the top
 of the deck before shuffling).
 
 `deckSeed` format: two decimal integers comma-separated, passed to OCGCore
-as a 128-bit seed. Any values work for ad-hoc tests; use distinct seeds
-across hands so RNG-dependent behavior is not confounded.
+as a 128-bit seed.
+
+**Determinism rule (v2)**: pick seeds from a documented rubric so two
+contributors reach the same seed for the same fixture and regression
+comparisons remain meaningful over time. Accepted rubrics:
+
+1. Paired decimal constants with mnemonic significance for the archetype
+   (e.g. `31415,92653` for π, `27182,81828` for e, `11235,81321` for
+   Fibonacci). Use when a mnemonic reads well in the diff.
+2. Stable derivation from the fixture id: e.g. a short hash of the
+   hand `id` truncated to the integer range. Use when no mnemonic fits.
+
+Do NOT change a seed in an existing fixture without also republishing the
+baseline — seed changes invalidate baseline comparability. Frozen seeds
+may carry `_seedFrozen: true` as a marker for "do not touch".
 
 ### 7. Capture the expected endboard — ground-truth against a combo reference doc
 
@@ -210,6 +266,25 @@ this directory that documents the canonical tournament combo line for that
 deck. The fixture's `expectedBoard` is derived from that doc, not from solver
 output. The reference doc is the "golden standard" — the fixture just points
 at it.
+
+#### Defining "canonical" (v2 tiebreaker)
+
+"Canonical tournament combo line" is the line played by the deck's author in
+the tournament referenced by `_meta.decks.<key>.source`. When combo guides
+disagree or the author has no write-up, use this priority order:
+
+1. **The deck author's own decktech / combo write-up** for the exact list in
+   `source` (highest authority — this is the combo the fixture actually
+   represents).
+2. **Master Duel Meta** tier guide for the archetype variant.
+3. **ygoprodeck combo guide** by the same author or a verified Top-8 player.
+4. **Game8** archetype page.
+5. **Yugipedia** archetype page (lowest — encyclopedic but not competitive).
+
+When two sources in the same tier conflict, prefer the more recent one (fixture
+format field in `_meta.decks.<key>.format` bounds "recent"). Never silently
+pick one — document the choice and the losers in the reference doc's
+"Sources" section.
 
 Existing references:
 - [ddd-combo-reference.md](ddd-combo-reference.md) — D/D/D Pendulum (pairs with `ddd-pendulum-opener`)
@@ -231,6 +306,10 @@ Parallel queries:
 - Query B: `<archetype> <key starter> combo turn 1` OR
   `<tournament/player name> decktech` when the fixture is from a specific
   tournament.
+
+If the two queries return conflicting endboards, resolve via the canonical
+tiebreaker (section above). Do NOT silently merge both — the fixture
+represents ONE combo line, not a superset.
 
 **Step 2 — Extra-deck analysis (critical)**
 
@@ -286,7 +365,7 @@ observed in Tier 1:
    Iron Thunder]`. Dinomorphia's compact hand is a deliberate design — not
    a lack of cards.
 
-**Step 5 — Write the reference doc using the 9-section template**
+**Step 5 — Write the reference doc using the template (8 core + 3 optional sections)**
 
 ```
 # <Archetype> Combo Reference (<date>)
@@ -327,8 +406,12 @@ lower or score may be lower than combo norms.>
 ## Endboard weights (solver scoring)
 <priority order for which pieces matter most>
 
-(optional) ## Paradigm caveat for step 3 ES tuning
-<only for unusual paradigms — explains how to interpret matched count>
+(optional) ## Paradigm caveat
+<only for unusual paradigms (LP-sacrifice, normal-summon lock, GY-fusion,
+stall/non-summoning). Describes the structural reason the fixture's matched
+or score can legitimately be lower than combo norms. This is FIXTURE-LEVEL
+context, not tuner configuration — the step 3 ES tuner reads paradigm
+normalization from its own config, not from reference docs.>
 ```
 
 **Step 6 — Update the fixture JSON**
@@ -337,7 +420,12 @@ lower or score may be lower than combo norms.>
   (`[<archetype>-combo-reference.md](<archetype>-combo-reference.md)`)
 - `hand`: exactly as specified in the reference doc's "canonical opener"
 - `expectedBoard`: exactly as specified in the reference doc's "realistic
-  expectedBoard"
+  expectedBoard", including a `position` field for every entry where the
+  canonical combo specifies one:
+  - Monsters landing on field = `"attack"` (aggressive canonical posture)
+  - Set traps / set quick-plays = `"set"`
+  - Face-up activated Continuous Spells, FIELD zone spells, HAND entries =
+    omit `position` (matcher falls back to zone+cardId)
 - Verify hand cards all exist in the fixture's main deck
 - Verify expectedBoard cards exist in either main (for monsters searchable
   to field) or extra deck (for Fusion/Synchro/Xyz/Link bosses)
@@ -351,12 +439,25 @@ SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
   --label=<archetype>-validated
 ```
 
-Expected outcomes after validation (vs pre-validation smoke):
-- `matched` may DECREASE (endboard is more rigorous — excluded intermediate
-  pieces that falsely inflated the old count). **Not a regression.**
-- `score` stable or slightly higher (focused hand explores better).
-- `depth` stable or higher.
-- `az%` and `t2%` may shift — usually a good sign (more turn-1 exploration).
+Expected outcomes after validation (vs pre-validation smoke).
+
+**Matched-drop rubric (v2)** — a drop is NOT automatically "not a regression":
+
+| score Δ | matched Δ | Verdict |
+|---|---|---|
+| stable or ↑ | ↓ | **Correction.** Old expectedBoard was inflated (intermediate/consumed/side-contaminated pieces). Commit with rationale. |
+| ↓ | ↓ | **Real regression.** The stricter endboard does NOT explain the score drop. Investigate solver path changes before committing. |
+| stable | 0 | No-op. Re-examine whether the validation actually changed anything. |
+| ↑ | ↑ | **Improvement.** Stricter endboard + better exploration. Commit. |
+
+Concrete sub-rules:
+- `score` stable means |Δ| < 1.0 on the v2 scorer. Larger deltas always
+  require investigation even if matched is unchanged.
+- `depth` drop of >5 with stable score = exploration sensitivity, not a
+  regression; note it but do not block.
+- `az%` / `t2%`: investigate any shift >10 percentage points. Smaller shifts
+  are noise. Direction of "good" depends on paradigm — do NOT read shifts
+  as universally positive.
 
 **Step 8 — Commit per archetype**
 
@@ -389,6 +490,12 @@ Skip and use the deprecated "solver-output" path only when:
 - The fixture is a `_draft: true` exploratory deck (not a regression gate).
 - The archetype is OCG-exclusive with no English combo guide (rare; flag
   with a `_provisional: true` in the fixture and plan a follow-up).
+
+**Draft TTL rule (v2)**: drafts are temporary, not a permanent escape
+hatch. Any fixture with `_draft: true` or `_provisional: true` must be
+either promoted (ground-truthed) or removed within 4 weeks of introduction.
+During quarterly fixture audits, drafts older than the TTL either ship or
+are deleted — they never silently carry forward polluting baselines.
 
 ### 7c. Anti-patterns observed in pre-Tier-1 fixtures
 
@@ -443,10 +550,16 @@ regression gates):
       terminal-only (no mid-combo set traps), no side-deck contamination
 - [ ] Hand composition matches deck's protection profile (1-card / multi-
       engine / minimalist) — no 3+ independent starters in one hand
-- [ ] Wrote `<archetype>-combo-reference.md` using the 9-section template
+- [ ] Wrote `<archetype>-combo-reference.md` using the template (8 core +
+      3 optional sections)
 - [ ] Fixture `description` links to reference doc
 - [ ] `hand` and `expectedBoard` match reference doc's "canonical opener"
       and "realistic expectedBoard" sections verbatim
-- [ ] Deterministic smoke (node-budget=400) run, matched interpretation
-      documented in commit message
+- [ ] `expectedBoard` entries carry a `position` field where canonical
+      (monsters on field = `attack`; set traps/quick-plays = `set`;
+      activated continuous / FIELD / HAND omitted)
+- [ ] `deckSeed` follows the determinism rule (v2) — mnemonic pair or
+      fixture-id-derived hash
+- [ ] Deterministic smoke (node-budget=400) run, matched delta classified
+      via the matched-drop rubric in the commit message
 - [ ] Commit stages both reference doc + fixture JSON update together

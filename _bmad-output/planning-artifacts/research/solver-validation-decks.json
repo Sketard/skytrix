@@ -1338,27 +1338,32 @@
         {
           "zone": "MZONE",
           "cardId": 46593546,
-          "cardName": "D/D/D Deviser King Deus Machinex"
+          "cardName": "D/D/D Deviser King Deus Machinex",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 79559912,
-          "cardName": "D/D/D Wave High King Caesar"
+          "cardName": "D/D/D Wave High King Caesar",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 44852429,
-          "cardName": "D/D/D Cursed King Siegfried"
+          "cardName": "D/D/D Cursed King Siegfried",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 30998403,
-          "cardName": "D/D/D Sky King Zeus Ragnarok"
+          "cardName": "D/D/D Sky King Zeus Ragnarok",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 91781484,
-          "cardName": "D/D/D Headhunt"
+          "cardName": "D/D/D Headhunt",
+          "position": "set"
         }
       ]
     },
@@ -1379,32 +1384,38 @@
         {
           "zone": "MZONE",
           "cardId": 34909328,
-          "cardName": "Ryzeal Detonator"
+          "cardName": "Ryzeal Detonator",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 7511613,
-          "cardName": "Ryzeal Duo Drive"
+          "cardName": "Ryzeal Duo Drive",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 55397172,
-          "cardName": "Futsu no Mitama no Mitsurugi"
+          "cardName": "Futsu no Mitama no Mitsurugi",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 8165596,
-          "cardName": "Number 90: Galaxy-Eyes Photon Lord"
+          "cardName": "Number 90: Galaxy-Eyes Photon Lord",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 6798031,
-          "cardName": "Ryzeal Cross"
+          "cardName": "Ryzeal Cross",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 17954937,
-          "cardName": "Mitsurugi Great Purification"
+          "cardName": "Mitsurugi Great Purification",
+          "position": "set"
         }
       ]
     },
@@ -1425,17 +1436,20 @@
         {
           "zone": "MZONE",
           "cardId": 71068247,
-          "cardName": "Totem Bird"
+          "cardName": "Totem Bird",
+          "position": "attack"
         },
         {
           "zone": "EMZ_L",
           "cardId": 49105782,
-          "cardName": "Hraesvelgr, the Desperate Doom Eagle"
+          "cardName": "Hraesvelgr, the Desperate Doom Eagle",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 53813120,
-          "cardName": "Radiant Typhoon Mandate"
+          "cardName": "Radiant Typhoon Mandate",
+          "position": "set"
         }
       ]
     },
@@ -1457,27 +1471,32 @@
         {
           "zone": "EMZ_L",
           "cardId": 30581601,
-          "cardName": "Yummy★Snatchy"
+          "cardName": "Yummy★Snatchy",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 93192592,
-          "cardName": "Lollipo★Yummy Way"
+          "cardName": "Lollipo★Yummy Way",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 10966439,
-          "cardName": "Marshmao♦Yummy"
+          "cardName": "Marshmao♦Yummy",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 79606837,
-          "cardName": "Herald of the Arc Light"
+          "cardName": "Herald of the Arc Light",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 29369059,
-          "cardName": "Yummy♦Surprise"
+          "cardName": "Yummy♦Surprise",
+          "position": "set"
         },
         {
           "zone": "FIELD",
@@ -1507,27 +1526,32 @@
         {
           "zone": "MZONE",
           "cardId": 33760966,
-          "cardName": "Dracotail Arthalion"
+          "cardName": "Dracotail Arthalion",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 78397661,
-          "cardName": "Ecclesia and the Dark Dragon"
+          "cardName": "Ecclesia and the Dark Dragon",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 5431722,
-          "cardName": "Dracotail Flame"
+          "cardName": "Dracotail Flame",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 69932023,
-          "cardName": "Dracotail Horn"
+          "cardName": "Dracotail Horn",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 80208225,
-          "cardName": "Dracotail Sting"
+          "cardName": "Dracotail Sting",
+          "position": "set"
         },
         {
           "zone": "HAND",
@@ -1553,22 +1577,26 @@
         {
           "zone": "MZONE",
           "cardId": 46396218,
-          "cardName": "Azamina Ilia Silvia"
+          "cardName": "Azamina Ilia Silvia",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 86066372,
-          "cardName": "Accesscode Talker"
+          "cardName": "Accesscode Talker",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 22110647,
-          "cardName": "Mecha Phantom Beast Dracossack"
+          "cardName": "Mecha Phantom Beast Dracossack",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 80845034,
-          "cardName": "WANTED: Seeker of Sinful Spoils"
+          "cardName": "WANTED: Seeker of Sinful Spoils",
+          "position": "set"
         }
       ]
     },
@@ -1589,17 +1617,20 @@
         {
           "zone": "MZONE",
           "cardId": 13455674,
-          "cardName": "Crystron Quariongandrax"
+          "cardName": "Crystron Quariongandrax",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 10443957,
-          "cardName": "Cyber Dragon Infinity"
+          "cardName": "Cyber Dragon Infinity",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 84941194,
-          "cardName": "Imsety, Glory of Horus"
+          "cardName": "Imsety, Glory of Horus",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
@@ -1625,17 +1656,20 @@
         {
           "zone": "MZONE",
           "cardId": 92798873,
-          "cardName": "Dinomorphia Rexterm"
+          "cardName": "Dinomorphia Rexterm",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 26631975,
-          "cardName": "Dinomorphia Domain"
+          "cardName": "Dinomorphia Domain",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 7336745,
-          "cardName": "Dinomorphia Intact"
+          "cardName": "Dinomorphia Intact",
+          "position": "set"
         }
       ]
     },
@@ -1656,22 +1690,26 @@
         {
           "zone": "MZONE",
           "cardId": 75922381,
-          "cardName": "Spright Red"
+          "cardName": "Spright Red",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 2311090,
-          "cardName": "Spright Carrot"
+          "cardName": "Spright Carrot",
+          "position": "attack"
         },
         {
           "zone": "EMZ_L",
           "cardId": 54498517,
-          "cardName": "Gigantic Spright"
+          "cardName": "Gigantic Spright",
+          "position": "attack"
         },
         {
           "zone": "EMZ_R",
           "cardId": 90809975,
-          "cardName": "Toadally Awesome"
+          "cardName": "Toadally Awesome",
+          "position": "attack"
         }
       ]
     },
@@ -1692,22 +1730,26 @@
         {
           "zone": "MZONE",
           "cardId": 48452496,
-          "cardName": "Snake-Eyes Flamberge Dragon"
+          "cardName": "Snake-Eyes Flamberge Dragon",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 82135803,
-          "cardName": "Fiendsmith's Desirae"
+          "cardName": "Fiendsmith's Desirae",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 29301450,
-          "cardName": "S:P Little Knight"
+          "cardName": "S:P Little Knight",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 58071334,
-          "cardName": "Snake-Eyes Doomed Dragon"
+          "cardName": "Snake-Eyes Doomed Dragon",
+          "position": "attack"
         }
       ]
     },
@@ -1728,29 +1770,33 @@
         {
           "zone": "MZONE",
           "cardId": 92731385,
-          "cardName": "Tearlaments Kitkallos"
+          "cardName": "Tearlaments Kitkallos",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 28226490,
-          "cardName": "Tearlaments Kaleido-Heart"
+          "cardName": "Tearlaments Kaleido-Heart",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 2463794,
-          "cardName": "Fiendsmith's Requiem"
+          "cardName": "Fiendsmith's Requiem",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 29301450,
-          "cardName": "S:P Little Knight"
+          "cardName": "S:P Little Knight",
+          "position": "attack"
         }
       ]
     },
     {
       "id": "floowandereeze-opener",
       "deck": "floowandereeze-2026",
-      "description": "Floowandereeze opener (2026 build): Floowandereeze & Robina + Floowandereeze and the Magnificent Map + Floowandereeze & Eglen + Floowandereeze & Toccan + Ghost Belle. Added 2026-04-17 for step 2 Phase 3. Normal-summon lock paradigm — banish cards from hand as tribute to normal-summon Flo birds, chaining searches. Robina searches Empen, Toccan tutors Map, Map revives banished Flo. Expected endboard: Floowandereeze & Empen (opponent can't activate S/T) + Mist Valley Apex Avian (negate) + Lyrilusc - Assembled Nightingale (Rank 1 Xyz multi-attacker) + Magnificent Map active in field zone.",
+      "description": "Floowandereeze opener (2026 build): Floowandereeze & Robina + Floowandereeze and the Magnificent Map + Floowandereeze & Eglen + Floowandereeze & Toccan + Ghost Belle. Ground-truthed 2026-04-17 against [floowandereeze-combo-reference.md](floowandereeze-combo-reference.md). Hand and endboard KEPT — already match canonical 1-card Robina opener + Empen/Apex Avian/Nightingale/Map end pattern. Normal-summon lock paradigm: banish cards from hand as tribute to normal-summon Flo Lvl 1 birds, chain searches, Tribute Summon Lvl 8/10 finishers. Position fields (methodology v2): Empen + Apex Avian + Nightingale in attack (ATK-position is canonical for offensive boss placement); Map has no position (field spell zone).",
       "hand": [
         18940725,
         28126717,
@@ -1764,17 +1810,20 @@
         {
           "zone": "MZONE",
           "cardId": 80611581,
-          "cardName": "Floowandereeze & Empen"
+          "cardName": "Floowandereeze & Empen",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 29587993,
-          "cardName": "Mist Valley Apex Avian"
+          "cardName": "Mist Valley Apex Avian",
+          "position": "attack"
         },
         {
           "zone": "EMZ_L",
           "cardId": 48608796,
-          "cardName": "Lyrilusc - Assembled Nightingale"
+          "cardName": "Lyrilusc - Assembled Nightingale",
+          "position": "attack"
         },
         {
           "zone": "FIELD",
@@ -1800,22 +1849,26 @@
         {
           "zone": "MZONE",
           "cardId": 81497285,
-          "cardName": "Lady Labrynth of the Silver Castle"
+          "cardName": "Lady Labrynth of the Silver Castle",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 92714517,
-          "cardName": "Big Welcome Labrynth"
+          "cardName": "Big Welcome Labrynth",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 5380979,
-          "cardName": "Welcome Labrynth"
+          "cardName": "Welcome Labrynth",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 6351147,
-          "cardName": "Transaction Rollback"
+          "cardName": "Transaction Rollback",
+          "position": "set"
         }
       ]
     },
@@ -1836,7 +1889,8 @@
         {
           "zone": "EMZ_L",
           "cardId": 55990317,
-          "cardName": "Hugin the Runick Wings"
+          "cardName": "Hugin the Runick Wings",
+          "position": "attack"
         },
         {
           "zone": "FIELD",
@@ -1846,12 +1900,14 @@
         {
           "zone": "SZONE",
           "cardId": 90846359,
-          "cardName": "Rivalry of Warlords"
+          "cardName": "Rivalry of Warlords",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 30430448,
-          "cardName": "Runick Freezing Curses"
+          "cardName": "Runick Freezing Curses",
+          "position": "set"
         }
       ]
     },
@@ -1872,22 +1928,26 @@
         {
           "zone": "MZONE",
           "cardId": 7511613,
-          "cardName": "Ryzeal Duo Drive"
+          "cardName": "Ryzeal Duo Drive",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 34909328,
-          "cardName": "Ryzeal Detonator"
+          "cardName": "Ryzeal Detonator",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 52068432,
-          "cardName": "Nekroz of Trishula"
+          "cardName": "Nekroz of Trishula",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 51124303,
-          "cardName": "Nekroz Kaleidoscope"
+          "cardName": "Nekroz Kaleidoscope",
+          "position": "set"
         }
       ]
     },
@@ -1912,27 +1972,32 @@
         {
           "zone": "MZONE",
           "cardId": 44146295,
-          "cardName": "Mirrorjade the Iceblade Dragon"
+          "cardName": "Mirrorjade the Iceblade Dragon",
+          "position": "attack"
         },
         {
           "zone": "MZONE",
           "cardId": 38811586,
-          "cardName": "Albion the Sanctifire Dragon"
+          "cardName": "Albion the Sanctifire Dragon",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
           "cardId": 5431722,
-          "cardName": "Dracotail Flame"
+          "cardName": "Dracotail Flame",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 69932023,
-          "cardName": "Dracotail Horn"
+          "cardName": "Dracotail Horn",
+          "position": "set"
         },
         {
           "zone": "SZONE",
           "cardId": 80208225,
-          "cardName": "Dracotail Sting"
+          "cardName": "Dracotail Sting",
+          "position": "set"
         },
         {
           "zone": "HAND",
