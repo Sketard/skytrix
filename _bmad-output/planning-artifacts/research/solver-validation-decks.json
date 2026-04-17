@@ -1508,7 +1508,7 @@
     {
       "id": "branded-dracotail-opener",
       "deck": "branded-dracotail-bainbridge-2nd",
-      "description": "Branded Dracotail opener (Arthalion line): Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
+      "description": "Branded Dracotail opener (Arthalion line, user-audited 2026-04-13, re-validated 2026-04-17): Dracotail Faimena + Dracotail Lukias + Mululu + Branded Fusion + Blazing Cartesia. Ground-truthed against [branded-dracotail-combo-reference.md](branded-dracotail-combo-reference.md). Hand and expectedBoard KEPT from prior user audit — all 6 pieces (Arthalion + Ecclesia + 3 Dracotail trap set + Faimena kept in HAND) match the canonical Fusion+Dracotail-trap-package turn-1 finish. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit (Pan required tribute, dead in opening hands) — this correction is preserved. Multi-line fixture: pairs with branded-dracotail-opener-mirrorjade-line which tests the alternate Branded-centric endboard from the same opener. Methodology v2 position fields already applied.",
       "hand": [
         1498449,
         75003700,
@@ -1954,7 +1954,7 @@
     {
       "id": "branded-dracotail-opener-mirrorjade-line",
       "deck": "branded-dracotail-bainbridge-2nd",
-      "description": "Branded Dracotail opener (Mirrorjade line): same opening hand as branded-dracotail-opener, but expected to execute the alternate canonical line where Branded Fusion produces Lubellion → Mirrorjade the Iceblade Dragon instead of chain-setting the Dracotail trap package. Added 2026-04-14 after Phase A #3 SELECT_CARD exploratory revealed the solver naturally finds this variant via Lukias→Mululu→Branded Fusion→Lubellion→Mirrorjade→Devours the Dogma. Both lines are valid meta Branded Dracotail endboards; `matched` on EITHER fixture indicates canonical reach.",
+      "description": "Branded Dracotail opener (Mirrorjade line, user-added 2026-04-14, re-validated 2026-04-17): SAME opening hand as branded-dracotail-opener. Ground-truthed against [branded-dracotail-combo-reference.md](branded-dracotail-combo-reference.md). Tests the alternate canonical Branded-primary endboard: Branded Fusion → Lubellion → Mirrorjade + Albion Sanctifire atop, with Dracotail trap package SZONE + Faimena kept HAND. Multi-line fixture pairing: `matched` on EITHER this fixture OR branded-dracotail-opener indicates canonical reach — the solver explores both lines from the same opener via Branded Fusion's split targets. Methodology v2 position fields already applied.",
       "hand": [
         1498449,
         75003700,
