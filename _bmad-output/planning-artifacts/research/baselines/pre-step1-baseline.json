@@ -2,7 +2,8 @@
   "_meta": {
     "timestamp": "2026-04-16T17:18:58.432Z",
     "budgetMs": 60000,
-    "scorerVersion": "pre-step1"
+    "scorerVersion": "pre-step1",
+    "_v5_note": "PRE-v5 baseline. `score` = explorationScore (weighted + fallbackPoints + latentPoints). Post-v5 baselines report interruptionScore instead — do NOT direct-compare `score` across the v5 boundary."
   },
   "fixtures": {
     "ddd-pendulum-opener": {

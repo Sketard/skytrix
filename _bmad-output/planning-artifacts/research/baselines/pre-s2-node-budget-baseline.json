@@ -3,7 +3,8 @@
     "timestamp": "2026-04-16T20:23:06.083Z",
     "budgetMs": 3600000,
     "scorerVersion": "pre-s2-node-budget-baseline-400",
-    "rootChildBudgetNodes": 400
+    "rootChildBudgetNodes": 400,
+    "_v5_note": "PRE-v5 baseline. `score` = explorationScore (weighted + fallbackPoints + latentPoints). Post-v5 baselines report interruptionScore instead — do NOT direct-compare `score` across the v5 boundary."
   },
   "fixtures": {
     "ddd-pendulum-opener": {

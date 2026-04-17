@@ -5,7 +5,13 @@ This file is the persistent prompt used to generate or regenerate entries in
 any LLM) when adding new cards to the solver's interruption pool, or when
 re-validating existing entries against newer oracle text.
 
-**Status:** v1 (Story 1.8 — 2026-04-09)
+**Status:** v2 (2026-04-17 — added `activeZones` field per Voie B
+schema extension. Tags generated under v1 default to on-field zones
+only under the new scorer; add explicit `activeZones` when the effect
+activates from GY / BANISHED / HAND / face-up EXTRA.)
+
+v1 (Story 1.8 — 2026-04-09): initial schema with `type`, `usesPerTurn`,
+`trigger`, `sharedOpt`, `totalUsesPerTurn`, audit metadata.
 
 ---
 
@@ -15,12 +21,21 @@ re-validating existing entries against newer oracle text.
 
 1. Open Claude Code in the skytrix repo.
 2. Provide a list of cardIds: "Add these cards to interruption-tags.json: 12345, 67890, 24680".
-3. Claude reads this prompt file, fetches each card's oracle text via the YGOPRODeck API
-   (`https://db.ygoprodeck.com/api/v7/cardinfo.php?id={cardId}`), applies the classification
-   logic below, and writes the resulting entries to `interruption-tags.json`.
-4. Claude reports which entries need human review (multi-effect ambiguity, sharedOpt edge
+3. Claude sources oracle text **prioritairement depuis la base locale**
+   `duel-server/data/cards.cdb` (table `texts`, colonne `desc`), qui est la
+   source-of-truth utilisée par OCGCore au runtime :
+   ```js
+   const Database = require('better-sqlite3');
+   const db = new Database('./data/cards.cdb', { readonly: true });
+   const { desc } = db.prepare('SELECT desc FROM texts WHERE id = ?').get(cardId);
+   ```
+   **Ne WebFetch la YGOPRODeck API que si la carte est absente de `cards.cdb`**
+   (release TCG récente pas encore intégrée). Éviter les requêtes réseau
+   inutiles quand la donnée est locale et canonique.
+4. Claude applies the classification logic below, and writes the resulting entries to `interruption-tags.json`.
+5. Claude reports which entries need human review (multi-effect ambiguity, sharedOpt edge
    cases, type classification doubts).
-5. Human reviews the diff, validates the flagged entries, sets `_validated: true`, commits.
+6. Human reviews the diff, validates the flagged entries, sets `_validated: true`, commits.
 
 ### Regenerating existing entries
 
@@ -96,8 +111,16 @@ interface InterruptionEffect {
   type: InterruptionType;
   usesPerTurn: number;       // Hard cap per turn from the card's text
   trigger: Trigger;          // Required: how/when this effect can be activated
+  activatableFromHand?: boolean;  // Legacy sugar; prefer `activeZones: ['HAND']`
+  activeZones?: ZoneId[];    // Optional explicit zone gate (see below). Default = on-field.
   description?: string;      // Optional: short human-readable summary (≤120 chars)
 }
+
+type ZoneId =
+  | 'M1' | 'M2' | 'M3' | 'M4' | 'M5'       // Main Monster Zones
+  | 'S1' | 'S2' | 'S3' | 'S4' | 'S5'       // Spell/Trap Zones (S1/S5 = Pendulum)
+  | 'FIELD' | 'EMZ_L' | 'EMZ_R'            // Field Spell + Extra Monster Zones
+  | 'GY' | 'BANISHED' | 'EXTRA' | 'DECK' | 'HAND';
 
 interface InterruptionTag {
   cardName: string;          // Official English name
@@ -133,6 +156,35 @@ interface InterruptionTag {
 | "return to the hand" / "Special Summon to the opponent's hand" | `bounce` |
 | "discard from the hand" | `handRip` |
 | "send to the GY" (NOT via destruction) | `sendToGy` |
+
+### activeZones inference from oracle text (added v2, 2026-04-17)
+
+`activeZones` gates where the effect is credited by the scorer. Omit for
+default on-field effects (M1-M5, S1-S5, FIELD, EMZ_L, EMZ_R). Specify
+explicitly when the card activates from a non-default zone.
+
+| Phrase pattern in oracle text | activeZones |
+|-------------------------------|-------------|
+| "(Quick Effect) [...] you can [...]" on a field-bound monster/spell/trap | *(omit — default on-field)* |
+| "You can [...] this card from your hand" / "from your hand: [effect]" | `['HAND']` or `activatableFromHand: true` |
+| "If this card is sent to the GY [...]" / "While this card is in the GY [...]" | `['GY']` |
+| "If this card is banished [...]" / "While this card is banished [...]" | `['BANISHED']` |
+| "While this card is face-up in your Extra Deck [...]" (rare Pendulum) | `['EXTRA']` |
+| Multi-zone: "You can [...] from your hand OR field" | `['HAND', 'M1'..'EMZ_R']` (enumerate explicitly) |
+
+**Multi-effect split rule**: when a card has effects that activate from
+DIFFERENT zones (e.g. Mirrorjade: quick-banish from field + trigger-destroy
+from GY), emit **two separate effects** with distinct `activeZones`. Do
+NOT union them into a single effect — the scorer counts each effect
+independently per zone.
+
+**Example** (Mirrorjade the Iceblade Dragon):
+```json
+"effects": [
+  { "type": "banish",      "usesPerTurn": 1, "trigger": "quick"   /* default on-field */ },
+  { "type": "destruction", "usesPerTurn": 1, "trigger": "trigger", "activeZones": ["GY"] }
+]
+```
 
 ### Trigger inference from oracle text
 
@@ -186,9 +238,15 @@ sense defined above. Examples:
 - Field spells with only beneficial effects for the controller (Pendulum Magicians
   field spell, etc.)
 
-Note: handtraps (Ash Blossom, Effect Veiler, Maxx C, Nibiru, Droll & Lock Bird, etc.)
-are NEVER tagged because they end up in the GY/hand and never on the player's board
-final. The solver does not score them.
+Note (v2 update): handtraps (Ash Blossom, Effect Veiler, Maxx "C", Nibiru,
+Droll & Lock Bird, Fuwalos, Called by the Grave, Crossout Designator, etc.)
+SHOULD now be tagged with explicit `activeZones: ['HAND']`. Pre-v2 the
+scorer had no HAND gate and the v1 prompt told you to skip them; the v2
+scorer's zone gate now credits HAND-active handtraps for solver fixtures
+where the end-state hand still contains disruption (1-card combos, Bystial
+openers, Runick stall). Do not tag handtraps as `null` — tag them with
+`activeZones: ['HAND']` and an appropriate `trigger` (usually `chain` for
+negate handtraps, `trigger` for summoning-based ones like Nibiru).
 
 ---
 

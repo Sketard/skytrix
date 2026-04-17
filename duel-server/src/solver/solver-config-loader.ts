@@ -6,14 +6,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CardDB } from '../types.js';
+import type { ZoneId } from '../ws-protocol.js';
 import type {
   SolverConfigFile,
   InterruptionTag,
   InterruptionType,
   HandtrapConfig,
 } from './solver-types.js';
-import { INTERRUPTION_TYPES } from './solver-types.js';
+import { INTERRUPTION_TYPES, ALL_ZONE_IDS } from './solver-types.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
+import type { OppTurnEnablerMap } from './latent-interruption-computer.js';
+import { loadOppTurnEnablers as _loadOppTurnEnablers } from './latent-interruption-computer.js';
 
 // =============================================================================
 // Range Validation Helpers
@@ -108,6 +111,7 @@ const VALID_TYPES_SET: ReadonlySet<string> = new Set(INTERRUPTION_TYPES);
 const VALID_TRIGGERS_SET: ReadonlySet<string> = new Set([
   'chain', 'main', 'quick', 'trigger', 'continuous',
 ]);
+const VALID_ZONE_IDS_SET: ReadonlySet<string> = new Set(ALL_ZONE_IDS);
 
 export function loadInterruptionTags(dataDir: string): Record<string, InterruptionTag> {
   const filePath = join(dataDir, 'interruption-tags.json');
@@ -128,7 +132,13 @@ export function loadInterruptionTags(dataDir: string): Record<string, Interrupti
     }
 
     const effects = e.effects.map((eff: unknown, i: number) => {
-      const f = eff as { type?: string; usesPerTurn?: number; trigger?: string; description?: string };
+      const f = eff as {
+        type?: string;
+        usesPerTurn?: number;
+        trigger?: string;
+        activeZones?: unknown;
+        description?: string;
+      };
       if (!VALID_TYPES_SET.has(f.type ?? '')) {
         console.error(`[Solver] Invalid interruption-tags.json: cardId ${cardId} effect[${i}] has invalid type "${f.type}"`);
         process.exit(1);
@@ -145,8 +155,26 @@ export function loadInterruptionTags(dataDir: string): Record<string, Interrupti
           console.warn(`[Solver] interruption-tags.json: cardId ${cardId} effect[${i}] has unknown trigger "${f.trigger}" — ignored`);
         }
       }
+      // activeZones (Voie B, 2026-04-17): optional explicit zone gate for
+      // the effect. When present, must be a non-empty ZoneId[]. Unknown
+      // zone strings fail loudly — a typo here silently changes scoring.
+      let activeZones: readonly ZoneId[] | undefined;
+      if (f.activeZones !== undefined) {
+        if (!Array.isArray(f.activeZones) || f.activeZones.length === 0) {
+          console.error(`[Solver] Invalid interruption-tags.json: cardId ${cardId} effect[${i}].activeZones must be a non-empty array`);
+          process.exit(1);
+        }
+        for (const z of f.activeZones) {
+          if (typeof z !== 'string' || !VALID_ZONE_IDS_SET.has(z)) {
+            console.error(`[Solver] Invalid interruption-tags.json: cardId ${cardId} effect[${i}].activeZones contains invalid zone "${z}"`);
+            process.exit(1);
+          }
+        }
+        activeZones = f.activeZones as readonly ZoneId[];
+      }
       const effect: InterruptionTag['effects'][number] = { type: f.type as InterruptionType, usesPerTurn };
       if (trigger !== undefined) effect.trigger = trigger;
+      if (activeZones !== undefined) effect.activeZones = activeZones;
       if (typeof f.description === 'string') effect.description = f.description;
       return effect;
     });
@@ -254,6 +282,7 @@ export interface AllSolverConfigs {
   handtraps: HandtrapConfig[];
   structuralWeights: StructuralWeights;
   structuralTutorCards: StructuralTutorCards;
+  oppTurnEnablers: OppTurnEnablerMap;
 }
 
 const STRUCTURAL_WEIGHT_RANGES: Record<string, RangeRule> = {
@@ -320,8 +349,9 @@ export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolver
   const handtraps = loadHandtraps(dataDir);
   const structuralWeights = loadStructuralWeights(dataDir);
   const structuralTutorCards = loadStructuralTutorCards(dataDir);
+  const oppTurnEnablers = _loadOppTurnEnablers(dataDir);
 
   validateInterruptionTagsAgainstCardPool(interruptionTags, cardDB);
 
-  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights, structuralTutorCards };
+  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights, structuralTutorCards, oppTurnEnablers };
 }

@@ -492,7 +492,7 @@
       "exploring": "Exploring combo lines...",
       "stalled": "Resolving complex effect...",
       "nodesExplored": "{{count}} combo lines explored",
-      "bestScore": "Best board: {{score}}",
+      "bestScore": "Best interruption score: {{score}}",
       "elapsed": "Elapsed: {{time}}",
       "cancel": "Cancel"
     },
@@ -501,6 +501,8 @@
     "result": {
       "interruptions": "interruptions",
       "interruptionSingular": "interruption",
+      "interruptionScoreLabel": "Interruption score:",
+      "interruptionScoreHint": "Pure end-board disruption value (weighted tags + fallback heuristic). Does NOT include latent combo-progress bonuses (those guide DFS exploration only — see breakdown).",
       "partial": "Partial result",
       "fallbackHint": "Some cards lack interruption tags — score is estimated",
       "consumedBadge": {
@@ -519,7 +521,7 @@
       "worstCase": "Worst-case",
       "noResilientLine": "No resilient line found",
       "noResilientLineMessage": "All combo paths are broken by the selected handtraps.",
-      "bestScoreRef": "Best score (without disruption): {{score}}",
+      "bestScoreRef": "Best interruption score: {{score}}",
       "worstCaseAria": "Worst-case resilience: {{minimax}}",
       "fastAdversarialHint": "Fast mode explores fewer combo branches. Use Optimal for a more thorough minimax search.",
       "alternativeCountBadge": "{{count}} options",

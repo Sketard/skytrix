@@ -42,6 +42,10 @@ export const TYPE_XYZ = 0x800000;
 export const TYPE_PENDULUM = 0x1000000;
 export const TYPE_LINK = 0x4000000;
 
+/** Extra-deck monster summon category. `undefined` for non-extra-deck cards.
+ *  Phase D latent interruption computer gates target compatibility via this. */
+export type SummonCategory = 'LINK' | 'FUSION' | 'XYZ' | 'SYNCHRO';
+
 export interface CardMetadata {
   cardId: number;
   type: number;
@@ -56,6 +60,17 @@ export interface CardMetadata {
   isRitualMonster: boolean;
   isRitualSpell: boolean;
   isExtraDeckMonster: boolean;  // Fusion / Synchro / Xyz / Link
+  /** Phase D (2026-04-17): specific extra-deck category (undefined for
+   *  main-deck cards). Used by the latent interruption computer to match
+   *  enablers (e.g. Masquerena → LINK only) with valid targets. */
+  summonCategory?: SummonCategory;
+  /** Phase D: the card's summon rating — link rating for Link monsters,
+   *  rank for Xyz, level for Fusion/Synchro. Matches Masquerena-style
+   *  enabler `ratingRange` checks. Zero for non-extra-deck cards.
+   *  OCGCore convention: Link rating is stored in the `level` field for
+   *  Link monsters (they have no traditional Level); Xyz rank uses the
+   *  level field too. */
+  rating: number;
 }
 
 export type CardMetadataMap = ReadonlyMap<number, CardMetadata>;
@@ -74,12 +89,16 @@ function deriveMetadata(row: DatasRow): CardMetadata {
   const isSpell = (type & TYPE_SPELL) !== 0;
   const isTrap = (type & TYPE_TRAP) !== 0;
   const isRitual = (type & TYPE_RITUAL) !== 0;
-  const isExtraDeckMonster = isMonster && (
-    (type & TYPE_FUSION) !== 0 ||
-    (type & TYPE_SYNCHRO) !== 0 ||
-    (type & TYPE_XYZ) !== 0 ||
-    (type & TYPE_LINK) !== 0
-  );
+  const isLink = (type & TYPE_LINK) !== 0;
+  const isXyz = (type & TYPE_XYZ) !== 0;
+  const isFusion = (type & TYPE_FUSION) !== 0;
+  const isSynchro = (type & TYPE_SYNCHRO) !== 0;
+  const isExtraDeckMonster = isMonster && (isFusion || isSynchro || isXyz || isLink);
+  let summonCategory: SummonCategory | undefined;
+  if (isLink) summonCategory = 'LINK';
+  else if (isXyz) summonCategory = 'XYZ';
+  else if (isFusion) summonCategory = 'FUSION';
+  else if (isSynchro) summonCategory = 'SYNCHRO';
   return {
     cardId: row.id,
     type,
@@ -92,6 +111,8 @@ function deriveMetadata(row: DatasRow): CardMetadata {
     isRitualMonster: isMonster && isRitual,
     isRitualSpell: isSpell && isRitual,
     isExtraDeckMonster,
+    summonCategory,
+    rating: isExtraDeckMonster ? (row.level ?? 0) : 0,
   };
 }
 

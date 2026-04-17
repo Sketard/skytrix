@@ -355,6 +355,7 @@ async function main(): Promise<void> {
     cardMetadata,
     allConfigs.structuralWeights,
     allConfigs.structuralTutorCards,
+    allConfigs.oppTurnEnablers, // Phase D V1
   );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 

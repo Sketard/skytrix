@@ -893,7 +893,12 @@ export interface SolverWsScoreBreakdown {
   weighted: number;
   /** Fallback heuristic bonus (untagged face-up monsters). */
   fallbackPoints: number;
-  total: number;
+  /** Latent combo-progress bonus (Phase 2.3, Step 1, Phase D). */
+  latentPoints?: number;
+  /** User-facing end-board grade = weighted + fallbackPoints (methodology v5). */
+  interruptionScore?: number;
+  /** DFS guidance signal = interruptionScore + latentPoints (methodology v5). */
+  explorationScore?: number;
 }
 
 export interface SolverWsDecisionNode {

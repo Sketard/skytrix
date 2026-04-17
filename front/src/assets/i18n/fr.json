@@ -492,7 +492,7 @@
       "exploring": "Exploration des lignes de combo...",
       "stalled": "Résolution d'un effet complexe...",
       "nodesExplored": "{{count}} lignes de combo explorées",
-      "bestScore": "Meilleur board : {{score}}",
+      "bestScore": "Meilleur score d'interruption : {{score}}",
       "elapsed": "Temps écoulé : {{time}}",
       "cancel": "Annuler"
     },
@@ -501,6 +501,8 @@
     "result": {
       "interruptions": "interruptions",
       "interruptionSingular": "interruption",
+      "interruptionScoreLabel": "Score d'interruption :",
+      "interruptionScoreHint": "Valeur pure de disruption end-board (tags pondérés + heuristique fallback). Ne contient PAS les bonus latent combo-progress (ceux-ci guident l'exploration DFS uniquement — voir breakdown).",
       "partial": "Résultat partiel",
       "fallbackHint": "Certaines cartes n'ont pas de tags d'interruption — le score est estimé",
       "consumedBadge": {
@@ -519,7 +521,7 @@
       "worstCase": "Pire cas",
       "noResilientLine": "Aucune ligne résiliente trouvée",
       "noResilientLineMessage": "Toutes les lignes de combo sont brisées par les pièges de main sélectionnés.",
-      "bestScoreRef": "Meilleur score (sans disruption) : {{score}}",
+      "bestScoreRef": "Meilleur score d'interruption : {{score}}",
       "worstCaseAria": "Résilience pire cas : {{minimax}}",
       "fastAdversarialHint": "Le mode Fast explore moins de branches de combo. Utilisez Optimal pour une recherche minimax plus approfondie.",
       "alternativeCountBadge": "{{count}} options",

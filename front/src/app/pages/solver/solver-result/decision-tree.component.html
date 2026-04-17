@@ -56,7 +56,8 @@
       }
     </div>
 
-    <span class="tree-score mat-body-1">{{ node.node.score }}</span>
+    <span class="tree-score mat-body-1"
+      [matTooltip]="'solver.result.interruptionScoreHint' | translate">{{ node.node.score }}</span>
 
     @if (node.scoreDelta) {
       <span class="tree-score-delta"

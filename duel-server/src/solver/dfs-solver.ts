@@ -41,7 +41,7 @@ export { ROOT_ACTION, extractMainPath } from './tree-utils.js';
 
 /** Max plausible score gain per remaining ply, used by the branch-and-bound
  *  pruning check to decide whether a subtree can possibly exceed the current
- *  `ctx.bestTurn1Score`. Calibrated conservatively (~2× the empirical average
+ *  `ctx.bestTurn1ExplorationScore`. Calibrated conservatively (~2× the empirical average
  *  gain of productive plies) to minimize false pruning. A higher value
  *  prunes less but preserves more exploration; a lower value prunes more
  *  aggressively at the risk of cutting legitimate late peaks.
@@ -58,7 +58,7 @@ const BRANCH_BOUND_RECOVERY_PER_PLY = 1.5;
 
 /** Fraction of the global solve `timeBudget` that any single first-level
  *  (depth==0) root-child branch is allowed to stall without producing a
- *  new `bestTurn1Score` peak. Once a branch has gone `rootChildBudgetMs`
+ *  new `bestTurn1ExplorationScore` peak. Once a branch has gone `rootChildBudgetMs`
  *  milliseconds without any strict improvement to the turn-1 peak, nodes
  *  in that subtree early-return so the DFS unwinds and moves on to the
  *  next root child. The clock is sliding (reset on every peak update
@@ -91,7 +91,7 @@ const ROOT_CHILD_BUDGET_FRACTION = 0.45;
 
 /** Phase L — the guard uses a sliding "time since last peak improvement"
  *  clock rather than a fixed "elapsed since branch start" window. The
- *  clock resets on every strict improvement of `ctx.bestTurn1Score` while
+ *  clock resets on every strict improvement of `ctx.bestTurn1ExplorationScore` while
  *  inside a tracked root-child branch; the guard fires only if the clock
  *  has been running without reset for longer than `ctx.rootChildBudgetMs`.
  *
@@ -110,7 +110,11 @@ const ROOT_CHILD_BUDGET_FRACTION = 0.45;
 
 interface DfsNodeResult {
   node: DecisionNode;
-  score: number;
+  /** DFS-internal guidance signal (methodology v5). Drives `children.sort`,
+   *  α-β pruning, `bestScore > result.score` comparisons. User-facing grade
+   *  is derived from `scoreBreakdown.interruptionScore` at the top-level
+   *  `reportScore` extraction — not from this field. */
+  explorationScore: number;
   scoreBreakdown: ScoreBreakdown;
 }
 
@@ -174,8 +178,8 @@ export class DfsSolver implements SolverStrategy {
       startTime,
       timeBudget,
       nodesExplored: 0,
-      bestScore: -1,
-      bestTurn1Score: -1,
+      bestExplorationScore: -1,
+      bestTurn1ExplorationScore: -1,
       bestEndBoardCards: [],
       bestTurn1Breakdown: cloneEmptyBreakdown(),
       currentActionStack: [],
@@ -223,7 +227,7 @@ export class DfsSolver implements SolverStrategy {
       if ('resetWarnFlag' in this.ranker) (this.ranker as GoldfishChainRanker).resetWarnFlag();
 
       // Phase K — iterative deepening. Run a shallow DFS pass first to
-      // establish a `bestTurn1Score` floor, then a full pass that benefits
+      // establish a `bestTurn1ExplorationScore` floor, then a full pass that benefits
       // from Phase I branch-bound pruning against that floor. The TT is
       // cleared BETWEEN iterations because this solver's TT semantics
       // (`entry.depth >= currentDepth` for hits, with `depth` = depth-from-
@@ -234,7 +238,7 @@ export class DfsSolver implements SolverStrategy {
       // iterative deepening regressed 34→10 because the deep iteration hit
       // cached shallow scores at every shared state. Clearing between
       // iterations costs the warm-cache benefit but preserves correctness
-      // and keeps the primary goal — `ctx.bestTurn1Score` floor — which
+      // and keeps the primary goal — `ctx.bestTurn1ExplorationScore` floor — which
       // accumulates naturally in ctx fields (not TT).
       //
       // First attempt capped at `ceil(maxDepth/2)`; final pass uses the
@@ -255,7 +259,7 @@ export class DfsSolver implements SolverStrategy {
         this.maxDepth,
       ];
       // Phase K — budget split. The shallow iteration gets a small slice
-      // (20% of total) because it only needs to establish a bestTurn1Score
+      // (20% of total) because it only needs to establish a bestTurn1ExplorationScore
       // floor, not find the full peak. Deep iteration receives the
       // remainder. Without this split, the shallow iteration (whose own
       // search tree is still large at d=25) consumes the entire global
@@ -268,7 +272,7 @@ export class DfsSolver implements SolverStrategy {
       // check inside `dfs()` (line 635).
       const originalCtxBudget = ctx.timeBudget;
       let lastResultNode: DecisionNode | null = null;
-      let lastResultScore = 0;
+      let lastResultExplorationScore = 0;
       let lastResultBreakdown: ScoreBreakdown = cloneEmptyBreakdown();
       for (let i = 0; i < iterationDepths.length; i++) {
         // Global budget guard — don't start a new iteration if time's up.
@@ -289,7 +293,7 @@ export class DfsSolver implements SolverStrategy {
         //   'depth_cap' labels.
         // - TT: cleared BEFORE non-first iteration (see phase comment
         //   above — shallow-iteration entries poison the deep lookup).
-        // NOT reset: bestTurn1Score/Path/FieldState (accumulate — that's
+        // NOT reset: bestTurn1ExplorationScore/Path/FieldState (accumulate — that's
         // the whole point), nodesExplored / histograms / counters
         // (accumulate for stats).
         ctx.currentActionStack = [];
@@ -314,7 +318,7 @@ export class DfsSolver implements SolverStrategy {
           const pathHashes = new Set<string>();
           const iterResult = this.dfs(ctx, iterHandle, 0, pathHashes);
           lastResultNode = iterResult.node;
-          lastResultScore = iterResult.score;
+          lastResultExplorationScore = iterResult.explorationScore;
           lastResultBreakdown = iterResult.scoreBreakdown;
         } finally {
           ctx.oracle.destroyDuel(iterHandle);
@@ -378,7 +382,7 @@ export class DfsSolver implements SolverStrategy {
             branchBoundCut: ctx.terminalBranchBoundCut,
             rootChildBudgetCut: ctx.terminalRootChildBudgetCut,
           },
-          bestTurn1Score: ctx.bestTurn1Score,
+          bestTurn1ExplorationScore: ctx.bestTurn1ExplorationScore,
           // Phase H — authoritative peak field-state snapshot. Probes and
           // diagnostics should read this instead of attempting to replay
           // the mainPath (which may desync under forkViaReplay semantics).
@@ -396,7 +400,7 @@ export class DfsSolver implements SolverStrategy {
       stats = this.mergeProbeStats(stats);
 
       // 2026-04-15 triplet-sync: report the turn-1 peak as the external
-      // result. `ctx.bestTurn1Score` / `bestTurn1Breakdown` / `bestEndBoardCards`
+      // result. `ctx.bestTurn1ExplorationScore` / `bestTurn1Breakdown` / `bestEndBoardCards`
       // are always captured together via `updateBest`, so the reported
       // (score, scoreBreakdown, endBoardCards) triplet describes ONE state.
       // Tree-internal `result.score` still drives action ordering and TT
@@ -404,8 +408,19 @@ export class DfsSolver implements SolverStrategy {
       // inflates the number past the canonical end-of-turn-1 peak.
       // Fallback to tree propagation when no turn<=1 state was ever reached
       // (pathological — shouldn't happen in normal solves, but defensive).
-      const reportScore = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Score : lastResultScore;
-      const reportBreakdown = ctx.bestTurn1Score >= 0 ? ctx.bestTurn1Breakdown : lastResultBreakdown;
+      //
+      // methodology v5 (2026-04-17): user-facing `score` reports the pure
+      // `interruptionScore` (weighted + fallbackPoints) from the peak
+      // breakdown, NOT the `explorationScore` that drove DFS. This keeps
+      // latent guidance (Phase 2.3, Step 1 F1/F2/F3, future Phase D) as an
+      // internal exploration signal while the reported grade remains a
+      // pure disruption-value metric. `scoreBreakdown` still carries both
+      // fields, so consumers that want the exploration value can read
+      // `scoreBreakdown.explorationScore` explicitly.
+      const reportBreakdown = ctx.bestTurn1ExplorationScore >= 0 ? ctx.bestTurn1Breakdown : lastResultBreakdown;
+      const reportScore = reportBreakdown
+        ? reportBreakdown.interruptionScore
+        : (ctx.bestTurn1ExplorationScore >= 0 ? ctx.bestTurn1ExplorationScore : lastResultExplorationScore);
       // Phase K — tree comes from the deepest iteration that completed
       // (or was in-progress when budget expired). `lastResultNode` is
       // guaranteed non-null when at least one iteration ran, which is the
@@ -443,7 +458,7 @@ export class DfsSolver implements SolverStrategy {
      *  branch" instead of the polluted turn-2 boundary state. Root call
      *  starts at 0 / empty; each recursive call receives the max over
      *  (parent's ancestor value, parent's interim value at turn<=1). */
-    ancestorTurn1Score: number = 0,
+    ancestorTurn1ExplorationScore: number = 0,
     ancestorTurn1Breakdown: ScoreBreakdown = this.emptyBreakdown(),
   ): DfsNodeResult {
     // Abort check + node limit (probe mode)
@@ -479,15 +494,15 @@ export class DfsSolver implements SolverStrategy {
     const activationLog = ctx.oracle.getActivationLog(handle);
 
     // Constraint 3.2-light: score every visited state, not just terminals.
-    // Without this, `ctx.bestScore` only captures terminal scores, and
+    // Without this, `ctx.bestExplorationScore` only captures terminal scores, and
     // raising `maxDepth` can paradoxically *lower* the reported best score
     // because the deeper exploration passes through the optimal mid-combo
     // endboard state without ever freezing its value. Scoring every node
-    // guarantees `ctx.bestScore` is monotone with respect to `maxDepth`
+    // guarantees `ctx.bestExplorationScore` is monotone with respect to `maxDepth`
     // (more exploration can only ever find equal or better states).
     //
     // Mid-chain-resolution states (SELECT_CHAIN / SELECT_EFFECTYN) may
-    // over-credit transient staging positions, but `ctx.bestScore` is a
+    // over-credit transient staging positions, but `ctx.bestExplorationScore` is a
     // `max`, so over-crediting an unreal state is safer than missing a
     // real terminal. Cost: ~15µs × nodes visited ≈ 10-15ms per solve.
     //
@@ -499,17 +514,17 @@ export class DfsSolver implements SolverStrategy {
     // but absent from the mainPath terminal — the solver executes the
     // canonical line then walks past it. This gate freezes capture at the
     // right moment. See synthesis §7.10.4 / §7.10.6.
+    // `interim.score` = explorationScore (scorer contract, methodology v5).
     const interim = this.scorer.scoreWithCards(fieldState, activationLog);
     this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn, fieldState);
 
     // Phase F-bis v2: fold the current interim into the ancestor chain
-    // parameter ONLY if this state is turn<=1. This value is what the
-    // virtual terminal at turn>=2 propagates upward, and what gets passed
-    // down to children as their `ancestorTurn1Score`.
-    let pathTurn1Score = ancestorTurn1Score;
+    // parameter ONLY if this state is turn<=1. This value propagates upward
+    // at the turn>=2 virtual terminal and downward as `ancestorTurn1ExplorationScore`.
+    let pathTurn1ExplorationScore = ancestorTurn1ExplorationScore;
     let pathTurn1Breakdown = ancestorTurn1Breakdown;
-    if (fieldState.turn <= 1 && interim.score > pathTurn1Score) {
-      pathTurn1Score = interim.score;
+    if (fieldState.turn <= 1 && interim.score > pathTurn1ExplorationScore) {
+      pathTurn1ExplorationScore = interim.score;
       pathTurn1Breakdown = interim.scoreBreakdown;
     }
 
@@ -523,7 +538,7 @@ export class DfsSolver implements SolverStrategy {
     // into tree propagation and TT cache) or hard-coded 0 (Phase F-bis v1
     // — dropped the guidance signal that helped D/D/D find its Siegfried
     // subtree, causing -8 score / -1 matched regression), we propagate
-    // `pathTurn1Score` — the best turn-1 state observed along the ancestor
+    // `pathTurn1ExplorationScore` — the best turn-1 state observed along the ancestor
     // chain from root to here. This is the "best turn-1 commitment
     // reachable from this branch" — an honest ceiling that drives child
     // selection toward subtrees whose ancestors already hit real turn-1
@@ -532,8 +547,8 @@ export class DfsSolver implements SolverStrategy {
       ctx.terminalTurn2++;
       ctx.totalTreeNodes++;
       return {
-        node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
-        score: pathTurn1Score,
+        node: this.makeNode(ROOT_ACTION, pathTurn1ExplorationScore, pathTurn1Breakdown, 1.0, [], true),
+        explorationScore: pathTurn1ExplorationScore,
         scoreBreakdown: pathTurn1Breakdown,
       };
     }
@@ -541,26 +556,26 @@ export class DfsSolver implements SolverStrategy {
     // Phase I — branch-and-bound pruning. If the current ancestor-chain
     // turn-1 peak plus a plausible upper bound on remaining-ply gain still
     // falls short of the global best, this subtree cannot possibly produce
-    // a new peak — cut it and return pathTurn1Score upward. RECOVERY_PER_PLY
+    // a new peak — cut it and return pathTurn1ExplorationScore upward. RECOVERY_PER_PLY
     // is calibrated at 3 (~2× the empirical average gain per productive ply)
     // to stay conservative: the cut only fires when the gap cannot be
     // bridged even under an optimistic per-ply gain assumption.
     //
-    // Propagating pathTurn1Score (not 0) keeps tree score tracking honest
+    // Propagating pathTurn1ExplorationScore (not 0) keeps tree score tracking honest
     // — the parent's `children.sort score desc` sees the ancestor value
     // this branch already captured, preserving the Phase F-bis v2 semantics.
     //
-    // No-op at the root (ctx.bestTurn1Score starts at -1, condition
-    // `pathTurn1Score + maxGain < -1` is always false). Only starts firing
-    // once updateBest has set bestTurn1Score to a non-trivial value.
+    // No-op at the root (ctx.bestTurn1ExplorationScore starts at -1, condition
+    // `pathTurn1ExplorationScore + maxGain < -1` is always false). Only starts firing
+    // once updateBest has set bestTurn1ExplorationScore to a non-trivial value.
     const remainingPlies = ctx.iterationMaxDepth - depth;
     const maxPlausibleGain = remainingPlies * BRANCH_BOUND_RECOVERY_PER_PLY;
-    if (pathTurn1Score + maxPlausibleGain < ctx.bestTurn1Score) {
+    if (pathTurn1ExplorationScore + maxPlausibleGain < ctx.bestTurn1ExplorationScore) {
       ctx.terminalBranchBoundCut++;
       ctx.totalTreeNodes++;
       return {
-        node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
-        score: pathTurn1Score,
+        node: this.makeNode(ROOT_ACTION, pathTurn1ExplorationScore, pathTurn1Breakdown, 1.0, [], true),
+        explorationScore: pathTurn1ExplorationScore,
         scoreBreakdown: pathTurn1Breakdown,
       };
     }
@@ -568,7 +583,7 @@ export class DfsSolver implements SolverStrategy {
     // Phase L — per-subtree soft budget guard. The currently-explored
     // first-level root-child branch is cut when it has been running for
     // longer than `ctx.rootChildBudgetMs` without producing ANY new
-    // `bestTurn1Score` peak. The clock is a sliding "time since last peak
+    // `bestTurn1ExplorationScore` peak. The clock is a sliding "time since last peak
     // improvement" reference (`ctx.branchLastPeakTime`), not a fixed
     // "elapsed since branch start" window — this is essential for
     // depth-bound combos (e.g. D/D/D NS-first) that climb their peak in
@@ -587,7 +602,7 @@ export class DfsSolver implements SolverStrategy {
     // line (which actually reaches the tagged boss peak) ever runs. Phase K
     // iterative deepening did NOT rescue this because D/D/D's canonical
     // combo requires depth ~43 and the shallow iter at d=25 can't establish
-    // a meaningful bestTurn1Score floor. A per-subtree stall detector is
+    // a meaningful bestTurn1ExplorationScore floor. A per-subtree stall detector is
     // the only known mechanism that forces Gate-first exploration to yield
     // without requiring a working shallow-iter floor.
     //
@@ -597,7 +612,7 @@ export class DfsSolver implements SolverStrategy {
     // rootChildBudgetMs = +Infinity gated via the isFinite check), so the
     // condition is trivially false in those cases.
     //
-    // Propagates `pathTurn1Score` (not 0) to preserve Phase F-bis v2
+    // Propagates `pathTurn1ExplorationScore` (not 0) to preserve Phase F-bis v2
     // ancestor-chain semantics — the parent sorts children by score and
     // this branch's ancestor value is still the honest turn-1 floor it
     // observed along its descent.
@@ -618,8 +633,8 @@ export class DfsSolver implements SolverStrategy {
           ctx.terminalRootChildBudgetCut++;
           ctx.totalTreeNodes++;
           return {
-            node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
-            score: pathTurn1Score,
+            node: this.makeNode(ROOT_ACTION, pathTurn1ExplorationScore, pathTurn1Breakdown, 1.0, [], true),
+            explorationScore: pathTurn1ExplorationScore,
             scoreBreakdown: pathTurn1Breakdown,
           };
         }
@@ -632,8 +647,8 @@ export class DfsSolver implements SolverStrategy {
           ctx.terminalRootChildBudgetCut++;
           ctx.totalTreeNodes++;
           return {
-            node: this.makeNode(ROOT_ACTION, pathTurn1Score, pathTurn1Breakdown, 1.0, [], true),
-            score: pathTurn1Score,
+            node: this.makeNode(ROOT_ACTION, pathTurn1ExplorationScore, pathTurn1Breakdown, 1.0, [], true),
+            explorationScore: pathTurn1ExplorationScore,
             scoreBreakdown: pathTurn1Breakdown,
           };
         }
@@ -711,7 +726,7 @@ export class DfsSolver implements SolverStrategy {
       ctx.terminalLoopDetected++;
       return {
         node: this.makeNode(ROOT_ACTION, 0, undefined, 1.0, [], true),
-        score: 0,
+        explorationScore: 0,
         scoreBreakdown: this.emptyBreakdown(),
       };
     }
@@ -760,7 +775,7 @@ export class DfsSolver implements SolverStrategy {
         const child = ctx.oracle.fork(handle);
         try {
           ctx.oracle.applyAction(child, matchedAction);
-          const continuation = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1Score, pathTurn1Breakdown);
+          const continuation = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1ExplorationScore, pathTurn1Breakdown);
           ctx.totalTreeNodes++;
           // Wrap the continuation as the SOLE child of the TT-hit node so
           // `extractMainPath` can keep walking. Confidence stays at 0.5 to
@@ -771,7 +786,7 @@ export class DfsSolver implements SolverStrategy {
           };
           return {
             node: this.makeNode(ROOT_ACTION, ttEntry.score, ttEntry.scoreBreakdown, 0.5, [childNode], false),
-            score: ttEntry.score,
+            explorationScore: ttEntry.score,
             scoreBreakdown: ttEntry.scoreBreakdown,
           };
         } finally {
@@ -794,7 +809,7 @@ export class DfsSolver implements SolverStrategy {
     // prompts we neither check nor record.
     if (isIdleCmd) pathHashes.add(hashKey);
     const children: { action: Action; result: DfsNodeResult }[] = [];
-    let bestScore = -1;
+    let bestExplorationScore = -1;
     let bestAction: Action | undefined;
     let bestBreakdown: ScoreBreakdown | undefined;
 
@@ -822,7 +837,7 @@ export class DfsSolver implements SolverStrategy {
       // is reset to now at each new root-child entry (so the previous
       // branch's last-peak timestamp doesn't leak into the new branch's
       // budget) and subsequently advanced by `updateBest` whenever
-      // `bestTurn1Score` strictly improves while this branch is active.
+      // `bestTurn1ExplorationScore` strictly improves while this branch is active.
       const isRootChild = depth === 0;
       if (isRootChild) {
         const branchStart = Date.now();
@@ -832,13 +847,13 @@ export class DfsSolver implements SolverStrategy {
       }
       try {
         ctx.oracle.applyAction(child, action);
-        const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1Score, pathTurn1Breakdown);
+        const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1ExplorationScore, pathTurn1Breakdown);
 
         children.push({ action, result });
         ctx.totalChildren++;
 
-        if (result.score > bestScore) {
-          bestScore = result.score;
+        if (result.explorationScore > bestExplorationScore) {
+          bestExplorationScore = result.explorationScore;
           bestAction = action;
           bestBreakdown = result.scoreBreakdown;
         }
@@ -862,8 +877,8 @@ export class DfsSolver implements SolverStrategy {
       return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
     }
 
-    // Sort children by score descending
-    children.sort((a, b) => b.result.score - a.result.score);
+    // Sort children by explorationScore descending (DFS guidance order)
+    children.sort((a, b) => b.result.explorationScore - a.result.explorationScore);
 
     // Build decision node
     const childNodes: DecisionNode[] = children.map(c => ({
@@ -882,13 +897,13 @@ export class DfsSolver implements SolverStrategy {
     // positive scores. Chain-window entries are unreliable (see lookup
     // comment) and 0-score entries tend to be cheap shallow terminals
     // whose cache value is less than the contamination risk.
-    if (isIdleCmd && bestAction && bestScore > 0) {
-      this.table.store(hash, depth, bestScore, bestAction, vKey, bestBreakdown ?? this.emptyBreakdown());
+    if (isIdleCmd && bestAction && bestExplorationScore > 0) {
+      this.table.store(hash, depth, bestExplorationScore, bestAction, vKey, bestBreakdown ?? this.emptyBreakdown());
     }
 
     return {
-      node: this.makeNode(ROOT_ACTION, bestScore, bestBreakdown, confidence, childNodes, false),
-      score: bestScore,
+      node: this.makeNode(ROOT_ACTION, bestExplorationScore, bestBreakdown, confidence, childNodes, false),
+      explorationScore: bestExplorationScore,
       scoreBreakdown: bestBreakdown ?? this.emptyBreakdown(),
     };
   }
@@ -910,13 +925,16 @@ export class DfsSolver implements SolverStrategy {
     truncated?: boolean,
     activationLog?: ActivationLog,
   ): DfsNodeResult {
-    const { score, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
+    // `score` returned by scoreWithCards = explorationScore (preserves pre-v5
+    // DFS internal contract). The breakdown carries interruptionScore for
+    // downstream user-facing extraction.
+    const { score: explorationScore, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
     ctx.totalTreeNodes++;
-    this.updateBest(ctx, score, scoreBreakdown, endBoardCards, fieldState.turn, fieldState);
+    this.updateBest(ctx, explorationScore, scoreBreakdown, endBoardCards, fieldState.turn, fieldState);
 
     return {
-      node: this.makeNode(ROOT_ACTION, score, scoreBreakdown, truncated ? 0.5 : 1.0, [], true, truncated),
-      score,
+      node: this.makeNode(ROOT_ACTION, explorationScore, scoreBreakdown, truncated ? 0.5 : 1.0, [], true, truncated),
+      explorationScore,
       scoreBreakdown,
     };
   }
@@ -957,25 +975,24 @@ export class DfsSolver implements SolverStrategy {
   }
 
   /**
-   * Constraint 3.2 full: gated best-state update. `bestScore` tracks the
-   * global max unconditionally (observability). `bestEndBoardCards` is
-   * only captured for states where `turn <= 1`, so the reported endboard
-   * reflects the canonical player-turn-1 peak rather than cycled
-   * post-combo or opponent-turn states. See synthesis §7.10.6.
+   * Constraint 3.2 full: gated best-state update. `bestExplorationScore`
+   * tracks the global max unconditionally (observability). `bestEndBoardCards`
+   * + `bestTurn1Breakdown` only capture for `turn <= 1` so the reported
+   * endboard + interruption score reflect the canonical player-turn-1 peak.
    */
   private updateBest(
     ctx: DfsContext,
-    score: number,
+    explorationScore: number,
     scoreBreakdown: ScoreBreakdown,
     endBoardCards: EndBoardCard[],
     turn: number,
     fieldState: FieldState,
   ): void {
-    if (score > ctx.bestScore) {
-      ctx.bestScore = score;
+    if (explorationScore > ctx.bestExplorationScore) {
+      ctx.bestExplorationScore = explorationScore;
     }
-    if (turn <= 1 && score > ctx.bestTurn1Score) {
-      ctx.bestTurn1Score = score;
+    if (turn <= 1 && explorationScore > ctx.bestTurn1ExplorationScore) {
+      ctx.bestTurn1ExplorationScore = explorationScore;
       ctx.bestEndBoardCards = endBoardCards;
       ctx.bestTurn1Breakdown = scoreBreakdown;
       // Phase H — clone the live descent stack so consumers can inspect the
@@ -1032,8 +1049,8 @@ export class DfsSolver implements SolverStrategy {
       startTime,
       timeBudget: config.timeLimitMs,
       nodesExplored: 0,
-      bestScore: -1,
-      bestTurn1Score: -1,
+      bestExplorationScore: -1,
+      bestTurn1ExplorationScore: -1,
       bestEndBoardCards: [],
       bestTurn1Breakdown: cloneEmptyBreakdown(),
       currentActionStack: [],
@@ -1092,7 +1109,7 @@ export class DfsSolver implements SolverStrategy {
       averageBranchingFactor: ctx.totalNodesWithActions > 0
         ? ctx.totalLegalActions / ctx.totalNodesWithActions
         : 0,
-      bestScore: ctx.bestScore,
+      bestScore: ctx.bestExplorationScore,
       nodesExplored: ctx.nodesExplored,
       // H5 fix from Epic 1 review: expose the raw aggregates so the resumed
       // solve can roll the probe contribution into ALL stats fields, not just
@@ -1171,9 +1188,19 @@ export class DfsSolver implements SolverStrategy {
   private emitProgress(ctx: DfsContext): void {
     const now = Date.now();
     if (ctx.nodesExplored % 100 === 0 || now - ctx.lastProgressTime > 200) {
+      // Emit user-facing interruptionScore from the current turn-1 peak
+      // breakdown — matches the final reportScore semantic and the UI
+      // "Score d'interruption" label. Falls back to 0 before the first
+      // turn-1 peak lands (solver-types `SolverProgress.bestScore` is
+      // expected to be a non-negative number). Pre-v5 this emitted
+      // `ctx.bestExplorationScore` which contaminated the displayed value
+      // with latent combo-progress bonuses.
+      const displayScore = ctx.bestTurn1ExplorationScore >= 0
+        ? (ctx.bestTurn1Breakdown.interruptionScore ?? 0)
+        : 0;
       ctx.onProgress({
         nodesExplored: ctx.nodesExplored,
-        bestScore: ctx.bestScore,
+        bestScore: displayScore,
         elapsed: now - ctx.startTime,
       });
       ctx.lastProgressTime = now;
@@ -1184,19 +1211,39 @@ export class DfsSolver implements SolverStrategy {
   // Helpers
   // ===========================================================================
 
+  /**
+   * Build a DecisionNode for the returned solver tree.
+   *
+   * methodology v5 (2026-04-17) split semantic:
+   *   - `DecisionNode.score` = **interruptionScore** (user-facing, pure
+   *     end-board disruption value). Derived from
+   *     `scoreBreakdown.interruptionScore` when the breakdown is present.
+   *   - DFS internal variables (`bestScore`, `pathTurn1ExplorationScore`, `ttEntry.score`)
+   *     continue to track **explorationScore** for action ordering / α-β
+   *     floor / TT reuse. Those values are passed as the `explorationScore`
+   *     parameter here and used only as a fallback when no breakdown is
+   *     available (degenerate empty-tree / unscored-terminal paths).
+   *
+   * Why the fallback matters: a few makeNode callsites don't have a
+   * breakdown (empty-tree sentinel, mid-solve abort paths). For those,
+   * the exploration value is the only number on hand — displaying it as
+   * `node.score` is better than leaking an undefined or zero value that
+   * would distort downstream tree rendering and sorting.
+   */
   private makeNode(
     action: SolverAction,
-    score: number,
+    explorationScore: number,
     scoreBreakdown: ScoreBreakdown | undefined,
     confidence: number,
     children: DecisionNode[],
     isTerminal: boolean,
     truncated?: boolean,
   ): DecisionNode {
+    const displayScore = scoreBreakdown?.interruptionScore ?? explorationScore;
     return {
       action,
       annotation: '',
-      score,
+      score: displayScore,
       scoreBreakdown,
       confidence,
       children,
@@ -1221,13 +1268,16 @@ interface DfsContext {
   startTime: number;
   timeBudget: number;
   nodesExplored: number;
-  bestScore: number;
-  /** Constraint 3.2 full: max score observed at any `turn <= 1` state.
-   *  Gated companion to `bestScore` so that `bestEndBoardCards` reflects
-   *  the canonical end-of-turn-1 peak rather than post-combo / opponent-turn
-   *  cycling. `bestScore` stays as the unconditional global max for
-   *  observability (diagnostic + progress emission). */
-  bestTurn1Score: number;
+  /** Peak explorationScore observed at ANY state (turn-agnostic). Observability
+   *  only — emitted via SolverProgress. Reported harness score is extracted
+   *  from `bestTurn1Breakdown.interruptionScore` (methodology v5). */
+  bestExplorationScore: number;
+  /** Peak explorationScore observed at turn <= 1. Gated companion to
+   *  `bestExplorationScore` so `bestEndBoardCards` + `bestTurn1Breakdown`
+   *  reflect the canonical end-of-turn-1 peak rather than post-combo / opp-turn
+   *  cycling.
+   *  Used as the α-β floor and the source of `reportBreakdown.interruptionScore`. */
+  bestTurn1ExplorationScore: number;
   bestEndBoardCards: EndBoardCard[];
   /** 2026-04-15 triplet-sync fix: scoreBreakdown companion to
    *  `bestEndBoardCards` so the externally reported (score, scoreBreakdown,
@@ -1242,9 +1292,9 @@ interface DfsContext {
    *  recursive `dfs()` call in the child exploration loop. At the top of any
    *  `dfs()` call the stack contains the ordered list of Actions that transition
    *  the root state to the current node's state. Used by `updateBest` to capture
-   *  the exact replay path when `bestTurn1Score` improves. */
+   *  the exact replay path when `bestTurn1ExplorationScore` improves. */
   currentActionStack: Action[];
-  /** Phase H — clone of `currentActionStack` taken at the moment `bestTurn1Score`
+  /** Phase H — clone of `currentActionStack` taken at the moment `bestTurn1ExplorationScore`
    *  improved. Represents the ordered exploratory actions the DFS took from
    *  root to the peak node. NOTE: this is NOT guaranteed to replay exactly
    *  on a fresh `createDuel + applyAction` engine because the DFS uses
@@ -1254,7 +1304,7 @@ interface DfsContext {
    *  `undefined` means no turn<=1 state was ever visited (solve() falls back
    *  to the old tree-walk `extractMainPath`). */
   bestTurn1Path: Action[] | undefined;
-  /** Phase H — snapshot of `fieldState` at the moment `bestTurn1Score` improved.
+  /** Phase H — snapshot of `fieldState` at the moment `bestTurn1ExplorationScore` improved.
    *  Authoritative peak state, untouched by fork/replay divergence. Consumers
    *  (probes, diagnostics) should prefer this over replaying `bestTurn1Path`
    *  when they want to inspect the peak. */
@@ -1295,12 +1345,12 @@ interface DfsContext {
    *  turn is a virtual terminal. */
   terminalTurn2: number;
   /** Phase I — nodes cut by the branch-and-bound pruning check: subtrees
-   *  whose upper bound (ancestor pathTurn1Score + remaining-ply plausible
-   *  gain) cannot possibly exceed ctx.bestTurn1Score. */
+   *  whose upper bound (ancestor pathTurn1ExplorationScore + remaining-ply plausible
+   *  gain) cannot possibly exceed ctx.bestTurn1ExplorationScore. */
   terminalBranchBoundCut: number;
   /** Phase L — nodes cut by the per-subtree soft budget guard: the current
    *  first-level root-child branch has exceeded its allotted time slice
-   *  without producing a non-trivial `bestTurn1Score` improvement, so the
+   *  without producing a non-trivial `bestTurn1ExplorationScore` improvement, so the
    *  DFS is forced to unwind and move on to the next root child. */
   terminalRootChildBudgetCut: number;
   /** Phase L — per first-level root-child branch wall-clock budget (ms).
@@ -1324,7 +1374,7 @@ interface DfsContext {
   /** Phase L — sliding "time since last peak improvement" clock.
    *  Initialized at `Date.now()` at each first-level root-child branch
    *  entry. Updated to `Date.now()` inside `updateBest` whenever
-   *  `bestTurn1Score` strictly increases while a tracked branch is
+   *  `bestTurn1ExplorationScore` strictly increases while a tracked branch is
    *  active (i.e. `currentRootChildStart !== undefined`). The guard
    *  fires when `Date.now() - branchLastPeakTime > rootChildBudgetMs`.
    *  `undefined` when no branch is currently tracked. */

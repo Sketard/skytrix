@@ -1,0 +1,303 @@
+{
+  "_meta": {
+    "timestamp": "2026-04-17T10:55:31.597Z",
+    "budgetMs": 3600000,
+    "scorerVersion": "post-step2-tier3-complete",
+    "rootChildBudgetNodes": 400,
+    "_v5_note": "PRE-v5 baseline. `score` values here are explorationScore (= weighted + fallbackPoints + latentPoints). Post-v5, `score` is interruptionScore (= weighted + fallbackPoints only). Direct comparison of `score` across v5 boundary is invalid — fractional suffixes (.58 = log2(3), etc.) encode latent contributions that are stripped post-v5."
+  },
+  "fixtures": {
+    "ddd-pendulum-opener": {
+      "score": 10,
+      "matched": 0,
+      "matchedTotal": 5,
+      "matchedCardIds": [],
+      "missingCardIds": [
+        46593546,
+        79559912,
+        44852429,
+        30998403,
+        91781484
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1047,
+      "maxDepthReached": 25,
+      "actionsZeroPct": 15.5,
+      "turn2Pct": 23.2,
+      "wallMs": 56698
+    },
+    "ryzeal-mitsurugi-opener": {
+      "score": 42.584962500721154,
+      "matched": 2,
+      "matchedTotal": 6,
+      "matchedCardIds": [
+        34909328,
+        17954937
+      ],
+      "missingCardIds": [
+        7511613,
+        55397172,
+        8165596,
+        6798031
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1519,
+      "maxDepthReached": 38,
+      "actionsZeroPct": 49.5,
+      "turn2Pct": 12.6,
+      "wallMs": 86404
+    },
+    "radiant-typhoon-opener": {
+      "score": 34.584962500721154,
+      "matched": 2,
+      "matchedTotal": 3,
+      "matchedCardIds": [
+        71068247,
+        53813120
+      ],
+      "missingCardIds": [
+        49105782
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1240,
+      "maxDepthReached": 30,
+      "actionsZeroPct": 5,
+      "turn2Pct": 3.3,
+      "wallMs": 59762
+    },
+    "branded-dracotail-opener": {
+      "score": 41,
+      "matched": 2,
+      "matchedTotal": 6,
+      "matchedCardIds": [
+        5431722,
+        80208225
+      ],
+      "missingCardIds": [
+        33760966,
+        78397661,
+        69932023,
+        1498449
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 2060,
+      "maxDepthReached": 45,
+      "actionsZeroPct": 0,
+      "turn2Pct": 40.5,
+      "wallMs": 120844
+    },
+    "kashtira-azamina-opener": {
+      "score": 23,
+      "matched": 0,
+      "matchedTotal": 4,
+      "matchedCardIds": [],
+      "missingCardIds": [
+        46396218,
+        86066372,
+        22110647,
+        80845034
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1578,
+      "maxDepthReached": 38,
+      "actionsZeroPct": 39.2,
+      "turn2Pct": 16.7,
+      "wallMs": 92544
+    },
+    "horus-crystron-opener": {
+      "score": 22.584962500721154,
+      "matched": 2,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        84941194,
+        16528181
+      ],
+      "missingCardIds": [
+        13455674,
+        10443957
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1456,
+      "maxDepthReached": 36,
+      "actionsZeroPct": 10,
+      "turn2Pct": 20.3,
+      "wallMs": 69125
+    },
+    "dinomorphia-opener": {
+      "score": 1,
+      "matched": 0,
+      "matchedTotal": 3,
+      "matchedCardIds": [],
+      "missingCardIds": [
+        92798873,
+        26631975,
+        7336745
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 848,
+      "maxDepthReached": 20,
+      "actionsZeroPct": 0,
+      "turn2Pct": 13.7,
+      "wallMs": 38866
+    },
+    "spright-opener": {
+      "score": 20.584962500721154,
+      "matched": 1,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        75922381
+      ],
+      "missingCardIds": [
+        2311090,
+        54498517,
+        90809975
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1243,
+      "maxDepthReached": 23,
+      "actionsZeroPct": 72.1,
+      "turn2Pct": 13.9,
+      "wallMs": 62317
+    },
+    "snake-eye-yummy-opener": {
+      "score": 10,
+      "matched": 1,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        48452496
+      ],
+      "missingCardIds": [
+        82135803,
+        29301450,
+        58071334
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1587,
+      "maxDepthReached": 52,
+      "actionsZeroPct": 20.5,
+      "turn2Pct": 25.1,
+      "wallMs": 92921
+    },
+    "tearlaments-opener": {
+      "score": 19.584962500721154,
+      "matched": 0,
+      "matchedTotal": 4,
+      "matchedCardIds": [],
+      "missingCardIds": [
+        92731385,
+        28226490,
+        2463794,
+        29301450
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1561,
+      "maxDepthReached": 44,
+      "actionsZeroPct": 49.4,
+      "turn2Pct": 13.7,
+      "wallMs": 88283
+    },
+    "floowandereeze-opener": {
+      "score": 26,
+      "matched": 2,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        80611581,
+        28126717
+      ],
+      "missingCardIds": [
+        29587993,
+        48608796
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1231,
+      "maxDepthReached": 30,
+      "actionsZeroPct": 0,
+      "turn2Pct": 11.4,
+      "wallMs": 58432
+    },
+    "labrynth-opener": {
+      "score": 8,
+      "matched": 2,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        81497285,
+        5380979
+      ],
+      "missingCardIds": [
+        92714517,
+        6351147
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1264,
+      "maxDepthReached": 31,
+      "actionsZeroPct": 16,
+      "turn2Pct": 40.5,
+      "wallMs": 69305
+    },
+    "stun-runick-opener": {
+      "score": 12,
+      "matched": 1,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        92107604
+      ],
+      "missingCardIds": [
+        55990317,
+        90846359,
+        30430448
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1060,
+      "maxDepthReached": 25,
+      "actionsZeroPct": 7.6,
+      "turn2Pct": 15.8,
+      "wallMs": 49219
+    },
+    "nekroz-ryzeal-opener": {
+      "score": 35.584962500721154,
+      "matched": 1,
+      "matchedTotal": 4,
+      "matchedCardIds": [
+        7511613
+      ],
+      "missingCardIds": [
+        34909328,
+        52068432,
+        51124303
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 1536,
+      "maxDepthReached": 31,
+      "actionsZeroPct": 49,
+      "turn2Pct": 20.2,
+      "wallMs": 80927
+    },
+    "branded-dracotail-opener-mirrorjade-line": {
+      "score": 32,
+      "matched": 3,
+      "matchedTotal": 6,
+      "matchedCardIds": [
+        38811586,
+        5431722,
+        80208225
+      ],
+      "missingCardIds": [
+        44146295,
+        69932023,
+        1498449
+      ],
+      "terminationReason": "completed",
+      "nodesExplored": 2071,
+      "maxDepthReached": 45,
+      "actionsZeroPct": 0,
+      "turn2Pct": 65.6,
+      "wallMs": 111683
+    }
+  },
+  "aggregate": {
+    "cumulativeMatched": 19,
+    "cumulativeMatchedTotal": 65,
+    "cumulativeScore": 338.50977500432697,
+    "fixtureCount": 15
+  }
+}

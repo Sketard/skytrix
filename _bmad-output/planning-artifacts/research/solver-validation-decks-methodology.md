@@ -1,11 +1,98 @@
 # Solver Validation Decks — Methodology
 
-**Methodology version:** 2 (bumped 2026-04-17 after adversarial review —
-zone-aware matcher, `position` schema field, canonical source tiebreaker,
-matched-drop rubric, determinism rules, expectedBoard scope pinned to
-on-field zones with `score`/`matched` duality documented). Bump on every
-structural change so existing `<archetype>-combo-reference.md` docs can be
-audited for drift.
+**Methodology version:** 5 (bumped 2026-04-17 after score split —
+`ScoreBreakdown` now carries two composite scores. `interruptionScore =
+weighted + fallbackPoints` is the **user-facing end-board grade** —
+returned as `score` to the harness, recorded in baselines, gated by
+regression rubric, surfaced as `DecisionNode.score` in the decision
+tree UI, and labelled "Score d'interruption" / "Interruption score" in
+the frontend hero/progress/brick-state displays. `explorationScore =
+interruptionScore + latentPoints` is the **DFS-internal guidance signal**
+— drives action ordering, TT storage, α-β floor, virtual-terminal
+propagation. Latent combo-progress (Phase 2.3 Dark Contract, Step 1
+F1/F2/F3, future Phase D) feeds exploration only and no longer
+contaminates the reported score. Existing baselines at `score = X.58...`
+(log2-derived F3 fractions) will re-baseline to integer
+`interruptionScore` values — expect small post-split score drops on
+fixtures where Step 1 / Phase 2.3 were firing.
+
+Frontend + backend migration scope:
+- Backend core: `InterruptionScorer._scoreWithCardsImpl` computes both
+  scores. The scorer returns `score = explorationScore`. `DfsSolver.makeNode`
+  derives `DecisionNode.score = scoreBreakdown.interruptionScore` when the
+  breakdown is present. Top-level `reportScore` reads
+  `breakdown.interruptionScore`.
+- DFS internal renames (T2, post-split alignment): `DfsContext.bestScore`
+  → `bestExplorationScore`; `DfsContext.bestTurn1Score` →
+  `bestTurn1ExplorationScore`; local `bestScore`, `pathTurn1Score`,
+  `lastResultScore`, `ancestorTurn1Score` → their `ExplorationScore`
+  analogues; `DfsNodeResult.score` → `DfsNodeResult.explorationScore`.
+  Docstrings on each field state explicitly "exploration signal — not the
+  reported grade". No behavior change — pure cosmetic alignment.
+- Progress emission fix (T2.2): `SolverProgress.bestScore` previously
+  carried `ctx.bestExplorationScore` for DFS solves, contaminating the
+  live "Meilleur score d'interruption" display with latent bonuses.
+  DFS now emits `ctx.bestTurn1Breakdown.interruptionScore` (or 0 before
+  the first turn-1 peak lands). `SolverProgress.bestScore` docstring
+  documents the per-algorithm semantic (DFS = interruption; MCTS /
+  Minimax-MCTS = backprop max, unchanged).
+- Frontend: i18n `solver.result.interruptionScoreLabel` +
+  `interruptionScoreHint` added; `solver.progress.bestScore` and
+  `solver.result.bestScoreRef` re-worded to "Score d'interruption".
+  Hero / progress / decision-tree / pinned / history displays all show
+  interruption value with a clarifying tooltip. `ScoreBreakdown.total`
+  deprecated alias removed from both backend (`solver-types.ts`,
+  `ws-protocol.ts`) and frontend (`solver.model.ts`, `duel-ws.types.ts`).
+- Schema consolidation: `InterruptionEffect.activatableFromHand` removed
+  — handtraps now opt in via `activeZones: ['HAND']`. Zero tags used the
+  flag (all 162 entries were default on-field), so removal is a clean
+  schema simplification.
+- Orchestrator: DecisionNode sorts (`b.score - a.score`) and SolverResult
+  sorts stay correct under interruption semantic (best-first = highest
+  interruption first, coherent for user display).
+
+Phase D V1 latent interruption (shipped 2026-04-17, methodology v5):
+- **Module**: `latent-interruption-computer.ts`. Scores opp-turn Extra
+  Deck summon paths conditional on (enabler on-field × target compatible
+  × free slot per MR5 × discount).
+- **V1 enablers**: I:P Masquerena (Link-2, `consumesSelfAsMaterial: true`)
+  and Super Polymerization (Fusion, Quick-Play hand/set). Data file at
+  `duel-server/data/opp-turn-summon-enablers.json`.
+- **V1 targets**: any tag with `activeZones: ['EXTRA']` (6 entries set up
+  via Voie B MIGRATE batch: Knightmare Phoenix/Cerberus, Guardian Chimera,
+  Dracotail Arthalion, Starving Venom Fusion Dragon, El Shaddoll Construct
+  — Construct later removed in T2.4 re-audit → 5 active).
+- **Slot-check (MR5 per user clarification)**: player's own EMZ is
+  whichever is currently occupied by their card, or any available if none
+  claimed. Free slot requires neither EMZ occupied — exception:
+  `consumesSelfAsMaterial: true` enablers in an EMZ frees that EMZ
+  (Masquerena consumes herself as material for Link Summon).
+- **Discount**: `LATENT_DISCOUNT = 0.5` — conservative first cut,
+  documented as tunable via step 3 ES tuner.
+- **Deferred to Phase E** (dedicated combo-enabler work):
+  - More enablers: Ultra Polymerization, Predaplant Verte Anaconda,
+    Formula Synchron, Rank-Up-Magic spells, archetype-locked enablers
+    (Branded Fusion Quick-Play timing, etc.)
+  - MZONE-via-Link-arrow slot targeting (link-arrows.json already
+    extracted for 468 Links, 2026-04-17)
+  - Resource-cost gating (Super Poly hand-discard)
+  - Phase 2.3 Dark Contract hardcode migration into the enabler registry
+  - Tag taxonomy extension for Tri-Brigade Rugal-style "SS-negated-body"
+    effects (no clean match in the 15 existing interruption types)
+
+v4 (earlier 2026-04-17): Voie B shipped —
+`InterruptionEffect.activeZones: ZoneId[]` added to the schema, scorer
+gates tag credit by effective zones. Default for tags without explicit
+`activeZones` = on-field zones only (M1-M5, S1-S5, FIELD, EMZ_L, EMZ_R);
+`activatableFromHand: true` adds HAND. GY / BANISHED / EXTRA now require
+explicit opt-in. Closes the double-count of multi-zone effects (e.g.
+Mirrorjade trigger-destruction no longer scored while on-field).
+v3 (earlier 2026-04-17): narrowed `score` semantics documentation.
+v2 (earlier 2026-04-17): zone-aware matcher, `position` schema field,
+canonical source tiebreaker, matched-drop rubric, determinism rules,
+expectedBoard scope pinned to on-field zones. Bump on every structural
+change so existing `<archetype>-combo-reference.md` docs can be audited
+for drift.
 
 How to add a new competitive decklist fixture to
 [`solver-validation-decks.json`](solver-validation-decks.json) for benchmarking
@@ -89,11 +176,21 @@ meaningful — each element is one physical copy.
 `expectedBoard` is restricted to on-field zones (`MZONE`, `EMZ_L`, `EMZ_R`,
 `SZONE`, `FIELD`, `HAND`). Entries in `GY`, `BANISHED`, or face-up `EXTRA`
 are **intentionally excluded** even though these zones can legitimately host
-disruption-active cards — the canonical example being **Bystial Druiswurm**
-(banish self from GY on opp monster-effect activation → banish 1 LIGHT/DARK
-monster from either GY). The effect is a *resource-denial banish*, not a
-negate, but it disrupts GY-dependent combos (e.g. banishing Herald cuts off
-Kaleidoscope recursion).
+disruption-active cards. Canonical non-field examples:
+
+- **HAND-activated Quick Effects** — **Bystial Druiswurm** sits in hand and,
+  when an opponent monster effect activates, Special Summons itself from
+  hand by banishing 1 LIGHT/DARK monster in either GY. A resource-denial
+  banish (not a negate) that disrupts GY-dependent combos (e.g. banishing
+  Herald cuts off Kaleidoscope recursion). Same family: Bystial Magnamhut,
+  Saronir; Ash Blossom; Maxx "C"; Nibiru; Effect Veiler; Fuwalos.
+- **GY-active triggers / quick effects** — **Mirrorjade the Iceblade
+  Dragon** (when sent to GY by opponent's card effect: banish 1 card on
+  the field); **Eldlich the Golden Lord** (quick effect: banish self from
+  GY + 1 Eldlixir from ST to destroy 1 face-up card).
+- **Banished-zone quick-plays** — Runick spells remain face-up in the
+  banished zone after activation and can be re-activated via Runick
+  Fountain / Smoke Signal, continuing to disrupt on opponent's turn.
 
 Face-up `EXTRA` (Pendulum monsters destroyed returning to Extra) does NOT host
 disruption — Pendulum re-summoning is a combo/tempo tool, not opp-turn
@@ -107,20 +204,51 @@ The duality with the `score` metric is intentional and complementary:
 | Metric | Captures | Source of truth |
 |---|---|---|
 | `matched` | Physical on-field presence at turn-1 peak — did the solver *materialize* the canonical visible board? | `expectedBoard` entries in the fixture |
-| `score` | Total disruption value across ALL zones (on-field + GY + banished + EXTRA face-up + hand) via tagged effect triggers | [`interruption-tags.json`](../../../duel-server/data/interruption-tags.json) |
+| `score` | On-field disruption value + HAND handtraps that opt in via `activatableFromHand`. GY / BANISHED / EXTRA face-up are scanned but **without zone discrimination** — a tag credits identically in every zone it appears. | [`interruption-tags.json`](../../../duel-server/data/interruption-tags.json) |
 
-Extending `expectedBoard` to non-field zones would require per-card
-audit of which GY / banished / face-up Extra presences are load-bearing
-disruption (Lacrima counts; Scheiren-as-fusion-material does not; Herald
-as Kaleidoscope-recycle-enabler does not) — duplicating the infrastructure
-already present in `interruption-tags.json`. `score` covers this
-automatically: any tagged card at its tagged trigger zone feeds the
-weighted sum regardless of on-field status.
+Extending `expectedBoard` to non-field zones would duplicate tag
+infrastructure (Lacrima is a combo-enabler not interruption, Herald as
+Kaleidoscope-recycle-enabler does not count, Mirrorjade GY-trigger does),
+so the methodology leaves this to `score`. Since Voie B (v4, 2026-04-17),
+the scorer gates tag credit by **effective active zones**, resolved per
+effect as:
 
-**Rule**: if a combo line's turn-1 end-state relies on a GY / banished /
-face-up-Extra card for opp-turn disruption, that card must be TAGGED in
-`interruption-tags.json` with the correct `trigger` zone, and its
-contribution is captured by `score`, NOT by `matched`.
+1. `effect.activeZones` present → authoritative list.
+2. `effect.activatableFromHand === true` → on-field zones + HAND.
+3. Otherwise → on-field zones only (M1-M5, S1-S5, FIELD, EMZ_L, EMZ_R).
+
+This closes the former double-count: a card tagged only for its GY
+trigger (e.g. Mirrorjade destruction) no longer scores while on-field.
+Symmetrically, field-bound effects no longer score while in GY.
+
+**Current coverage caveat** (as of v4): the schema now supports precise
+zone expression, but the **tag data** is still predominantly on-field.
+0 / 192 tags carry `activatableFromHand: true`, so Ash Blossom / Maxx "C"
+/ Nibiru / Veiler / Fuwalos / Bystials / Called by the Grave / Crossout
+Designator still score 0 in HAND. Only Mirrorjade (effect[1] destruction)
+has been migrated to explicit `activeZones: ['GY']` so far. `score` today
+still primarily reflects **on-field** disruption — schema unblocks the
+fix but the tag-batch coverage closure is in-flight.
+
+**Interim rule**: until tag coverage closes for handtraps / Bystials /
+Runick / Eldlich, fixtures whose strength is non-field disruption
+(Bystial pure, Runick stall, Eldlich control) should declare a
+**paradigm caveat** in their reference doc (see section 7a step 5)
+explaining that `score` under-represents their real board value. The
+matched-drop rubric (step 7) already treats these decks with `matched`
+as a secondary gate.
+
+**Authoring rule for new tags**: every effect with a non-default zone
+activation surface MUST specify `activeZones` explicitly. Examples:
+
+- Handtrap: `activeZones: ['HAND']` (or the legacy `activatableFromHand: true`).
+- GY-trigger: `activeZones: ['GY']`.
+- Banished-zone quick-play (Runick face-up banished): `activeZones: ['BANISHED']`.
+- Dual-zone (field quick + GY trigger, e.g. Mirrorjade):
+  two separate effects, one default (on-field), one with `activeZones: ['GY']`.
+- Pendulum Scale on S1/S5: typically no override needed (PZONE is in
+  default on-field set); override only if the effect is explicitly Scale-
+  only and excludes non-pendulum activations.
 
 ## Step-by-step
 
@@ -480,6 +608,18 @@ SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts \
 ```
 
 Expected outcomes after validation (vs pre-validation smoke).
+
+**Score metric used by the rubric (v5 clarification)**: `score` below
+refers to `interruptionScore` — the `weighted + fallbackPoints` composite
+recorded in baselines since methodology v5. The pre-v5 `total` field
+(which conflated `explorationScore = interruptionScore + latentPoints`
+into a single reported number) is deprecated as the regression gate
+because it moved whenever DFS guidance features (Step 1 F1/F2/F3, Phase
+2.3, Phase D) shipped — latent tuning was indistinguishable from real
+score changes. The rubric now tracks `interruptionScore` strictly.
+`scoreBreakdown.explorationScore` and `scoreBreakdown.latentPoints` are
+still logged for diagnostics (DFS guidance quality), but they do NOT gate
+commits.
 
 **Regression rubric (v2)** — matched drop AND score drop are BOTH gates:
 

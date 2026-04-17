@@ -79,9 +79,12 @@ console.log('\n🔬 Test 4.2: DFS metadata & ROOT_ACTION');
   assert(ROOT_ACTION.actionDescription === 'root', `ROOT_ACTION.actionDescription = '${ROOT_ACTION.actionDescription}' (expected 'root')`);
 }
 
-// Test 4.3: GoldfishChainRanker single-activation auto-resolve
-console.log('\n🔬 Test 4.3: GoldfishChainRanker single-activation auto-resolve');
+// Test 4.3: GoldfishChainRanker SELECT_CHAIN pass-first ordering (Phase C)
+console.log('\n🔬 Test 4.3: GoldfishChainRanker SELECT_CHAIN — pass first, activations after');
 {
+  // Phase C (goldfish-chain-ranker.ts:141-175): auto-prune removed. Single-
+  // activation + pass returns BOTH ordered [pass, activation] so DFS
+  // explores pass first (cheap to reach post-chain state) then activation.
   const ranker = new GoldfishChainRanker();
   const actions: Action[] = [
     makeAction({ responseIndex: 0, cardId: 100, actionTag: 'activate', description: 'draw 1 card' }),
@@ -89,12 +92,13 @@ console.log('\n🔬 Test 4.3: GoldfishChainRanker single-activation auto-resolve
   ];
   const ranked = ranker.rank(actions, state);
 
-  assert(ranked.length === 1, `Ranked length = ${ranked.length} (expected 1)`);
-  assert(ranked[0].responseIndex === 0, `Ranked[0].responseIndex = ${ranked[0].responseIndex} (expected 0, activation only)`);
+  assert(ranked.length === 2, `Ranked length = ${ranked.length} (expected 2 — pass kept, Phase C)`);
+  assert(ranked[0].actionTag === 'pass', `Ranked[0] = ${ranked[0].actionTag} (expected 'pass')`);
+  assert(ranked[1].responseIndex === 0, `Ranked[1].responseIndex = ${ranked[1].responseIndex} (expected 0, activation)`);
 }
 
 // Test 4.4: GoldfishChainRanker multi-activation
-console.log('\n🔬 Test 4.4: GoldfishChainRanker multi-activation (pass last)');
+console.log('\n🔬 Test 4.4: GoldfishChainRanker multi-activation (pass first)');
 {
   const ranker = new GoldfishChainRanker();
   const actions: Action[] = [
@@ -105,7 +109,7 @@ console.log('\n🔬 Test 4.4: GoldfishChainRanker multi-activation (pass last)')
   const ranked = ranker.rank(actions, state);
 
   assert(ranked.length === 3, `Ranked length = ${ranked.length} (expected 3)`);
-  assert(ranked[ranked.length - 1].responseIndex === -1, `Last action is pass (responseIndex = ${ranked[ranked.length - 1].responseIndex})`);
+  assert(ranked[0].responseIndex === -1, `Ranked[0] is pass (responseIndex = ${ranked[0].responseIndex}, expected -1 — Phase C)`);
 }
 
 // Test 4.5: GoldfishChainRanker SELECT_BATTLECMD
@@ -126,7 +130,7 @@ console.log('\n🔬 Test 4.5: GoldfishChainRanker SELECT_BATTLECMD → to_m2 onl
 }
 
 // Test 4.6: GoldfishChainRanker description missing
-console.log('\n🔬 Test 4.6: GoldfishChainRanker description undefined (no crash)');
+console.log('\n🔬 Test 4.6: GoldfishChainRanker description undefined (no crash, Phase C order)');
 {
   const ranker = new GoldfishChainRanker();
   const actions: Action[] = [
@@ -137,7 +141,7 @@ console.log('\n🔬 Test 4.6: GoldfishChainRanker description undefined (no cras
   const ranked = ranker.rank(actions, state);
 
   assert(ranked.length === 3, `Ranked length = ${ranked.length} (expected 3, no crash)`);
-  assert(ranked[ranked.length - 1].actionTag === 'pass', `Last action is pass`);
+  assert(ranked[0].actionTag === 'pass', `Ranked[0] is pass (Phase C — pass first)`);
 }
 
 // Test 4.7: mainPath extraction on empty tree (contract: no children → [])
@@ -242,7 +246,8 @@ async function runIntegrationTests(): Promise<void> {
 
     assert(typeof result.score === 'number', `result.score is number: ${result.score}`);
     assert(result.scoreBreakdown !== undefined, `result.scoreBreakdown exists`);
-    assert(typeof result.scoreBreakdown.total === 'number', `scoreBreakdown.total is number`);
+    assert(typeof result.scoreBreakdown.interruptionScore === 'number', `scoreBreakdown.interruptionScore is number`);
+    assert(typeof result.scoreBreakdown.explorationScore === 'number', `scoreBreakdown.explorationScore is number`);
     assert(result.tree.isTerminal || result.tree.children.length > 0, `tree is terminal or has children`);
   }
 

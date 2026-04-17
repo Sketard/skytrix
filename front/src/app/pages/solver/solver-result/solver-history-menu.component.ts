@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslateService } from '@ngx-translate/core';
 import type { HistoryEntry, SolverResult } from '../../../core/model/solver.model';
 
@@ -15,7 +16,7 @@ function relativeTime(ts: number, translate: TranslateService): string {
 @Component({
   selector: 'app-solver-history-menu',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatMenuModule],
+  imports: [MatIconModule, MatButtonModule, MatMenuModule, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .history-item {
@@ -77,7 +78,7 @@ function relativeTime(ts: number, translate: TranslateService): string {
                 (click)="restore.emit(entry)">
           <div class="history-item">
             <div class="history-line1">
-              <span class="history-score">{{ entry.result.score }}</span>
+              <span class="history-score" [matTooltip]="interruptionScoreHint()">{{ entry.result.score }}</span>
               <span class="history-mode">{{ modeLabel(entry) }}</span>
               @if (entry.config.mode === 'adversarial' && entry.result.minimax != null) {
                 <span class="history-minimax">{{ minimaxLabel() }} {{ entry.result.minimax }}</span>
@@ -103,6 +104,7 @@ export class SolverHistoryMenuComponent {
 
   readonly reversedHistory = computed(() => [...this.history()].reverse());
   readonly historyButtonLabel = computed(() => this.translate.instant('solver.history.button'));
+  readonly interruptionScoreHint = computed(() => this.translate.instant('solver.result.interruptionScoreHint'));
 
   modeLabel(entry: HistoryEntry): string {
     return entry.config.mode === 'adversarial'

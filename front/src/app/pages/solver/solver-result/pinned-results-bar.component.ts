@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import type { PinnedResult } from '../../../core/model/solver.model';
 import { cardArtUrl, onCardImgError } from './card-image-fallback';
@@ -9,7 +10,7 @@ import { cardArtUrl, onCardImgError } from './card-image-fallback';
 @Component({
   selector: 'app-pinned-results-bar',
   standalone: true,
-  imports: [MatCardModule, MatIconModule, MatButtonModule, TranslatePipe],
+  imports: [MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .pinned-bar {
@@ -71,7 +72,8 @@ import { cardArtUrl, onCardImgError } from './card-image-fallback';
         <mat-card class="pin-card" appearance="outlined">
           <mat-card-content>
             <div class="pin-header">
-              <span class="pin-score">{{ pin.score }}</span>
+              <span class="pin-score"
+                [matTooltip]="'solver.result.interruptionScoreHint' | translate">{{ pin.score }}</span>
               @if (pin.config.mode === 'adversarial' && pin.minimax != null) {
                 <span class="pin-minimax">minimax {{ pin.minimax }}</span>
               }

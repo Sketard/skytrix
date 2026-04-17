@@ -38,19 +38,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "1906812": {
-    "cardName": "Sprind the Irondash Dragon",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "2347656": {
     "cardName": "Lovely Labrynth of the Silver Castle",
     "effects": [
@@ -70,7 +57,11 @@
       {
         "type": "destruction",
         "usesPerTurn": 1,
-        "trigger": "quick"
+        "trigger": "quick",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY-only: destruction fires \"while this card is in your GY\""
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -83,7 +74,11 @@
       {
         "type": "destruction",
         "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via I:P Masquerena — Phase D pending (scores 0 today)."
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -235,19 +230,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "7778726": {
-    "cardName": "Hip Hoshiningen",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "8165596": {
     "cardName": "Number 90: Galaxy-Eyes Photon Lord",
     "effects": [
@@ -260,19 +242,6 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-13",
-    "_validated": false
-  },
-  "8264361": {
-    "cardName": "Dharc the Dark Charmer, Gloomy",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
     "_validated": false
   },
   "9464441": {
@@ -301,19 +270,6 @@
         "type": "targetedNegate",
         "usesPerTurn": 1,
         "trigger": "chain"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "9839945": {
-    "cardName": "Lyna the Light Charmer, Lustrous",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -384,7 +340,11 @@
       {
         "type": "destruction",
         "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via Super Polymerization — Phase D pending."
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -398,19 +358,6 @@
         "type": "floodgate",
         "usesPerTurn": 1,
         "trigger": "continuous"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "11765832": {
-    "cardName": "Garura, Wings of Resonant Life",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -575,25 +522,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "20366274": {
-    "cardName": "El Shaddoll Construct",
-    "sharedOpt": false,
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      },
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "20934852": {
     "cardName": "Marincess Aqua Argonaut",
     "effects": [
@@ -730,19 +658,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "26847978": {
-    "cardName": "Tri-Brigade Ferrijit the Barren Blossom",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "26973555": {
     "cardName": "Number F0: Utopic Draco Future",
     "sharedOpt": false,
@@ -843,19 +758,6 @@
     "_oracleVersion": "2026-04-14",
     "_validated": false
   },
-  "30674956": {
-    "cardName": "Wynn the Wind Charmer, Verdant",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "30998403": {
     "cardName": "D/D/D Sky King Zeus Ragnarok",
     "effects": [
@@ -942,7 +844,10 @@
         "type": "bounce",
         "usesPerTurn": 1,
         "trigger": "trigger",
-        "description": "On Fusion Summon: bounce opponent monsters to hand"
+        "description": "On Fusion Summon: bounce opponent monsters to hand Latent via Super Polymerization — Phase D pending.",
+        "activeZones": [
+          "EXTRA"
+        ]
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -989,19 +894,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "37629703": {
-    "cardName": "Number 39: Utopia Double",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "37818794": {
     "cardName": "Red-Eyes Dark Dragoon",
     "sharedOpt": false,
@@ -1021,52 +913,17 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "38342335": {
-    "cardName": "Knightmare Unicorn",
-    "effects": [
-      {
-        "type": "spin",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "41209827": {
     "cardName": "Starving Venom Fusion Dragon",
     "effects": [
       {
         "type": "destruction",
         "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "41373230": {
-    "cardName": "Titaniklad the Ash Dragon",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "41463181": {
-    "cardName": "Salamangreat Heatleo",
-    "effects": [
-      {
-        "type": "spin",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via Super Polymerization — Phase D pending."
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -1131,19 +988,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "43387895": {
-    "cardName": "Supreme King Dragon Starving Venom",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "44146295": {
     "cardName": "Mirrorjade the Iceblade Dragon",
     "sharedOpt": false,
@@ -1151,12 +995,17 @@
       {
         "type": "banish",
         "usesPerTurn": 1,
-        "trigger": "quick"
+        "trigger": "quick",
+        "description": "Quick effect from field: when opp banishes a card, target 1 card opp controls; banish it."
       },
       {
         "type": "destruction",
         "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "trigger",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY trigger: when sent to GY by opp's card effect, target 1 card opp controls; destroy it."
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -1345,19 +1194,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "48815792": {
-    "cardName": "Hiita the Fire Charmer, Ablaze",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "48832775": {
     "cardName": "Dinomorphia Kentregina",
     "effects": [
@@ -1398,19 +1234,6 @@
     "_oracleVersion": "2026-04-15",
     "_validated": false
   },
-  "49202162": {
-    "cardName": "Black Luster Soldier - Soldier of Chaos",
-    "effects": [
-      {
-        "type": "banish",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "50954680": {
     "cardName": "Crystal Wing Synchro Dragon",
     "effects": [
@@ -1445,26 +1268,11 @@
       {
         "type": "sendToGy",
         "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "52687916": {
-    "cardName": "Trishula, Dragon of the Ice Barrier",
-    "sharedOpt": false,
-    "effects": [
-      {
-        "type": "banish",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      },
-      {
-        "type": "handRip",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "trigger",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY-only: sendToGy trigger fires \"If this card is sent to the GY\""
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -1614,19 +1422,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "63288573": {
-    "cardName": "Sky Striker Ace - Kagari",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "63436931": {
     "cardName": "Crimson Dragon",
     "effects": [
@@ -1660,19 +1455,6 @@
         "type": "typedNegate",
         "usesPerTurn": 1,
         "trigger": "chain"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "64276752": {
-    "cardName": "Arc Rebellion Xyz Dragon",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -1930,45 +1712,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "73082255": {
-    "cardName": "The Zombie Vampire",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "73309655": {
-    "cardName": "Eria the Water Charmer, Gentle",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "73347079": {
-    "cardName": "Raidraptor - Force Strix",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "73356503": {
     "cardName": "Barrier Statue of the Stormwinds",
     "effects": [
@@ -1994,19 +1737,6 @@
       {
         "type": "banishFacedown",
         "usesPerTurn": 3,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "74018812": {
-    "cardName": "Labrynth Stovie Torbie",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
         "trigger": "trigger"
       }
     ],
@@ -2059,7 +1789,11 @@
       {
         "type": "destruction",
         "usesPerTurn": 1,
-        "trigger": "trigger"
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via I:P Masquerena — Phase D pending (scores 0 today)."
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -2073,7 +1807,10 @@
         "type": "spin",
         "usesPerTurn": 1,
         "trigger": "main",
-        "description": "From GY: shuffle a card on the field into the deck"
+        "description": "From GY: shuffle a card on the field into the deck GY-only: spin fires \"If this card is in your GY\"",
+        "activeZones": [
+          "GY"
+        ]
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -2121,19 +1858,6 @@
     "_oracleVersion": "2026-04-13",
     "_validated": false
   },
-  "80532587": {
-    "cardName": "Elder Entity N'tss",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "80611581": {
     "cardName": "Floowandereeze & Empen",
     "effects": [
@@ -2167,19 +1891,6 @@
         "type": "targetedNegate",
         "usesPerTurn": 1,
         "trigger": "chain"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "82633039": {
-    "cardName": "Castel, the Skyblaster Musketeer",
-    "effects": [
-      {
-        "type": "spin",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -2283,32 +1994,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "87746184": {
-    "cardName": "Albion the Branded Dragon",
-    "effects": [
-      {
-        "type": "banish",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "87871125": {
-    "cardName": "Salamangreat Sunlight Wolf",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "88000953": {
     "cardName": "Rasterliger",
     "effects": [
@@ -2356,19 +2041,6 @@
         "type": "sendToGy",
         "usesPerTurn": 2,
         "trigger": "quick"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "90465153": {
-    "cardName": "Mannadium Prime-Heart",
-    "effects": [
-      {
-        "type": "destruction",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -2440,7 +2112,11 @@
       {
         "type": "sendToGy",
         "usesPerTurn": 1,
-        "trigger": "main"
+        "trigger": "main",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY-only: sendToGy (mill-5) fires \"If this card is sent to the GY by card effect\""
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -2473,32 +2149,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "93854893": {
-    "cardName": "Dingirsu, the Orcust of the Evening Star",
-    "effects": [
-      {
-        "type": "sendToGy",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "94259633": {
-    "cardName": "Relinquished Anima",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "94977269": {
     "cardName": "El Shaddoll Winda",
     "effects": [
@@ -2512,19 +2162,6 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
-  "95113856": {
-    "cardName": "Phantom Fortress Enterblathnir",
-    "effects": [
-      {
-        "type": "banishFacedown",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
   "96633955": {
     "cardName": "Swordsoul Supreme Sovereign - Chengying",
     "effects": [
@@ -2532,19 +2169,6 @@
         "type": "banish",
         "usesPerTurn": 1,
         "trigger": "quick"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "97661969": {
-    "cardName": "Aussa the Earth Charmer, Immovable",
-    "effects": [
-      {
-        "type": "controlChange",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
       }
     ],
     "_generatedBy": "claude-opus-4-6",
@@ -2614,19 +2238,6 @@
     "effects": [
       {
         "type": "spin",
-        "usesPerTurn": 1,
-        "trigger": "trigger"
-      }
-    ],
-    "_generatedBy": "claude-opus-4-6",
-    "_oracleVersion": "2026-04-09",
-    "_validated": false
-  },
-  "99726621": {
-    "cardName": "Tri-Brigade Shuraig the Ominous Omen",
-    "effects": [
-      {
-        "type": "banish",
         "usesPerTurn": 1,
         "trigger": "trigger"
       }

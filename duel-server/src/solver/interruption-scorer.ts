@@ -18,27 +18,34 @@ import { time as instrumentTime } from './solver-instrumentation.js';
 import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
+import type { OppTurnEnablerMap } from './latent-interruption-computer.js';
+import { computeLatentInterruption } from './latent-interruption-computer.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
 // =============================================================================
 
 /** Only DECK is excluded from scoring — cards not yet drawn are not
- *  usable interruptions. All other zones contribute:
- *  - MZONE/SZONE/FIELD/EMZ: on-board interruptions (primary)
- *  - HAND: remaining hand-traps post-combo (Ash Blossom, Nibiru, etc.)
- *  - GY: graveyard-active effects (Eldlich, Mirrorjade trigger, etc.)
- *  - BANISHED: banished-zone effects ("when this card is banished...")
- *  - EXTRA: face-up Pendulum monsters (recycled via Pendulum Summon)
+ *  usable interruptions. All other zones are traversed; per-effect
+ *  credit is then gated by `effectiveActiveZones()` below.
  *  The fallback heuristic (+1 per untagged face-up monster) still only
- *  applies to MONSTER_ZONE_IDS — non-field tagged cards score but
- *  untagged cards in GY/HAND/BANISHED/EXTRA do not. */
+ *  applies to MONSTER_ZONE_IDS. */
 const NON_SCORED_ZONES: ReadonlySet<ZoneId> = new Set(['DECK']);
 
 /** Monster zones — eligible for fallback heuristic. */
 const MONSTER_ZONE_IDS: readonly ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R'];
 
-/** All scored zones — 13 field zones + HAND. */
+/** On-field zones — the implicit default activation surface for a tagged
+ *  effect without explicit `activeZones`. Excludes HAND / GY / BANISHED /
+ *  EXTRA (those require explicit opt-in). Added 2026-04-17 (Voie B). */
+const ON_FIELD_ZONE_IDS: readonly ZoneId[] = [
+  'M1', 'M2', 'M3', 'M4', 'M5',
+  'S1', 'S2', 'S3', 'S4', 'S5',
+  'FIELD', 'EMZ_L', 'EMZ_R',
+];
+
+/** All scored zones — 13 field zones + HAND + GY + BANISHED + EXTRA (18 of
+ *  19 total; only DECK is skipped). Iteration surface for the tag scan. */
 const SCORED_ZONE_IDS: readonly ZoneId[] = ALL_ZONE_IDS.filter(z => !NON_SCORED_ZONES.has(z));
 
 // =============================================================================
@@ -94,6 +101,7 @@ export class InterruptionScorer {
   private cardMetadata: CardMetadataMap | undefined;
   private readonly structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
+  private readonly oppTurnEnablers: OppTurnEnablerMap | undefined;
 
   constructor(
     tags: Record<string, InterruptionTag>,
@@ -101,6 +109,7 @@ export class InterruptionScorer {
     cardMetadata?: CardMetadataMap,
     structuralWeights?: StructuralWeights,
     tutorCards?: StructuralTutorCards,
+    oppTurnEnablers?: OppTurnEnablerMap,
   ) {
     if (Object.keys(tags).length === 0) {
       throw new Error('[Solver] InterruptionScorer: tags must not be empty');
@@ -113,6 +122,7 @@ export class InterruptionScorer {
     this.cardMetadata = cardMetadata;
     this.structuralWeights = structuralWeights;
     this.tutorCards = tutorCards;
+    this.oppTurnEnablers = oppTurnEnablers;
   }
 
   /** Rebuild the per-duel card metadata. Called by solver-worker at the
@@ -147,7 +157,8 @@ export class InterruptionScorer {
       controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
       bounce: 0, handRip: 0, sendToGy: 0,
-      weighted: 0, fallbackPoints: 0, latentPoints: 0, total: 0,
+      weighted: 0, fallbackPoints: 0, latentPoints: 0,
+      interruptionScore: 0, explorationScore: 0,
     };
 
     let weighted = 0;
@@ -157,7 +168,6 @@ export class InterruptionScorer {
 
     for (const zoneId of SCORED_ZONE_IDS) {
       const cards = fieldState.zones[zoneId];
-      const isHand = zoneId === 'HAND';
       const isExtra = zoneId === 'EXTRA';
       for (const card of cards) {
         const isFaceDown = card.position === 'facedown-def' || card.position === 'facedown';
@@ -190,17 +200,10 @@ export class InterruptionScorer {
           if (!sharedBudgetExhausted) {
             for (let i = 0; i < tag.effects.length; i++) {
               const effect = tag.effects[i];
-              // HAND gate: tagged effects in the HAND zone only score if
-              // `activatableFromHand` is explicitly true. Default false keeps
-              // Normal Traps / Ritual Monsters / field-bound quick effects
-              // (Mitsurugi Purification, D/D/D Siegfried, etc.) from being
-              // credited while still in the player's hand — they have to
-              // reach the field (Set / Summon) to matter. Handtraps (Ash,
-              // Maxx "C", Fuwalos, Effect Veiler) opt in explicitly.
-              // See 2026-04-15 diagnostic — scorer was treating
-              // "HAND Purification" = "SZONE Purification" = +14 omniNegate,
-              // removing the DFS incentive to Set it.
-              if (isHand && effect.activatableFromHand !== true) continue;
+              // Zone gate (Voie B). Effect scores only when the card sits in
+              // one of its active zones; default = on-field only when
+              // activeZones is absent. See `isZoneActive` below.
+              if (!isZoneActive(effect, zoneId)) continue;
               const consumedCount = countOccurrences(consumedIndices, i);
               const remainingUses = Math.max(0, effect.usesPerTurn - consumedCount);
               if (remainingUses === 0) continue;
@@ -298,24 +301,46 @@ export class InterruptionScorer {
       latentPoints += structural.totalStructural;
     }
 
-    const total = weighted + fallbackPoints + latentPoints;
+    // Phase D V1 latent interruption — opp-turn Extra Deck summon path
+    // (Masquerena Link-2, Super Poly Fusion). Scores Extra Deck targets
+    // tagged with `activeZones: ['EXTRA']` conditional on an enabler
+    // on-field + free summon slot (MR5 EMZ ownership + consumesSelf
+    // exception for Masquerena). Discounted 0.5× for conditional
+    // materialization (see LATENT_DISCOUNT in latent-interruption-computer).
+    // Gated on `oppTurnEnablers` wired (via scorer ctor) — production paths
+    // without Phase D config see zero behavioral change.
+    if (this.oppTurnEnablers !== undefined) {
+      const latent = computeLatentInterruption(
+        fieldState,
+        this.oppTurnEnablers,
+        this.tags,
+        this.weights,
+        this.cardMetadata,
+      );
+      latentPoints += latent.totalLatent;
+    }
+
+    // Split scoring (methodology v5). interruptionScore is the user-facing
+    // grade (DecisionNode.score, reportScore, rubric). explorationScore is
+    // the DFS guidance signal (action ordering, TT, α-β floor) and is
+    // returned as `score` to preserve the pre-v5 DFS internal contract.
+    const interruptionScore = weighted + fallbackPoints;
+    const explorationScore = interruptionScore + latentPoints;
     breakdown.weighted = weighted;
     breakdown.fallbackPoints = fallbackPoints;
     breakdown.latentPoints = latentPoints;
-    breakdown.total = total;
+    breakdown.interruptionScore = interruptionScore;
+    breakdown.explorationScore = explorationScore;
 
-    // Invariant: total is the sum of the three component scores. Brick
-    // detection uses `weighted` specifically (excluding fallback and latent)
-    // so any drift between `total` and `weighted + fallbackPoints + latentPoints`
-    // corrupts both score display and brick classification.
     solverAssert(
-      Math.abs(breakdown.total - (breakdown.weighted + breakdown.fallbackPoints + breakdown.latentPoints)) < 1e-9,
+      Math.abs(interruptionScore - (weighted + fallbackPoints)) < 1e-9
+      && Math.abs(explorationScore - (interruptionScore + latentPoints)) < 1e-9,
       'InterruptionScorer.scoreWithCards',
-      'total !== weighted + fallbackPoints + latentPoints',
-      { total: breakdown.total, weighted: breakdown.weighted, fallbackPoints: breakdown.fallbackPoints, latentPoints: breakdown.latentPoints },
+      'score invariant drift',
+      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints },
     );
 
-    return { score: total, scoreBreakdown: breakdown, endBoardCards };
+    return { score: explorationScore, scoreBreakdown: breakdown, endBoardCards };
   }
 }
 
@@ -333,4 +358,14 @@ function sumEffectUses(tag: InterruptionTag): number {
   let total = 0;
   for (const e of tag.effects) total += e.usesPerTurn;
   return total;
+}
+
+/** `effect.activeZones` is authoritative when present; otherwise the
+ *  default is on-field zones only. */
+function isZoneActive(
+  effect: { activeZones?: readonly ZoneId[] },
+  zoneId: ZoneId,
+): boolean {
+  if (effect.activeZones !== undefined) return effect.activeZones.includes(zoneId);
+  return ON_FIELD_ZONE_IDS.includes(zoneId);
 }

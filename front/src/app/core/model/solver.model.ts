@@ -34,7 +34,14 @@ export interface ScoreBreakdown {
   weighted: number;
   /** Fallback heuristic bonus (untagged face-up monsters). */
   fallbackPoints: number;
-  total: number;
+  /** Latent combo-progress bonus (Phase 2.3 Dark Contract, Step 1 F1/F2/F3,
+   *  Phase D enabler×target). Optional for backwards compatibility with
+   *  pre-v5 payloads. */
+  latentPoints?: number;
+  /** User-facing end-board grade = weighted + fallbackPoints (methodology v5). */
+  interruptionScore?: number;
+  /** DFS guidance signal = interruptionScore + latentPoints (methodology v5). */
+  explorationScore?: number;
 }
 
 export interface DecisionNode {
@@ -59,7 +66,8 @@ export const EMPTY_SCORE_BREAKDOWN: ScoreBreakdown = {
   controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
-  weighted: 0, fallbackPoints: 0, total: 0,
+  weighted: 0, fallbackPoints: 0, latentPoints: 0,
+  interruptionScore: 0, explorationScore: 0,
 };
 
 // =============================================================================

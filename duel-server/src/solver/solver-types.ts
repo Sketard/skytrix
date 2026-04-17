@@ -140,15 +140,19 @@ export interface ScoreBreakdown {
   /** Bonus points awarded by the fallback heuristic (untagged face-up monsters).
    *  Used for tie-breaking between non-brick paths only. */
   fallbackPoints: number;
-  /** Phase 2.3 V1 — bonus points awarded to turn-1 intermediate combo-progress
-   *  state features (Dark Contracts in S/T, Doom Queen Machinex in PZONE). Gives
-   *  the DFS a non-zero score gradient for mid-combo states so subsequent
-   *  phases (alpha-beta pruning) have a bound to work with. Hardcoded to
-   *  D/D-family card IDs for zero-regression-by-construction on non-D/D decks.
-   *  Separate from `weighted` so brick detection ignores it. */
+  /** Phase 2.3 V1 + Step 1 structural + Phase D — latent combo-progress
+   *  bonus. Feeds `explorationScore` only; excluded from `interruptionScore`
+   *  so brick detection and the reported grade stay pure disruption value. */
   latentPoints: number;
-  /** weighted + fallbackPoints + latentPoints. Surfaced as the headline score in the UI. */
-  total: number;
+  /** `weighted + fallbackPoints`. User-facing end-board grade — consumed by
+   *  harness `reportScore`, regression rubric, `DecisionNode.score` display. */
+  interruptionScore: number;
+  /** `interruptionScore + latentPoints`. DFS guidance signal — drives action
+   *  ordering, TT storage, α-β floor (`bestTurn1ExplorationScore`), virtual-
+   *  terminal propagation (`pathTurn1ExplorationScore`). Also the value
+   *  returned as `score` from `scoreWithCards()` (preserves pre-v5 DFS
+   *  internal contract). */
+  explorationScore: number;
 }
 
 export const INTERRUPTION_TYPES = [
@@ -171,7 +175,8 @@ export const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
   controlChange: 0, banish: 0, banishFacedown: 0, attach: 0,
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
-  weighted: 0, fallbackPoints: 0, latentPoints: 0, total: 0,
+  weighted: 0, fallbackPoints: 0, latentPoints: 0,
+  interruptionScore: 0, explorationScore: 0,
 });
 
 /** Allocate a fresh mutable ScoreBreakdown with all fields = 0. */
@@ -298,14 +303,14 @@ export interface DfsDiagnostic {
     branchBoundCut: number;  // Phase I: upper-bound pruning (ancestor pathTurn1 + remaining-ply gain < bestTurn1)
     rootChildBudgetCut: number; // Phase L: first-level root-child branch exceeded its wall-clock slice without progress
   };
-  /** Constraint 3.2 full: max score observed at `turn <= 1` states. Paired
-   *  with `bestEndBoardCards` on the solver result. Diverges from
-   *  `bestScore` / tree-propagated `score` when states beyond the turn-1
-   *  boundary outscore every turn-1 state seen. */
-  bestTurn1Score: number;
+  /** Max explorationScore observed at `turn <= 1` states. Paired with
+   *  `bestEndBoardCards` on the solver result. Diverges from
+   *  `bestExplorationScore` / tree-propagated `explorationScore` when states
+   *  beyond the turn-1 boundary outscore every turn-1 state seen. */
+  bestTurn1ExplorationScore: number;
   /** Phase H: authoritative peak field-state snapshot captured when
-   *  `bestTurn1Score` was updated. Probes and diagnostics should read this
-   *  instead of replaying the mainPath (which may desync under
+   *  `bestTurn1ExplorationScore` was updated. Probes and diagnostics should
+   *  read this instead of replaying the mainPath (which may desync under
    *  forkViaReplay semantics). Undefined when no turn-1 peak was recorded. */
   bestTurn1FieldState?: FieldState;
   /** Phase A #4: hint from the heuristic suggester (terminal reason
@@ -331,6 +336,13 @@ export interface DfsDiagnostic {
 
 export interface SolverProgress {
   nodesExplored: number;
+  /** User-facing peak score emitted live during solve. Per-algorithm semantic:
+   *   - DFS: `bestTurn1Breakdown.interruptionScore` when a turn-1 peak has
+   *     landed, else 0 (methodology v5 — matches final reportScore and the
+   *     frontend "Score d'interruption" label).
+   *   - MCTS / Minimax-MCTS: the algorithm's internal backprop max.
+   *  Label semantic is aligned on "interruption score" for DFS; MCTS variants
+   *  retain their original backprop-max definition. */
   bestScore: number;
   elapsed: number;
   highComplexity?: boolean;
@@ -419,16 +431,16 @@ export interface InterruptionEffect {
    *  Optional for backward compat — missing trigger falls back to index 0 with
    *  a warning when multiple effects exist. */
   trigger?: InterruptionTrigger;
-  /** True iff this effect can be activated while the card is in the HAND
-   *  zone (handtraps: Ash Blossom, Maxx "C", Fuwalos, Effect Veiler, etc.).
-   *  Default false — most tagged cards (Normal Traps, monsters with Quick
-   *  Effects, Pendulums, Ritual Monsters) require being on the field before
-   *  their interruption effect can fire. Consumed by the scorer's HAND
-   *  visibility gate: tagged HAND cards with ALL effects marked false are
-   *  excluded from endboard scoring, preventing the solver from treating
-   *  "searched Normal Trap sitting in hand" as equivalent to "Set in SZONE".
-   *  See 2026-04-15 Mitsurugi diagnostic. */
-  activatableFromHand?: boolean;
+  /** Zones in which this effect is scorable by the interruption scorer.
+   *  Default (when absent): **on-field only** (M1-M5, S1-S5, FIELD, EMZ_L,
+   *  EMZ_R) — matches the typical case (Apollousa, Baronne, Continuous
+   *  Traps). Any non-field activation surface must opt in explicitly:
+   *   - GY-trigger: `activeZones: ['GY']` (Mirrorjade, Eldlich, Necroface).
+   *   - Banished face-up: `activeZones: ['BANISHED']` (Runick quick-plays).
+   *   - Handtrap: `activeZones: ['HAND']` (Ash, Maxx "C", Nibiru, Veiler).
+   *   - Dual-zone (field + GY): enumerate both zone groups explicitly.
+   *  Added 2026-04-17 (Voie B). */
+  activeZones?: readonly ZoneId[];
   /** Human-readable summary for debugging and UI tooltips. ≤120 chars. */
   description?: string;
 }

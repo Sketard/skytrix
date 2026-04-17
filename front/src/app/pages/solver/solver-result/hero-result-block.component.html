@@ -4,7 +4,8 @@
 
   <div class="score-section">
     <div class="score-line">
-      <span class="mat-headline-4">{{ result().score }} — {{ totalInterruptions() }} {{ 'solver.result.interruptions' | translate }}</span>
+      <span class="mat-headline-4"
+        [matTooltip]="'solver.result.interruptionScoreHint' | translate">{{ 'solver.result.interruptionScoreLabel' | translate }} {{ result().score }} — {{ totalInterruptions() }} {{ 'solver.result.interruptions' | translate }}</span>
       @if (isPartial()) {
         <mat-chip class="partial-badge" highlighted>{{ 'solver.result.partial' | translate }}</mat-chip>
       }

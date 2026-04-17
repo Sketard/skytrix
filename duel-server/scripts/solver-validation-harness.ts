@@ -539,7 +539,7 @@ function printResult(
   // from face-down tagged cards (hidden from endBoard display) or from
   // the hand. Non-zero categories are listed in descending value.
   const bd = result.scoreBreakdown;
-  if (bd && bd.total > 0) {
+  if (bd && bd.explorationScore > 0) {
     const entries: [string, number][] = [
       ['omniNegate', bd.omniNegate], ['typedNegate', bd.typedNegate],
       ['targetedNegate', bd.targetedNegate], ['floodgate', bd.floodgate],

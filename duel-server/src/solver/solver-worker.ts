@@ -96,6 +96,7 @@ const scorer = new InterruptionScorer(
   undefined, // cardMetadata — set per-solve in runSolve
   allConfigs.structuralWeights,
   allConfigs.structuralTutorCards,
+  allConfigs.oppTurnEnablers, // Phase D V1 (methodology v5)
 );
 const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
