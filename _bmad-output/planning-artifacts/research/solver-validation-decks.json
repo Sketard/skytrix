@@ -42,6 +42,27 @@
         "validatedAgainstCardDb": true,
         "notes": "Added 2026-04-17 for step 2 Phase 2. Stall paradigm fixture — pure Runick (no Sky Striker / Paleo hybrid) with floodgate suite (Rivalry of Warlords, There Can Be Only One, Gozen Match, Synchro Zone). Tests the solver on a non-summoning engine: wins via banishing opponent's deck through Runick quick-play spells. F1/F2/F3 structural value function should mostly NOT fire (no rituals, no tutor chain, no extra-deck material pool beyond Hugin/Munin Link-1 wings). Useful negative control for step 3 ES tuning — confirms structural weights don't hallucinate bonus on an engine-less deck."
       },
+      "snake-eye-yummy-sarcophagus-hollywood-wcq": {
+        "source": "ygoprodeck.com — Shining Sarcophagus Fiendsmith Snake-Eye Yummy (Hollywood WCQ Regional winner, Jad Andary, 2026-03-22)",
+        "url": "https://ygoprodeck.com/deck/shining-sarcophagus-fiendsmith-snake-eye-yummy-702167",
+        "format": "TCG March 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 3. Iconic 2024-2026 meta combo archetype — Snake-Eye engine with Fiendsmith + Yummy + Shining Sarcophagus sub-engines (multi-engine hybrid is the post-banlist canonical form). High combo density stresses F2 (tutor chain) + F3 (Extra Deck material pool). Aliases normalized: Ash Blossom 14558128→14558127, Harpie's Feather Duster 18144507→18144506."
+      },
+      "tearlaments-2026-fafnirymd": {
+        "source": "ygoprodeck.com — TEARLAMENT 2026! YT:@fafnirymd (2026-02-21)",
+        "url": "https://ygoprodeck.com/deck/tearlament-2026-yt-fafnirymd-693649",
+        "format": "TCG February 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 3. GY-fusion paradigm — Tearlaments win via discard-to-mill that fuses Extra Deck monsters from GY. Distinct from Branded's in-hand ritual-like fusion pattern. Tests F3 Extra Deck Material Pool on mill-driven fusion summons (Kitkallos, Rulkallos, Kaleido-Heart). No side deck (list was published without side). No alias normalization needed."
+      },
+      "floowandereeze-2026": {
+        "source": "ygoprodeck.com — FLOOWANDEREEZE - yes floo is still good without feather storm (2026 build)",
+        "url": "https://ygoprodeck.com/deck/floowandereeze-yes-floo-is-still-good-without-feather-storm-690573",
+        "format": "TCG 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 3. Normal-summon lock paradigm — Floowandereeze banish-normal-summon cards from hand to chain into Robina/Eglen/Toccan searches and end on Empen (spell/trap-activation lock) + Mist Valley Apex Avian (negate). Tests the solver on non-standard summoning (no Special Summon during turn-1 for main plays, all normal-summon via banish effect). Very small side deck (6 cards). No alias normalization needed."
+      },
       "radiant-typhoon-ygoprodeck-2026": {
         "source": "ygoprodeck.com — Radiant Typhoon, competitive 2026 build (April 2026)",
         "url": "https://ygoprodeck.com/deck/radiant-typhoon-705676",
@@ -418,6 +439,161 @@
         15693423, 15693423, 15693423
       ]
     },
+    "snake-eye-yummy-sarcophagus-hollywood-wcq": {
+      "main": [
+        31425736, 31425736, 31425736,
+        10966439, 10966439, 10966439,
+        68810435, 68810435,
+        4215180, 4215180,
+        9674034, 9674034, 9674034,
+        90241276, 90241276,
+        48452496,
+        45663742,
+        72270339,
+        28803166,
+        60764609, 60764609, 60764609,
+        97651498,
+        2333466,
+        2501624, 2501624, 2501624,
+        97631303, 97631303, 97631303,
+        35405755,
+        42141493, 42141493, 42141493,
+        84192580, 84192580, 84192580,
+        14558127, 14558127, 14558127,
+        27204311, 27204311, 27204311,
+        29369059,
+        66975205,
+        98567237, 98567237,
+        80845034,
+        26700718,
+        24081957,
+        79791878,
+        78679226, 78679226, 78679226,
+        24299458, 24299458, 24299458,
+        25311006,
+        2295440,
+        85106525
+      ],
+      "extra": [
+        31603289,
+        93192592,
+        67098897,
+        21281085,
+        22850702,
+        73082255,
+        58071334,
+        59400890,
+        82135803,
+        49867899,
+        2463794,
+        4731783,
+        29301450,
+        41999284,
+        30581601
+      ],
+      "side": [
+        72270339,
+        73642296, 73642296, 73642296,
+        94145021, 94145021,
+        33854624,
+        6637331,
+        24224830,
+        18144506,
+        10045474, 10045474, 10045474,
+        38511382,
+        65741786
+      ]
+    },
+    "tearlaments-2026-fafnirymd": {
+      "main": [
+        97651498,
+        40177746,
+        21074344,
+        17266660, 17266660, 17266660,
+        23434538,
+        37961969,
+        572850, 572850,
+        73956664, 73956664, 73956664,
+        35622739,
+        99937011,
+        28803166,
+        42141493, 42141493, 42141493,
+        51831560, 51831560, 51831560,
+        60764609, 60764609,
+        2501624, 2501624, 2501624,
+        32909498,
+        4928565,
+        342673,
+        33878367,
+        98567237,
+        71832012,
+        7394770, 7394770, 7394770,
+        6767771, 6767771, 6767771,
+        79791878,
+        60362066,
+        22283204,
+        38436986,
+        7436169,
+        74920585
+      ],
+      "extra": [
+        92731385,
+        46640168,
+        71616908,
+        37818794,
+        84330567,
+        59400890,
+        28226490,
+        79559912,
+        2463794,
+        65741786,
+        27381364,
+        29301450,
+        71818935,
+        49867899,
+        98127546
+      ],
+      "side": []
+    },
+    "floowandereeze-2026": {
+      "main": [
+        18940725, 18940725, 18940725,
+        54334420, 54334420, 54334420,
+        80611581, 80611581,
+        80433039, 80433039,
+        17827173, 17827173,
+        53212882,
+        29587993,
+        69327790,
+        73642296, 73642296, 73642296,
+        91800273,
+        28126717, 28126717,
+        69087397, 69087397,
+        98645731, 98645731, 98645731,
+        49238328, 49238328, 49238328,
+        81674782, 81674782,
+        54693926, 54693926, 54693926,
+        8267140, 8267140, 8267140,
+        75500286,
+        73628505,
+        24224830,
+        55521751,
+        41215808, 41215808,
+        77610503
+      ],
+      "extra": [
+        56410769, 56410769, 56410769,
+        48608796, 48608796, 48608796,
+        8491961, 8491961, 8491961,
+        27240101,
+        38342335, 38342335,
+        2857636, 2857636, 2857636
+      ],
+      "side": [
+        102380, 102380, 102380,
+        59438930, 59438930, 59438930
+      ]
+    },
     "branded-dracotail-bainbridge-2nd": {
       "main": [
         75003700, 75003700, 75003700,
@@ -552,6 +728,48 @@
         { "zone": "SZONE", "cardId": 69932023, "cardName": "Dracotail Horn" },
         { "zone": "SZONE", "cardId": 80208225, "cardName": "Dracotail Sting" },
         { "zone": "HAND", "cardId": 1498449, "cardName": "Dracotail Faimena" }
+      ]
+    },
+    {
+      "id": "snake-eye-yummy-opener",
+      "deck": "snake-eye-yummy-sarcophagus-hollywood-wcq",
+      "description": "Snake-Eye Yummy Sarcophagus opener (Hollywood WCQ winner Mar 2026): Snake-Eye Ash + WANTED: Seeker of Sinful Spoils + Bonfire + Fabled Lurrie + Mulcharmy Fuwalos. Added 2026-04-17 for step 2 Phase 3. Snake-Eye Ash + Bonfire is the iconic 2-card starter that tutors Snake-Eyes Poplar + builds to Flamberge Dragon. Fabled Lurrie adds Fiendsmith access (discard fodder for Engraver). Expected endboard: Flamberge Dragon (omni-negate) + Fiendsmith's Requiem (Link boss, search Fiendsmith engine) + S:P Little Knight (Link-2 banish) + Sinful Spoils of Subversion set (Snake-Eye trap).",
+      "hand": [9674034, 80845034, 85106525, 97651498, 42141493],
+      "deckSeed": "56565,67676",
+      "maxDepth": 75,
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 48452496, "cardName": "Snake-Eyes Flamberge Dragon" },
+        { "zone": "MZONE", "cardId": 2463794, "cardName": "Fiendsmith's Requiem" },
+        { "zone": "MZONE", "cardId": 29301450, "cardName": "S:P Little Knight" },
+        { "zone": "SZONE", "cardId": 24081957, "cardName": "Sinful Spoils of Subversion - Snake-Eye" }
+      ]
+    },
+    {
+      "id": "tearlaments-opener",
+      "deck": "tearlaments-2026-fafnirymd",
+      "description": "Tearlaments opener (Feb 2026 build): Tearlaments Reinoheart + Tearlaments Scheiren + Tearlaments Havnis + Tearlaments Grief + Mulcharmy Fuwalos. Added 2026-04-17 for step 2 Phase 3. Reinoheart discards Scheiren to mill and chain-summon milled Tearlaments, triggering Fusion from GY. GY-fusion paradigm distinct from Branded's in-hand fusion. Expected endboard: Kitkallos (Level 10 omni-negate Fusion) + Rulkallos (Level 8 Fusion backup) + S:P Little Knight (Link-2) + Tearlaments Scream (trap set).",
+      "hand": [73956664, 572850, 37961969, 33878367, 42141493],
+      "deckSeed": "78787,89898",
+      "maxDepth": 75,
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 92731385, "cardName": "Tearlaments Kitkallos" },
+        { "zone": "MZONE", "cardId": 84330567, "cardName": "Tearlaments Rulkallos" },
+        { "zone": "MZONE", "cardId": 29301450, "cardName": "S:P Little Knight" },
+        { "zone": "SZONE", "cardId": 6767771, "cardName": "Tearlaments Scream" }
+      ]
+    },
+    {
+      "id": "floowandereeze-opener",
+      "deck": "floowandereeze-2026",
+      "description": "Floowandereeze opener (2026 build): Floowandereeze & Robina + Floowandereeze and the Magnificent Map + Floowandereeze & Eglen + Floowandereeze & Toccan + Ghost Belle. Added 2026-04-17 for step 2 Phase 3. Normal-summon lock paradigm — banish cards from hand as tribute to normal-summon Flo birds, chaining searches. Robina searches Empen, Toccan tutors Map, Map revives banished Flo. Expected endboard: Floowandereeze & Empen (opponent can't activate S/T) + Mist Valley Apex Avian (negate) + Lyrilusc - Assembled Nightingale (Rank 1 Xyz multi-attacker) + Magnificent Map active in field zone.",
+      "hand": [18940725, 28126717, 54334420, 17827173, 73642296],
+      "deckSeed": "90909,10101",
+      "maxDepth": 60,
+      "expectedBoard": [
+        { "zone": "MZONE", "cardId": 80611581, "cardName": "Floowandereeze & Empen" },
+        { "zone": "MZONE", "cardId": 29587993, "cardName": "Mist Valley Apex Avian" },
+        { "zone": "EMZ_L", "cardId": 48608796, "cardName": "Lyrilusc - Assembled Nightingale" },
+        { "zone": "FIELD", "cardId": 28126717, "cardName": "Floowandereeze and the Magnificent Map" }
       ]
     },
     {
