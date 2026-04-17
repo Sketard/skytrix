@@ -1352,7 +1352,7 @@
           "position": "attack"
         },
         {
-          "zone": "EMZ_L",
+          "zone": "MZONE",
           "cardId": 49105782,
           "cardName": "Hraesvelgr, the Desperate Doom Eagle",
           "position": "attack"
@@ -1565,13 +1565,13 @@
           "position": "attack"
         },
         {
-          "zone": "EMZ_L",
+          "zone": "MZONE",
           "cardId": 54498517,
           "cardName": "Gigantic Spright",
           "position": "attack"
         },
         {
-          "zone": "EMZ_R",
+          "zone": "MZONE",
           "cardId": 90809975,
           "cardName": "Toadally Awesome",
           "position": "attack"
@@ -1688,7 +1688,7 @@
           "position": "attack"
         },
         {
-          "zone": "EMZ_L",
+          "zone": "MZONE",
           "cardId": 48608796,
           "cardName": "Lyrilusc - Assembled Nightingale",
           "position": "attack"
@@ -1757,7 +1757,7 @@
       "maxDepth": 50,
       "expectedBoard": [
         {
-          "zone": "EMZ_L",
+          "zone": "MZONE",
           "cardId": 55990317,
           "cardName": "Hugin the Runick Wings",
           "position": "attack"
