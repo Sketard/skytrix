@@ -962,14 +962,14 @@
     {
       "id": "kashtira-azamina-opener",
       "deck": "kashtira-azamina-verquin-wcq-top8",
-      "description": "Kashtira Azamina Radiant Typhoon Maliss opener (Verquin WCQ Top 8 Apr 2026): Kashtira Fenrir + WANTED: Seeker of Sinful Spoils + Kashtira Unicorn + Diabellstar the Black Witch + Magicians' Souls. Added 2026-04-17 for step 2 Phase 4. Fenrir solo banishes opp's deck-top, Unicorn searches Wraitsoth, WANTED revives Diabellstar from GY into Sinful Spoils engine, Diabellstar tutors further Spoils cards, Magicians' Souls draws 2 (discard 2 spells). Multi-engine 1-card-from-multiple-starter deck. Note: this deck list carries no Mulcharmy handtraps in main (cut for WANTED density); Magicians' Souls fills the 5th hand slot as draw engine. Expected endboard: Accesscode Talker (Link-4 banish tribute) + Red-Eyes Dark Dragoon (negate+burn Fusion) + S:P Little Knight + WANTED set trap.",
-      "hand": [32909498, 80845034, 68304193, 72270339, 97631303],
+      "description": "Kashtira Azamina Radiant Typhoon Maliss opener (Verquin WCQ Top 8 Apr 2026, Edouard Tan): Kashtira Fenrir + Pressured Planet Wraitsoth + WANTED + Diabellstar + Magicians' Souls. Ground-truthed 2026-04-17 against [kashtira-azamina-combo-reference.md](kashtira-azamina-combo-reference.md). Multi-engine Verquin hand — Kashtira engine primed (Fenrir + Wraitsoth), Azamina pivot primed (WANTED + Diabellstar), Magicians' Souls for +2 draw ramp. This deck intentionally carries no handtraps in main — the realistic Verquin opener is 5 engine cards. Canonical endboard for this hybrid: Azamina Ilia Silvia (primary omni-negate Fusion) + Accesscode Talker (Link-4 finisher) + Mecha Phantom Beast Dracossack (Rank 7 Xyz via 2x Kashtira Lvl 7) + WANTED trap set. Kashtira Arise-Heart/Shangri-Ira are NOT in this deck's extra — this is NOT a pure Kashtira build; the engine uses Kashtira bodies as XYZ material for Dracossack instead of Kashtira Rank 7 Xyz bosses.",
+      "hand": [32909498, 71832012, 80845034, 72270339, 97631303],
       "deckSeed": "11235,81321",
       "maxDepth": 75,
       "expectedBoard": [
+        { "zone": "MZONE", "cardId": 46396218, "cardName": "Azamina Ilia Silvia" },
         { "zone": "MZONE", "cardId": 86066372, "cardName": "Accesscode Talker" },
-        { "zone": "MZONE", "cardId": 37818794, "cardName": "Red-Eyes Dark Dragoon" },
-        { "zone": "MZONE", "cardId": 29301450, "cardName": "S:P Little Knight" },
+        { "zone": "MZONE", "cardId": 22110647, "cardName": "Mecha Phantom Beast Dracossack" },
         { "zone": "SZONE", "cardId": 80845034, "cardName": "WANTED: Seeker of Sinful Spoils" }
       ]
     },
