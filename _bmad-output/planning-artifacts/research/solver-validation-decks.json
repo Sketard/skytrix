@@ -976,14 +976,14 @@
     {
       "id": "horus-crystron-opener",
       "deck": "horus-crystron-santiago-wcq-top4",
-      "description": "Horus Crystron opener (Santiago WCQ Top 4 Mar 2026): Crystron Sulfefnir + Crystron Sulfador + Imsety Glory of Horus + King's Sarcophagus + Mulcharmy Fuwalos. Added 2026-04-17 for step 2 Phase 4. Crystron synchro engine — Sulfefnir special-summons Sulfador from deck, tuner+non-tuner synchro into Eleskeletus (Link-2) + Quariongandrax (Synchro 10). King's Sarcophagus loops Imsety for Horus engine. Expected endboard: Crystron Quariongandrax (Synchro L10 boss) + Imsety Glory of Horus (Horus chain piece) + Crystron Eleskeletus (Link-2) + King's Sarcophagus active.",
-      "hand": [3422200, 25865565, 84941194, 16528181, 42141493],
+      "description": "Horus Crystron opener (Santiago WCQ Top 4 Mar 2026, Guillermo Enrique Rivera Gonzalez): Crystron Sulfefnir + Imsety Glory of Horus + King's Sarcophagus + Ash Blossom + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [horus-crystron-combo-reference.md](horus-crystron-combo-reference.md). Hand corrected: previous version had both Sulfefnir AND Sulfador in hand (over-loaded Crystron engine), new version uses single Sulfefnir starter that chains into Sulfador from deck via Inclusion. Only fixture in suite with a primary synchro engine — preserves synchro paradigm coverage for step 3. Corrected expectedBoard: Eleskeletus removed (Link-2 consumed as Crystron Synchro material, not terminal); Cyber Dragon Infinity added as Rank 8 terminal via Imsety + Hapi Xyz chain. Note: Infinity + Imsety co-presence flagged in reference doc — if smoke reveals structural infeasibility, swap Imsety for Eleskeletus.",
+      "hand": [3422200, 84941194, 16528181, 14558127, 42141493],
       "deckSeed": "31415,92653",
       "maxDepth": 70,
       "expectedBoard": [
         { "zone": "MZONE", "cardId": 13455674, "cardName": "Crystron Quariongandrax" },
+        { "zone": "MZONE", "cardId": 10443957, "cardName": "Cyber Dragon Infinity" },
         { "zone": "MZONE", "cardId": 84941194, "cardName": "Imsety, Glory of Horus" },
-        { "zone": "EMZ_L", "cardId": 47736165, "cardName": "Crystron Eleskeletus" },
         { "zone": "SZONE", "cardId": 16528181, "cardName": "King's Sarcophagus" }
       ]
     },
