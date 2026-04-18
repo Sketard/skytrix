@@ -1,0 +1,38 @@
+{
+  "fixtureId": "ryzeal-mitsurugi-opener",
+  "description": "Habakiri + Ice + Sword Ryzeal + Prayers + Fuwalos → Futsu + Photon Lord + Detonator + Duo Drive + Cross set + Great Purification set",
+  "_source": "_bmad-output/planning-artifacts/research/mitsurugi-ryzeal-combo-reference.md § 2 CARD COMBO",
+  "_note": "Canonical path hint: ordered list of cardIds consumed by the DFS at each decision point where the cardId matches an option. Pointer advances on match, stays put on non-match (= DFS explores that prompt freely). Not every OCGCore prompt is pinned — just the key decisions that determine the combo line.",
+
+  "canonicalPath": [
+    13332685,
+    13332685,
+    45171524,
+    13332685,
+    55397172,
+    35844557,
+    8633261,
+    7511613,
+    72238166,
+    34909328,
+    8165596,
+    6798031,
+    17954937
+  ],
+
+  "_pathAnnotations": [
+    "NS Habakiri from hand",
+    "Habakiri effect: SS another Habakiri from deck (Level 8 material)",
+    "Activate Mitsurugi Prayers (ritual spell)",
+    "Prayers tribute: Habakiri",
+    "Prayers Ritual Summon: Futsu no Mitama",
+    "SS Sword Ryzeal from hand (on Ryzeal SS trigger)",
+    "SS Ice Ryzeal from hand",
+    "Xyz Summon Ryzeal Duo Drive (Sword + Ice)",
+    "SS Node Ryzeal via Duo Drive effect",
+    "Xyz Summon Ryzeal Detonator (Duo Drive as material + Ryzeals)",
+    "Xyz Summon Number 90: Galaxy-Eyes Photon Lord (Habakiri + Futsu)",
+    "Set Ryzeal Cross",
+    "Set Mitsurugi Great Purification"
+  ]
+}

@@ -216,6 +216,15 @@ export interface SolverConfig {
    *  (production default). Typically driven by `--node-budget=N` in
    *  `evaluate-structural.ts`. */
   rootChildBudgetNodes?: number;
+  /** Phase 5-lite Phase 0 (2026-04-18) — canonical-path forcing for
+   *  trajectory recording. An ordered list of cardIds consulted at each
+   *  DFS decision point: when the next-expected cardId matches one of the
+   *  legal actions, the DFS filters its options down to that single action
+   *  (forced pick) and advances the pointer. Used by
+   *  `scripts/record-trajectory.ts` to derive full `SolverAction[]` traces
+   *  from terse combo-reference hints authored by humans. When `undefined`,
+   *  the DFS explores normally (production default). */
+  canonicalPath?: readonly number[];
 }
 
 export interface EndBoardCard {

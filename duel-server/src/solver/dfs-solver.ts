@@ -208,6 +208,7 @@ export class DfsSolver implements SolverStrategy {
       terminalRootChildBudgetCut: 0,
       rootChildBudgetMs: Math.floor(timeBudget * ROOT_CHILD_BUDGET_FRACTION),
       rootChildBudgetNodes: config.rootChildBudgetNodes,
+      canonicalPath: config.canonicalPath,
       currentRootChildStart: undefined,
       branchLastPeakTime: undefined,
       branchLastPeakNodes: undefined,
@@ -460,6 +461,12 @@ export class DfsSolver implements SolverStrategy {
      *  (parent's ancestor value, parent's interim value at turn<=1). */
     ancestorTurn1ExplorationScore: number = 0,
     ancestorTurn1Breakdown: ScoreBreakdown = this.emptyBreakdown(),
+    /** Phase 5-lite Phase 0 (2026-04-18): canonical-path forcing pointer.
+     *  Indexes into `ctx.canonicalPath` at this node; when the next-expected
+     *  cardId matches an available action, actions are filtered to just
+     *  that one and the pointer advances in the recursive call. No effect
+     *  when `ctx.canonicalPath` is undefined (production default). */
+    canonicalPathPointer: number = 0,
   ): DfsNodeResult {
     // Abort check + node limit (probe mode)
     if (ctx.signal.aborted || (ctx.nodeLimit !== undefined && ctx.nodesExplored >= ctx.nodeLimit)) {
@@ -485,7 +492,24 @@ export class DfsSolver implements SolverStrategy {
     }
 
     // Get legal actions — advances through mechanical/opponent prompts
-    const actions = ctx.oracle.getLegalActions(handle);
+    let actions = ctx.oracle.getLegalActions(handle);
+
+    // Canonical-path forcing (Phase 5-lite Phase 0). When a canonicalPath
+    // is set on the DFS config and still has entries, try to match the
+    // next-expected cardId against the legal actions at this prompt. If
+    // any action carries that cardId, filter `actions` to that single
+    // option and advance the pointer for the recursive call. When no
+    // match (or path exhausted), leave `actions` alone — the DFS explores
+    // this prompt freely and the pointer stays put for the next recursion.
+    let nextCanonicalPointer = canonicalPathPointer;
+    if (ctx.canonicalPath !== undefined && canonicalPathPointer < ctx.canonicalPath.length) {
+      const expectedCardId = ctx.canonicalPath[canonicalPathPointer];
+      const match = actions.find(a => a.cardId === expectedCardId);
+      if (match !== undefined) {
+        actions = [match];
+        nextCanonicalPointer = canonicalPathPointer + 1;
+      }
+    }
 
     // Cache field state ONCE per node
     const fieldState = ctx.oracle.getFieldState(handle);
@@ -775,7 +799,7 @@ export class DfsSolver implements SolverStrategy {
         const child = ctx.oracle.fork(handle);
         try {
           ctx.oracle.applyAction(child, matchedAction);
-          const continuation = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1ExplorationScore, pathTurn1Breakdown);
+          const continuation = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1ExplorationScore, pathTurn1Breakdown, nextCanonicalPointer);
           ctx.totalTreeNodes++;
           // Wrap the continuation as the SOLE child of the TT-hit node so
           // `extractMainPath` can keep walking. Confidence stays at 0.5 to
@@ -847,7 +871,7 @@ export class DfsSolver implements SolverStrategy {
       }
       try {
         ctx.oracle.applyAction(child, action);
-        const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1ExplorationScore, pathTurn1Breakdown);
+        const result = this.dfs(ctx, child, depth + 1, pathHashes, pathTurn1ExplorationScore, pathTurn1Breakdown, nextCanonicalPointer);
 
         children.push({ action, result });
         ctx.totalChildren++;
@@ -1085,6 +1109,7 @@ export class DfsSolver implements SolverStrategy {
       // is defined.
       rootChildBudgetMs: Number.POSITIVE_INFINITY,
       rootChildBudgetNodes: undefined,
+      canonicalPath: undefined,
       currentRootChildStart: undefined,
       branchLastPeakTime: undefined,
       branchLastPeakNodes: undefined,
@@ -1364,6 +1389,13 @@ interface DfsContext {
    *  Unlocks reproducible regression gates in `evaluate-structural.ts` by
    *  removing CPU-throughput sensitivity. `undefined` = wall-clock mode (default). */
   rootChildBudgetNodes: number | undefined;
+  /** Phase 5-lite Phase 0 (2026-04-18) — canonical-path forcing. When
+   *  defined, the DFS consults this ordered list of cardIds at each
+   *  decision point and force-picks the option whose cardId matches the
+   *  next-expected entry, advancing the pointer in the recursive call.
+   *  Unused (undefined) in production solves; set by
+   *  `scripts/record-trajectory.ts` during trajectory derivation. */
+  canonicalPath: readonly number[] | undefined;
   /** Phase L — timestamp at which the currently-explored first-level
    *  root-child branch began. Set in the child loop at `depth === 0`
    *  before the recursive call, cleared in the `finally` after the pop.
