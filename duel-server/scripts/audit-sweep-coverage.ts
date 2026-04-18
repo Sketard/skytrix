@@ -15,7 +15,7 @@
 //   structural.F2_*        → fixture must have ≥1 card from tutor whitelist
 //   structural.F3_*        → fixture must have ≥1 monster (almost always)
 //   structural.globalCap   → conditional — only binds if components exceed cap
-//   structural.latentDiscount → fixture must have Super Poly OR Masquerena
+//   structural.latentDiscount → retired 2026-04-18 (Phase D V1 removed)
 //   interruption.*         → cannot predict statically (depends on peak cards)
 //
 // Exit code 0 on full coverage, 1 when ≥1 axis has zero informative fixtures
@@ -33,16 +33,6 @@ import { join, resolve } from 'node:path';
 import { loadDatabase } from '../src/ocg-scripts.js';
 import { buildCardMetadataMap, type CardMetadata } from '../src/solver/card-metadata.js';
 import { loadStructuralTutorCards } from '../src/solver/solver-config-loader.js';
-
-// Phase D V1 enablers — must mirror `duel-server/data/opp-turn-summon-enablers.json`.
-// The static audit doesn't parse that file because Phase D enablement is
-// specifically the pair {enabler card in active zone, compatible target in
-// EXTRA}; here we conservatively flag the fixture as Phase-D-reachable iff
-// at least one enabler IS in the deck pool at all.
-const PHASE_D_ENABLERS = new Set<number>([
-  48130397, // Super Polymerization
-  65741786, // I:P Masquerena
-]);
 
 interface SweepSpec {
   axes: Record<string, number[]>;
@@ -107,9 +97,7 @@ function predictAxisSignal(
   }
 
   if (axis === 'structural.latentDiscount') {
-    const enablers = cardIds.filter(id => PHASE_D_ENABLERS.has(id));
-    if (enablers.length === 0) return { canDifferentiate: false, reason: 'no Phase D V1 enabler (Super Poly / Masquerena) in deck/hand/extra' };
-    return { canDifferentiate: true, reason: `Phase D enabler present (${enablers.length} copies)` };
+    return { canDifferentiate: false, reason: 'Phase D V1 retired 2026-04-18 — latentDiscount no longer tuned. Remove axis from spec.' };
   }
 
   if (axis.startsWith('interruption.')) {

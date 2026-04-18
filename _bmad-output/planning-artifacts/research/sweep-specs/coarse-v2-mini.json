@@ -1,0 +1,24 @@
+{
+  "_comment": "Coarse-v2-mini — test d'hypothèse post-C5 : plus de budget (nb=200) + axe Phase D (latentDiscount) fait-il bouger cumulativeMatched ? globalCap retiré (inactif sur v1 — max latent 9.58 < cap=10). Si matched reste à 6/15, on a un plafond structurel et il faut pivoter step 4 NN plus tôt. Si matched bouge, coarse-v1 complet à nb=400 a du sens. Fitness primaire = cumulativeMatched pour cibler ce qu'on teste. ~50min wall-clock estimées.",
+
+  "axes": {
+    "structural.F2_W": [0.5, 1, 2],
+    "structural.latentDiscount": [0.3, 0.5, 0.7]
+  },
+
+  "fixtureFilter": [
+    "ryzeal-mitsurugi-opener",
+    "branded-dracotail-opener",
+    "radiant-typhoon-opener"
+  ],
+
+  "nodeBudget": 200,
+  "budgetMs": 3600000,
+
+  "fitness": "cumulativeMatched",
+  "tiebreak": "cumulativeExplorationScore",
+
+  "outputPath": "data/tuning-runs/coarse-v2-mini.jsonl",
+  "topK": 9,
+  "label": "coarse-v2-mini"
+}

@@ -18,8 +18,6 @@ import { time as instrumentTime } from './solver-instrumentation.js';
 import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
-import type { OppTurnEnablerMap, LinkArrowsMap } from './latent-interruption-computer.js';
-import { computeLatentInterruption, LATENT_DISCOUNT } from './latent-interruption-computer.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -101,8 +99,6 @@ export class InterruptionScorer {
   private cardMetadata: CardMetadataMap | undefined;
   private structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
-  private readonly oppTurnEnablers: OppTurnEnablerMap | undefined;
-  private readonly linkArrows: LinkArrowsMap | undefined;
 
   constructor(
     tags: Record<string, InterruptionTag>,
@@ -110,8 +106,6 @@ export class InterruptionScorer {
     cardMetadata?: CardMetadataMap,
     structuralWeights?: StructuralWeights,
     tutorCards?: StructuralTutorCards,
-    oppTurnEnablers?: OppTurnEnablerMap,
-    linkArrows?: LinkArrowsMap,
   ) {
     if (Object.keys(tags).length === 0) {
       throw new Error('[Solver] InterruptionScorer: tags must not be empty');
@@ -124,8 +118,6 @@ export class InterruptionScorer {
     this.cardMetadata = cardMetadata;
     this.structuralWeights = structuralWeights;
     this.tutorCards = tutorCards;
-    this.oppTurnEnablers = oppTurnEnablers;
-    this.linkArrows = linkArrows;
   }
 
   /** Rebuild the per-duel card metadata. Called by solver-worker at the
@@ -323,28 +315,15 @@ export class InterruptionScorer {
       latentPoints += structural.totalStructural;
     }
 
-    // Phase D V1 latent interruption — opp-turn Extra Deck summon path
-    // (Masquerena Link-2, Super Poly Fusion). Scores Extra Deck targets
-    // tagged with `activeZones: ['EXTRA']` conditional on an enabler
-    // on-field + free summon slot (MR5 EMZ ownership + consumesSelf
-    // exception for Masquerena). Discount factor is read from
-    // `structuralWeights.latentDiscount` (tunable via step-3 sweep) with
-    // `LATENT_DISCOUNT` as the fallback when structural config is absent.
-    // Gated on `oppTurnEnablers` wired (via scorer ctor) — production paths
-    // without Phase D config see zero behavioral change.
-    if (this.oppTurnEnablers !== undefined) {
-      const discount = this.structuralWeights?.latentDiscount ?? LATENT_DISCOUNT;
-      const latent = computeLatentInterruption(
-        fieldState,
-        this.oppTurnEnablers,
-        this.tags,
-        this.weights,
-        this.cardMetadata,
-        this.linkArrows,
-        discount,
-      );
-      latentPoints += latent.totalLatent;
-    }
+    // Phase D V1 retired 2026-04-18 (probe-phase-d-firing diagnostic:
+    // `computeLatentInterruption` returned 0 on every DFS peak across 4
+    // fixtures with Masquerena/Super Poly in deck — the rational solver
+    // never brought the enabler to an active zone at nb≤200, so the
+    // reward was unreachable by construction). The enabler + target data
+    // files remain in `data/` for a future redesign (static tutorability
+    // model or policy-guided DFS path), but the runtime scoring machinery
+    // is removed. See `project_solver_phase_d_retirement_2026_04_18.md`
+    // for the retirement notes.
 
     // Split scoring (methodology v5). interruptionScore is the user-facing
     // grade (DecisionNode.score, reportScore, rubric). explorationScore is

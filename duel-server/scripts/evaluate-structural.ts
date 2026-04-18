@@ -44,7 +44,7 @@ import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
-import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
+import { buildCardMetadataMap, type CardMetadataMap } from '../src/solver/card-metadata.js';
 import type { DuelConfig, SolverConfig, ScoreBreakdown } from '../src/solver/solver-types.js';
 
 export interface HandFixture {
@@ -350,6 +350,10 @@ export interface EvaluationContext {
   scorer: InterruptionScorer;
   ranker: GoldfishChainRanker;
   allConfigs: ReturnType<typeof loadAllSolverConfigs>;
+  /** Same map injected into the scorer — exposed so diagnostic probes can
+   *  call `computeLatentInterruption` / `computeStructuralValue` directly
+   *  on a FieldState without rebuilding metadata. */
+  cardMetadata: CardMetadataMap;
   metadataSize: number;
   dispose(): void;
 }
@@ -428,8 +432,6 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     cardMetadata,
     allConfigs.structuralWeights,
     allConfigs.structuralTutorCards,
-    allConfigs.oppTurnEnablers, // Phase D V1
-    allConfigs.linkArrows, // Phase E axis 2
   );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 
@@ -439,6 +441,7 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     scorer,
     ranker,
     allConfigs,
+    cardMetadata,
     metadataSize: cardMetadata.size,
     dispose: () => adapter.destroyAll(),
   };
