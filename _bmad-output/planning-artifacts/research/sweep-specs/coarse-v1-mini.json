@@ -1,0 +1,24 @@
+{
+  "_comment": "Coarse-v1-mini — sweep réduit pour signal de sensibilité rapide avant de lancer coarse-v1 complet (13h). 9 candidats (3×3) sur 3 fixtures diverses à nb=100. Baseline retirée (post-phase-d-baseline est à nb=400, nb=100 donnerait des faux régressions). Target: ~40min wall-clock. Axes choisis: F2_W (tutor chain, signal large) + globalCap (ceiling, impact large). F1_W et latentDiscount écartés pour ce pass (signal plus étroit, gardés pour coarse-v1 complet).",
+
+  "axes": {
+    "structural.F2_W": [0.5, 1, 2],
+    "structural.globalCap": [10, 15, 20]
+  },
+
+  "fixtureFilter": [
+    "ryzeal-mitsurugi-opener",
+    "branded-dracotail-opener",
+    "radiant-typhoon-opener"
+  ],
+
+  "nodeBudget": 100,
+  "budgetMs": 3600000,
+
+  "fitness": "cumulativeExplorationScore",
+  "tiebreak": "cumulativeMatched",
+
+  "outputPath": "data/tuning-runs/coarse-v1-mini.jsonl",
+  "topK": 5,
+  "label": "coarse-v1-mini"
+}

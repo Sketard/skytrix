@@ -36,7 +36,11 @@ import {
 // Spec + result types
 // =============================================================================
 
-type Fitness = 'cumulativeMatched' | 'cumulativeScore';
+/** `cumulativeExplorationScore` (Phase 3.0 C5) is the right target for tuning
+ *  axes that affect latent/structural but not directly interruptionScore —
+ *  the interruptionScore can stay bit-identical across a sweep while the
+ *  latent component moves, which is the signal tuning needs. */
+type Fitness = 'cumulativeMatched' | 'cumulativeScore' | 'cumulativeExplorationScore';
 
 interface SweepSpec {
   /** Axis key = "structural.<field>" or "interruption.<type>". Values are
@@ -68,6 +72,7 @@ interface BaselineLike {
     cumulativeMatched: number;
     cumulativeMatchedTotal: number;
     cumulativeScore: number;
+    cumulativeExplorationScore: number;
     fixtureCount: number;
   };
 }
@@ -113,8 +118,12 @@ function loadSpec(specPath: string): SweepSpec {
   if (typeof raw.budgetMs !== 'number' || raw.budgetMs <= 0) {
     throw new Error(`[tune] spec.budgetMs must be a positive number`);
   }
-  if (raw.fitness !== 'cumulativeMatched' && raw.fitness !== 'cumulativeScore') {
-    throw new Error(`[tune] spec.fitness must be 'cumulativeMatched' or 'cumulativeScore'`);
+  const validFitness: Fitness[] = ['cumulativeMatched', 'cumulativeScore', 'cumulativeExplorationScore'];
+  if (!validFitness.includes(raw.fitness)) {
+    throw new Error(`[tune] spec.fitness must be one of ${validFitness.join(', ')}`);
+  }
+  if (raw.tiebreak !== undefined && !validFitness.includes(raw.tiebreak)) {
+    throw new Error(`[tune] spec.tiebreak must be one of ${validFitness.join(', ')}`);
   }
   if (!raw.outputPath || typeof raw.outputPath !== 'string') {
     throw new Error(`[tune] spec.outputPath is required`);

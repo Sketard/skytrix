@@ -42,7 +42,7 @@ import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
 import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
-import type { DuelConfig, SolverConfig } from '../src/solver/solver-types.js';
+import type { DuelConfig, SolverConfig, ScoreBreakdown } from '../src/solver/solver-types.js';
 
 interface HandFixture {
   id: string;
@@ -70,7 +70,21 @@ interface FixtureFile {
 }
 
 interface FixtureResult {
+  /** User-facing interruption grade (= scoreBreakdown.interruptionScore).
+   *  Matches `result.score` from SolverResult for backward-compat with
+   *  pre-3.0 baselines. */
   score: number;
+  /** DFS guidance signal (= scoreBreakdown.explorationScore = interruption
+   *  + latent). Surfaced at this level so tuning sweeps can observe the
+   *  effect of structural-weight / latentDiscount changes even when the
+   *  peak terminal state is weight-invariant — the latent delta appears
+   *  here even when the interruptionScore is stable. */
+  explorationScore: number;
+  /** Full ScoreBreakdown of the reported peak. Carries per-type counts
+   *  (omniNegate, destruction, ...) + aggregates (weighted, fallbackPoints,
+   *  latentPoints, interruptionScore, explorationScore). Enables causal
+   *  analysis in tuning sweeps: which weight axis moved which component. */
+  breakdown: ScoreBreakdown;
   matched: number;
   matchedTotal: number;
   matchedCardIds: number[];
@@ -99,6 +113,10 @@ interface BaselineFile {
     cumulativeMatched: number;
     cumulativeMatchedTotal: number;
     cumulativeScore: number;
+    /** Sum of per-fixture `explorationScore`. Phase 3.0 addition — used as
+     *  an alternative fitness target in `tune-weights.ts` when the tuned
+     *  axes only move latent/structural (invisible to `cumulativeScore`). */
+    cumulativeExplorationScore: number;
     fixtureCount: number;
   };
 }
@@ -248,6 +266,8 @@ async function runFixture(
 
   return {
     score: result.score,
+    explorationScore: result.scoreBreakdown.explorationScore,
+    breakdown: result.scoreBreakdown,
     matched: matchedCardIds.length,
     matchedTotal: expected.length,
     matchedCardIds,
@@ -422,7 +442,8 @@ export async function runEvaluation(
         ctx.allConfigs, opts.timeLimitMs, opts.nodeBudget,
       );
       fixtureResults[hand.id] = res;
-      console.log(`  score=${res.score}  matched=${res.matched}/${res.matchedTotal}  ` +
+      console.log(`  score=${res.score}  expl=${res.explorationScore}  latent=${res.breakdown.latentPoints}  ` +
+        `matched=${res.matched}/${res.matchedTotal}  ` +
         `nodes=${res.nodesExplored}  depth=${res.maxDepthReached}  ` +
         `az=${res.actionsZeroPct}%  t2=${res.turn2Pct}%  walk=${res.wallMs}ms  ` +
         `term=${res.terminationReason}`);
@@ -434,6 +455,7 @@ export async function runEvaluation(
   const cumulativeMatched = Object.values(fixtureResults).reduce((a, r) => a + r.matched, 0);
   const cumulativeMatchedTotal = Object.values(fixtureResults).reduce((a, r) => a + r.matchedTotal, 0);
   const cumulativeScore = Object.values(fixtureResults).reduce((a, r) => a + r.score, 0);
+  const cumulativeExplorationScore = Object.values(fixtureResults).reduce((a, r) => a + r.explorationScore, 0);
 
   const baseline: BaselineFile = {
     _meta: {
@@ -447,14 +469,16 @@ export async function runEvaluation(
       cumulativeMatched,
       cumulativeMatchedTotal,
       cumulativeScore,
+      cumulativeExplorationScore,
       fixtureCount: Object.keys(fixtureResults).length,
     },
   };
 
   console.log(`\n[evaluate] ═══ AGGREGATE ═══`);
-  console.log(`  cumulative matched: ${cumulativeMatched}/${cumulativeMatchedTotal}`);
-  console.log(`  cumulative score:   ${cumulativeScore}`);
-  console.log(`  fixtures:           ${Object.keys(fixtureResults).length}`);
+  console.log(`  cumulative matched:        ${cumulativeMatched}/${cumulativeMatchedTotal}`);
+  console.log(`  cumulative score:          ${cumulativeScore}`);
+  console.log(`  cumulative explorationScore: ${cumulativeExplorationScore}`);
+  console.log(`  fixtures:                  ${Object.keys(fixtureResults).length}`);
 
   return baseline;
 }
@@ -546,8 +570,18 @@ async function main(): Promise<void> {
       console.log(`\n[evaluate] ═══ COMPARISON vs ${comparePath} ═══`);
       console.log(`  prev label: '${prev._meta.scorerVersion}'  (${prev._meta.timestamp})`);
       console.log(`  curr label: '${baseline._meta.scorerVersion}'  (${baseline._meta.timestamp})`);
-      console.log(`  cumulative matched: ${prev.aggregate.cumulativeMatched} → ${baseline.aggregate.cumulativeMatched}  (Δ${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched >= 0 ? '+' : ''}${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched})`);
-      console.log(`  cumulative score:   ${prev.aggregate.cumulativeScore} → ${baseline.aggregate.cumulativeScore}  (Δ${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore >= 0 ? '+' : ''}${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore})`);
+      console.log(`  cumulative matched:           ${prev.aggregate.cumulativeMatched} → ${baseline.aggregate.cumulativeMatched}  (Δ${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched >= 0 ? '+' : ''}${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched})`);
+      console.log(`  cumulative score:             ${prev.aggregate.cumulativeScore} → ${baseline.aggregate.cumulativeScore}  (Δ${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore >= 0 ? '+' : ''}${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore})`);
+      // `cumulativeExplorationScore` added in Phase 3.0 C5. Older baselines
+      // lack it; coerce to undefined-safe comparison so pre-C5 gates still run.
+      const prevExpl = prev.aggregate.cumulativeExplorationScore ?? null;
+      const currExpl = baseline.aggregate.cumulativeExplorationScore;
+      if (prevExpl !== null) {
+        const delta = currExpl - prevExpl;
+        console.log(`  cumulative explorationScore:  ${prevExpl} → ${currExpl}  (Δ${delta >= 0 ? '+' : ''}${delta.toFixed(2)})`);
+      } else {
+        console.log(`  cumulative explorationScore:  (prev baseline pre-C5)  curr=${currExpl}`);
+      }
       if (improvements.length > 0) {
         console.log(`\n  IMPROVEMENTS (${improvements.length}):`);
         for (const l of improvements) console.log(`    ✓ ${l}`);
