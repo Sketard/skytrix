@@ -18,8 +18,12 @@
 //     EMZ summon-slot requires neither EMZ occupied. Exception: if an enabler
 //     consumes itself as material AND is in an EMZ, treat that EMZ as free
 //     (Masquerena case).
-//   - MZONE-via-Link-arrow targeting is NOT implemented in V1 (requires per-
-//     Link column+arrow layout logic). Phase E TODO.
+//   - MZONE-via-Link-arrow targeting was added in Phase E axis 2: each face-up
+//     player Link monster (identified via `linkArrows` map keyed on cardId)
+//     extends the set of valid landing zones with the MZONE its arrows point
+//     to, provided the target zone is empty. The enabler itself (when it
+//     `consumesSelfAsMaterial`) is excluded as a contributor since its arrows
+//     vanish with it.
 //   - LATENT_DISCOUNT = 0.5 — conservative first cut. The 4-factor chain
 //     (enabler exists × slot free × target compatible × player chooses to
 //     materialize) has more than 2× uncertainty at endboard evaluation, so a
@@ -158,6 +162,10 @@ export function loadOppTurnEnablers(dataDir: string): OppTurnEnablerMap {
   return out;
 }
 
+const VALID_ARROW_DIRECTIONS: ReadonlySet<string> = new Set([
+  'T', 'TL', 'TR', 'L', 'R', 'B', 'BL', 'BR',
+]);
+
 export function loadLinkArrows(dataDir: string): LinkArrowsMap {
   const filePath = join(dataDir, 'link-arrows.json');
   const raw = JSON.parse(readFileSync(filePath, 'utf-8')) as Record<string, unknown>;
@@ -166,8 +174,11 @@ export function loadLinkArrows(dataDir: string): LinkArrowsMap {
     const e = entry as Partial<LinkArrowEntry> & { arrows?: unknown };
     if (!e.name || typeof e.name !== 'string') continue;
     if (!Array.isArray(e.arrows)) continue;
-    out[cardId] = { name: e.name, arrows: e.arrows as string[] };
+    const arrows = e.arrows.filter((a): a is string => typeof a === 'string' && VALID_ARROW_DIRECTIONS.has(a));
+    if (arrows.length === 0) continue;
+    out[cardId] = { name: e.name, arrows };
   }
+  console.log(`[Solver] link-arrows.json loaded (${Object.keys(out).length} entries)`);
   return out;
 }
 
@@ -188,6 +199,7 @@ export function computeLatentInterruption(
   tags: Record<string, InterruptionTag>,
   weights: Record<InterruptionType, number>,
   cardMetadata: CardMetadataMap | undefined,
+  linkArrows: LinkArrowsMap | undefined,
 ): LatentInterruptionBreakdown {
   if (state.turn !== 1) return EMPTY_BREAKDOWN;
   if (cardMetadata === undefined) return EMPTY_BREAKDOWN;
@@ -225,7 +237,7 @@ export function computeLatentInterruption(
   let bestRawTargetValue = 0;
   let eligiblePairs = 0;
   for (const { enabler, zone: enablerZone } of activeEnablers) {
-    if (!hasSlot(state, enabler, enablerZone)) continue;
+    if (!hasSlot(state, enabler, enablerZone, linkArrows)) continue;
     for (const target of targets) {
       const meta = cardMetadata.get(target.cardId);
       if (!meta || meta.summonCategory !== enabler.summonCategory) continue;
@@ -261,20 +273,98 @@ function isFaceUp(card: FieldCard): boolean {
 /**
  * MR5 slot availability for an opp-turn Extra Deck summon via this enabler.
  *
- * Rule (user clarification 2026-04-17): player's "own" EMZ is the one already
- * occupied by their card; if neither is occupied, either can be claimed.
- * So a free EMZ summon-slot requires neither EMZ occupied.
+ * Accepts the target if ANY of:
+ *   (a) at least one EMZ is free (user clarification 2026-04-17: neither EMZ
+ *       occupied by the player, with the consumes-self exception — if the
+ *       enabler sits in an EMZ and self-tributes, that EMZ counts as free);
+ *   (b) at least one player MZONE (M1..M5) is free AND pointed to by a Link
+ *       monster arrow from another face-up player Link on the field. The
+ *       enabler itself is excluded as a contributor when it consumes itself
+ *       (its arrows vanish with the tribute).
  *
- * Enabler-consumes-self exception: if Masquerena herself occupies an EMZ,
- * her activation frees that slot for the Link-2 target to land in. So the
- * check becomes: after removing the enabler from her zone, is any EMZ free?
- *
- * MZONE-via-Link-arrow path is not implemented in V1 (Phase E TODO).
+ * MZONE-via-arrow grid uses the MR5 column/row layout: EMZ exists only in
+ * col 2 (EMZ_L) and col 4 (EMZ_R) on row 2; player MZONE is row 3, col 1..5.
+ * Arrows pointing outside player's field (opp zones, S row) contribute no
+ * slots to this check.
  */
-function hasSlot(state: FieldState, enabler: OppTurnEnabler, enablerZone: ZoneId): boolean {
-  const emzLOccupiedByOther = state.zones.EMZ_L.length > 0
-    && !(enabler.consumesSelfAsMaterial && enablerZone === 'EMZ_L');
-  const emzROccupiedByOther = state.zones.EMZ_R.length > 0
-    && !(enabler.consumesSelfAsMaterial && enablerZone === 'EMZ_R');
-  return !emzLOccupiedByOther && !emzROccupiedByOther;
+function hasSlot(
+  state: FieldState,
+  enabler: OppTurnEnabler,
+  enablerZone: ZoneId,
+  linkArrows: LinkArrowsMap | undefined,
+): boolean {
+  const effectivelyEmpty = (z: ZoneId): boolean =>
+    state.zones[z].length === 0
+    || (enabler.consumesSelfAsMaterial && z === enablerZone);
+
+  if (effectivelyEmpty('EMZ_L') || effectivelyEmpty('EMZ_R')) return true;
+
+  if (!linkArrows) return false;
+
+  for (const sourceZone of ARROW_SOURCE_ZONES) {
+    if (enabler.consumesSelfAsMaterial && sourceZone === enablerZone) continue;
+    const cards = state.zones[sourceZone];
+    for (const card of cards) {
+      if (!isFaceUp(card)) continue;
+      const entry = linkArrows[String(card.cardId)];
+      if (!entry) continue;
+      for (const arrow of entry.arrows) {
+        const target = arrowTargetZone(sourceZone, arrow);
+        if (!target) continue;
+        if (effectivelyEmpty(target)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Zones from which a player Link monster can point to other player zones.
+ *  S-row is excluded (spells/traps never carry Link arrows). */
+const ARROW_SOURCE_ZONES: readonly ZoneId[] = [
+  'M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R',
+];
+
+/** MR5 zone layout in (col, row) coordinates. Row 2 = EMZ (col 2, 4 only);
+ *  row 3 = player MZONE (col 1..5). Opp rows and player S-row are outside
+ *  the solver's modeling surface. */
+const ZONE_GRID: Readonly<Record<string, { col: number; row: number }>> = {
+  EMZ_L: { col: 2, row: 2 },
+  EMZ_R: { col: 4, row: 2 },
+  M1:    { col: 1, row: 3 },
+  M2:    { col: 2, row: 3 },
+  M3:    { col: 3, row: 3 },
+  M4:    { col: 4, row: 3 },
+  M5:    { col: 5, row: 3 },
+};
+
+const ARROW_DELTAS: Readonly<Record<string, { dCol: number; dRow: number }>> = {
+  T:  { dCol:  0, dRow: -1 },
+  TL: { dCol: -1, dRow: -1 },
+  TR: { dCol:  1, dRow: -1 },
+  L:  { dCol: -1, dRow:  0 },
+  R:  { dCol:  1, dRow:  0 },
+  B:  { dCol:  0, dRow:  1 },
+  BL: { dCol: -1, dRow:  1 },
+  BR: { dCol:  1, dRow:  1 },
+};
+
+/** Returns the player MZONE (M1..M5, EMZ_L, EMZ_R) at (col, row), or null
+ *  if the grid cell is outside the player's modeled surface (opp side,
+ *  S-row, or empty row-2 columns 1/3/5). */
+function arrowTargetZone(sourceZone: ZoneId, arrow: string): ZoneId | null {
+  const src = ZONE_GRID[sourceZone];
+  if (!src) return null;
+  const delta = ARROW_DELTAS[arrow];
+  if (!delta) return null;
+  const col = src.col + delta.dCol;
+  const row = src.row + delta.dRow;
+  if (row === 2) {
+    if (col === 2) return 'EMZ_L';
+    if (col === 4) return 'EMZ_R';
+    return null;
+  }
+  if (row === 3 && col >= 1 && col <= 5) {
+    return (`M${col}` as ZoneId);
+  }
+  return null;
 }

@@ -356,6 +356,7 @@ async function main(): Promise<void> {
     allConfigs.structuralWeights,
     allConfigs.structuralTutorCards,
     allConfigs.oppTurnEnablers, // Phase D V1
+    allConfigs.linkArrows, // Phase E axis 2
   );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 

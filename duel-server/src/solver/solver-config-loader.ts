@@ -15,8 +15,11 @@ import type {
 } from './solver-types.js';
 import { INTERRUPTION_TYPES, ALL_ZONE_IDS } from './solver-types.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
-import type { OppTurnEnablerMap } from './latent-interruption-computer.js';
-import { loadOppTurnEnablers as _loadOppTurnEnablers } from './latent-interruption-computer.js';
+import type { OppTurnEnablerMap, LinkArrowsMap } from './latent-interruption-computer.js';
+import {
+  loadOppTurnEnablers as _loadOppTurnEnablers,
+  loadLinkArrows as _loadLinkArrows,
+} from './latent-interruption-computer.js';
 
 // =============================================================================
 // Range Validation Helpers
@@ -283,6 +286,7 @@ export interface AllSolverConfigs {
   structuralWeights: StructuralWeights;
   structuralTutorCards: StructuralTutorCards;
   oppTurnEnablers: OppTurnEnablerMap;
+  linkArrows: LinkArrowsMap;
 }
 
 const STRUCTURAL_WEIGHT_RANGES: Record<string, RangeRule> = {
@@ -350,8 +354,9 @@ export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolver
   const structuralWeights = loadStructuralWeights(dataDir);
   const structuralTutorCards = loadStructuralTutorCards(dataDir);
   const oppTurnEnablers = _loadOppTurnEnablers(dataDir);
+  const linkArrows = _loadLinkArrows(dataDir);
 
   validateInterruptionTagsAgainstCardPool(interruptionTags, cardDB);
 
-  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights, structuralTutorCards, oppTurnEnablers };
+  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights, structuralTutorCards, oppTurnEnablers, linkArrows };
 }

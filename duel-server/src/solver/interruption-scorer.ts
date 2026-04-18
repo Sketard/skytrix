@@ -18,7 +18,7 @@ import { time as instrumentTime } from './solver-instrumentation.js';
 import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
-import type { OppTurnEnablerMap } from './latent-interruption-computer.js';
+import type { OppTurnEnablerMap, LinkArrowsMap } from './latent-interruption-computer.js';
 import { computeLatentInterruption } from './latent-interruption-computer.js';
 
 // =============================================================================
@@ -102,6 +102,7 @@ export class InterruptionScorer {
   private readonly structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
   private readonly oppTurnEnablers: OppTurnEnablerMap | undefined;
+  private readonly linkArrows: LinkArrowsMap | undefined;
 
   constructor(
     tags: Record<string, InterruptionTag>,
@@ -110,6 +111,7 @@ export class InterruptionScorer {
     structuralWeights?: StructuralWeights,
     tutorCards?: StructuralTutorCards,
     oppTurnEnablers?: OppTurnEnablerMap,
+    linkArrows?: LinkArrowsMap,
   ) {
     if (Object.keys(tags).length === 0) {
       throw new Error('[Solver] InterruptionScorer: tags must not be empty');
@@ -123,6 +125,7 @@ export class InterruptionScorer {
     this.structuralWeights = structuralWeights;
     this.tutorCards = tutorCards;
     this.oppTurnEnablers = oppTurnEnablers;
+    this.linkArrows = linkArrows;
   }
 
   /** Rebuild the per-duel card metadata. Called by solver-worker at the
@@ -316,6 +319,7 @@ export class InterruptionScorer {
         this.tags,
         this.weights,
         this.cardMetadata,
+        this.linkArrows,
       );
       latentPoints += latent.totalLatent;
     }
