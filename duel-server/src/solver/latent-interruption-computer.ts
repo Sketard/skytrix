@@ -280,19 +280,29 @@ function isFaceUp(card: FieldCard): boolean {
 /**
  * MR5 slot availability for an opp-turn Extra Deck summon via this enabler.
  *
- * Accepts the target if ANY of:
- *   (a) at least one EMZ is free (user clarification 2026-04-17: neither EMZ
- *       occupied by the player, with the consumes-self exception — if the
- *       enabler sits in an EMZ and self-tributes, that EMZ counts as free);
- *   (b) at least one player MZONE (M1..M5) is free AND pointed to by a Link
- *       monster arrow from another face-up player Link on the field. The
- *       enabler itself is excluded as a contributor when it consumes itself
- *       (its arrows vanish with the tribute).
+ * The rule depends on the summon category (Master Rule 5, April 2020):
+ *
+ *   - **LINK** (and Pendulum-from-face-up-ED, not yet modeled) — restricted
+ *     to EMZ or a MZ pointed to by any face-up Link arrow. Accepts if:
+ *     (a) at least one EMZ is free (with consumes-self exception — if the
+ *         enabler sits in an EMZ and self-tributes, that EMZ counts as free);
+ *     (b) at least one player MZONE (M1..M5) is free AND pointed to by a
+ *         Link monster arrow from another face-up player Link on the field.
+ *         The enabler itself is excluded as a contributor when it consumes
+ *         itself (its arrows vanish with the tribute).
+ *
+ *   - **FUSION / SYNCHRO / XYZ** — unrestricted under MR5. Accepts if any
+ *     of the 7 player-side monster zones (EMZ_L, EMZ_R, M1..M5) is
+ *     effectively empty. Link-arrow path is irrelevant.
  *
  * MZONE-via-arrow grid uses the MR5 column/row layout: EMZ exists only in
  * col 2 (EMZ_L) and col 4 (EMZ_R) on row 2; player MZONE is row 3, col 1..5.
  * Arrows pointing outside player's field (opp zones, S row) contribute no
  * slots to this check.
+ *
+ * Bug fix 2026-04-18: previously applied the LINK restriction to all
+ * categories, under-scoring Fusion enablers (Super Poly) when EMZs were
+ * occupied but MZs were free. See memory `mr5-extra-deck-summon-destination`.
  */
 function hasSlot(
   state: FieldState,
@@ -304,6 +314,15 @@ function hasSlot(
     state.zones[z].length === 0
     || (enabler.consumesSelfAsMaterial && z === enablerZone);
 
+  // Non-Link categories: any empty player monster zone works under MR5.
+  if (enabler.summonCategory !== 'LINK') {
+    for (const z of UNRESTRICTED_MZ_ZONES) {
+      if (effectivelyEmpty(z)) return true;
+    }
+    return false;
+  }
+
+  // LINK path: EMZ first, then Link-arrow fallback.
   if (effectivelyEmpty('EMZ_L') || effectivelyEmpty('EMZ_R')) return true;
 
   if (!linkArrows) return false;
@@ -324,6 +343,12 @@ function hasSlot(
   }
   return false;
 }
+
+/** All 7 player-side monster zones. Used for the MR5 unrestricted-summon
+ *  slot check (Fusion/Synchro/Xyz from ED). */
+const UNRESTRICTED_MZ_ZONES: readonly ZoneId[] = [
+  'EMZ_L', 'EMZ_R', 'M1', 'M2', 'M3', 'M4', 'M5',
+];
 
 /** Zones from which a player Link monster can point to other player zones.
  *  S-row is excluded (spells/traps never carry Link arrows). */

@@ -230,5 +230,42 @@ console.log('\n🔬 Test D.11 (Phase E axis 2): face-down Link in EMZ_L cannot p
     `latentPoints=${result.scoreBreakdown.latentPoints} (expected 0 — face-down Link doesn't provide arrow)`);
 }
 
+console.log('\n🔬 Test D.12 (MR5 fix): Super Poly Fusion path accepts free MZ when both EMZs blocked');
+{
+  // Both EMZ occupied by non-Link bodies (no Link arrows). Under MR5, Fusion
+  // summons can still land in M1..M5 — no EMZ/linked restriction for Fusion.
+  // Pre-fix behavior (LINK-only slot rule) returned 0 latent here.
+  const state = makeFieldState({
+    HAND:  [makeCard(SUPER_POLY)],
+    EMZ_L: [makeCard(STARVING_VENOM)],
+    EMZ_R: [makeCard(GUARDIAN_CHIMERA)],
+    EXTRA:  [makeCard(STARVING_VENOM, 'facedown')],
+  });
+  const result = scorer.score(state);
+  assert(result.scoreBreakdown.latentPoints > 0,
+    `latentPoints=${result.scoreBreakdown.latentPoints} (>0, Fusion ignores EMZ-only restriction — any MZ OK)`);
+}
+
+console.log('\n🔬 Test D.13 (MR5 fix): Super Poly blocked only when ALL 7 player monster zones occupied');
+{
+  // Fill every player monster zone with non-Link bodies → no legal Fusion
+  // landing slot anywhere. Under MR5, this is the only way to block a Fusion
+  // summon purely on slot availability.
+  const state = makeFieldState({
+    HAND:  [makeCard(SUPER_POLY)],
+    M1:    [makeCard(STARVING_VENOM)],
+    M2:    [makeCard(STARVING_VENOM)],
+    M3:    [makeCard(STARVING_VENOM)],
+    M4:    [makeCard(STARVING_VENOM)],
+    M5:    [makeCard(STARVING_VENOM)],
+    EMZ_L: [makeCard(STARVING_VENOM)],
+    EMZ_R: [makeCard(GUARDIAN_CHIMERA)],
+    EXTRA:  [makeCard(STARVING_VENOM, 'facedown')],
+  });
+  const result = scorer.score(state);
+  assert(result.scoreBreakdown.latentPoints === 0,
+    `latentPoints=${result.scoreBreakdown.latentPoints} (expected 0 — all 7 MZ occupied, no slot)`);
+}
+
 console.log(`\n📊 Phase D results: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
