@@ -6,10 +6,13 @@
 // appends per-candidate results to a JSONL corpus. Ranks by fitness (with
 // tiebreak) and surfaces no-regression violations vs a reference baseline.
 //
-// Runs in-process: the EvaluationContext is built once (boot cost ~2-3s) and
-// reused across every candidate via `applyWeightsOverride` + `resetWeightsTo
-// Baseline` on the shared scorer. A sweep of N candidates × M fixtures runs
-// in N × (M × per-fixture-solve-time), NOT in N × (boot + M × solve).
+// Runs on a Piscina worker pool (size = availableParallelism - 2 by default,
+// overridable via --pool-size=N). Each worker boots OCGCore + scorer once
+// at startup; the per-candidate weights override ships with each task so the
+// same worker can serve many candidates. Fixtures of a single candidate are
+// dispatched in parallel — candidates themselves are serial to preserve JSONL
+// append order. A sweep of N candidates × M fixtures runs in
+// N × (ceil(M / poolSize) × per-fixture-solve-time), not N × M × solve.
 //
 // Usage:
 //   cd duel-server
@@ -21,14 +24,15 @@
 // =============================================================================
 
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { Piscina } from 'piscina';
 
 import {
-  setupEvaluationContext,
-  runEvaluation,
-  applyWeightsOverride,
-  resetWeightsToBaseline,
-  type EvaluationContext,
+  loadFixtureFile,
+  runEvaluationParallel,
+  type FixtureFile,
+  type FixturePool,
   type WeightsOverride,
 } from './evaluate-structural.js';
 
@@ -192,22 +196,25 @@ function detectRegressions(
 // =============================================================================
 
 async function runCandidate(
-  ctx: EvaluationContext,
+  pool: FixturePool,
+  fixture: FixtureFile,
   spec: SweepSpec,
   runId: string,
   assignment: Record<string, number>,
   baseline: BaselineLike | undefined,
 ): Promise<CandidateRecord> {
-  resetWeightsToBaseline(ctx);
   const override = assignmentToOverride(assignment);
-  applyWeightsOverride(ctx, override, runId);
 
   const t0 = Date.now();
-  const result = await runEvaluation(ctx, {
+  // Per-candidate override flows to every worker via the task payload;
+  // workers reset to baseline before applying, so overrides from a prior
+  // candidate cannot compound into this one.
+  const result = await runEvaluationParallel(pool, fixture, {
     fixtureFilter: spec.fixtureFilter,
     timeLimitMs: spec.budgetMs,
     nodeBudget: spec.nodeBudget,
     label: spec.label ?? runId,
+    weightsOverride: override,
   });
   const wallMs = Date.now() - t0;
 
@@ -259,13 +266,31 @@ async function main(): Promise<void> {
   console.log(`[tune] fitness=${spec.fitness}${spec.tiebreak ? ` tiebreak=${spec.tiebreak}` : ''}  noRegressionPerFixture=${spec.noRegressionPerFixture === true}`);
   console.log(`[tune] output=${outAbs}`);
 
-  const ctx = await setupEvaluationContext();
+  // Main thread reads the fixture list for ID validation only; WASM boot is
+  // deferred to each worker (piscina boots once per worker, then reuses).
+  const fixture = loadFixtureFile();
+  const poolSizeOverride = parseStringArg('pool-size');
+  const poolSize = poolSizeOverride !== undefined
+    ? Math.max(1, Number(poolSizeOverride))
+    : Math.max(1, availableParallelism() - 2);
+  console.log(`[tune] pool size: ${poolSize}`);
+
+  const pool = new Piscina({
+    // .mjs bootstrap registers tsx's ESM loader inside the worker before
+    // dynamic-importing the .ts worker. Direct pointing at the .ts fails
+    // because worker threads don't inherit tsx's parent-process hooks.
+    filename: resolve(import.meta.dirname!, 'evaluate-structural-worker.mjs'),
+    minThreads: poolSize,
+    maxThreads: poolSize,
+    idleTimeout: Infinity,
+  });
+
   const records: CandidateRecord[] = [];
   try {
     // Fail-fast on fixture ID typos — a 10h sweep on an empty filter would
     // silently produce cumulativeMatched=0 and mislead downstream ranking.
     if (spec.fixtureFilter) {
-      const validIds = new Set(ctx.fixture.hands.filter(h => h._draft !== true).map(h => h.id));
+      const validIds = new Set(fixture.hands.filter(h => h._draft !== true).map(h => h.id));
       const invalid = spec.fixtureFilter.filter(id => !validIds.has(id));
       if (invalid.length > 0) {
         throw new Error(`[tune] Unknown fixture ids in fixtureFilter: ${invalid.join(', ')}`);
@@ -277,7 +302,7 @@ async function main(): Promise<void> {
       console.log(`\n[tune] ═══ ${runId}  (${i + 1}/${assignments.length})`);
       console.log(`  assignment: ${JSON.stringify(assignments[i])}`);
       try {
-        const rec = await runCandidate(ctx, spec, runId, assignments[i], baseline);
+        const rec = await runCandidate(pool, fixture, spec, runId, assignments[i], baseline);
         records.push(rec);
         appendFileSync(outAbs, JSON.stringify(rec) + '\n', 'utf-8');
         console.log(`  fitness=${rec.fitnessValue}${spec.tiebreak ? ` tiebreak=${rec.tiebreakValue}` : ''}  wallMs=${rec.wallMs}  regressions=${rec.regressionFlags.length}`);
@@ -286,7 +311,7 @@ async function main(): Promise<void> {
       }
     }
   } finally {
-    ctx.dispose();
+    await pool.destroy();
   }
 
   // Rank

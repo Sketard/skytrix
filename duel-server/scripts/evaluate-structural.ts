@@ -27,7 +27,10 @@
 // =============================================================================
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Piscina } from 'piscina';
 
 import { loadDatabase, loadScripts } from '../src/ocg-scripts.js';
 import {
@@ -44,7 +47,7 @@ import { TranspositionTable } from '../src/solver/transposition-table.js';
 import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
 import type { DuelConfig, SolverConfig, ScoreBreakdown } from '../src/solver/solver-types.js';
 
-interface HandFixture {
+export interface HandFixture {
   id: string;
   deck: string;
   description?: string;
@@ -64,12 +67,12 @@ interface HandFixture {
   _draft?: boolean;
 }
 
-interface FixtureFile {
+export interface FixtureFile {
   decks: Record<string, { main: number[]; extra: number[]; side?: number[]; _draft?: boolean }>;
   hands: HandFixture[];
 }
 
-interface FixtureResult {
+export interface FixtureResult {
   /** User-facing interruption grade (= scoreBreakdown.interruptionScore).
    *  Matches `result.score` from SolverResult for backward-compat with
    *  pre-3.0 baselines. */
@@ -97,7 +100,7 @@ interface FixtureResult {
   wallMs: number;
 }
 
-interface BaselineFile {
+export interface BaselineFile {
   _meta: {
     timestamp: string;
     budgetMs: number;
@@ -156,7 +159,7 @@ function positionMatches(
   return false;
 }
 
-async function runFixture(
+export async function runFixture(
   adapter: OCGCoreAdapter,
   scorer: InterruptionScorer,
   ranker: GoldfishChainRanker,
@@ -362,6 +365,39 @@ export interface EvaluationOptions {
 }
 
 /**
+ * Absolute data directory (cards.cdb + scripts_full + solver configs).
+ * Module-level so both the heavy `setupEvaluationContext()` path (workers)
+ * and the light `loadDefaultBudgetMs()` path (main) share a single source
+ * of truth for the on-disk layout.
+ */
+export const DATA_DIR = resolve(import.meta.dirname!, '..', 'data');
+
+/** Absolute path to the fixture JSON used by evaluation harnesses. */
+export const FIXTURE_PATH = resolve(
+  import.meta.dirname!, '..', '..',
+  '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
+);
+
+/**
+ * Light fixture loader for main threads that don't need to boot OCGCore
+ * (parallel-mode orchestrators). Paired with `loadDefaultBudgetMs()` it lets
+ * `main()` dispatch tasks to workers without paying the ~2s WASM boot itself.
+ */
+export function loadFixtureFile(): FixtureFile {
+  return JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as FixtureFile;
+}
+
+/**
+ * Load `solverConfig.timeBudgetOptimalMs` without booting WASM. Touches only
+ * the SQLite cardDB + JSON configs. Used by main() to derive the default CLI
+ * budget when `--budget-ms` is absent, without paying boot cost.
+ */
+export function loadDefaultBudgetMs(): number {
+  const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));
+  return loadAllSolverConfigs(DATA_DIR, cardDB).solverConfig.timeBudgetOptimalMs;
+}
+
+/**
  * Build the shared evaluation context once per process. The adapter, scorer,
  * and ranker are reused across many `runEvaluation()` calls — boot cost
  * (cardDB + scripts + OCGCore create) is paid once.
@@ -370,13 +406,7 @@ export interface EvaluationOptions {
  * any per-run `fixtureFilter`), so the same context serves any fixture subset.
  */
 export async function setupEvaluationContext(): Promise<EvaluationContext> {
-  const DATA_DIR = resolve(import.meta.dirname!, '..', 'data');
-  const FIXTURE_PATH = resolve(
-    import.meta.dirname!, '..', '..',
-    '_bmad-output', 'planning-artifacts', 'research', 'solver-validation-decks.json',
-  );
-
-  const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as FixtureFile;
+  const fixture = loadFixtureFile();
 
   const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
@@ -415,14 +445,46 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
 }
 
 /**
- * Run the DFS over all non-draft fixtures (optionally filtered) and return
- * the BaselineFile. Does not read or write files — the caller owns I/O.
+ * Per-task payload sent from main thread to a pool worker. The worker resets
+ * its scorer to the baseline weights, applies `weightsOverride` (if any),
+ * then runs the single fixture. Keeping override as part of the task lets one
+ * worker serve many candidates across a tuning sweep.
  */
-export async function runEvaluation(
-  ctx: EvaluationContext,
-  opts: EvaluationOptions,
+export interface FixtureTask {
+  fixtureId: string;
+  weightsOverride?: WeightsOverride;
+  timeLimitMs: number;
+  nodeBudget?: number;
+  label: string;
+}
+
+/** Minimal pool surface consumed by `runEvaluationParallel`. Kept structural
+ *  (not importing `Piscina` directly) so the helper stays trivially testable
+ *  with an in-memory stub. */
+export interface FixturePool {
+  run(task: FixtureTask): Promise<FixtureResult>;
+}
+
+export interface ParallelEvaluationOptions extends EvaluationOptions {
+  /** Optional weight override forwarded to each worker task. Each worker
+   *  resets to its baseline before applying, so overrides from different
+   *  candidates do not compound. */
+  weightsOverride?: WeightsOverride;
+}
+
+/**
+ * Parallel fixture evaluation. Dispatches one task per fixture to the pool
+ * and assembles a `BaselineFile` identical to the serial `runEvaluation()`
+ * output. Logs per-fixture summaries as tasks settle — order is completion
+ * order, not fixture-list order (trivially re-sortable downstream via
+ * `baseline.fixtures` keys).
+ */
+export async function runEvaluationParallel(
+  pool: FixturePool,
+  fixture: FixtureFile,
+  opts: ParallelEvaluationOptions,
 ): Promise<BaselineFile> {
-  const validHands = ctx.fixture.hands.filter(h => {
+  const validHands = fixture.hands.filter(h => {
     if (h._draft === true) return false;
     if (opts.fixtureFilter && !opts.fixtureFilter.includes(h.id)) return false;
     return true;
@@ -431,24 +493,32 @@ export async function runEvaluation(
   const modeTag = opts.nodeBudget !== undefined
     ? `node-budget=${opts.nodeBudget}`
     : `phase-L=wall-clock`;
-  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${opts.timeLimitMs}ms  ${modeTag}  label='${opts.label}'  metadataCards=${ctx.metadataSize}`);
+  console.log(`[evaluate-par] fixtures: ${validHands.length}  budget=${opts.timeLimitMs}ms  ${modeTag}  label='${opts.label}'`);
 
   const fixtureResults: Record<string, FixtureResult> = {};
-  for (const hand of validHands) {
-    console.log(`\n[evaluate] ─── ${hand.id} (${hand.deck})`);
-    try {
-      const res = await runFixture(
-        ctx.adapter, ctx.scorer, ctx.ranker, ctx.fixture, hand,
-        ctx.allConfigs, opts.timeLimitMs, opts.nodeBudget,
-      );
+  // Dispatch all tasks up-front; pool schedules them across its worker set.
+  // Promise.allSettled so a single fixture failure does not abort the sweep.
+  const settled = await Promise.allSettled(validHands.map(async hand => {
+    const res = await pool.run({
+      fixtureId: hand.id,
+      weightsOverride: opts.weightsOverride,
+      timeLimitMs: opts.timeLimitMs,
+      nodeBudget: opts.nodeBudget,
+      label: opts.label,
+    });
+    return { hand, res };
+  }));
+
+  for (const s of settled) {
+    if (s.status === 'fulfilled') {
+      const { hand, res } = s.value;
       fixtureResults[hand.id] = res;
-      console.log(`  score=${res.score}  expl=${res.explorationScore}  latent=${res.breakdown.latentPoints}  ` +
-        `matched=${res.matched}/${res.matchedTotal}  ` +
+      console.log(`  [${hand.id}] (${hand.deck})  score=${res.score}  expl=${res.explorationScore}  ` +
+        `latent=${res.breakdown.latentPoints}  matched=${res.matched}/${res.matchedTotal}  ` +
         `nodes=${res.nodesExplored}  depth=${res.maxDepthReached}  ` +
-        `az=${res.actionsZeroPct}%  t2=${res.turn2Pct}%  walk=${res.wallMs}ms  ` +
-        `term=${res.terminationReason}`);
-    } catch (err) {
-      console.error(`  FAIL: ${err instanceof Error ? err.message : String(err)}`);
+        `az=${res.actionsZeroPct}%  t2=${res.turn2Pct}%  walk=${res.wallMs}ms  term=${res.terminationReason}`);
+    } else {
+      console.error(`  FAIL: ${s.reason instanceof Error ? s.reason.message : String(s.reason)}`);
     }
   }
 
@@ -474,11 +544,11 @@ export async function runEvaluation(
     },
   };
 
-  console.log(`\n[evaluate] ═══ AGGREGATE ═══`);
-  console.log(`  cumulative matched:        ${cumulativeMatched}/${cumulativeMatchedTotal}`);
-  console.log(`  cumulative score:          ${cumulativeScore}`);
+  console.log(`\n[evaluate-par] ═══ AGGREGATE ═══`);
+  console.log(`  cumulative matched:          ${cumulativeMatched}/${cumulativeMatchedTotal}`);
+  console.log(`  cumulative score:            ${cumulativeScore}`);
   console.log(`  cumulative explorationScore: ${cumulativeExplorationScore}`);
-  console.log(`  fixtures:                  ${Object.keys(fixtureResults).length}`);
+  console.log(`  fixtures:                    ${Object.keys(fixtureResults).length}`);
 
   return baseline;
 }
@@ -506,31 +576,30 @@ export function applyWeightsOverride(
   ctx: EvaluationContext,
   override: WeightsOverride,
   sourceLabel: string,
+  opts?: { silent?: boolean },
 ): void {
   if (override.structural && Object.keys(override.structural).length > 0) {
     const merged = applyStructuralWeightsOverride(ctx.allConfigs.structuralWeights, override.structural);
     ctx.scorer.setStructuralWeights(merged);
-    console.log(`[evaluate] structural override applied from ${sourceLabel} (${Object.keys(override.structural).length} fields)`);
+    if (!opts?.silent) {
+      console.log(`[evaluate] structural override applied from ${sourceLabel} (${Object.keys(override.structural).length} fields)`);
+    }
   }
   if (override.interruption && Object.keys(override.interruption).length > 0) {
     const merged = applyInterruptionWeightsOverride(ctx.allConfigs.interruptionWeights, override.interruption);
     ctx.scorer.setInterruptionWeights(merged);
-    console.log(`[evaluate] interruption override applied from ${sourceLabel} (${Object.keys(override.interruption).length} fields)`);
+    if (!opts?.silent) {
+      console.log(`[evaluate] interruption override applied from ${sourceLabel} (${Object.keys(override.interruption).length} fields)`);
+    }
   }
 }
 
-/** Reset the scorer's mutable weights to the loader-defined baseline.
- *  Called by the sweep orchestrator between candidates so each candidate
- *  applies its overrides against a clean base (not compounded). */
+/** Reset the scorer's mutable weights to the loader-defined baseline. Called
+ *  by each worker task before applying a candidate's override so overrides
+ *  from a prior task do not compound into this one. */
 export function resetWeightsToBaseline(ctx: EvaluationContext): void {
   ctx.scorer.setStructuralWeights(ctx.allConfigs.structuralWeights);
   ctx.scorer.setInterruptionWeights(ctx.allConfigs.interruptionWeights);
-}
-
-export function applyWeightsOverrideFile(ctx: EvaluationContext, path: string): void {
-  const absPath = resolve(path);
-  const raw = JSON.parse(readFileSync(absPath, 'utf-8')) as WeightsOverride;
-  applyWeightsOverride(ctx, raw, absPath);
 }
 
 async function main(): Promise<void> {
@@ -541,20 +610,37 @@ async function main(): Promise<void> {
   const fixtureFilter = parseStringArg('only');
   const scorerVersion = parseStringArg('label') ?? 'unspecified';
   const weightsOverridePath = parseStringArg('weights-override');
+  const poolSizeOverride = parseNumArg('pool-size');
 
-  const ctx = await setupEvaluationContext();
+  // Parallel mode: main thread stays lightweight (fixture JSON + config read,
+  // no WASM boot). Each Piscina worker boots its own OCGCore/scorer once.
+  const fixture = loadFixtureFile();
+  const timeLimitMs = budgetOverride ?? loadDefaultBudgetMs();
+  const weightsOverride = weightsOverridePath !== undefined
+    ? JSON.parse(readFileSync(resolve(weightsOverridePath), 'utf-8')) as WeightsOverride
+    : undefined;
+
+  const poolSize = poolSizeOverride ?? Math.max(1, availableParallelism() - 2);
+  console.log(`[evaluate] pool size: ${poolSize}`);
+
+  const pool = new Piscina({
+    // .mjs bootstrap registers tsx's ESM loader inside the worker before
+    // dynamic-importing the .ts worker. Direct pointing at the .ts fails
+    // because worker threads don't inherit tsx's parent-process hooks.
+    filename: resolve(import.meta.dirname!, 'evaluate-structural-worker.mjs'),
+    minThreads: poolSize,
+    maxThreads: poolSize,
+    idleTimeout: Infinity,
+  });
+
   let exitCode = 0;
   try {
-    if (weightsOverridePath !== undefined) {
-      applyWeightsOverrideFile(ctx, weightsOverridePath);
-    }
-
-    const timeLimitMs = budgetOverride ?? ctx.allConfigs.solverConfig.timeBudgetOptimalMs;
-    const baseline = await runEvaluation(ctx, {
+    const baseline = await runEvaluationParallel(pool, fixture, {
       fixtureFilter: fixtureFilter !== undefined ? [fixtureFilter] : undefined,
       timeLimitMs,
       nodeBudget,
       label: scorerVersion,
+      weightsOverride,
     });
 
     if (outPath) {
@@ -604,13 +690,19 @@ async function main(): Promise<void> {
       }
     }
   } finally {
-    ctx.dispose();
+    await pool.destroy();
   }
 
   process.exit(exitCode);
 }
 
-main().catch(err => {
-  console.error('[evaluate] FATAL:', err);
-  process.exit(1);
-});
+// Only run the CLI when this file is the entry point. The worker bootstrap
+// imports this module as a library (for its `runFixture`, `setupEvaluation
+// Context`, etc.); without this guard, each imported copy would spawn its
+// own Piscina pool → recursive fork bomb.
+if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(err => {
+    console.error('[evaluate] FATAL:', err);
+    process.exit(1);
+  });
+}
