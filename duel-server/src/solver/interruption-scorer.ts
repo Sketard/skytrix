@@ -19,7 +19,7 @@ import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
 import type { OppTurnEnablerMap, LinkArrowsMap } from './latent-interruption-computer.js';
-import { computeLatentInterruption } from './latent-interruption-computer.js';
+import { computeLatentInterruption, LATENT_DISCOUNT } from './latent-interruption-computer.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -97,9 +97,9 @@ const DOOM_QUEEN_PZONE_BONUS = 3;
 
 export class InterruptionScorer {
   private readonly tags: Record<string, InterruptionTag>;
-  private readonly weights: Record<InterruptionType, number>;
+  private weights: Record<InterruptionType, number>;
   private cardMetadata: CardMetadataMap | undefined;
-  private readonly structuralWeights: StructuralWeights | undefined;
+  private structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
   private readonly oppTurnEnablers: OppTurnEnablerMap | undefined;
   private readonly linkArrows: LinkArrowsMap | undefined;
@@ -134,6 +134,25 @@ export class InterruptionScorer {
    *  serializes tasks per worker so no concurrent mutation. */
   setCardMetadata(map: CardMetadataMap | undefined): void {
     this.cardMetadata = map;
+  }
+
+  /** Replace the structural weights (F1/F2/F3/globalCap + latentDiscount).
+   *  Used by the step-3 tuning orchestrator (`scripts/tune-weights.ts`)
+   *  to evaluate many candidate weight sets within one process without
+   *  rebuilding the adapter/scorer/metadata. Production paths call this
+   *  once at boot (if at all) and never mutate at runtime. */
+  setStructuralWeights(w: StructuralWeights | undefined): void {
+    this.structuralWeights = w;
+  }
+
+  /** Replace the per-interruption-type weights. Same tuning rationale as
+   *  `setStructuralWeights`. Size-validates the new map against the
+   *  ctor invariant (15 types). */
+  setInterruptionWeights(w: Record<InterruptionType, number>): void {
+    if (Object.keys(w).length !== 15) {
+      throw new Error(`[Solver] setInterruptionWeights: expected 15 weight types, got ${Object.keys(w).length}`);
+    }
+    this.weights = w;
   }
 
   score(
@@ -308,11 +327,13 @@ export class InterruptionScorer {
     // (Masquerena Link-2, Super Poly Fusion). Scores Extra Deck targets
     // tagged with `activeZones: ['EXTRA']` conditional on an enabler
     // on-field + free summon slot (MR5 EMZ ownership + consumesSelf
-    // exception for Masquerena). Discounted 0.5× for conditional
-    // materialization (see LATENT_DISCOUNT in latent-interruption-computer).
+    // exception for Masquerena). Discount factor is read from
+    // `structuralWeights.latentDiscount` (tunable via step-3 sweep) with
+    // `LATENT_DISCOUNT` as the fallback when structural config is absent.
     // Gated on `oppTurnEnablers` wired (via scorer ctor) — production paths
     // without Phase D config see zero behavioral change.
     if (this.oppTurnEnablers !== undefined) {
+      const discount = this.structuralWeights?.latentDiscount ?? LATENT_DISCOUNT;
       const latent = computeLatentInterruption(
         fieldState,
         this.oppTurnEnablers,
@@ -320,6 +341,7 @@ export class InterruptionScorer {
         this.weights,
         this.cardMetadata,
         this.linkArrows,
+        discount,
       );
       latentPoints += latent.totalLatent;
     }

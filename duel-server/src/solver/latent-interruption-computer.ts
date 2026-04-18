@@ -46,7 +46,12 @@ import type {
 import { ALL_ZONE_IDS } from './solver-types.js';
 import type { CardMetadataMap, SummonCategory } from './card-metadata.js';
 
-/** Conservative first-cut discount — V1 tune. See header rationale. */
+/** Conservative first-cut discount — V1 default. See header rationale.
+ *  The runtime value is now read from `structuralWeights.latentDiscount`
+ *  (Phase 3.0 C2, 2026-04-18) and passed into `computeLatentInterruption`.
+ *  This const remains exported as the reference default — used as the
+ *  scorer-side fallback when `structuralWeights` is undefined (legacy
+ *  test paths that don't wire the tuning config). */
 export const LATENT_DISCOUNT = 0.5;
 
 // =============================================================================
@@ -89,8 +94,9 @@ export interface LatentInterruptionBreakdown {
   /** Best raw target interruption weight (pre-discount) among eligible pairs.
    *  0 when no pair qualified. */
   bestRawTargetValue: number;
-  /** Final contribution = `bestRawTargetValue × LATENT_DISCOUNT`, added to
-   *  the scorer's `latentPoints`. */
+  /** Final contribution = `bestRawTargetValue × discount`, added to the
+   *  scorer's `latentPoints`. The discount is passed in by the caller
+   *  (scorer reads `structuralWeights.latentDiscount`, fallback LATENT_DISCOUNT). */
   totalLatent: number;
 }
 
@@ -200,6 +206,7 @@ export function computeLatentInterruption(
   weights: Record<InterruptionType, number>,
   cardMetadata: CardMetadataMap | undefined,
   linkArrows: LinkArrowsMap | undefined,
+  discount: number,
 ): LatentInterruptionBreakdown {
   if (state.turn !== 1) return EMPTY_BREAKDOWN;
   if (cardMetadata === undefined) return EMPTY_BREAKDOWN;
@@ -253,7 +260,7 @@ export function computeLatentInterruption(
   return {
     eligiblePairs,
     bestRawTargetValue,
-    totalLatent: bestRawTargetValue * LATENT_DISCOUNT,
+    totalLatent: bestRawTargetValue * discount,
   };
 }
 

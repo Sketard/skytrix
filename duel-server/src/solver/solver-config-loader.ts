@@ -300,6 +300,7 @@ const STRUCTURAL_WEIGHT_RANGES: Record<string, RangeRule> = {
   F4_W:                   { min: 0, max: 5 },
   F4_CAP:                 { min: 0, max: 20 },
   globalCap:              { min: 0, max: 50 },
+  latentDiscount:         { min: 0, max: 1 },
 };
 
 export function loadStructuralWeights(dataDir: string): StructuralWeights {
@@ -344,6 +345,47 @@ export function loadStructuralTutorCards(dataDir: string): StructuralTutorCards 
 
   console.log(`[Solver] structural-tutor-cards.json loaded (${Object.keys(cards).length} entries)`);
   return { cards };
+}
+
+// =============================================================================
+// Override helpers — used by `scripts/evaluate-structural.ts --weights-override`
+// (C3) and `scripts/tune-weights.ts` (C4) to apply partial weight overrides
+// at runtime without touching the on-disk JSON files. Each overridden field
+// is validated against the same range rule as the loader; unknown fields
+// throw to prevent silent typos.
+// =============================================================================
+
+export function applyStructuralWeightsOverride(
+  base: StructuralWeights,
+  override: Record<string, unknown>,
+): StructuralWeights {
+  const merged: Record<string, number | boolean | string | undefined> = { ...(base as unknown as Record<string, number | boolean | string | undefined>) };
+  for (const [field, value] of Object.entries(override)) {
+    if (field === '_validated' || field === '_notes') {
+      merged[field] = value as never;
+      continue;
+    }
+    const rule = STRUCTURAL_WEIGHT_RANGES[field];
+    if (!rule) {
+      throw new Error(`[Solver] Invalid weights override: unknown structural field '${field}'`);
+    }
+    merged[field] = validateRange(value, `override.structural.${field}`, rule);
+  }
+  return merged as unknown as StructuralWeights;
+}
+
+export function applyInterruptionWeightsOverride(
+  base: Record<InterruptionType, number>,
+  override: Record<string, unknown>,
+): Record<InterruptionType, number> {
+  const merged: Record<string, number> = { ...base };
+  for (const [type, value] of Object.entries(override)) {
+    if (!INTERRUPTION_TYPES.includes(type as InterruptionType)) {
+      throw new Error(`[Solver] Invalid weights override: unknown interruption type '${type}'`);
+    }
+    merged[type] = validateRange(value, `override.interruption.${type}`, { min: 0, max: 100 });
+  }
+  return merged as Record<InterruptionType, number>;
 }
 
 export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolverConfigs {

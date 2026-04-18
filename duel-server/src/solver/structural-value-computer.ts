@@ -48,6 +48,12 @@ export interface StructuralWeights {
 
   globalCap: number;
 
+  /** Phase D V1 latent-interruption discount (0..1). Migrated from the
+   *  hardcoded `LATENT_DISCOUNT = 0.5` const (see `latent-interruption-
+   *  computer.ts`) so the value is tunable via `structural-weights.json`
+   *  by the step-3 ES/grid sweep. */
+  latentDiscount: number;
+
   _validated?: boolean;
   _notes?: string;
 }

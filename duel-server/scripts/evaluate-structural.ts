@@ -30,7 +30,11 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 import { loadDatabase, loadScripts } from '../src/ocg-scripts.js';
-import { loadAllSolverConfigs } from '../src/solver/solver-config-loader.js';
+import {
+  loadAllSolverConfigs,
+  applyStructuralWeightsOverride,
+  applyInterruptionWeightsOverride,
+} from '../src/solver/solver-config-loader.js';
 import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { InterruptionScorer } from '../src/solver/interruption-scorer.js';
 import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
@@ -312,14 +316,40 @@ function compareBaselines(prev: BaselineFile, curr: BaselineFile): {
   return { regressions, improvements, corrections, stable };
 }
 
-async function main(): Promise<void> {
-  const outPath = parseStringArg('out');
-  const comparePath = parseStringArg('compare');
-  const budgetOverride = parseNumArg('budget-ms');
-  const nodeBudget = parseNumArg('node-budget');
-  const fixtureFilter = parseStringArg('only');
-  const scorerVersion = parseStringArg('label') ?? 'unspecified';
+// =============================================================================
+// Reusable evaluation API — used by scripts/tune-weights.ts (C4) to run many
+// evaluations without re-paying the cardDB/scripts/adapter boot cost.
+// =============================================================================
 
+export interface EvaluationContext {
+  fixture: FixtureFile;
+  adapter: OCGCoreAdapter;
+  scorer: InterruptionScorer;
+  ranker: GoldfishChainRanker;
+  allConfigs: ReturnType<typeof loadAllSolverConfigs>;
+  metadataSize: number;
+  dispose(): void;
+}
+
+export interface EvaluationOptions {
+  /** Fixture ids to include. `undefined` = all non-draft fixtures; an
+   *  explicit (possibly singleton) array = that subset. The CLI `--only`
+   *  flag wraps its single id into `[id]`. */
+  fixtureFilter?: readonly string[];
+  timeLimitMs: number;
+  nodeBudget?: number;
+  label: string;
+}
+
+/**
+ * Build the shared evaluation context once per process. The adapter, scorer,
+ * and ranker are reused across many `runEvaluation()` calls — boot cost
+ * (cardDB + scripts + OCGCore create) is paid once.
+ *
+ * Metadata is built from the union of ALL non-draft fixture cards (ignoring
+ * any per-run `fixtureFilter`), so the same context serves any fixture subset.
+ */
+export async function setupEvaluationContext(): Promise<EvaluationContext> {
   const DATA_DIR = resolve(import.meta.dirname!, '..', 'data');
   const FIXTURE_PATH = resolve(
     import.meta.dirname!, '..', '..',
@@ -333,16 +363,9 @@ async function main(): Promise<void> {
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
 
-  const validHands = fixture.hands.filter(h => {
-    if (h._draft === true) return false;
-    if (fixtureFilter && h.id !== fixtureFilter) return false;
-    return true;
-  });
-
-  // Scorer is shared across fixtures — build metadata as the union of every
-  // valid fixture's cards. O(130 cards × 1 stmt.get) at startup only.
   const metadataCardIds: number[] = [];
-  for (const h of validHands) {
+  for (const h of fixture.hands) {
+    if (h._draft === true) continue;
     const deck = fixture.decks[h.deck];
     if (!deck) continue;
     metadataCardIds.push(...deck.main, ...deck.extra, ...h.hand);
@@ -360,18 +383,44 @@ async function main(): Promise<void> {
   );
   const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
 
-  const timeLimitMs = budgetOverride ?? allConfigs.solverConfig.timeBudgetOptimalMs;
+  return {
+    fixture,
+    adapter,
+    scorer,
+    ranker,
+    allConfigs,
+    metadataSize: cardMetadata.size,
+    dispose: () => adapter.destroyAll(),
+  };
+}
 
-  const modeTag = nodeBudget !== undefined
-    ? `node-budget=${nodeBudget}`
+/**
+ * Run the DFS over all non-draft fixtures (optionally filtered) and return
+ * the BaselineFile. Does not read or write files — the caller owns I/O.
+ */
+export async function runEvaluation(
+  ctx: EvaluationContext,
+  opts: EvaluationOptions,
+): Promise<BaselineFile> {
+  const validHands = ctx.fixture.hands.filter(h => {
+    if (h._draft === true) return false;
+    if (opts.fixtureFilter && !opts.fixtureFilter.includes(h.id)) return false;
+    return true;
+  });
+
+  const modeTag = opts.nodeBudget !== undefined
+    ? `node-budget=${opts.nodeBudget}`
     : `phase-L=wall-clock`;
-  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${timeLimitMs}ms  ${modeTag}  label='${scorerVersion}'  metadataCards=${cardMetadata.size}`);
+  console.log(`[evaluate] fixtures: ${validHands.length}  budget=${opts.timeLimitMs}ms  ${modeTag}  label='${opts.label}'  metadataCards=${ctx.metadataSize}`);
 
   const fixtureResults: Record<string, FixtureResult> = {};
   for (const hand of validHands) {
     console.log(`\n[evaluate] ─── ${hand.id} (${hand.deck})`);
     try {
-      const res = await runFixture(adapter, scorer, ranker, fixture, hand, allConfigs, timeLimitMs, nodeBudget);
+      const res = await runFixture(
+        ctx.adapter, ctx.scorer, ctx.ranker, ctx.fixture, hand,
+        ctx.allConfigs, opts.timeLimitMs, opts.nodeBudget,
+      );
       fixtureResults[hand.id] = res;
       console.log(`  score=${res.score}  matched=${res.matched}/${res.matchedTotal}  ` +
         `nodes=${res.nodesExplored}  depth=${res.maxDepthReached}  ` +
@@ -381,7 +430,6 @@ async function main(): Promise<void> {
       console.error(`  FAIL: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  adapter.destroyAll();
 
   const cumulativeMatched = Object.values(fixtureResults).reduce((a, r) => a + r.matched, 0);
   const cumulativeMatchedTotal = Object.values(fixtureResults).reduce((a, r) => a + r.matchedTotal, 0);
@@ -390,9 +438,9 @@ async function main(): Promise<void> {
   const baseline: BaselineFile = {
     _meta: {
       timestamp: new Date().toISOString(),
-      budgetMs: timeLimitMs,
-      scorerVersion,
-      ...(nodeBudget !== undefined ? { rootChildBudgetNodes: nodeBudget } : {}),
+      budgetMs: opts.timeLimitMs,
+      scorerVersion: opts.label,
+      ...(opts.nodeBudget !== undefined ? { rootChildBudgetNodes: opts.nodeBudget } : {}),
     },
     fixtures: fixtureResults,
     aggregate: {
@@ -408,44 +456,124 @@ async function main(): Promise<void> {
   console.log(`  cumulative score:   ${cumulativeScore}`);
   console.log(`  fixtures:           ${Object.keys(fixtureResults).length}`);
 
-  if (outPath) {
-    const absOut = resolve(outPath);
-    mkdirSync(dirname(absOut), { recursive: true });
-    writeFileSync(absOut, JSON.stringify(baseline, null, 2) + '\n', 'utf-8');
-    console.log(`\n[evaluate] wrote ${absOut}`);
+  return baseline;
+}
+
+/**
+ * Weights override payload. Both objects are optional; fields missing from
+ * the override retain their loaded `structural-weights.json` /
+ * `interruption-weights.json` value. Unknown fields throw (silent typos
+ * would make tuning runs misleading).
+ *
+ * On-disk format (consumed by `--weights-override` flag):
+ * ```json
+ * {
+ *   "structural":   { "F1_W": 3, "latentDiscount": 0.7 },
+ *   "interruption": { "destruction": 1.5 }
+ * }
+ * ```
+ */
+export interface WeightsOverride {
+  structural?: Record<string, unknown>;
+  interruption?: Record<string, unknown>;
+}
+
+export function applyWeightsOverride(
+  ctx: EvaluationContext,
+  override: WeightsOverride,
+  sourceLabel: string,
+): void {
+  if (override.structural && Object.keys(override.structural).length > 0) {
+    const merged = applyStructuralWeightsOverride(ctx.allConfigs.structuralWeights, override.structural);
+    ctx.scorer.setStructuralWeights(merged);
+    console.log(`[evaluate] structural override applied from ${sourceLabel} (${Object.keys(override.structural).length} fields)`);
+  }
+  if (override.interruption && Object.keys(override.interruption).length > 0) {
+    const merged = applyInterruptionWeightsOverride(ctx.allConfigs.interruptionWeights, override.interruption);
+    ctx.scorer.setInterruptionWeights(merged);
+    console.log(`[evaluate] interruption override applied from ${sourceLabel} (${Object.keys(override.interruption).length} fields)`);
+  }
+}
+
+/** Reset the scorer's mutable weights to the loader-defined baseline.
+ *  Called by the sweep orchestrator between candidates so each candidate
+ *  applies its overrides against a clean base (not compounded). */
+export function resetWeightsToBaseline(ctx: EvaluationContext): void {
+  ctx.scorer.setStructuralWeights(ctx.allConfigs.structuralWeights);
+  ctx.scorer.setInterruptionWeights(ctx.allConfigs.interruptionWeights);
+}
+
+export function applyWeightsOverrideFile(ctx: EvaluationContext, path: string): void {
+  const absPath = resolve(path);
+  const raw = JSON.parse(readFileSync(absPath, 'utf-8')) as WeightsOverride;
+  applyWeightsOverride(ctx, raw, absPath);
+}
+
+async function main(): Promise<void> {
+  const outPath = parseStringArg('out');
+  const comparePath = parseStringArg('compare');
+  const budgetOverride = parseNumArg('budget-ms');
+  const nodeBudget = parseNumArg('node-budget');
+  const fixtureFilter = parseStringArg('only');
+  const scorerVersion = parseStringArg('label') ?? 'unspecified';
+  const weightsOverridePath = parseStringArg('weights-override');
+
+  const ctx = await setupEvaluationContext();
+  let exitCode = 0;
+  try {
+    if (weightsOverridePath !== undefined) {
+      applyWeightsOverrideFile(ctx, weightsOverridePath);
+    }
+
+    const timeLimitMs = budgetOverride ?? ctx.allConfigs.solverConfig.timeBudgetOptimalMs;
+    const baseline = await runEvaluation(ctx, {
+      fixtureFilter: fixtureFilter !== undefined ? [fixtureFilter] : undefined,
+      timeLimitMs,
+      nodeBudget,
+      label: scorerVersion,
+    });
+
+    if (outPath) {
+      const absOut = resolve(outPath);
+      mkdirSync(dirname(absOut), { recursive: true });
+      writeFileSync(absOut, JSON.stringify(baseline, null, 2) + '\n', 'utf-8');
+      console.log(`\n[evaluate] wrote ${absOut}`);
+    }
+
+    if (comparePath) {
+      const prev = JSON.parse(readFileSync(resolve(comparePath), 'utf-8')) as BaselineFile;
+      const { regressions, improvements, corrections, stable } = compareBaselines(prev, baseline);
+      console.log(`\n[evaluate] ═══ COMPARISON vs ${comparePath} ═══`);
+      console.log(`  prev label: '${prev._meta.scorerVersion}'  (${prev._meta.timestamp})`);
+      console.log(`  curr label: '${baseline._meta.scorerVersion}'  (${baseline._meta.timestamp})`);
+      console.log(`  cumulative matched: ${prev.aggregate.cumulativeMatched} → ${baseline.aggregate.cumulativeMatched}  (Δ${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched >= 0 ? '+' : ''}${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched})`);
+      console.log(`  cumulative score:   ${prev.aggregate.cumulativeScore} → ${baseline.aggregate.cumulativeScore}  (Δ${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore >= 0 ? '+' : ''}${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore})`);
+      if (improvements.length > 0) {
+        console.log(`\n  IMPROVEMENTS (${improvements.length}):`);
+        for (const l of improvements) console.log(`    ✓ ${l}`);
+      }
+      if (corrections.length > 0) {
+        console.log(`\n  CORRECTIONS (${corrections.length}):`);
+        for (const l of corrections) console.log(`    ~ ${l}`);
+      }
+      if (stable.length > 0) {
+        console.log(`\n  STABLE (${stable.length}):`);
+        for (const l of stable) console.log(`    = ${l}`);
+      }
+      if (regressions.length > 0) {
+        console.log(`\n  REGRESSIONS (${regressions.length}):`);
+        for (const l of regressions) console.log(`    ✗ ${l}`);
+        console.log(`\n[evaluate] FAIL: ${regressions.length} regression(s) detected`);
+        exitCode = 1;
+      } else {
+        console.log(`\n[evaluate] PASS: no regressions`);
+      }
+    }
+  } finally {
+    ctx.dispose();
   }
 
-  if (comparePath) {
-    const prev = JSON.parse(readFileSync(resolve(comparePath), 'utf-8')) as BaselineFile;
-    const { regressions, improvements, corrections, stable } = compareBaselines(prev, baseline);
-    console.log(`\n[evaluate] ═══ COMPARISON vs ${comparePath} ═══`);
-    console.log(`  prev label: '${prev._meta.scorerVersion}'  (${prev._meta.timestamp})`);
-    console.log(`  curr label: '${baseline._meta.scorerVersion}'  (${baseline._meta.timestamp})`);
-    console.log(`  cumulative matched: ${prev.aggregate.cumulativeMatched} → ${baseline.aggregate.cumulativeMatched}  (Δ${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched >= 0 ? '+' : ''}${baseline.aggregate.cumulativeMatched - prev.aggregate.cumulativeMatched})`);
-    console.log(`  cumulative score:   ${prev.aggregate.cumulativeScore} → ${baseline.aggregate.cumulativeScore}  (Δ${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore >= 0 ? '+' : ''}${baseline.aggregate.cumulativeScore - prev.aggregate.cumulativeScore})`);
-    if (improvements.length > 0) {
-      console.log(`\n  IMPROVEMENTS (${improvements.length}):`);
-      for (const l of improvements) console.log(`    ✓ ${l}`);
-    }
-    if (corrections.length > 0) {
-      console.log(`\n  CORRECTIONS (${corrections.length}):`);
-      for (const l of corrections) console.log(`    ~ ${l}`);
-    }
-    if (stable.length > 0) {
-      console.log(`\n  STABLE (${stable.length}):`);
-      for (const l of stable) console.log(`    = ${l}`);
-    }
-    if (regressions.length > 0) {
-      console.log(`\n  REGRESSIONS (${regressions.length}):`);
-      for (const l of regressions) console.log(`    ✗ ${l}`);
-      console.log(`\n[evaluate] FAIL: ${regressions.length} regression(s) detected`);
-      process.exit(1);
-    } else {
-      console.log(`\n[evaluate] PASS: no regressions`);
-    }
-  }
-
-  process.exit(0);
+  process.exit(exitCode);
 }
 
 main().catch(err => {
