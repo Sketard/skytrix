@@ -253,6 +253,16 @@ async function main(): Promise<void> {
   const ctx = await setupEvaluationContext();
   const records: CandidateRecord[] = [];
   try {
+    // Fail-fast on fixture ID typos — a 10h sweep on an empty filter would
+    // silently produce cumulativeMatched=0 and mislead downstream ranking.
+    if (spec.fixtureFilter) {
+      const validIds = new Set(ctx.fixture.hands.filter(h => h._draft !== true).map(h => h.id));
+      const invalid = spec.fixtureFilter.filter(id => !validIds.has(id));
+      if (invalid.length > 0) {
+        throw new Error(`[tune] Unknown fixture ids in fixtureFilter: ${invalid.join(', ')}`);
+      }
+    }
+
     for (let i = 0; i < assignments.length; i++) {
       const runId = `candidate-${String(i).padStart(4, '0')}`;
       console.log(`\n[tune] ═══ ${runId}  (${i + 1}/${assignments.length})`);
