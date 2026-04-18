@@ -506,8 +506,14 @@ export class DfsSolver implements SolverStrategy {
       const expectedCardId = ctx.canonicalPath[canonicalPathPointer];
       const match = actions.find(a => a.cardId === expectedCardId);
       if (match !== undefined) {
+        if (process.env.SOLVER_DEBUG_CANONICAL === '1') {
+          console.log(`[canonical] depth=${depth} pointer=${canonicalPathPointer} forced cardId=${expectedCardId} rIdx=${match.responseIndex} (${actions.length} → 1 options)`);
+        }
         actions = [match];
         nextCanonicalPointer = canonicalPathPointer + 1;
+      } else if (process.env.SOLVER_DEBUG_CANONICAL === '1') {
+        const cids = actions.map(a => a.cardId).slice(0, 8);
+        console.log(`[canonical] depth=${depth} pointer=${canonicalPathPointer} NO MATCH for cardId=${expectedCardId}; available cardIds=[${cids.join(',')}${actions.length > 8 ? ',...' : ''}] (n=${actions.length})`);
       }
     }
 

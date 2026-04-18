@@ -4,34 +4,32 @@
   "_source": "_bmad-output/planning-artifacts/research/mitsurugi-ryzeal-combo-reference.md § 2 CARD COMBO",
   "_note": "Canonical path hint: ordered list of cardIds consumed by the DFS at each decision point where the cardId matches an option. Pointer advances on match, stays put on non-match (= DFS explores that prompt freely). Not every OCGCore prompt is pinned — just the key decisions that determine the combo line.",
 
+  "_v1_note": "v1 assumed Habakiri could self-SS (pointer[1]=13332685). The recording showed Habakiri's SS-from-deck options don't include Habakiri itself (self-exclusion). v2 corrects pointer[1] to Futsu (55397172). Prayers ritual dropped from the path since Futsu can't be re-summoned (only 1 in deck, Prayers ritual-targets from hand/GY which is empty of ritual monsters).",
+
+  "_v2_note": "v2 still wrong. Debug of DFS with canonicalPath revealed Habakiri's SS-from-deck effect excludes RITUAL MONSTERS from the pool — options at the SELECT_CARD after NS Habakiri are [Saji, Kusanagi, Aramasa] only (the 3 non-ritual Mitsurugi effect monsters). So neither Habakiri copies nor Futsu/Murakumo are SSable by Habakiri's effect. Additionally, re-reading Habakiri's full text: the SS-from-deck effect is a HAND EFFECT (reveal in hand; SS from deck; tribute 1 monster), NOT an on-NS trigger. So step 2 must activate Habakiri's hand effect (not NS), keeping Habakiri in hand after the resolution. Full canonical mitsurugi line — confirmed by text-level reading 2026-04-18 — is: (1) Reveal Habakiri in hand → SS Saji from deck → tribute Habakiri (Habakiri goes to GY, triggers its own on-Tribute search-and-re-SS effect). (2) Saji's on-SS effect searches Mitsurugi Ritual spell (the real ritual spell, 81560239, NOT Prayers 45171524). (3) Habakiri's on-Tribute: search a Mitsurugi Spell/Trap + optionally SS Habakiri back. (4) Activate Prayers or Mitsurugi Ritual to Ritual-Summon or search-and-SS Futsu. v3 will require this expert-level sequencing — left to a session with expert deck knowledge.",
+
+  "_status": "INCOMPLETE — infrastructure validated (record + replay bit-exact), but canonical path authoring needs expert deck knowledge to produce the full 6/6 endboard match.",
+
+
+
   "canonicalPath": [
     13332685,
-    13332685,
-    45171524,
-    13332685,
     55397172,
-    35844557,
     8633261,
+    35844557,
     7511613,
-    72238166,
     34909328,
-    8165596,
     6798031,
     17954937
   ],
 
   "_pathAnnotations": [
     "NS Habakiri from hand",
-    "Habakiri effect: SS another Habakiri from deck (Level 8 material)",
-    "Activate Mitsurugi Prayers (ritual spell)",
-    "Prayers tribute: Habakiri",
-    "Prayers Ritual Summon: Futsu no Mitama",
-    "SS Sword Ryzeal from hand (on Ryzeal SS trigger)",
+    "Habakiri effect: SS Futsu no Mitama from deck",
     "SS Ice Ryzeal from hand",
-    "Xyz Summon Ryzeal Duo Drive (Sword + Ice)",
-    "SS Node Ryzeal via Duo Drive effect",
-    "Xyz Summon Ryzeal Detonator (Duo Drive as material + Ryzeals)",
-    "Xyz Summon Number 90: Galaxy-Eyes Photon Lord (Habakiri + Futsu)",
+    "SS Sword Ryzeal from hand",
+    "Xyz Summon Ryzeal Duo Drive (Ice + Sword materials)",
+    "Xyz Summon Ryzeal Detonator (Ryzeal engine extends via Duo Drive → Node → Detonator)",
     "Set Ryzeal Cross",
     "Set Mitsurugi Great Purification"
   ]
