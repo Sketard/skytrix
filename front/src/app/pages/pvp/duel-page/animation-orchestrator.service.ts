@@ -385,6 +385,12 @@ export class AnimationOrchestratorService {
       this._isProcessing = false;
       const queueLen = this.dataSource.animationQueue().length;
       if (queueLen === 0) return;
+      // Skip rescue when the inner loop paused on a legitimate wait — the
+      // overlay-ready effect (isWaitingForOverlay) and draws-complete
+      // callback (hasDrawsInFlight) own the resume. A rescue here retriggers
+      // the inner loop's early return in a tight microtask loop, starving
+      // the setTimeout-based animations that would clear the wait.
+      if (this.chainManager.isWaitingForOverlay || this.drawManager.hasDrawsInFlight) return;
       // Rescue cases for a stalled queue:
       //  (a) setAnimating(false) in the inner loop synchronously triggered
       //      advanceStep → feedTransition → enqueue. The effect that calls
