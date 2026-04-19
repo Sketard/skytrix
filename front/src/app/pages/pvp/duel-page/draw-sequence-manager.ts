@@ -374,7 +374,15 @@ export class DrawSequenceManager {
 
   private resumeQueueIfSafe(): void {
     if (!this.chainManager.hasActiveReplayTimeouts && this._onQueueResume) {
-      this._onQueueResume();
+      // Defer to next microtask. When this is called from a synchronously-
+      // resolving .finally() inside an 'async'-returning event handler (e.g.
+      // MSG_CONFIRM_CARDS for a non-HAND card where confirmCardsInHand's loop
+      // only hits `continue`), the orchestrator's _processAnimationQueueInner
+      // .finally has not yet cleared _isProcessing, so processAnimationQueue()
+      // would no-op on the `_isProcessing` guard. queueMicrotask lets the
+      // inner finally run first.
+      const resume = this._onQueueResume;
+      queueMicrotask(() => resume());
     }
   }
 

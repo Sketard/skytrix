@@ -383,15 +383,22 @@ export class AnimationOrchestratorService {
     this._isProcessing = true;
     this._processAnimationQueueInner().finally(() => {
       this._isProcessing = false;
-      // setAnimating(false) in the inner loop may have synchronously triggered
-      // advanceStep → feedTransition → enqueue. Effects that call
-      // startProcessingIfIdle can fire before this finally block, seeing
-      // _isProcessing=true and bailing out. Re-check the queue to pick up
-      // any events that arrived during the race window.
-      if (!this._isAnimating() && this.dataSource.animationQueue().length > 0) {
-        this.trace('postFinalize', { action: 'rescued-stall', queueLen: this.dataSource.animationQueue().length });
-        this.startProcessingIfIdle();
-      }
+      const queueLen = this.dataSource.animationQueue().length;
+      if (queueLen === 0) return;
+      // Rescue cases for a stalled queue:
+      //  (a) setAnimating(false) in the inner loop synchronously triggered
+      //      advanceStep → feedTransition → enqueue. The effect that calls
+      //      startProcessingIfIdle can fire before this finally block, sees
+      //      _isProcessing=true and bails — so we re-enter here.
+      //  (b) An 'async'-returning event handler whose awaited work resolved
+      //      synchronously (e.g. MSG_CONFIRM_CARDS for a non-HAND card, where
+      //      confirmCardsInHand's loop bodies all `continue`) called
+      //      resumeQueueIfSafe() → processAnimationQueue() while _isProcessing
+      //      was still true (microtask race). That call was a silent no-op
+      //      and nothing else will relaunch the queue — rescue here.
+      this.trace('postFinalize', { action: 'rescued-stall', queueLen });
+      if (this._isAnimating()) this.processAnimationQueue();
+      else this.startProcessingIfIdle();
     });
   }
 
