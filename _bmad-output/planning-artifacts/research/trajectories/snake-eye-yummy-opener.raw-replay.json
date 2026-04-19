@@ -1,0 +1,2288 @@
+{
+  "format": "raw-replay-v1",
+  "fixtureId": "snake-eye-yummy-opener",
+  "sourceReplayId": "921ca41c-715e-4991-9a42-b1cc73d16a09",
+  "generatedAt": "2026-04-19T18:37:31.425Z",
+  "terminated": "responses-exhausted",
+  "iterationsUsed": 425,
+  "responseCount": 177,
+  "playerTracked": 0,
+  "seed": [
+    "12301164246358577464",
+    "15489252968079702587",
+    "12428844045779631262",
+    "12960245582222047265"
+  ],
+  "decks": [
+    {
+      "main": [
+        9674034,
+        9674034,
+        10045474,
+        90241276,
+        85106525,
+        48452496,
+        45663742,
+        27260347,
+        10966439,
+        10966439,
+        10966439,
+        31425736,
+        31425736,
+        31425736,
+        68810435,
+        14558127,
+        14558127,
+        14558127,
+        97268402,
+        97268402,
+        97268402,
+        42141493,
+        42141493,
+        42141493,
+        73642296,
+        73642296,
+        59438930,
+        59438930,
+        2295440,
+        35269904,
+        53639887,
+        44822037,
+        29369059,
+        93360904,
+        10045474,
+        10045474,
+        25311006,
+        90241276,
+        35269904,
+        9674034,
+        66975205
+      ],
+      "extra": [
+        65741786,
+        29301450,
+        2772337,
+        20665527,
+        58071334,
+        30581601,
+        30581601,
+        31603289,
+        67098897,
+        93192592,
+        1528054,
+        41999284,
+        60303245,
+        79606837,
+        81846453
+      ]
+    },
+    {
+      "main": [
+        9674034,
+        9674034,
+        10045474,
+        90241276,
+        85106525,
+        48452496,
+        45663742,
+        27260347,
+        10966439,
+        10966439,
+        10966439,
+        31425736,
+        31425736,
+        31425736,
+        68810435,
+        14558127,
+        14558127,
+        14558127,
+        97268402,
+        97268402,
+        97268402,
+        42141493,
+        42141493,
+        42141493,
+        73642296,
+        73642296,
+        59438930,
+        59438930,
+        2295440,
+        35269904,
+        53639887,
+        44822037,
+        29369059,
+        93360904,
+        10045474,
+        10045474,
+        25311006,
+        90241276,
+        35269904,
+        9674034,
+        66975205
+      ],
+      "extra": [
+        65741786,
+        29301450,
+        2772337,
+        20665527,
+        58071334,
+        30581601,
+        30581601,
+        31603289,
+        67098897,
+        93192592,
+        1528054,
+        41999284,
+        60303245,
+        79606837,
+        81846453
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "stepIdx": 0,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 0,
+        "action": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 1,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 2
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 2,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 3,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 4,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 5,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 6,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 7,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          1
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 8,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 9,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 10,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 11,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 12,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 4
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 13,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 14,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 15,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 16,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 17,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 18,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 19,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 3,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 20,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 21,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 6
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 22,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 23,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 24,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 25,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 26,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 27,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 28,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 29,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 30,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 31,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 1,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 32,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 33,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 34,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 0
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 35,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 4
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 36,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 37,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 38,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 39,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 40,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 41,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          5,
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 42,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          1
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 43,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 44,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 45,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 2,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 46,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 2
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 47,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 48,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 49,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 50,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 51,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 52,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 53,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          1
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 54,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 55,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 2
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 56,
+      "promptType": 14,
+      "promptTypeName": "SELECT_OPTION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 4,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 57,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 58,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 59,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 60,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 61,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 62,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 63,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 64,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 65,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 66,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 67,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 68,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 4,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 69,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 70,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 6
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 71,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 72,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 73,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": false,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 74,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 75,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 76,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 5,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 77,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 78,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 79,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 1
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 80,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 4
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 81,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 82,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 83,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 84,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 85,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 86,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          1,
+          2
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 87,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 88,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 4
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 89,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 3
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 90,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 4
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 91,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 92,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 93,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 5,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 94,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 95,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 96,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 6
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 97,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 98,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 99,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 100,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 101,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 102,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 103,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 2
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 104,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 105,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 106,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 1,
+        "action": 5
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 107,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 108,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 109,
+      "promptType": 13,
+      "promptTypeName": "SELECT_YESNO",
+      "promptPlayer": 0,
+      "response": {
+        "yes": true,
+        "type": 3
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 110,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 111,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 3
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 112,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 113,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 114,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 2,
+        "action": 5
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 115,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 116,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 117,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 118,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 1
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 119,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 120,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 121,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 122,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 123,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 3,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 124,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0,
+          1
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 125,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 3
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 126,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 127,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 128,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 129,
+      "promptType": 12,
+      "promptTypeName": "SELECT_EFFECTYN",
+      "promptPlayer": 0,
+      "response": {
+        "yes": false,
+        "type": 2
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 130,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 131,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 132,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 0,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 133,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 0
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 134,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 135,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 2
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 136,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 137,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 138,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 139,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 140,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 1,
+        "action": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 141,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 142,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 143,
+      "promptType": 26,
+      "promptTypeName": "SELECT_UNSELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 7,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 144,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 145,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 146,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 147,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 148,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 149,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 2,
+        "action": 5
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 150,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 151,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 152,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          2
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 153,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 3
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 154,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 155,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 156,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 157,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 2,
+        "action": 5
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 158,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          1
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 159,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 160,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 161,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          0
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 162,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 4,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 163,
+      "promptType": 19,
+      "promptTypeName": "SELECT_POSITION",
+      "promptPlayer": 0,
+      "response": {
+        "type": 11,
+        "position": 1
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 164,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 165,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 166,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 2,
+        "action": 5
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 167,
+      "promptType": 15,
+      "promptTypeName": "SELECT_CARD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 5,
+        "indicies": [
+          6
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 168,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 169,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 170,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 4
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 171,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 172,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 173,
+      "promptType": 11,
+      "promptTypeName": "SELECT_IDLECMD",
+      "promptPlayer": 0,
+      "response": {
+        "type": 1,
+        "index": 0,
+        "action": 4
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 174,
+      "promptType": 18,
+      "promptTypeName": "SELECT_PLACE",
+      "promptPlayer": 0,
+      "response": {
+        "type": 10,
+        "places": [
+          {
+            "player": 0,
+            "location": 8,
+            "sequence": 0
+          }
+        ]
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 175,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 0,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    },
+    {
+      "stepIdx": 176,
+      "promptType": 16,
+      "promptTypeName": "SELECT_CHAIN",
+      "promptPlayer": 1,
+      "response": {
+        "type": 8,
+        "index": null
+      },
+      "autoRespond": false
+    }
+  ]
+}
