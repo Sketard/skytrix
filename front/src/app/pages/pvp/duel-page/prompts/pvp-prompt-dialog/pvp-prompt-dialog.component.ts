@@ -223,14 +223,14 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     // Otherwise the hint cardName is leftover from a summon/effect, not an activation.
     const chainHasActivation = prompt.type === 'SELECT_CHAIN' && this.wsService.activeChainLinks().length === 0;
     const hintCardName = hasHint && !chainHasActivation ? hint.cardName : '';
-    // Fallback to the prompt's own cardName (e.g. SELECT_EFFECTYN, SELECT_YESNO carry it directly).
-    // For SELECT_OPTION with no card context, use the last revealed card (excavated monster) if available.
+    // SELECT_EFFECTYN / SELECT_YESNO carry their own cardName — trust it over a leftover hint
+    // from an unrelated prior event (e.g. the Link summon that triggered this prompt).
     const promptCardName = 'cardName' in prompt ? (prompt as { cardName: string }).cardName : '';
     const confirmedCards = (this.confirmedCards() ?? this.wsService.lastConfirmedCards).filter(isExcavatedCard);
     const lastConfirmedName = prompt.type === 'SELECT_OPTION' && confirmedCards.length > 0
       ? confirmedCards[confirmedCards.length - 1].name
       : '';
-    const cardName = hintCardName || promptCardName || lastConfirmedName;
+    const cardName = promptCardName || hintCardName || lastConfirmedName;
     console.log(`[PROMPT] type=${prompt.type} | hint=`, hint, `| hintCardName="${hintCardName}" | promptCardName="${promptCardName}" | lastConfirmedName="${lastConfirmedName}" | resolved="${cardName}"`);
     // HINT_SELECTMSG (hintType 3) is meant for card-selection prompts.
     // Ignore its action for non-selection prompts (e.g. SELECT_OPTION) to prevent
