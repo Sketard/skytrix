@@ -1311,13 +1311,7 @@
           "position": "attack"
         },
         {
-          "zone": "MZONE",
-          "cardId": 8165596,
-          "cardName": "Number 90: Galaxy-Eyes Photon Lord",
-          "position": "attack"
-        },
-        {
-          "zone": "SZONE",
+          "zone": "FIELD",
           "cardId": 6798031,
           "cardName": "Ryzeal Cross",
           "position": "set"
@@ -1329,6 +1323,7 @@
           "position": "set"
         }
       ],
+      "_expectedBoardNote": "Revised 2026-04-18: removed Number 90 Galaxy-Eyes Photon Lord (8165596). Combo analysis showed Photon Lord (Rank 8, needs 2 Lv8 simultaneously) is not reachable from this hand without 3+ ritual-summon events, which exceeds the deck's available resources (2 ritual spells × 2 effects each / turn, but search bottlenecks limit effective RS to 2). Target reduced to 5/5 canonical board (Ryzeal Detonator + Ryzeal Duo Drive + Futsu + Cross set + Purification set).",
       "_seedFrozen": true
     },
     {

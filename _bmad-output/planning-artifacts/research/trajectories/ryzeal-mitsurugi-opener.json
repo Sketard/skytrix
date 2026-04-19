@@ -1,0 +1,272 @@
+{
+  "fixtureId": "ryzeal-mitsurugi-opener",
+  "description": "PARTIAL trajectory — 44 steps authored, matched=2/5 (Futsu + Cross). Based on user-provided Combo 1 (RS Ame via Ritual eff2 tribute Kusanagi+Aramasa from deck → recycle via Kusanagi on-Tribute → RS Futsu via Ritual eff1 tribute Murakumo → Murakumo on-Tribute search Purification → NS Ice → SS Star → set Cross → SS Sword → Sword search Ext → attempted Xyz Detonator).",
+  "_status": "BLOCKED 2026-04-18 at Xyz summon step — adapter's SELECT_CARD multi-pick auto-resolve heuristic (first-N) doesn't honor Xyz material constraints (2+ Lv4 Ryzeal). Detonator & Duo Drive stuck in Extra despite rIdx being picked. Resolution path: extend OCGCoreAdapter with exposeMultiPickMechanical flag for trace-assist authoring (est. 1-2h refactor). See project_solver_phase_5_lite_trace_assist_blocker_2026_04_18.md.",
+  "_ceiling": "matched=2/5 under current adapter. Expected 5/5 reachable once multi-pick exploratory exposure is shipped.",
+  "steps": [
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 8,
+      "cardId": 13332685,
+      "cardName": "Ame no Habakiri no Mitsurugi",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 18176525,
+      "cardName": "Mitsurugi no Mikoto, Saji",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 18176525,
+      "cardName": "Mitsurugi no Mikoto, Saji",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 18176525,
+      "cardName": "Mitsurugi no Mikoto, Saji",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 3,
+      "cardId": 81560239,
+      "cardName": "Mitsurugi Ritual",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 11,
+      "cardId": 81560239,
+      "cardName": "Mitsurugi Ritual",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 13332685,
+      "cardName": "Ame no Habakiri no Mitsurugi",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 82782870,
+      "cardName": "Mitsurugi no Mikoto, Kusanagi",
+      "actionDescription": "Add 1 \"Mitsurugi\" card from your GY or banishment to your hand"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 81560239,
+      "cardName": "Mitsurugi Ritual",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 40543231,
+      "cardName": "Mitsurugi no Mikoto, Aramasa",
+      "actionDescription": "Add 1 \"Mitsurugi\" monster from your Deck to your hand, except \"Mitsurugi no Mikoto, Aramasa\""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 19899073,
+      "cardName": "Ame no Murakumo no Mitsurugi",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 10,
+      "cardId": 81560239,
+      "cardName": "Mitsurugi Ritual",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 55397172,
+      "cardName": "Futsu no Mitama no Mitsurugi",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 19899073,
+      "cardName": "Ame no Murakumo no Mitsurugi",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 2,
+      "cardId": 17954937,
+      "cardName": "Mitsurugi Great Purification",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 8633261,
+      "cardName": "Ice Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 8633261,
+      "cardName": "Ice Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 84433129,
+      "cardName": "Star Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 84433129,
+      "cardName": "Star Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 6798031,
+      "cardName": "Ryzeal Cross",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 35844557,
+      "cardName": "Sword Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 35844557,
+      "cardName": "Sword Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 34022970,
+      "cardName": "Ext Ryzeal",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 7,
+      "cardId": 34909328,
+      "cardName": "Ryzeal Detonator",
+      "actionDescription": ""
+    }
+  ]
+}

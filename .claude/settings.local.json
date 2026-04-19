@@ -10,7 +10,9 @@
       "Bash(cmd /c:*)",
       "Bash(npm install:*)",
       "Bash(node:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(SOLVER_INSTRUMENT=1 npx tsx scripts/evaluate-structural.ts --node-budget=400 --budget-ms=3600000 --only=stun-runick-opener --label=step2-phase2-runick)",
+      "Bash(npx tsx *)"
     ]
   }
 }

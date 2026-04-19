@@ -209,6 +209,9 @@ export class DfsSolver implements SolverStrategy {
       rootChildBudgetMs: Math.floor(timeBudget * ROOT_CHILD_BUDGET_FRACTION),
       rootChildBudgetNodes: config.rootChildBudgetNodes,
       canonicalPath: config.canonicalPath,
+      bannedCardIds: config.bannedCardIds && config.bannedCardIds.length > 0
+        ? new Set(config.bannedCardIds)
+        : undefined,
       currentRootChildStart: undefined,
       branchLastPeakTime: undefined,
       branchLastPeakNodes: undefined,
@@ -493,6 +496,19 @@ export class DfsSolver implements SolverStrategy {
 
     // Get legal actions — advances through mechanical/opponent prompts
     let actions = ctx.oracle.getLegalActions(handle);
+
+    // Anti-pin filter (Phase 5-lite Phase 0). When `bannedCardIds` is set,
+    // remove any action whose cardId is in the ban set BEFORE canonicalPath
+    // forcing. Complements pins: pins steer toward a desired line, bans
+    // block scorer-exploited detours (e.g., Mitsurugi Mirror tributing the
+    // canonical ritual target). Undefined in production.
+    if (ctx.bannedCardIds !== undefined) {
+      const before = actions.length;
+      actions = actions.filter(a => !ctx.bannedCardIds!.has(a.cardId));
+      if (process.env.SOLVER_DEBUG_CANONICAL === '1' && actions.length !== before) {
+        console.log(`[canonical] depth=${depth} banned filter: ${before} → ${actions.length} options`);
+      }
+    }
 
     // Canonical-path forcing (Phase 5-lite Phase 0). When a canonicalPath
     // is set on the DFS config and still has entries, try to match the
@@ -1116,6 +1132,7 @@ export class DfsSolver implements SolverStrategy {
       rootChildBudgetMs: Number.POSITIVE_INFINITY,
       rootChildBudgetNodes: undefined,
       canonicalPath: undefined,
+      bannedCardIds: undefined,
       currentRootChildStart: undefined,
       branchLastPeakTime: undefined,
       branchLastPeakNodes: undefined,
@@ -1402,6 +1419,13 @@ interface DfsContext {
    *  Unused (undefined) in production solves; set by
    *  `scripts/record-trajectory.ts` during trajectory derivation. */
   canonicalPath: readonly number[] | undefined;
+  /** Phase 5-lite Phase 0 (2026-04-18) — anti-pins. When non-empty, every
+   *  legal action whose `cardId` is in this set is filtered out upfront
+   *  (before canonicalPath forcing) so the DFS never picks these cards.
+   *  Complements `canonicalPath` for hint authoring: pins steer toward a
+   *  desired line, anti-pins block scorer-exploited detours. Undefined
+   *  (production default) = no filter. */
+  bannedCardIds: ReadonlySet<number> | undefined;
   /** Phase L — timestamp at which the currently-explored first-level
    *  root-child branch began. Set in the child loop at `depth === 0`
    *  before the recursive call, cleared in the `finally` after the pop.

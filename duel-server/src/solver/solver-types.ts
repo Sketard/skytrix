@@ -225,6 +225,14 @@ export interface SolverConfig {
    *  from terse combo-reference hints authored by humans. When `undefined`,
    *  the DFS explores normally (production default). */
   canonicalPath?: readonly number[];
+  /** Phase 5-lite Phase 0 (2026-04-18) — anti-pins. Set of cardIds that
+   *  the DFS must never pick at any decision point. Filters legal actions
+   *  upfront (before canonicalPath forcing) so the DFS explores the
+   *  remaining options freely. Used to block specific cards that the
+   *  scorer mis-rewards (e.g., Mitsurugi Mirror tributing the canonical
+   *  ritual target, or generic 3-material Xyz consuming the engine pool).
+   *  When `undefined` or empty, no filter is applied (production default). */
+  bannedCardIds?: readonly number[];
 }
 
 export interface EndBoardCard {

@@ -1,0 +1,5 @@
+{
+  "fixtureId": "ryzeal-mitsurugi-opener",
+  "description": "Probe — no canonical forcing (non-matching cardId). Dumps vanilla DFS mainPath.",
+  "canonicalPath": [999999999]
+}

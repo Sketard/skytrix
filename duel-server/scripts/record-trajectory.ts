@@ -60,6 +60,10 @@ interface HintFile {
   fixtureId: string;
   description?: string;
   canonicalPath: number[];
+  /** Anti-pins: cardIds the DFS must never pick. Blocks scorer-exploited
+   *  detours (e.g., Mitsurugi Mirror tributing the canonical ritual
+   *  target). Forwarded to `SolverConfig.bannedCardIds`. */
+  bannedCardIds?: number[];
 }
 
 interface TrajectoryStep {
@@ -73,6 +77,7 @@ interface TrajectoryFile {
   fixtureId: string;
   description: string;
   canonicalPathHint: number[];
+  bannedCardIdsHint?: number[];
   steps: TrajectoryStep[];
 }
 
@@ -170,9 +175,15 @@ async function main(): Promise<void> {
       timeLimitMs: budgetMs,
       rootChildBudgetNodes: nodeBudget,
       canonicalPath: hint.canonicalPath,
+      bannedCardIds: hint.bannedCardIds && hint.bannedCardIds.length > 0
+        ? hint.bannedCardIds
+        : undefined,
     };
 
-    console.log(`[record] fixture=${hint.fixtureId}  hint-len=${hint.canonicalPath.length}  nb=${nodeBudget}`);
+    const banSuffix = hint.bannedCardIds && hint.bannedCardIds.length > 0
+      ? `  bans=[${hint.bannedCardIds.join(',')}]`
+      : '';
+    console.log(`[record] fixture=${hint.fixtureId}  hint-len=${hint.canonicalPath.length}  nb=${nodeBudget}${banSuffix}`);
     const t0 = Date.now();
     const result = dfs.solve(adapter, solverConfig, signal, () => {}, startHandle);
     const wallMs = Date.now() - t0;
@@ -193,6 +204,9 @@ async function main(): Promise<void> {
       fixtureId: hint.fixtureId,
       description: hint.description ?? '',
       canonicalPathHint: hint.canonicalPath,
+      ...(hint.bannedCardIds && hint.bannedCardIds.length > 0
+        ? { bannedCardIdsHint: hint.bannedCardIds }
+        : {}),
       steps,
     };
 
