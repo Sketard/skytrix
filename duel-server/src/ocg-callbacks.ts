@@ -25,20 +25,31 @@ export function createCardReader(db: CardDB): (code: number) => OcgCardData | nu
     }
 
     const level = Number(row['level']);
+    const type = Number(row['type']);
+    const def = Number(row['def']);
+    // TYPE_LINK = 0x4000000. For Link monsters, the `def` column stores the
+    // link marker bitmask (arrows); their actual defense stat is conventionally
+    // 0 since Link monsters don't have DEF. For non-Link monsters, def is the
+    // real defense stat and link_marker is 0.
+    const isLink = (type & 0x4000000) !== 0;
+    const linkMarker = isLink ? def : 0;
+    if (isLink && process.env.OCG_DEBUG_LINK_MARKER === '1') {
+      console.log(`[cardReader] ${row['id']} (Link) link_marker=${linkMarker} (0x${linkMarker.toString(16)}) level=${level & 0xFF}`);
+    }
 
     return {
       code: Number(row['id']),
       alias: Number(row['alias']),
       setcodes,
-      type: Number(row['type']),
+      type,
       level: level & 0xFF,
       lscale: (level >> 24) & 0xFF,
       rscale: (level >> 16) & 0xFF,
       attack: Number(row['atk']),
-      defense: Number(row['def']),
+      defense: isLink ? 0 : def,
       race: BigInt(row['race']),
       attribute: Number(row['attribute']),
-      link_marker: 0,
+      link_marker: linkMarker,
     };
   };
 }

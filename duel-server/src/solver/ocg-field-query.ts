@@ -218,18 +218,38 @@ export function decodeFieldMask(
   mask: number,
   count: number,
 ): { player: number; location: number; sequence: number }[] {
+  // OCGCore field-mask bit layout (per ygopro source):
+  //   bits 0-4   : MZONE seq 0-4 (main monster zones)
+  //   bits 5-6   : MZONE seq 5-6 (Extra Monster Zones L/R)
+  //   bits 8-12  : SZONE seq 0-4 (spell/trap zones)
+  //   bit 13     : FZONE (field spell)
+  //   bits 14-15 : PZONE (pendulum)
+  //   bits 16-31 : player 1 (same layout shifted by 16)
+  // A SET bit means the zone is BLOCKED. An UNSET bit means the zone is
+  // available for placement. Link summons to EMZ-only zones previously failed
+  // because seqs 5-6 weren't iterated. Added 2026-04-19 alongside trace-assist
+  // multi-pick support.
   const places: { player: number; location: number; sequence: number }[] = [];
   for (let p = 0; p < 2 && places.length < count; p++) {
-    for (let seq = 0; seq < 5 && places.length < count; seq++) {
+    // Main + Extra Monster Zones (seq 0-6)
+    for (let seq = 0; seq < 7 && places.length < count; seq++) {
       const bit = p * 16 + seq;
       if (!(mask & (1 << bit))) {
         places.push({ player: p, location: OcgLocation.MZONE, sequence: seq });
       }
     }
+    // Spell/Trap Zones (seq 0-4)
     for (let seq = 0; seq < 5 && places.length < count; seq++) {
       const bit = p * 16 + 8 + seq;
       if (!(mask & (1 << bit))) {
         places.push({ player: p, location: OcgLocation.SZONE, sequence: seq });
+      }
+    }
+    // Field Spell Zone (single slot, bit 13)
+    if (places.length < count) {
+      const bit = p * 16 + 13;
+      if (!(mask & (1 << bit))) {
+        places.push({ player: p, location: OcgLocation.FZONE, sequence: 0 });
       }
     }
   }

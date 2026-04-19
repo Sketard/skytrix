@@ -62,6 +62,25 @@ interface InternalHandle {
    *  `usesPerTurn > 1`. Cleared on every NEW_TURN. Cloned by `forkViaReplay`.
    *  Populated only for player-side activations of tagged cards (Story 1.8). */
   activationLog: Map<number, number[]>;
+  /** Phase 5-lite trace-assist (2026-04-19) — accumulated partial picks for
+   *  multi-pick mechanical prompts (SELECT_CARD min>1, SELECT_TRIBUTE,
+   *  SELECT_SUM). Only populated when `adapter.exposeMultiPickMechanical` is
+   *  true. The atomic OCG response is sent once the user issues a "commit"
+   *  action; `picks` is then cleared. Caches the source msg so re-entry
+   *  (second `getLegalActions` without engine advance) can re-enumerate. */
+  pendingMultiPick?: PendingMultiPick;
+}
+
+interface PendingMultiPick {
+  promptType: 'SELECT_CARD' | 'SELECT_TRIBUTE' | 'SELECT_SUM';
+  responseType: 5 | 12 | 14;
+  min: number;
+  max: number;
+  picks: number[];
+  /** SELECT_SUM only: target sum to match against `sum(selects[i].amount)`. */
+  targetSum?: number;
+  /** Cached source message — re-used on re-entry (OCG drains message buffer). */
+  cachedMsg: Record<string, unknown>;
 }
 
 // =============================================================================
@@ -83,6 +102,15 @@ export class OCGCoreAdapter implements GameOracle {
    *  (legacy code paths and tests) — in that case the activation log stays
    *  empty and OPT-aware scoring degrades gracefully to pre-1.8 behavior. */
   private readonly tags: Record<string, InterruptionTag>;
+
+  /** Phase 5-lite trace-assist (2026-04-19). When true, `runUntilPlayerPrompt`
+   *  surfaces multi-pick mechanical prompts (SELECT_CARD min>1, SELECT_TRIBUTE,
+   *  SELECT_SUM, SELECT_UNSELECT_CARD) as interactive Actions instead of
+   *  auto-resolving them with first-N / first-index heuristics. Production DFS
+   *  keeps this false (default) — the heuristic response is fine for scoring-
+   *  bound exploration, and interactive multi-pick would produce non-terminal
+   *  trees the DFS can't rank. Only set to true by `scripts/trace-assist.ts`. */
+  exposeMultiPickMechanical = false;
 
   get snapshotAvailable(): boolean {
     return this._snapshotAvailable;
@@ -165,6 +193,31 @@ export class OCGCoreAdapter implements GameOracle {
 
   private _applyActionImpl(handle: DuelHandle, action: Action): void {
     const internal = this.resolveHandle(handle);
+
+    // Phase 5-lite trace-assist: partial picks mutate pending state only;
+    // they never reach duelSetResponse. actionHistory still records them so
+    // `forkViaReplay` and trace-assist replay semantics stay consistent.
+    if (action.actionTag === 'multi-pick-add') {
+      const pending = internal.pendingMultiPick;
+      if (!pending) throw new Error('[Solver] multi-pick-add without pending state');
+      const sentinel = action._response as { __partialPickIndex?: number };
+      if (sentinel?.__partialPickIndex === undefined) {
+        throw new Error('[Solver] multi-pick-add missing __partialPickIndex sentinel');
+      }
+      pending.picks.push(sentinel.__partialPickIndex);
+      internal.actionHistory.push(action);
+      return;
+    }
+    if (action.actionTag === 'multi-pick-undo') {
+      const pending = internal.pendingMultiPick;
+      if (!pending || pending.picks.length === 0) {
+        throw new Error('[Solver] multi-pick-undo with no pending picks');
+      }
+      pending.picks.pop();
+      internal.actionHistory.push(action);
+      return;
+    }
+
     const response = this.actionToResponse(action);
     try {
       this.core.duelSetResponse(internal.nativeHandle, response as never);
@@ -174,6 +227,11 @@ export class OCGCoreAdapter implements GameOracle {
       // instead of replaying corrupted history.
       internal.isActive = false;
       throw new Error(`[Solver] applyAction failed for action responseIndex=${action.responseIndex}: ${String(err)}`);
+    }
+    // Clear pending multi-pick state after a successful commit (or any other
+    // action that reaches duelSetResponse — the atomic response is in-flight).
+    if (action.actionTag === 'multi-pick-commit' || internal.pendingMultiPick) {
+      internal.pendingMultiPick = undefined;
     }
     internal.actionHistory.push(action);
     internal.responseHistory.push(response);
@@ -337,6 +395,14 @@ export class OCGCoreAdapter implements GameOracle {
    * Returns the legal actions array when an exploratory prompt is found.
    */
   private runUntilPlayerPrompt(internal: InternalHandle): Action[] {
+    // Phase 5-lite trace-assist: re-entry after a partial pick. The engine has
+    // NOT been advanced (no duelSetResponse was sent), so OCG's message buffer
+    // is drained — we can't re-read the SELECT_* msg. Re-enumerate from the
+    // cached msg instead.
+    if (this.exposeMultiPickMechanical && internal.pendingMultiPick) {
+      return this.enumerateMultiPickAtomic(internal);
+    }
+
     while (true) {
       const status = this.core.duelProcess(internal.nativeHandle);
       const messages = this.core.duelGetMessage(internal.nativeHandle);
@@ -385,6 +451,14 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Mechanical prompts: auto-resolve with defaults
         if (promptType && !EXPLORATORY_PROMPTS.has(promptType)) {
+          // Phase 5-lite trace-assist: expose multi-pick mechanical prompts as
+          // interactive actions BEFORE the existing exploratory gates (those
+          // only handle single-pick SELECT_CARD). The interactive path covers
+          // SELECT_CARD min>1, SELECT_TRIBUTE, SELECT_SUM, SELECT_UNSELECT_CARD.
+          if (this.exposeMultiPickMechanical) {
+            const interactive = this.tryInteractiveMechanical(msgAny, promptType, internal);
+            if (interactive !== null) return interactive;
+          }
           // Phase A #3 — constraint 2.1 / SELECT_CARD context-aware: when the
           // SELECT_CARD prompt is a small-pool single-pick (≤
           // SELECT_CARD_EXPLORATORY_MAX candidates, min=max=1), expose it as
@@ -760,6 +834,326 @@ export class OCGCoreAdapter implements GameOracle {
     }
 
     return actions;
+  }
+
+  // ===========================================================================
+  // Phase 5-lite trace-assist — interactive multi-pick mechanical prompts
+  // ===========================================================================
+
+  /** Dispatch for multi-pick mechanical prompts when
+   *  `exposeMultiPickMechanical` is true. Returns enumerated Actions for
+   *  SELECT_CARD (min>1), SELECT_TRIBUTE, SELECT_SUM, SELECT_UNSELECT_CARD.
+   *  Returns `null` to signal "not a multi-pick prompt we handle" — caller
+   *  falls through to the existing single-pick exploratory gates and
+   *  ultimately to `autoRespondMechanical`. */
+  private tryInteractiveMechanical(
+    msg: Record<string, unknown>,
+    promptType: PromptType,
+    internal: InternalHandle,
+  ): Action[] | null {
+    const msgType = (msg as { type: number }).type;
+
+    // SELECT_UNSELECT_CARD — iterative protocol: each pick is a real OCG
+    // round-trip, no pending state.
+    if (msgType === OcgMessageType.SELECT_UNSELECT_CARD) {
+      return this.enumerateUnselectCard(msg);
+    }
+
+    // SELECT_PLACE — destination selection for summons. Expose when EITHER
+    // (a) an EMZ slot is available (ED summon — EMZ_L vs EMZ_R choice), OR
+    // (b) more than 1 M-zone is available among the current-player's
+    //     placements. Case (b) covers Fusion alt-SS (e.g. Doomed Dragon
+    //     from S/T) where placement column matters for Link-arrow targeting
+    //     of later summons. Auto-resolve only when exactly 1 placement
+    //     exists (trivial NS into the last empty column).
+    if (msgType === OcgMessageType.SELECT_PLACE
+      && ((msg['count'] as number) ?? 1) === 1) {
+      const mask = (msg['field_mask'] as number) ?? 0;
+      // Count P0-side available slots across MZone seqs 0-6 (includes EMZ).
+      let p0Slots = 0;
+      let emzAny = false;
+      for (let seq = 0; seq < 7; seq++) {
+        if (!(mask & (1 << seq))) {
+          p0Slots++;
+          if (seq === 5 || seq === 6) emzAny = true;
+        }
+      }
+      // Expose when EMZ available (ED SS choice matters) OR when 2-4 Main
+      // Zone slots are available (alt-SS / post-summoned fields where
+      // column choice matters). Skip when all 5 main zones free (fresh-NS
+      // case, irrelevant column choice).
+      if (emzAny || (p0Slots >= 2 && p0Slots <= 4)) {
+        return this.enumerateSelectPlace(msg);
+      }
+    }
+
+    // Single-pick SELECT_CARD with large pool (>SELECT_CARD_EXPLORATORY_MAX):
+    // the DFS default is to first-N auto-resolve (silently loses search-target
+    // control). In trace-assist mode, expose every candidate as an action so
+    // the author can pick specific search targets (e.g. Habakiri's Mitsurugi-
+    // card search for Great Purification).
+    if (msgType === OcgMessageType.SELECT_CARD
+      && ((msg['min'] as number) ?? 1) === 1
+      && ((msg['max'] as number) ?? 1) === 1
+      && ((msg['selects'] ?? []) as unknown[]).length > 0) {
+      return this.enumerateSinglePickSelectCard(msg);
+    }
+
+    // Atomic multi-pick — accumulate picks in internal.pendingMultiPick, emit
+    // a single batched duelSetResponse on commit.
+    const isMultiCard = msgType === OcgMessageType.SELECT_CARD
+      && ((msg['min'] as number) ?? 1) > 1;
+    const isTribute = msgType === OcgMessageType.SELECT_TRIBUTE;
+    const isSum = msgType === OcgMessageType.SELECT_SUM;
+    if (!isMultiCard && !isTribute && !isSum) return null;
+
+    // When the OPTIONAL pool (`selects`) is empty, there is no user choice —
+    // any valid response is fully constituted from `selects_must` (SUM) or
+    // is trivially forced. Fall through to autoRespondMechanical rather than
+    // expose a stuck prompt with 0 interactive actions. Applies especially
+    // to Ritual tributes with only 1 valid Reptile in hand (SELECT_SUM:
+    // selects_must=[Habakiri] selects=[]). */
+    const selectsLen = ((msg['selects'] ?? []) as unknown[]).length;
+    if (selectsLen === 0) return null;
+
+    internal.pendingMultiPick = {
+      promptType: promptType as 'SELECT_CARD' | 'SELECT_TRIBUTE' | 'SELECT_SUM',
+      responseType: isMultiCard ? 5 : (isTribute ? 12 : 14),
+      min: (msg['min'] as number) ?? 1,
+      max: (msg['max'] as number) ?? 1,
+      picks: [],
+      targetSum: isSum ? (msg['amount'] as number) : undefined,
+      cachedMsg: msg,
+    };
+    return this.enumerateMultiPickAtomic(internal);
+  }
+
+  /** SELECT_PLACE enumerator for trace-assist (count=1). Decodes the field
+   *  mask into candidate zones (MZONE seq 0-6, SZONE seq 0-4, FZONE) and
+   *  emits one action per available slot. Used by author to force specific
+   *  placements — e.g. Link monster to EMZ_R vs EMZ_L based on Link arrow
+   *  targeting strategy. Each pick is atomic: response is {type:10, places:[{...}]}. */
+  private enumerateSelectPlace(msg: Record<string, unknown>): Action[] {
+    this._lastActionResponses.clear();
+    const actions: Action[] = [];
+    const pushAction = (action: Action, response: unknown): void => {
+      action._response = response;
+      this._lastActionResponses.set(action.responseIndex, response);
+      actions.push(action);
+    };
+
+    const mask = (msg['field_mask'] as number) ?? 0;
+    const places = decodeFieldMask(mask, 99); // decode ALL available places
+
+    const zoneLabel = (p: { player: number; location: number; sequence: number }): string => {
+      const side = p.player === 0 ? 'P0' : 'P1';
+      if (p.location === OcgLocation.MZONE) {
+        if (p.sequence <= 4) return `${side}/M${p.sequence + 1}`;
+        return `${side}/${p.sequence === 5 ? 'EMZ_L' : 'EMZ_R'}`;
+      }
+      if (p.location === OcgLocation.SZONE) return `${side}/S${p.sequence + 1}`;
+      if (p.location === OcgLocation.FZONE) return `${side}/FIELD`;
+      return `${side}/loc${p.location}/seq${p.sequence}`;
+    };
+
+    for (let i = 0; i < places.length; i++) {
+      const p = places[i];
+      // Skip opponent zones — player 0 normally doesn't place there.
+      if (p.player !== 0) continue;
+      pushAction({
+        responseIndex: i,
+        cardId: 0,
+        promptType: 'SELECT_PLACE',
+        isExploratory: true,
+        actionTag: 'place',
+        description: `place at ${zoneLabel(p)}`,
+      }, { type: 10, places: [p] });
+    }
+    return actions;
+  }
+
+  /** Single-pick SELECT_CARD enumerator (min=max=1). In trace-assist mode this
+   *  overrides the DFS's large-pool heuristics (first-N / preferred-only K) to
+   *  expose every candidate as a distinct action. Each pick is atomic — the
+   *  response is `{type:5, indicies:[i]}` sent directly; no pending state. */
+  private enumerateSinglePickSelectCard(msg: Record<string, unknown>): Action[] {
+    this._lastActionResponses.clear();
+    const actions: Action[] = [];
+    const selects = (msg['selects'] ?? []) as { code?: number; location?: number }[];
+    const pushAction = (action: Action, response: unknown): void => {
+      action._response = response;
+      this._lastActionResponses.set(action.responseIndex, response);
+      actions.push(action);
+    };
+    for (let i = 0; i < selects.length; i++) {
+      pushAction({
+        responseIndex: i,
+        cardId: selects[i].code ?? 0,
+        promptType: 'SELECT_CARD',
+        isExploratory: true,
+        actionTag: 'pick',
+      }, { type: 5, indicies: [i] });
+    }
+    return actions;
+  }
+
+  /** SELECT_UNSELECT_CARD enumerator. OCGCore protocol:
+   *  - `select_cards` — not yet picked, can be toggled in (response index `i`).
+   *  - `unselect_cards` — already picked, can be toggled out (response index
+   *    `select_cards.length + j`).
+   *  - `can_finish` — min reached (and material-validity check passes). Send
+   *    `{type:7, index:null}` to commit.
+   *  - `can_cancel` — same null-index path but only when OCG permits cancel.
+   *  Each pick/unpick is a real `duelSetResponse`; OCG re-prompts with an
+   *  updated pool until finish.
+   *  See types.d.ts OcgMessageSelectUnselectCard + OcgResponseSelectUnselectCard. */
+  private enumerateUnselectCard(msg: Record<string, unknown>): Action[] {
+    this._lastActionResponses.clear();
+    const actions: Action[] = [];
+    const pushAction = (action: Action, response: unknown): void => {
+      action._response = response;
+      this._lastActionResponses.set(action.responseIndex, response);
+      actions.push(action);
+    };
+
+    const selectCards = ((msg['select_cards'] ?? []) as { code?: number }[]);
+    const unselectCards = ((msg['unselect_cards'] ?? []) as { code?: number }[]);
+    const canFinish = Boolean(msg['can_finish']);
+
+    let idx = 0;
+    for (let i = 0; i < selectCards.length; i++) {
+      pushAction({
+        responseIndex: idx++,
+        cardId: selectCards[i].code ?? 0,
+        promptType: 'SELECT_UNSELECT_CARD',
+        isExploratory: true,
+        actionTag: 'unselect-pick',
+        description: `pick select_cards[${i}]`,
+      }, { type: 7, index: i });
+    }
+    for (let j = 0; j < unselectCards.length; j++) {
+      const engineIdx = selectCards.length + j;
+      pushAction({
+        responseIndex: idx++,
+        cardId: unselectCards[j].code ?? 0,
+        promptType: 'SELECT_UNSELECT_CARD',
+        isExploratory: true,
+        actionTag: 'unselect-drop',
+        description: `drop unselect_cards[${j}]`,
+      }, { type: 7, index: engineIdx });
+    }
+    if (canFinish) {
+      pushAction({
+        responseIndex: idx++,
+        cardId: 0,
+        promptType: 'SELECT_UNSELECT_CARD',
+        isExploratory: true,
+        actionTag: 'unselect-finish',
+        description: `finish selection`,
+      }, { type: 7, index: null });
+    }
+    return actions;
+  }
+
+  /** Atomic multi-pick enumerator for SELECT_CARD (min>1), SELECT_TRIBUTE,
+   *  SELECT_SUM. Reads the cached msg + pending picks from `internal.pendingMultiPick`.
+   *  Emits one action per remaining candidate (`multi-pick-add`), optionally
+   *  an undo action (`multi-pick-undo`), and a commit action
+   *  (`multi-pick-commit`) when the current picks satisfy the prompt's
+   *  constraints. The commit action's `_response` is the batched OCG payload. */
+  private enumerateMultiPickAtomic(internal: InternalHandle): Action[] {
+    this._lastActionResponses.clear();
+    const actions: Action[] = [];
+    const pending = internal.pendingMultiPick;
+    if (!pending) return actions;
+
+    const selects = (pending.cachedMsg['selects'] ?? []) as {
+      code?: number; amount?: number; release_param?: number;
+    }[];
+    const pickedSet = new Set(pending.picks);
+    const pushAction = (action: Action, response: unknown): void => {
+      action._response = response;
+      this._lastActionResponses.set(action.responseIndex, response);
+      actions.push(action);
+    };
+
+    let idx = 0;
+    // "Add" actions — every candidate not yet picked, while under max.
+    if (pending.picks.length < pending.max) {
+      for (let i = 0; i < selects.length; i++) {
+        if (pickedSet.has(i)) continue;
+        const c = selects[i];
+        let desc = `add selects[${i}]`;
+        if (pending.promptType === 'SELECT_SUM' && c.amount !== undefined) {
+          desc += ` (amount=${c.amount})`;
+        } else if (pending.promptType === 'SELECT_TRIBUTE' && c.release_param !== undefined) {
+          desc += ` (release=${c.release_param})`;
+        }
+        pushAction({
+          responseIndex: idx++,
+          cardId: c.code ?? 0,
+          promptType: pending.promptType,
+          isExploratory: true,
+          actionTag: 'multi-pick-add',
+          description: desc,
+        }, { __partialPickIndex: i });
+      }
+    }
+
+    // "Undo" — pop last pick. Cheap built-in correction.
+    if (pending.picks.length > 0) {
+      pushAction({
+        responseIndex: idx++,
+        cardId: 0,
+        promptType: pending.promptType,
+        isExploratory: true,
+        actionTag: 'multi-pick-undo',
+        description: `undo last (picks=[${pending.picks.join(',')}])`,
+      }, { __unpickLast: true });
+    }
+
+    // "Commit" — only when constraints satisfied.
+    if (this.canCommitMultiPick(pending, selects)) {
+      pushAction({
+        responseIndex: idx++,
+        cardId: 0,
+        promptType: pending.promptType,
+        isExploratory: true,
+        actionTag: 'multi-pick-commit',
+        description: `commit [${pending.picks.join(',')}]`,
+      }, { type: pending.responseType, indicies: [...pending.picks] });
+    }
+
+    return actions;
+  }
+
+  /** Gate for enabling the "commit" action in `enumerateMultiPickAtomic`.
+   *  - SELECT_CARD / SELECT_TRIBUTE: count in [min, max].
+   *  - SELECT_SUM: count in [min, max] AND sum(picks[i].amount) === targetSum.
+   *  Callers are responsible for catching `duelSetResponse` throws — OCG
+   *  applies its own material-validity check on top of these surface checks. */
+  private canCommitMultiPick(
+    pending: PendingMultiPick,
+    selects: { amount?: number }[],
+  ): boolean {
+    const n = pending.picks.length;
+    if (n < pending.min) return false;
+    if (n > pending.max) return false;
+    if (pending.promptType === 'SELECT_SUM' && pending.targetSum !== undefined) {
+      let sum = 0;
+      for (const i of pending.picks) sum += selects[i]?.amount ?? 0;
+      if (sum !== pending.targetSum) return false;
+    }
+    return true;
+  }
+
+  /** Accessor for trace-assist UI — expose the current pending multi-pick
+   *  state so the CLI can render "current picks: [i,j]" alongside the
+   *  enumerated action list. Returns undefined when no multi-pick is in
+   *  progress. */
+  getPendingMultiPick(handle: DuelHandle): PendingMultiPick | undefined {
+    const internal = this.resolveHandle(handle);
+    return internal.pendingMultiPick;
   }
 
   // ===========================================================================

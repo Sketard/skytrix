@@ -107,6 +107,12 @@ async function main(): Promise<void> {
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
+  // Phase 5-lite (2026-04-19): match trace-assist authoring semantics. Trajectories
+  // authored with interactive multi-pick exposure (SELECT_UNSELECT_CARD, large-pool
+  // SELECT_CARD) contain response indices that only materialize under the same
+  // adapter flag — otherwise the DFS's first-N heuristic picks a different target
+  // and replay drifts at the search step.
+  adapter.exposeMultiPickMechanical = true;
 
   try {
     const mainDeck = [...deck.main];

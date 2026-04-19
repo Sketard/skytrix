@@ -1,0 +1,429 @@
+{
+  "fixtureId": "radiant-typhoon-opener",
+  "description": "AUTHORED 2026-04-19, RE-AUTHORED 2026-04-19 post-P4-polyfill — 70 steps, 3/3 matched. Endboard: Totem Bird (Rank 3 Xyz, M1 atk, Eldam+Swen overlays) + Hraesvelgr (Link-3, EMZ_L atk) + Mandate (face-up Continuous Trap, SZONE). Canonical combo line per radiant-typhoon-combo-plan-2026-04-19.md: SS Eldam → search Swen → SS Swen → search Chant → Xyz Totem Bird (Eldam+Swen consumed as overlays) → activate Chant CL1 + Krosea CL2 SS-self chain → Krosea search Ascendance+MST → SS Meghala → activate Ascendance Quick-Play (search MST) → Meghala trigger SS Vortex from deck (now MZONE has space because Xyz consumed Eldam/Swen properly) → Marine Eidolon Link-2 (Krosea+Meghala, EMZ_L) → search MST → activate Vision Quick-Play → Marine Eidolon e3 places Mandate face-up → Hraesvelgr Link-3 (Marine Eidolon + Vortex, EMZ_L) → EP.",
+  "_status": "PASS 2026-04-19 (re-authored) — 3/3 matched, canonical combo line, no workarounds. Required P4 polyfill in patch-ocgcore-wasm.mjs (Duel.GetReasonEffect / Duel.GetReasonPlayer stubs for proc_workaround.lua compat with WASM 0.1.1).",
+  "_ocg_note": "PRE-P4-POLYFILL (2026-04-19 morning): Xyz materials were NOT consumed (Totem Bird summon left Eldam/Swen on M1/M2 with 0 overlays on Totem Bird). Root cause: proc_workaround.lua line 438 monkey-patches Duel.Overlay calling Duel.GetReasonEffect() — but that function is bound in upstream edo9300/ygopro-core (libduel.cpp 4158) yet missing in @n1xx1/ocgcore-wasm 0.1.1. Crash silenced by errorHandler stub → Operation never reached the original C++ Duel.Overlay → xyz_overlay processor never ran. Polyfill `if not Duel.GetReasonEffect then ... end` shipped as P4 in patch-ocgcore-wasm.mjs. With polyfill: clean Vortex-via-Meghala combo executes correctly.",
+  "_replay_note": "replay-trajectory.ts enables adapter.exposeMultiPickMechanical=true to honor SELECT_UNSELECT_CARD interactive picks and SELECT_PLACE prompts authored in this file.",
+  "steps": [
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 2,
+      "cardId": 54143349,
+      "cardName": "Radiant Typhoon Eldam",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 54143349,
+      "cardName": "Radiant Typhoon Eldam",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 7,
+      "cardId": 80538047,
+      "cardName": "Radiant Typhoon Swen",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 3,
+      "cardId": 80538047,
+      "cardName": "Radiant Typhoon Swen",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/M2"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 80538047,
+      "cardName": "Radiant Typhoon Swen",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 67115133,
+      "cardName": "Radiant Typhoon Chant",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 7,
+      "cardId": 71068247,
+      "cardName": "Totem Bird",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 54143349,
+      "cardName": "Radiant Typhoon Eldam",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 80538047,
+      "cardName": "Radiant Typhoon Swen",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/M3"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 67115133,
+      "cardName": "Radiant Typhoon Chant",
+      "actionDescription": "Activate 1 of these effects"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 27755794,
+      "cardName": "Radiant Typhoon Meghala",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 16922142,
+      "cardName": "Radiant Typhoon Krosea",
+      "actionDescription": "Special Summon this card from your hand"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/M4"
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 16922142,
+      "cardName": "Radiant Typhoon Krosea",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 5,
+      "cardId": 25940932,
+      "cardName": "Radiant Typhoon Ascendance",
+      "actionDescription": "pick select_cards[5]"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 5318639,
+      "cardName": "Mystical Space Typhoon",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 4,
+      "cardId": 27755794,
+      "cardName": "Radiant Typhoon Meghala",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/M3"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 2,
+      "cardId": 25940932,
+      "cardName": "Radiant Typhoon Ascendance",
+      "actionDescription": "Activate 1 of these effects"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 5318639,
+      "cardName": "Mystical Space Typhoon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 27755794,
+      "cardName": "Radiant Typhoon Meghala",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 53927851,
+      "cardName": "Radiant Typhoon Varuroon, the Vibrant Vortex",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/M4"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 39341885,
+      "cardName": "Radiant Typhoon Varuroon, the Marine Eidolon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 16922142,
+      "cardName": "Radiant Typhoon Krosea",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 27755794,
+      "cardName": "Radiant Typhoon Meghala",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/EMZ_L"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 39341885,
+      "cardName": "Radiant Typhoon Varuroon, the Marine Eidolon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 5318639,
+      "cardName": "Mystical Space Typhoon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 11,
+      "cardId": 20508881,
+      "cardName": "Radiant Typhoon Vision",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 2,
+      "cardId": 5318639,
+      "cardName": "Mystical Space Typhoon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 39341885,
+      "cardName": "Radiant Typhoon Varuroon, the Marine Eidolon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 53813120,
+      "cardName": "Radiant Typhoon Mandate",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 5,
+      "cardId": 49105782,
+      "cardName": "Hraesvelgr, the Desperate Doom Eagle",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 2,
+      "cardId": 39341885,
+      "cardName": "Radiant Typhoon Varuroon, the Marine Eidolon",
+      "actionDescription": "pick select_cards[2]"
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 53927851,
+      "cardName": "Radiant Typhoon Varuroon, the Vibrant Vortex",
+      "actionDescription": "pick select_cards[1]"
+    },
+    {
+      "responseIndex": 3,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "finish selection"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "place at P0/EMZ_L"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 15,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    }
+  ]
+}

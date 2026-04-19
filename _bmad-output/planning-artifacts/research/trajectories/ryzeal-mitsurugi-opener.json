@@ -1,8 +1,9 @@
 {
   "fixtureId": "ryzeal-mitsurugi-opener",
-  "description": "PARTIAL trajectory — 44 steps authored, matched=2/5 (Futsu + Cross). Based on user-provided Combo 1 (RS Ame via Ritual eff2 tribute Kusanagi+Aramasa from deck → recycle via Kusanagi on-Tribute → RS Futsu via Ritual eff1 tribute Murakumo → Murakumo on-Tribute search Purification → NS Ice → SS Star → set Cross → SS Sword → Sword search Ext → attempted Xyz Detonator).",
-  "_status": "BLOCKED 2026-04-18 at Xyz summon step — adapter's SELECT_CARD multi-pick auto-resolve heuristic (first-N) doesn't honor Xyz material constraints (2+ Lv4 Ryzeal). Detonator & Duo Drive stuck in Extra despite rIdx being picked. Resolution path: extend OCGCoreAdapter with exposeMultiPickMechanical flag for trace-assist authoring (est. 1-2h refactor). See project_solver_phase_5_lite_trace_assist_blocker_2026_04_18.md.",
-  "_ceiling": "matched=2/5 under current adapter. Expected 5/5 reachable once multi-pick exploratory exposure is shipped.",
+  "description": "COMPLETE authored trajectory (46 steps, 4/5 matched) — 2026-04-19. Ritual eff1 Futsu target tributing Habakiri → Habakiri on-Tribute searches Great Purification → NS Ice → Ice trigger SS Star → Star sets Cross → SS Sword → Sword searches Ext → Xyz Detonator (Ice+Star) → set Purification → EP.",
+  "_status": "COMPLETE 2026-04-19 — 4/5 matched (Futsu + Detonator + Cross + Purification). Duo Drive (7511613) unreachable via this line: Ext Ryzeal SS-self is blocked (OCG applies R4-only lock strictly, rejecting HAND-SS of non-Rank-4-Xyz-from-ED even though Ext is Lv4 Pyro from HAND). Only Sword + Futsu remain as Lv4+ on field after Detonator Xyz. Node Ryzeal is FIRE not LIGHT so Sword's LIGHT-Pyro search can't reach it. Final endboard at turn 2 shows Ice+Star detached from Detonator (probable Ryzeal Cross end-phase detach) + Sword as harmless extras.",
+  "_ceiling": "4/5 via this line. 5/5 would require a different step order — e.g., Xyz Duo Drive FIRST (Ice+Star materials), then NS Sword or SS Sword+Ext, then Xyz Detonator second. Requires re-authoring + verifying the lock state at each decision point.",
+  "_replay_note": "replay-trajectory.ts enables adapter.exposeMultiPickMechanical=true to honor the interactive response indices authored in this file.",
   "steps": [
     {
       "responseIndex": -1,
@@ -71,66 +72,6 @@
       "actionDescription": ""
     },
     {
-      "responseIndex": 1,
-      "cardId": 0,
-      "cardName": "",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": -1,
-      "cardId": 0,
-      "cardName": "",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": 0,
-      "cardId": 13332685,
-      "cardName": "Ame no Habakiri no Mitsurugi",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": 1,
-      "cardId": 82782870,
-      "cardName": "Mitsurugi no Mikoto, Kusanagi",
-      "actionDescription": "Add 1 \"Mitsurugi\" card from your GY or banishment to your hand"
-    },
-    {
-      "responseIndex": 0,
-      "cardId": 81560239,
-      "cardName": "Mitsurugi Ritual",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": 0,
-      "cardId": 40543231,
-      "cardName": "Mitsurugi no Mikoto, Aramasa",
-      "actionDescription": "Add 1 \"Mitsurugi\" monster from your Deck to your hand, except \"Mitsurugi no Mikoto, Aramasa\""
-    },
-    {
-      "responseIndex": -1,
-      "cardId": 0,
-      "cardName": "",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": 0,
-      "cardId": 19899073,
-      "cardName": "Ame no Murakumo no Mitsurugi",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": -1,
-      "cardId": 0,
-      "cardName": "",
-      "actionDescription": ""
-    },
-    {
-      "responseIndex": 10,
-      "cardId": 81560239,
-      "cardName": "Mitsurugi Ritual",
-      "actionDescription": ""
-    },
-    {
       "responseIndex": 0,
       "cardId": 0,
       "cardName": "",
@@ -143,15 +84,15 @@
       "actionDescription": ""
     },
     {
-      "responseIndex": 0,
+      "responseIndex": 3,
       "cardId": 55397172,
       "cardName": "Futsu no Mitama no Mitsurugi",
       "actionDescription": ""
     },
     {
       "responseIndex": 1,
-      "cardId": 19899073,
-      "cardName": "Ame no Murakumo no Mitsurugi",
+      "cardId": 13332685,
+      "cardName": "Ame no Habakiri no Mitsurugi",
       "actionDescription": ""
     },
     {
@@ -161,7 +102,7 @@
       "actionDescription": ""
     },
     {
-      "responseIndex": 2,
+      "responseIndex": 0,
       "cardId": 17954937,
       "cardName": "Mitsurugi Great Purification",
       "actionDescription": ""
@@ -197,7 +138,7 @@
       "actionDescription": ""
     },
     {
-      "responseIndex": 1,
+      "responseIndex": 2,
       "cardId": 84433129,
       "cardName": "Star Ryzeal",
       "actionDescription": ""
@@ -251,7 +192,7 @@
       "actionDescription": ""
     },
     {
-      "responseIndex": 1,
+      "responseIndex": 0,
       "cardId": 34022970,
       "cardName": "Ext Ryzeal",
       "actionDescription": ""
@@ -266,6 +207,78 @@
       "responseIndex": 7,
       "cardId": 34909328,
       "cardName": "Ryzeal Detonator",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 8633261,
+      "cardName": "Ice Ryzeal",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 84433129,
+      "cardName": "Star Ryzeal",
+      "actionDescription": "pick select_cards[0]"
+    },
+    {
+      "responseIndex": 3,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "finish selection"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 34909328,
+      "cardName": "Ryzeal Detonator",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 13332685,
+      "cardName": "Ame no Habakiri no Mitsurugi",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 10,
+      "cardId": 17954937,
+      "cardName": "Mitsurugi Great Purification",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 13,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
       "actionDescription": ""
     }
   ]

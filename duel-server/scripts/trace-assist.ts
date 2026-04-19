@@ -94,21 +94,36 @@ function initDuel(adapter: OCGCoreAdapter, hand: HandFixture, deck: { main: numb
   return adapter.createDuel(duelConfig);
 }
 
+interface ReplayResult {
+  handle: DuelHandle;
+  /** Number of steps successfully replayed. Steps at index >= replayed
+   *  were dropped because the adapter's action pool at that point did not
+   *  contain a match (typically adapter semantics changed between sessions —
+   *  e.g. multi-pick exposure added). Caller should truncate the trajectory
+   *  to this length and resume authoring. */
+  replayed: number;
+  driftReason?: string;
+}
+
 function replaySteps(
   adapter: OCGCoreAdapter,
   handle: DuelHandle,
   steps: TrajectoryStep[],
-): DuelHandle {
+): ReplayResult {
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     const legal = adapter.getLegalActions(handle);
     const match = legal.find(a => a.responseIndex === step.responseIndex && a.cardId === step.cardId);
     if (!match) {
-      throw new Error(`[trace] replay drift at step ${i}: (rIdx=${step.responseIndex}, cid=${step.cardId}/${step.cardName}) not in pool of ${legal.length} actions`);
+      return {
+        handle,
+        replayed: i,
+        driftReason: `step ${i}: (rIdx=${step.responseIndex}, cid=${step.cardId}/${step.cardName}) not in pool of ${legal.length} actions`,
+      };
     }
     adapter.applyAction(handle, match);
   }
-  return handle;
+  return { handle, replayed: steps.length };
 }
 
 function formatAction(a: Action): string {
@@ -139,6 +154,7 @@ async function main(): Promise<void> {
   const fixtureId = parseStringArg('fixture');
   const outPath = parseStringArg('out');
   const description = parseStringArg('description') ?? '';
+  const scriptPath = parseStringArg('script');
   if (!fixtureId || !outPath) {
     console.error('[trace] --fixture=<id> and --out=<path> required');
     process.exit(2);
@@ -154,6 +170,11 @@ async function main(): Promise<void> {
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
   const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
   const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
+  // Phase 5-lite (2026-04-19): expose multi-pick mechanical prompts
+  // (SELECT_CARD min>1, SELECT_TRIBUTE, SELECT_SUM, SELECT_UNSELECT_CARD)
+  // as interactive actions so the author can pick Xyz/Synchro materials,
+  // tribute targets, etc. manually instead of hitting the first-N heuristic.
+  adapter.exposeMultiPickMechanical = true;
 
   let traj: TrajectoryFile;
   if (existsSync(absOut)) {
@@ -168,9 +189,43 @@ async function main(): Promise<void> {
   }
 
   let handle = initDuel(adapter, hand, deck);
-  if (traj.steps.length > 0) handle = replaySteps(adapter, handle, traj.steps);
+  if (traj.steps.length > 0) {
+    const r = replaySteps(adapter, handle, traj.steps);
+    handle = r.handle;
+    if (r.replayed < traj.steps.length) {
+      console.log(`[trace] ⚠ drift detected — ${r.driftReason}`);
+      console.log(`[trace] ⚠ truncating trajectory from ${traj.steps.length} steps to ${r.replayed} and re-initializing handle`);
+      traj.steps.length = r.replayed;
+      saveTrajectory(absOut, traj);
+      // The partial replay drained OCG's message buffer; the handle is now
+      // wedged. Re-init and re-apply the truncated steps to get a clean
+      // handle at a WAITING state with pending messages available.
+      adapter.destroyAll();
+      handle = initDuel(adapter, hand, deck);
+      if (traj.steps.length > 0) {
+        const r2 = replaySteps(adapter, handle, traj.steps);
+        handle = r2.handle;
+        if (r2.replayed < traj.steps.length) {
+          throw new Error(`[trace] cascading drift after truncate — ${r2.driftReason}`);
+        }
+      }
+    }
+  }
 
-  const rl = createInterface({ input: stdin, output: stdout });
+  // Script mode: read commands from file, apply sequentially, exit at end.
+  // One command per line. Comments via '#' supported.
+  let scriptCommands: string[] | undefined;
+  let scriptCursor = 0;
+  if (scriptPath) {
+    const raw = readFileSync(resolve(scriptPath), 'utf-8');
+    scriptCommands = raw.split(/\r?\n/)
+      .map(l => l.replace(/#.*$/, '').trim())
+      .filter(l => l.length > 0);
+    console.log(`[trace] script mode: ${scriptCommands.length} commands from ${scriptPath}`);
+  }
+
+  const rl = scriptCommands ? null : createInterface({ input: stdin, output: stdout });
+  const verbose = process.argv.includes('--verbose') ? true : (scriptCommands ? false : true);
 
   try {
     while (true) {
@@ -180,14 +235,31 @@ async function main(): Promise<void> {
         break;
       }
 
-      console.log(`\n═══ Step ${traj.steps.length} ═══`);
-      const fs = adapter.getFieldState(handle);
-      console.log(`turn=${fs.turn}  phase=${fs.phase}  handSize=${fs.zones['HAND']?.length ?? 0}  legalActions=${legal.length}`);
-      for (let i = 0; i < legal.length; i++) {
-        console.log(`  [${String(i).padStart(2)}] ${formatAction(legal[i])}`);
+      if (verbose) {
+        console.log(`\n═══ Step ${traj.steps.length} ═══`);
+        const fs = adapter.getFieldState(handle);
+        console.log(`turn=${fs.turn}  phase=${fs.phase}  handSize=${fs.zones['HAND']?.length ?? 0}  legalActions=${legal.length}`);
+        const pending = adapter.getPendingMultiPick(handle);
+        if (pending) {
+          const target = pending.targetSum !== undefined ? `  target=${pending.targetSum}` : '';
+          console.log(`  ⎘ pending ${pending.promptType}: picks=[${pending.picks.join(',')}]  min=${pending.min}  max=${pending.max}${target}`);
+        }
+        for (let i = 0; i < legal.length; i++) {
+          console.log(`  [${String(i).padStart(2)}] ${formatAction(legal[i])}`);
+        }
       }
 
-      const ans = (await rl.question('pick [index|p|u|s|q]> ')).trim();
+      let ans: string;
+      if (scriptCommands) {
+        if (scriptCursor >= scriptCommands.length) {
+          console.log(`[trace] script exhausted at step ${traj.steps.length}. Saving and exiting.`);
+          break;
+        }
+        ans = scriptCommands[scriptCursor++];
+        console.log(`[step ${traj.steps.length}] legal=${legal.length} → pick '${ans}'`);
+      } else {
+        ans = (await rl!.question('pick [index|p|u|s|q]> ')).trim();
+      }
 
       if (ans === 'q' || ans === 's') {
         console.log(`[trace] exiting. Trajectory saved to ${absOut}`);
@@ -200,7 +272,15 @@ async function main(): Promise<void> {
         saveTrajectory(absOut, traj);
         adapter.destroyAll();
         handle = initDuel(adapter, hand, deck);
-        if (traj.steps.length > 0) handle = replaySteps(adapter, handle, traj.steps);
+        if (traj.steps.length > 0) {
+          const r = replaySteps(adapter, handle, traj.steps);
+          handle = r.handle;
+          if (r.replayed < traj.steps.length) {
+            console.log(`[trace] ⚠ undo caused drift at replay — truncating to ${r.replayed}`);
+            traj.steps.length = r.replayed;
+            saveTrajectory(absOut, traj);
+          }
+        }
         console.log(`[trace] undid step, now at step ${traj.steps.length}`);
         continue;
       }
@@ -225,7 +305,7 @@ async function main(): Promise<void> {
       console.log(`  → applied rIdx=${chosen.responseIndex} ${step.cardName}  (saved ${absOut})`);
     }
   } finally {
-    rl.close();
+    if (rl) rl.close();
     adapter.destroyAll();
   }
 
