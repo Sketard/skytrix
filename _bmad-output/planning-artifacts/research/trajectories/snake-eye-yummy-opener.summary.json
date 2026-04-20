@@ -1,0 +1,153 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "description": "Auto-converted from snake-eye-yummy-opener.raw-replay.json — 24 adapter-level steps (decision summary of 177 raw responses)",
+  "sourceRawReplayPath": "_bmad-output/planning-artifacts/research/trajectories/snake-eye-yummy-opener.raw-replay.json",
+  "format": "adapter-summary-v1",
+  "_warning": "NOT replayable via scripts/replay-trajectory.ts — solver init differs from PvP init (deck residue order drift). Human-readable summary only.",
+  "steps": [
+    {
+      "responseIndex": 0,
+      "cardId": 9674034,
+      "cardName": "Snake-Eye Ash",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 9674034,
+      "cardName": "Snake-Eye Ash",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 90241276,
+      "cardName": "Snake-Eyes Poplar",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 90241276,
+      "cardName": "Snake-Eyes Poplar",
+      "actionDescription": "Special Summon this card"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 90241276,
+      "cardName": "Snake-Eyes Poplar",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 53639887,
+      "cardName": "Divine Temple of the Snake-Eye",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 3,
+      "cardId": 41999284,
+      "cardName": "Linkuriboh",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 31603289,
+      "cardName": "Cupsy★Yummy Way",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 7,
+      "cardId": 53639887,
+      "cardName": "Divine Temple of the Snake-Eye",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 30581601,
+      "cardName": "Yummy★Snatchy",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    }
+  ]
+}
