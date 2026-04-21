@@ -28,7 +28,7 @@ export class GoldfishChainRanker implements ActionRanker {
     this._descriptionWarnLogged = false;
   }
 
-  rank(actions: Action[], _state: FieldState): Action[] {
+  rank(actions: Action[], state: FieldState): Action[] {
     if (actions.length === 0) return actions;
 
     const promptType = actions[0].promptType;
@@ -42,7 +42,15 @@ export class GoldfishChainRanker implements ActionRanker {
     }
 
     if (promptType === 'SELECT_IDLECMD') {
-      return this.rankIdleCmd(actions);
+      // Turn-1 to_bp filter (2026-04-21): Battle Phase is useless on turn 1
+      // (first-turn player cannot declare attacks per YGO rules). Filtering
+      // out of the search space saves DFS exploration of empty BP subtrees
+      // and prevents MCTS rollouts from prematurely entering BP via random
+      // picks. Retained on turn >= 2 where BP is combat-meaningful.
+      const filtered = state.turn === 1
+        ? actions.filter(a => a.actionTag !== 'to_bp')
+        : actions;
+      return this.rankIdleCmd(filtered);
     }
 
     // SELECT_EFFECTYN / SELECT_YESNO: OCGCore convention is resp=1=yes,
