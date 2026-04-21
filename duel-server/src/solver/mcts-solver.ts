@@ -431,12 +431,35 @@ export class MCTSSolver implements SolverStrategy {
     const epsilon = this.configFile.rolloutEpsilon;
     let lastActionsLen = 0;
 
+    // Turn-1 gate (2026-04-21): mirror DFS's virtual-terminal-at-turn-2
+    // semantics. Without this, rollouts continue into opponent's turn 2
+    // where Mitsurugi quick-effects + opp-turn triggers inflate weighted/
+    // fallback scores vs the turn-1 endboard DFS caps at. Fixture
+    // validation measures turn-1 only; MCTS must match that scope.
+    //
+    // Strategy: snapshot the last turn-1 state observed during the rollout.
+    // When turn flips to 2, break and score the snapshot instead of the
+    // turn-2 state. If rollout never observes a turn-1 state (pathological
+    // case — root already at turn 2), fall back to final state.
+    let lastTurn1State: FieldState | undefined;
+    let lastTurn1Log: ActivationLog | undefined;
+
     while (depth < maxDepth) {
       const actions = oracle.getLegalActions(handle);
       lastActionsLen = actions.length;
       if (actions.length === 0) break;
 
-      const ranked = this.rankIfNeeded(actions, handle, oracle);
+      const fieldState = oracle.getFieldState(handle);
+      if (fieldState.turn >= 2) {
+        // Opponent's turn entered — stop rollout; score the captured turn-1 state.
+        break;
+      }
+      lastTurn1State = fieldState;
+      lastTurn1Log = oracle.getActivationLog(handle);
+
+      const ranked = this.ranker.needsState(actions[0].promptType)
+        ? this.ranker.rank(actions, fieldState)
+        : actions;
 
       // Epsilon-greedy: (1-ε) best, ε random
       const action = prng.next() < epsilon
@@ -452,20 +475,21 @@ export class MCTSSolver implements SolverStrategy {
     // is normal terminal — only the gated case is truncation.
     if (depth >= maxDepth && lastActionsLen > 0) metrics.depthCapHit = true;
 
-    const finalState = oracle.getFieldState(handle);
-    // Story 1.8: snapshot the activation log for OPT-aware scoring AND for
-    // verification key parity. We snapshot here (rather than re-fetching in
-    // buildResult) because the rollout handle is destroyed after this method
-    // returns — the live log would be gone.
-    const finalLog = cloneActivationLog(oracle.getActivationLog(handle));
-    const { score, scoreBreakdown } = this.scorer.score(finalState, finalLog);
+    // Turn-1 gate: use the snapshotted turn-1 state when available;
+    // otherwise fall back to the current handle state (rollout never saw
+    // turn-1, either because root was already turn-2 or because oracle
+    // failed to emit actions at the root). Log is cloned only for the
+    // chosen state — avoids cloning on every rollout step.
+    const stateForScoring = lastTurn1State ?? oracle.getFieldState(handle);
+    const logForScoring = cloneActivationLog(lastTurn1Log ?? oracle.getActivationLog(handle));
+    const { score, scoreBreakdown } = this.scorer.score(stateForScoring, logForScoring);
 
     // Track best terminal globally (Task 5.4)
     if (score > this._bestTerminalScore) {
       this._bestTerminalScore = score;
-      this._bestTerminalFieldState = finalState;
+      this._bestTerminalFieldState = stateForScoring;
       this._bestTerminalScoreBreakdown = scoreBreakdown;
-      this._bestTerminalActivationLog = finalLog;
+      this._bestTerminalActivationLog = logForScoring;
     }
 
     return { rolloutScore: score, maxDepth: depth };
