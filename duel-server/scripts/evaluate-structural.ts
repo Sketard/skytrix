@@ -44,6 +44,7 @@ import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { RouteAwareRanker } from '../src/solver/route-aware-ranker.js';
 import { filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
+import { MCTSSolver } from '../src/solver/mcts-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
 import { buildCardMetadataMap, type CardMetadataMap } from '../src/solver/card-metadata.js';
@@ -199,7 +200,7 @@ export async function runFixture(
   allConfigs: ReturnType<typeof loadAllSolverConfigs>,
   timeLimitMs: number,
   rootChildBudgetNodes: number | undefined,
-  opts?: { useHints?: boolean },
+  opts?: { useHints?: boolean; algorithm?: 'dfs' | 'mcts' },
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
   if (!deck) throw new Error(`Deck '${hand.deck}' not found`);
@@ -243,9 +244,15 @@ export async function runFixture(
     maxDepth,
     maxResultNodes: Math.max(allConfigs.solverConfig.maxResultNodes, maxDepth * 20),
   };
+  const algorithm = opts?.algorithm ?? 'dfs';
   const hasher = new ZobristHasher();
   const table = new TranspositionTable(perFixtureConfig.transpositionMaxEntries);
-  const dfs = new DfsSolver(hasher, table, scorer, adapter, ranker, perFixtureConfig);
+  const solver = algorithm === 'mcts'
+    ? new MCTSSolver(scorer, adapter, ranker, perFixtureConfig)
+    : new DfsSolver(hasher, table, scorer, adapter, ranker, perFixtureConfig);
+  if (algorithm === 'mcts') {
+    (solver as MCTSSolver).setSeed(duelConfig.deckSeed);
+  }
   const startHandle = adapter.createDuel(duelConfig);
   const signal = AbortSignal.timeout(timeLimitMs + 5000);
   const solverConfig: SolverConfig = {
@@ -272,7 +279,7 @@ export async function runFixture(
   }
 
   const t0 = Date.now();
-  const result = dfs.solve(adapter, solverConfig, signal, () => {}, startHandle);
+  const result = solver.solve(adapter, solverConfig, signal, () => {}, startHandle);
   const wallMs = Date.now() - t0;
 
   const peakFs = result.stats.diagnostic?.bestTurn1FieldState as undefined | {
@@ -523,6 +530,11 @@ export interface FixtureTask {
    *  and populates `SolverConfig.canonicalPath` + `bannedCardIds` from it.
    *  Opt-in — default off to preserve pre-hint baseline semantics. */
   useHints?: boolean;
+  /** Solver algorithm. Defaults to 'dfs' for backward-compatibility with
+   *  pre-2026-04-21 baselines. 'mcts' invokes the production-ready MCTSSolver
+   *  with UCB1 selection + epsilon-greedy rollouts via the same ranker +
+   *  scorer as DFS. */
+  algorithm?: 'dfs' | 'mcts';
 }
 
 /** Minimal pool surface consumed by `runEvaluationParallel`. Kept structural
@@ -540,6 +552,8 @@ export interface ParallelEvaluationOptions extends EvaluationOptions {
   /** Strategic Grammar v1 × hints — when true, each task loads its fixture's
    *  `<id>-hint.json` to pin starter decisions via `SolverConfig.canonicalPath`. */
   useHints?: boolean;
+  /** Solver algorithm for this evaluation run. Defaults to 'dfs'. */
+  algorithm?: 'dfs' | 'mcts';
 }
 
 /**
@@ -576,6 +590,7 @@ export async function runEvaluationParallel(
       nodeBudget: opts.nodeBudget,
       label: opts.label,
       useHints: opts.useHints,
+      algorithm: opts.algorithm,
     });
     return { hand, res };
   }));
@@ -683,6 +698,8 @@ async function main(): Promise<void> {
   const weightsOverridePath = parseStringArg('weights-override');
   const poolSizeOverride = parseNumArg('pool-size');
   const useHints = process.argv.includes('--use-hints');
+  const algorithmArg = parseStringArg('algorithm');
+  const algorithm: 'dfs' | 'mcts' = algorithmArg === 'mcts' ? 'mcts' : 'dfs';
 
   // Parallel mode: main thread stays lightweight (fixture JSON + config read,
   // no WASM boot). Each Piscina worker boots its own OCGCore/scorer once.
@@ -708,6 +725,7 @@ async function main(): Promise<void> {
   let exitCode = 0;
   try {
     if (useHints) console.log(`[evaluate] --use-hints ENABLED: canonical-path pins from <fixture>-hint.json will override DFS action selection at matching decision points`);
+    if (algorithm === 'mcts') console.log(`[evaluate] --algorithm=mcts: using MCTSSolver instead of DfsSolver`);
 
     const baseline = await runEvaluationParallel(pool, fixture, {
       fixtureFilter: fixtureFilter !== undefined ? [fixtureFilter] : undefined,
@@ -716,6 +734,7 @@ async function main(): Promise<void> {
       label: scorerVersion,
       weightsOverride,
       useHints,
+      algorithm,
     });
 
     if (outPath) {

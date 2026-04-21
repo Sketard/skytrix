@@ -44,6 +44,6 @@ export default async function runFixtureTask(task: FixtureTask): Promise<Fixture
     ctx.allConfigs,
     task.timeLimitMs,
     task.nodeBudget,
-    { useHints: task.useHints ?? false },
+    { useHints: task.useHints ?? false, algorithm: task.algorithm ?? 'dfs' },
   );
 }
