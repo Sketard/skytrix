@@ -36,7 +36,7 @@ import type {
   PreComputedState,
   DecisionMoment,
 } from './ws-protocol.js';
-import { LOCATION, POSITION } from './ws-protocol.js';
+import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from './ws-protocol.js';
 import type { ZoneId } from './ws-protocol.js';
 import { join } from 'node:path';
 
@@ -65,20 +65,6 @@ let systemStrings: Map<number, string> = new Map();
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
 let lastAnnounceNumberOptions: number[] = [];
-
-/**
- * Event types whose logical effect on board state warrants a `boardStateAfter`
- * snapshot when emitted during a chain-resolving window. Matches the client's
- * `ChainResolutionManager.BOARD_CHANGING_EVENTS` (chain-resolution-manager.ts).
- * Shared between replay precompute and live duel loop.
- */
-const LIVE_BOARD_CHANGING_EVENT_TYPES = new Set<string>([
-  'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
-  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
-  'MSG_SHUFFLE_HAND', 'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK',
-  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
-  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
-]);
 
 // Replay capture state
 let capturedResponses: CapturedResponse[] = [];
@@ -1067,7 +1053,7 @@ function runDuelLoop(): void {
         // event, matching the replay precompute behavior. Cost is one
         // `buildBoardState()` per BOARD_CHANGING event during resolving
         // (~10-50ms each, bounded by chain length).
-        if (chainResolving && LIVE_BOARD_CHANGING_EVENT_TYPES.has(dto.type)) {
+        if (chainResolving && BOARD_CHANGING_EVENT_TYPES.has(dto.type)) {
           (dto as { boardStateAfter?: BoardStatePayload }).boardStateAfter =
             (buildBoardState() as BoardStateMsg).data;
         }
@@ -1544,7 +1530,7 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
           // state at commit. The snapshot reflects ocgcore state at the moment
           // of capture (post-batch if multiple events fire in one `duelProcess`
           // call); still strictly better than no snapshot at all.
-          if (chainResolving && LIVE_BOARD_CHANGING_EVENT_TYPES.has(filtered.type)) {
+          if (chainResolving && BOARD_CHANGING_EVENT_TYPES.has(filtered.type)) {
             const snapshot = (buildBoardState() as BoardStateMsg).data;
             (filtered as { boardStateAfter?: BoardStatePayload }).boardStateAfter = snapshot;
           }

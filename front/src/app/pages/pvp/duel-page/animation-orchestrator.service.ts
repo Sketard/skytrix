@@ -5,7 +5,7 @@ import { LOCATION, POSITION } from '../duel-ws.types';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
-import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
+import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, GROUP_STAGGER_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
 import { CardTravelService } from './card-travel.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DrawSequenceManager } from './draw-sequence-manager';
@@ -285,7 +285,7 @@ export class AnimationOrchestratorService {
 
     const flushGroup = () => {
       if (pendingGroup.length === 0) return;
-      batch.push({ kind: 'group', events: pendingGroup, staggerMs: 50 });
+      batch.push({ kind: 'group', events: pendingGroup, staggerMs: GROUP_STAGGER_MS });
       batch.push({ kind: 'barrier' });
       pendingGroup = [];
     };

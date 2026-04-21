@@ -132,6 +132,25 @@ export interface PlaceOption {
   sequence: number;
 }
 
+/**
+ * Message types whose logical effect on board state warrants a
+ * `boardStateAfter` snapshot when emitted during a chain-resolving window,
+ * AND which the client's `ChainResolutionManager` buffers+replays via the
+ * chain overlay contract.
+ *
+ * Single source of truth shared between server (`duel-worker.ts` live duel
+ * loop + replay precompute) and client (`chain-resolution-manager.ts`
+ * buffering). Keep the contents in strict sync with any consumer that
+ * reasons about "which events affect the board state during resolution".
+ */
+export const BOARD_CHANGING_EVENT_TYPES: ReadonlySet<string> = new Set([
+  'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
+  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
+  'MSG_SHUFFLE_HAND', 'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK',
+  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
+  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
+]);
+
 // =============================================================================
 // Server -> Client: Game Messages (19)
 // =============================================================================

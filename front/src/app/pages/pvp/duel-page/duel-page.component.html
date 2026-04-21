@@ -137,7 +137,7 @@
 
     <!-- Board + hands + toolbar — only visible when duel is active (not during RPS) -->
     @if (roomState() === 'active') {
-      <!-- Opponent Hand (top, face-down, outside perspective) -->
+      <!-- Opponent Hand (top, face-down) -->
       <app-pvp-hand-row class="hand-opponent" data-zone="HAND-1"
                          side="opponent"
                          [cards]="opponentHand()"
@@ -146,7 +146,7 @@
                          [revealedCardCodes]="opponentHandRevealedCards()"
                          (cardInspectRequest)="onOpponentHandInspect($event)" />
 
-      <!-- Board with CSS 3D perspective -->
+      <!-- Board -->
       <app-pvp-board-container [class.switching]="switching()"
                                [duelState]="renderedState()"
                                [timerState]="displayedTimerState()"
@@ -172,7 +172,7 @@
                                [swapGraveDeckKeys]="animationService.swapGraveDeckKeys()"
                                (cardInspectRequest)="onCardInspectRequest($event)" />
 
-      <!-- Player Hand (bottom, face-up, outside perspective) -->
+      <!-- Player Hand (bottom, face-up) -->
       <app-pvp-hand-row #playerHandRow class="hand-player" data-zone="HAND-0"
                          side="player"
                          [cards]="playerHand()"
@@ -183,7 +183,7 @@
                          (handCardAction)="onPlayerHandAction($event)"
                          (cardInspectRequest)="onCardInspectRequest($event)" />
 
-      <!-- Card Action Menu (Story 1.7 — outside perspective container) -->
+      <!-- Card Action Menu (Story 1.7 — outside board container) -->
       @if (actionablePrompt() && menuState(); as menu) {
         <div class="card-action-menu"
              role="menu"

@@ -1,6 +1,7 @@
 import { effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import type { GameEvent } from '../types';
 import type { ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
+import { BOARD_CHANGING_EVENT_TYPES } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 
@@ -30,11 +31,12 @@ export class ChainResolutionManager {
   private _deferredSolvingEvent: GameEvent | null = null;
   private _bannerTimeouts: ReturnType<typeof setTimeout>[] = [];
 
-  static readonly BOARD_CHANGING_EVENTS = new Set([
-    'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST', 'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
-    'MSG_SHUFFLE_HAND', 'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK',
-    'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP', 'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
-  ]);
+  /**
+   * Re-exported for legacy call sites (`ChainResolutionManager.BOARD_CHANGING_EVENTS`).
+   * New code should import `BOARD_CHANGING_EVENT_TYPES` directly from
+   * `duel-ws.types` — single source of truth shared with the server.
+   */
+  static readonly BOARD_CHANGING_EVENTS = BOARD_CHANGING_EVENT_TYPES;
 
   // --- State queries ---
   get isResolving(): boolean { return this._insideChainResolution; }
