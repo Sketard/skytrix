@@ -614,8 +614,18 @@ export class DfsSolver implements SolverStrategy {
     // No-op at the root (ctx.bestTurn1ExplorationScore starts at -1, condition
     // `pathTurn1ExplorationScore + maxGain < -1` is always false). Only starts firing
     // once updateBest has set bestTurn1ExplorationScore to a non-trivial value.
+    // Strategic Grammar v1 (2026-04-21): widen the branch-bound window to
+    // include the grammar-goal-reachable upper bound. A state from which a
+    // large goal could still be completed deserves exploration even when
+    // the linear per-ply estimate (1.5) falls short. Without this, DFS
+    // early-cuts subtrees that eventually reach a multi-goal terminal.
+    // Non-expertise fixtures: the delta is 0 → cut semantics unchanged.
     const remainingPlies = ctx.iterationMaxDepth - depth;
-    const maxPlausibleGain = remainingPlies * BRANCH_BOUND_RECOVERY_PER_PLY;
+    const grammarUpperBoundDelta = this.scorer.goalMatchUpperBoundDelta(
+      fieldState,
+      interim.scoreBreakdown.goalMatchPoints,
+    );
+    const maxPlausibleGain = (remainingPlies * BRANCH_BOUND_RECOVERY_PER_PLY) + grammarUpperBoundDelta;
     if (pathTurn1ExplorationScore + maxPlausibleGain < ctx.bestTurn1ExplorationScore) {
       ctx.terminalBranchBoundCut++;
       ctx.totalTreeNodes++;

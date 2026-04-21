@@ -19,7 +19,7 @@ import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
 import type { ArchetypeExpertise } from './strategic-grammar.js';
-import { evaluateGoalMatch } from './goal-match-evaluator.js';
+import { evaluateGoalMatch, goalMatchReachableUpperBound } from './goal-match-evaluator.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -146,6 +146,20 @@ export class InterruptionScorer {
    *  (default) = no goal-match scoring. */
   setArchetypeExpertise(list: readonly ArchetypeExpertise[]): void {
     this.archetypeExpertise = list;
+  }
+
+  /** Strategic Grammar v1 α-β upper-bound delta (2026-04-21). Returns an
+   *  optimistic estimate of the goalMatchPoints still reachable from
+   *  `fieldState`, given that `currentGoalMatchPoints` already contribute to
+   *  the ancestor-chain turn-1 peak. DFS Phase I uses this to widen the
+   *  branch-bound window for subtrees that could still complete grammar
+   *  goals. Returns 0 when no expertise is active (caller must still apply
+   *  its own plies-based buffer for non-expertise fixtures). */
+  goalMatchUpperBoundDelta(
+    fieldState: FieldState,
+    currentGoalMatchPoints: number,
+  ): number {
+    return goalMatchReachableUpperBound(fieldState, this.archetypeExpertise, currentGoalMatchPoints);
   }
 
   /** Replace the per-interruption-type weights. Same tuning rationale as
