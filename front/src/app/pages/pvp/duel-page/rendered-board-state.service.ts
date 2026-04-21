@@ -16,6 +16,14 @@ export class RenderedBoardStateService {
   logger?: DuelLogger;
   /** Optional — set by orchestrator for [LOCK-ASSERT] runtime assertion in dev mode. */
   cardTravelService?: CardTravelService;
+  /**
+   * Returns the current lock safety-timeout (ms). Orchestrator overrides this
+   * with `ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS)` so the timeout scales
+   * with `speedMultiplier` (slow playback doesn't cut travels short).
+   * Default returns the raw constant for direct RBS consumers that don't
+   * have access to DuelContext (replay adapter, tests).
+   */
+  getSafetyTimeoutMs: () => number = () => LOCK_SAFETY_TIMEOUT_MS;
 
   private _logical = signal<DuelState>(EMPTY_DUEL_STATE);
   private _rendered = signal<DuelState>(EMPTY_DUEL_STATE);
@@ -138,7 +146,7 @@ export class RenderedBoardStateService {
       // Release WITHOUT commit — zone stays at old rendered state until next commitAll() (see §12.3)
       const msg = `Lock safety timeout for ${zoneKey} after ${Math.round(performance.now() - lockedAt)}ms (source: ${source ?? 'unknown'}, remaining locks: ${[...this._locks.keys()].join(', ') || 'none'})`;
       duelAssert(false, 'lockZone', msg);
-    }, LOCK_SAFETY_TIMEOUT_MS);
+    }, this.getSafetyTimeoutMs());
     this._safetyTimeouts.add(timeoutId);
 
     return {

@@ -676,8 +676,21 @@ function updateState(msg: OcgMessage): void {
 // BOARD_STATE Builder
 // =============================================================================
 
+let buildBoardStateCumulativeMs = 0;
+let buildBoardStateCallCount = 0;
+
+export function getBuildBoardStatePerfStats(): { calls: number; cumulativeMs: number; avgMs: number } {
+  return {
+    calls: buildBoardStateCallCount,
+    cumulativeMs: Math.round(buildBoardStateCumulativeMs * 100) / 100,
+    avgMs: buildBoardStateCallCount > 0 ? Math.round((buildBoardStateCumulativeMs / buildBoardStateCallCount) * 100) / 100 : 0,
+  };
+}
+
 function buildBoardState(): ServerMessage {
   if (!core || !duel) throw new Error('No active duel');
+
+  const perfStart = performance.now();
 
   const fieldState = core.duelQueryField(duel);
   // WASM bug workaround: combining multiple OcgQueryFlags in a single query
@@ -864,10 +877,21 @@ function buildBoardState(): ServerMessage {
     return { lp: lp[controller], deckCount: fp.deck_size, extraCount: fp.extra_size, zones };
   }
 
-  return {
+  const msg: ServerMessage = {
     type: 'BOARD_STATE',
     data: { turnPlayer, turnCount, phase, players: [buildPlayerState(0), buildPlayerState(1)] },
   };
+
+  // Perf tracking: buildBoardState is hot during chain-resolving replays
+  // (one call per BOARD_CHANGING event with a `boardStateAfter` snapshot).
+  // WASM `duelQuery` has a known bug preventing multi-flag combination, so
+  // each face-up field card requires ~12 individual queries. Tracking avg
+  // lets us spot regressions if future zones expand; optimization path is
+  // blocked on the WASM bug fix (see `buildBoardState` comments above).
+  buildBoardStateCumulativeMs += performance.now() - perfStart;
+  buildBoardStateCallCount++;
+
+  return msg;
 }
 
 // =============================================================================
@@ -1658,7 +1682,11 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
         return;
       }
 
-      dlog.log('Pre-computation complete', { turns: currentTurn + 1, responsesConsumed: responseIndex });
+      dlog.log('Pre-computation complete', {
+        turns: currentTurn + 1,
+        responsesConsumed: responseIndex,
+        buildBoardStatePerf: getBuildBoardStatePerfStats(),
+      });
       port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
       cleanup();
       return;

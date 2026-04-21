@@ -54,6 +54,19 @@ export class DuelContext {
   }
 
   /**
+   * Safety-timeout scaling for guards that wrap async animation work
+   * (LOCK_SAFETY_TIMEOUT_MS, REPLAY_BUFFER_SAFETY_TIMEOUT_MS, etc.).
+   * Divides by `speedMultiplier` so slow-playback modes don't clip ongoing
+   * animations, then adds a 50% margin to absorb GC / layout hiccups on
+   * loaded hardware. A device running fast at 1x keeps a comfortable guard
+   * (+50%); slow playback at 0.5x doubles the guard.
+   */
+  safetyTimeout(baseMs: number): number {
+    const mult = this._speedMultiplier() || 1;
+    return Math.round((baseMs / mult) * 1.5);
+  }
+
+  /**
    * Base rotation (degrees) for floating card elements (travel floats, overlays).
    * Cards face their owner: 180° for opponent cards, 0° for own.
    * Returns undefined when 0 so callers can use `baseRotateZ: ctx.cardBaseRotation(rel)`.

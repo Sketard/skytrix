@@ -8,6 +8,7 @@ import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import type { ZoneLock } from './rendered-board-state.service';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
  * Manages draw sequences: initial parallel draw, mid-game draws,
@@ -78,6 +79,16 @@ export class DrawSequenceManager {
    */
   beginHandBatch(relPlayer: 0 | 1, slotCount: number): void {
     if (slotCount <= 0) return;
+    // Invariant: hand batches from `replayBuffer` and the initial/mid-game
+    // draw loop manage the same `handExpansionSlots` signal. Their time
+    // windows don't overlap in practice (initial draw fires at duel start,
+    // buffer replay fires during chain resolve), but a future refactor
+    // could break this assumption — fail loud in dev.
+    duelAssert(
+      this._drawsInFlight.size === 0,
+      'beginHandBatch',
+      `overlaps with ${this._drawsInFlight.size} in-flight draw sequence(s) — handExpansionSlots would double-book`,
+    );
     this._handBatch[relPlayer] = { slotCount, nextOffset: 0 };
     this.handExpansionSlots.update(c => {
       const next: [number, number] = [...c];

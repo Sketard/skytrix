@@ -16,6 +16,7 @@ import { LpAnimationTracker } from './lp-animation-tracker';
 import { MoveAnimationRouter } from './move-animation-router';
 import { DuelToastService } from './duel-toast.service';
 import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
  * Central animation queue processor for the duel page.
@@ -129,6 +130,10 @@ export class AnimationOrchestratorService {
   constructor() {
     // Wire CardTravelService for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
     this.rbs.cardTravelService = this.cardTravelService;
+    // Scale RBS lock safety timeouts with playback speed so slow replay
+    // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
+    // 50% safety margin from DuelContext.safetyTimeout().
+    this.rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
     // Resume effect: when overlay signals ready, resume queue processing.
     // Handles the negated/no-buffer case where replayBuffer is NOT called.
     this.chainManager.initResumeEffect(() => {
@@ -351,7 +356,7 @@ export class AnimationOrchestratorService {
       const safety = setTimeout(() => {
         this.logger.warn('replayBuffer safety timeout — forcing resolve');
         resolve();
-      }, REPLAY_BUFFER_SAFETY_TIMEOUT_MS);
+      }, this.ctx.safetyTimeout(REPLAY_BUFFER_SAFETY_TIMEOUT_MS));
       batch.push({
         kind: 'batch-end', resolve: () => {
           clearTimeout(safety);
@@ -492,6 +497,16 @@ export class AnimationOrchestratorService {
   }
 
   onStateSync(): void {
+    // Surface suspicious timing in dev: a STATE_SYNC arriving with an
+    // active chain resolution + buffered events indicates a disconnect
+    // or server-state divergence mid-resolve. The reset itself recovers
+    // safely (clearAllTravels + releaseAllPreLocks), but the race is
+    // worth catching early if a real duel triggers it.
+    duelAssert(
+      !this.chainManager.isResolving || !this.chainManager.hasBufferedEvents,
+      'onStateSync',
+      `STATE_SYNC arrived mid-chain-resolve with ${this.dataSource.animationQueue().length} queued + buffered events — possible lock orphan`,
+    );
     this.resetAllState();
   }
 
@@ -696,7 +711,7 @@ export class AnimationOrchestratorService {
           setTimeout(() => {
             this.logger.warn('Travel promise never resolved for %s — forcing queue continue', event.type);
             resolve();
-          }, LOCK_SAFETY_TIMEOUT_MS);
+          }, this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS));
         });
         await Promise.race([result, guard]);
         this.lpTracker.commitPendingLp();

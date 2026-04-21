@@ -60,7 +60,15 @@ export class MoveAnimationRouter {
   /** Pre-acquired ZoneLock handles (src + dst) from preLockQueuedSources. */
   private readonly _preLocks = new Map<string, ZoneLock>();
 
-  /** Tracked timeouts (e.g., overlay detach slide-out) — cleared on reset. */
+  /**
+   * Tracked timeouts (e.g., overlay detach slide-out). The value is a
+   * cleanup thunk that MUST: (a) revert any DOM side-effects applied before
+   * the timeout fires (CSS classes, inline styles), and (b) resolve the
+   * associated Promise so the outer branch's .then chain commits the locks.
+   * Invoked by `clearTimeouts()` on reset to guarantee no stale visual state
+   * is left on detached DOM elements and no lock stays held waiting for a
+   * cancelled timer.
+   */
   private readonly _pendingTimeouts = new Map<ReturnType<typeof setTimeout>, () => void>();
 
   // --- Public API ---
@@ -143,11 +151,15 @@ export class MoveAnimationRouter {
     srcElement.style.setProperty('--pvp-detach-duration', `${slideOutDuration}ms`);
     srcElement.classList.add('pvp-xyz-detach');
 
+    const cleanupCss = () => {
+      srcElement.classList.remove('pvp-xyz-detach');
+      srcElement.style.removeProperty('--pvp-detach-duration');
+    };
+
     return new Promise<void>(resolve => {
       const id = setTimeout(() => {
         this._pendingTimeouts.delete(id);
-        srcElement.classList.remove('pvp-xyz-detach');
-        srcElement.style.removeProperty('--pvp-detach-duration');
+        cleanupCss();
         this.cardTravelService.travel(srcKey, dstKey, cardBackImage, {
           duration: travelDuration,
           showBack: true,
@@ -158,7 +170,12 @@ export class MoveAnimationRouter {
           dstZoneKey: dstKey,
         }).then(resolve);
       }, slideOutDuration);
-      this._pendingTimeouts.set(id, resolve);
+      // Cleanup thunk: if `clearTimeouts()` cancels the setTimeout before it
+      // fires, the CSS `pvp-xyz-detach` class stays on srcElement and the
+      // outer branch's Promise never resolves → dstLock waits on the 5s
+      // safety net. Running cleanupCss + resolve() here guarantees clean
+      // teardown on reset.
+      this._pendingTimeouts.set(id, () => { cleanupCss(); resolve(); });
     });
   }
 
@@ -212,9 +229,9 @@ export class MoveAnimationRouter {
   }
 
   clearTimeouts(): void {
-    for (const [id, resolve] of this._pendingTimeouts) {
+    for (const [id, cleanup] of this._pendingTimeouts) {
       clearTimeout(id);
-      resolve();
+      cleanup();
     }
     this._pendingTimeouts.clear();
   }
