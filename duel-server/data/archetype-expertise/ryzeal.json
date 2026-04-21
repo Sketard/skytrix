@@ -156,6 +156,38 @@
         "counts": {}
       },
       "baselineScore": 2
+    },
+    {
+      "id": "ryzeal-tachyon-committed",
+      "name": "Seventh Tachyon activated (Xyz-lock engaged)",
+      "description": "Bridge signal (Lever 3 2026-04-21): Seventh Tachyon in GY means it was activated — reveals a Number 101-107 Xyz, searches Lv-matching Type/Attribute monster (typically Sword Ryzeal Lv4 LIGHT Pyro in this deck's ED). Locks into Xyz-only SS rest of turn — commits the game plan to Rank-4 tower. Strong progress signal the Ryzeal engine has engaged via the Number-Xyz pathway rather than direct Lv4 starter chain.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "specific", "cardId": 7477101 },
+          "note": "Seventh Tachyon used (in GY after resolution)"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "ryzeal-bonfire-fired",
+      "name": "Bonfire used (Pyro search)",
+      "description": "Progress signal: Bonfire in GY = searched Lv4-or-lower Pyro (Ice Ryzeal in this deck). Confirms the Ryzeal engine has at least 1 searchable starter unlocked — a distinct entry point vs. drawing the starter naturally.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "specific", "cardId": 85106525 },
+          "note": "Bonfire used"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
     }
   ],
 

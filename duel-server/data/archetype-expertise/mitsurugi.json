@@ -231,6 +231,52 @@
         "counts": {}
       },
       "baselineScore": 2
+    },
+    {
+      "id": "mitsurugi-mikoto-rank4-bridged",
+      "name": "Mikoto engine bridged to Rank-4 toolbox",
+      "description": "Bridge signal (Lever 3 2026-04-21): Mikoto in GY + any Rank-4 Xyz on field. The deck's Mikoto Lv4 Reptile bodies were consumed as Xyz material (typically for Feral Imps 11398059 or Ryzeal Detonator/Duo Drive). Feral Imps specifically allows searching a Reptile (incl. Lv8 ritual targets like Habakiri/Futsu/Murakumo) from deck. Code Igniter 5088741 allows ritual-summoning from hand via detach. Captures the cross-archetype hybrid play pattern — not a Mitsurugi-only signal.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [18176525, 40543231, 82782870] },
+          "note": "Saji | Aramasa | Kusanagi used as Xyz material"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [34909328, 7511613, 11398059, 90590303, 32530043, 66011101, 5088741, 45852939, 1269512, 49678559] },
+          "note": "Any Rank-4 Xyz: Detonator | Duo Drive | Feral Imps | Bagooska | Gallant Granite | Dugares | Code Igniter | Eclipse Twins | Utopic Ray Lancer | Star Seraph Sentry"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 5
+    },
+    {
+      "id": "mitsurugi-ritual-plus-rank4-combo",
+      "name": "Ritual monster + Rank-4 Xyz combo endboard",
+      "description": "Bridge signal (Lever 3 2026-04-21): ritual monster on field AND Rank-4 Xyz on field simultaneously. This is the 2-engine fully-fired state — Mitsurugi ritual + Rank-4 toolbox both delivering pressure. Reachable ONLY via a bridge card: Mikoto→Xyz toolbox, Code Igniter's ritual-from-hand detach, or Seventh-Tachyon-preceded Xyz into a ritual-compatible target. High baseline because this terminal represents the apex of the hybrid deck's design intent.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "position": "faceup-atk",
+          "note": "Futsu | Murakumo | Habakiri ritual-summoned"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [34909328, 7511613, 11398059, 90590303, 32530043, 66011101, 5088741, 45852939, 1269512, 49678559] },
+          "position": "faceup-atk",
+          "note": "Any Rank-4 Xyz co-present"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1
+        }
+      },
+      "baselineScore": 8
     }
   ],
 
