@@ -41,6 +41,8 @@ import {
 import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { InterruptionScorer } from '../src/solver/interruption-scorer.js';
 import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
+import { RouteAwareRanker } from '../src/solver/route-aware-ranker.js';
+import { filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
@@ -159,15 +161,45 @@ function positionMatches(
   return false;
 }
 
+/** Canonical-path hint file format (matches `record-trajectory.ts::HintFile`).
+ *  Strategic Grammar v1 integration — evaluate-structural loads these when
+ *  `--use-hints` is set to force DFS into the canonical combo branch. */
+interface HintFile {
+  fixtureId: string;
+  canonicalPath?: number[];
+  bannedCardIds?: number[];
+}
+
+/** Load canonical-path hint for `<fixtureId>-hint.json` under
+ *  `_bmad-output/planning-artifacts/research/trajectories/`. Returns undefined
+ *  when the file does not exist (opt-in feature, silently skips fixtures
+ *  without authored hints). */
+function loadHintForFixture(fixtureId: string): HintFile | undefined {
+  const hintPath = resolve(
+    import.meta.dirname!, '..', '..',
+    '_bmad-output', 'planning-artifacts', 'research', 'trajectories',
+    `${fixtureId}-hint.json`,
+  );
+  try {
+    const raw = readFileSync(hintPath, 'utf-8');
+    const hint = JSON.parse(raw) as HintFile;
+    return hint;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw e;
+  }
+}
+
 export async function runFixture(
   adapter: OCGCoreAdapter,
   scorer: InterruptionScorer,
-  ranker: GoldfishChainRanker,
+  ranker: RouteAwareRanker,
   fixture: FixtureFile,
   hand: HandFixture,
   allConfigs: ReturnType<typeof loadAllSolverConfigs>,
   timeLimitMs: number,
   rootChildBudgetNodes: number | undefined,
+  opts?: { useHints?: boolean },
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
   if (!deck) throw new Error(`Deck '${hand.deck}' not found`);
@@ -178,6 +210,16 @@ export async function runFixture(
     if (idx === -1) throw new Error(`Hand card ${cid} not in ${hand.deck}`);
     mainDeck.splice(idx, 1);
   }
+
+  // Strategic Grammar v1 — filter archetype expertise by this fixture's
+  // main-deck composition and push into scorer + ranker. The setters ensure
+  // per-fixture context; the shared instances are reused across fixtures.
+  // Filtering runs on the post-hand-removal mainDeck PLUS the hand itself
+  // (initial hand cards ARE in-deck semantically).
+  const deckCardIds = [...deck.main, ...deck.extra];
+  const filteredExpertise = filterExpertiseByDeck(allConfigs.archetypeExpertise, deckCardIds);
+  scorer.setArchetypeExpertise(filteredExpertise);
+  ranker.setArchetypeExpertise(filteredExpertise);
 
   const preferredSearchTargets = [
     ...(hand.expectedBoard ?? []).map(e => e.cardId),
@@ -212,6 +254,22 @@ export async function runFixture(
     timeLimitMs,
     rootChildBudgetNodes,
   };
+
+  // Strategic Grammar v1 × canonical-path hints (2026-04-21). When opts.useHints
+  // is set, load the authored hint file and force-pin the starter decisions.
+  // Hints complement goal-match scoring: hints steer DFS into the canonical
+  // branch, grammar rewards reaching goals within that branch.
+  if (opts?.useHints) {
+    const hint = loadHintForFixture(hand.id);
+    if (hint) {
+      if (Array.isArray(hint.canonicalPath) && hint.canonicalPath.length > 0) {
+        solverConfig.canonicalPath = hint.canonicalPath;
+      }
+      if (Array.isArray(hint.bannedCardIds) && hint.bannedCardIds.length > 0) {
+        solverConfig.bannedCardIds = hint.bannedCardIds;
+      }
+    }
+  }
 
   const t0 = Date.now();
   const result = dfs.solve(adapter, solverConfig, signal, () => {}, startHandle);
@@ -348,7 +406,7 @@ export interface EvaluationContext {
   fixture: FixtureFile;
   adapter: OCGCoreAdapter;
   scorer: InterruptionScorer;
-  ranker: GoldfishChainRanker;
+  ranker: RouteAwareRanker;
   allConfigs: ReturnType<typeof loadAllSolverConfigs>;
   /** Same map injected into the scorer — exposed so diagnostic probes can
    *  call `computeLatentInterruption` / `computeStructuralValue` directly
@@ -433,7 +491,7 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     allConfigs.structuralWeights,
     allConfigs.structuralTutorCards,
   );
-  const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
+  const ranker = new RouteAwareRanker(new GoldfishChainRanker(allConfigs.interruptionTags));
 
   return {
     fixture,
@@ -459,6 +517,12 @@ export interface FixtureTask {
   timeLimitMs: number;
   nodeBudget?: number;
   label: string;
+  /** Strategic Grammar v1 + canonical-path hint pipeline (2026-04-21). When
+   *  true, runFixture looks up
+   *  `_bmad-output/planning-artifacts/research/trajectories/<fixtureId>-hint.json`
+   *  and populates `SolverConfig.canonicalPath` + `bannedCardIds` from it.
+   *  Opt-in — default off to preserve pre-hint baseline semantics. */
+  useHints?: boolean;
 }
 
 /** Minimal pool surface consumed by `runEvaluationParallel`. Kept structural
@@ -473,6 +537,9 @@ export interface ParallelEvaluationOptions extends EvaluationOptions {
    *  resets to its baseline before applying, so overrides from different
    *  candidates do not compound. */
   weightsOverride?: WeightsOverride;
+  /** Strategic Grammar v1 × hints — when true, each task loads its fixture's
+   *  `<id>-hint.json` to pin starter decisions via `SolverConfig.canonicalPath`. */
+  useHints?: boolean;
 }
 
 /**
@@ -508,6 +575,7 @@ export async function runEvaluationParallel(
       timeLimitMs: opts.timeLimitMs,
       nodeBudget: opts.nodeBudget,
       label: opts.label,
+      useHints: opts.useHints,
     });
     return { hand, res };
   }));
@@ -614,6 +682,7 @@ async function main(): Promise<void> {
   const scorerVersion = parseStringArg('label') ?? 'unspecified';
   const weightsOverridePath = parseStringArg('weights-override');
   const poolSizeOverride = parseNumArg('pool-size');
+  const useHints = process.argv.includes('--use-hints');
 
   // Parallel mode: main thread stays lightweight (fixture JSON + config read,
   // no WASM boot). Each Piscina worker boots its own OCGCore/scorer once.
@@ -638,12 +707,15 @@ async function main(): Promise<void> {
 
   let exitCode = 0;
   try {
+    if (useHints) console.log(`[evaluate] --use-hints ENABLED: canonical-path pins from <fixture>-hint.json will override DFS action selection at matching decision points`);
+
     const baseline = await runEvaluationParallel(pool, fixture, {
       fixtureFilter: fixtureFilter !== undefined ? [fixtureFilter] : undefined,
       timeLimitMs,
       nodeBudget,
       label: scorerVersion,
       weightsOverride,
+      useHints,
     });
 
     if (outPath) {

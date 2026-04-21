@@ -68,6 +68,8 @@ duel-server/data/*
 !duel-server/data/structural-tutor-cards.json
 !duel-server/data/opp-turn-summon-enablers.json
 !duel-server/data/link-arrows.json
+!duel-server/data/archetype-expertise/
+!duel-server/data/archetype-expertise/**
 duel-server/node_modules/
 duel-server/dist/
 

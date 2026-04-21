@@ -38,7 +38,12 @@ export interface ScoreBreakdown {
    *  Phase D enabler×target). Optional for backwards compatibility with
    *  pre-v5 payloads. */
   latentPoints?: number;
-  /** User-facing end-board grade = weighted + fallbackPoints (methodology v5). */
+  /** Strategic Grammar v1 goal-match bonus (2026-04-21). Σ(baselineScore ×
+   *  matchRatio) over active ComboGoals. Optional — 0 when no expertise
+   *  loaded. Counts INTO `interruptionScore`. */
+  goalMatchPoints?: number;
+  /** User-facing end-board grade = weighted + fallbackPoints + goalMatchPoints
+   *  (methodology v5 + Strategic Grammar v1). */
   interruptionScore?: number;
   /** DFS guidance signal = interruptionScore + latentPoints (methodology v5). */
   explorationScore?: number;
@@ -67,6 +72,7 @@ export const EMPTY_SCORE_BREAKDOWN: ScoreBreakdown = {
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
   weighted: 0, fallbackPoints: 0, latentPoints: 0,
+  goalMatchPoints: 0,
   interruptionScore: 0, explorationScore: 0,
 };
 

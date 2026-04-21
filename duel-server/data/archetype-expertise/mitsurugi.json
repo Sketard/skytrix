@@ -1,0 +1,436 @@
+{
+  "archetype": "mitsurugi",
+  "displayName": "Mitsurugi",
+  "version": 2,
+
+  "_rolesNote": "roleMap covers: (a) the 14 'Mitsurugi' core cards from cards.cdb, (b) Pre-Preparation of Rites (generic ritual tutor, functionally a Mitsurugi enabler when Mitsurugi Ritual is the fetched spell), (c) Night Sword Serpent (Reptile tribute fodder for Prayers/Magatama/Ritual cost; auto-SS-from-GY).",
+
+  "roleMap": {
+    "13332685": ["starter", "finisher", "interruption", "recursion"],
+    "19899073": ["finisher", "interruption", "recursion"],
+    "55397172": ["finisher", "interruption", "recursion"],
+    "18176525": ["extender", "tutor"],
+    "40543231": ["extender", "tutor"],
+    "82782870": ["extender", "recursion"],
+    "76948970": ["enabler"],
+    "45171524": ["tutor", "enabler"],
+    "81560239": ["enabler"],
+    "49721684": ["enabler", "recycler"],
+    "76725398": ["enabler"],
+    "12210097": ["enabler", "recursion"],
+    "17954937": ["interruption", "recursion"],
+    "49604192": ["finisher", "interruption"],
+    "13048472": ["tutor"],
+    "20295753": ["material", "recursion"]
+  },
+
+  "keyCards": [13332685, 18176525, 55397172, 81560239, 45171524, 49721684, 17954937, 19899073, 40543231, 82782870],
+
+  "goals": [
+    {
+      "id": "mitsurugi-futsu-canonical",
+      "name": "Futsu + Great Purification canonical",
+      "description": "The fixture-expected Mitsurugi endboard: ritual-summoned Futsu on monster zone + Mitsurugi Great Purification set. Futsu provides opp-SS-triggered Reptile recursion (quick effect); Purification is a tribute-1-Reptile-to-negate trap (OPT). Dual chain-speed interruption layer.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 55397172 },
+          "position": "faceup-atk",
+          "note": "Futsu no Mitama no Mitsurugi"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 17954937 },
+          "position": "facedown",
+          "note": "Mitsurugi Great Purification (set)"
+        }
+      ],
+      "optional": [
+        {
+          "zone": "monster",
+          "card": { "kind": "role", "role": "recursion" },
+          "note": "Kusanagi or ritual-monster body for Purification tribute cost + Mirror recycle chain"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "destruction": 1
+        }
+      },
+      "baselineScore": 10
+    },
+    {
+      "id": "mitsurugi-murakumo-endboard",
+      "name": "Murakumo + Great Purification",
+      "description": "Alt endboard centered on Murakumo: quick-effect disc-or-negate + on-SS mass-destruction + Purification trap set. Strong opening disruption when Futsu is inaccessible (e.g., Mirror tributed it, or Ritual exhausted).",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 19899073 },
+          "position": "faceup-atk",
+          "note": "Ame no Murakumo no Mitsurugi"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 17954937 },
+          "position": "facedown",
+          "note": "Mitsurugi Great Purification (set)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "destruction": 1
+        }
+      },
+      "baselineScore": 8
+    },
+    {
+      "id": "mitsurugi-habakiri-endboard",
+      "name": "Habakiri + Great Purification",
+      "description": "Weakest of the 3 ritual-monster endboards — Habakiri's on-field effect is only an 800 ATK debuff, not an active negate. Still validates a Mitsurugi ritual line was completed. Fallback when other ritual monsters are off-limits.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 13332685 },
+          "position": "faceup-atk",
+          "note": "Ame no Habakiri no Mitsurugi (ritual-summoned, not hand-SS)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 17954937 },
+          "position": "facedown",
+          "note": "Mitsurugi Great Purification (set)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "destruction": 1
+        }
+      },
+      "baselineScore": 6
+    },
+    {
+      "id": "mitsurugi-tempest-finisher",
+      "name": "Tempest triple-ritual threat",
+      "description": "Aspirational endboard: all 3 ritual monsters co-present + Tempest trap set. Triggers the 'banish 8 cards' finisher condition next turn. High-value but rarely reachable without multiple ritual spells + heavy setup.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 55397172 },
+          "position": "faceup-atk",
+          "note": "Futsu"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 19899073 },
+          "position": "faceup-atk",
+          "note": "Murakumo"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 13332685 },
+          "position": "faceup-atk",
+          "note": "Habakiri"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 49604192 },
+          "position": "facedown",
+          "note": "Mitsurugi Tempest (set)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 2,
+          "banish": 1,
+          "destruction": 1
+        }
+      },
+      "baselineScore": 20
+    },
+    {
+      "id": "mitsurugi-ritual-body-partial",
+      "name": "Any Mitsurugi ritual body on field",
+      "description": "Partial-credit gradient: ANY of the 3 Mitsurugi ritual monsters is face-up on the field. Used as exploration signal during DFS traversal — awards DFS for progressing into ritual-summon territory even before the trap is set.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "position": "faceup-atk",
+          "note": "Futsu | Murakumo | Habakiri"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "mitsurugi-trap-set-partial",
+      "name": "Any Mitsurugi trap set",
+      "description": "Partial-credit: Mitsurugi trap (Purification or Tempest) set. Awards DFS for setting the trap independently of ritual completion — covers scenarios where trap is placed first then ritual completes on future turn.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "anyOf", "cardIds": [17954937, 49604192] },
+          "position": "facedown",
+          "note": "Great Purification | Tempest"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    }
+  ],
+
+  "routes": [
+    {
+      "id": "prayers-habakiri-full-ritual-chain",
+      "name": "Prayers + Habakiri → search Mitsurugi → Saji → Ritual → RS Futsu → Set Purification",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 45171524 },
+          "location": "hand",
+          "minCount": 1
+        },
+        {
+          "selector": { "kind": "specific", "cardId": 13332685 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 45171524 },
+          "note": "Activate Prayers with tribute Habakiri (Reptile from hand). Apply BOTH effects."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 45171524 },
+          "target": { "kind": "specific", "cardId": 18176525 },
+          "note": "Prayers eff1: add Saji (Mitsurugi Mikoto searcher) from deck to hand"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 13332685 },
+          "note": "Prayers eff2 (after tribute): SS Habakiri from GY (just tributed)"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 13332685 },
+          "target": { "kind": "specific", "cardId": 17954937 },
+          "note": "Habakiri on-Tribute trigger: search Mitsurugi card — target Great Purification trap"
+        },
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "note": "NS Saji (Lv4 Reptile, searched via Prayers eff1). Triggers on-SS Mitsurugi S/T search."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "target": { "kind": "specific", "cardId": 81560239 },
+          "note": "Saji on-SS: add Mitsurugi Ritual spell from deck"
+        },
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 81560239 },
+          "note": "Activate Mitsurugi Ritual (eff2: RS from hand by tributing Reptiles with total Level = 8)"
+        },
+        {
+          "action": "ritualSummon",
+          "subject": { "kind": "specific", "cardId": 55397172 },
+          "note": "Ritual Summon Futsu no Mitama (Lv8). Tribute: Habakiri (Lv8) OR Saji+Lv4 (8 total)."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 17954937 },
+          "note": "Set Mitsurugi Great Purification (searched via Habakiri on-Tribute)"
+        }
+      ],
+      "goalId": "mitsurugi-futsu-canonical"
+    },
+    {
+      "id": "pre-prep-to-futsu",
+      "name": "Pre-Preparation → Ritual + Futsu in hand → Ritual summon",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 13048472 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 13048472 },
+          "note": "Pre-Preparation of Rites: add 1 Ritual Spell + 1 matching Ritual Monster from deck to hand. Pick Mitsurugi Ritual + Futsu."
+        },
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 81560239 },
+          "note": "Activate Mitsurugi Ritual spell"
+        },
+        {
+          "action": "ritualSummon",
+          "subject": { "kind": "specific", "cardId": 55397172 },
+          "note": "Ritual Summon Futsu by tributing Reptiles summing to Lv8"
+        }
+      ],
+      "goalId": "mitsurugi-futsu-canonical"
+    },
+    {
+      "id": "habakiri-hand-eff-to-ritual",
+      "name": "Habakiri hand-eff → Saji → Ritual search → Futsu",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 13332685 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 13332685 },
+          "note": "Habakiri hand-eff (once-per-DUEL): reveal; SS non-ritual Mitsurugi [Saji|Kusanagi|Aramasa] from deck; tribute 1 monster as cost"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "note": "SS Saji (tutor for Mitsurugi Spell/Trap via on-SS)"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "target": { "kind": "specific", "cardId": 81560239 },
+          "note": "Saji on-SS → add Mitsurugi Ritual from deck to hand"
+        },
+        {
+          "action": "ritualSummon",
+          "subject": { "kind": "specific", "cardId": 81560239 },
+          "target": { "kind": "specific", "cardId": 55397172 },
+          "note": "Activate Ritual spell; ritual-summon Futsu (Lv8) by tributing Reptiles summing to 8"
+        }
+      ],
+      "goalId": "mitsurugi-futsu-canonical"
+    },
+    {
+      "id": "prayers-tribute-habakiri-search",
+      "name": "Prayers quickplay → Habakiri on-Tribute search",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 45171524 },
+          "location": "hand",
+          "minCount": 1
+        },
+        {
+          "selector": { "kind": "specific", "cardId": 13332685 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 45171524 },
+          "note": "Prayers with tribute: tribute Habakiri from hand; apply BOTH effects (search Mitsurugi monster + SS 1 Mitsurugi from hand/GY with 800 damage)"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 13332685 },
+          "target": { "kind": "role", "role": "interruption" },
+          "note": "Habakiri on-Tribute: search any Mitsurugi card (target Great Purification for end-board trap)"
+        }
+      ],
+      "goalId": "mitsurugi-futsu-canonical"
+    },
+    {
+      "id": "aramasa-to-ritual-monster",
+      "name": "Aramasa → search Mitsurugi monster → Prayers-based ritual",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 40543231 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 40543231 },
+          "note": "NS Aramasa (Lv4 Reptile) — triggers on-NS search for Mitsurugi monster"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 40543231 },
+          "target": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "note": "Aramasa on-SS/on-Tribute: search Mitsurugi MONSTER from deck (Futsu/Murakumo/Habakiri or extenders)"
+        }
+      ],
+      "goalId": "mitsurugi-ritual-body-partial"
+    },
+    {
+      "id": "kusanagi-gy-recycle",
+      "name": "Kusanagi → recycle Mitsurugi from GY",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 82782870 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 82782870 },
+          "note": "NS Kusanagi — triggers on-SS recycle (add Mitsurugi from GY/banished to hand)"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 82782870 },
+          "target": { "kind": "role", "role": "enabler" },
+          "note": "Recycle Ritual/Mirror/Prayers from GY for a second ritual activation this turn or next"
+        }
+      ],
+      "goalId": "mitsurugi-futsu-canonical"
+    }
+  ],
+
+  "synergies": [
+    {
+      "cards": [18176525, 81560239],
+      "effect": "Saji on-SS searches any Mitsurugi Spell/Trap — linchpin for getting Mitsurugi Ritual (or Purification) into hand same-turn. Habakiri hand-eff enables this SS-from-deck without spending Normal Summon."
+    },
+    {
+      "cards": [13332685, 55397172, 19899073],
+      "effect": "The 3 ritual bodies all self-recycle on-Tribute (add-from-deck + self-SS). Chaining them via tribute costs (Prayers, Purification, Magatama) extends the combo while maintaining board presence."
+    },
+    {
+      "cards": [55397172, 49721684],
+      "effect": "ANTI-PATTERN: Mitsurugi Mirror aggressively tributes Futsu from field to ritual-summon other Mitsurugi rituals — if Futsu is the intended endboard piece, Mirror must be avoided or its search denied. Mirror is primarily useful as a GY-based second-wind ritual spell or as a source-flexible backup."
+    },
+    {
+      "cards": [82782870, 81560239, 49721684],
+      "effect": "Kusanagi recycles spent Ritual/Mirror from GY, enabling a second ritual summon across turns. Combined with Mirror's self-shuffle-on-key-tribute, the ritual engine has persistent resource renewal."
+    },
+    {
+      "cards": [13048472, 81560239, 55397172],
+      "effect": "Pre-Preparation of Rites = 1-card combo enabler: fetches Mitsurugi Ritual + Futsu from deck to hand simultaneously. Most consistent ritual-summon opener; avoids the Habakiri once-per-Duel cost."
+    },
+    {
+      "cards": [17954937, 20295753],
+      "effect": "Night Sword Serpent's GY-SS effect lets it self-summon after being discarded/milled, providing a Reptile body that can be tributed by Great Purification's negate effect (cost: tribute Lv5+ Reptile). Inelegant but viable as Purification activation fodder."
+    },
+    {
+      "cards": [13332685],
+      "effect": "HARD CONSTRAINT: Habakiri's hand-effect is ONCE PER DUEL. A wasted Habakiri hand-eff (wrong SS target) cannot be repeated across the duel. Route authoring must prioritize Habakiri hand-eff only when it opens a high-value line."
+    }
+  ],
+
+  "sourceNotes": "v2 (2026-04-21) — full Mitsurugi coverage via cards.cdb lookup. 14 Mitsurugi cards + 2 non-Mitsurugi enablers (Pre-Prep 13048472, Night Sword Serpent 20295753) mapped to roles. 6 goals covering: (1) Futsu-canonical (fixture endboard), (2) Murakumo alt, (3) Habakiri alt, (4) Tempest aspirational, (5) ritual-body partial, (6) trap-set partial. 5 combo routes representing distinct starter-hand patterns. Magatama/Sacred Boundary/Wousu/Tempest are NOT in the fixture deck but included in roleMap for archetype completeness. Route targets use specific cardIds to avoid slot-matching double-count."
+}

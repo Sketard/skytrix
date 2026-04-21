@@ -144,8 +144,14 @@ export interface ScoreBreakdown {
    *  bonus. Feeds `explorationScore` only; excluded from `interruptionScore`
    *  so brick detection and the reported grade stay pure disruption value. */
   latentPoints: number;
-  /** `weighted + fallbackPoints`. User-facing end-board grade — consumed by
-   *  harness `reportScore`, regression rubric, `DecisionNode.score` display. */
+  /** Strategic Grammar v1 (2026-04-21) — Σ(baselineScore × matchRatio) over
+   *  active ComboGoals. Counts INTO `interruptionScore` (user-facing grade)
+   *  because goal-completion IS part of end-board disruption value, not
+   *  latent exploration signal. 0 when no archetypeExpertise loaded. */
+  goalMatchPoints: number;
+  /** `weighted + fallbackPoints + goalMatchPoints`. User-facing end-board
+   *  grade — consumed by harness `reportScore`, regression rubric,
+   *  `DecisionNode.score` display. */
   interruptionScore: number;
   /** `interruptionScore + latentPoints`. DFS guidance signal — drives action
    *  ordering, TT storage, α-β floor (`bestTurn1ExplorationScore`), virtual-
@@ -176,6 +182,7 @@ export const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
   weighted: 0, fallbackPoints: 0, latentPoints: 0,
+  goalMatchPoints: 0,
   interruptionScore: 0, explorationScore: 0,
 });
 

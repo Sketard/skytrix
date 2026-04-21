@@ -3,7 +3,7 @@
 // Fail-fast: invalid config -> ERROR log + process.exit(1)
 // =============================================================================
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CardDB } from '../types.js';
 import type { ZoneId } from '../ws-protocol.js';
@@ -15,6 +15,8 @@ import type {
 } from './solver-types.js';
 import { INTERRUPTION_TYPES, ALL_ZONE_IDS } from './solver-types.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
+import type { ArchetypeExpertise } from './strategic-grammar.js';
+import { CARD_ROLES } from './strategic-grammar.js';
 
 // =============================================================================
 // Range Validation Helpers
@@ -280,6 +282,7 @@ export interface AllSolverConfigs {
   handtraps: HandtrapConfig[];
   structuralWeights: StructuralWeights;
   structuralTutorCards: StructuralTutorCards;
+  archetypeExpertise: readonly ArchetypeExpertise[];
 }
 
 const STRUCTURAL_WEIGHT_RANGES: Record<string, RangeRule> = {
@@ -380,6 +383,130 @@ export function applyInterruptionWeightsOverride(
   return merged as Record<InterruptionType, number>;
 }
 
+// =============================================================================
+// Archetype Expertise (Strategic Grammar v1, 2026-04-21)
+// =============================================================================
+
+/** Archetype keyCards overlap threshold. An expertise file matches a deck
+ *  when ≥ this many of its keyCards are present in the mainDeck. Tunable —
+ *  3 is conservative: avoids false positives on generic staples, allows
+ *  hybrid decks (Ryzeal-Mitsurugi) to activate multiple expertises. */
+export const ARCHETYPE_KEYCARDS_MATCH_THRESHOLD = 3;
+
+/** Load every `*.json` under `<dataDir>/archetype-expertise/` and parse as
+ *  `ArchetypeExpertise`. Fail-fast: malformed file → exit(1). Silently
+ *  tolerates an absent directory (returns []). Does NOT filter by deck —
+ *  caller filters per-fixture via `filterExpertiseByDeck()`. */
+export function loadArchetypeExpertise(dataDir: string): ArchetypeExpertise[] {
+  const dir = join(dataDir, 'archetype-expertise');
+  if (!existsSync(dir)) {
+    console.log('[Solver] No archetype-expertise/ directory — goal-match scoring disabled');
+    return [];
+  }
+
+  const files = readdirSync(dir).filter(f => f.endsWith('.json'));
+  const out: ArchetypeExpertise[] = [];
+  for (const f of files) {
+    const filePath = join(dir, f);
+    let raw: unknown;
+    try {
+      raw = JSON.parse(readFileSync(filePath, 'utf-8'));
+    } catch (e) {
+      console.error(`[Solver] Failed to parse archetype-expertise/${f}: ${String(e)}`);
+      process.exit(1);
+    }
+    out.push(validateArchetypeExpertise(raw, f));
+  }
+  console.log(`[Solver] archetype-expertise loaded (${out.length} file${out.length === 1 ? '' : 's'})`);
+  return out;
+}
+
+function validateArchetypeExpertise(raw: unknown, filename: string): ArchetypeExpertise {
+  if (!raw || typeof raw !== 'object') {
+    console.error(`[Solver] archetype-expertise/${filename}: not an object`);
+    process.exit(1);
+  }
+  const r = raw as Record<string, unknown>;
+  const requireString = (k: string): string => {
+    if (typeof r[k] !== 'string') {
+      console.error(`[Solver] archetype-expertise/${filename}: field '${k}' must be a string`);
+      process.exit(1);
+    }
+    return r[k] as string;
+  };
+  const requireArray = <T>(k: string): T[] => {
+    if (!Array.isArray(r[k])) {
+      console.error(`[Solver] archetype-expertise/${filename}: field '${k}' must be an array`);
+      process.exit(1);
+    }
+    return r[k] as T[];
+  };
+
+  const archetype = requireString('archetype');
+  const displayName = requireString('displayName');
+  if (typeof r.version !== 'number') {
+    console.error(`[Solver] archetype-expertise/${filename}: field 'version' must be a number`);
+    process.exit(1);
+  }
+  const keyCards = requireArray<number>('keyCards');
+  for (const k of keyCards) {
+    if (!Number.isInteger(k) || k < 0) {
+      console.error(`[Solver] archetype-expertise/${filename}: keyCards must be positive integers, got ${String(k)}`);
+      process.exit(1);
+    }
+  }
+
+  const roleMapRaw = r.roleMap;
+  if (!roleMapRaw || typeof roleMapRaw !== 'object') {
+    console.error(`[Solver] archetype-expertise/${filename}: field 'roleMap' must be an object`);
+    process.exit(1);
+  }
+  for (const [cidStr, roles] of Object.entries(roleMapRaw as Record<string, unknown>)) {
+    if (!/^\d+$/.test(cidStr)) {
+      console.error(`[Solver] archetype-expertise/${filename}: roleMap key '${cidStr}' must be decimal cardId`);
+      process.exit(1);
+    }
+    if (!Array.isArray(roles)) {
+      console.error(`[Solver] archetype-expertise/${filename}: roleMap['${cidStr}'] must be array`);
+      process.exit(1);
+    }
+    for (const role of roles) {
+      if (!CARD_ROLES.includes(role as typeof CARD_ROLES[number])) {
+        console.error(`[Solver] archetype-expertise/${filename}: invalid role '${String(role)}' in roleMap['${cidStr}'] (allowed: ${CARD_ROLES.join('|')})`);
+        process.exit(1);
+      }
+    }
+  }
+
+  // goals + routes: shape-validated at the TS level via `as` cast. Detailed
+  // per-field validation deferred — malformed goals surface as zero match
+  // (safe default) and bad routes surface as zero alignment. Keep loader
+  // under 100 LOC; enforce stricter schemas when adoption warrants it.
+  requireArray<unknown>('goals');
+  requireArray<unknown>('routes');
+
+  return raw as ArchetypeExpertise;
+}
+
+/** Filter expertise list to those whose keyCards overlap with `mainDeck` by
+ *  ≥ ARCHETYPE_KEYCARDS_MATCH_THRESHOLD cards. Pure + deterministic — called
+ *  per-fixture by the harness before passing to scorer + ranker. */
+export function filterExpertiseByDeck(
+  all: readonly ArchetypeExpertise[],
+  mainDeck: readonly number[],
+): ArchetypeExpertise[] {
+  const deckSet = new Set(mainDeck);
+  const out: ArchetypeExpertise[] = [];
+  for (const e of all) {
+    let overlap = 0;
+    for (const k of e.keyCards) {
+      if (deckSet.has(k)) overlap++;
+    }
+    if (overlap >= ARCHETYPE_KEYCARDS_MATCH_THRESHOLD) out.push(e);
+  }
+  return out;
+}
+
 export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolverConfigs {
   const solverConfig = loadSolverConfig(dataDir);
   const interruptionWeights = loadInterruptionWeights(dataDir);
@@ -387,8 +514,12 @@ export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolver
   const handtraps = loadHandtraps(dataDir);
   const structuralWeights = loadStructuralWeights(dataDir);
   const structuralTutorCards = loadStructuralTutorCards(dataDir);
+  const archetypeExpertise = loadArchetypeExpertise(dataDir);
 
   validateInterruptionTagsAgainstCardPool(interruptionTags, cardDB);
 
-  return { solverConfig, interruptionWeights, interruptionTags, handtraps, structuralWeights, structuralTutorCards };
+  return {
+    solverConfig, interruptionWeights, interruptionTags, handtraps,
+    structuralWeights, structuralTutorCards, archetypeExpertise,
+  };
 }

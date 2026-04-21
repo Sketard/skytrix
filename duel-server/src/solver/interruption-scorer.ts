@@ -18,6 +18,8 @@ import { time as instrumentTime } from './solver-instrumentation.js';
 import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
+import type { ArchetypeExpertise } from './strategic-grammar.js';
+import { evaluateGoalMatch } from './goal-match-evaluator.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -99,6 +101,7 @@ export class InterruptionScorer {
   private cardMetadata: CardMetadataMap | undefined;
   private structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
+  private archetypeExpertise: readonly ArchetypeExpertise[] = [];
 
   constructor(
     tags: Record<string, InterruptionTag>,
@@ -137,6 +140,14 @@ export class InterruptionScorer {
     this.structuralWeights = w;
   }
 
+  /** Replace the active archetype expertise list. Strategic Grammar v1
+   *  (2026-04-21). Harness calls this per-fixture after filtering the
+   *  on-disk expertise files by main-deck keyCards overlap. Empty array
+   *  (default) = no goal-match scoring. */
+  setArchetypeExpertise(list: readonly ArchetypeExpertise[]): void {
+    this.archetypeExpertise = list;
+  }
+
   /** Replace the per-interruption-type weights. Same tuning rationale as
    *  `setStructuralWeights`. Size-validates the new map against the
    *  ctor invariant (15 types). */
@@ -172,6 +183,7 @@ export class InterruptionScorer {
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
       bounce: 0, handRip: 0, sendToGy: 0,
       weighted: 0, fallbackPoints: 0, latentPoints: 0,
+      goalMatchPoints: 0,
       interruptionScore: 0, explorationScore: 0,
     };
 
@@ -325,24 +337,36 @@ export class InterruptionScorer {
     // is removed. See `project_solver_phase_d_retirement_2026_04_18.md`
     // for the retirement notes.
 
-    // Split scoring (methodology v5). interruptionScore is the user-facing
-    // grade (DecisionNode.score, reportScore, rubric). explorationScore is
-    // the DFS guidance signal (action ordering, TT, α-β floor) and is
-    // returned as `score` to preserve the pre-v5 DFS internal contract.
-    const interruptionScore = weighted + fallbackPoints;
+    // Strategic Grammar v1 goal-match evaluation. Counts INTO
+    // `interruptionScore` (user-facing grade) per the design decision —
+    // goal-completion is disruption value, not latent exploration signal.
+    // Returns 0 when no archetype expertise is active, preserving pre-grammar
+    // baselines for fixtures without an authored expertise file.
+    const goalMatch = evaluateGoalMatch(fieldState, this.archetypeExpertise);
+    const goalMatchPoints = goalMatch.totalPoints;
+
+    // Split scoring (methodology v5 + Strategic Grammar v1).
+    //   interruptionScore = weighted + fallbackPoints + goalMatchPoints
+    //   explorationScore  = interruptionScore + latentPoints
+    // interruptionScore is the user-facing grade (DecisionNode.score,
+    // reportScore, rubric). explorationScore is the DFS guidance signal
+    // (action ordering, TT, α-β floor) and is returned as `score` to
+    // preserve the pre-v5 DFS internal contract.
+    const interruptionScore = weighted + fallbackPoints + goalMatchPoints;
     const explorationScore = interruptionScore + latentPoints;
     breakdown.weighted = weighted;
     breakdown.fallbackPoints = fallbackPoints;
     breakdown.latentPoints = latentPoints;
+    breakdown.goalMatchPoints = goalMatchPoints;
     breakdown.interruptionScore = interruptionScore;
     breakdown.explorationScore = explorationScore;
 
     solverAssert(
-      Math.abs(interruptionScore - (weighted + fallbackPoints)) < 1e-9
+      Math.abs(interruptionScore - (weighted + fallbackPoints + goalMatchPoints)) < 1e-9
       && Math.abs(explorationScore - (interruptionScore + latentPoints)) < 1e-9,
       'InterruptionScorer.scoreWithCards',
       'score invariant drift',
-      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints },
+      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints, goalMatchPoints },
     );
 
     return { score: explorationScore, scoreBreakdown: breakdown, endBoardCards };
