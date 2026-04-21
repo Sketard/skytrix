@@ -34,9 +34,15 @@ import type {
   StartCondition,
 } from './strategic-grammar.js';
 
-const BONUS_NEXT_STEP = 300;
-const BONUS_FUTURE_STEP = 150;
-const BONUS_PAST_STEP = 0;
+// Bonus = goal.baselineScore × multiplier. Routes targeting high-value goals
+// (e.g., branded-dracotail-canonical-full baseline=18) guide DFS/MCTS more
+// aggressively than routes to partials (e.g., ritual-body-partial baseline=3).
+// This weight-by-baseline design (2026-04-21) is a pure grammar derivation:
+// the scorer and the ranker agree on goal value ordering, so exploration
+// actively pursues the scorer's highest-value targets rather than any
+// route-aligned action regardless of its target.
+const BONUS_NEXT_STEP_MULTIPLIER = 30;
+const BONUS_FUTURE_STEP_MULTIPLIER = 15;
 
 /** Zones considered "played" for stepDone detection. A step's subject is
  *  considered executed when its cardId appears here. Excludes hand/deck/
@@ -113,34 +119,39 @@ function routeActive(
 /** Compute bonus for an action in the context of a specific route.
  *
  *  Algorithm:
- *    1. Find the index of the first UNDONE step (nextIndex)
- *    2. If action matches step[nextIndex].subject → BONUS_NEXT_STEP
- *    3. Else if action matches step[j].subject for some j > nextIndex → BONUS_FUTURE_STEP
- *    4. Else → BONUS_PAST_STEP (0)
+ *    1. Find the target goal's baselineScore (route.goalId → expertise.goals)
+ *    2. Find the index of the first UNDONE step (nextIndex)
+ *    3. If action matches step[nextIndex].subject → baseline × 30 (next-step)
+ *    4. Else if action matches step[j].subject for some j > nextIndex → baseline × 15
+ *    5. Else → 0 (past-step)
  *
- *  Route fully complete (all steps done): returns 0 (no remaining guidance). */
+ *  Route fully complete (all steps done) or goal missing: returns 0. */
 function routeAlignmentBonus(
   route: ComboRoute,
   action: Action,
   state: FieldState,
   expertise: ArchetypeExpertise,
 ): number {
+  const goal = expertise.goals.find(g => g.id === route.goalId);
+  if (!goal) return 0;
+  const goalBaseline = goal.baselineScore;
+
   const nextIndex = findNextUndoneStepIndex(route, state, expertise);
   if (nextIndex === -1) return 0;
 
   const nextStep = route.steps[nextIndex];
   if (selectorMatchesCardId(nextStep.subject, action.cardId, expertise)) {
-    return BONUS_NEXT_STEP;
+    return goalBaseline * BONUS_NEXT_STEP_MULTIPLIER;
   }
 
   for (let j = nextIndex + 1; j < route.steps.length; j++) {
     const futureStep = route.steps[j];
     if (selectorMatchesCardId(futureStep.subject, action.cardId, expertise)) {
-      return BONUS_FUTURE_STEP;
+      return goalBaseline * BONUS_FUTURE_STEP_MULTIPLIER;
     }
   }
 
-  return BONUS_PAST_STEP;
+  return 0;
 }
 
 /** First step index whose subject is NOT yet evidenced by state. -1 when all
