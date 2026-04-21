@@ -43,7 +43,16 @@ export type CardSelector =
 // Endboard pattern — goals
 // -----------------------------------------------------------------------------
 
-export const ZONE_KINDS = ['monster', 'spellTrap', 'field', 'extraMonster'] as const;
+export const ZONE_KINDS = [
+  'monster', 'spellTrap', 'field', 'extraMonster',
+  // Lever 2 (2026-04-21): non-field pile zones for progress-state goals.
+  // A ritual spell in `gy` means it was activated; a Mikoto Reptile in `gy`
+  // means the tutor chain fired; Albion in `gy` means it was milled. These
+  // are legitimate combo-progress signals — same vocabulary a player uses
+  // to describe their combo's internal state. `position` is ignored for
+  // these zones (piles don't have meaningful positions for scoring).
+  'gy', 'hand', 'banished', 'deck',
+] as const;
 export type ZoneKind = typeof ZONE_KINDS[number];
 
 export type CardPosition = 'faceup-atk' | 'faceup-def' | 'facedown';

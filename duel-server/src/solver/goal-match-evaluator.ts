@@ -19,6 +19,11 @@ const ZONE_IDS_BY_KIND: Readonly<Record<ZoneKind, readonly ZoneId[]>> = {
   spellTrap: ['S1', 'S2', 'S3', 'S4', 'S5'],
   field: ['FIELD'],
   extraMonster: ['EMZ_L', 'EMZ_R'],
+  // Lever 2 (2026-04-21): pile zones for progress-state goals.
+  gy: ['GY'],
+  hand: ['HAND'],
+  banished: ['BANISHED'],
+  deck: ['DECK'],
 };
 
 /** Zones from which a card can still be played to fulfill a goal slot.

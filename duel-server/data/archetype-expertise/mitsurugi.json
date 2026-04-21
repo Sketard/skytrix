@@ -183,6 +183,54 @@
         "counts": {}
       },
       "baselineScore": 2
+    },
+    {
+      "id": "mitsurugi-ritual-spell-activated",
+      "name": "Ritual spell activated this turn",
+      "description": "Progress signal (Lever 2 2026-04-21): Mitsurugi Ritual OR Mirror in GY indicates the ritual spell was activated — the player is committed to the ritual line. Strong grammar hint that the next logical state is a ritual monster on field. Separate from 'ritual body on field' to score the ACTION of ritual-activating, not just the outcome.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [81560239, 49721684] },
+          "note": "Mitsurugi Ritual | Mitsurugi Mirror used"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "mitsurugi-mikoto-triggered",
+      "name": "Mikoto tutor chain fired",
+      "description": "Progress signal: a Mitsurugi Mikoto (Saji/Aramasa/Kusanagi) in GY means its on-SS or on-Tribute effect triggered — the tutor chain is in motion. Captures the 'Saji searched Mitsurugi Ritual' moment.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [18176525, 40543231, 82782870] },
+          "note": "Saji | Aramasa | Kusanagi in GY = tutor fired"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "mitsurugi-ritual-target-in-hand",
+      "name": "Ritual target searchable",
+      "description": "Progress signal: a Mitsurugi ritual monster in HAND (not yet summoned) means the ritual summon is imminent. Rewards DFS for searching Futsu/Murakumo/Habakiri to hand even before the ritual summon resolves.",
+      "required": [
+        {
+          "zone": "hand",
+          "card": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "note": "Futsu | Murakumo | Habakiri searchable"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
     }
   ],
 

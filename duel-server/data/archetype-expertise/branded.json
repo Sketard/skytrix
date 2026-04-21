@@ -270,6 +270,70 @@
         "counts": {}
       },
       "baselineScore": 3
+    },
+    {
+      "id": "branded-albion-milled",
+      "name": "Albion milled (EP set armed)",
+      "description": "Progress signal (Lever 2 2026-04-21): Albion in GY indicates it was sent there from ED this turn (typically via Fallen of White Dragon's hand-eff). Albion's EP-eff will set a Branded Spell/Trap from deck — this state commits the endboard to a Branded trap set.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "specific", "cardId": 87746184 },
+          "note": "Albion the Branded Dragon sent to GY"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "branded-fallen-substitute-in-gy",
+      "name": "Fallen-of-Albaz substitute reached GY",
+      "description": "Progress signal: a Fallen of Albaz substitute (White Dragon / Fallen of Albaz) in GY unlocks: (1) Cartesia self-SS condition, (2) Dark Dragon's banish-self effect can target Lv4-or-lower-mentioning-Albaz from GY. Key gate for the Cartesia-Fusion line.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [68468459, 68468460, 73819701] },
+          "note": "Fallen of Albaz | Fallen of the White Dragon in GY"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "branded-fusion-spell-used",
+      "name": "Fusion spell activated",
+      "description": "Progress signal: Branded Fusion OR Rahu Dracotail in GY = a Fusion spell was activated this turn. Strong signal that a Fusion monster is already on field (or was, before being material for a subsequent Fusion).",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [44362883, 32548318] },
+          "note": "Branded Fusion | Rahu Dracotail in GY"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "branded-dracotail-material-consumed",
+      "name": "Dracotail Lv4 in GY (on-material fired)",
+      "description": "Progress signal: a Lv4 Dracotail (Lukias / Phryxul / Sword Ryzeal wait that's Ryzeal / Urgula) in GY likely means it was sent as Fusion material, triggering on-fusion-material Dracotail-S/T-set effects. Captures the 'Fusion engine ran' state before the final endboard stabilizes.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [75003700, 84477320, 70871153, 7375867] },
+          "note": "Lukias | Phryxul | Urgula | Mululu in GY"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
     }
   ],
 
