@@ -12,6 +12,10 @@
 // 5 flex-rows (2+1+2), row h = H/5
 // Width = 5×h (square MZ/ST) + 2×(h×59/86) (portrait edges) = H × 274/215
 .board-wrapper {
+  // `position: relative` is required for z-index to apply; it also establishes
+  // a stacking context so board descendants (targeted reticles, chain badges,
+  // equip lines) can't pop above sibling containers (hand rows, overlays).
+  position: relative;
   height: 90%;
   aspect-ratio: 274 / 215;
   max-width: 100%;

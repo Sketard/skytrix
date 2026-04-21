@@ -24,6 +24,19 @@ const PRIVATE_LOCATIONS: Set<number> = new Set([LOCATION.DECK, LOCATION.HAND, LO
  *   Used by replay pre-computation (Story 3.3) to produce omniscient view.
  */
 export function filterMessage(message: ServerMessage, forPlayer: Player, omniscient = false): ServerMessage | null {
+  const result = filterMessageInner(message, forPlayer, omniscient);
+  // Sanitize any `boardStateAfter` snapshot attached by the live duel loop or
+  // replay precompute. Without this, an opponent would see the other player's
+  // hand/deck via the attached full-state snapshot. In omniscient mode
+  // (replay), sanitizeBoardState passes private info through but still
+  // remaps turnPlayer to the perspective index.
+  if (result && 'boardStateAfter' in result && result.boardStateAfter) {
+    return { ...result, boardStateAfter: sanitizeBoardState(result.boardStateAfter, forPlayer, omniscient) } as ServerMessage;
+  }
+  return result;
+}
+
+function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscient: boolean): ServerMessage | null {
   switch (message.type) {
     // --- Sanitized game messages (omniscient: skip field nulling) ---
 

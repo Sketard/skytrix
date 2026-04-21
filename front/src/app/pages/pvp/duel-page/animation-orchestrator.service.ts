@@ -1,6 +1,6 @@
 import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
-import type { GameEvent } from '../types';
-import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
+import type { DuelState, GameEvent } from '../types';
+import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg, CardInfo } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import { getCardImageUrlByCode } from '../pvp-card.utils';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
@@ -225,26 +225,61 @@ export class AnimationOrchestratorService {
       this.logger.warn('replayBuffer: %d unknown event type(s): %o', unknown.length, unknown.map(e => e.type));
     }
 
-    // When a shuffle follows a move-to-hand, lock HAND so travelToHand's inner
-    // commit only decrements the ref-count. The card stays hidden until
-    // processShuffleEvent calls commitAll().
-    let shuffleHandLock: { commit(): void; release(): void } | null = null;
-    if (buffer.some(e => e.type === 'MSG_SHUFFLE_HAND')) {
-      const handMove = buffer.find(e =>
-        e.type === 'MSG_MOVE' && (e as MoveMsg).toLocation === LOCATION.HAND) as MoveMsg | undefined;
-      if (handMove) {
-        shuffleHandLock = this.rbs.lockZone(`HAND-${this.ctx.relativePlayer(handMove.player)}`);
+    // Interleave MSG_CONFIRM_CARDS cards with their matching MOVE→HAND events.
+    // For each card in a CONFIRM, find the earliest unconsumed preceding
+    // MOVE→HAND with the same (cardCode, player); emit a single-card CONFIRM
+    // immediately after that MOVE. Cards with no match remain in the original
+    // CONFIRM at its original position. Produces tutor→reveal→tutor→reveal →
+    // … → shuffle flow instead of tutor→tutor→reveal-all→discard.
+    const interleaved = this.interleaveConfirmsWithMoves(buffer);
+
+    // Session HAND lock + expansion-slot batch: hold HAND across the entire
+    // buffer replay so travelToHand/discardFromHand inner commits only
+    // decrement their own ref-count without firing commitZone(HAND). This
+    // keeps rendered HAND at its pre-chain state throughout the sequence,
+    // otherwise:
+    //   - For tutors: the first tutor's commit would snap rendered HAND to
+    //     the pre-computed FINAL logical state mid-way.
+    //   - For discards: the first discard's commit would remove the
+    //     subsequent cards from the HAND DOM, breaking
+    //     `resolveHandTarget(HAND, fromSeq)` for discard 2/3 — they'd
+    //     animate from the HAND zone centre instead of their real card
+    //     position.
+    //
+    // Also reserves N distinct expansion slots per affected player via
+    // `drawManager.beginHandBatch` (only for MOVE→HAND), so tutor1 lands at
+    // slot 0, tutor2 at slot 1, etc., each keeping the fan's per-index
+    // rotation. Released at batch-end.
+    const sessionHandLocks: Array<{ commit(): void; release(): void }> = [];
+    const handMoveCountByRelPlayer = new Map<0 | 1, number>();
+    const handInvolvedRelPlayers = new Set<0 | 1>();
+    for (const e of interleaved) {
+      if (e.type !== 'MSG_MOVE') continue;
+      const mm = e as MoveMsg;
+      const touchesHand = mm.toLocation === LOCATION.HAND || mm.fromLocation === LOCATION.HAND;
+      if (!touchesHand) continue;
+      const rp = this.ctx.relativePlayer(mm.player);
+      handInvolvedRelPlayers.add(rp);
+      if (mm.toLocation === LOCATION.HAND) {
+        handMoveCountByRelPlayer.set(rp, (handMoveCountByRelPlayer.get(rp) ?? 0) + 1);
       }
+    }
+    for (const rp of handInvolvedRelPlayers) {
+      sessionHandLocks.push(this.rbs.lockZone(`HAND-${rp}`));
+    }
+    for (const [rp, count] of handMoveCountByRelPlayer) {
+      this.drawManager.beginHandBatch(rp, count);
     }
 
     // Pre-lock all zone event sources across the entire buffer
-    this.moveRouter.preLockQueuedSources(buffer.filter(isZoneEvent));
+    this.moveRouter.preLockQueuedSources(interleaved.filter(isZoneEvent));
 
     // Build batch preserving buffer chronology.
     // Consecutive zone events (MSG_MOVE/MSG_DRAW) are grouped for parallel
     // travel with stagger; a barrier follows each group so subsequent events
-    // see cards in their final positions. All other events play sequentially
-    // in their original buffer order — no type-based reordering.
+    // see cards in their final positions. When a single-card CONFIRM has been
+    // inlined right after a MOVE→HAND (see interleaveConfirmsWithMoves), the
+    // MOVE becomes a group of one, followed by barrier and its reveal.
     const batch: QueueEntry[] = [];
     let pendingGroup: GameEvent[] = [];
 
@@ -255,8 +290,27 @@ export class AnimationOrchestratorService {
       pendingGroup = [];
     };
 
-    for (const e of buffer) {
+    // A zone event is an "overlay detach" when its source is the OVERLAY
+    // location. We split the group at the boundary between overlay detach
+    // events and other zone events so XYZ destruction plays cleanly:
+    //   detach material 1 + detach material 2 (parallel, ~600ms)
+    //   └─ barrier ─┘
+    //   destroy monster (next group, ~400ms)
+    // Without the split, all three animate together: the monster's
+    // `preDestroyEffect` captures a srcEl that still holds the sliding-out
+    // overlay children, and the monster finishes disappearing before its
+    // materials finish their slide-out.
+    const isOverlayDetach = (e: GameEvent): boolean =>
+      e.type === 'MSG_MOVE' && (e as MoveMsg).fromLocation === LOCATION.OVERLAY;
+
+    for (const e of interleaved) {
       if (isZoneEvent(e)) {
+        const last = pendingGroup[pendingGroup.length - 1];
+        if (last && isOverlayDetach(last) !== isOverlayDetach(e)) {
+          // Category boundary (overlay→non-overlay or vice versa) — flush so
+          // the two phases play sequentially with a barrier between them.
+          flushGroup();
+        }
         pendingGroup.push(e);
       } else {
         flushGroup();
@@ -265,12 +319,26 @@ export class AnimationOrchestratorService {
     }
     flushGroup();
 
+    const releaseSessionLocks = () => {
+      // Safety release: processShuffleEvent's commitAll() clears locks during
+      // normal shuffle flow, and each lock's .release() is idempotent via the
+      // internal `released` flag. Release all here so the last remaining
+      // session lock drops HAND ref-count to the travelToHand commits' level
+      // and commitZone(HAND) fires with the final logical state. Also
+      // retires the hand-batch expansion slots so the post-commit fan lays
+      // out against the final card count.
+      for (const rp of handMoveCountByRelPlayer.keys()) {
+        this.drawManager.endHandBatch(rp);
+      }
+      for (const l of sessionHandLocks) l.release();
+    };
+
     // Inline path: called from mid-chain pre-replay inside _processAnimationQueueInner.
     // Prepend batch directly — the while loop continues and processes directives.
     // No await-signal (overlay not involved), no external processAnimationQueue
     // (would be a no-op since _isProcessing is true — causing a 10s deadlock).
     if (inlineFromLoop) {
-      batch.push({ kind: 'batch-end', resolve: () => { shuffleHandLock?.release(); } });
+      batch.push({ kind: 'batch-end', resolve: releaseSessionLocks });
       this.trace('batchEnqueue', { bufferLen: buffer.length, directives: batch.filter(e => 'kind' in e).length, inline: true });
       this.dataSource.prependToQueue(batch);
       this.chainManager.clearWaiting();
@@ -287,9 +355,7 @@ export class AnimationOrchestratorService {
       batch.push({
         kind: 'batch-end', resolve: () => {
           clearTimeout(safety);
-          // Safety release: processShuffleEvent's commitAll() clears this lock
-          // during normal flow. Release here only if it wasn't already cleared.
-          shuffleHandLock?.release();
+          releaseSessionLocks();
           resolve();
         },
       });
@@ -303,6 +369,65 @@ export class AnimationOrchestratorService {
       this.chainManager.clearWaiting();
       this.processAnimationQueue();
     });
+  }
+
+  /**
+   * Split aggregated MSG_CONFIRM_CARDS into per-card reveals inlined right
+   * after each matching MOVE→HAND, so the visual flow becomes
+   * `tutor1 → reveal1 → tutor2 → reveal2 → … → (unmatched remainder)`.
+   *
+   * Matching: confirm card is matched to the earliest unconsumed preceding
+   * MOVE→HAND with the same (cardCode, player) AND the confirm card's
+   * location === HAND. Unmatched cards stay as a reduced CONFIRM at the
+   * original CONFIRM position.
+   *
+   * Consumed moves are tracked by reference so splice-induced index shifts
+   * don't invalidate matching state across multiple CONFIRM events.
+   */
+  private interleaveConfirmsWithMoves(buffer: readonly GameEvent[]): GameEvent[] {
+    const interleaved: GameEvent[] = [];
+    const consumedMoves = new WeakSet<MoveMsg>();
+    for (const e of buffer) {
+      if (e.type !== 'MSG_CONFIRM_CARDS') { interleaved.push(e); continue; }
+      const confirmMsg = e as ConfirmCardsMsg;
+      const remaining: CardInfo[] = [];
+      const matches: Array<{ card: CardInfo; moveIdx: number }> = [];
+      for (const card of confirmMsg.cards) {
+        let matchIdx = -1;
+        for (let i = 0; i < interleaved.length; i++) {
+          const prev = interleaved[i];
+          if (prev.type !== 'MSG_MOVE') continue;
+          const mm = prev as MoveMsg;
+          if (consumedMoves.has(mm)) continue;
+          if (mm.toLocation === LOCATION.HAND
+            && mm.cardCode === card.cardCode
+            && mm.player === card.player
+            && card.location === LOCATION.HAND) {
+            matchIdx = i;
+            break;
+          }
+        }
+        if (matchIdx >= 0) {
+          consumedMoves.add(interleaved[matchIdx] as MoveMsg);
+          matches.push({ card, moveIdx: matchIdx });
+        } else {
+          remaining.push(card);
+        }
+      }
+      // Splice back-to-front so earlier indices stay valid during insertion.
+      matches.sort((a, b) => b.moveIdx - a.moveIdx);
+      for (const { card, moveIdx } of matches) {
+        interleaved.splice(moveIdx + 1, 0, {
+          type: 'MSG_CONFIRM_CARDS',
+          player: confirmMsg.player,
+          cards: [card],
+        } as ConfirmCardsMsg);
+      }
+      if (remaining.length > 0) {
+        interleaved.push({ ...confirmMsg, cards: remaining } as ConfirmCardsMsg);
+      }
+    }
+    return interleaved;
   }
 
   // ---------------------------------------------------------------------------
@@ -415,9 +540,14 @@ export class AnimationOrchestratorService {
       this.logger.log(DuelLogCategory.QUEUE, 'processAnimationQueue — queueLen=%d ownPlayer=%d',
         queue.length, this.ctx.ownPlayerIndex());
 
-      // Queue collapse (AC7): skip when chain events or directives present
-      if (queue.length > QUEUE_COLLAPSE_THRESHOLD && !queue.some(e =>
-        'kind' in e || e.type === 'MSG_CHAIN_SOLVING' || e.type === 'MSG_CHAIN_SOLVED' || e.type === 'MSG_CHAIN_END'
+      // Queue collapse (AC7): only trigger when ALL queued entries can be
+      // applied instantly without data loss. Visual events (MSG_MOVE,
+      // MSG_DRAW, MSG_CONFIRM_CARDS, MSG_FLIP_SUMMONING, MSG_SET, MSG_SHUFFLE_*,
+      // etc.) are NOT handled by applyInstantAnimation — collapsing them would
+      // silently drop the animation and the card would snap to destination via
+      // the next commitUnlocked(). So we limit collapse to LP-class bursts.
+      if (queue.length > QUEUE_COLLAPSE_THRESHOLD && queue.every(e =>
+        !('kind' in e) && (e.type === 'MSG_DAMAGE' || e.type === 'MSG_PAY_LPCOST' || e.type === 'MSG_RECOVER')
       )) {
         const collapseCount = queue.length - QUEUE_COLLAPSE_KEEP;
         for (let i = 0; i < collapseCount; i++) {
@@ -520,18 +650,32 @@ export class AnimationOrchestratorService {
       // Release pre-locks after processing — animated branches consume them
       // in buildMoveContext (MSG_MOVE) so this is a no-op; for non-animated
       // (result === 0) or async events (MSG_DRAW) it cleans up orphans.
-      if (event.type === 'MSG_MOVE') {
-        const msg = event as MoveMsg;
-        const relPlayer = this.ctx.relativePlayer(msg.player);
-        const srcKey = locationToZoneKey(msg.fromLocation, msg.fromSequence, relPlayer);
-        const dstKey = locationToZoneKey(msg.toLocation, msg.toSequence, relPlayer);
-        const keys = new Set<string>();
-        if (srcKey) keys.add(srcKey);
-        if (dstKey) keys.add(dstKey);
-        if (keys.size) this.moveRouter.releasePreLocksForKeys(keys);
-      } else if (event.type === 'MSG_DRAW') {
-        const relPlayer = this.ctx.relativePlayer((event as DrawMsg).player);
-        this.moveRouter.releasePreLocksForKeys(new Set([`HAND-${relPlayer}`]));
+      //
+      // EXCEPTION: when `chainManager.isResolving`, board-changing events are
+      // buffered by `bufferIfResolving()` and replayed later as a group
+      // directive. Releasing pre-locks here would drop HAND/GY ref-counts to
+      // zero, fire commitZone() synchronously, and expose the buffered cards
+      // at their destination before the replay animates them — the classic
+      // "tutor cards appear in hand before travel" flash. Keep the pre-locks
+      // alive; `replayBuffer()` will reuse them via its own preLockQueuedSources
+      // pass (the `!has` guard prevents duplication), and MSG_CHAIN_END's
+      // `releaseAllPreLocks()` is the safety net for any orphans.
+      const buffered = this.chainManager.isResolving
+        && ChainResolutionManager.BOARD_CHANGING_EVENTS.has(event.type);
+      if (!buffered) {
+        if (event.type === 'MSG_MOVE') {
+          const msg = event as MoveMsg;
+          const relPlayer = this.ctx.relativePlayer(msg.player);
+          const srcKey = locationToZoneKey(msg.fromLocation, msg.fromSequence, relPlayer);
+          const dstKey = locationToZoneKey(msg.toLocation, msg.toSequence, relPlayer);
+          const keys = new Set<string>();
+          if (srcKey) keys.add(srcKey);
+          if (dstKey) keys.add(dstKey);
+          if (keys.size) this.moveRouter.releasePreLocksForKeys(keys);
+        } else if (event.type === 'MSG_DRAW') {
+          const relPlayer = this.ctx.relativePlayer((event as DrawMsg).player);
+          this.moveRouter.releasePreLocksForKeys(new Set([`HAND-${relPlayer}`]));
+        }
       }
 
       if (this.commitMode === 'per-event') {
@@ -662,6 +806,15 @@ export class AnimationOrchestratorService {
       this.logger.log(DuelLogCategory.CHAIN, 'Buffering %s during chain resolution%s', event.type, moveInfo);
       return 0;
     }
+
+    // Progressive logical-state sync for replay: when the precompute attached a
+    // `boardStateAfter` snapshot (BOARD_CHANGING events captured during
+    // `chainPhase === 'resolving'`), update logical BEFORE the animation runs.
+    // The rendered zones stay protected by active locks (session HAND lock,
+    // per-event dstLock); the snapshot simply shifts what `commitZone` will
+    // show when the last lock releases. PvP events never carry this field.
+    const boardStateAfter = (event as GameEvent & { boardStateAfter?: DuelState }).boardStateAfter;
+    if (boardStateAfter) this.rbs.updateLogical(boardStateAfter);
 
     switch (event.type) {
       case 'MSG_MOVE':

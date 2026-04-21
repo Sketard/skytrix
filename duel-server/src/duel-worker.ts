@@ -24,6 +24,7 @@ import { filterMessage } from './message-filter.js';
 import type {
   ServerMessage,
   BoardStateMsg,
+  BoardStatePayload,
   Player,
   Phase,
   CardInfo,
@@ -64,6 +65,20 @@ let systemStrings: Map<number, string> = new Map();
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
 let lastAnnounceNumberOptions: number[] = [];
+
+/**
+ * Event types whose logical effect on board state warrants a `boardStateAfter`
+ * snapshot when emitted during a chain-resolving window. Matches the client's
+ * `ChainResolutionManager.BOARD_CHANGING_EVENTS` (chain-resolution-manager.ts).
+ * Shared between replay precompute and live duel loop.
+ */
+const LIVE_BOARD_CHANGING_EVENT_TYPES = new Set<string>([
+  'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
+  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
+  'MSG_SHUFFLE_HAND', 'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK',
+  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
+  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
+]);
 
 // Replay capture state
 let capturedResponses: CapturedResponse[] = [];
@@ -970,6 +985,12 @@ function emitReplayData(): void {
 function runDuelLoop(): void {
   if (!core || !duel) return;
 
+  // Mirror of the replay precompute's chain-resolving tracker. Board-changing
+  // events emitted between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED get a
+  // `boardStateAfter` snapshot attached so the live-play client can sync
+  // logical state per event (same mechanism as replay) — PvP↔Replay parity.
+  let chainResolving = false;
+
   while (true) {
     let skipRpsAutoResponded = false;
 
@@ -1036,6 +1057,19 @@ function runDuelLoop(): void {
         if (dto.type === 'MSG_MOVE') {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });
           hasCostMoves = true;
+        }
+        // Track chain-resolving window for per-event board snapshots.
+        if (dto.type === 'MSG_CHAIN_SOLVING') chainResolving = true;
+        else if (dto.type === 'MSG_CHAIN_SOLVED') chainResolving = false;
+        // Attach a post-event board snapshot to BOARD_CHANGING events fired
+        // during the resolving window. Lets the client's `processEvent` hook
+        // `rbs.updateLogical(boardStateAfter)` progress logical state per
+        // event, matching the replay precompute behavior. Cost is one
+        // `buildBoardState()` per BOARD_CHANGING event during resolving
+        // (~10-50ms each, bounded by chain length).
+        if (chainResolving && LIVE_BOARD_CHANGING_EVENT_TYPES.has(dto.type)) {
+          (dto as { boardStateAfter?: BoardStatePayload }).boardStateAfter =
+            (buildBoardState() as BoardStateMsg).data;
         }
         // Emit intermediate BOARD_STATE before chain resolution starts so the client
         // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
@@ -1422,6 +1456,11 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
   let lastConfirmedCards: CardInfo[] | null = null;
   let hasWinOrDraw = false;
   let activeChainIndex: number | null = null; // Track current chain link depth
+  // Set to true while we're between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED —
+  // mirrors `ChainResolutionManager.isResolving` on the client. Board-changing
+  // events emitted during this window get a `boardStateAfter` snapshot so the
+  // client's buffer replay can progressively sync logical state per event.
+  let chainResolving = false;
   const MAX_ITERATIONS = 100_000; // CPU-spin guard — well above any real duel
   let iterations = 0;
 
@@ -1494,6 +1533,22 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
       if (translated) {
         const filtered = filterMessage(translated, 0 as Player, true); // omniscient
         if (filtered) {
+          // Track chain-resolving window (MSG_CHAIN_SOLVING..MSG_CHAIN_SOLVED) so
+          // board-changing events in that window get a `boardStateAfter` snapshot.
+          if (filtered.type === 'MSG_CHAIN_SOLVING') chainResolving = true;
+          else if (filtered.type === 'MSG_CHAIN_SOLVED') chainResolving = false;
+
+          // Attach a post-event board snapshot to BOARD_CHANGING events inside
+          // the resolving window. Client's `replayBuffer` uses it to progress
+          // logical state across events instead of jumping to the final chain
+          // state at commit. The snapshot reflects ocgcore state at the moment
+          // of capture (post-batch if multiple events fire in one `duelProcess`
+          // call); still strictly better than no snapshot at all.
+          if (chainResolving && LIVE_BOARD_CHANGING_EVENT_TYPES.has(filtered.type)) {
+            const snapshot = (buildBoardState() as BoardStateMsg).data;
+            (filtered as { boardStateAfter?: BoardStatePayload }).boardStateAfter = snapshot;
+          }
+
           // Track hint/confirmedCards accumulators (metadata, not pushed to events)
           if (filtered.type === 'MSG_HINT') {
             lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName, hintAction: filtered.hintAction };

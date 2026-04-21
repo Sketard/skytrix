@@ -154,30 +154,42 @@ export interface MoveMsg {
   toPosition: Position;
   isToken: boolean;
   reason: number;
+  /**
+   * Board-state snapshot captured immediately AFTER this event was applied
+   * server-side. Populated by the replay precompute for BOARD_CHANGING events
+   * that fire during `chainPhase === 'resolving'`, so the client's buffer
+   * replay can progressively update logical state per event instead of
+   * jumping to the chain's final state at commit. Absent in live PvP.
+   */
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface DrawMsg {
   type: 'MSG_DRAW';
   player: Player;
   cards: (number | null)[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface DamageMsg {
   type: 'MSG_DAMAGE';
   player: Player;
   amount: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface RecoverMsg {
   type: 'MSG_RECOVER';
   player: Player;
   amount: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface PayLpCostMsg {
   type: 'MSG_PAY_LPCOST';
   player: Player;
   amount: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ChainingMsg {
@@ -223,17 +235,20 @@ export interface ConfirmCardsMsg {
   type: 'MSG_CONFIRM_CARDS';
   player: Player;
   cards: CardInfo[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ShuffleHandMsg {
   type: 'MSG_SHUFFLE_HAND';
   player: Player;
   cards: (number | null)[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ShuffleDeckMsg {
   type: 'MSG_SHUFFLE_DECK';
   player: Player;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface FlipSummoningMsg {
@@ -244,6 +259,7 @@ export interface FlipSummoningMsg {
   location: CardLocation;
   sequence: number;
   position: Position;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ChangePosMsg {
@@ -255,6 +271,7 @@ export interface ChangePosMsg {
   sequence: number;
   previousPosition: Position;
   currentPosition: Position;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface SetMsg {
@@ -265,6 +282,7 @@ export interface SetMsg {
   location: CardLocation;
   sequence: number;
   position: Position;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface SwapMsg {
@@ -300,12 +318,14 @@ export interface TossCoinMsg {
   type: 'MSG_TOSS_COIN';
   player: Player;
   results: boolean[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface TossDiceMsg {
   type: 'MSG_TOSS_DICE';
   player: Player;
   results: number[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface EquipMsg {
@@ -316,6 +336,7 @@ export interface EquipMsg {
   targetPlayer: Player;
   targetLocation: CardLocation;
   targetSequence: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface AddCounterMsg {
@@ -325,6 +346,7 @@ export interface AddCounterMsg {
   location: CardLocation;
   sequence: number;
   count: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface RemoveCounterMsg {
@@ -334,16 +356,19 @@ export interface RemoveCounterMsg {
   location: CardLocation;
   sequence: number;
   count: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ShuffleSetCardMsg {
   type: 'MSG_SHUFFLE_SET_CARD';
   cards: { fromPlayer: Player; fromSequence: number; toPlayer: Player; toSequence: number; location: CardLocation }[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface SwapGraveDeckMsg {
   type: 'MSG_SWAP_GRAVE_DECK';
   player: Player;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface WinMsg {

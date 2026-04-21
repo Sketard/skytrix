@@ -290,12 +290,32 @@ export class MoveAnimationRouter {
     };
   }
 
+  /**
+   * Commit `dstLock` and — if the zone is now fully unlocked (commitZone just
+   * fired on this commit) — clear any landed float overlay at `dstKey`. For
+   * multi-event groups sharing a destination (Link materials → GY, mass
+   * destroy, etc.) the intermediate commits only decrement the ref-count;
+   * the floats MUST stay visible as overlays so the user sees each card
+   * piling up instead of disappearing while the rendered pile waits for the
+   * final commit. Only the last commit (ref=0) triggers commitZone, at
+   * which point the rendered zone now shows the real cards and the floats
+   * are redundant → safe to clear in one sweep.
+   *
+   * HAND destinations skip this helper entirely — floats are kept for
+   * `processShuffleEvent` / `confirmCardsInHand` reveal.
+   */
+  private commitAndClearFloat(dstLock: { commit(): void }, dstKey: string): void {
+    dstLock.commit();
+    const stillLocked = this.rbs.lockedZoneKeys().includes(dstKey);
+    if (!stillLocked) this.cardTravelService.clearLandedByDstPrefix(dstKey);
+  }
+
   private overlayDetach(mc: MoveContext): number | Promise<void> {
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
     const p = this.processOverlayDetachEvent(mc.msg);
     if (!(p instanceof Promise)) { mc.preSrcLock?.release(); dstLock.release(); return p; }
     return p.then(
-      () => { mc.preSrcLock?.commit(); dstLock.commit(); },
+      () => { mc.preSrcLock?.commit(); this.commitAndClearFloat(dstLock, mc.dstKey); },
       () => { mc.preSrcLock?.release(); dstLock.release(); },
     );
   }
@@ -314,7 +334,7 @@ export class MoveAnimationRouter {
       landingStyle: 'slam',
     });
     return summonP.then(
-      () => { dstLock.commit(); },
+      () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
   }
@@ -357,7 +377,7 @@ export class MoveAnimationRouter {
       });
       srcLock.commit();
       await p;
-      dstLock.commit();
+      this.commitAndClearFloat(dstLock, mc.dstKey);
     }).catch(() => { srcLock.release(); dstLock.release(); });
   }
 
@@ -378,7 +398,7 @@ export class MoveAnimationRouter {
     });
     srcLock.commit();
     return travelP.then(
-      () => { dstLock.commit(); },
+      () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
   }
@@ -386,19 +406,22 @@ export class MoveAnimationRouter {
   private bounceToHand(mc: MoveContext): Promise<void> {
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     srcLock.commit();
-    mc.preDstLock?.release(); // HAND locking managed by travelToHand
+    // Reuse preDstLock as travelToHand's handLock — releasing here would drop
+    // HAND ref-count to 0 and flash the bounced card before animation starts.
+    const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relPlayer);
     return this.drawManager.travelToHand(mc.srcKey, mc.relPlayer, mc.cardImage, {
       duration: mc.travelDuration, srcRotateZ: mc.isDefenseFrom ? -90 : undefined, baseRotateZ: mc.baseRotateZ,
-    });
+    }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
   }
 
   private returnToDeck(mc: MoveContext): Promise<void> {
     mc.preSrcLock?.commit();
     mc.preDstLock?.release(); // DECK not locked by design
+    const dstKey = mc.dstKey;
     return this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL,
       srcRotateZ: mc.isDefenseFrom ? -90 : undefined, baseRotateZ: mc.baseRotateZ,
-    });
+    }).then(() => { this.cardTravelService.clearLandedByDstPrefix(dstKey); });
   }
 
   private fieldToField(mc: MoveContext): Promise<void> {
@@ -413,7 +436,7 @@ export class MoveAnimationRouter {
     });
     srcLock.commit();
     return travelP.then(
-      () => { dstLock.commit(); },
+      () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
   }
@@ -435,7 +458,7 @@ export class MoveAnimationRouter {
       baseRotateZ: mc.baseRotateZ,
     });
     return discardP.then(
-      () => { dstLock.commit(); },
+      () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
   }
@@ -443,9 +466,10 @@ export class MoveAnimationRouter {
   private handToDeck(mc: MoveContext): Promise<void> {
     mc.preSrcLock?.commit();
     mc.preDstLock?.release(); // DECK not locked by design
+    const dstKey = mc.dstKey;
     return this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL, baseRotateZ: mc.baseRotateZ,
-    });
+    }).then(() => { this.cardTravelService.clearLandedByDstPrefix(dstKey); });
   }
 
   private deckOrExtraToPile(mc: MoveContext): Promise<void> {
@@ -461,25 +485,28 @@ export class MoveAnimationRouter {
     });
     srcLock.commit();
     return travelP.then(
-      () => { dstLock.commit(); },
+      () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
   }
 
   private pileToHand(mc: MoveContext): Promise<void> {
     mc.preSrcLock?.commit();
-    mc.preDstLock?.release(); // HAND locking managed by travelToHand
+    // Reuse preDstLock as travelToHand's handLock — releasing here would drop
+    // HAND ref-count to 0 and flash the searched card before animation starts.
+    const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relPlayer);
     return this.drawManager.travelToHand(mc.srcKey, mc.relPlayer, mc.cardImage, {
       duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,
-    });
+    }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
   }
 
   private pileToDeck(mc: MoveContext): Promise<void> {
     mc.preSrcLock?.commit();
     mc.preDstLock?.release(); // DECK not locked by design
+    const dstKey = mc.dstKey;
     return this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL, baseRotateZ: mc.baseRotateZ,
-    });
+    }).then(() => { this.cardTravelService.clearLandedByDstPrefix(dstKey); });
   }
 
   private pileToPile(mc: MoveContext): Promise<void> {
@@ -495,7 +522,7 @@ export class MoveAnimationRouter {
     });
     srcLock.commit();
     return travelP.then(
-      () => { dstLock.commit(); },
+      () => this.commitAndClearFloat(dstLock, mc.dstKey),
       () => dstLock.release(),
     );
   }
@@ -503,10 +530,12 @@ export class MoveAnimationRouter {
   private fallback(mc: MoveContext): number | Promise<void> {
     if (mc.to === LOCATION.HAND) {
       mc.preSrcLock?.commit();
-      mc.preDstLock?.release(); // HAND locking managed by travelToHand
+      // Reuse preDstLock as travelToHand's handLock — releasing here would drop
+      // HAND ref-count to 0 and flash the tutored card before animation starts.
+      const batchIdx = this.drawManager.consumeHandBatchSlot(mc.relPlayer);
       return this.drawManager.travelToHand(mc.src, mc.relPlayer, mc.cardImage, {
         duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,
-      });
+      }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
     }
     const fallbackP = this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,

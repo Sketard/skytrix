@@ -18,6 +18,11 @@ export interface TravelOptions {
   landingStyle?: 'default' | 'slam' | 'soft' | 'banish';
   /** Zone key tag stored on the float for later filtering (e.g. 'HAND-0', 'GY-1'). */
   dstZoneKey?: string;
+  /**
+   * Card code tag stored on the float. Used by `processShuffleEvent` to match
+   * multiple HAND landed floats to their post-shuffle DOM positions.
+   */
+  cardCode?: number;
 }
 
 @Injectable()
@@ -163,6 +168,7 @@ export class CardTravelService implements OnDestroy {
     const floatingEl = this.createFloatingElement(sourceRect, cardImage, options);
     const dstKey = options.dstZoneKey ?? (typeof destination === 'string' ? destination : null);
     if (dstKey) floatingEl.dataset['dstKey'] = dstKey;
+    if (options.cardCode) floatingEl.dataset['cardCode'] = String(options.cardCode);
 
     this._container.appendChild(floatingEl);
 
@@ -260,17 +266,55 @@ export class CardTravelService implements OnDestroy {
   }
 
   /**
-   * Remove and return the first landed float whose dstKey starts with the given prefix.
-   * Without a prefix, pops the first landed float (FIFO).
+   * Remove and return a landed float matching the given filters.
+   *
+   * @param dstPrefix When provided, restricts to floats whose `dstKey` starts
+   *   with the prefix (e.g., 'HAND', 'GRAVE-0').
+   * @param cardCode When provided, restricts to floats whose `dataset.cardCode`
+   *   matches — used by `confirmCardsInHand` so an interleaved per-card
+   *   CONFIRM reveals the correct ghost.
+   *
+   * Strategy:
+   *   - With `cardCode`: LIFO — return the MOST RECENTLY added matching
+   *     float. An interleaved confirm always runs right after its tutor
+   *     lands, so the newest matching float is the correct ghost. Critical
+   *     when the same cardCode is tutored multiple times: FIFO would
+   *     re-pop the previously revealed-and-returned float (via
+   *     `returnToLanded`) instead of the freshly landed one.
+   *   - Without `cardCode`: FIFO — preserves behavior for non-interleaved
+   *     paths (shuffle-hand, opponent face-down reveals where the float
+   *     wasn't tagged with a cardCode).
    */
-  popLandedFloat(dstPrefix?: string): HTMLElement | null {
-    for (const el of this._landed) {
-      if (!dstPrefix || (el.dataset['dstKey']?.startsWith(dstPrefix))) {
-        this._landed.delete(el);
-        return el;
+  popLandedFloat(dstPrefix?: string, cardCode?: number): HTMLElement | null {
+    if (cardCode !== undefined) {
+      let match: HTMLDivElement | null = null;
+      for (const el of this._landed) {
+        if (dstPrefix && !el.dataset['dstKey']?.startsWith(dstPrefix)) continue;
+        if (el.dataset['cardCode'] !== String(cardCode)) continue;
+        match = el; // keep updating to the newest matching float
       }
+      if (match) this._landed.delete(match);
+      return match;
+    }
+    for (const el of this._landed) {
+      if (dstPrefix && !el.dataset['dstKey']?.startsWith(dstPrefix)) continue;
+      this._landed.delete(el);
+      return el;
     }
     return null;
+  }
+
+  /**
+   * Return (without removing) all landed floats whose dstKey starts with the
+   * given prefix. Used by `processShuffleEvent` to match every newly-added
+   * card to its post-shuffle DOM position in multi-tutor scenarios.
+   */
+  getLandedFloatsByDstPrefix(prefix: string): HTMLDivElement[] {
+    const out: HTMLDivElement[] = [];
+    for (const el of this._landed) {
+      if (el.dataset['dstKey']?.startsWith(prefix)) out.push(el);
+    }
+    return out;
   }
 
   /**
