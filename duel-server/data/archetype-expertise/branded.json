@@ -1,0 +1,580 @@
+{
+  "archetype": "branded",
+  "displayName": "Branded (Despia / Dracotail / Dogmatika)",
+  "version": 1,
+
+  "_rolesNote": "Branded is a multi-engine fusion archetype centered on Fallen-of-Albaz (and substitutes like Fallen of the White Dragon) + Despia Fusions. The branded-dracotail-bainbridge-2nd fixture pairs it with the Dracotail engine (Dragon/Spellcaster Fusion toolkit). This expertise covers: (a) Fusion core — Fallen of Albaz treatments, Branded spells, Despia enablers; (b) Dracotail engine — Lv4 Dragon/Spellcaster bodies + Fusion spells Rahu/Faimena; (c) Dogmatika enablers — Ecclesia variants, Guiding Ariadne; (d) the specific user-dictated combo plan lines (Arthalion+Dark Dragon+Secreterion+Mululu canonical AND Mirrorjade alt).",
+
+  "roleMap": {
+    "73819701": ["starter", "enabler"],
+    "75003700": ["starter", "tutor", "material"],
+    "84477320": ["material", "extender"],
+    "1498449": ["enabler", "extender"],
+    "30271097": ["interruption"],
+    "44362883": ["enabler", "tutor"],
+    "95515789": ["enabler", "finisher"],
+    "68468459": ["starter", "material"],
+    "68468460": ["starter", "material"],
+    "55273560": ["extender", "material"],
+    "55273561": ["extender", "material"],
+    "60303688": ["extender", "tutor"],
+    "60303689": ["extender", "tutor"],
+    "78397661": ["finisher", "interruption"],
+    "87746184": ["enabler", "recursion", "material"],
+    "44146295": ["finisher", "interruption"],
+    "70534340": ["finisher", "tutor"],
+    "62962630": ["starter", "tutor"],
+    "62962631": ["starter", "tutor"],
+    "98301564": ["tutor", "enabler"],
+    "70871153": ["material", "recursion", "tutor"],
+    "32548318": ["enabler"],
+    "7375867": ["material", "enabler"],
+    "89851827": ["finisher", "recursion"],
+    "33760966": ["finisher", "recursion"],
+    "5431722": ["interruption"],
+    "69932023": ["interruption"],
+    "80208225": ["interruption"],
+    "42125140": ["interruption", "material"],
+    "79755671": ["finisher"],
+    "6153210": ["finisher"],
+    "44482554": ["material"],
+    "62022479": ["enabler", "tutor"],
+    "81767888": ["enabler", "material"],
+    "82738008": ["enabler", "recursion"],
+    "34995106": ["recursion"]
+  },
+
+  "keyCards": [73819701, 75003700, 44362883, 95515789, 33760966, 78397661, 89851827, 70871153, 32548318, 7375867, 87746184, 30271097, 44146295, 70534340],
+
+  "goals": [
+    {
+      "id": "branded-dracotail-canonical-full",
+      "name": "Arthalion + Dark Dragon + Mululu + Secreterion + 3 trap set",
+      "description": "The user-dictated 7-piece canonical endboard per branded-dracotail-combo-plan-2026-04-19.md. 4 MZONE fusion/synchro bodies + 3 set traps (2 Dracotail + 1 Branded). Covers all of Flame/Horn/Fallen&Virtuous set + Arthalion+DarkDragon+Mululu+Secreterion face-up.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 33760966 },
+          "position": "faceup-atk",
+          "note": "Dracotail Arthalion (Lv8 Fusion Dragon via Rahu)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 78397661 },
+          "position": "faceup-atk",
+          "note": "Ecclesia and the Dark Dragon (Lv8 Synchro, returns from banishment at EP)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 89851827 },
+          "position": "faceup-atk",
+          "note": "Secreterion Dragon (Lv8 Fusion via Cartesia)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 7375867 },
+          "position": "faceup-atk",
+          "note": "Dracotail Mululu (re-SS'd via Secreterion GY-eff)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 5431722 },
+          "position": "facedown",
+          "note": "Dracotail Flame (set by Lukias on-fusion-material)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 69932023 },
+          "position": "facedown",
+          "note": "Dracotail Horn (set by Mululu on-fusion-material)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 30271097 },
+          "position": "facedown",
+          "note": "The Fallen & The Virtuous (set by Albion EP-eff)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "typedNegate": 2,
+          "banish": 1,
+          "destruction": 1
+        }
+      },
+      "baselineScore": 18
+    },
+    {
+      "id": "branded-dracotail-4mzone-partial",
+      "name": "4-MZONE tower (no traps)",
+      "description": "All 4 monster-zone finishers present without the trap set. Strong interruption tower via Dark Dragon quick-eff + Arthalion/Secreterion/Mululu. Fallback when trap-set triggers don't fire or traps are consumed.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 33760966 },
+          "position": "faceup-atk",
+          "note": "Arthalion"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 78397661 },
+          "position": "faceup-atk",
+          "note": "Dark Dragon"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 89851827 },
+          "position": "faceup-atk",
+          "note": "Secreterion"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 7375867 },
+          "position": "faceup-atk",
+          "note": "Mululu"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "typedNegate": 1
+        }
+      },
+      "baselineScore": 12
+    },
+    {
+      "id": "branded-mirrorjade-line",
+      "name": "Mirrorjade + Lubellion (alt line)",
+      "description": "Alternative Branded-primary endboard: Mirrorjade (Lv8 Fusion, on-GY banish-target) atop Lubellion (Lv8 Fusion, pendulum-like search body). Triggered via Branded Fusion when the opener pivots Branded-heavy rather than Dracotail-heavy. Covers the branded-dracotail-opener-mirrorjade-line fixture variant.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 44146295 },
+          "position": "faceup-atk",
+          "note": "Mirrorjade the Iceblade Dragon"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 70534340 },
+          "position": "faceup-atk",
+          "note": "Lubellion the Searing Dragon"
+        }
+      ],
+      "optional": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 30271097 },
+          "position": "facedown",
+          "note": "Fallen & Virtuous (via Albion EP-set)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "typedNegate": 1
+        }
+      },
+      "baselineScore": 10
+    },
+    {
+      "id": "dracotail-arthalion-secreterion-duo",
+      "name": "Arthalion + Secreterion (2-Fusion core)",
+      "description": "Core 2-Fusion endboard when only one fusion engine completes. Arthalion quick-removal + Secreterion GY-recycle engine provides durable interruption + resource recovery.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 33760966 },
+          "position": "faceup-atk",
+          "note": "Arthalion"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 89851827 },
+          "position": "faceup-atk",
+          "note": "Secreterion"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "typedNegate": 1
+        }
+      },
+      "baselineScore": 7
+    },
+    {
+      "id": "branded-dracotail-any-fusion-partial",
+      "name": "Any Dracotail Fusion finisher on field",
+      "description": "Gradient: ANY Dracotail Fusion body (Arthalion, Secreterion, Gulamel, Ketu) or Branded finisher (Mirrorjade, Lubellion) on the field. Signals the Fusion engine fired.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [33760966, 89851827, 79755671, 6153210, 44146295, 70534340] },
+          "position": "faceup-atk",
+          "note": "Arthalion | Secreterion | Gulamel | Ketu | Mirrorjade | Lubellion"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "branded-dracotail-dark-dragon-body",
+      "name": "Ecclesia and the Dark Dragon on field",
+      "description": "Dark Dragon Synchro body — quick-eff SS from Deck/GY + banish-self protection. Valuable interruption even if other bodies missing.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 78397661 },
+          "position": "faceup-atk",
+          "note": "Dark Dragon"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "typedNegate": 1
+        }
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "dracotail-trap-set-partial",
+      "name": "Any Dracotail trap set",
+      "description": "Gradient: at least one Dracotail trap (Flame/Horn/Sting) set on the backrow.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "anyOf", "cardIds": [5431722, 69932023, 80208225, 42125140] },
+          "position": "facedown",
+          "note": "Flame | Horn | Sting | Shaulas"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    },
+    {
+      "id": "branded-trap-set-partial",
+      "name": "Fallen & Virtuous set",
+      "description": "Gradient: Branded trap (Fallen & Virtuous) set via Albion EP-effect.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 30271097 },
+          "position": "facedown",
+          "note": "The Fallen & The Virtuous"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    }
+  ],
+
+  "routes": [
+    {
+      "id": "fallen-white-dragon-albion-mill",
+      "name": "Fallen of White Dragon hand-eff → mill Albion → SS self",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 73819701 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 73819701 },
+          "note": "Fallen of White Dragon hand-eff: send Albion from ED to GY (mentions Fallen of Albaz); SS self. ED-locks into Lv8 Fusion/Synchro rest of turn."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 55273560 },
+          "note": "White Dragon on-SS trigger: SS Incredible Ecclesia from Deck (mentions Fallen of Albaz)"
+        },
+        {
+          "action": "synchroSummon",
+          "subject": { "kind": "specific", "cardId": 78397661 },
+          "note": "Synchro Summon Ecclesia and the Dark Dragon (Lv8) using Incredible Ecclesia (Tuner Lv4) + Fallen of White Dragon (Lv4 non-Tuner)"
+        }
+      ],
+      "goalId": "branded-dracotail-dark-dragon-body"
+    },
+    {
+      "id": "dark-dragon-banish-ss-ecclesia",
+      "name": "Dark Dragon Quick-eff: banish self + SS Ecclesia from GY",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 78397661 },
+          "location": "field",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 78397661 },
+          "note": "Dark Dragon Quick-eff: banish self until EP, SS 1 Fallen of Albaz or Lv4-or-lower mentioning it from Deck/GY. Target Incredible Ecclesia from GY."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 55273560 },
+          "note": "Re-SS Incredible Ecclesia from GY"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 95515789 },
+          "note": "Cartesia self-SS from hand (Fallen of White Dragon in GY is treated as Fallen of Albaz, satisfies condition)"
+        }
+      ],
+      "goalId": "branded-dracotail-any-fusion-partial"
+    },
+    {
+      "id": "lukias-ns-urgula-search",
+      "name": "Lukias NS → search Urgula",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 75003700 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 75003700 },
+          "note": "NS Dracotail Lukias (Lv4 Spellcaster); triggers on-NS: search 1 Dracotail monster"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 75003700 },
+          "target": { "kind": "specific", "cardId": 70871153 },
+          "note": "Lukias on-NS trigger: add Dracotail Urgula to hand (key Fusion material for Secreterion)"
+        }
+      ],
+      "goalId": "branded-dracotail-any-fusion-partial"
+    },
+    {
+      "id": "cartesia-fusion-secreterion",
+      "name": "Cartesia Quick-eff → Fusion Secreterion (Urgula + Lukias)",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 95515789 },
+          "location": "field",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 95515789 },
+          "note": "Cartesia Quick-eff: Fusion Summon Lv8+ Fusion from ED using hand/field"
+        },
+        {
+          "action": "fusionSummon",
+          "subject": { "kind": "specific", "cardId": 89851827 },
+          "note": "Fusion Summon Secreterion Dragon (1 Dragon + 1 Spellcaster). Urgula (hand Dragon) + Lukias (field Spellcaster). Both → GY triggering on-material sets."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 5431722 },
+          "note": "Lukias on-fusion-material: set Dracotail Flame from deck"
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 32548318 },
+          "note": "Urgula on-fusion-material: set Rahu Dracotail from deck (for step 9 Fusion summon)"
+        }
+      ],
+      "goalId": "branded-dracotail-4mzone-partial"
+    },
+    {
+      "id": "urgula-gy-recycle-lukias",
+      "name": "Urgula GY → recycle Lukias to hand",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 70871153 },
+          "location": "gy",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 70871153 },
+          "note": "Urgula GY-eff: target 1 Spellcaster Dracotail in GY; place Urgula on deck-bottom; add target to hand. Target = Lukias."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 75003700 },
+          "note": "Lukias returned to hand (from Urgula GY-eff resolution)"
+        }
+      ],
+      "goalId": "branded-dracotail-4mzone-partial"
+    },
+    {
+      "id": "rahu-activate-fusion-arthalion",
+      "name": "Rahu Dracotail → Fusion Arthalion (Lukias hand + Mululu deck)",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 32548318 },
+          "location": "field",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 32548318 },
+          "note": "Activate Rahu Dracotail (Normal Spell, legal same-turn-as-set). Fusion-summon from ED using hand/deck/field."
+        },
+        {
+          "action": "fusionSummon",
+          "subject": { "kind": "specific", "cardId": 33760966 },
+          "note": "Fusion Summon Arthalion (Lv8 Fusion Dragon). Materials: Lukias from hand (satisfies '1+ from hand' clause) + Mululu from deck."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 73819701 },
+          "note": "Arthalion on-Fusion-Summon trigger: target monster on field/GY up to # materials from hand; return Fallen of White Dragon (in GY) to hand."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 69932023 },
+          "note": "Mululu on-fusion-material trigger: set Dracotail Horn from deck"
+        }
+      ],
+      "goalId": "branded-dracotail-canonical-full"
+    },
+    {
+      "id": "secreterion-gy-re-ss-mululu",
+      "name": "Secreterion GY-eff → re-SS Mululu",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 89851827 },
+          "location": "field",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 89851827 },
+          "note": "Secreterion GY-eff (active after being GY'd OR as quick-eff from field): target 1 Dragon + 1 Spellcaster in GY; SS 1, deck-bottom the other. Pick Mululu (Dragon) SS; Lukias (Spellcaster) to deck."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 7375867 },
+          "note": "SS Mululu from GY"
+        }
+      ],
+      "goalId": "branded-dracotail-canonical-full"
+    },
+    {
+      "id": "albion-ep-set-fallen-virtuous",
+      "name": "Albion EP-eff → Set Fallen & Virtuous",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 87746184 },
+          "location": "gy",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 30271097 },
+          "note": "Albion EP-eff (if in GY because sent this turn): add or set Branded S/T from Deck. Set The Fallen & The Virtuous."
+        }
+      ],
+      "goalId": "branded-trap-set-partial"
+    },
+    {
+      "id": "branded-fusion-mirrorjade",
+      "name": "Branded Fusion → Mirrorjade (alt line)",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 44362883 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 44362883 },
+          "note": "Activate Branded Fusion. ED-locks into Fusion summons rest of turn."
+        },
+        {
+          "action": "fusionSummon",
+          "subject": { "kind": "specific", "cardId": 44146295 },
+          "note": "Fusion Summon Mirrorjade the Iceblade Dragon (mentions Fallen of Albaz). Materials from hand/deck/field."
+        }
+      ],
+      "goalId": "branded-mirrorjade-line"
+    },
+    {
+      "id": "cartesia-field-ss",
+      "name": "Blazing Cartesia self-SS (Fallen of Albaz in GY)",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 95515789 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 95515789 },
+          "note": "Cartesia self-SS from hand — requires 'Fallen of Albaz' (or a treated-as substitute, e.g., Fallen of White Dragon) on field or in GY."
+        }
+      ],
+      "goalId": "branded-dracotail-any-fusion-partial"
+    }
+  ],
+
+  "synergies": [
+    {
+      "cards": [73819701, 55273560, 78397661],
+      "effect": "Fallen of White Dragon → SS Incredible Ecclesia (Tuner Lv4) from deck → Synchro Dark Dragon (Lv8). The core Branded-Dracotail opener: 1 hand card produces Lv8 Synchro + triggers ED-lock allowing Lv8 Fusion follow-ups (Secreterion, Arthalion)."
+    },
+    {
+      "cards": [78397661, 55273560, 95515789],
+      "effect": "Dark Dragon Quick-eff brings Incredible Ecclesia back from GY while banishing itself — Ecclesia re-SS enables Cartesia (Fallen of Albaz condition met by White Dragon in GY) + creates 2 more Lv4 bodies for future Xyz/Fusion."
+    },
+    {
+      "cards": [75003700, 70871153, 89851827],
+      "effect": "Lukias NS searches Urgula → Cartesia Fusion uses Urgula+Lukias → Secreterion on field + both on-material triggers set 2 Dracotail traps + Urgula GY-eff recycles Lukias to hand."
+    },
+    {
+      "cards": [32548318, 75003700, 7375867, 33760966],
+      "effect": "Rahu Dracotail Fusion spell lets Arthalion pull Mululu from DECK while satisfying '1+ from hand' via Lukias (recycled earlier). Arthalion on-Fusion returns Fallen of White Dragon to hand + triggers Mululu on-material set."
+    },
+    {
+      "cards": [89851827, 7375867, 75003700],
+      "effect": "Secreterion GY-eff (quick-eff from field: target 1 Dragon + 1 Spellcaster in GY; SS 1, shuffle other back). Re-SS Mululu (Dragon) from GY + shuffle Lukias (Spellcaster) back to deck for future Dracotail re-search."
+    },
+    {
+      "cards": [87746184, 30271097],
+      "effect": "Albion the Branded Dragon's EP-eff (triggered when sent to GY this turn) sets a Branded Spell/Trap from deck. Primary target: The Fallen & The Virtuous — the key Branded trap endboard piece."
+    },
+    {
+      "cards": [73819701, 95515789, 68468459],
+      "effect": "Fallen of Albaz (and substitutes like Fallen of the White Dragon) in GY/field is the ACTIVATION CONDITION for Cartesia's self-SS. This is the critical bridge between Branded engine (GY setup) and Dracotail engine (Cartesia Fusion)."
+    },
+    {
+      "cards": [44362883, 44146295, 70534340],
+      "effect": "Mirrorjade-line alternative: Branded Fusion tutors Mirrorjade or Lubellion via Fallen-of-Albaz-material clause. Pivots endboard away from Dracotail engine if Dracotail starters absent. Secondary target for decks without Lukias/Ecclesia-Dark-Dragon access."
+    },
+    {
+      "cards": [1498449],
+      "effect": "Faimena (Quick Fusion via hand discard) is a DIFFERENT route to Fusion summons — usable without Cartesia. Generally held for T2 in the canonical line, but could be primary Fusion if Cartesia isn't accessible. OPT per effect."
+    }
+  ],
+
+  "sourceNotes": "v1 (2026-04-21) — derived from _bmad-output/solver-data/branded-dracotail-combo-plan-2026-04-19.md (user-dictated 12-step canonical line). 36 cards mapped covering Branded+Despia+Dogmatika+Dracotail. 8 goals: canonical-full (7-piece endboard), 4MZONE-partial, Mirrorjade-alt, Arthalion+Secreterion duo, any-fusion-partial, dark-dragon-body, dracotail-trap-set, branded-trap-set. 10 routes capturing each Phase of the combo plan (Fallen-mill, Synchro, Dark-Dragon-banish, Lukias-search, Cartesia-Fusion, Urgula-GY-recycle, Rahu-Fusion-Arthalion, Secreterion-GY-re-SS, Albion-EP-set, Mirrorjade-alt, Cartesia-field-SS). Dogmatika/Despia enablers (Aluber 62962630, Guiding Ariadne 98301564) included in roleMap for completeness though not core to this fixture. Expected combo depth ~40-60 OCG decisions per the source plan — 5/5 matched is ambitious but goal catalogue pushes DFS toward canonical terminal with strong gradient signals."
+}
