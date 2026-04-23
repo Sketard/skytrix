@@ -55,6 +55,11 @@ interface InternalHandle {
   isActive: boolean;
   turn: number;
   phase: Phase;
+  /** True when this handle was created by `forkViaSnapshot` and shares its
+   *  `nativeHandle` with an ancestor. `destroyInternal` must NOT call
+   *  `core.destroyDuel` on such handles — the native duel is owned by the
+   *  stack root and would be destroyed twice. */
+  isSnapshotChild?: boolean;
   /** Per-turn log of interruption effect activations consumed by this handle.
    *  Key: cardId. Value: list of effect indices (positions in
    *  `InterruptionTag.effects[]`) that have been activated, in chronological
@@ -96,6 +101,26 @@ export class OCGCoreAdapter implements GameOracle {
   private activeHandles = new Map<number, InternalHandle>();
   private nextHandleId = 1;
   private _snapshotAvailable = false;
+  /** WebAssembly Memory captured at `create()` via a monkey-patch of
+   *  `WebAssembly.instantiate`. When non-null, `fork` can bypass the
+   *  create-duel-from-scratch + replay path and instead snapshot the entire
+   *  WASM linear memory, giving ~10× throughput on deep DFS forks
+   *  (validated by `poc-wasm-snapshot.ts`). */
+  private wasmMemory: WebAssembly.Memory | null = null;
+  /** LIFO stack of snapshots taken by `forkViaSnapshot`. Each entry records
+   *  the child's logical id + the parent's WASM state at fork time. Popped
+   *  and restored by `destroyDuel` when the child is released.
+   *
+   *  Invariant: DFS-style use only (push on fork, pop on destroy, top-only
+   *  mutations in between). Non-LIFO access would corrupt the stack —
+   *  `destroyDuel` falls back to regular native-destroy if the handle is not
+   *  the current top. */
+  private snapshotStack: Array<{ childId: number; parentSnapshot: ArrayBuffer }> = [];
+  /** Toggle for the snapshot-based fork path. Enabled by passing
+   *  `useSnapshot: true` to `create()` (or `SOLVER_USE_SNAPSHOT=1`). When
+   *  false, `fork()` always takes the replay path — same behavior as before
+   *  the snapshot feature landed. */
+  private useSnapshot = false;
   /** Boot-loaded interruption tags (Story 1.8). Used by `applyAction` to
    *  detect player-side activations of tagged cards and update each handle's
    *  `activationLog`. Empty when the adapter is constructed without tags
@@ -149,12 +174,78 @@ export class OCGCoreAdapter implements GameOracle {
     cardDB: CardDB,
     scripts: ScriptDB,
     tags: Record<string, InterruptionTag>,
+    opts: { useSnapshot?: boolean } = {},
   ): Promise<OCGCoreAdapter> {
-    const core = await createCore({ sync: true });
+    // Capture the WebAssembly.Memory by hooking `WebAssembly.instantiate` for
+    // the duration of `createCore`. The @n1xx1/ocgcore-wasm sync bundle exports
+    // its Memory as instance.exports.r (confirmed by disassembly). We restore
+    // the originals immediately after load so nothing else in the process is
+    // affected. Failure here is non-fatal — the adapter just stays on the
+    // replay-fork path.
+    const captured: WebAssembly.Instance[] = [];
+    const origInstantiate = WebAssembly.instantiate;
+    const origStreaming = WebAssembly.instantiateStreaming;
+    WebAssembly.instantiate = function patched(this: unknown, ...args: unknown[]): Promise<unknown> {
+      const p = (origInstantiate as (...a: unknown[]) => unknown).apply(this, args) as Promise<unknown>;
+      return Promise.resolve(p).then((result) => {
+        const inst = result instanceof WebAssembly.Instance
+          ? result
+          : (result as { instance?: WebAssembly.Instance })?.instance;
+        if (inst) captured.push(inst);
+        return result;
+      });
+    } as typeof WebAssembly.instantiate;
+    if (typeof origStreaming === 'function') {
+      WebAssembly.instantiateStreaming = function patched(this: unknown, ...args: unknown[]): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
+        const p = (origStreaming as (...a: unknown[]) => unknown).apply(this, args) as Promise<WebAssembly.WebAssemblyInstantiatedSource>;
+        return Promise.resolve(p).then((result) => {
+          if (result?.instance) captured.push(result.instance);
+          return result;
+        });
+      } as typeof WebAssembly.instantiateStreaming;
+    }
+
+    let core: OcgCoreSync;
+    try {
+      core = await createCore({ sync: true });
+    } finally {
+      WebAssembly.instantiate = origInstantiate;
+      WebAssembly.instantiateStreaming = origStreaming;
+    }
     const version = core.getVersion();
     console.log(`[Solver] OCGCore v${version[0]}.${version[1]} initialized`);
 
     const adapter = new OCGCoreAdapter(core, cardDB, scripts, tags);
+
+    // Locate the WebAssembly.Memory among captured instances. Success flips
+    // `_snapshotAvailable`; `useSnapshot` is the runtime toggle that decides
+    // whether `fork()` actually uses the snapshot path.
+    for (const inst of captured) {
+      for (const exp of Object.values(inst.exports)) {
+        if (exp instanceof WebAssembly.Memory) {
+          adapter.wasmMemory = exp;
+          break;
+        }
+      }
+      if (adapter.wasmMemory) break;
+    }
+    adapter._snapshotAvailable = adapter.wasmMemory !== null;
+    // Default: snapshot fork is ON when Memory capture succeeds. Validated
+    // bit-identical vs replay on 15/15 fixtures (2026-04-23 sweep, 5.11×
+    // speedup). Opt out with `SOLVER_USE_SNAPSHOT=0` or `{ useSnapshot: false }`.
+    const envFlag = process.env.SOLVER_USE_SNAPSHOT;
+    const envOptIn = envFlag === '1' || envFlag === 'true';
+    const envOptOut = envFlag === '0' || envFlag === 'false';
+    const wantSnapshot = opts.useSnapshot ?? (envOptOut ? false : true);
+    adapter.useSnapshot = wantSnapshot && adapter._snapshotAvailable;
+    if (adapter.useSnapshot) {
+      console.log(`[Solver] WASM Memory captured (${adapter.wasmMemory!.buffer.byteLength} bytes) — snapshot fork enabled${envOptIn ? ' (env)' : ''}`);
+    } else if (adapter._snapshotAvailable) {
+      console.log(`[Solver] WASM Memory captured but snapshot fork disabled${envOptOut ? ' (SOLVER_USE_SNAPSHOT=0)' : ''}`);
+    } else {
+      console.log('[Solver] WASM Memory not captured — snapshot fork unavailable');
+    }
+
     adapter.runSmokeTest();
     return adapter;
   }
@@ -245,9 +336,15 @@ export class OCGCoreAdapter implements GameOracle {
   fork(handle: DuelHandle): DuelHandle {
     return instrumentTime('fork', () => {
       const internal = this.resolveHandle(handle);
-      // WASM Memory snapshot not available in current @n1xx1/ocgcore-wasm v0.1.1.
-      // When snapshot API becomes available, try snapshot here with
-      // try/catch fallback to forkViaReplay on failure.
+      if (this.useSnapshot && this.wasmMemory) {
+        try {
+          return this.forkViaSnapshot(internal);
+        } catch (err) {
+          // Snapshot path broke (e.g., unexpected Memory detach). Fall back
+          // to replay so the solve continues, and log for diagnosis.
+          console.warn(`[Solver] forkViaSnapshot failed, falling back to replay: ${String(err)}`);
+        }
+      }
       return this.forkViaReplay(internal);
     });
   }
@@ -284,14 +381,36 @@ export class OCGCoreAdapter implements GameOracle {
   destroyDuel(handle: DuelHandle): void {
     const internal = this.findInternal(handle);
     if (!internal || !internal.isActive) return;
+
+    // Snapshot path: if this handle is the top of the snapshot stack, pop and
+    // restore — DO NOT native-destroy the shared OCG duel.
+    const top = this.snapshotStack[this.snapshotStack.length - 1];
+    if (internal.isSnapshotChild && top && top.childId === internal.id) {
+      try {
+        this.restoreTopSnapshot(internal.id);
+      } catch (err) {
+        // Restore failed — log, but still mark the handle inactive so the
+        // solver doesn't dead-lock on a stuck fork stack.
+        console.warn(`[Solver] snapshot restore failed: ${String(err)}`);
+      }
+      internal.isActive = false;
+      this.activeHandles.delete(internal.id);
+      return;
+    }
+
     this.destroyInternal(internal);
   }
 
   destroyAll(): void {
+    // Clear the snapshot stack first — the shared native handles belong to
+    // ancestors and will be reaped below.
+    this.snapshotStack.length = 0;
     for (const internal of this.activeHandles.values()) {
-      try {
-        this.core.destroyDuel(internal.nativeHandle);
-      } catch { /* best effort */ }
+      if (!internal.isSnapshotChild) {
+        try {
+          this.core.destroyDuel(internal.nativeHandle);
+        } catch { /* best effort */ }
+      }
       internal.isActive = false;
     }
     this.activeHandles.clear();
@@ -1282,6 +1401,75 @@ export class OCGCoreAdapter implements GameOracle {
   // Internal: Fork via Replay
   // ===========================================================================
 
+  // ===========================================================================
+  // Internal: Fork via WASM Memory Snapshot (LIFO)
+  // ===========================================================================
+
+  /** Save the current WASM memory state, register a child handle that shares
+   *  the parent's nativeHandle, and push the snapshot onto the LIFO stack.
+   *  The child modifies WASM in place; `destroyDuel(child)` pops the stack
+   *  and restores the snapshot, which resurrects the parent's OCG state for
+   *  its shared `nativeHandle` pointer.
+   *
+   *  REQUIRES strict LIFO usage — DFS / MCTS rollouts satisfy this naturally
+   *  (fork → apply* → destroy in a finally). Non-LIFO `destroyDuel` routes
+   *  through the regular native-destroy path and skips the restore. */
+  private forkViaSnapshot(parent: InternalHandle): DuelHandle {
+    const mem = this.wasmMemory;
+    if (!mem) throw new Error('wasmMemory unavailable');
+
+    const snap = mem.buffer.slice(0);
+
+    const id = this.nextHandleId++;
+    const child: InternalHandle = {
+      id,
+      nativeHandle: parent.nativeHandle, // shared: snapshot restore revives this OCG duel ID
+      actionHistory: [...parent.actionHistory],
+      responseHistory: [...parent.responseHistory],
+      config: parent.config,
+      isActive: true,
+      turn: parent.turn,
+      phase: parent.phase,
+      activationLog: cloneActivationLog(parent.activationLog),
+      isSnapshotChild: true,
+    };
+
+    this.activeHandles.set(id, child);
+    this.snapshotStack.push({ childId: id, parentSnapshot: snap });
+    return this.toPublicHandle(child);
+  }
+
+  /** Pop the top of the snapshot stack and restore the parent's WASM state.
+   *  Called by `destroyDuel` when the released handle matches the top of the
+   *  stack. */
+  private restoreTopSnapshot(childId: number): void {
+    const mem = this.wasmMemory;
+    if (!mem) throw new Error('wasmMemory vanished during restore');
+    const top = this.snapshotStack[this.snapshotStack.length - 1];
+    if (!top || top.childId !== childId) {
+      throw new Error(`[Solver] snapshot stack corrupted (top=${top?.childId} want=${childId})`);
+    }
+    const snap = top.parentSnapshot;
+    const snapView = new Uint8Array(snap);
+    const curBuf = mem.buffer;
+    if (curBuf.byteLength < snap.byteLength) {
+      throw new Error(`[Solver] WASM memory shrunk: ${curBuf.byteLength} < ${snap.byteLength}`);
+    }
+    new Uint8Array(curBuf, 0, snapView.byteLength).set(snapView);
+    if (curBuf.byteLength > snap.byteLength) {
+      // Zero any pages that grew while the child was alive — OCG's
+      // allocator bookkeeping lives in the snapshot and post-restore it
+      // doesn't know these pages exist, but zeroing them avoids surprises
+      // if the allocator re-grows and re-claims the same pages later.
+      new Uint8Array(curBuf, snap.byteLength).fill(0);
+    }
+    this.snapshotStack.pop();
+  }
+
+  // ===========================================================================
+  // Internal: Fork via Replay
+  // ===========================================================================
+
   private forkViaReplay(parent: InternalHandle): DuelHandle {
     const nativeHandle = this.createNativeDuel(parent.config);
 
@@ -1405,9 +1593,15 @@ export class OCGCoreAdapter implements GameOracle {
   }
 
   private destroyInternal(internal: InternalHandle): void {
-    try {
-      this.core.destroyDuel(internal.nativeHandle);
-    } catch { /* best effort */ }
+    // Snapshot children share their nativeHandle with an ancestor — never
+    // native-destroy one directly. This path is only reached if a child is
+    // destroyed out of LIFO order, in which case we still tear down the
+    // logical handle but leave the OCG duel for its owning ancestor.
+    if (!internal.isSnapshotChild) {
+      try {
+        this.core.destroyDuel(internal.nativeHandle);
+      } catch { /* best effort */ }
+    }
     internal.isActive = false;
     this.activeHandles.delete(internal.id);
   }
@@ -1435,11 +1629,19 @@ export class OCGCoreAdapter implements GameOracle {
         return;
       }
 
-      // WASM Memory snapshot is not available in current @n1xx1/ocgcore-wasm
-      // The API would be: new ArrayBuffer from wasm.memory.buffer
-      // Since it's not exposed, we mark snapshot as unavailable
-      this._snapshotAvailable = false;
-      console.log(`[Solver] WASM smoke test passed (snapshot: ${this._snapshotAvailable ? 'available' : 'not available — using replay fallback'})`);
+      // Validate the snapshot roundtrip if Memory was captured. We don't do
+      // this by toggling `_snapshotAvailable` (already set by `create()`),
+      // but we exercise the buffer slice/set and confirm no detach happens.
+      if (this._snapshotAvailable && this.wasmMemory) {
+        const preSize = this.wasmMemory.buffer.byteLength;
+        const snap = this.wasmMemory.buffer.slice(0);
+        new Uint8Array(this.wasmMemory.buffer, 0, snap.byteLength).set(new Uint8Array(snap));
+        const postSize = this.wasmMemory.buffer.byteLength;
+        if (preSize !== postSize) {
+          console.warn(`[Solver] WASM memory resized during smoke test (${preSize} → ${postSize}) — snapshot may still work but flag this as unexpected.`);
+        }
+      }
+      console.log(`[Solver] WASM smoke test passed (snapshot: ${this._snapshotAvailable ? 'available' : 'not available — using replay fallback'}${this.useSnapshot ? ', ENABLED' : ''})`);
 
       this.core.destroyDuel(duel);
     } catch (err) {

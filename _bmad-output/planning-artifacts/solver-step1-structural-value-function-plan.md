@@ -36,6 +36,8 @@
 
 **Matched**: unchanged at 11/26. Primary success criterion (Mitsurugi 2→4 matched) NOT met at current budget — throughput-bound, not scoring-bound. See §14.2.
 
+> **Update 2026-04-23**: the throughput constraint referenced below was lifted. WASM Memory snapshot fork shipped in `OCGCoreAdapter` (default on, opt-out via `SOLVER_USE_SNAPSHOT=0`), validated bit-identical on 15/15 fixtures with a 5.11× aggregate speedup (17.5 → 89.3 n/s). The "~900 nodes in 60s" ceiling is now ~5400 nodes; Mitsurugi's ~1200-node canonical chain fits in ~13s. See `memory/project_solver_wasm_snapshot_fork_2026_04_23.md`.
+
 **Sanity**: 20/20 passing (6 F1 + 6 F2 + 6 F3 + 2 Combined).
 **Regressions**: 0.
 
@@ -55,8 +57,10 @@ F1+F2+F3 raise score on the SAME peak states DFS was already finding. They did N
 - Phase I bound-cut prunes Saji-branch before it can accumulate the score needed to compete with Ryzeal-direct
 - Canonical Saji→Ritual→Futsu→Habakiri chain requires ~40 actions deep, ~1200+ nodes
 - At 15 nodes/sec (OCG-bound throughput), 60s budget = 900 nodes — insufficient
+  - **Superseded 2026-04-23**: snapshot fork raises this to ~89 n/s → ~5400 nodes per 60s, covering the canonical chain ~4× over.
 
 **Unblock requires**: either budget expansion (120s+), throughput fix (constraint 1.3 WASM snapshot, deferred), or weight tuning that specifically tilts DFS toward deep tutor chains. All three belong to steps 2/3+.
+- **Resolved 2026-04-23**: constraint 1.3 (WASM snapshot) shipped. Throughput path no longer blocks step 1 follow-ups; remaining unblocker is weight tuning / scorer coverage.
 
 ### §14.3 Key side-findings
 
