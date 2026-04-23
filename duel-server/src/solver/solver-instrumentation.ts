@@ -13,7 +13,7 @@
 
 const ENABLED = process.env.SOLVER_INSTRUMENT === '1';
 
-type Bucket = 'fork' | 'apply' | 'score';
+type Bucket = 'fork' | 'apply' | 'score' | 'legalActions' | 'fieldState' | 'rank';
 
 interface Counters {
   forks: number;
@@ -24,6 +24,12 @@ interface Counters {
   applyNsTotal: bigint;
   scores: number;
   scoreNsTotal: bigint;
+  legalActions: number;
+  legalActionsNsTotal: bigint;
+  fieldStates: number;
+  fieldStateNsTotal: bigint;
+  ranks: number;
+  rankNsTotal: bigint;
 }
 
 export interface InstrumentationSnapshot {
@@ -39,6 +45,15 @@ export interface InstrumentationSnapshot {
   scores: number;
   scoreMsTotal: number;
   scoreMsMean: number;
+  legalActions: number;
+  legalActionsMsTotal: number;
+  legalActionsMsMean: number;
+  fieldStates: number;
+  fieldStateMsTotal: number;
+  fieldStateMsMean: number;
+  ranks: number;
+  rankMsTotal: number;
+  rankMsMean: number;
 }
 
 const FORK_HIST_EDGES_NS: bigint[] = [
@@ -60,6 +75,12 @@ function emptyCounters(): Counters {
     applyNsTotal: 0n,
     scores: 0,
     scoreNsTotal: 0n,
+    legalActions: 0,
+    legalActionsNsTotal: 0n,
+    fieldStates: 0,
+    fieldStateNsTotal: 0n,
+    ranks: 0,
+    rankNsTotal: 0n,
   };
 }
 
@@ -95,9 +116,18 @@ export function time<T>(bucket: Bucket, fn: () => T): T {
     } else if (bucket === 'apply') {
       counters.applies++;
       counters.applyNsTotal += dt;
-    } else {
+    } else if (bucket === 'score') {
       counters.scores++;
       counters.scoreNsTotal += dt;
+    } else if (bucket === 'legalActions') {
+      counters.legalActions++;
+      counters.legalActionsNsTotal += dt;
+    } else if (bucket === 'fieldState') {
+      counters.fieldStates++;
+      counters.fieldStateNsTotal += dt;
+    } else {
+      counters.ranks++;
+      counters.rankNsTotal += dt;
     }
   }
 }
@@ -123,5 +153,14 @@ export function snapshot(): InstrumentationSnapshot {
     scores: counters.scores,
     scoreMsTotal: nsToMs(counters.scoreNsTotal),
     scoreMsMean: counters.scores > 0 ? nsToMs(counters.scoreNsTotal) / counters.scores : 0,
+    legalActions: counters.legalActions,
+    legalActionsMsTotal: nsToMs(counters.legalActionsNsTotal),
+    legalActionsMsMean: counters.legalActions > 0 ? nsToMs(counters.legalActionsNsTotal) / counters.legalActions : 0,
+    fieldStates: counters.fieldStates,
+    fieldStateMsTotal: nsToMs(counters.fieldStateNsTotal),
+    fieldStateMsMean: counters.fieldStates > 0 ? nsToMs(counters.fieldStateNsTotal) / counters.fieldStates : 0,
+    ranks: counters.ranks,
+    rankMsTotal: nsToMs(counters.rankNsTotal),
+    rankMsMean: counters.ranks > 0 ? nsToMs(counters.rankNsTotal) / counters.ranks : 0,
   };
 }

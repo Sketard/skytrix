@@ -27,6 +27,7 @@ import { TranspositionTable, buildVerificationKey } from './transposition-table.
 import { InterruptionScorer } from './interruption-scorer.js';
 import type { OCGCoreAdapter } from './ocgcore-adapter.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
+import { time as instrumentTime } from './solver-instrumentation.js';
 
 // =============================================================================
 // Re-export tree-utils sentinels/walkers for backward-compat. New callers
@@ -857,7 +858,7 @@ export class DfsSolver implements SolverStrategy {
     // it here is free regardless.
     let ranked = actions;
     if (actions.length > 0 && this.ranker.needsState(actions[0].promptType)) {
-      ranked = this.ranker.rank(actions, fieldState);
+      ranked = instrumentTime('rank', () => this.ranker.rank(actions, fieldState));
     }
 
     // Explore children. Path-hash bookkeeping is only maintained for

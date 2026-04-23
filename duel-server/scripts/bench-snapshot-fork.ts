@@ -23,6 +23,7 @@ import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
 import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
+import { snapshot as instrumentSnapshot, reset as instrumentReset, instrumentationEnabled } from '../src/solver/solver-instrumentation.js';
 import type { DuelConfig, SolverConfig } from '../src/solver/solver-types.js';
 
 const fixtureId = process.argv[2];
@@ -69,6 +70,20 @@ const solverConfig: SolverConfig = {
   rootChildBudgetNodes: nodeBudget,
 };
 
+function dumpInstrumentation(label: string) {
+  const s = instrumentSnapshot();
+  if (!s.enabled) return;
+  const total = s.forkMsTotal + s.applyMsTotal + s.scoreMsTotal + s.legalActionsMsTotal + s.fieldStateMsTotal + s.rankMsTotal;
+  const pct = (ms: number) => total > 0 ? ((ms / total) * 100).toFixed(1).padStart(4) + '%' : '  — ';
+  console.log(`  [${label}] instrumentation (total ${total.toFixed(0)}ms across timed buckets):`);
+  console.log(`    fork          ${s.forks.toString().padStart(5)} calls  ${s.forkMsTotal.toFixed(0).padStart(6)}ms  (mean ${s.forkMsMean.toFixed(2)}ms, max ${s.forkMsMax.toFixed(1)}ms)  ${pct(s.forkMsTotal)}`);
+  console.log(`    apply         ${s.applies.toString().padStart(5)} calls  ${s.applyMsTotal.toFixed(0).padStart(6)}ms  (mean ${s.applyMsMean.toFixed(3)}ms)                    ${pct(s.applyMsTotal)}`);
+  console.log(`    legalActions  ${s.legalActions.toString().padStart(5)} calls  ${s.legalActionsMsTotal.toFixed(0).padStart(6)}ms  (mean ${s.legalActionsMsMean.toFixed(2)}ms)                   ${pct(s.legalActionsMsTotal)}`);
+  console.log(`    fieldState    ${s.fieldStates.toString().padStart(5)} calls  ${s.fieldStateMsTotal.toFixed(0).padStart(6)}ms  (mean ${s.fieldStateMsMean.toFixed(2)}ms)                   ${pct(s.fieldStateMsTotal)}`);
+  console.log(`    score         ${s.scores.toString().padStart(5)} calls  ${s.scoreMsTotal.toFixed(0).padStart(6)}ms  (mean ${s.scoreMsMean.toFixed(2)}ms)                   ${pct(s.scoreMsTotal)}`);
+  console.log(`    rank          ${s.ranks.toString().padStart(5)} calls  ${s.rankMsTotal.toFixed(0).padStart(6)}ms  (mean ${s.rankMsMean.toFixed(2)}ms)                   ${pct(s.rankMsTotal)}`);
+}
+
 async function runOnce(useSnapshot: boolean): Promise<{ elapsed: number; nodes: number; score: number; match: string; }> {
   const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
@@ -90,6 +105,7 @@ async function runOnce(useSnapshot: boolean): Promise<{ elapsed: number; nodes: 
   const table = new TranspositionTable(allConfigs.solverConfig.transpositionMaxEntries);
   const solver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 
+  instrumentReset();
   const h = adapter.createDuel(duelConfig);
   const t0 = Date.now();
   const result = solver.solve(adapter, solverConfig, new AbortController().signal, () => {}, h);
@@ -110,10 +126,12 @@ console.log(`\n=== Bench: ${fixtureId} (nodeBudget=${nodeBudget}) ===\n`);
 console.log('Run 1 — REPLAY fork (baseline)');
 const replay = await runOnce(false);
 console.log(`  nodes=${replay.nodes}  elapsed=${replay.elapsed}ms  rate=${(replay.nodes / (replay.elapsed / 1000)).toFixed(1)} n/s  score=${replay.score}`);
+dumpInstrumentation('replay');
 
 console.log('\nRun 2 — SNAPSHOT fork');
 const snap = await runOnce(true);
 console.log(`  nodes=${snap.nodes}  elapsed=${snap.elapsed}ms  rate=${(snap.nodes / (snap.elapsed / 1000)).toFixed(1)} n/s  score=${snap.score}`);
+dumpInstrumentation('snapshot');
 
 console.log('\n=== Summary ===');
 console.log(`speedup:      ${(replay.elapsed / Math.max(1, snap.elapsed)).toFixed(2)}×`);

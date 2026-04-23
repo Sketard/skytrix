@@ -274,8 +274,10 @@ export class OCGCoreAdapter implements GameOracle {
   }
 
   getLegalActions(handle: DuelHandle): Action[] {
-    const internal = this.resolveHandle(handle);
-    return this.runUntilPlayerPrompt(internal);
+    return instrumentTime('legalActions', () => {
+      const internal = this.resolveHandle(handle);
+      return this.runUntilPlayerPrompt(internal);
+    });
   }
 
   applyAction(handle: DuelHandle, action: Action): void {
@@ -367,8 +369,10 @@ export class OCGCoreAdapter implements GameOracle {
   }
 
   getFieldState(handle: DuelHandle): FieldState {
-    const internal = this.resolveHandle(handle);
-    return this.queryFieldState(internal);
+    return instrumentTime('fieldState', () => {
+      const internal = this.resolveHandle(handle);
+      return this.queryFieldState(internal);
+    });
   }
 
   getActivationLog(handle: DuelHandle): ActivationLog {
