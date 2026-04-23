@@ -1,0 +1,93 @@
+{
+  "cardId": 65741786,
+  "name": "I:P Masquerena",
+  "sourceFile": "official/c65741786.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Link",
+      "rawCall": "Link.AddProcedure(c,s.matfilter,2,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2,
+            "filter": {
+              "raw": "s.matfilter"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [
+        "EFFECT_FLAG_IGNORE_IMMUNE"
+      ],
+      "events": [
+        "EVENT_BE_MATERIAL"
+      ],
+      "condition": {
+        "name": "s.indcon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.indop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 5
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER|TIMING_MAIN_END) on line 16"
+  ]
+}

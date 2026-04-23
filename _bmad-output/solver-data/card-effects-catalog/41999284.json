@@ -1,0 +1,108 @@
+{
+  "cardId": 41999284,
+  "name": "Linkuriboh",
+  "sourceFile": "official/c41999284.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Link",
+      "rawCall": "Link.AddProcedure(c,aux.FilterBoolFunction(Card.IsLevel,1),1)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunction",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsLevel",
+                "value": "1"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_ATKCHANGE"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_ATTACK_ANNOUNCE"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.atkcon",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfTribute",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfTribute",
+          "kind": "tribute",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "operation": {
+        "name": "s.atkop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.spcost",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 5
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_BATTLE_START|TIMING_END_PHASE) on line 24"
+  ]
+}

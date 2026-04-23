@@ -1,0 +1,58 @@
+{
+  "cardId": 65681983,
+  "name": "Crossout Designator",
+  "sourceFile": "official/c65681983.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.rmtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.rmop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "code",
+              "value": null
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToRemove()"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
+  },
+  "warnings": []
+}

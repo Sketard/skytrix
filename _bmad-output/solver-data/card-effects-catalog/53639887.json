@@ -1,0 +1,179 @@
+{
+  "cardId": 53639887,
+  "name": "Divine Temple of the Snake-Eye",
+  "sourceFile": "official/c53639887.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_SNAKE_EYE"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "operation": {
+        "name": "s.activate",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_FZONE",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "0"
+      },
+      "target": {
+        "inline": "function(e,c) return c:IsLevel(1) and c:IsAttribute(ATTRIBUTE_FIRE) end",
+        "opaque": true
+      },
+      "value": {
+        "inline": "1100",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_FZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "0"
+      },
+      "condition": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp) return eg:IsExists(Card.IsSummonPlayer,1,nil,1-tp) end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsOriginalType(TYPE_MONSTER)"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsContinuousSpell()"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      },
+      "clonedTo": [
+        "e4"
+      ]
+    },
+    {
+      "id": "e4",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_FZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "0"
+      },
+      "condition": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp) return eg:IsExists(Card.IsSummonPlayer,1,nil,1-tp) end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsOriginalType(TYPE_MONSTER)"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsContinuousSpell()"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      },
+      "clonedFrom": "e3"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 6
+  },
+  "warnings": []
+}

@@ -8,6 +8,7 @@ import type { ZoneId } from '../ws-protocol.js';
 import type { FieldCard, FieldState } from './solver-types.js';
 import type {
   ArchetypeExpertise,
+  BridgeSubroute,
   CardSelector,
   CardSlot,
   ComboGoal,
@@ -39,18 +40,34 @@ export interface GoalMatchResult {
   totalPoints: number;
   bestGoalId?: string;
   bestGoalRatio?: number;
+  /** Phase B (2026-04-21): waypoints whose contribution was subsumed into an
+   *  apex via a viable successor bridge. Debug/audit surface only. */
+  subsumedWaypointIds?: readonly string[];
 }
 
 /** Evaluate all goals across all active expertise against the current state.
  *  Returns Σ(goal.baselineScore × matchRatio) where matchRatio ∈ [0, 1] is the
  *  fraction of `required` CardSlots present on board. Partial matches are
  *  awarded proportionally — DFS sees the gradient as it progresses through a
- *  combo line. */
+ *  combo line.
+ *
+ *  Phase B (2026-04-21): when `deckCardIds` is provided, a fully-matched
+ *  waypoint goal (ratio === 1) with at least one successor whose bridge has
+ *  every `requiresDeckPieces` present in the deck is SUBSUMED — its
+ *  contribution is skipped. The apex goal is scored on its own required
+ *  slots in the same loop, so the DFS sees the apex gradient instead of
+ *  plateauing at the waypoint's baseline. When `deckCardIds` is omitted
+ *  (legacy callers / pre-Phase-B tests), subsumption is disabled. */
 export function evaluateGoalMatch(
   state: FieldState,
   expertise: readonly ArchetypeExpertise[],
+  deckCardIds?: readonly number[],
 ): GoalMatchResult {
   if (expertise.length === 0) return { totalPoints: 0 };
+
+  const deckSet = deckCardIds ? new Set(deckCardIds) : undefined;
+  const bridgeMap = deckSet ? buildBridgeMap(expertise) : undefined;
+  const subsumed: string[] = [];
 
   let totalPoints = 0;
   let bestGoalId: string | undefined;
@@ -60,6 +77,13 @@ export function evaluateGoalMatch(
     for (const goal of e.goals) {
       const ratio = computeGoalRatio(state, goal, e);
       if (ratio <= 0) continue;
+
+      if (ratio >= 1 && deckSet && bridgeMap && goal.successors
+          && hasViableSuccessor(goal, bridgeMap, deckSet)) {
+        subsumed.push(goal.id);
+        continue;
+      }
+
       totalPoints += goal.baselineScore * ratio;
       if (ratio > bestGoalRatio) {
         bestGoalRatio = ratio;
@@ -68,7 +92,32 @@ export function evaluateGoalMatch(
     }
   }
 
-  return { totalPoints, bestGoalId, bestGoalRatio };
+  const result: GoalMatchResult = { totalPoints };
+  if (bestGoalId !== undefined) result.bestGoalId = bestGoalId;
+  if (bestGoalRatio > 0) result.bestGoalRatio = bestGoalRatio;
+  if (subsumed.length > 0) result.subsumedWaypointIds = subsumed;
+  return result;
+}
+
+function buildBridgeMap(expertise: readonly ArchetypeExpertise[]): Map<string, BridgeSubroute> {
+  const map = new Map<string, BridgeSubroute>();
+  for (const e of expertise) {
+    for (const b of e.bridges ?? []) map.set(b.id, b);
+  }
+  return map;
+}
+
+function hasViableSuccessor(
+  goal: ComboGoal,
+  bridgeMap: Map<string, BridgeSubroute>,
+  deckSet: ReadonlySet<number>,
+): boolean {
+  for (const s of goal.successors ?? []) {
+    const bridge = bridgeMap.get(s.viaBridge);
+    if (!bridge) continue;
+    if (bridge.requiresDeckPieces.every(id => deckSet.has(id))) return true;
+  }
+  return false;
 }
 
 function computeGoalRatio(

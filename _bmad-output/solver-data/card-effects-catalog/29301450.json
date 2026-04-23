@@ -1,0 +1,127 @@
+{
+  "cardId": 29301450,
+  "name": "S:P Little Knight",
+  "sourceFile": "official/c29301450.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Link",
+      "rawCall": "Link.AddProcedure(c,aux.FilterBoolFunctionEx(Card.IsType,TYPE_EFFECT),2,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsType",
+                "value": "TYPE_EFFECT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsLinkSummoned() and e:GetLabel()==1 end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.rmtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.rmop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_MATERIAL_CHECK"
+      ],
+      "value": {
+        "name": "s.valcheck",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(_,tp,_,ep) return ep==1-tp end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.tmprmtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.tmprmop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 6
+  },
+  "warnings": [
+    "Unhandled method SetLabelObject(e1) on line 25"
+  ]
+}

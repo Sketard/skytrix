@@ -1,0 +1,193 @@
+{
+  "cardId": 35844557,
+  "name": "Sword Ryzeal",
+  "sourceFile": "official/c35844557.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_RYZEAL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_SPSUMMON_PROC"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.thtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_LIGHT"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_PYRO"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.thop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_LIGHT"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_PYRO"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "clonedTo": [
+        "e3"
+      ]
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.thtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_LIGHT"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_PYRO"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.thop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_LIGHT"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_PYRO"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "clonedFrom": "e2"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 1
+  },
+  "warnings": []
+}

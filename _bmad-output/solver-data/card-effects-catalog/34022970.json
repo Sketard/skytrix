@@ -1,0 +1,184 @@
+{
+  "cardId": 34022970,
+  "name": "Ext Ryzeal",
+  "sourceFile": "official/c34022970.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    34022970
+  ],
+  "listedSeries": [
+    "SET_RYZEAL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_SPSUMMON_PROC"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.selfspcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.selfsptg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.selfspop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.thtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_THUNDER"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.thop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_THUNDER"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "clonedTo": [
+        "e3"
+      ]
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.thtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_THUNDER"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.thop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_THUNDER"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "clonedFrom": "e2"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 4,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

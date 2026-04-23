@@ -1,0 +1,108 @@
+{
+  "cardId": 5088741,
+  "name": "Code Igniter",
+  "sourceFile": "official/c5088741.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_AI"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,0}"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsXyzSummoned() end",
+        "opaque": true
+      },
+      "target": {
+        "inline": "s.thtg(s.thfilter1)",
+        "opaque": true
+      },
+      "operation": {
+        "inline": "s.thop(s.thfilter1)",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_BE_MATERIAL"
+      ],
+      "descriptionStringId": "2",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,2}"
+      },
+      "condition": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and r==REASON_LINK end",
+        "opaque": true
+      },
+      "target": {
+        "inline": "s.thtg(s.thfilter2)",
+        "opaque": true
+      },
+      "operation": {
+        "inline": "s.thop(s.thfilter2)",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 6
+  },
+  "warnings": []
+}

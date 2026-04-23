@@ -1,0 +1,81 @@
+{
+  "cardId": 97268402,
+  "name": "Effect Veiler",
+  "sourceFile": "official/c97268402.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "condition": {
+        "name": "s.condition",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfToGrave",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfToGrave",
+          "kind": "send-to-grave",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "c:IsDisabled()"
+              }
+            },
+            {
+              "kind": "type",
+              "value": "TYPE_EFFECT"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 2
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER|TIMING_MAIN_END) on line 12"
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "cardId": 78397661,
+  "name": "Ecclesia and the Dark Dragon",
+  "sourceFile": "official/c78397661.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Synchro",
+      "rawCall": "Synchro.AddProcedure(c,nil,1,1,Synchro.NonTuner(nil),1,99)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "tuner",
+            "min": 1,
+            "max": 1
+          },
+          {
+            "role": "non-tuner",
+            "min": 1,
+            "max": 99,
+            "filter": {
+              "helper": "Synchro.NonTuner",
+              "kind": "synchro-non-tuner-filter",
+              "params": {
+                "innerFilter": "nil"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_REMOVE",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,0}"
+      },
+      "condition": {
+        "inline": "function() return Duel.IsMainPhase() end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.rmsptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsCode(CARD_ALBAZ) or c:IsLevelBelow(4) and c:ListsCode(CARD_ALBAZ)"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.rmspop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TODECK",
+        "CATEGORY_TOEXTRA"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.tdtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "level",
+              "value": 8
+            },
+            {
+              "kind": "fusionMonster"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToExtra()"
+            },
+            {
+              "kind": "canBeEffectTarget"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.tdop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 3
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 20"
+  ]
+}

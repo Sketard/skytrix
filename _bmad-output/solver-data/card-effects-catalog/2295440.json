@@ -1,0 +1,69 @@
+{
+  "cardId": 2295440,
+  "name": "One for One",
+  "sourceFile": "official/c2295440.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "cost": {
+        "name": "s.cost",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.target",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToGraveAsCost()\n\t\tand Duel.IsExistingMatchingCard(s.filter,tp,LOCATION_HAND|LOCATION_DECK,0,1,c,e,tp)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.activate",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:GetLevel()==1"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 1
+  },
+  "warnings": []
+}

@@ -1,0 +1,61 @@
+{
+  "cardId": 59438930,
+  "name": "Ghost Ogre & Snow Rabbit",
+  "sourceFile": "official/c59438930.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "range": "LOCATION_MZONE|LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.condition",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfToGrave",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfToGrave",
+          "kind": "send-to-grave",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

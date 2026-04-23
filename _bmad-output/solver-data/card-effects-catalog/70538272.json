@@ -1,0 +1,184 @@
+{
+  "cardId": 70538272,
+  "name": "Filia Regis",
+  "sourceFile": "official/c70538272.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,s.matfilter1,s.matfilter2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "s.matfilter1"
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "s.matfilter2"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_REMOVE",
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function() return Duel.IsMainPhase() end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.rmvtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToRemove()"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsLocation(LOCATION_GRAVE) or Duel.IsExistingMatchingCard(s.rethandfilter,tp,LOCATION_MZONE,0,1,nil)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.rmvop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "race",
+              "value": "RACE_DRAGON"
+            },
+            {
+              "kind": "ableToHand"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_TOEXTRA",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_PHASE|PHASE_BATTLE_START"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.IsTurnPlayer(1-tp) end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.thtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.GetMZoneCount(tp,c)>0"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_DRAGON"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToHand() or c:IsAbleToExtra()"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.thop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.GetMZoneCount(tp,c)>0"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_DRAGON"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToHand() or c:IsAbleToExtra()"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 3,
+    "opaqueUndecoded": 2
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 17"
+  ]
+}

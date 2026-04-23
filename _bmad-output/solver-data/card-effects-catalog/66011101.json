@@ -1,0 +1,81 @@
+{
+  "cardId": 66011101,
+  "name": "Number 60: Dugares the Timeless",
+  "sourceFile": "official/c66011101.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(2,2,nil)",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.efftg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.effop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 1
+  },
+  "warnings": []
+}

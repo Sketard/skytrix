@@ -1,0 +1,126 @@
+{
+  "cardId": 6798031,
+  "name": "Ryzeal Cross",
+  "sourceFile": "official/c6798031.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    6798031
+  ],
+  "listedSeries": [
+    "SET_RYZEAL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ]
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_PLAYER_TARGET"
+      ],
+      "events": [
+        "EFFECT_CANNOT_SPECIAL_SUMMON"
+      ],
+      "range": "LOCATION_FZONE",
+      "targetRange": {
+        "self": "1",
+        "opponent": "0"
+      },
+      "target": {
+        "name": "s.xyzlimit",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TODECK",
+        "CATEGORY_DRAW"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_FZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.drtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "ableToDeck"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.drop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAIN_SOLVING"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_FZONE",
+      "condition": {
+        "name": "s.negcon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.negop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

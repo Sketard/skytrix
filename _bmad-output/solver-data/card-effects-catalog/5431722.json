@@ -1,0 +1,67 @@
+{
+  "cardId": 5431722,
+  "name": "Dracotail Flame",
+  "sourceFile": "official/c5431722.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_DRACOTAIL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE",
+        "CATEGORY_TODECK",
+        "CATEGORY_DRAW"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.target",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsSpell()"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsNegatableSpellTrap()"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.activate",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 13"
+  ]
+}

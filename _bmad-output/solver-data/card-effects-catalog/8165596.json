@@ -1,0 +1,159 @@
+{
+  "cardId": 8165596,
+  "name": "Number 90: Galaxy-Eyes Photon Lord",
+  "sourceFile": "official/c8165596.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_PHOTON",
+    "SET_GALAXY"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,8,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 8"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_INDESTRUCTABLE_EFFECT"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "inline": "function(e) return e:GetHandler():GetOverlayGroup():IsExists(Card.IsSetCard,1,nil,SET_PHOTON) end",
+        "opaque": true
+      },
+      "value": {
+        "inline": "1",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DISABLE",
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp,chk) return rp==1-tp and re:IsMonsterEffect() and Duel.IsChainDisablable(ev) end",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1,1,function(e,og) e:SetLabel(og:GetFirst():IsSetCard(SET_GALAXY) and 1 or 0) end)",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.distg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.IsTurnPlayer(1-tp) end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.thmattg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "<TableConstructorExpression>"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToHand() or relation_chk and c:IsCanBeXyzMaterial(hc,tp,REASON_EFFECT)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.thmatop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "<TableConstructorExpression>"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToHand() or relation_chk and c:IsCanBeXyzMaterial(hc,tp,REASON_EFFECT)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 6
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 38"
+  ]
+}

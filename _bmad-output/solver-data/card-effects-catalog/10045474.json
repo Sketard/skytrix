@@ -1,0 +1,61 @@
+{
+  "cardId": 10045474,
+  "name": "Infinite Impermanence",
+  "sourceFile": "official/c10045474.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "target": {
+        "name": "s.target",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.activate",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_TRAP_ACT_IN_HAND"
+      ],
+      "descriptionStringId": "0",
+      "condition": {
+        "name": "s.handcon",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER) on line 11"
+  ]
+}

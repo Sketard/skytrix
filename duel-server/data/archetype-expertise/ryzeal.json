@@ -60,7 +60,14 @@
           "typedNegate": 1
         }
       },
-      "baselineScore": 12
+      "baselineScore": 12,
+      "successors": [
+        {
+          "to": "ryzeal-mitsurugi-hybrid-apex",
+          "viaBridge": "feral-imps-mikoto-ritual-tutor",
+          "note": "Phase B (2026-04-21): when the Ryzeal canonical endboard is reached AND the deck contains Feral Imps + Habakiri + Saji + Mitsurugi Ritual, the 2-Lv4 → Mitsurugi ritual body bridge promotes this waypoint into the hybrid apex. The waypoint has already proven ≥4 Lv4 materials flowed through the Ryzeal engine; an additional 2 Lv4 for Feral Imps is realistic when extenders (Node recursion, Plugin, Star detach) are present in the starting hand."
+        }
+      ]
     },
     {
       "id": "ryzeal-xyz-tower-partial",

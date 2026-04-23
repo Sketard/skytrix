@@ -1,0 +1,150 @@
+{
+  "cardId": 73819701,
+  "name": "Fallen of the White Dragon",
+  "sourceFile": "official/c73819701.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_ECCLESIA"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.selfspcost",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:ListsCode(CARD_ALBAZ)"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "target": {
+        "name": "s.selfsptg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.selfspop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2a",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.hdgysptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_ECCLESIA"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.hdgyspop",
+        "opaque": true
+      },
+      "clonedTo": [
+        "e2b"
+      ]
+    },
+    {
+      "id": "e2b",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.hdgysptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_ECCLESIA"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.hdgyspop",
+        "opaque": true
+      },
+      "clonedFrom": "e2a"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

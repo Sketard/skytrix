@@ -1,0 +1,103 @@
+{
+  "cardId": 27260347,
+  "name": "Snake-Eyes Diabellstar",
+  "sourceFile": "official/c27260347.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    27260347
+  ],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_ATTACK_ANNOUNCE"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.btplcon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.btplop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_LEAVE_GRAVE",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_SZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsContinuousSpell() end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.gypltg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "c:IsForbidden()"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.gyplop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

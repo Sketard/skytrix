@@ -1,0 +1,110 @@
+{
+  "cardId": 17954937,
+  "name": "Mitsurugi Great Purification",
+  "sourceFile": "official/c17954937.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE",
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp) return ep==1-tp and Duel.IsChainDisablable(ev) end",
+        "opaque": true
+      },
+      "cost": {
+        "name": "s.discost",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.distg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_RELEASE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "inline": "Cost.SelfBanish",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfBanish",
+          "kind": "banish",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "race",
+              "value": "RACE_REPTILE"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 5
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 27"
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "cardId": 20665527,
+  "name": "Amphibious Swarmship Amblowhale",
+  "sourceFile": "official/c20665527.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Link",
+      "rawCall": "Link.AddProcedure(c,aux.FilterBoolFunctionEx(Card.IsType,TYPE_EFFECT),2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsType",
+                "value": "TYPE_EFFECT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_MZONE",
+      "value": {
+        "name": "s.atkval",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_DESTROYED"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "linkMonster"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsLinkBelow(3)"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DAMAGE_STEP",
+        "EFFECT_FLAG_DAMAGE_CAL",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_DESTROYED"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "name": "s.descon",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfBanish",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfBanish",
+          "kind": "banish",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.destg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.desop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

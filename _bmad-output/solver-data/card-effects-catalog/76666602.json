@@ -1,0 +1,203 @@
+{
+  "cardId": 76666602,
+  "name": "The Dragon that Devours the Dogma",
+  "sourceFile": "official/c76666602.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_ECCLESIA",
+    "SET_DOGMATIKA",
+    "SET_TRI_BRIGADE"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,CARD_ALBAZ,aux.FilterBoolFunctionEx(Card.IsAttribute,ATTRIBUTE_LIGHT|ATTRIBUTE_DARK),aux.FilterBoolFunctionEx(Card.IsType,TYPE_EFFECT))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "fallen-of-albaz",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "CARD_ALBAZ"
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsAttribute",
+                "value": "ATTRIBUTE_LIGHT|ATTRIBUTE_DARK"
+              }
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsType",
+                "value": "TYPE_EFFECT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1a",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "inline": "function(e) return Duel.IsExistingMatchingCard(s.atkimmconfilter,e:GetHandlerPlayer(),LOCATION_MZONE|LOCATION_GRAVE,LOCATION_MZONE|LOCATION_GRAVE,1,nil) end",
+        "opaque": true
+      },
+      "value": {
+        "inline": "500",
+        "opaque": true
+      },
+      "clonedTo": [
+        "e1b"
+      ]
+    },
+    {
+      "id": "e1b",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_UPDATE_ATTACK",
+        "EFFECT_IMMUNE_EFFECT"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "inline": "function(e) return Duel.IsExistingMatchingCard(s.atkimmconfilter,e:GetHandlerPlayer(),LOCATION_MZONE|LOCATION_GRAVE,LOCATION_MZONE|LOCATION_GRAVE,1,nil) end",
+        "opaque": true
+      },
+      "value": {
+        "inline": "function(e,te) return te:GetOwner()~=e:GetOwner() end",
+        "opaque": true
+      },
+      "clonedFrom": "e1a"
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.tdtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.tdop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_PHASE+PHASE_END"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():GetTurnID()==Duel.GetTurnCount() end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.thtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "<TableConstructorExpression>"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.thop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "<TableConstructorExpression>"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 5
+  },
+  "warnings": []
+}

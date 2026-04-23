@@ -256,7 +256,7 @@
     {
       "id": "mitsurugi-ritual-plus-rank4-combo",
       "name": "Ritual monster + Rank-4 Xyz combo endboard",
-      "description": "Bridge signal (Lever 3 2026-04-21): ritual monster on field AND Rank-4 Xyz on field simultaneously. This is the 2-engine fully-fired state — Mitsurugi ritual + Rank-4 toolbox both delivering pressure. Reachable ONLY via a bridge card: Mikoto→Xyz toolbox, Code Igniter's ritual-from-hand detach, or Seventh-Tachyon-preceded Xyz into a ritual-compatible target. High baseline because this terminal represents the apex of the hybrid deck's design intent.",
+      "description": "Bridge signal (Lever 3 2026-04-21): ritual monster on field AND Rank-4 Xyz on field simultaneously. This is the 2-engine fully-fired state — Mitsurugi ritual + Rank-4 toolbox both delivering pressure. Reachable ONLY via a bridge card: Mikoto→Xyz toolbox, Code Igniter's ritual-from-hand detach, or Seventh-Tachyon-preceded Xyz into a ritual-compatible target. High baseline because this terminal represents the apex of the hybrid deck's design intent. [Phase B note 2026-04-21: this goal conflates real bridges (Feral Imps search) with coincidental co-presence (any Rank-4). Refactor deferred — superseded in practice by ryzeal-mitsurugi-hybrid-apex + feral-imps-mikoto-ritual-tutor bridge.]",
       "required": [
         {
           "zone": "monster",
@@ -277,6 +277,45 @@
         }
       },
       "baselineScore": 8
+    },
+    {
+      "id": "ryzeal-mitsurugi-hybrid-apex",
+      "name": "Hybrid apex — Ryzeal Xyz tower + Mitsurugi ritual body",
+      "description": "Phase B apex (2026-04-21, Option 1): ryzeal-canonical-endboard stack (Detonator + Duo Drive + Cross set) PLUS any Mitsurugi ritual body ritual-summoned. Purification trap NOT required (simpler v1 — tightening to include Purification deferred to a bridge extension). Reached from ryzeal-canonical-endboard via the feral-imps-mikoto-ritual-tutor bridge when the deck contains Feral Imps + Habakiri + Saji + Mitsurugi Ritual. Captures the 'two engines both fired' state without demanding the full Mitsurugi trap layer.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 34909328 },
+          "position": "faceup-atk",
+          "note": "Ryzeal Detonator"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 7511613 },
+          "position": "faceup-atk",
+          "note": "Ryzeal Duo Drive"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 6798031 },
+          "position": "facedown",
+          "note": "Ryzeal Cross (set)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "position": "faceup-atk",
+          "note": "Futsu | Murakumo | Habakiri (ritual-summoned)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "destruction": 1,
+          "typedNegate": 1,
+          "omniNegate": 1
+        }
+      },
+      "baselineScore": 16
     }
   ],
 
@@ -526,5 +565,61 @@
     }
   ],
 
-  "sourceNotes": "v2 (2026-04-21) — full Mitsurugi coverage via cards.cdb lookup. 14 Mitsurugi cards + 2 non-Mitsurugi enablers (Pre-Prep 13048472, Night Sword Serpent 20295753) mapped to roles. 6 goals covering: (1) Futsu-canonical (fixture endboard), (2) Murakumo alt, (3) Habakiri alt, (4) Tempest aspirational, (5) ritual-body partial, (6) trap-set partial. 5 combo routes representing distinct starter-hand patterns. Magatama/Sacred Boundary/Wousu/Tempest are NOT in the fixture deck but included in roleMap for archetype completeness. Route targets use specific cardIds to avoid slot-matching double-count."
+  "bridges": [
+    {
+      "id": "feral-imps-mikoto-ritual-tutor",
+      "name": "2 Lv4 → Feral Imps → Habakiri → Saji tribute → Ritual → RS ritual body from deck",
+      "description": "Universal Mitsurugi entry bridge (Phase B 2026-04-21): any engine producing 2 Lv4 monsters this turn can pivot into a Mitsurugi ritual body on field via a 4-piece chain (Feral Imps + Habakiri + Saji + Mitsurugi Ritual). Robustness: every piece after the initial Xyz summon is tutored — handtrap-resistant except at the Feral Imps Xyz summon itself. Mitsurugi Ritual's summon-from-deck + tribute-from-deck effects eliminate hand-content dependencies after Saji is tributed. Aramasa (40543231) or Kusanagi (82782870) are functional substitutes for Saji since all three Mikoto share the on-NS/SS and on-Tribute tutor effect — v1 pins Saji; substitution handling deferred.",
+      "requiresDeckPieces": [11398059, 13332685, 18176525, 81560239],
+      "produces": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "position": "faceup-atk",
+          "note": "Futsu | Murakumo | Habakiri ritual-summoned from deck"
+        }
+      ],
+      "steps": [
+        {
+          "action": "xyzSummon",
+          "subject": { "kind": "specific", "cardId": 11398059 },
+          "note": "Xyz Summon King of the Feral Imps (Rank 4, 2 Lv4 materials — any engine's Lv4s qualify)"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 11398059 },
+          "target": { "kind": "specific", "cardId": 13332685 },
+          "note": "Detach 1 material → add Habakiri (Reptile Lv8) from deck to hand"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "note": "Reveal Habakiri in hand (OPD) → SS Saji from deck"
+        },
+        {
+          "action": "tribute",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "note": "Tribute Saji as cost of Habakiri hand-eff"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 18176525 },
+          "target": { "kind": "specific", "cardId": 81560239 },
+          "note": "Saji on-Tribute: add Mitsurugi Ritual spell from deck to hand"
+        },
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 81560239 },
+          "note": "Activate Mitsurugi Ritual eff1: Ritual Summon 1 Reptile Ritual Monster from DECK, tribute = Reptiles summing to Lv8"
+        },
+        {
+          "action": "ritualSummon",
+          "subject": { "kind": "anyOf", "cardIds": [55397172, 19899073, 13332685] },
+          "note": "Ritual Summon Futsu/Murakumo/Habakiri from deck; tribute = Habakiri in hand (Lv8 Reptile) or any other Reptile Lv8 source"
+        }
+      ]
+    }
+  ],
+
+  "sourceNotes": "v2 (2026-04-21) — full Mitsurugi coverage via cards.cdb lookup. 14 Mitsurugi cards + 2 non-Mitsurugi enablers (Pre-Prep 13048472, Night Sword Serpent 20295753) mapped to roles. 7 goals (original 6 + ryzeal-mitsurugi-hybrid-apex added Phase B 2026-04-21). 5 combo routes representing distinct starter-hand patterns. 1 bridge (feral-imps-mikoto-ritual-tutor) introduced Phase B as the universal 2-Lv4 → Mitsurugi ritual body entry. Magatama/Sacred Boundary/Wousu/Tempest are NOT in the fixture deck but included in roleMap for archetype completeness. Route targets use specific cardIds to avoid slot-matching double-count."
 }

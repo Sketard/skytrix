@@ -1,0 +1,94 @@
+{
+  "cardId": 35269904,
+  "name": "Triple Tactics Thrust",
+  "sourceFile": "official/c35269904.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    35269904
+  ],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH",
+        "CATEGORY_SET"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.setcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.settg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsNormalSpellTrap()"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            },
+            {
+              "kind": "raw",
+              "source": "tohand_chk and c:IsAbleToHand() or set_chk and c:IsSSetable()"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.setop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsNormalSpellTrap()"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            },
+            {
+              "kind": "raw",
+              "source": "tohand_chk and c:IsAbleToHand() or set_chk and c:IsSSetable()"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 1
+  },
+  "warnings": []
+}

@@ -1,0 +1,79 @@
+{
+  "cardId": 6153210,
+  "name": "Ketu Dracotail",
+  "sourceFile": "official/c6153210.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH",
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.target",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_DRACOTAIL"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.activate",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_DRACOTAIL"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

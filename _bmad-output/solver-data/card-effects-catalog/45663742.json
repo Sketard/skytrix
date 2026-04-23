@@ -1,0 +1,213 @@
+{
+  "cardId": 45663742,
+  "name": "Snake-Eye Oak",
+  "sourceFile": "official/c45663742.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    45663742
+  ],
+  "listedSeries": [
+    "SET_SNAKE_EYE"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.thsptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "level",
+              "value": 1
+            },
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToHand() or ft>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.thspop",
+        "opaque": true
+      },
+      "clonedTo": [
+        "e2"
+      ]
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.thsptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "level",
+              "value": 1
+            },
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToHand() or ft>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.thspop",
+        "opaque": true
+      },
+      "clonedFrom": "e1"
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "cost": {
+        "name": "s.spcost",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.GetMZoneCount(tp,Group.FromCards(c,forced))>0"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_SNAKE_EYE"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.spop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_SNAKE_EYE"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 3,
+    "opaqueUndecoded": 2
+  },
+  "warnings": []
+}

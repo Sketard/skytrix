@@ -1,0 +1,100 @@
+{
+  "cardId": 70534340,
+  "name": "Lubellion the Searing Dragon",
+  "sourceFile": "official/c70534340.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,CARD_ALBAZ,aux.FilterBoolFunctionEx(Card.IsAttribute,ATTRIBUTE_DARK))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "fallen-of-albaz",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "CARD_ALBAZ"
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsAttribute",
+                "value": "ATTRIBUTE_DARK"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "opaque": true
+      },
+      "cost": {
+        "name": "s.spcost",
+        "opaque": true
+      },
+      "target": {
+        "inline": "Fusion.SummonEffTG(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffTG",
+          "kind": "fusion-summon-target",
+          "params": {
+            "note": "Fusion summon target; material requirements declared by AddProcMix on the same card"
+          }
+        }
+      },
+      "operation": {
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 2
+  },
+  "warnings": []
+}

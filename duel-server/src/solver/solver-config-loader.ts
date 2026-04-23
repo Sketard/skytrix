@@ -15,7 +15,13 @@ import type {
 } from './solver-types.js';
 import { INTERRUPTION_TYPES, ALL_ZONE_IDS } from './solver-types.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
-import type { ArchetypeExpertise } from './strategic-grammar.js';
+import type {
+  ArchetypeExpertise,
+  BridgeSubroute,
+  CardSelector,
+  CardSlot,
+  ComboGoal,
+} from './strategic-grammar.js';
 import { CARD_ROLES } from './strategic-grammar.js';
 
 // =============================================================================
@@ -488,6 +494,99 @@ function validateArchetypeExpertise(raw: unknown, filename: string): ArchetypeEx
   return raw as ArchetypeExpertise;
 }
 
+// =============================================================================
+// Grammar graph validation (Phase B 2026-04-21) — verify ComboGoal.successors
+// and BridgeSubroute references resolve globally, and structural coverage:
+// apex.required slots must all be covered by waypoint.required ∪ bridge.produces.
+// Fail-loud on any broken reference or missing coverage — an unauthored graph
+// edge is a hard error since the scorer trusts resolution at runtime.
+// =============================================================================
+
+interface GoalRef { goal: ComboGoal; host: ArchetypeExpertise; }
+interface BridgeRef { bridge: BridgeSubroute; host: ArchetypeExpertise; }
+
+export function validateGrammarGraph(expertise: readonly ArchetypeExpertise[]): void {
+  const goalMap = new Map<string, GoalRef>();
+  const bridgeMap = new Map<string, BridgeRef>();
+
+  for (const e of expertise) {
+    for (const g of e.goals) {
+      if (goalMap.has(g.id)) {
+        console.error(`[Solver] Grammar graph: duplicate goalId '${g.id}' (hosts: ${goalMap.get(g.id)!.host.archetype}, ${e.archetype})`);
+        process.exit(1);
+      }
+      goalMap.set(g.id, { goal: g, host: e });
+    }
+    for (const b of e.bridges ?? []) {
+      if (bridgeMap.has(b.id)) {
+        console.error(`[Solver] Grammar graph: duplicate bridgeId '${b.id}' (hosts: ${bridgeMap.get(b.id)!.host.archetype}, ${e.archetype})`);
+        process.exit(1);
+      }
+      bridgeMap.set(b.id, { bridge: b, host: e });
+    }
+  }
+
+  let successorCount = 0;
+  for (const { goal: waypoint, host } of goalMap.values()) {
+    for (const s of waypoint.successors ?? []) {
+      successorCount++;
+      const apexRef = goalMap.get(s.to);
+      if (!apexRef) {
+        console.error(`[Solver] Grammar graph: '${host.archetype}.${waypoint.id}' → unknown successor goal '${s.to}'`);
+        process.exit(1);
+      }
+      const brRef = bridgeMap.get(s.viaBridge);
+      if (!brRef) {
+        console.error(`[Solver] Grammar graph: '${host.archetype}.${waypoint.id}' → '${s.to}' uses unknown bridge '${s.viaBridge}'`);
+        process.exit(1);
+      }
+      const supply: readonly CardSlot[] = [...waypoint.required, ...brRef.bridge.produces];
+      for (const apexSlot of apexRef.goal.required) {
+        if (!supply.some(candidate => slotCovers(candidate, apexSlot))) {
+          console.error(`[Solver] Grammar graph: '${waypoint.id}' → '${s.to}' via '${s.viaBridge}': apex slot ${describeSlot(apexSlot)} NOT covered by waypoint.required ∪ bridge.produces`);
+          process.exit(1);
+        }
+      }
+    }
+  }
+
+  if (successorCount > 0 || bridgeMap.size > 0) {
+    console.log(`[Solver] grammar graph validated (${successorCount} successor${successorCount === 1 ? '' : 's'}, ${bridgeMap.size} bridge${bridgeMap.size === 1 ? '' : 's'})`);
+  }
+}
+
+/** True when satisfying `a` guarantees satisfying `b`. Used for static
+ *  structural coverage: waypoint.required ∪ bridge.produces must guarantee
+ *  apex.required. Role-based selectors are deliberately conservative
+ *  (role covers only identical role) — downgrading to a false negative
+ *  (requiring tighter authoring) rather than a silent false positive. */
+function slotCovers(a: CardSlot, b: CardSlot): boolean {
+  if (a.zone !== b.zone) return false;
+  if (b.position !== undefined && a.position !== b.position) return false;
+  return selectorCovers(a.card, b.card);
+}
+
+function selectorCovers(a: CardSelector, b: CardSelector): boolean {
+  if (a.kind === 'specific') {
+    if (b.kind === 'specific') return a.cardId === b.cardId;
+    if (b.kind === 'anyOf') return b.cardIds.includes(a.cardId);
+    return false;
+  }
+  if (a.kind === 'anyOf') {
+    if (b.kind === 'anyOf') return a.cardIds.every(id => b.cardIds.includes(id));
+    if (b.kind === 'specific') return a.cardIds.length === 1 && a.cardIds[0] === b.cardId;
+    return false;
+  }
+  return a.kind === 'role' && b.kind === 'role' && a.role === b.role;
+}
+
+function describeSlot(s: CardSlot): string {
+  const sel = s.card.kind === 'specific' ? `card=${s.card.cardId}` :
+              s.card.kind === 'anyOf' ? `anyOf=[${s.card.cardIds.join(',')}]` :
+              `role=${s.card.role}`;
+  return `{zone=${s.zone}${s.position ? `@${s.position}` : ''} ${sel}}`;
+}
+
 /** Filter expertise list to those whose keyCards overlap with `mainDeck` by
  *  ≥ ARCHETYPE_KEYCARDS_MATCH_THRESHOLD cards. Pure + deterministic — called
  *  per-fixture by the harness before passing to scorer + ranker. */
@@ -515,6 +614,7 @@ export function loadAllSolverConfigs(dataDir: string, cardDB: CardDB): AllSolver
   const structuralWeights = loadStructuralWeights(dataDir);
   const structuralTutorCards = loadStructuralTutorCards(dataDir);
   const archetypeExpertise = loadArchetypeExpertise(dataDir);
+  validateGrammarGraph(archetypeExpertise);
 
   validateInterruptionTagsAgainstCardPool(interruptionTags, cardDB);
 

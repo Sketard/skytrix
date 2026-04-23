@@ -1,0 +1,152 @@
+{
+  "cardId": 61399402,
+  "name": "Light Dragon @Ignister",
+  "sourceFile": "official/c61399402.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_IGNISTER"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_DESTROY_REPLACE"
+      ],
+      "range": "LOCATION_MZONE",
+      "target": {
+        "name": "s.reptg",
+        "opaque": true
+      },
+      "value": {
+        "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "from": "self",
+            "count": 1
+          }
+        }
+      },
+      "target": {
+        "name": "s.destg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.desop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_BATTLE_DAMAGE"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "linkMonster"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.spop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "linkMonster"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

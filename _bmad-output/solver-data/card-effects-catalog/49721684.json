@@ -1,0 +1,58 @@
+{
+  "cardId": 49721684,
+  "name": "Mitsurugi Mirror",
+  "sourceFile": "official/c49721684.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    19899073,
+    55397172,
+    13332685
+  ],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY,EFFECT_FLAG2_CHECK_SIMULTANEOUS"
+      ],
+      "events": [
+        "EVENT_RELEASE"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "name": "s.tdcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.tdtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.tdop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

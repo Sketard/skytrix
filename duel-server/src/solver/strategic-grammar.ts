@@ -77,6 +77,9 @@ export interface ComboGoal {
   optional?: readonly CardSlot[];
   coverage: InterruptionCoverage;
   baselineScore: number;
+  // Phase B (2026-04-21): waypoint-to-apex edges via named bridges.
+  // Unset = terminal apex.
+  successors?: readonly GoalSuccessor[];
 }
 
 // -----------------------------------------------------------------------------
@@ -121,6 +124,32 @@ export interface ComboRoute {
 }
 
 // -----------------------------------------------------------------------------
+// Bridge subroute (Phase B 2026-04-21) — named action chain that transitions
+// a waypoint goal into an apex goal. Referenced by ComboGoal.successors.
+// -----------------------------------------------------------------------------
+
+export interface BridgeSubroute {
+  id: string;
+  name: string;
+  description: string;
+  // Card IDs that must be present in the decklist (main + ED) for the bridge
+  // to be executable. Static decklist check at load time.
+  requiresDeckPieces: readonly number[];
+  // What the bridge produces. Combined with the waypoint's `required`, this
+  // must cover the apex's `required` for the apex to be reachable.
+  produces: readonly CardSlot[];
+  steps: readonly RouteStep[];
+}
+
+export interface GoalSuccessor {
+  // Apex goal id — resolved globally across all ArchetypeExpertise files.
+  to: string;
+  // Bridge subroute id — resolved globally across all ArchetypeExpertise files.
+  viaBridge: string;
+  note?: string;
+}
+
+// -----------------------------------------------------------------------------
 // Synergy hint (optional cross-card note)
 // -----------------------------------------------------------------------------
 
@@ -142,5 +171,8 @@ export interface ArchetypeExpertise {
   routes: readonly ComboRoute[];
   keyCards: readonly number[];
   synergies?: readonly SynergyNote[];
+  // Phase B (2026-04-21): bridges authored by this archetype. Convention:
+  // host a bridge in its target archetype's file (where it terminates).
+  bridges?: readonly BridgeSubroute[];
   sourceNotes?: string;
 }

@@ -1,0 +1,48 @@
+{
+  "cardId": 25311006,
+  "name": "Triple Tactics Talent",
+  "sourceFile": "official/c25311006.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.GetCustomActivityCount(id,1-tp,ACTIVITY_CHAIN)>0 end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.efftg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.effop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

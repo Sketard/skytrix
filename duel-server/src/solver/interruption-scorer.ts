@@ -102,6 +102,7 @@ export class InterruptionScorer {
   private structuralWeights: StructuralWeights | undefined;
   private readonly tutorCards: StructuralTutorCards | undefined;
   private archetypeExpertise: readonly ArchetypeExpertise[] = [];
+  private deckCardIds: readonly number[] | undefined;
 
   constructor(
     tags: Record<string, InterruptionTag>,
@@ -146,6 +147,15 @@ export class InterruptionScorer {
    *  (default) = no goal-match scoring. */
   setArchetypeExpertise(list: readonly ArchetypeExpertise[]): void {
     this.archetypeExpertise = list;
+  }
+
+  /** Phase B (2026-04-21): main + extra deck cardIds for the active fixture.
+   *  Enables waypoint subsumption in `evaluateGoalMatch` — a matched waypoint
+   *  whose successor's bridge has all `requiresDeckPieces` in the deck is
+   *  subsumed into the apex (skipped from score to expose the apex gradient).
+   *  Omitted / undefined = subsumption disabled (pre-Phase-B behavior). */
+  setDeckContents(deckCardIds: readonly number[] | undefined): void {
+    this.deckCardIds = deckCardIds;
   }
 
   /** Strategic Grammar v1 α-β upper-bound delta (2026-04-21). Returns an
@@ -356,7 +366,7 @@ export class InterruptionScorer {
     // goal-completion is disruption value, not latent exploration signal.
     // Returns 0 when no archetype expertise is active, preserving pre-grammar
     // baselines for fixtures without an authored expertise file.
-    const goalMatch = evaluateGoalMatch(fieldState, this.archetypeExpertise);
+    const goalMatch = evaluateGoalMatch(fieldState, this.archetypeExpertise, this.deckCardIds);
     const goalMatchPoints = goalMatch.totalPoints;
 
     // Split scoring (methodology v5 + Strategic Grammar v1).

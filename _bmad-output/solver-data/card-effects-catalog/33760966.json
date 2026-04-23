@@ -1,0 +1,205 @@
+{
+  "cardId": 33760966,
+  "name": "Dracotail Arthalion",
+  "sourceFile": "official/c33760966.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_DRACOTAIL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE"
+      ],
+      "events": [
+        "EFFECT_MATERIAL_CHECK"
+      ],
+      "value": {
+        "inline": "function(e,c) e:SetLabel(c:GetMaterial():FilterCount(Card.IsLocation,nil,LOCATION_HAND)) end",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsFusionSummoned() and e:GetLabelObject():GetLabel()>0 end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.thtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.thop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY,EFFECT_FLAG2_CHECK_SIMULTANEOUS"
+      ],
+      "events": [
+        "EVENT_CUSTOM+id"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.regop",
+        "opaque": true
+      },
+      "clonedTo": [
+        "e4"
+      ]
+    },
+    {
+      "id": "e4",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE",
+        "EVENT_CHAINING"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": true
+      },
+      "operation": {
+        "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
+        "opaque": true
+      },
+      "clonedFrom": "e3",
+      "clonedTo": [
+        "e5",
+        "e6"
+      ]
+    },
+    {
+      "id": "e5",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE",
+        "EVENT_CHAINING",
+        "EVENT_CHAIN_SOLVED"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": true
+      },
+      "operation": {
+        "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
+        "opaque": true
+      },
+      "clonedFrom": "e4"
+    },
+    {
+      "id": "e6",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE",
+        "EVENT_CHAINING",
+        "EVENT_BREAK_EFFECT"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": true
+      },
+      "operation": {
+        "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
+        "opaque": true
+      },
+      "clonedFrom": "e4"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 7,
+    "totalFunctionRefs": 13,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 13
+  },
+  "warnings": [
+    "Unhandled method SetLabelObject(e0) on line 27"
+  ]
+}

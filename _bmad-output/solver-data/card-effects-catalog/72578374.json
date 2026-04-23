@@ -1,0 +1,152 @@
+{
+  "cardId": 72578374,
+  "name": "Khaos Starsource Dragon",
+  "sourceFile": "official/c72578374.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,s.matfilter,aux.FilterBoolFunctionEx(Card.IsRace,RACE_DRAGON))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "s.matfilter"
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACE_DRAGON"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsFusionSummoned() and e:GetLabel()>0 end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.destg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.desop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e1a",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_MATERIAL_CHECK"
+      ],
+      "value": {
+        "name": "s.valcheck",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_LVCHANGE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_REMOVE"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.lvtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "level",
+              "value": 4
+            },
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_LIGHT|ATTRIBUTE_DARK"
+            },
+            {
+              "kind": "race",
+              "value": "RACE_DRAGON"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.lvop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": [
+    "Unhandled method SetLabelObject(e1) on line 26"
+  ]
+}

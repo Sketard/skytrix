@@ -1,0 +1,91 @@
+{
+  "cardId": 7477101,
+  "name": "Seventh Tachyon",
+  "sourceFile": "official/c7477101.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_NUMBER"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH",
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.cost",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.target",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "number"
+            },
+            {
+              "kind": "raw",
+              "source": "number>=101"
+            },
+            {
+              "kind": "raw",
+              "source": "number<=107"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.IsExistingMatchingCard(s.thfilter,tp,LOCATION_DECK,0,1,nil,c:GetRace(),c:GetAttribute(),c:GetRank())"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.activate",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsRace(race) or c:IsAttribute(attr)"
+            },
+            {
+              "kind": "level",
+              "value": null
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 1
+  },
+  "warnings": []
+}

@@ -1,0 +1,116 @@
+{
+  "cardId": 40673853,
+  "name": "Vallon, the Super Psy Skyblaster",
+  "sourceFile": "official/c40673853.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,5,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 5"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_POSITION",
+        "CATEGORY_SET"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function() return Duel.IsMainPhase() end",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "from": "self",
+            "count": 1
+          }
+        }
+      },
+      "target": {
+        "name": "s.postg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.posop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.destg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.desop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 5
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 18"
+  ]
+}

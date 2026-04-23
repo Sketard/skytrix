@@ -1,0 +1,66 @@
+{
+  "cardId": 44822037,
+  "name": "Angel Statue - Azurune",
+  "sourceFile": "official/c44822037.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "target": {
+        "name": "s.target",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.activate",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_BATTLE_DESTROYED"
+      ],
+      "descriptionStringId": "1",
+      "target": {
+        "name": "s.bttg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.btop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_END_PHASE) on line 11"
+  ]
+}

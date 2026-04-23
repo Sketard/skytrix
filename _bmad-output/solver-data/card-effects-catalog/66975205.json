@@ -1,0 +1,154 @@
+{
+  "cardId": 66975205,
+  "name": "Yummyusment☆Mignon",
+  "sourceFile": "official/c66975205.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_YUMMY"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ]
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_FZONE",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "0"
+      },
+      "target": {
+        "inline": "aux.TargetBoolFunction(Card.IsSetCard,SET_YUMMY)",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.TargetBoolFunction",
+          "kind": "aux-helper"
+        }
+      },
+      "value": {
+        "name": "s.atkval",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_FZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.IsExistingMatchingCard(aux.FaceupFilter(Card.IsLink,1),tp,LOCATION_MZONE,0,1,nil) end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "level",
+              "value": 1
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.tdtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToDeck() or c:IsAbleToExtra()"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.tdop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

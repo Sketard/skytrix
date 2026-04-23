@@ -1,0 +1,65 @@
+{
+  "cardId": 73642296,
+  "name": "Ghost Belle & Haunted Mansion",
+  "sourceFile": "official/c73642296.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_NEGATE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DAMAGE_STEP",
+        "EFFECT_FLAG_DAMAGE_CAL"
+      ],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.negcon",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfDiscard",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfDiscard",
+          "kind": "discard",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.negtg",
+        "opaque": true
+      },
+      "operation": {
+        "inline": "function(e,tp,eg,ep,ev) Duel.NegateActivation(ev) end",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

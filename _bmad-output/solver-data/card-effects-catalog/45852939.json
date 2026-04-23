@@ -1,0 +1,122 @@
+{
+  "cardId": 45852939,
+  "name": "Eclipse Twins",
+  "sourceFile": "official/c45852939.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_IGNORE_IMMUNE"
+      ],
+      "events": [
+        "EFFECT_XYZ_LEVEL"
+      ],
+      "range": "LOCATION_EXTRA",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "0"
+      },
+      "target": {
+        "inline": "function(e,c) return c:IsRank(4) end",
+        "opaque": true
+      },
+      "value": {
+        "inline": "function(e,_,rc) return rc==e:GetHandler() and 4 or 0 end",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "inline": "function() return Duel.IsAbleToEnterBP() end",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1,1,nil)",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.atktg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.atkop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 7
+  },
+  "warnings": []
+}

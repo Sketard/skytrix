@@ -1,0 +1,132 @@
+{
+  "cardId": 51409648,
+  "name": "Rindbrumm the Striking Dragon",
+  "sourceFile": "official/c51409648.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,CARD_ALBAZ,aux.FilterBoolFunctionEx(Card.IsRace,RACES_BEAST_BWARRIOR_WINGB))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "fallen-of-albaz",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "CARD_ALBAZ"
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACES_BEAST_BWARRIOR_WINGB"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE",
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.negcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.negtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.negop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(_,tp) return Duel.IsTurnPlayer(1-tp) end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sprmtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "code",
+              "value": null
+            },
+            {
+              "kind": "raw",
+              "source": "sp_chk and c:IsAbleToRemove() or rmv_chk and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.sprmop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 5
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER_E|TIMING_MAIN_END) on line 29"
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "cardId": 68810435,
+  "name": "Cooky☆Yummy",
+  "sourceFile": "official/c68810435.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_YUMMY"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_SPSUMMON_PROC"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsLink(1) or c:IsType(TYPE_SYNCHRO) and c:IsLevel(2)"
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_ATKCHANGE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.atktg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.atkop",
+        "opaque": true
+      },
+      "clonedTo": [
+        "e3"
+      ]
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_ATKCHANGE",
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "1",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.atktg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.atkop",
+        "opaque": true
+      },
+      "clonedFrom": "e2"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

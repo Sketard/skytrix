@@ -1,0 +1,113 @@
+{
+  "cardId": 72238166,
+  "name": "Node Ryzeal",
+  "sourceFile": "official/c72238166.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    72238166
+  ],
+  "listedSeries": [
+    "SET_RYZEAL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_SPSUMMON_PROC"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.selfspcon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.selfspop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "cost": {
+        "name": "s.gyspcost",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToGraveAsCost"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.GetMZoneCount(tp,c)>0"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "target": {
+        "name": "s.gysptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.gyspop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

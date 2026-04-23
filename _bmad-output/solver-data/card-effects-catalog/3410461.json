@@ -1,0 +1,74 @@
+{
+  "cardId": 3410461,
+  "name": "Alba-Lenatus the Abyss Dragon",
+  "sourceFile": "official/c3410461.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_FUSION"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_CANNOT_BE_FUSION_MATERIAL"
+      ],
+      "value": {
+        "inline": "1",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "operation": {
+        "name": "s.atkop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE"
+      ],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "operation": {
+        "name": "s.regop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 2
+  },
+  "warnings": []
+}

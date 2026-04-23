@@ -1,0 +1,56 @@
+{
+  "cardId": 42141493,
+  "name": "Mulcharmy Fuwalos",
+  "sourceFile": "official/c42141493.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_MULCHARMY"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DRAW",
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "condition": {
+        "inline": "function(e,tp) return Duel.GetFieldGroupCount(tp,LOCATION_ONFIELD,0)==0 end",
+        "opaque": true
+      },
+      "cost": {
+        "name": "s.effcost",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.efftg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.effop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 12"
+  ]
+}

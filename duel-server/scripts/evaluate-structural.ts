@@ -220,6 +220,7 @@ export async function runFixture(
   const deckCardIds = [...deck.main, ...deck.extra];
   const filteredExpertise = filterExpertiseByDeck(allConfigs.archetypeExpertise, deckCardIds);
   scorer.setArchetypeExpertise(filteredExpertise);
+  scorer.setDeckContents(deckCardIds);
   ranker.setArchetypeExpertise(filteredExpertise);
 
   const preferredSearchTargets = [

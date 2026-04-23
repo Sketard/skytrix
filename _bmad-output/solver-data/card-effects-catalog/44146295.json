@@ -1,0 +1,153 @@
+{
+  "cardId": 44146295,
+  "name": "Mirrorjade the Iceblade Dragon",
+  "sourceFile": "official/c44146295.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    44146295
+  ],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,CARD_ALBAZ,aux.FilterBoolFunctionEx(Card.IsType,TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "fallen-of-albaz",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "CARD_ALBAZ"
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsType",
+                "value": "TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.rmcost",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "type",
+              "value": "TYPE_FUSION"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            },
+            {
+              "kind": "raw",
+              "source": "c:ListsCodeAsMaterial(CARD_ALBAZ)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "target": {
+        "name": "s.rmtg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToRemove()"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.rmop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsAbleToRemove()"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_DAMAGE_STEP",
+        "EFFECT_FLAG_DAMAGE_CAL"
+      ],
+      "events": [
+        "EVENT_LEAVE_FIELD"
+      ],
+      "descriptionStringId": "1",
+      "condition": {
+        "name": "s.regcon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.regop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 3,
+    "opaqueUndecoded": 2
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER_E) on line 17"
+  ]
+}

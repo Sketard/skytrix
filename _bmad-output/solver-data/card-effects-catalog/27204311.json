@@ -1,0 +1,56 @@
+{
+  "cardId": 27204311,
+  "name": "Nibiru, the Primal Being",
+  "sourceFile": "official/c27204311.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [
+    27204312
+  ],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_RELEASE",
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_TOKEN"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.condition",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMING_SUMMON|TIMING_SPSUMMON) on line 12"
+  ]
+}

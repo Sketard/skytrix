@@ -1,0 +1,56 @@
+{
+  "cardId": 23434538,
+  "name": "Maxx \"C\"",
+  "sourceFile": "official/c23434538.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DRAW"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "inline": "Cost.SelfToGrave",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfToGrave",
+          "kind": "send-to-grave",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 1
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER) on line 11"
+  ]
+}

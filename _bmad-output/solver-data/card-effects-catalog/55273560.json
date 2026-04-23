@@ -1,0 +1,144 @@
+{
+  "cardId": 55273560,
+  "name": "Incredible Ecclesia, the Virtuous",
+  "sourceFile": "official/c55273560.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_SWORDSOUL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_SPSUMMON_PROC"
+      ],
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function() return Duel.IsMainPhase() end",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfTribute",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfTribute",
+          "kind": "tribute",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.sstg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsCode(CARD_ALBAZ) or c:IsSetCard(SET_SWORDSOUL)"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.ssop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsCode(CARD_ALBAZ) or c:IsSetCard(SET_SWORDSOUL)"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_PHASE+PHASE_END"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,2}"
+      },
+      "condition": {
+        "inline": "function(_,tp) return Duel.GetFlagEffect(tp,id)>0 end",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.thtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.thop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 5
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER|TIMING_MAIN_END) on line 20"
+  ]
+}

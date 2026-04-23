@@ -1,0 +1,128 @@
+{
+  "cardId": 89851827,
+  "name": "Secreterion Dragon",
+  "sourceFile": "official/c89851827.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,aux.FilterBoolFunctionEx(Card.IsRace,RACE_DRAGON),aux.FilterBoolFunctionEx(Card.IsRace,RACE_SPELLCASTER))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACE_DRAGON"
+              }
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACE_SPELLCASTER"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_MZONE",
+      "value": {
+        "inline": "function(e) return -100*Duel.GetFieldGroupCount(e:GetHandlerPlayer(),LOCATION_REMOVED,0) end",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_PLAYER_TARGET"
+      ],
+      "events": [
+        "EFFECT_CANNOT_ACTIVATE"
+      ],
+      "range": "LOCATION_MZONE",
+      "targetRange": {
+        "self": "0",
+        "opponent": "1"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsFusionSummoned() end",
+        "opaque": true
+      },
+      "value": {
+        "name": "s.actlimval",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.sptdtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.sptdop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

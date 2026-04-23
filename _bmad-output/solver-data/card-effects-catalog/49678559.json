@@ -1,0 +1,104 @@
+{
+  "cardId": 49678559,
+  "name": "Number 102: Star Seraph Sentry",
+  "sourceFile": "official/c49678559.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,aux.FilterBoolFunctionEx(Card.IsAttribute,ATTRIBUTE_LIGHT),4,3)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 3,
+            "max": 3,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsAttribute",
+                "value": "ATTRIBUTE_LIGHT"
+              }
+            }
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "from": "self",
+            "count": 1
+          }
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_CONTINUOUS",
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_DESTROY_REPLACE"
+      ],
+      "range": "LOCATION_MZONE",
+      "target": {
+        "name": "s.reptg",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

@@ -1,0 +1,168 @@
+{
+  "cardId": 90590303,
+  "name": "Number 41: Bagooska the Terribly Tired Tapir",
+  "sourceFile": "official/c90590303.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EVENT_PHASE|PHASE_STANDBY"
+      ],
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.mtcon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.mtop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_CANNOT_BE_EFFECT_TARGET"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.tgcon",
+        "opaque": true
+      },
+      "value": {
+        "inline": "aux.tgoval",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.tgoval",
+          "kind": "aux-helper"
+        }
+      },
+      "clonedTo": [
+        "e3"
+      ]
+    },
+    {
+      "id": "e3",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_CANNOT_BE_EFFECT_TARGET",
+        "EFFECT_INDESTRUCTABLE_EFFECT"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.tgcon",
+        "opaque": true
+      },
+      "value": {
+        "name": "s.indval",
+        "opaque": true
+      },
+      "clonedFrom": "e2"
+    },
+    {
+      "id": "e4",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_SET_POSITION"
+      ],
+      "range": "LOCATION_MZONE",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "LOCATION_MZONE"
+      },
+      "condition": {
+        "name": "s.poscon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.postg",
+        "opaque": true
+      },
+      "value": {
+        "inline": "POS_FACEUP_DEFENSE",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e5",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAIN_SOLVING"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.discon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 5,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 8
+  },
+  "warnings": []
+}

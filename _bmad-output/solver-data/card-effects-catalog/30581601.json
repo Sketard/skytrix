@@ -1,0 +1,151 @@
+{
+  "cardId": 30581601,
+  "name": "Yummy★Snatchy",
+  "sourceFile": "official/c30581601.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_YUMMY"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Link",
+      "rawCall": "Link.AddProcedure(c,s.matfilter,1,1)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "raw": "s.matfilter"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.pltg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsFieldSpell()"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "c:IsForbidden()"
+              }
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.plop",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsFieldSpell()"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "c:IsForbidden()"
+              }
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "0"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.IsMainPhase() or (Duel.IsTurnPlayer(1-tp) and Duel.IsBattlePhase()) end",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.PayLP(100)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.PayLP",
+          "kind": "pay-lp",
+          "params": {
+            "amount": "100"
+          }
+        }
+      },
+      "target": {
+        "name": "s.synchtg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.synchop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 3
+  },
+  "warnings": [
+    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMING_BATTLE_START|TIMING_BATTLE_END|TIMINGS_CHECK_MONSTER) on line 26"
+  ]
+}

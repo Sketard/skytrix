@@ -1,0 +1,49 @@
+{
+  "cardId": 94145021,
+  "name": "Droll & Lock Bird",
+  "sourceFile": "official/c94145021.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_CUSTOM+id"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "condition": {
+        "name": "s.condition",
+        "opaque": true
+      },
+      "cost": {
+        "name": "s.cost",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

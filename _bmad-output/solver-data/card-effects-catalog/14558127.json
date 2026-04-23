@@ -1,0 +1,62 @@
+{
+  "cardId": 14558127,
+  "name": "Ash Blossom & Joyous Spring",
+  "sourceFile": "official/c14558127.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.discon",
+        "opaque": true
+      },
+      "cost": {
+        "inline": "Cost.SelfDiscard",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfDiscard",
+          "kind": "discard",
+          "params": {
+            "target": "self"
+          }
+        }
+      },
+      "target": {
+        "name": "s.distg",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 3
+  },
+  "warnings": []
+}

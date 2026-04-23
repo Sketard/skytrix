@@ -1,0 +1,113 @@
+{
+  "cardId": 81846453,
+  "name": "Martial Metal Marcher",
+  "sourceFile": "official/c81846453.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Synchro",
+      "rawCall": "Synchro.AddProcedure(c,nil,1,1,Synchro.NonTuner(nil),1,99)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "tuner",
+            "min": 1,
+            "max": 1
+          },
+          {
+            "role": "non-tuner",
+            "min": 1,
+            "max": 99,
+            "filter": {
+              "helper": "Synchro.NonTuner",
+              "kind": "synchro-non-tuner-filter",
+              "params": {
+                "innerFilter": "nil"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "opaque": true
+      },
+      "target": {
+        "name": "s.sptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "type",
+              "value": "TYPE_TUNER"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_BE_MATERIAL"
+      ],
+      "condition": {
+        "name": "s.tncon",
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.tnop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 4
+  },
+  "warnings": []
+}

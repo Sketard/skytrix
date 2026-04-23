@@ -1,0 +1,164 @@
+{
+  "cardId": 58071334,
+  "name": "Snake-Eyes Doomed Dragon",
+  "sourceFile": "official/c58071334.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,aux.FilterBoolFunctionEx(Card.IsSetCard,SET_SNAKE_EYE),aux.FilterBoolFunctionEx(Card.IsRace,RACE_ILLUSION))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsSetCard",
+                "value": "SET_SNAKE_EYE"
+              }
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACE_ILLUSION"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_SPSUMMON_PROC"
+      ],
+      "range": "LOCATION_EXTRA",
+      "condition": {
+        "name": "s.hspcon",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsMonsterCard()"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "target": {
+        "name": "s.hsptg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsMonsterCard()"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.hspop",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.pltg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.GetLocationCount(p,LOCATION_SZONE)>0"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "c:IsForbidden()"
+              }
+            },
+            {
+              "kind": "raw",
+              "source": "c:CheckUniqueOnField(p)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      },
+      "operation": {
+        "name": "s.plop",
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 3,
+    "opaqueUndecoded": 2
+  },
+  "warnings": []
+}

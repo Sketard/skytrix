@@ -1,0 +1,21 @@
+{
+  "cardId": 32548318,
+  "name": "Rahu Dracotail",
+  "sourceFile": "official/c32548318.lua",
+  "parserVersion": "v1-80pct",
+  "parsedAt": "2026-04-23",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_DRACOTAIL"
+  ],
+  "summonProcedures": [],
+  "effects": [],
+  "coverage": {
+    "totalEffects": 0,
+    "totalFunctionRefs": 0,
+    "fullyDecoded": 0,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}
