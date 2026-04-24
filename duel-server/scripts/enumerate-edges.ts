@@ -272,7 +272,10 @@ function produces(effect: Effect, kind: 'tohand' | 'summon' | 'tograve' | 'fusio
   switch (kind) {
     case 'tohand':          return cats.has('CATEGORY_TOHAND') || cats.has('CATEGORY_SEARCH');
     case 'summon':          return cats.has('CATEGORY_SPECIAL_SUMMON');
-    case 'tograve':         return cats.has('CATEGORY_TO_GRAVE') || cats.has('CATEGORY_LEAVE_GRAVE');
+    // CATEGORY_LEAVE_GRAVE means "card leaves GY" (revive/banish from GY) —
+    // the OPPOSITE of "sends to GY". Only CATEGORY_TO_GRAVE matches the
+    // gy-send-then-trigger pattern.
+    case 'tograve':         return cats.has('CATEGORY_TO_GRAVE');
     case 'fusion-material': return cats.has('CATEGORY_FUSION_SUMMON');
     case 'destroy':         return cats.has('CATEGORY_DESTROY');
     case 'banish':          return cats.has('CATEGORY_REMOVE');
@@ -360,6 +363,13 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       // Pattern 3: GY-send-then-trigger
       if (produces(fromEff, 'tograve')) {
         for (const toCat of catalogs) {
+          // Phase 10a — filter intersection: when source has a complete target
+          // filter, prune to-cards that statically can't satisfy it. Mirrors
+          // pattern 1 / 2 logic.
+          if (fromEff.target?.simpleFilter?.complete) {
+            const toProps = propsByCard.get(toCat.cardId);
+            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
+          }
           for (const toEff of toCat.effects) {
             if (!triggersOn(toEff, GRAVE_EVENTS)) continue;
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
@@ -393,6 +403,11 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       // Pattern 5: destroy-then-trigger
       if (produces(fromEff, 'destroy')) {
         for (const toCat of catalogs) {
+          // Phase 10a — filter intersection (same rationale as pattern 3).
+          if (fromEff.target?.simpleFilter?.complete) {
+            const toProps = propsByCard.get(toCat.cardId);
+            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
+          }
           for (const toEff of toCat.effects) {
             if (!triggersOn(toEff, DESTROYED_EVENTS)) continue;
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;

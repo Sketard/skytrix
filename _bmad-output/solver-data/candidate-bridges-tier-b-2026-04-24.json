@@ -4,18 +4,16 @@
   "count": 1,
   "results": [
     {
-      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-31603289-e1",
+      "bridgeId": "edge-destroy-trigger-68810435-e3-to-20665527-e2",
       "tier": "B_PARTIAL",
       "diagnosis": "PARTIAL_STALL",
-      "stepsTotal": 6,
-      "stepsConsumed": 5,
+      "stepsTotal": 3,
+      "stepsConsumed": 1,
       "matchedProduces": 0,
-      "totalProduces": 1,
+      "totalProduces": 0,
       "reason": "not all steps consumed",
-      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
-      "missing": [
-        "monster/faceup-atk [31603289] — found at GY/facedown instead"
-      ]
+      "priorStateWarning": null,
+      "missing": []
     }
   ]
 }

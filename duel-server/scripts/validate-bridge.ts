@@ -213,6 +213,12 @@ function candidateToBridge(
   } else if (edge.reason.startsWith('summon-then-trigger')) {
     translated = translateSummonThenTrigger(edge, fromType, toType);
     if (!translated) return { skip: `summon-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else if (edge.reason.startsWith('destroy-then-trigger')) {
+    translated = translateGenericTriggerOnEvent(edge, fromType, toType, 'destroy');
+    if (!translated) return { skip: `destroy-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else if (edge.reason.startsWith('gy-send-then-trigger')) {
+    translated = translateGenericTriggerOnEvent(edge, fromType, toType, 'gy-send');
+    if (!translated) return { skip: `gy-send-translator-declined (fromType=0x${fromType.toString(16)})` };
   } else {
     return { skip: `edge-class-unsupported: ${edge.reason.split(' ')[0]}` };
   }
@@ -453,6 +459,88 @@ function translateSummonThenTrigger(
       position: 'faceup-atk',
       note: `${edge.to.name} SS'd via ${edge.from.name}.${edge.from.effectId}`,
     }],
+    steps,
+  };
+}
+
+// Phase 10a — translate destroy-then-trigger / gy-send-then-trigger edges.
+// Pattern: source's effect destroys (or sends to GY) toCard; toCard.eY
+// (EVENT_DESTROYED / EVENT_TO_GRAVE trigger) fires. Synthetic state places
+// toCard on field; source effect is driven by NS or activate; the trigger
+// (when CATEGORY_SPECIAL_SUMMON, the only category we wire today) is driven
+// at SELECT_CHAIN via the `specialSummon` action whose subject is toCard.
+//
+// Validation signal: `produces: []` — success measured by stepsConsumed ===
+// stepsTotal (autopilot reached and consumed every step). All-steps-consumed
+// implies the source effect ran AND toCard.eY appeared as a chainable option
+// AND the autopilot picked it. Tier B (PARTIAL_STALL) when only the source
+// step ran but toCard.eY didn't appear — the trigger didn't fire.
+function translateGenericTriggerOnEvent(
+  edge: CandidateEdge,
+  fromType: number,
+  toType: number,
+  edgeKind: 'destroy' | 'gy-send',
+): BridgeSubroute | null {
+  if (isTrap(fromType)) return null;
+  if ((fromType & ED_TYPE_MASK) !== 0) return null;
+
+  const toEffect = loadCatalogEffect(edge.to.cardId, edge.to.effectId);
+  if (!toEffect) return null;
+  // V1 scope: only on-event triggers that SS a card. Other categories
+  // (search, draw, destroy-counter) need different driver actions; defer.
+  if (!toEffect.categories.includes('CATEGORY_SPECIAL_SUMMON')) return null;
+
+  const steps: RouteStep[] = [];
+  if (isSpell(fromType)) {
+    // Spell: activate from hand. SELECT_TARGET is then driven by the same
+    // 'activate' step (target=toCard) — the autopilot's SELECT_CARD path
+    // picks toCard.
+    steps.push({
+      action: 'activate',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      target: { kind: 'specific', cardId: edge.to.cardId },
+      note: `[synthetic ${edgeKind}-trigger] activate ${edge.from.name}, target ${edge.to.name}`,
+    });
+  } else if (isMainDeckMonster(fromType)) {
+    // Monster: NS pops a SELECT_CHAIN where the on-summon trigger is offered.
+    // Step 2 (`activate fromCard target=toCard`) drives the chain pick and
+    // the destroy/gy-send target selection.
+    steps.push({
+      action: 'normalSummon',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      note: `[synthetic ${edgeKind}-trigger] NS ${edge.from.name} to surface trigger`,
+    });
+    steps.push({
+      action: 'activate',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      target: { kind: 'specific', cardId: edge.to.cardId },
+      note: `[synthetic ${edgeKind}-trigger] chain ${edge.from.effectId}, target ${edge.to.name}`,
+    });
+  } else {
+    return null;
+  }
+
+  steps.push({
+    action: 'specialSummon',
+    subject: { kind: 'specific', cardId: edge.to.cardId },
+    note: `[synthetic ${edgeKind}-trigger] activate ${edge.to.effectId} on-${edgeKind} SS trigger`,
+  });
+
+  const idPrefix = edgeKind === 'destroy' ? 'edge-destroy-trigger' : 'edge-gy-send-trigger';
+  return {
+    id: `${idPrefix}-${edge.from.cardId}-${edge.from.effectId}-to-${edge.to.cardId}-${edge.to.effectId}`,
+    name: `[candidate] ${edge.from.name}.${edge.from.effectId} ${edgeKind}s → ${edge.to.name}.${edge.to.effectId}`,
+    description: `${edge.reason} (confidence=${edge.confidence})`,
+    requiresDeckPieces: [edge.from.cardId],
+    requiresInitialState: [
+      {
+        zone: fieldZoneKindForType(toType),
+        card: { kind: 'specific', cardId: edge.to.cardId },
+        position: 'faceup-atk',
+        note: `[synthetic ${edgeKind}-trigger] place ${edge.to.name} on field as ${edgeKind} target`,
+      },
+    ],
+    produces: [],
     steps,
   };
 }
@@ -742,8 +830,35 @@ class BridgeAutopilot {
       case 'normalSummon':
         return this.tryMatch(legal, 'SELECT_IDLECMD', a => subjectIds.has(a.cardId) && a.actionTag === 'summon', step, promptType, true);
 
-      case 'activate':
-        return this.tryMatch(legal, 'SELECT_IDLECMD', a => subjectIds.has(a.cardId) && a.actionTag === 'activate', step, promptType, true);
+      case 'activate': {
+        // Phase 10a — 'activate' now covers three sub-phases:
+        //   1. SELECT_IDLECMD: activate the card from field/hand (advances step
+        //      when no target is specified; else stays on same step to drive
+        //      the target pick).
+        //   2. SELECT_CHAIN / SELECT_EFFECTYN: activate a trigger effect that
+        //      names this card as subject. Used when the step drives an
+        //      on-event trigger (destroy-then-trigger, gy-send-then-trigger).
+        //   3. SELECT_CARD / SELECT_UNSELECT_CARD: pick the target card for
+        //      the effect's SELECT_TARGET prompt (advances step).
+        if (promptType === 'SELECT_IDLECMD') {
+          return this.tryMatch(legal, 'SELECT_IDLECMD',
+            a => subjectIds.has(a.cardId) && a.actionTag === 'activate',
+            step, promptType, !targetIds);
+        }
+        if (promptType === 'SELECT_CHAIN' || promptType === 'SELECT_EFFECTYN') {
+          return this.tryActivateTrigger(legal, subjectIds, promptType, step, !targetIds);
+        }
+        if ((promptType === 'SELECT_CARD' || promptType === 'SELECT_UNSELECT_CARD') && targetIds) {
+          const match = legal.find(a => targetIds.has(a.cardId));
+          if (match) {
+            this.log.push(`step ${this.stepIdx} activate/pickTarget ${match.cardId} → rIdx=${match.responseIndex}`);
+            this.advance();
+            return { action: match };
+          }
+          return null;
+        }
+        return null;
+      }
 
       case 'set':
         return this.tryMatch(legal, 'SELECT_IDLECMD', a => subjectIds.has(a.cardId) && (a.actionTag === 'mset' || a.actionTag === 'sset'), step, promptType, true);
