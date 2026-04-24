@@ -1,7 +1,7 @@
 {
   "stamp": "2026-04-24",
   "tier": "C_UNVALIDATABLE",
-  "count": 523,
+  "count": 356,
   "skippedEdges": [
     {
       "edge": {
@@ -226,7 +226,7 @@
           "effectId": "e2"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x4000021)"
     },
@@ -243,7 +243,7 @@
           "effectId": "e1"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x4000021)"
     },
@@ -260,7 +260,7 @@
           "effectId": "e1"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x4000021)"
     },
@@ -277,7 +277,7 @@
           "effectId": "e1"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x4000021)"
     },
@@ -1904,7 +1904,7 @@
           "effectId": "e2"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x800021)"
     },
@@ -1921,7 +1921,7 @@
           "effectId": "e1"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x800021)"
     },
@@ -1938,15 +1938,933 @@
           "effectId": "e2"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x800021)"
     },
     {
       "edge": {
         "from": {
-          "cardId": 45852939,
-          "name": "Eclipse Twins",
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 10966439,
+          "name": "Marshmao☆Yummy",
+          "effectId": "e2a"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 10966439,
+          "name": "Marshmao☆Yummy",
+          "effectId": "e2b"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 1528054,
+          "name": "Silhouhatte Rabbit",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 18176525,
+          "name": "Mitsurugi no Mikoto, Saji",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 18176525,
+          "name": "Mitsurugi no Mikoto, Saji",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 18176525,
+          "name": "Mitsurugi no Mikoto, Saji",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 19899073,
+          "name": "Ame no Murakumo no Mitsurugi",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 29301450,
+          "name": "S:P Little Knight",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 30581601,
+          "name": "Yummy★Snatchy",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 31425736,
+          "name": "Cupsy☆Yummy",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 31425736,
+          "name": "Cupsy☆Yummy",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 31603289,
+          "name": "Cupsy★Yummy Way",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 34022970,
+          "name": "Ext Ryzeal",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 34022970,
+          "name": "Ext Ryzeal",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 3410461,
+          "name": "Alba-Lenatus the Abyss Dragon",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 34909328,
+          "name": "Ryzeal Detonator",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 35844557,
+          "name": "Sword Ryzeal",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 35844557,
+          "name": "Sword Ryzeal",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 40543231,
+          "name": "Mitsurugi no Mikoto, Aramasa",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 40543231,
+          "name": "Mitsurugi no Mikoto, Aramasa",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 40543231,
+          "name": "Mitsurugi no Mikoto, Aramasa",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 45663742,
+          "name": "Snake-Eye Oak",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 45663742,
+          "name": "Snake-Eye Oak",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 5088741,
+          "name": "Code Igniter",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 58071334,
+          "name": "Snake-Eyes Doomed Dragon",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 67098897,
+          "name": "Cooky★Yummy Way",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 68468459,
+          "name": "Fallen of Albaz",
+          "effectId": "e1a"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 68468459,
+          "name": "Fallen of Albaz",
+          "effectId": "e1b"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 68810435,
+          "name": "Cooky☆Yummy",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 68810435,
+          "name": "Cooky☆Yummy",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 70534340,
+          "name": "Lubellion the Searing Dragon",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 72578374,
+          "name": "Khaos Starsource Dragon",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 73819701,
+          "name": "Fallen of the White Dragon",
+          "effectId": "e2a"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 73819701,
+          "name": "Fallen of the White Dragon",
+          "effectId": "e2b"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 73898890,
+          "name": "Dyna Mondo",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 75003700,
+          "name": "Dracotail Lukias",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 75003700,
+          "name": "Dracotail Lukias",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 7511613,
+          "name": "Ryzeal Duo Drive",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 76666602,
+          "name": "The Dragon that Devours the Dogma",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 81846453,
+          "name": "Martial Metal Marcher",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 82782870,
+          "name": "Mitsurugi no Mikoto, Kusanagi",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 82782870,
+          "name": "Mitsurugi no Mikoto, Kusanagi",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 82782870,
+          "name": "Mitsurugi no Mikoto, Kusanagi",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 84433129,
+          "name": "Star Ryzeal",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 84477320,
+          "name": "Dracotail Phryxul",
+          "effectId": "e1a"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 84477320,
+          "name": "Dracotail Phryxul",
+          "effectId": "e1b"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 8633261,
+          "name": "Ice Ryzeal",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 87746184,
+          "name": "Albion the Branded Dragon",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 90241276,
+          "name": "Snake-Eyes Poplar",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 90241276,
+          "name": "Snake-Eyes Poplar",
+          "effectId": "e3"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 93192592,
+          "name": "Lollipo★Yummy Way",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 9674034,
+          "name": "Snake-Eye Ash",
+          "effectId": "e1"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 9674034,
+          "name": "Snake-Eye Ash",
+          "effectId": "e2"
+        },
+        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
+        "confidence": "low"
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
           "effectId": "e2"
         },
         "to": {
@@ -1955,9 +2873,9 @@
           "effectId": "e1"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "medium"
+        "confidence": "low"
       },
-      "reason": "summon-translator-declined (fromType=0x800021)"
+      "reason": "summon-translator-declined (fromType=0x61)"
     },
     {
       "edge": {
@@ -2390,7 +3308,7 @@
           "effectId": "e1"
         },
         "reason": "search-then-trigger (add-to-hand → EVENT_TO_HAND, filter match)",
-        "confidence": "low",
+        "confidence": "high",
         "notes": [
           "target triggers only if NOT drawn — reason passed via add-from-deck qualifies"
         ]
@@ -2590,7 +3508,7 @@
           "effectId": "e1"
         },
         "reason": "search-then-trigger (add-to-hand → EVENT_TO_HAND, filter match)",
-        "confidence": "low",
+        "confidence": "high",
         "notes": [
           "target triggers only if NOT drawn — reason passed via add-from-deck qualifies"
         ]
@@ -2685,950 +3603,12 @@
           "effectId": "e2"
         },
         "to": {
-          "cardId": 90241276,
-          "name": "Snake-Eyes Poplar",
-          "effectId": "e1"
-        },
-        "reason": "search-then-trigger (add-to-hand → EVENT_TO_HAND, filter match)",
-        "confidence": "low",
-        "notes": [
-          "target triggers only if NOT drawn — reason passed via add-from-deck qualifies"
-        ]
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 10966439,
-          "name": "Marshmao☆Yummy",
-          "effectId": "e2a"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 10966439,
-          "name": "Marshmao☆Yummy",
-          "effectId": "e2b"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 1528054,
-          "name": "Silhouhatte Rabbit",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 18176525,
-          "name": "Mitsurugi no Mikoto, Saji",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 18176525,
-          "name": "Mitsurugi no Mikoto, Saji",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 18176525,
-          "name": "Mitsurugi no Mikoto, Saji",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
           "cardId": 19899073,
           "name": "Ame no Murakumo no Mitsurugi",
           "effectId": "e1"
         },
         "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 29301450,
-          "name": "S:P Little Knight",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 30581601,
-          "name": "Yummy★Snatchy",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 31425736,
-          "name": "Cupsy☆Yummy",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 31425736,
-          "name": "Cupsy☆Yummy",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 31603289,
-          "name": "Cupsy★Yummy Way",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 33760966,
-          "name": "Dracotail Arthalion",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 34022970,
-          "name": "Ext Ryzeal",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 34022970,
-          "name": "Ext Ryzeal",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 3410461,
-          "name": "Alba-Lenatus the Abyss Dragon",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 34909328,
-          "name": "Ryzeal Detonator",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 35844557,
-          "name": "Sword Ryzeal",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 35844557,
-          "name": "Sword Ryzeal",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 40543231,
-          "name": "Mitsurugi no Mikoto, Aramasa",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 40543231,
-          "name": "Mitsurugi no Mikoto, Aramasa",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 40543231,
-          "name": "Mitsurugi no Mikoto, Aramasa",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 45663742,
-          "name": "Snake-Eye Oak",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 45663742,
-          "name": "Snake-Eye Oak",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 58071334,
-          "name": "Snake-Eyes Doomed Dragon",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 67098897,
-          "name": "Cooky★Yummy Way",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 68810435,
-          "name": "Cooky☆Yummy",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 68810435,
-          "name": "Cooky☆Yummy",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 70534340,
-          "name": "Lubellion the Searing Dragon",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 72578374,
-          "name": "Khaos Starsource Dragon",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 73819701,
-          "name": "Fallen of the White Dragon",
-          "effectId": "e2a"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 73819701,
-          "name": "Fallen of the White Dragon",
-          "effectId": "e2b"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 7511613,
-          "name": "Ryzeal Duo Drive",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 76666602,
-          "name": "The Dragon that Devours the Dogma",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 82782870,
-          "name": "Mitsurugi no Mikoto, Kusanagi",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 82782870,
-          "name": "Mitsurugi no Mikoto, Kusanagi",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 82782870,
-          "name": "Mitsurugi no Mikoto, Kusanagi",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 84433129,
-          "name": "Star Ryzeal",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e1a"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e1b"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 8633261,
-          "name": "Ice Ryzeal",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 87746184,
-          "name": "Albion the Branded Dragon",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 90241276,
-          "name": "Snake-Eyes Poplar",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 90241276,
-          "name": "Snake-Eyes Poplar",
-          "effectId": "e3"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 93192592,
-          "name": "Lollipo★Yummy Way",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 9674034,
-          "name": "Snake-Eye Ash",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 9674034,
-          "name": "Snake-Eye Ash",
-          "effectId": "e2"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 73898890,
-          "name": "Dyna Mondo",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 9940036,
-          "name": "Mereologic Aggregator",
-          "effectId": "e1"
-        },
-        "reason": "summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)",
-        "confidence": "low"
+        "confidence": "high"
       },
       "reason": "summon-translator-declined (fromType=0x4000021)"
     },
@@ -5775,7 +5755,7 @@
           "effectId": "e1"
         },
         "reason": "search-then-trigger (add-to-hand → EVENT_TO_HAND, filter match)",
-        "confidence": "low",
+        "confidence": "medium",
         "notes": [
           "target triggers only if NOT drawn — reason passed via add-from-deck qualifies"
         ]
@@ -6412,20 +6392,6 @@
     }
   ],
   "results": [
-    {
-      "bridgeId": "edge-search-trigger-13048472-e1-to-90241276-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 3,
-      "stepsConsumed": 0,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
     {
       "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-13332685-e2-to-40543231-e1",
       "tier": "C_UNVALIDATABLE",
@@ -9069,20 +9035,6 @@
       ]
     },
     {
-      "bridgeId": "edge-search-trigger-35269904-e1-to-90241276-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 3,
-      "stepsConsumed": 0,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
       "bridgeId": "edge-via-precursor-mirrorjade-fusion-via-extra-type-bridge-44146295-e1-to-72578374-e2",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -9349,776 +9301,6 @@
       ]
     },
     {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-10966439-e2a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-10966439-e2b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-1528054-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [1528054] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-18176525-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-18176525-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-18176525-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-19899073-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [19899073] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-29301450-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [29301450] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-30581601-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [30581601] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-31425736-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-31425736-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-31603289-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31603289] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-33760966-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [33760966] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-34022970-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-34022970-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-3410461-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [3410461] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-34909328-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34909328] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-35844557-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-35844557-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-40543231-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-40543231-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-40543231-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-45663742-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-45663742-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-5088741-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [5088741] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-58071334-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [58071334] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-67098897-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [67098897] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-68468459-e1a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-68468459-e1b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-68810435-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-68810435-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-70534340-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [70534340] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-72578374-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [72578374] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-73819701-e2a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-73819701-e2b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-73898890-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [73898890] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-75003700-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-75003700-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-7511613-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [7511613] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-76666602-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [76666602] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-81846453-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [81846453] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-82782870-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-82782870-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-82782870-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-84433129-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84433129] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-84477320-e1a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-84477320-e1b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-8633261-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [8633261] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-87746184-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [87746184] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-90241276-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-90241276-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-93192592-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [93192592] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-9674034-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-9674034-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-48452496-e2-to-9940036-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9940036] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
       "bridgeId": "edge-summon-trigger-48452496-e3-to-45663742-e1",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -10200,1546 +9382,6 @@
       "priorStateWarning": null,
       "missing": [
         "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-10966439-e2a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-10966439-e2b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-1528054-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [1528054] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-18176525-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-18176525-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-18176525-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-19899073-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [19899073] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-29301450-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [29301450] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-30581601-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [30581601] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-31425736-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-31425736-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-31603289-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31603289] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-33760966-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [33760966] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-34022970-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-34022970-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-3410461-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [3410461] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-34909328-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34909328] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-35844557-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-35844557-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-40543231-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-40543231-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-40543231-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-45663742-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-45663742-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-5088741-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [5088741] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-58071334-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [58071334] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-67098897-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [67098897] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-68468459-e1a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-68468459-e1b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-68810435-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-68810435-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-70534340-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [70534340] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-72578374-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [72578374] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-73819701-e2a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-73819701-e2b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-73898890-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [73898890] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-75003700-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-75003700-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-7511613-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [7511613] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-76666602-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [76666602] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-81846453-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [81846453] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-82782870-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-82782870-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-82782870-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-84433129-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84433129] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-84477320-e1a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-84477320-e1b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-8633261-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [8633261] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-87746184-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [87746184] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-90241276-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-90241276-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-93192592-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [93192592] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-9674034-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-9674034-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e3-to-9940036-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9940036] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-10966439-e2a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-10966439-e2b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-1528054-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [1528054] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-18176525-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-18176525-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-18176525-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-19899073-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [19899073] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-29301450-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [29301450] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-30581601-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [30581601] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-31425736-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-31425736-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-31603289-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [31603289] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-33760966-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [33760966] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-34022970-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-34022970-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-3410461-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [3410461] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-34909328-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [34909328] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-35844557-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-35844557-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-40543231-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-40543231-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-40543231-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-45663742-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-45663742-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-5088741-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [5088741] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-58071334-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [58071334] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-67098897-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [67098897] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-68468459-e1a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-68468459-e1b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-68810435-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-68810435-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-70534340-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [70534340] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-72578374-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [72578374] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-73819701-e2a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-73819701-e2b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-73898890-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "extraMonster/faceup-atk [73898890] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-75003700-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-75003700-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-7511613-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [7511613] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-76666602-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [76666602] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-81846453-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [81846453] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-82782870-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-82782870-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-82782870-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-84433129-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84433129] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-84477320-e1a",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-84477320-e1b",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-8633261-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [8633261] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-87746184-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [87746184] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-90241276-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-90241276-e3",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-93192592-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [93192592] — found at EXTRA/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-9674034-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-9674034-e2",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_BATTLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
-      ]
-    },
-    {
-      "bridgeId": "edge-summon-trigger-53639887-e4-to-9940036-e1",
-      "tier": "C_UNVALIDATABLE",
-      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
-      "stepsTotal": 2,
-      "stepsConsumed": 1,
-      "matchedProduces": 0,
-      "totalProduces": 1,
-      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=specialSummon",
-      "priorStateWarning": null,
-      "missing": [
-        "monster/faceup-atk [9940036] — found at EXTRA/facedown instead"
       ]
     },
     {

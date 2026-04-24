@@ -33,6 +33,10 @@ interface FilterPredicate {
   value?: unknown;
   inner?: FilterPredicate;
   source?: string;
+  // v8 exhaustive-predicate fields — used by composite / attr-compare kinds.
+  predicates?: readonly FilterPredicate[];  // `or` kind: sub-predicates to OR together
+  attr?: string;                             // `attrCompare`: which card attribute (level/atk/def/overlayCount/...)
+  op?: string;                               // `attrCompare`: comparison operator (==, >, <, >=, <=)
 }
 
 interface SimpleFilter {
@@ -166,7 +170,11 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
     case 'code': {
       const v = pred.value;
       if (v === 'self') return card.cardId === sourceCardId;
-      return card.cardId === (v as number);
+      // Parser emits `{value: null}` (JSON-serialized NaN) when the IsCode arg
+      // is an unresolved constant like `CARD_ALBAZ`. Don't hard-fail on those —
+      // return 'unknown' so the outer filter stays optimistic.
+      if (v === null || v === undefined || typeof v !== 'number' || Number.isNaN(v)) return 'unknown';
+      return card.cardId === v;
     }
     case 'setCard': {
       const hex = SET_HEX[pred.value as string];
@@ -193,6 +201,18 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
       const inner = evalPredicate(pred.inner!, card, sourceCardId);
       return inner === 'unknown' ? 'unknown' : !inner;
     }
+    // Composite: `or` — true if any sub-predicate true, false only if all false.
+    case 'or': {
+      let anyTrue = false, anyUnknown = false;
+      for (const p of pred.predicates ?? []) {
+        const r = evalPredicate(p, card, sourceCardId);
+        if (r === true) anyTrue = true;
+        else if (r === 'unknown') anyUnknown = true;
+      }
+      if (anyTrue) return true;
+      if (anyUnknown) return 'unknown';
+      return false;
+    }
     // State-dependent predicates — assume true for static edge discovery. These
     // can still filter at runtime but do not gate edge identification.
     case 'faceup':
@@ -201,14 +221,43 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
     case 'ableToGrave':
     case 'ableToGraveAsCost':
     case 'ableToDeck':
+    case 'ableToRemove':
+    case 'ableToExtra':
     case 'canBeSpecialSummoned':
     case 'canBeEffectTarget':
+    case 'canBeXyzMaterial':
     case 'discardable':
     case 'ssetable':
     case 'setable':
     case 'relateToEffect':
+    case 'releasableByEffect':
+    case 'uniqueOnField':
+    case 'attackPos':
+    case 'defensePos':
+    case 'onField':
     case 'location':
       return true;
+    // Banlist state — catalog cards treated as legal. `not forbidden` is the
+    // common usage; returning false here makes the negation pass for all cards.
+    case 'forbidden':
+      return false;
+    // Runtime-history predicates — can't be determined statically from cdb.
+    // Return unknown so the filter doesn't spuriously exclude valid matches,
+    // but confidence downgrades to medium/low.
+    case 'fusionSummoned':
+    case 'synchroSummoned':
+    case 'xyzSummoned':
+    case 'linkSummoned':
+    case 'negatable':
+    case 'negatableSpellTrap':
+    case 'disabled':
+    case 'controler':
+    case 'previousControler':
+    case 'reason':
+    case 'listsCode':
+    case 'listsCodeAsMaterial':
+    case 'gameState':
+      return 'unknown';
     // Type-shape predicates on extra-deck monsters — check against card.type bits.
     case 'linkMonster':
       return (card.type & 0x4000000) !== 0;
@@ -218,10 +267,73 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
       return (card.type & 0x40) !== 0;
     case 'synchroMonster':
       return (card.type & 0x2000) !== 0;
+    case 'ritualMonster':
+      return (card.type & 0x1) !== 0 && (card.type & 0x80) !== 0;
+    case 'trapMonster':
+      return (card.type & 0x100) !== 0;
+    case 'monsterCard':
+      return (card.type & 0x1) !== 0;
+    case 'spell':
+      return (card.type & 0x2) !== 0;
+    case 'trap':
+      return (card.type & 0x4) !== 0;
+    case 'continuousSpell':
+      return (card.type & 0x2) !== 0 && (card.type & 0x20000) !== 0;
+    case 'continuousTrap':
+      return (card.type & 0x4) !== 0 && (card.type & 0x20000) !== 0;
+    case 'fieldSpell':
+      return (card.type & 0x2) !== 0 && (card.type & 0x80000) !== 0;
+    case 'ritualSpell':
+      return (card.type & 0x2) !== 0 && (card.type & 0x80) !== 0;
+    case 'normalSpellTrap': {
+      // Normal Spell/Trap = S/T without any sub-type flag. Excludes continuous,
+      // quickplay, field, ritual-spell, equip, counter-trap.
+      const isST = (card.type & 0x2) !== 0 || (card.type & 0x4) !== 0;
+      if (!isST) return false;
+      const subTypeMask = 0x80 | 0x10000 | 0x20000 | 0x40000 | 0x80000 | 0x100000;
+      return (card.type & subTypeMask) === 0;
+    }
+    // `originalType` compares against pre-runtime-conversion type. For catalog
+    // cards, card.type IS the original type (cdb stores native type). Same
+    // semantics as `type` for our use.
+    case 'originalType': {
+      const typeMap: Record<string, number> = {
+        TYPE_MONSTER: 0x1, TYPE_SPELL: 0x2, TYPE_TRAP: 0x4,
+        TYPE_FUSION: 0x40, TYPE_RITUAL: 0x80, TYPE_TUNER: 0x1000,
+        TYPE_SYNCHRO: 0x2000, TYPE_XYZ: 0x800000, TYPE_LINK: 0x4000000,
+      };
+      const mask = typeMap[pred.value as string];
+      return mask !== undefined ? (card.type & mask) !== 0 : 'unknown';
+    }
     case 'link':
       // For Link monsters, `datas.level` stores the rating. Non-Link monsters fail.
       if ((card.type & 0x4000000) === 0) return false;
       return card.level === (pred.value as number);
+    case 'linkBelow':
+      if ((card.type & 0x4000000) === 0) return false;
+      return card.level <= (pred.value as number);
+    case 'rank':
+      // Xyz rank is stored in datas.level, same column as monster level.
+      if ((card.type & 0x800000) === 0) return false;
+      return card.level === (pred.value as number);
+    case 'rankBelow':
+      if ((card.type & 0x800000) === 0) return false;
+      return card.level <= (pred.value as number);
+    // attrCompare: {attr, op, value}. We resolve `level` statically; other attrs
+    // (atk/def/overlayCount) are runtime-dependent → unknown.
+    case 'attrCompare': {
+      if (pred.attr !== 'level') return 'unknown';
+      const v = pred.value as number;
+      switch (pred.op) {
+        case '==': return card.level === v;
+        case '!=': return card.level !== v;
+        case '>':  return card.level >   v;
+        case '>=': return card.level >=  v;
+        case '<':  return card.level <   v;
+        case '<=': return card.level <=  v;
+        default:   return 'unknown';
+      }
+    }
     case 'raw':
       return 'unknown';
     default:
