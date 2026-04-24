@@ -8,9 +8,9 @@ Research project : self-play learning of grammar baselines via CMA-ES + MAP-Elit
 
 ## Current Status
 
-**Active milestone**: M1 PASSED 2026-04-25 — moving to M2 (MAP-Elites + population)
-**Last update**: 2026-04-25 (branded tier-A convergence run done, abort criteria cleared)
-**Next action**: M2 entry — decide MAP-Elites cell granularity, run regression gate on 15 fixtures, scope M2 implementation.
+**Active milestone**: M1 PASSED ; regression gate exposed F4+F5 ; M2 scope clarified, **awaiting user decision** on path.
+**Last update**: 2026-04-25 (15-fixture regression gate run, 3 regressions identified)
+**Next action**: user alignment on M2 path — option A (minimum-viable per-archetype isolated runs at production budget, ~2 h) vs option B (full MAP-Elites framework, ~10 h). See `findings-m1-regression-gate.md` decision point.
 
 ### M1 Verdict — Branded tier-A (50 gen, μ=5 λ=10, 4s / 200-node eval)
 
@@ -33,6 +33,8 @@ Convergence CSV : `_bmad-output/solver-data/graph-ml-v1/metrics-m1-branded-tier-
 1. **F1 — tier-A converges in ~5 gens**. 50-gen default is overkill for single-fixture tier-A. Drop to 15-20 in M2 tooling.
 2. **F2 — Population diversity collapses without pressure** (std: 4.685 gen 1 → 0.011 gen 2 → < 0.003 through gen 50). Quantitative motivation for MAP-Elites in M2.
 3. **F3 — `matched²` is wall-clock-gated, not ranking-gated** on branded. +25 % lift was entirely from `goalMatchPoints`. M2+ : longer budgets, simpler fixtures, or accept sparse `matched²`.
+4. **F4 (2026-04-25, regression gate) — Training-budget specificity**. Tuned weights gave +25 % at training budget (4 s) but **zero improvement at production budget (30 s)** on branded. M2 must train at production budget ⇒ ~10× cost vs M1 tooling.
+5. **F5 (2026-04-25, regression gate) — Single-fixture training overfits**. Branded-only weights caused 3 hard regressions (ryzeal −94 %, horus −88 %, snake-eye −49 %) when cross-applied. Single-pop single-fixture is falsified as a production strategy ; M2 must use archetype cells OR isolated per-archetype loops.
 
 ### M1 files done
 - ✅ `src/solver/graph-weights-types.ts` — shared schema
