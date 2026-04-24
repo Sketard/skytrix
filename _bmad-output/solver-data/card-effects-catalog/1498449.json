@@ -53,15 +53,15 @@
       },
       "target": {
         "name": "s.fustg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "Fusion.SummonEffTG(params)(e,tp,eg,ep,ev,re,r,rp,0)"
+              "kind": "race",
+              "value": "RACE_DRAGON|RACE_SPELLCASTER"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "operation": {
@@ -163,8 +163,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 5,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
     "opaqueUndecoded": 0
   },
   "warnings": []

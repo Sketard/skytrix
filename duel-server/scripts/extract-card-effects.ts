@@ -1348,10 +1348,16 @@ function analyzeNonFilterBody(
   const flatStmts: luaparse.Statement[] = [];
   walkStmts(fnDecl.body, s => flatStmts.push(s));
 
-  // Prefer a delegated filter when present (most informative). Fall back to the
-  // body's direct return expression — that covers condition bodies of the form
-  // `function(e) return e:GetHandler():IsX() and Duel.IsMainPhase() end`.
+  // Prefer a delegated filter when present (most informative). Try in order:
+  //   1. delegated Duel.* filter calls (most informative — explicit filter ref)
+  //   2. curried Fusion.SummonEff(TG|OP)(params)(...) — extracts fusfilter
+  //   3. body's direct return expression — covers condition bodies like
+  //      `function(e) return e:GetHandler():IsX() and Duel.IsMainPhase() end`
+  // Curried Fusion is positioned BEFORE return-extraction because the raw
+  // return falls back to opaque `raw` predicates that would shortcircuit the
+  // chain (Faimena's s.fustg returns `Fusion.SummonEffTG(...)` directly).
   let simpleFilter = extractDelegatedFilterFromStmts(flatStmts, bodies);
+  if (!simpleFilter) simpleFilter = extractCurriedFusionFilter(body);
   if (!simpleFilter) simpleFilter = extractReturnPredicateFromStmts(fnDecl.body);
 
   const actions = extractOperationActions(flatStmts);
@@ -1499,6 +1505,45 @@ function walkCallsInStmt(
       break;
     // LabelStatement, BreakStatement, GotoStatement, FunctionDeclaration, DoStatement: no interesting calls.
   }
+}
+
+/** Phase 14b: decode curried `Fusion.SummonEff(TG|OP)(params)(e,tp,...)` calls.
+ *  The `params` is either a literal table `{...}` or an Identifier referencing
+ *  a local table declared earlier in the body. We extract `params.fusfilter`
+ *  (typically `aux.FilterBoolFunction(Card.IsX, value)`) and decode it via
+ *  the existing predicate machinery. Returns undefined if no curried Fusion
+ *  call is present, or if `fusfilter` can't be resolved to a single predicate. */
+function extractCurriedFusionFilter(body: string): SimpleFilter | undefined {
+  // Find Fusion.SummonEff(TG|OP)(<expr>)(...) — the trailing `(` distinguishes
+  // curried form from a normal call.
+  const curried = /Fusion\.SummonEff(?:TG|OP)\s*\(\s*([\s\S]*?)\s*\)\s*\(/.exec(body);
+  if (!curried) return undefined;
+  const paramExpr = curried[1].trim();
+
+  // Resolve the param expression to a table-body string. Two cases:
+  //  (a) `{ key=val, ... }` — literal table, use directly.
+  //  (b) `<identifier>` — find `local <identifier> = { ... }` declaration.
+  let tableBody: string | undefined;
+  if (paramExpr.startsWith('{') && paramExpr.endsWith('}')) {
+    tableBody = paramExpr.slice(1, -1);
+  } else if (/^[a-zA-Z_]\w*$/.test(paramExpr)) {
+    // Match `local params = { ... }` (allow newlines, single nesting OK).
+    const localRe = new RegExp(`local\\s+${paramExpr}\\s*=\\s*\\{([\\s\\S]*?)\\}`, 'm');
+    const localMatch = localRe.exec(body);
+    if (localMatch) tableBody = localMatch[1];
+  }
+  if (!tableBody) return undefined;
+
+  // Find `fusfilter = aux.FilterBoolFunction(Card.IsX, <value>)` — the SS-target
+  // constraint. The value may contain `|` for OR-masks (handled by enumerator).
+  const fusfilter = /fusfilter\s*=\s*aux\.FilterBoolFunction(?:Ex)?\s*\(\s*Card\.(Is\w+)\s*,\s*([^)]+?)\s*\)/.exec(tableBody);
+  if (!fusfilter) return undefined;
+
+  const method = fusfilter[1];
+  const arg = fusfilter[2].trim();
+  const pred = decodeMethodPredicate(method, arg, `c:${method}(${arg})`);
+  if (pred.kind === 'raw') return undefined;
+  return { predicates: [pred], complete: true };
 }
 
 /** Find the first Duel.* filter-method call whose filter argument resolves to a known

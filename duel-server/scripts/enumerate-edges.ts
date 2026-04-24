@@ -154,13 +154,34 @@ function loadSetcodeMap(): Readonly<Record<string, number>> {
   return out;
 }
 
+/** Resolve a `|`-separated mask value (e.g. "RACE_DRAGON|RACE_SPELLCASTER") via
+ *  the given hex map. Returns the bitwise-OR of all recognized tokens, or
+ *  undefined if any token is unknown. Handles single tokens too. */
+function resolveOrMask(value: string, map: Readonly<Record<string, number>>): number | undefined {
+  const parts = value.split('|').map(s => s.trim()).filter(s => s.length > 0);
+  let combined = 0;
+  for (const p of parts) {
+    const hex = map[p];
+    if (hex === undefined) return undefined;
+    combined |= hex;
+  }
+  return combined;
+}
+
 /** Evaluate a predicate against a candidate card's properties. Returns true, false, or 'unknown'. */
 function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId: number): boolean | 'unknown' {
   switch (pred.kind) {
-    case 'attribute':
-      return ATTR_HEX[pred.value as string] === card.attribute;
-    case 'race':
-      return RACE_HEX[pred.value as string] === card.race;
+    case 'attribute': {
+      // Phase 14: handle OR-mask values like "ATTRIBUTE_LIGHT|ATTRIBUTE_DARK".
+      const mask = resolveOrMask(pred.value as string, ATTR_HEX);
+      if (mask === undefined) return 'unknown';
+      return (card.attribute & mask) !== 0;
+    }
+    case 'race': {
+      const mask = resolveOrMask(pred.value as string, RACE_HEX);
+      if (mask === undefined) return 'unknown';
+      return (card.race & mask) !== 0;
+    }
     case 'level':
       return card.level === (pred.value as number);
     case 'levelAbove':
