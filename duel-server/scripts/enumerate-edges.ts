@@ -47,6 +47,11 @@ interface FunctionRef {
   opaque: boolean;
 }
 
+interface OperationAction {
+  kind: string;
+  target?: string;
+}
+
 interface Effect {
   id: string;
   categories: readonly string[];
@@ -59,7 +64,7 @@ interface Effect {
   condition?: FunctionRef;
   cost?: FunctionRef;
   target?: FunctionRef;
-  operation?: FunctionRef;
+  operation?: FunctionRef & { actions?: readonly OperationAction[] };
   value?: FunctionRef | { literal: string };
   clonedFrom?: string;
   clonedTo?: readonly string[];
@@ -279,6 +284,19 @@ function triggersOn(effect: Effect, events: ReadonlySet<string>): boolean {
   return effect.events.some(ev => events.has(ev));
 }
 
+// True when every Special Summon action in the operation body targets the
+// handler itself (`c` or `e:GetHandler()`). Such effects only summon "this card"
+// and cannot legitimately be the source of a cross-card summon-then-trigger
+// edge — pattern 2 must skip them. Returns false when no SS action is captured
+// (signal absent → preserve the candidate).
+function isSelfTargetingSS(eff: Effect): boolean {
+  const ss = eff.operation?.actions?.filter(
+    a => a.kind === 'special-summon' || a.kind === 'special-summon-step',
+  ) ?? [];
+  if (ss.length === 0) return false;
+  return ss.every(a => a.target === 'c' || a.target === 'e:GetHandler()');
+}
+
 function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
   // Load properties for every card referenced.
   const propsByCard = new Map<number, CardProperties>();
@@ -313,7 +331,11 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       }
       // Pattern 2: summon-then-trigger (EA summons a card)
       if (produces(fromEff, 'summon')) {
+        const fromSelfSS = isSelfTargetingSS(fromEff);
         for (const toCat of catalogs) {
+          // Self-SS source can only trigger ITS OWN on-summon effects — skip
+          // cross-card pairings to suppress ~750 bogus candidates per batch.
+          if (fromSelfSS && toCat.cardId !== fromCat.cardId) continue;
           // Self-trigger allowed (e.g., a card's own SS triggers its own on-SS effect)
           for (const toEff of toCat.effects) {
             if (!triggersOn(toEff, SUMMON_EVENTS)) continue;
