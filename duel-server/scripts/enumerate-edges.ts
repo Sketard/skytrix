@@ -15,9 +15,12 @@
 //      EVENT_BE_MATERIAL.
 //
 // Usage: npx tsx scripts/enumerate-edges.ts [cardId1 cardId2 ...]
+//                                            [--json=<out.json>]
 //   If cardIds omitted, reads every JSON under _bmad-output/solver-data/card-effects-catalog/.
+//   If --json=<out.json> passed, also writes the edges array as JSON to that
+//   path (for programmatic consumption by validate-bridge --candidates).
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 
@@ -437,7 +440,10 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
 // CLI
 // =============================================================================
 
-const argIds = process.argv.slice(2).map(Number).filter(Number.isFinite);
+const jsonOutputArg = process.argv.find(a => a.startsWith('--json='));
+const jsonOutputPath = jsonOutputArg?.slice('--json='.length);
+const positionalArgs = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const argIds = positionalArgs.map(Number).filter(Number.isFinite);
 
 const availableIds = existsSync(catalogDir)
   ? readdirSync(catalogDir).filter(f => f.endsWith('.json')).map(f => Number(f.replace('.json', ''))).filter(Number.isFinite)
@@ -506,5 +512,22 @@ for (const conf of ['high', 'medium', 'low'] as const) {
 }
 
 console.log(`\n---\nTotal edges: ${edges.length} (high: ${byConfidence.high.length}, medium: ${byConfidence.medium.length}, low: ${byConfidence.low.length})`);
+
+if (jsonOutputPath) {
+  // Emit edges + card-properties snapshot for validate-bridge --candidates to
+  // consume without re-querying cards.cdb.
+  const cardIdxProps: Record<number, CardProperties> = {};
+  for (const cat of catalogs) {
+    const p = loadCardProperties(cat.cardId);
+    if (p) cardIdxProps[cat.cardId] = p;
+  }
+  writeFileSync(jsonOutputPath, JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    cardCount: catalogs.length,
+    cardProperties: cardIdxProps,
+    edges,
+  }, (_k, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+  console.log(`\n[json] wrote ${edges.length} edges + ${Object.keys(cardIdxProps).length} card props to ${jsonOutputPath}`);
+}
 
 cardDb.close();

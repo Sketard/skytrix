@@ -21,7 +21,7 @@
 // Exit 0 on all PASS. Exit 1 on any FAIL. Exit 2 on setup error.
 // =============================================================================
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { DATA_DIR } from './evaluate-structural.js';
@@ -79,6 +79,242 @@ function findBridge(all: LoadedExpertise[], bridgeId: string):
     if (match) return { bridge: match, expertise: exp };
   }
   return null;
+}
+
+// =============================================================================
+// --candidates mode — translate mechanical edges into synthetic bridges
+// =============================================================================
+
+interface CandidateCardProps {
+  cardId: number;
+  name: string;
+  type: number;
+  level: number;
+  attribute: number;
+  race: number;
+  setcodes: readonly number[];
+}
+
+interface CandidateEdge {
+  from: { cardId: number; name: string; effectId: string };
+  to: { cardId: number; name: string; effectId: string };
+  reason: string;
+  confidence: 'high' | 'medium' | 'low';
+  notes?: readonly string[];
+}
+
+interface CandidatesFile {
+  generatedAt: string;
+  cardCount: number;
+  cardProperties: Readonly<Record<string, CandidateCardProps>>;
+  edges: readonly CandidateEdge[];
+}
+
+// Bitmask decode — keep in sync with ocg-constants / cards.cdb `type` column.
+const TYPE_MONSTER = 0x1;
+const TYPE_SPELL = 0x2;
+const TYPE_TRAP = 0x4;
+const TYPE_FUSION = 0x40;
+const TYPE_RITUAL = 0x80;
+const TYPE_SYNCHRO = 0x2000;
+const TYPE_XYZ = 0x800000;
+const TYPE_LINK = 0x4000000;
+const ED_TYPE_MASK = TYPE_FUSION | TYPE_RITUAL | TYPE_SYNCHRO | TYPE_XYZ | TYPE_LINK;
+
+function isMainDeckMonster(type: number): boolean {
+  return (type & TYPE_MONSTER) !== 0 && (type & ED_TYPE_MASK) === 0;
+}
+function isSpell(type: number): boolean { return (type & TYPE_SPELL) !== 0; }
+function isTrap(type: number): boolean { return (type & TYPE_TRAP) !== 0; }
+
+interface CandidateEffect {
+  id: string;
+  categories: readonly string[];
+  events: readonly string[];
+  types: readonly string[];
+}
+
+/** Load a minimal slice of the card's effect catalog. Returns the effect
+ *  with the given id, or null if the catalog is missing / effect not found. */
+function loadCatalogEffect(cardId: number, effectId: string): CandidateEffect | null {
+  const p = join(DATA_DIR, '..', '..', '_bmad-output', 'solver-data', 'card-effects-catalog', `${cardId}.json`);
+  try {
+    const content = JSON.parse(readFileSync(p, 'utf-8')) as { effects: readonly CandidateEffect[] };
+    return content.effects.find(e => e.id === effectId) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Translate a mechanical edge into a synthetic BridgeSubroute for validation.
+ *  Returns null if the edge shape isn't supported (e.g., Trap initiator —
+ *  which requires setting on a prior turn then activating, which the current
+ *  autopilot can't reproduce). */
+function candidateToBridge(
+  edge: CandidateEdge,
+  cardProps: Readonly<Record<string, CandidateCardProps>>,
+): BridgeSubroute | null {
+  const fromProps = cardProps[String(edge.from.cardId)];
+  const toProps = cardProps[String(edge.to.cardId)];
+  if (!fromProps || !toProps) return null;
+
+  const fromType = fromProps.type;
+  const toType = toProps.type;
+
+  // Edge reason prefix determines translator.
+  if (edge.reason.startsWith('search-then-trigger')) {
+    return translateSearchThenTrigger(edge, fromType, toType);
+  }
+  if (edge.reason.startsWith('summon-then-trigger')) {
+    return translateSummonThenTrigger(edge, fromType, toType);
+  }
+  // All other edge classes (gy-send / destroy / banish / fusion-material /
+  // leave-field / battle) are ambiguous at synthesis (target not resolvable
+  // from edge data alone). Skip with null → recorded as SKIPPED in report.
+  return null;
+}
+
+/** Pick the right ZoneKind for a summoned monster. Link monsters naturally
+ *  occupy the Extra Monster Zone (EMZ_L/R) in MR5 — the validator's
+ *  `zoneKindMatches` distinguishes 'monster' (M1-M5) from 'extraMonster'
+ *  (EMZ), so producing the wrong kind would cause a false tier-D rejection. */
+function fieldZoneKindForType(type: number): 'monster' | 'extraMonster' {
+  return (type & TYPE_LINK) !== 0 ? 'extraMonster' : 'monster';
+}
+
+function translateSearchThenTrigger(
+  edge: CandidateEdge,
+  fromType: number,
+  toType: number,
+): BridgeSubroute | null {
+  const steps: RouteStep[] = [];
+
+  // Step 1: bring fromCard into play so its effect can activate.
+  if (isSpell(fromType)) {
+    steps.push({
+      action: 'activate',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      note: `[synthetic] activate ${edge.from.name}`,
+    });
+  } else if (isMainDeckMonster(fromType)) {
+    steps.push({
+      action: 'normalSummon',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      note: `[synthetic] NS ${edge.from.name} to trigger ${edge.from.effectId}`,
+    });
+  } else if (isTrap(fromType)) {
+    return null; // Trap initiator — unsupported (needs prior-turn set + activate).
+  } else {
+    return null;
+  }
+
+  // Step 2: search — pick to.cardId as target.
+  steps.push({
+    action: 'search',
+    subject: { kind: 'specific', cardId: edge.from.cardId },
+    target: { kind: 'specific', cardId: edge.to.cardId },
+    note: `[synthetic] ${edge.from.effectId} searches ${edge.to.name}`,
+  });
+
+  // Step 3: if to's trigger SS's from hand, model that.
+  const toEffect = loadCatalogEffect(edge.to.cardId, edge.to.effectId);
+  const toCategorySS = toEffect?.categories.includes('CATEGORY_SPECIAL_SUMMON') ?? false;
+  if (toCategorySS) {
+    steps.push({
+      action: 'specialSummon',
+      subject: { kind: 'specific', cardId: edge.to.cardId },
+      note: `[synthetic] ${edge.to.effectId} triggers on-to-hand, SS self`,
+    });
+  }
+
+  const produces: CardSlot[] = toCategorySS
+    ? [{
+        zone: fieldZoneKindForType(toType),
+        card: { kind: 'specific', cardId: edge.to.cardId },
+        position: 'faceup-atk',
+        note: `${edge.to.name} SS'd via ${edge.to.effectId} on-to-hand trigger`,
+      }]
+    : [{
+        zone: 'hand',
+        card: { kind: 'specific', cardId: edge.to.cardId },
+        note: `${edge.to.name} in hand after ${edge.from.effectId} search`,
+      }];
+
+  return {
+    id: `edge-search-trigger-${edge.from.cardId}-${edge.from.effectId}-to-${edge.to.cardId}-${edge.to.effectId}`,
+    name: `[candidate] ${edge.from.name}.${edge.from.effectId} → ${edge.to.name}.${edge.to.effectId}`,
+    description: `${edge.reason} (confidence=${edge.confidence})`,
+    requiresDeckPieces: [edge.from.cardId, edge.to.cardId],
+    produces,
+    steps,
+  };
+}
+
+function translateSummonThenTrigger(
+  edge: CandidateEdge,
+  fromType: number,
+  toType: number,
+): BridgeSubroute | null {
+  // Special case: self-trigger (same card). fromCard is summoned and triggers
+  // its OWN on-summon effect. Model as: NS fromCard → activate trigger effect.
+  // Very common in on-NS archetype openers (Snake-Eye Ash, Mitsurugi Mikoto…).
+  const isSelfTrigger = edge.from.cardId === edge.to.cardId;
+  if (isSelfTrigger) {
+    if (!isMainDeckMonster(fromType)) return null;
+    // For search-on-own-NS → model as normalSummon + search (if to effect is search-producing)
+    // Generic "just NS and let trigger fire" — produces field presence of the card.
+    return {
+      id: `edge-self-summon-trigger-${edge.from.cardId}-${edge.from.effectId}-via-${edge.to.effectId}`,
+      name: `[candidate] ${edge.from.name}.${edge.from.effectId} self-triggers ${edge.to.effectId} on-summon`,
+      description: `${edge.reason} (confidence=${edge.confidence}, self-trigger)`,
+      requiresDeckPieces: [edge.from.cardId],
+      produces: [{
+        zone: fieldZoneKindForType(fromType),
+        card: { kind: 'specific', cardId: edge.from.cardId },
+        position: 'faceup-atk',
+        note: `${edge.from.name} on field post-NS`,
+      }],
+      steps: [
+        { action: 'normalSummon', subject: { kind: 'specific', cardId: edge.from.cardId } },
+      ],
+    };
+  }
+
+  // Non-self case: "from" effect SS's "to" card (or a matching one).
+  const steps: RouteStep[] = [];
+  if (isSpell(fromType)) {
+    steps.push({
+      action: 'activate',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+    });
+  } else if (isMainDeckMonster(fromType)) {
+    steps.push({
+      action: 'normalSummon',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+    });
+  } else {
+    return null;
+  }
+
+  steps.push({
+    action: 'specialSummon',
+    subject: { kind: 'specific', cardId: edge.to.cardId },
+    note: `[synthetic] ${edge.from.effectId} SS's ${edge.to.name}`,
+  });
+
+  return {
+    id: `edge-summon-trigger-${edge.from.cardId}-${edge.from.effectId}-to-${edge.to.cardId}-${edge.to.effectId}`,
+    name: `[candidate] ${edge.from.name}.${edge.from.effectId} → ${edge.to.name}.${edge.to.effectId}`,
+    description: `${edge.reason} (confidence=${edge.confidence})`,
+    requiresDeckPieces: [edge.from.cardId, edge.to.cardId],
+    produces: [{
+      zone: fieldZoneKindForType(toType),
+      card: { kind: 'specific', cardId: edge.to.cardId },
+      position: 'faceup-atk',
+      note: `${edge.to.name} SS'd via ${edge.from.name}.${edge.from.effectId}`,
+    }],
+    steps,
+  };
 }
 
 // Resolve a CardSelector to a concrete cardId list. For 'role' selectors, we
@@ -878,18 +1114,66 @@ function printResult(r: ValidationResult, verbose: boolean, verdict?: HumanVerdi
 async function main(): Promise<void> {
   const bridgeId = parseStringArg('bridge');
   const archetype = parseStringArg('archetype');
+  const candidatesPath = parseStringArg('candidates');
+  const candidatesLimit = Number(parseStringArg('limit') ?? 0) || undefined;
+  const candidatesConfidence = parseStringArg('confidence')?.split(',');
   const runAll = process.argv.includes('--all');
   const verbose = process.env['VALIDATE_BRIDGE_VERBOSE'] === '1';
 
-  if (!bridgeId && !archetype && !runAll) {
-    console.error('[validate-bridge] specify --bridge=<id> | --archetype=<id> | --all');
+  if (!bridgeId && !archetype && !runAll && !candidatesPath) {
+    console.error('[validate-bridge] specify --bridge=<id> | --archetype=<id> | --all | --candidates=<path>');
     process.exit(2);
   }
 
   const all = loadAllExpertise();
 
   const targets: { bridge: BridgeSubroute; expertise: LoadedExpertise }[] = [];
-  if (bridgeId) {
+  const candidatesHost: LoadedExpertise = { archetype: 'candidates', roleMap: {}, bridges: [] };
+  const skippedEdges: { edge: CandidateEdge; reason: string }[] = [];
+
+  if (candidatesPath) {
+    const raw = readFileSync(candidatesPath, 'utf-8');
+    const cf = JSON.parse(raw) as CandidatesFile;
+    console.log(`[validate-bridge] loaded ${cf.edges.length} candidate edges from ${candidatesPath}`);
+    let edges = cf.edges;
+    if (candidatesConfidence) {
+      edges = edges.filter(e => candidatesConfidence.includes(e.confidence));
+      console.log(`[validate-bridge] filter confidence=[${candidatesConfidence.join(',')}] → ${edges.length} edges`);
+    }
+    if (candidatesLimit) {
+      edges = edges.slice(0, candidatesLimit);
+      console.log(`[validate-bridge] limit=${candidatesLimit} → ${edges.length} edges`);
+    }
+    let translated = 0;
+    const skipReasonHist: Record<string, number> = {};
+    let debugPrinted = 0;
+    for (const edge of edges) {
+      const bridge = candidateToBridge(edge, cf.cardProperties);
+      if (!bridge) {
+        const reasonPrefix = edge.reason.split(' ')[0];
+        skipReasonHist[reasonPrefix] = (skipReasonHist[reasonPrefix] ?? 0) + 1;
+        skippedEdges.push({ edge, reason: `unsupported: ${edge.reason}` });
+        if (debugPrinted < 3 && verbose) {
+          const fp = cf.cardProperties[String(edge.from.cardId)];
+          const tp = cf.cardProperties[String(edge.to.cardId)];
+          console.log(`[debug skip] ${edge.reason}`);
+          console.log(`  from: ${edge.from.name}(${edge.from.cardId}) type=0x${fp?.type.toString(16)} propsFound=${!!fp}`);
+          console.log(`  to  : ${edge.to.name}(${edge.to.cardId}) type=0x${tp?.type.toString(16)} propsFound=${!!tp}`);
+          debugPrinted++;
+        }
+        continue;
+      }
+      targets.push({ bridge, expertise: candidatesHost });
+      translated++;
+    }
+    console.log(`[validate-bridge] translated ${translated} edges → bridges; skipped ${skippedEdges.length}`);
+    if (skippedEdges.length > 0) {
+      console.log(`[validate-bridge] skip reasons:`);
+      for (const [r, n] of Object.entries(skipReasonHist).sort(([, a], [, b]) => b - a)) {
+        console.log(`  ${String(n).padStart(5)}  ${r}`);
+      }
+    }
+  } else if (bridgeId) {
     const match = findBridge(all, bridgeId);
     if (!match) {
       console.error(`[validate-bridge] bridge '${bridgeId}' not found`);
@@ -923,11 +1207,21 @@ async function main(): Promise<void> {
 
   const results: ValidationResult[] = [];
   try {
-    for (const t of targets) {
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
       const r0 = await validateBridge(t.bridge, t.expertise, all, adapter, verbose);
       const r = applyHumanVerdict(r0, verdicts);
       results.push(r);
-      printResult(r, verbose, verdicts[r.bridgeId]);
+      // Suppress per-bridge printing in large --candidates runs (spammy).
+      // Still print a compact progress line every 25 targets.
+      if (candidatesPath && targets.length > 50) {
+        if ((i + 1) % 25 === 0 || i === targets.length - 1) {
+          const pass = results.filter(x => x.tier === 'A_VERIFIED').length;
+          console.log(`[validate-bridge] ${i + 1}/${targets.length} done — A=${pass} so far`);
+        }
+      } else {
+        printResult(r, verbose, verdicts[r.bridgeId]);
+      }
     }
   } finally {
     adapter.destroyAll();
@@ -942,11 +1236,57 @@ async function main(): Promise<void> {
   console.log(`🔵 C (unvalidatable)  : ${byTier.C_UNVALIDATABLE}/${results.length}   ← needs human review (unless verdicted)`);
   console.log(`🔴 D (rejected)       : ${byTier.D_REJECTED}/${results.length}   ← genuine errors`);
 
-  console.log(`\nPer-bridge:`);
-  for (const r of results) {
-    const v = verdicts[r.bridgeId];
-    const vTag = v ? ` [${v.verdict}]` : '';
-    console.log(`  ${tierLabel(r)}  ${r.diagnosis.padEnd(34)}  ${r.bridgeId}${vTag}`);
+  if (!candidatesPath) {
+    console.log(`\nPer-bridge:`);
+    for (const r of results) {
+      const v = verdicts[r.bridgeId];
+      const vTag = v ? ` [${v.verdict}]` : '';
+      console.log(`  ${tierLabel(r)}  ${r.diagnosis.padEnd(34)}  ${r.bridgeId}${vTag}`);
+    }
+  } else {
+    // --candidates mode: write tier-bucketed output files + diagnosis histogram.
+    const outDir = join(DATA_DIR, '..', '..', '_bmad-output', 'solver-data');
+    const stamp = new Date().toISOString().slice(0, 10);
+    const outA = join(outDir, `candidate-bridges-tier-a-${stamp}.json`);
+    const outC = join(outDir, `candidate-bridges-tier-c-${stamp}.json`);
+    const outD = join(outDir, `candidate-bridges-tier-d-${stamp}.json`);
+
+    const slim = (r: ValidationResult) => ({
+      bridgeId: r.bridgeId, tier: r.tier, diagnosis: r.diagnosis,
+      stepsTotal: r.stepsTotal, stepsConsumed: r.stepsConsumed,
+      matchedProduces: r.matchedProduces, totalProduces: r.totalProduces,
+      reason: r.reason, priorStateWarning: r.priorStateWarning,
+      missing: r.missing,
+    });
+
+    writeFileSync(outA, JSON.stringify({
+      stamp, tier: 'A_VERIFIED', count: byTier.A_VERIFIED,
+      results: results.filter(r => r.tier === 'A_VERIFIED').map(slim),
+    }, null, 2));
+    writeFileSync(outC, JSON.stringify({
+      stamp, tier: 'C_UNVALIDATABLE', count: byTier.C_UNVALIDATABLE,
+      skippedEdges: skippedEdges.map(s => ({ edge: s.edge, reason: s.reason })),
+      results: results.filter(r => r.tier === 'C_UNVALIDATABLE').map(slim),
+    }, null, 2));
+    writeFileSync(outD, JSON.stringify({
+      stamp, tier: 'D_REJECTED', count: byTier.D_REJECTED,
+      results: results.filter(r => r.tier === 'D_REJECTED').map(slim),
+    }, null, 2));
+
+    // Diagnosis histogram — what's preventing acceptance?
+    const byDiag: Record<string, number> = {};
+    for (const r of results) byDiag[r.diagnosis] = (byDiag[r.diagnosis] ?? 0) + 1;
+    console.log(`\nDiagnosis histogram:`);
+    for (const [diag, n] of Object.entries(byDiag).sort(([, a], [, b]) => b - a)) {
+      console.log(`  ${String(n).padStart(5)}  ${diag}`);
+    }
+    if (skippedEdges.length > 0) {
+      console.log(`\nSkipped (unsupported edge class, not translated): ${skippedEdges.length}`);
+    }
+    console.log(`\nTier-bucketed output:`);
+    console.log(`  🟢 ${outA}`);
+    console.log(`  🔵 ${outC}`);
+    console.log(`  🔴 ${outD}`);
   }
 
   // Exit 0 if no tier D. Tier C is NOT a failure (human-review bucket).
