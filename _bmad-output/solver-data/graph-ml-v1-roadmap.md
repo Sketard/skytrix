@@ -8,9 +8,31 @@ Research project : self-play learning of grammar baselines via CMA-ES + MAP-Elit
 
 ## Current Status
 
-**Active milestone**: M1 — Learning loop (plumbing complete, full convergence run pending)
-**Last update**: 2026-04-24 (M1 plumbing shipped, smoke-validated)
-**Next action**: run a real 50-gen training experiment on branded tier-A to assess convergence against M1 abort criteria.
+**Active milestone**: M1 PASSED 2026-04-25 — moving to M2 (MAP-Elites + population)
+**Last update**: 2026-04-25 (branded tier-A convergence run done, abort criteria cleared)
+**Next action**: M2 entry — decide MAP-Elites cell granularity, run regression gate on 15 fixtures, scope M2 implementation.
+
+### M1 Verdict — Branded tier-A (50 gen, μ=5 λ=10, 4s / 200-node eval)
+
+| Metric | Value |
+|---|---|
+| Baseline fitness (weights=0) | 44.068 |
+| Final best fitness | 55.194 |
+| Lift vs baseline | **+25.2 %** ✅ (threshold +20 %) |
+| Parent-mean lift (gen 1 → gen 50) | +10.3 % |
+| Regression on training fixture | 0 % (lift only) ✅ |
+| Convergence | plateau at gen ≈ 5, σ→0.008 by gen 50 ✅ |
+| `goalMatchPoints` lift | +11.07 (workhorse term) |
+| `matched` / 8 | 0 / 8 (wall-clock ceiling, not ranking) |
+
+Full findings : `_bmad-output/solver-data/graph-ml-v1/findings-m1-branded-tier-a.md`.
+Convergence CSV : `_bmad-output/solver-data/graph-ml-v1/metrics-m1-branded-tier-a.csv`.
+
+### Key M1 Findings (transferable)
+
+1. **F1 — tier-A converges in ~5 gens**. 50-gen default is overkill for single-fixture tier-A. Drop to 15-20 in M2 tooling.
+2. **F2 — Population diversity collapses without pressure** (std: 4.685 gen 1 → 0.011 gen 2 → < 0.003 through gen 50). Quantitative motivation for MAP-Elites in M2.
+3. **F3 — `matched²` is wall-clock-gated, not ranking-gated** on branded. +25 % lift was entirely from `goalMatchPoints`. M2+ : longer budgets, simpler fixtures, or accept sparse `matched²`.
 
 ### M1 files done
 - ✅ `src/solver/graph-weights-types.ts` — shared schema
