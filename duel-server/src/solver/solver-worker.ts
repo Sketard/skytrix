@@ -21,6 +21,9 @@ import { MCTSSolver } from './mcts-solver.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { RouteAwareRanker } from './route-aware-ranker.js';
+import { GraphGuidedRanker } from './graph-guided-ranker.js';
+import { loadTunedWeightsIfEnabled } from './graph-weights-loader.js';
+import type { ActionRanker } from './solver-strategy.js';
 import type {
   DuelConfig,
   SolverConfig,
@@ -104,7 +107,23 @@ const scorer = new InterruptionScorer(
 // `setArchetypeExpertise` — done in runSolve() below once we know which
 // deck we're solving for.
 const baseRanker = new GoldfishChainRanker(allConfigs.interruptionTags);
-const ranker = new RouteAwareRanker(baseRanker);
+const routeAwareRanker = new RouteAwareRanker(baseRanker);
+
+// Graph-ml-v1 opt-in : when `SOLVER_USE_TUNED_WEIGHTS=1` and a weights
+// file is present, wrap RouteAwareRanker with GraphGuidedRanker. Ranking
+// becomes graph-weight-biased; when off, `ranker === routeAwareRanker`
+// and behaviour is byte-identical to pre-M1. `setArchetypeExpertise`
+// always targets `routeAwareRanker` directly — GraphGuidedRanker has no
+// expertise coupling.
+const tunedWeights = loadTunedWeightsIfEnabled({ dataDir });
+const ranker: ActionRanker = tunedWeights
+  ? (() => {
+      const gr = new GraphGuidedRanker(routeAwareRanker);
+      gr.setWeights(tunedWeights);
+      return gr;
+    })()
+  : routeAwareRanker;
+
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
 const minimaxMctsSolver = new MinimaxMctsSolver(scorer, adapter, ranker, allConfigs.solverConfig);
@@ -141,7 +160,9 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   );
   scorer.setArchetypeExpertise(filteredExpertise);
   scorer.setDeckContents([...task.duelConfig.mainDeck, ...task.duelConfig.extraDeck]);
-  ranker.setArchetypeExpertise(filteredExpertise);
+  // Expertise always lives on the inner RouteAwareRanker, even when
+  // GraphGuidedRanker wraps it — the graph wrapper is expertise-agnostic.
+  routeAwareRanker.setArchetypeExpertise(filteredExpertise);
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {

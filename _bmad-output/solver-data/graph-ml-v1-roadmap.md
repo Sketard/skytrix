@@ -8,25 +8,35 @@ Research project : self-play learning of grammar baselines via CMA-ES + MAP-Elit
 
 ## Current Status
 
-**Active milestone**: M1 — Learning loop (partial, ~40% done)
-**Last update**: 2026-04-24 (session handoff to fresh context)
-**Next action**: create `src/solver/graph-weights-loader.ts`, then `transition-observer.ts`, then `fitness-evaluator.ts`, then `train-graph-weights.ts`, then first training run.
+**Active milestone**: M1 — Learning loop (plumbing complete, full convergence run pending)
+**Last update**: 2026-04-24 (M1 plumbing shipped, smoke-validated)
+**Next action**: run a real 50-gen training experiment on branded tier-A to assess convergence against M1 abort criteria.
 
-### M1 files done (committed)
+### M1 files done
 - ✅ `src/solver/graph-weights-types.ts` — shared schema
 - ✅ `scripts/lib/weight-persistor.ts` — I/O + vector pack + `migrateWeightsToEdgeSet` (graph-evolution tolerance)
-- ✅ `scripts/lib/evolution-strategy.ts` — (μ+λ)-ES with 1/5 rule sigma adaptation (in-repo, no dep)
-- ✅ `src/solver/graph-guided-ranker.ts` — plug-in ranker wrapping GoldfishChainRanker
-- ✅ `data/trained-weights/edges-all.json` — 926 edges regenerated
+- ✅ `scripts/lib/evolution-strategy.ts` — (μ+λ)-ES with 1/5 rule sigma adaptation
+- ✅ `src/solver/graph-guided-ranker.ts` — plug-in ActionRanker wrapper; setWeights() API
+- ✅ `src/solver/graph-weights-loader.ts` — boot-time loader gated on `SOLVER_USE_TUNED_WEIGHTS=1`; optional `SOLVER_TUNED_WEIGHTS_FILE` basename
+- ✅ `src/solver/transition-observer.ts` — JSONL logger gated on `SOLVER_OBSERVE_TRANSITIONS=1` (scaffold only — not yet wired into ranker; M2/E4 task)
+- ✅ `scripts/lib/fitness-evaluator.ts` — composite reward `α·matched² + β·partial_goals + γ·novelty + ε·terminal_bonus`
+- ✅ `scripts/train-graph-weights.ts` — CLI with tier filter (confidence proxy), mask-aware packer, checkpoints, CSV out
+- ✅ `solver-worker.ts` — opt-in `GraphGuidedRanker` wrap, zero-diff when env var off
+- ✅ Smoke run (branded tier-A, 1 gen, μ=2 λ=3, 3s, 100-node cap): baseline 44.007 → 46.545 (+2.538 fitness, +2.50 goalMatch). Loop end-to-end validated.
 - ✅ `npm run build` green
 
-### M1 files pending
-- ⏳ `src/solver/graph-weights-loader.ts` — boot-time loader for solver-worker
-- ⏳ `src/solver/transition-observer.ts` — v2 enrichment prep, JSONL logger
-- ⏳ `scripts/lib/fitness-evaluator.ts` — DFS → composite reward
-- ⏳ `scripts/train-graph-weights.ts` — CLI entry
-- ⏳ First training run on branded tier-A
-- ⏳ M1 checkpoint vs abort criteria
+### M1 pending
+- ⏳ Real 50-gen convergence run on branded tier-A:
+  `SOLVER_INSTRUMENT=0 npx tsx scripts/train-graph-weights.ts --fixture=branded-dracotail-opener --tier=A --generations=50 --mu=5 --lambda=10 --budget-ms=4000 --node-budget=200 --csv=../_bmad-output/solver-data/graph-ml-v1/metrics-m1-branded-tier-a.csv`
+  Estimated ~35 min wall-time.
+- ⏳ M1 checkpoint vs abort criteria (fitness mean +20% over 50 gen) + findings write-up
+
+### M1 design notes (decided during plumbing)
+- **Fresh TT per eval**: `FitnessEvaluator` rebuilds Zobrist+TranspositionTable per `evaluate()`. Stored sub-tree scores reflect action-ordering of the prior individual, so TT reuse contaminates fitness. JS alloc cost only.
+- **Tier-A confidence proxy**: `edges-all.json` carries `confidence: 'high'|'medium'|'low'`; tier A=high (267 edges), B=+medium (629), C/full=all (926). Real bridge-tier classification lives in `_bmad-output/solver-data/candidate-bridges-tier-*.json` keyed by `bridgeId` (not edge id) — bridge→edge mapping is M2+ work.
+- **Mask**: inactive edges stay at 0; ES only perturbs the active indices via `buildMaskedPacker`.
+- **Matched signal**: `expectedBoard` match count against `bestTurn1FieldState`. On 3s budget smoke this was 0/8 for branded (fixture needs longer wall-clock). `goalMatchPoints` (partial_goals) is what moves in short-budget runs.
+- **Artifacts path**: `data/trained-weights/` is gitignored — training outputs are local-only. Production deploy of trained weights is a separate step (copy into env).
 
 ---
 
