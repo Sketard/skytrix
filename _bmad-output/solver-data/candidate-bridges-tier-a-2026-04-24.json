@@ -1,7 +1,7 @@
 {
   "stamp": "2026-04-24",
   "tier": "A_VERIFIED",
-  "count": 43,
+  "count": 39,
   "results": [
     {
       "bridgeId": "edge-self-summon-trigger-10966439-e1-via-e2a",
@@ -389,50 +389,6 @@
     },
     {
       "bridgeId": "edge-self-summon-trigger-73819701-e1-via-e2b",
-      "tier": "A_VERIFIED",
-      "diagnosis": "NONE",
-      "stepsTotal": 1,
-      "stepsConsumed": 1,
-      "matchedProduces": 1,
-      "totalProduces": 1,
-      "priorStateWarning": null,
-      "missing": []
-    },
-    {
-      "bridgeId": "edge-self-summon-trigger-84477320-e1a-via-e1a",
-      "tier": "A_VERIFIED",
-      "diagnosis": "NONE",
-      "stepsTotal": 1,
-      "stepsConsumed": 1,
-      "matchedProduces": 1,
-      "totalProduces": 1,
-      "priorStateWarning": null,
-      "missing": []
-    },
-    {
-      "bridgeId": "edge-self-summon-trigger-84477320-e1a-via-e1b",
-      "tier": "A_VERIFIED",
-      "diagnosis": "NONE",
-      "stepsTotal": 1,
-      "stepsConsumed": 1,
-      "matchedProduces": 1,
-      "totalProduces": 1,
-      "priorStateWarning": null,
-      "missing": []
-    },
-    {
-      "bridgeId": "edge-self-summon-trigger-84477320-e1b-via-e1a",
-      "tier": "A_VERIFIED",
-      "diagnosis": "NONE",
-      "stepsTotal": 1,
-      "stepsConsumed": 1,
-      "matchedProduces": 1,
-      "totalProduces": 1,
-      "priorStateWarning": null,
-      "missing": []
-    },
-    {
-      "bridgeId": "edge-self-summon-trigger-84477320-e1b-via-e1b",
       "tier": "A_VERIFIED",
       "diagnosis": "NONE",
       "stepsTotal": 1,

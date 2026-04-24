@@ -468,13 +468,18 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       // Pattern 2: summon-then-trigger (EA summons a card)
       if (produces(fromEff, 'summon')) {
         const fromSelfSS = isSelfTargetingSS(fromEff);
-        // Phase 12 — for SS-producing effects, the actual SS-target filter lives
-        // in the OPERATION body (`Duel.SelectMatchingCard` before `SpecialSummon`),
-        // NOT the target body (which often validates cost/zone preconditions).
-        // One for One is the canonical case: target.filter = `[monster,
-        // ableToGraveAsCost]` (the cost), operation.filter = `[level=1,
-        // canBeSpecialSummoned]` (the SS target). Prefer operation when present.
-        const ssFilter = fromEff.operation?.simpleFilter ?? fromEff.target?.simpleFilter;
+        // Phase 15 — AND-intersect target.simpleFilter AND operation.simpleFilter
+        // (both pruning when present). Phase 12 used `??` (operation overrides
+        // target) which over-broadened in cases like Phryxul.e1a where target
+        // says `[Dracotail, not(self)]` (the SS-pick filter) but operation says
+        // `[ableToHand]` (the follow-up SendtoHand filter). With `??`, operation
+        // erased the not(self) constraint → 100 bogus Phryxul-as-source edges +
+        // 4 false-positive Phryxul self-trigger tier-A. With AND, the most
+        // restrictive filter wins. One for One still benefits: target=`[monster,
+        // ableToGraveAsCost]` AND operation=`[level=1, canBeSpecialSummoned]`
+        // gives a tight intersection.
+        const ssFilters = [fromEff.target?.simpleFilter, fromEff.operation?.simpleFilter]
+          .filter((f): f is SimpleFilter => f !== undefined);
         for (const toCat of catalogs) {
           // Self-SS source can only trigger ITS OWN on-summon effects — skip
           // cross-card pairings to suppress ~750 bogus candidates per batch.
@@ -484,19 +489,25 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
             if (!triggersOn(toEff, SUMMON_EVENTS)) continue;
             // Skip unless `toEff` is self-trigger (EFFECT_TYPE_SINGLE) — indicates card's own trigger
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
-            // Check filter on the SS'd card if available
-            if (ssFilter) {
-              const toProps = propsByCard.get(toCat.cardId);
-              if (!toProps) continue;
-              const matched = cardMatchesFilter(ssFilter, toProps, fromCat.cardId);
-              if (!matched.match) continue;
-              edges.push({
-                from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-                to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-                reason: 'summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)',
-                confidence: matched.confidence,
-              });
+            if (ssFilters.length === 0) continue;  // no filter info → skip (was the legacy gate)
+            const toProps = propsByCard.get(toCat.cardId);
+            if (!toProps) continue;
+            // Conjunction: every present filter must match. Track lowest confidence.
+            let minConf: 'high' | 'medium' | 'low' = 'high';
+            let allMatched = true;
+            for (const f of ssFilters) {
+              const matched = cardMatchesFilter(f, toProps, fromCat.cardId);
+              if (!matched.match) { allMatched = false; break; }
+              if (matched.confidence === 'low') minConf = 'low';
+              else if (matched.confidence === 'medium' && minConf === 'high') minConf = 'medium';
             }
+            if (!allMatched) continue;
+            edges.push({
+              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
+              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
+              reason: 'summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)',
+              confidence: minConf,
+            });
           }
         }
       }
