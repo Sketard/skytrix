@@ -8,7 +8,7 @@ import { workerData } from 'node:worker_threads';
 import type { MessagePort } from 'node:worker_threads';
 import { join } from 'node:path';
 import { loadDatabase, loadScripts } from '../ocg-scripts.js';
-import { loadAllSolverConfigs } from './solver-config-loader.js';
+import { loadAllSolverConfigs, filterExpertiseByDeck } from './solver-config-loader.js';
 import { OCGCoreAdapter } from './ocgcore-adapter.js';
 import { ZobristHasher } from './zobrist.js';
 import { TranspositionTable } from './transposition-table.js';
@@ -20,6 +20,7 @@ import { verifyAdversarialPath } from './solver-verifier.js';
 import { MCTSSolver } from './mcts-solver.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
+import { RouteAwareRanker } from './route-aware-ranker.js';
 import type {
   DuelConfig,
   SolverConfig,
@@ -97,7 +98,13 @@ const scorer = new InterruptionScorer(
   allConfigs.structuralWeights,
   allConfigs.structuralTutorCards,
 );
-const ranker = new GoldfishChainRanker(allConfigs.interruptionTags);
+// Wrap the base ranker with RouteAwareRanker so that archetype-expertise
+// routes can re-prioritize actions that advance known combo lines. The
+// wrapper is a no-op unless expertise is configured per-solve via
+// `setArchetypeExpertise` — done in runSolve() below once we know which
+// deck we're solving for.
+const baseRanker = new GoldfishChainRanker(allConfigs.interruptionTags);
+const ranker = new RouteAwareRanker(baseRanker);
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
 const minimaxMctsSolver = new MinimaxMctsSolver(scorer, adapter, ranker, allConfigs.solverConfig);
@@ -122,6 +129,19 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     ...task.duelConfig.hand,
   ];
   scorer.setCardMetadata(buildCardMetadataMap(cardDB, duelCards));
+
+  // Activate archetype-expertise for this duel — pass the deck's main (per the
+  // loader's convention) to filter to matching archetypes (keyCards overlap
+  // ≥ threshold). Both the scorer's goal-match evaluator and the ranker's
+  // route-alignment walker need this to take effect; without it the bridges
+  // and goals loaded from data/archetype-expertise/*.json are dormant.
+  const filteredExpertise = filterExpertiseByDeck(
+    allConfigs.archetypeExpertise,
+    task.duelConfig.mainDeck,
+  );
+  scorer.setArchetypeExpertise(filteredExpertise);
+  scorer.setDeckContents([...task.duelConfig.mainDeck, ...task.duelConfig.extraDeck]);
+  ranker.setArchetypeExpertise(filteredExpertise);
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {
@@ -258,8 +278,13 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
       }
     }
 
-    // Keep verified paths
-    const verified = alternatives.filter(a => a.verified);
+    // Keep verified paths. Exclude empty-mainPath alternatives: `verifyMainPath`
+    // returns true trivially for `[]` (noop), but an alternative with no
+    // actions is not a real solve. Under `maxResultNodes` tree-cap pressure,
+    // iter2's root can sprout 0-score 0-path siblings; without this filter
+    // they'd outrank a higher-scoring alt[0] whose mainPath fails strict
+    // verification (e.g., sentinel-action replay mismatch).
+    const verified = alternatives.filter(a => a.verified && a.mainPath.length > 0);
     if (verified.length > 0) {
       postDebug('solve-done', { verifiedCount: verified.length, totalK: K, bestScore: verified[0].score });
       return { results: verified, snapshotAvailable: adapter.snapshotAvailable };

@@ -532,6 +532,13 @@ function printResult(
   stmt: { get(id: number): { name?: string } | undefined },
 ): void {
   console.log(`    ${DIM}score${RESET}    ${BOLD}${result.score}${RESET}   ${DIM}mainPath${RESET} length=${result.mainPath.length}${result.verified !== undefined ? ` verified=${result.verified}` : ''}${result.minimax !== undefined ? ` minimax=${result.minimax}` : ''}`);
+  if (process.env.HARNESS_DUMP_PATH) {
+    for (let i = 0; i < result.mainPath.length; i++) {
+      const s = result.mainPath[i];
+      const nm = s.cardId ? (stmt.get(s.cardId) as { name?: string } | undefined)?.name ?? `#${s.cardId}` : '(no card)';
+      console.log(`    ${DIM}  [${String(i).padStart(2)}]${RESET} resp=${s.responseIndex} ${nm.padEnd(36)} ${DIM}${s.actionDescription}${RESET}`);
+    }
+  }
   console.log(formatStats(result.stats, maxDepthConfig));
   // Score breakdown — surfaces what the scorer credited (tagged effects by
   // type + fallback heuristic). Lets us interpret empty end boards: a
@@ -549,11 +556,26 @@ function printResult(
       ['destruction', bd.destruction], ['moveToSt', bd.moveToSt],
       ['bounce', bd.bounce], ['handRip', bd.handRip],
       ['sendToGy', bd.sendToGy], ['fallbackPoints', bd.fallbackPoints],
+      ['goalMatchPoints', bd.goalMatchPoints], ['latentPoints', bd.latentPoints],
     ].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
     if (entries.length > 0) {
       const pairs = entries.map(([k, v]) => `${k}=${v}`).join(' ');
       console.log(`    ${DIM}breakdown${RESET} ${pairs}`);
     }
+    console.log(`    ${DIM}scoreAxes${RESET} interruption=${bd.interruptionScore.toFixed(2)} exploration=${bd.explorationScore.toFixed(2)}`);
+  }
+  const diag = result.stats.diagnostic;
+  if (diag) {
+    const tr = diag.terminalReasons;
+    const reasons = [
+      ['actionsZero', tr.actionsZero], ['depthCap', tr.depthCap],
+      ['loopDetected', tr.loopDetected], ['treeSizeLimit', tr.treeSizeLimit],
+      ['abortOrNodeLimit', tr.abortOrNodeLimit], ['budgetCutoff', tr.budgetCutoff],
+      ['ttHit', tr.ttHit], ['turn2', tr.turn2],
+      ['branchBoundCut', tr.branchBoundCut], ['rootChildBudgetCut', tr.rootChildBudgetCut],
+    ].filter(([, v]) => (v as number) > 0).map(([k, v]) => `${k}=${v}`).join(' ');
+    console.log(`    ${DIM}terminalReasons${RESET} ${reasons}`);
+    console.log(`    ${DIM}bestTurn1Expl${RESET} ${diag.bestTurn1ExplorationScore.toFixed(2)}`);
   }
   console.log(`    ${DIM}endBoard${RESET}`);
   console.log(formatEndBoard(result.endBoardCards, stmt));

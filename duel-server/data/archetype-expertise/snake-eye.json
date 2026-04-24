@@ -1,0 +1,417 @@
+{
+  "archetype": "snake-eye",
+  "displayName": "Snake-Eye Yummy",
+  "version": 1,
+
+  "_rolesNote": "Covers the Snake-Eye + Yummy hybrid fixture: (a) 6 Snake-Eye core cards (Ash, Oak, Poplar, Flamberge, Diabellstar, Divine Temple), (b) Bonfire as alt ignition, (c) 8 Yummy engine pieces (Mignon, Cupsy, Cooky, Marshmao, Snatchy, Cupsy★Way, Cooky★Way, Lollipo★Way, Acroquey, Yummy Surprise), (d) Link-1 pivots (Linkuriboh, Almiraj). Authored from mechanical-bridges-catalog-2026-04-23.md drafts (4 Snake-Eye bridges + Cupsy★Way synchro + Doomed Dragon alt-SS).",
+
+  "roleMap": {
+    "9674034":  ["starter", "extender", "tutor"],
+    "45663742": ["extender", "recursion"],
+    "90241276": ["starter", "extender", "tutor"],
+    "48452496": ["extender", "recursion", "finisher"],
+    "27260347": ["starter", "enabler"],
+    "53639887": ["enabler", "recursion"],
+    "85106525": ["starter", "tutor"],
+    "58071334": ["finisher"],
+
+    "66975205": ["starter", "tutor"],
+    "31425736": ["extender", "tutor"],
+    "68810435": ["extender", "tutor"],
+    "10966439": ["extender", "tutor"],
+    "29369059": ["interruption"],
+    "93360904": ["finisher", "interruption"],
+
+    "41999284": ["material"],
+    "60303245": ["material"],
+    "30581601": ["material", "extender"],
+    "31603289": ["extender", "tutor"],
+    "67098897": ["extender", "tutor"],
+    "93192592": ["finisher", "interruption"],
+
+    "29301450": ["interruption"],
+    "65741786": ["interruption"],
+    "1528054":  ["extender"],
+    "2772337":  ["finisher"],
+    "44822037": ["interruption"]
+  },
+
+  "keyCards": [9674034, 90241276, 48452496, 27260347, 53639887, 31603289, 93192592, 45663742, 58071334],
+
+  "goals": [
+    {
+      "id": "snake-eye-yummy-canonical-apex",
+      "name": "Snake-Eye Yummy canonical endboard (Lollipo + Flamberge + Rabbit + 4 backrow)",
+      "description": "The fixture-expected 7-piece endboard: Lollipo★Yummy Way + Flamberge Dragon + Silhouhatte Rabbit on monster zones, plus Yummy Surprise + Azurune + I:P Masquerena + Divine Temple set. This is the post-replay reference state for snake-eye-yummy-opener from the Hollywood WCQ deck. Represents the full combo fired: Snake-Eye ignition → Link-1 → Cupsy★Way synchro → Yummy tutor chain → Lollipo pivot + Flamberge GY-SS + trap/quick-effect layer.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 93192592 },
+          "position": "faceup-def",
+          "note": "Lollipo★Yummy Way (defense position)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 48452496 },
+          "position": "faceup-atk",
+          "note": "Snake-Eyes Flamberge Dragon"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 1528054 },
+          "position": "faceup-atk",
+          "note": "Silhouhatte Rabbit"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 29369059 },
+          "position": "facedown",
+          "note": "Yummy☆Surprise set"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 44822037 },
+          "position": "facedown",
+          "note": "Angel Statue - Azurune set"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 65741786 },
+          "position": "facedown",
+          "note": "I:P Masquerena set (via quick-effect link summon window)"
+        },
+        {
+          "zone": "field",
+          "card": { "kind": "specific", "cardId": 53639887 },
+          "position": "facedown",
+          "note": "Divine Temple of the Snake-Eye"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "targetedNegate": 2,
+          "destruction": 1
+        }
+      },
+      "baselineScore": 25
+    },
+    {
+      "id": "snake-eye-yummy-trio-on-field",
+      "name": "Three-body waypoint — Lollipo + Flamberge + Rabbit on field",
+      "description": "Mid-combo apex: the three terminal monsters summoned (Lollipo via Cupsy★Way synchro, Flamberge via GY-SS / Link pivot, Rabbit as generic extender). Indicates the full summoning chain fired. Traps + field spell not yet required — those trail from Yummy Surprise tutor + Divine Temple activation. Reaches canonical apex via bridge.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 93192592 },
+          "position": "faceup-def",
+          "note": "Lollipo★Yummy Way"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 48452496 },
+          "position": "faceup-atk",
+          "note": "Flamberge Dragon"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 1528054 },
+          "position": "faceup-atk",
+          "note": "Silhouhatte Rabbit"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "targetedNegate": 1
+        }
+      },
+      "baselineScore": 14
+    },
+    {
+      "id": "snake-eye-cupsy-way-synchro-landed",
+      "name": "Cupsy★Yummy Way synchro-summoned (tutors 2 Yummy from deck)",
+      "description": "Phase B waypoint — Cupsy★Yummy Way synchro'd via the Link-1-as-Tuner clause (Linkuriboh or Almiraj or Yummy★Snatchy + any Lv1 non-Tuner). CW.1 tutors 2 Yummy cards from deck; this is the Yummy engine ignition point. Route from Snake-Eye side: Ash/Poplar/Bonfire ignition → Link-1 pivot → Cupsy★Way. Waypoint, not apex.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 31603289 },
+          "position": "faceup-atk",
+          "note": "Cupsy★Yummy Way synchro'd"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 8
+    },
+    {
+      "id": "snake-eye-poplar-on-field",
+      "name": "Poplar self-SS'd (ignition succeeded, 2 Lv1 FIRE bodies available)",
+      "description": "Entry waypoint: Poplar has self-SS'd via its on-add-to-hand-not-drawn clause (SeP.1). Either from NS Ash → search Poplar path, or from Bonfire → add Poplar alt path. Produces a Lv1 FIRE body on field — the foundation for Link-1 pivots into Cupsy★Way. Scores the moment the ignition bridge completes, independent of what's built on top.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 90241276 },
+          "position": "faceup-atk",
+          "note": "Snake-Eyes Poplar on field"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "snake-eye-any-body-on-field",
+      "name": "Any Snake-Eye body on field (exploration gradient)",
+      "description": "Partial-credit signal: any Snake-Eye core monster is face-up on the field. Rewards DFS for progressing into Snake-Eye territory even before Poplar-level waypoints resolve. Covers Ash-on-field before search resolves, Flamberge Link-summoned directly, Oak recursion, etc.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [9674034, 45663742, 90241276, 48452496, 27260347] },
+          "position": "faceup-atk",
+          "note": "Ash | Oak | Poplar | Flamberge | Diabellstar"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    },
+    {
+      "id": "snake-eye-divine-temple-active",
+      "name": "Divine Temple active (field spell enabler for engine loops)",
+      "description": "Partial-credit signal: Divine Temple of the Snake-Eye is face-up in the field zone. Enables DT.1 (face-up S/T zone Snake-Eye → SS a Snake-Eye from hand/deck) and DT.2 (search Snake-Eye from deck). Signals the recursion engine is online.",
+      "required": [
+        {
+          "zone": "field",
+          "card": { "kind": "specific", "cardId": 53639887 },
+          "note": "Divine Temple of the Snake-Eye face-up in field zone"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "snake-eye-flamberge-or-doomed-finisher",
+      "name": "Flamberge or Doomed Dragon on field (engine terminal)",
+      "description": "Waypoint-to-apex partial: Flamberge Dragon OR Snake-Eyes Doomed Dragon is face-up on field. Either is a valid terminal finisher for the Snake-Eye engine — Flamberge via Link/GY-SS chain, Doomed Dragon via alt-SS (2 face-up S/T zone monsters → send to GY → SS self). Bridges to the canonical apex when combined with Yummy engine outputs.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [48452496, 58071334] },
+          "position": "faceup-atk",
+          "note": "Flamberge | Doomed Dragon"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 5
+    }
+  ],
+
+  "routes": [
+    {
+      "id": "ash-1card-ignition",
+      "name": "NS Ash → add Poplar → Poplar self-SS",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 9674034 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 9674034 },
+          "note": "NS Snake-Eye Ash (Lv1 FIRE). Triggers SeA.1 on-NS/SS add-Lv1-FIRE from deck."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 9674034 },
+          "target": { "kind": "specific", "cardId": 90241276 },
+          "note": "SeA.1: add Snake-Eyes Poplar (Lv1 FIRE Pyro) from Deck to hand"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 90241276 },
+          "note": "SeP.1: Poplar on-add-to-hand-not-drawn → SS self (condition `not IsReason(REASON_DRAW)` mechanically confirmed)"
+        }
+      ],
+      "goalId": "snake-eye-poplar-on-field"
+    },
+    {
+      "id": "bonfire-poplar-ignition",
+      "name": "Activate Bonfire → add Poplar → Poplar self-SS (preserves NS)",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 85106525 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 85106525 },
+          "note": "Activate Bonfire (OPT, Pyro-family search). Generic Lv4-or-lower Pyro from Deck."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 85106525 },
+          "target": { "kind": "specific", "cardId": 90241276 },
+          "note": "Bonfire: add Poplar (Lv1 Pyro) from Deck. Alternative to NS Ash path — preserves Normal Summon for Acroquey/Mignon NS."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 90241276 },
+          "note": "SeP.1: Poplar on-add-to-hand-not-drawn → SS self"
+        }
+      ],
+      "goalId": "snake-eye-poplar-on-field"
+    },
+    {
+      "id": "poplar-in-hand-self-ss",
+      "name": "Poplar already in hand → no-action self-SS",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 90241276 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 90241276 },
+          "note": "Poplar's on-add-to-hand-not-drawn clause fires on hand-arrival from deck searches. When drawn opening hand, the condition `not IsReason(REASON_DRAW)` blocks direct self-SS — requires re-adding via a search (bounce to deck then re-search). V1 placeholder: route starts from Poplar-in-hand assumes a prior tutor event placed it there."
+        }
+      ],
+      "goalId": "snake-eye-poplar-on-field"
+    }
+  ],
+
+  "synergies": [
+    {
+      "cards": [9674034, 90241276],
+      "effect": "Canonical 1-card ignition: NS Ash searches Lv1 FIRE → Poplar → Poplar's on-add-to-hand-not-drawn clause triggers self-SS. Produces 2 Lv1 FIRE bodies on field from 1 Normal Summon. Mechanically confirmed via edge enumeration (Ash.e1 → Poplar.e1)."
+    },
+    {
+      "cards": [85106525, 90241276],
+      "effect": "Alt ignition: Bonfire adds Poplar; Poplar self-SS's the same way. Advantage over NS Ash: Normal Summon preserved for Acroquey or Mignon turn-1 Normal Summon pivots. Surfaced by mechanical discovery, not manually authored."
+    },
+    {
+      "cards": [9674034, 45663742, 90241276, 48452496],
+      "effect": "Snake-Eye recursion engine: Ash.e3 ignition sends 2 face-up cards incl. self to GY → SS any non-Ash Snake-Eye from hand/deck. Oak.e1 then tutors Lv1 FIRE from GY. Flamberge.e3 on-sent-to-GY SS's 2 Lv1 FIRE from own GY — cascades remaining Poplar/Ash/Oak triggers. Full loop: Ash → Oak → Flamberge → 2 bodies back."
+    },
+    {
+      "cards": [31603289, 41999284, 60303245, 30581601],
+      "effect": "Cupsy★Yummy Way Synchro non-standard procedure: accepts Link-1 as Lv1 Tuner (via EFFECT_SYNCHRO_LEVEL effect). Means Linkuriboh / Almiraj / Yummy★Snatchy (all Link-1s in ED) + any Lv1 non-Tuner = Lv2 Synchro. Primary Snake-Eye → Yummy bridge. Mechanically decoded from Synchro.AddProcedure args + EFFECT_SYNCHRO_LEVEL detection."
+    },
+    {
+      "cards": [53639887, 90241276, 48452496],
+      "effect": "Divine Temple as Snake-Eye continuous-spell backbone: Poplar SeP.3 places a FIRE monster face-up in S/T zone (which DT can then reference). DT.1 consumes a face-up Snake-Eye in S/T → SS a Snake-Eye from hand/deck. Enables end-of-turn board refill and mid-combo body generation."
+    },
+    {
+      "cards": [58071334, 53639887],
+      "effect": "Doomed Dragon alt-SS path: needs 2 face-up monsters in own S/T zone → send to GY → SS self. Snake-Eye engine naturally places monsters face-up in S/T zones (Poplar SeP.3, Flamberge, Divine Temple effects). ED finisher alternative when standard summon routes are blocked."
+    }
+  ],
+
+  "bridges": [
+    {
+      "id": "snake-eye-ash-1card-ignition-bridge",
+      "name": "NS Ash → Poplar self-SS via add-to-hand trigger",
+      "description": "Snake-Eye canonical 1-card opener. NS Ash triggers SeA.1 (on-NS/SS) to add a Lv1 FIRE from Deck; Poplar is the standard pick. Poplar's added-to-hand-not-drawn clause (SeP.1, filter confirmed via condition `not IsReason(REASON_DRAW)`) triggers self-SS. Produces 2 Lv1 FIRE on field — enables Link-1 (Linkuriboh/Almiraj) + Lv2 Synchro pivots.",
+      "requiresDeckPieces": [9674034, 90241276],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 9674034 }, "position": "faceup-atk", "note": "Ash on field" },
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 90241276 }, "position": "faceup-atk", "note": "Poplar self-SS'd" }
+      ],
+      "steps": [
+        { "action": "normalSummon", "subject": { "kind": "specific", "cardId": 9674034 }, "note": "NS Snake-Eye Ash" },
+        { "action": "search", "subject": { "kind": "specific", "cardId": 9674034 }, "target": { "kind": "specific", "cardId": 90241276 }, "note": "SeA.1: add Poplar (Lv1 FIRE) from Deck to hand" },
+        { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 90241276 }, "note": "SeP.1: Poplar added-to-hand-not-drawn → SS self" }
+      ]
+    },
+    {
+      "id": "bonfire-poplar-1card-snake-eye-ignition-bridge",
+      "name": "Activate Bonfire → Poplar self-SS (NS-free ignition)",
+      "description": "Alternative 1-card Snake-Eye ignition discovered mechanically. Bonfire is a generic Pyro-family search spell (add 1 Lv4-or-lower Pyro from Deck) — Poplar qualifies (Lv1 Pyro FIRE). Added-to-hand-not-drawn triggers Poplar's SS clause. Value: NS is preserved (vs snake-eye-ash-1card-ignition-bridge which requires NS Ash). Enables same Link-1 + Synchro pivots without spending the turn's Normal Summon.",
+      "requiresDeckPieces": [85106525, 90241276],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 90241276 }, "position": "faceup-atk", "note": "Poplar SS'd without using NS" }
+      ],
+      "steps": [
+        { "action": "activate", "subject": { "kind": "specific", "cardId": 85106525 }, "note": "Activate Bonfire (OPT)" },
+        { "action": "search", "subject": { "kind": "specific", "cardId": 85106525 }, "target": { "kind": "specific", "cardId": 90241276 }, "note": "Bonfire: add Poplar (Lv1 Pyro) from Deck" },
+        { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 90241276 }, "note": "SeP.1: Poplar on-add-to-hand-not-drawn → SS self" }
+      ]
+    },
+    {
+      "id": "snake-eye-ash-oak-chain-ss",
+      "name": "Ash.e3 ignition → SS Oak → Oak.e1 tutor Lv1 FIRE from GY",
+      "description": "Recursion bridge. Ash.e3 (ignition, MZONE): send 2 face-up cards including self to GY → SS 1 Snake-Eye (not Ash) from hand/Deck. Target = Oak (Lv1 FIRE Snake-Eye). Oak lands → triggers Oak.e1 (on-NS/SS): target Lv1 FIRE in GY → Ash is in GY (just sent as cost) → SS or add to hand. Multiple high-confidence edges detected (Ash.e3 → Oak.e1/e2, Oak.e3 → Ash.e1/e2) via CATEGORY_SPECIAL_SUMMON pair match.",
+      "precursors": ["snake-eye-ash-1card-ignition-bridge"],
+      "requiresDeckPieces": [9674034, 45663742],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 45663742 }, "position": "faceup-atk", "note": "Oak on field (from Ash ignition SS target)" }
+      ],
+      "steps": [
+        { "action": "activate", "subject": { "kind": "specific", "cardId": 9674034 }, "note": "Activate Ash.e3 on field; cost = send 2 face-up cards incl. Ash self to GY" },
+        { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 45663742 }, "note": "Ash.e3 resolve: SS Oak (Lv1 FIRE Snake-Eye, non-Ash) from hand/deck" },
+        { "action": "search", "subject": { "kind": "specific", "cardId": 45663742 }, "target": { "kind": "specific", "cardId": 9674034 }, "note": "Oak.e1 on-NS/SS: target Ash in GY → add to hand or SS (Ash was just sent via Ash.e3 cost)" }
+      ]
+    },
+    {
+      "id": "snake-eye-flamberge-gy-dual-ss-bridge",
+      "name": "Flamberge sent-to-GY → SS 2 Lv1 FIRE from GY",
+      "description": "Turn-2+ recovery / in-combo refill. Flamberge sent from hand/field to GY triggers e3: SS 2 Lv1 FIRE from own GY. Any 2 of Ash/Oak/Poplar already in GY qualify. Landing 2 Snake-Eyes cascades their on-NS/SS triggers if untriggered this turn. High-confidence edges via SET_SNAKE_EYE + attr FIRE + level 1 filter match.",
+      "requiresDeckPieces": [48452496, 9674034, 90241276],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "anyOf", "cardIds": [9674034, 45663742, 90241276] }, "position": "faceup-atk", "note": "2 Lv1 FIRE bodies SS'd from GY" }
+      ],
+      "steps": [
+        { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 48452496 }, "note": "Flamberge sent from hand/field to GY (via combo cost OR opp destroy). Triggers Flamberge.e3." },
+        { "action": "specialSummon", "subject": { "kind": "anyOf", "cardIds": [9674034, 45663742, 90241276] }, "note": "Flamberge.e3: SS 2 Lv1 FIRE from own GY" }
+      ]
+    },
+    {
+      "id": "cupsy-way-synchro-link-1-as-tuner-bridge",
+      "name": "Synchro Cupsy★Yummy Way using Link-1 (treated as Lv1 Tuner) + any Lv1 non-Tuner",
+      "description": "Cupsy★Yummy Way's non-standard Synchro procedure: treats a Link-1 monster as Lv1 Tuner (via EFFECT_SYNCHRO_LEVEL effect), enabling Synchro Summon using Link-1 (Linkuriboh/Almiraj/Yummy★Snatchy) + any Lv1 non-Tuner. Primary use: Snake-Eye → Link-1 → Cupsy★Way (CW.1 tutors 2 Yummy from Deck). Mechanically verified via Synchro.AddProcedure decomposition + EFFECT_SYNCHRO_LEVEL detection — the clause missed by manual discovery.",
+      "precursors": ["snake-eye-ash-1card-ignition-bridge"],
+      "requiresDeckPieces": [31603289, 41999284, 60303245],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 31603289 }, "position": "faceup-atk", "note": "Cupsy★Yummy Way Synchro'd" }
+      ],
+      "steps": [
+        { "action": "linkSummon", "subject": { "kind": "anyOf", "cardIds": [41999284, 60303245, 30581601] }, "note": "First Link-Summon a Lv1-friendly Link-1 (Linkuriboh / Almiraj / Snatchy). Requires 1 Snake-Eye body as material." },
+        { "action": "synchroSummon", "subject": { "kind": "specific", "cardId": 31603289 }, "note": "Synchro: Link-1 (treated-as Lv1 Tuner via EFFECT_SYNCHRO_LEVEL) + any Lv1 non-Tuner on field = Lv2 Synchro Cupsy★Way" },
+        { "action": "search", "subject": { "kind": "specific", "cardId": 31603289 }, "target": { "kind": "role", "role": "extender" }, "note": "CW.1 on-SS: add 2 Yummy cards from deck (Acroquey / Mignon / Cupsy / Marshmao / Cooky depending on deck state)" }
+      ]
+    },
+    {
+      "id": "doomed-dragon-alt-ss-snake-eye-zone-send-bridge",
+      "name": "Doomed Dragon alt-SS via 2 face-up S/T-zone monsters → send to GY",
+      "description": "Snake-Eyes Doomed Dragon alt-SS path: requires 2 face-up monsters in own S/T zone → send to GY → SS self. Snake-Eye engine naturally places monsters face-up as Continuous Spells via Poplar SeP.3, Flamberge SeF.1, Divine Temple DT.1, Diabellstar SeD.2. Emerges from EFFECT_SPSUMMON_PROC detection in v3 parser. Alternative ED finisher when standard summon routes blocked.",
+      "requiresInitialState": [
+        { "zone": "spellTrap", "card": { "kind": "specific", "cardId": 90241276 }, "position": "faceup-atk", "note": "Poplar as face-up Continuous Spell (Snake-Eye mechanic via SeP.3)" },
+        { "zone": "spellTrap", "card": { "kind": "specific", "cardId": 48452496 }, "position": "faceup-atk", "note": "Flamberge as face-up Continuous Spell (Snake-Eye mechanic)" }
+      ],
+      "requiresDeckPieces": [58071334, 53639887, 90241276],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 58071334 }, "position": "faceup-atk", "note": "Doomed Dragon SS'd via alt path" }
+      ],
+      "steps": [
+        { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 58071334 }, "note": "Alt-SS: 2 face-up monsters in own S/T zone → send to GY → SS Doomed Dragon (Extra Deck)" }
+      ]
+    }
+  ],
+
+  "sourceNotes": "v1 (2026-04-23) — Snake-Eye + Yummy hybrid archetype-expertise for snake-eye-yummy-sarcophagus-hollywood-wcq fixture. Authored from mechanical-bridges-catalog-2026-04-23.md (6 bridges: 4 Snake-Eye + Cupsy★Way synchro + Doomed Dragon alt-SS). All bridges are mechanically sourced (edge enumeration on card-effects-catalog v5), not hand-authored. 6 goals cover the canonical apex + 5 waypoints (trio / Cupsy★Way / Poplar / Snake-Eye body / Divine Temple / Flamberge-or-Doomed). 3 routes express hand-start patterns (Ash 1-card, Bonfire alt, Poplar-in-hand). Yummy engine outputs (Lollipo, Acroquey, Cooky★Way) are reached via Cupsy★Way's CW.1 tutor — the grammar graph route-assembly step is expected to chain cupsy-way bridge into Lollipo/Acroquey reveals."
+}

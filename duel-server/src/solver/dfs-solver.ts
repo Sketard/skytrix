@@ -298,12 +298,28 @@ export class DfsSolver implements SolverStrategy {
         //   'depth_cap' labels.
         // - TT: cleared BEFORE non-first iteration (see phase comment
         //   above — shallow-iteration entries poison the deep lookup).
+        // - totalTreeNodes: reset BEFORE non-first iteration. The tree-cap
+        //   check (`totalTreeNodes >= maxResultNodes`) force-terminalizes
+        //   every new node once the cap is reached. Since `lastResultNode`
+        //   is overwritten per-iteration (only the deep iter's tree is
+        //   returned), the cap should be scoped per-iteration. Without
+        //   this reset, a shallow iter that fills the cap (e.g. Snake-Eye
+        //   Yummy at 594 nodes ≥ 500 cap) starves the deep iter — it sees
+        //   `totalTreeNodes` already ≥ cap and immediately returns a
+        //   terminal at depth 0. Produces 'completed' termination at ~5s
+        //   on a 60s budget with depth stuck at shallow's max.
+        // - branchLastPeakNodes: reset to undefined for coherence with
+        //   the tree-nodes reset. Re-seeded on first root-child entry.
         // NOT reset: bestTurn1ExplorationScore/Path/FieldState (accumulate — that's
         // the whole point), nodesExplored / histograms / counters
         // (accumulate for stats).
         ctx.currentActionStack = [];
         if (i === iterationDepths.length - 1) ctx.depthCapHit = false;
-        if (i > 0) this.table.reset();
+        if (i > 0) {
+          this.table.reset();
+          ctx.totalTreeNodes = 0;
+          ctx.branchLastPeakNodes = undefined;
+        }
 
         // Fresh handle per iteration. The adapter's `runUntilPlayerPrompt`
         // consumes engine messages on its first call, so calling it twice
