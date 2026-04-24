@@ -370,7 +370,7 @@
     {
       "id": "snake-eye-flamberge-gy-dual-ss-bridge",
       "name": "Flamberge sent-to-GY → SS 2 Lv1 FIRE from GY",
-      "description": "Turn-2+ recovery / in-combo refill. Flamberge sent from hand/field to GY triggers e3: SS 2 Lv1 FIRE from own GY. Any 2 of Ash/Oak/Poplar already in GY qualify. Landing 2 Snake-Eyes cascades their on-NS/SS triggers if untriggered this turn. High-confidence edges via SET_SNAKE_EYE + attr FIRE + level 1 filter match.",
+      "description": "Turn-2+ recovery / in-combo refill. Flamberge sent from hand/field to GY triggers e3: SS 2 Lv1 FIRE from own GY. Any 2 of Ash/Oak/Poplar already in GY qualify. Landing 2 Snake-Eyes cascades their on-NS/SS triggers if untriggered this turn. High-confidence edges via SET_SNAKE_EYE + attr FIRE + level 1 filter match. VALIDATOR NOTE (phase 4 2026-04-24): the e3 trigger requires 'sent from field or hand to GY' per oracle text. Deck→GY (via Foolish Burial / Exterio etc.) does NOT satisfy. Mechanically un-validatable via Phase 4 primitives alone — needs a multi-step precursor that first puts Flamberge on field/hand then destroys/discards it (e.g., Evenly Matched, battle destruction, tribute cost). Deferred.",
       "requiresDeckPieces": [48452496, 9674034, 90241276],
       "produces": [
         { "zone": "monster", "card": { "kind": "anyOf", "cardIds": [9674034, 45663742, 90241276] }, "position": "faceup-atk", "note": "2 Lv1 FIRE bodies SS'd from GY" }

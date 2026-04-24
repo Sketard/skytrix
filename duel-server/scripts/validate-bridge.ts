@@ -455,6 +455,30 @@ class BridgeAutopilot {
   }
 
   private pickFallback(promptType: string, legal: readonly Action[]): Action | null {
+    // Multi-pick prompts (SELECT_CARD min>1, SELECT_TRIBUTE, SELECT_SUM) surface
+    // via actionTag tokens when exposeMultiPickMechanical=true. Autopilot must:
+    //   1. commit as soon as constraints are satisfied (skips further picks)
+    //   2. otherwise add — preferring an add whose cardId matches the current
+    //      step's target (for cost-specific bridges); else any add
+    //   3. never undo — undoing reverts progress and guarantees an infinite loop
+    const hasMultiPickActions = legal.some(a =>
+      a.actionTag === 'multi-pick-add' || a.actionTag === 'multi-pick-commit');
+    if (hasMultiPickActions) {
+      const commit = legal.find(a => a.actionTag === 'multi-pick-commit');
+      if (commit) return commit;
+      const step = this.currentStep;
+      if (step?.target) {
+        const targetIds = new Set(expandSelector(step.target, this.roleMap));
+        const targetedAdd = legal.find(a => a.actionTag === 'multi-pick-add' && targetIds.has(a.cardId));
+        if (targetedAdd) return targetedAdd;
+      }
+      const anyAdd = legal.find(a => a.actionTag === 'multi-pick-add');
+      if (anyAdd) return anyAdd;
+      // Only undo left — we're wedged. Return null to let outer loop surface
+      // the stall via STALL_CEILING rather than regress.
+      return null;
+    }
+
     if (promptType === 'SELECT_CHAIN') {
       const pass = legal.find(a => a.responseIndex === -1);
       if (pass) return pass;
