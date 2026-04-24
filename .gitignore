@@ -70,6 +70,7 @@ duel-server/data/*
 !duel-server/data/link-arrows.json
 !duel-server/data/archetype-expertise/
 !duel-server/data/archetype-expertise/**
+!duel-server/data/bridge-validation-verdicts.json
 duel-server/node_modules/
 duel-server/dist/
 

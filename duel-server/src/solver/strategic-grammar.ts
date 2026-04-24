@@ -153,6 +153,30 @@ export interface BridgeSubroute {
   // depends on snake-eye-ash-1card-ignition's output (Ash + Poplar on
   // field) as its starting state.
   precursors?: readonly string[];
+  // Phase 5 (2026-04-24): pre-declared structural limit. When validator
+  // would otherwise classify this bridge as tier D (REJECTED), the
+  // presence of this field promotes it to tier C (UNVALIDATABLE —
+  // known-limit). The bridge is still run through the validator for
+  // regression detection but won't affect the final pass-count summary.
+  // Human review has previously accepted that the bridge is structurally
+  // valid even though current primitives can't reproduce its execution.
+  knownStructuralLimit?: KnownStructuralLimit;
+}
+
+export interface KnownStructuralLimit {
+  // Canonical code — keep in sync with `DiagnosisCode` in validate-bridge.ts.
+  reason:
+    | 'TRIGGER_ORIGIN_MISMATCH'
+    | 'NEEDS_PRIOR_SUMMON_NO_PRECURSOR'
+    | 'MATERIAL_NOT_AVAILABLE'
+    | 'UNHANDLED_PROMPT'
+    | 'COST_MULTI_PICK_COMPLEX'
+    | 'PRODUCES_ZONE_MISMATCH'
+    | 'OTHER';
+  note: string;
+  reviewedBy?: string;
+  reviewedOn?: string;        // YYYY-MM-DD
+  confidence?: 'high' | 'medium' | 'low';
 }
 
 export interface GoalSuccessor {

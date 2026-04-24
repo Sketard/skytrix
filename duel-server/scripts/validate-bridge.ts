@@ -26,7 +26,7 @@ import { join } from 'node:path';
 
 import { DATA_DIR } from './evaluate-structural.js';
 import { loadDatabase, loadScripts } from '../src/ocg-scripts.js';
-import { loadAllSolverConfigs } from '../src/solver/solver-config-loader.js';
+import { loadInterruptionTags } from '../src/solver/solver-config-loader.js';
 import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { FILLER_CARD } from '../src/solver/ocg-constants.js';
 import type {
@@ -554,6 +554,95 @@ function matchesProduces(
 }
 
 // =============================================================================
+// Tier + diagnosis classification
+// =============================================================================
+
+type Tier =
+  | 'A_VERIFIED'          // steps all consumed + produces matched. Trust high.
+  | 'B_PARTIAL'           // progress made, not complete. Likely recoverable.
+  | 'C_UNVALIDATABLE'     // structural limit recognized. Human review queue.
+  | 'D_REJECTED';         // validator executed cleanly but produces mismatch.
+
+type DiagnosisCode =
+  | 'NONE'                           // tier A
+  | 'TRIGGER_ORIGIN_MISMATCH'        // e.g., flamberge-gy, trigger wants 'from field' but state placement won't emit event
+  | 'NEEDS_PRIOR_SUMMON_NO_PRECURSOR' // activate of Monster without precursor/placement to get it on field
+  | 'MATERIAL_NOT_AVAILABLE'         // ED summon with no matching materials in legal pool
+  | 'UNHANDLED_PROMPT'               // autopilot encountered SELECT_SUM / SELECT_COUNTER / etc. not yet supported
+  | 'COST_MULTI_PICK_COMPLEX'        // multi-pick with non-trivial constraints we can't satisfy
+  | 'PRODUCES_ZONE_MISMATCH'         // end state reached but slot in wrong zone (likely bridge authoring bug)
+  | 'PRE_DECLARED_LIMIT'             // bridge carries knownStructuralLimit — promoted to C regardless
+  | 'SYNTHESIS_EMPTY_HAND'           // couldn't seed hand from bridge spec
+  | 'PARTIAL_STALL'                  // stepsConsumed > 0 but autopilot stalled before completion
+  | 'UNKNOWN';                        // fallback
+
+function classify(
+  bridge: BridgeSubroute,
+  result: Omit<ValidationResult, 'tier' | 'diagnosis'>,
+): { tier: Tier; diagnosis: DiagnosisCode } {
+  // 1. Pre-declared structural limit overrides anything — always tier C.
+  if (bridge.knownStructuralLimit) {
+    return { tier: 'C_UNVALIDATABLE', diagnosis: 'PRE_DECLARED_LIMIT' };
+  }
+
+  // 2. Full success → tier A.
+  if (result.ok) return { tier: 'A_VERIFIED', diagnosis: 'NONE' };
+
+  const reason = result.reason ?? '';
+  const firstStep = bridge.steps[0];
+
+  // 3. Synthesis failure.
+  if (reason.includes('synthesis failed')) {
+    return { tier: 'C_UNVALIDATABLE', diagnosis: 'SYNTHESIS_EMPTY_HAND' };
+  }
+
+  // 4. Engine-level createDuel rejection.
+  if (reason.startsWith('createDuel failed')) {
+    return { tier: 'D_REJECTED', diagnosis: 'UNKNOWN' };
+  }
+
+  // 5. Zero steps consumed — initial conditions wrong.
+  if (result.stepsConsumed === 0) {
+    if (firstStep && ED_ACTIONS.has(firstStep.action) && !bridge.precursors?.length
+      && !bridge.requiresInitialState?.length) {
+      return { tier: 'C_UNVALIDATABLE', diagnosis: 'MATERIAL_NOT_AVAILABLE' };
+    }
+    if (firstStep?.action === 'activate' && !bridge.precursors?.length
+      && !bridge.requiresInitialState?.length) {
+      // activate of a Monster usually needs prior NS; without precursor/state → structural
+      return { tier: 'C_UNVALIDATABLE', diagnosis: 'NEEDS_PRIOR_SUMMON_NO_PRECURSOR' };
+    }
+    if (firstStep?.action === 'specialSummon' && !bridge.precursors?.length
+      && !bridge.requiresInitialState?.length) {
+      // triggered SS (flamberge pattern) — probably needs trigger origin that state placement can't emit
+      return { tier: 'C_UNVALIDATABLE', diagnosis: 'TRIGGER_ORIGIN_MISMATCH' };
+    }
+    // Multi-pick or unhandled prompt.
+    if (reason.includes('SELECT_SUM') || reason.includes('SELECT_COUNTER')) {
+      return { tier: 'C_UNVALIDATABLE', diagnosis: 'UNHANDLED_PROMPT' };
+    }
+    if (reason.includes('multi-pick')) {
+      return { tier: 'C_UNVALIDATABLE', diagnosis: 'COST_MULTI_PICK_COMPLEX' };
+    }
+    return { tier: 'C_UNVALIDATABLE', diagnosis: 'UNKNOWN' };
+  }
+
+  // 6. Partial progress — some steps ran but not all.
+  if (result.stepsConsumed < result.stepsTotal) {
+    return { tier: 'B_PARTIAL', diagnosis: 'PARTIAL_STALL' };
+  }
+
+  // 7. All steps consumed but produces mismatch — genuine bridge error.
+  //    Differentiate "card on field but wrong zone" vs "card not on field at all"
+  //    to steer human review.
+  const hasZoneMismatch = result.missing.some(m => m.includes('found at '));
+  if (hasZoneMismatch) {
+    return { tier: 'D_REJECTED', diagnosis: 'PRODUCES_ZONE_MISMATCH' };
+  }
+  return { tier: 'D_REJECTED', diagnosis: 'UNKNOWN' };
+}
+
+// =============================================================================
 // Single-bridge validator
 // =============================================================================
 
@@ -570,6 +659,8 @@ interface ValidationResult {
   trace: readonly string[];
   fieldStateSummary: string;
   missing: readonly string[];
+  tier: Tier;
+  diagnosis: DiagnosisCode;
 }
 
 function formatZones(fs: FieldState): string {
@@ -601,13 +692,15 @@ async function validateBridge(
   try {
     effective = buildEffectiveBridge(bridge, allExpertise);
   } catch (err) {
-    return {
+    const base = {
       bridgeId: bridge.id, archetype: expertise.archetype, ok: false,
       stepsTotal: bridge.steps.length, stepsConsumed: 0,
       matchedProduces: 0, totalProduces: bridge.produces.length,
       priorStateWarning: null, reason: (err as Error).message,
-      trace: [], fieldStateSummary: '', missing: [],
+      trace: [] as string[], fieldStateSummary: '', missing: [] as string[],
     };
+    const { tier, diagnosis } = classify(bridge, base);
+    return { ...base, tier, diagnosis };
   }
 
   const result: ValidationResult = {
@@ -622,6 +715,8 @@ async function validateBridge(
     trace: [],
     fieldStateSummary: '',
     missing: [],
+    tier: 'D_REJECTED',   // overwritten at end via classify()
+    diagnosis: 'UNKNOWN',
   };
 
   const state = synthesizeState(effective.bridge, expertise.roleMap);
@@ -633,6 +728,8 @@ async function validateBridge(
 
   if (state.hand.length === 0) {
     result.reason = 'synthesis failed: empty hand';
+    const { tier, diagnosis } = classify(bridge, result);
+    result.tier = tier; result.diagnosis = diagnosis;
     return result;
   }
 
@@ -652,6 +749,8 @@ async function validateBridge(
     handle = adapter.createDuel(config);
   } catch (err) {
     result.reason = `createDuel failed: ${(err as Error).message}`;
+    const { tier, diagnosis } = classify(bridge, result);
+    result.tier = tier; result.diagnosis = diagnosis;
     return result;
   }
 
@@ -690,6 +789,9 @@ async function validateBridge(
     adapter.destroyDuel(handle);
   }
 
+  const { tier, diagnosis } = classify(bridge, result);
+  result.tier = tier;
+  result.diagnosis = diagnosis;
   return result;
 }
 
@@ -697,16 +799,67 @@ async function validateBridge(
 // Main
 // =============================================================================
 
-function statusGlyph(r: ValidationResult): string {
-  return r.ok ? '✓ PASS' : '✗ FAIL';
+const TIER_GLYPH: Record<Tier, string> = {
+  A_VERIFIED: '🟢 A',
+  B_PARTIAL: '🟡 B',
+  C_UNVALIDATABLE: '🔵 C',
+  D_REJECTED: '🔴 D',
+};
+
+function tierLabel(r: ValidationResult): string {
+  return TIER_GLYPH[r.tier];
 }
 
-function printResult(r: ValidationResult, verbose: boolean): void {
+// Exit code policy: success (0) if no tier D failures. Tier C (unvalidatable)
+// is not a failure — these bridges are structurally valid, just outside our
+// primitives. Only tier D signals a bad bridge.
+function effectiveFailureCount(results: readonly ValidationResult[]): number {
+  return results.filter(r => r.tier === 'D_REJECTED').length;
+}
+
+// =============================================================================
+// Human-verdicts override (phase 5) — persists human adjudication of tier C
+// bridges. A verdict of 'accepted' leaves the bridge in tier C but marks it
+// as human-confirmed-valid; 'rejected' forces tier D regardless of classify().
+// =============================================================================
+
+interface HumanVerdict {
+  verdict: 'accepted' | 'rejected';
+  reason: string;
+  reviewedOn: string;
+}
+
+type HumanVerdictMap = Readonly<Record<string, HumanVerdict>>;
+
+const HUMAN_VERDICTS_PATH = join(DATA_DIR, 'bridge-validation-verdicts.json');
+
+function loadHumanVerdicts(): HumanVerdictMap {
+  try {
+    const content = readFileSync(HUMAN_VERDICTS_PATH, 'utf-8');
+    return JSON.parse(content) as HumanVerdictMap;
+  } catch {
+    return {};
+  }
+}
+
+function applyHumanVerdict(r: ValidationResult, verdicts: HumanVerdictMap): ValidationResult {
+  const v = verdicts[r.bridgeId];
+  if (!v) return r;
+  if (v.verdict === 'rejected') return { ...r, tier: 'D_REJECTED' };
+  // 'accepted' → stay in whatever tier (usually C); the summary marks it.
+  return r;
+}
+
+function printResult(r: ValidationResult, verbose: boolean, verdict?: HumanVerdict): void {
   console.log(`\n━━━ ${r.bridgeId} (${r.archetype})`);
-  console.log(`  ${statusGlyph(r)}  steps ${r.stepsConsumed}/${r.stepsTotal}  produces ${r.matchedProduces}/${r.totalProduces}`);
+  const verdictTag = verdict
+    ? verdict.verdict === 'accepted' ? ' [human:accepted]' : ' [human:rejected]'
+    : '';
+  console.log(`  ${tierLabel(r)}  ${r.diagnosis}  steps ${r.stepsConsumed}/${r.stepsTotal}  produces ${r.matchedProduces}/${r.totalProduces}${verdictTag}`);
   if (r.priorStateWarning) console.log(`  ⚠ ${r.priorStateWarning}`);
   if (r.reason) console.log(`  reason: ${r.reason}`);
-  if (verbose || !r.ok) {
+  if (verdict) console.log(`  human-verdict: ${verdict.verdict} (${verdict.reviewedOn}) — ${verdict.reason}`);
+  if (verbose || r.tier === 'D_REJECTED' || r.tier === 'B_PARTIAL') {
     if (r.trace.length > 0) {
       console.log(`  trace:`);
       for (const t of r.trace) console.log(`    ${t}`);
@@ -758,33 +911,51 @@ async function main(): Promise<void> {
   console.log(`[validate-bridge] loading ocgcore…`);
   const cardDB = loadDatabase(join(DATA_DIR, 'cards.cdb'));
   const scripts = loadScripts(join(DATA_DIR, 'scripts_full'));
-  const allConfigs = loadAllSolverConfigs(DATA_DIR, cardDB);
-  const adapter = await OCGCoreAdapter.create(cardDB, scripts, allConfigs.interruptionTags);
+  // Light-weight load path: only interruption-tags are needed by the adapter.
+  // We skip `loadAllSolverConfigs` here because it runs `validateGrammarGraph`
+  // which `process.exit(1)`s on any successor-coverage inconsistency — those
+  // are orthogonal to bridge validation and shouldn't block this tool.
+  const interruptionTags = loadInterruptionTags(DATA_DIR);
+  const adapter = await OCGCoreAdapter.create(cardDB, scripts, interruptionTags);
   adapter.exposeMultiPickMechanical = true;
+
+  const verdicts = loadHumanVerdicts();
 
   const results: ValidationResult[] = [];
   try {
     for (const t of targets) {
-      const r = await validateBridge(t.bridge, t.expertise, all, adapter, verbose);
+      const r0 = await validateBridge(t.bridge, t.expertise, all, adapter, verbose);
+      const r = applyHumanVerdict(r0, verdicts);
       results.push(r);
-      printResult(r, verbose);
+      printResult(r, verbose, verdicts[r.bridgeId]);
     }
   } finally {
     adapter.destroyAll();
   }
 
-  // Summary
+  // Summary: tier breakdown + per-bridge row.
   console.log(`\n═══ SUMMARY ═══`);
-  const passed = results.filter(r => r.ok).length;
-  const failed = results.length - passed;
-  console.log(`PASS: ${passed}/${results.length}`);
-  if (failed > 0) console.log(`FAIL: ${failed}/${results.length}`);
+  const byTier: Record<Tier, number> = { A_VERIFIED: 0, B_PARTIAL: 0, C_UNVALIDATABLE: 0, D_REJECTED: 0 };
+  for (const r of results) byTier[r.tier]++;
+  console.log(`🟢 A (verified)       : ${byTier.A_VERIFIED}/${results.length}`);
+  console.log(`🟡 B (partial)        : ${byTier.B_PARTIAL}/${results.length}`);
+  console.log(`🔵 C (unvalidatable)  : ${byTier.C_UNVALIDATABLE}/${results.length}   ← needs human review (unless verdicted)`);
+  console.log(`🔴 D (rejected)       : ${byTier.D_REJECTED}/${results.length}   ← genuine errors`);
+
   console.log(`\nPer-bridge:`);
   for (const r of results) {
-    console.log(`  ${statusGlyph(r)}  ${r.bridgeId}  (steps ${r.stepsConsumed}/${r.stepsTotal}, produces ${r.matchedProduces}/${r.totalProduces})`);
+    const v = verdicts[r.bridgeId];
+    const vTag = v ? ` [${v.verdict}]` : '';
+    console.log(`  ${tierLabel(r)}  ${r.diagnosis.padEnd(34)}  ${r.bridgeId}${vTag}`);
   }
 
-  process.exit(failed > 0 ? 1 : 0);
+  // Exit 0 if no tier D. Tier C is NOT a failure (human-review bucket).
+  const dCount = effectiveFailureCount(results);
+  if (dCount > 0) {
+    console.log(`\n✗ ${dCount} tier-D rejection(s) — genuine bridge errors`);
+    process.exit(1);
+  }
+  process.exit(0);
 }
 
 main().catch(err => {

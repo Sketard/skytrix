@@ -1,0 +1,9 @@
+{
+  "_format": "bridgeId → { verdict: 'accepted' | 'rejected', reason, reviewedOn (YYYY-MM-DD) }. Authored by humans after reviewing tier-C validator output. 'accepted' keeps the bridge in tier C but marks it as human-confirmed-valid (won't re-prompt review). 'rejected' forces tier D regardless of classify(). Entries for tier A/B bridges are ignored.",
+
+  "snake-eye-flamberge-gy-dual-ss-bridge": {
+    "verdict": "accepted",
+    "reason": "Real bridge. Pre-declared structural limit (TRIGGER_ORIGIN_MISMATCH): Flamberge.e3 requires 'sent from field or hand to GY' but validator can only reproduce deck→GY sends currently. Authoring deferred — not a bridge defect.",
+    "reviewedOn": "2026-04-24"
+  }
+}
