@@ -132,6 +132,10 @@ interface CandidateEffect {
   categories: readonly string[];
   events: readonly string[];
   types: readonly string[];
+  // Phase 10b — effect's activation range (e.g., "LOCATION_HAND",
+  // "LOCATION_SZONE", "LOCATION_HAND|LOCATION_MZONE"). Used to detect
+  // sources that need precursor-placement before activation.
+  range?: string;
 }
 
 /** Load a minimal slice of the card's effect catalog. Returns the effect
@@ -154,12 +158,23 @@ type TranslateResult = { bridge: BridgeSubroute } | { skip: string };
  *  another bridge can summon. */
 type ProducesOnFieldIndex = Map<number, string[]>;
 
+// Phase 10b — zones considered "source-activatable" by a precursor. A bridge
+// whose `produces` lands a card in any of these is a valid precursor candidate
+// for edges whose from-card must be activatable from that zone. 'monster' and
+// 'extraMonster' cover the classic ED/Ritual precursor case (P8). 'spellTrap'
+// unblocks Snake-Eye-style "monster treated as Continuous Spell in SZONE"
+// ignitions (Diabellstar.e2 range=LOCATION_SZONE). 'field' covers Field Spell
+// sources; 'gy' covers GY-range ignitions.
+const PRECURSOR_ELIGIBLE_ZONES: ReadonlySet<string> = new Set([
+  'monster', 'extraMonster', 'spellTrap', 'field', 'gy',
+]);
+
 function buildProducesIndex(allExpertise: LoadedExpertise[]): ProducesOnFieldIndex {
   const idx: ProducesOnFieldIndex = new Map();
   for (const exp of allExpertise) {
     for (const bridge of exp.bridges) {
       for (const slot of bridge.produces) {
-        if (slot.zone !== 'monster' && slot.zone !== 'extraMonster') continue;
+        if (!PRECURSOR_ELIGIBLE_ZONES.has(slot.zone)) continue;
         for (const cid of expandSelector(slot.card, exp.roleMap)) {
           const list = idx.get(cid) ?? [];
           list.push(bridge.id);
@@ -196,11 +211,29 @@ function candidateToBridge(
   // hand-init translators (which would decline). The precursor brings
   // fromCard onto the field via its real summon procedure, firing the
   // trigger we want to validate.
+  //
+  // Phase 10b — extended to main-deck monsters whose source effect has a
+  // non-HAND activation range (SZONE-only ignitions like Snake-Eye
+  // Diabellstar.e2, FZONE-range field spell triggers, GRAVE-range
+  // resurrect ignitions). NS-to-MZONE doesn't reach those ranges —
+  // we need a precursor that places the card in the specific zone via
+  // the real game mechanic (e.g., Snake-Eye "treated as Continuous Spell"
+  // via EFFECT_CHANGE_TYPE registration during placement).
   const isEdOrRitual = (fromType & ED_TYPE_MASK) !== 0;
+  const fromEffect = loadCatalogEffect(edge.from.cardId, edge.from.effectId);
+  const range = fromEffect?.range ?? '';
+  const needsNonHandZone = range !== ''
+    && !range.includes('LOCATION_HAND')
+    && (range.includes('LOCATION_SZONE')
+      || range.includes('LOCATION_FZONE')
+      || range.includes('LOCATION_GRAVE'));
   const precursorIds = producesIndex.get(edge.from.cardId) ?? [];
-  if (isEdOrRitual) {
+  if (isEdOrRitual || needsNonHandZone) {
     if (precursorIds.length === 0) {
-      return { skip: `summon-translator-declined (fromType=0x${fromType.toString(16)})` };
+      const reason = needsNonHandZone && !isEdOrRitual
+        ? `needs-zone-precursor (range=${range})`
+        : `summon-translator-declined (fromType=0x${fromType.toString(16)})`;
+      return { skip: reason };
     }
     const isSelfTrigger = edge.from.cardId === edge.to.cardId;
     return { bridge: buildPrecursorWiredBridge(edge, fromType, toType, precursorIds[0], isSelfTrigger) };
