@@ -1,7 +1,7 @@
 {
   "stamp": "2026-04-24",
   "tier": "A_VERIFIED",
-  "count": 30,
+  "count": 43,
   "results": [
     {
       "bridgeId": "edge-self-summon-trigger-10966439-e1-via-e2a",
@@ -83,6 +83,111 @@
       "totalProduces": 1,
       "reason": "not all steps consumed",
       "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-18176525-e1",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-18176525-e2",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-18176525-e3",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-40543231-e1",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-40543231-e2",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-40543231-e3",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-82782870-e1",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 2,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-82782870-e2",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 2,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-summon-trigger-45171524-e1-to-82782870-e3",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 2,
+      "stepsConsumed": 2,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
       "missing": []
     },
     {
@@ -284,6 +389,50 @@
     },
     {
       "bridgeId": "edge-self-summon-trigger-73819701-e1-via-e2b",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 1,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-self-summon-trigger-84477320-e1a-via-e1a",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 1,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-self-summon-trigger-84477320-e1a-via-e1b",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 1,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-self-summon-trigger-84477320-e1b-via-e1a",
+      "tier": "A_VERIFIED",
+      "diagnosis": "NONE",
+      "stepsTotal": 1,
+      "stepsConsumed": 1,
+      "matchedProduces": 1,
+      "totalProduces": 1,
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-self-summon-trigger-84477320-e1b-via-e1b",
       "tier": "A_VERIFIED",
       "diagnosis": "NONE",
       "stepsTotal": 1,

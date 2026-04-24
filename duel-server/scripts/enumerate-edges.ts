@@ -447,6 +447,13 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       // Pattern 2: summon-then-trigger (EA summons a card)
       if (produces(fromEff, 'summon')) {
         const fromSelfSS = isSelfTargetingSS(fromEff);
+        // Phase 12 — for SS-producing effects, the actual SS-target filter lives
+        // in the OPERATION body (`Duel.SelectMatchingCard` before `SpecialSummon`),
+        // NOT the target body (which often validates cost/zone preconditions).
+        // One for One is the canonical case: target.filter = `[monster,
+        // ableToGraveAsCost]` (the cost), operation.filter = `[level=1,
+        // canBeSpecialSummoned]` (the SS target). Prefer operation when present.
+        const ssFilter = fromEff.operation?.simpleFilter ?? fromEff.target?.simpleFilter;
         for (const toCat of catalogs) {
           // Self-SS source can only trigger ITS OWN on-summon effects — skip
           // cross-card pairings to suppress ~750 bogus candidates per batch.
@@ -457,10 +464,10 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
             // Skip unless `toEff` is self-trigger (EFFECT_TYPE_SINGLE) — indicates card's own trigger
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
             // Check filter on the SS'd card if available
-            if (fromEff.target?.simpleFilter) {
+            if (ssFilter) {
               const toProps = propsByCard.get(toCat.cardId);
               if (!toProps) continue;
-              const matched = cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId);
+              const matched = cardMatchesFilter(ssFilter, toProps, fromCat.cardId);
               if (!matched.match) continue;
               edges.push({
                 from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
