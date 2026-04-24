@@ -2,8 +2,8 @@
   "cardId": 13332685,
   "name": "Ame no Habakiri no Mitsurugi",
   "sourceFile": "official/c13332685.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     13332685,
     81560239
@@ -56,13 +56,12 @@
         "resolved": {
           "helper": "Cost.SelfReveal",
           "kind": "reveal",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -74,11 +73,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -91,7 +90,33 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "sg",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "rg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -118,6 +143,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -136,11 +162,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -160,7 +186,42 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],

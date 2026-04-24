@@ -2,8 +2,8 @@
   "cardId": 10045474,
   "name": "Infinite Impermanence",
   "sourceFile": "official/c10045474.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -24,11 +24,52 @@
       ],
       "target": {
         "name": "s.target",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "negatable"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.activate",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-related-chain",
+            "method": "NegateRelatedChain",
+            "target": "tc",
+            "argHints": [
+              "RESET_TURN_SET"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "value": "RESET_TURN_SET",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     },
     {
@@ -44,18 +85,32 @@
       "descriptionStringId": "0",
       "condition": {
         "name": "s.handcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetFieldGroupCount",
+              "args": [
+                "e:GetHandlerPlayer()",
+                "LOCATION_ONFIELD",
+                "0"
+              ],
+              "op": "==",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
+    "fullyDecoded": 3,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER) on line 11"
-  ]
+  "warnings": []
 }

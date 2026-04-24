@@ -2,8 +2,8 @@
   "cardId": 69932023,
   "name": "Dracotail Horn",
   "sourceFile": "official/c69932023.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     69932023
   ],
@@ -36,35 +36,77 @@
       },
       "target": {
         "name": "s.target",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsAttackPos()"
+              "kind": "attackPos"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or c:IsAbleToExtra()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ableToExtra"
+                }
+              ]
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.activate",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "tp",
+            "argHints": [
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 13"
-  ]
+  "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 1498449,
   "name": "Dracotail Faimena",
   "sourceFile": "official/c1498449.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -31,7 +31,16 @@
       },
       "condition": {
         "inline": "function() return Duel.IsMainPhase() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.SelfDiscard",
@@ -39,14 +48,21 @@
         "resolved": {
           "helper": "Cost.SelfDiscard",
           "kind": "discard",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.fustg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Fusion.SummonEffTG(params)(e,tp,eg,ep,ev,re,r,rp,0)"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "inline": "Fusion.SummonEffOP({fusfilter=aux.FilterBoolFunction(Card.IsRace,RACE_DRAGON|RACE_SPELLCASTER)})",
@@ -79,10 +95,24 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_GRAVE"
+            },
+            {
+              "kind": "raw",
+              "source": "r&REASON_FUSION==REASON_FUSION"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.settg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -97,11 +127,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.setop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -117,18 +147,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 5,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 13"
-  ]
+  "warnings": []
 }

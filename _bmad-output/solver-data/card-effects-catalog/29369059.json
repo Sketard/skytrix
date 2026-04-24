@@ -2,8 +2,8 @@
   "cardId": 29369059,
   "name": "Yummy☆Surprise",
   "sourceFile": "official/c29369059.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -23,38 +23,63 @@
       "descriptionStringId": "0",
       "cost": {
         "name": "s.effcost",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "setCard",
-              "value": "SET_YUMMY"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "c:IsAttribute(ATTRIBUTE_LIGHT) and c:IsRace(RACE_BEAST) and c:IsControler(tp) and c:IsFaceup()"
+                },
+                {
+                  "kind": "controler",
+                  "value": "1-tp"
+                }
+              ]
             },
             {
-              "kind": "canBeSpecialSummoned"
+              "kind": "canBeEffectTarget"
+            },
+            {
+              "kind": "ableToHand"
             }
           ],
-          "complete": true
-        },
-        "opaque": false
+          "complete": false
+        }
       },
       "target": {
         "name": "s.efftg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "setCard",
-              "value": "SET_YUMMY"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "c:IsAttribute(ATTRIBUTE_LIGHT) and c:IsRace(RACE_BEAST) and c:IsControler(tp) and c:IsFaceup()"
+                },
+                {
+                  "kind": "controler",
+                  "value": "1-tp"
+                }
+              ]
             },
             {
-              "kind": "canBeSpecialSummoned"
+              "kind": "canBeEffectTarget"
+            },
+            {
+              "kind": "ableToHand"
             }
           ],
-          "complete": true
-        },
-        "opaque": false
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.effop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -62,31 +87,113 @@
               "value": "SET_YUMMY"
             },
             {
-              "kind": "raw",
-              "source": "c:IsFieldSpell()"
+              "kind": "fieldSpell"
             },
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsForbidden()"
+                "kind": "forbidden"
               }
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "sc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "sc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "sc"
+            ]
+          },
+          {
+            "kind": "shuffle-hand",
+            "method": "ShuffleHand",
+            "target": "tp"
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "fc",
+            "argHints": [
+              "REASON_RULE"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "plc",
+            "argHints": [
+              "tp",
+              "tp",
+              "LOCATION_FZONE",
+              "POS_FACEUP",
+              "true"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "sc",
+            "code": "EFFECT_CANNOT_DIRECT_ATTACK",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 1,
+    "partiallyDecoded": 2,
     "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMING_BATTLE_START|TIMINGS_CHECK_MONSTER_E) on line 11"
-  ]
+  "warnings": []
 }

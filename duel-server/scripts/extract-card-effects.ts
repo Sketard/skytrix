@@ -16,6 +16,10 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import luaparse from 'luaparse';
 
+// Bump this whenever parser semantics change. Propagated to every catalog JSON's
+// `parserVersion` field and typed through `CardEffectCatalog` via `typeof`.
+const PARSER_VERSION = 'v7-gate-strip' as const;
+
 // =============================================================================
 // Schema (v1 — extensible for v2 95% upgrade via optional `ast` / `resolved` fields)
 // =============================================================================
@@ -44,7 +48,7 @@ interface Effect {
   clonedTo?: readonly string[];
 }
 
-/** Reference to a Lua function. v1 captures name + opaque flag; v2 will attempt inline decoding. */
+/** Reference to a Lua function. v1 captures name + opaque flag; v5 adds AST-derived actions + side-effects. */
 interface FunctionRef {
   name?: string;                               // "s.thfilter" if named, else undefined for inline
   inline?: string;                             // raw Lua source if inline lambda
@@ -56,6 +60,40 @@ interface FunctionRef {
   ast?: unknown;
   /** Reserved for v2. Normalized predicate description. */
   resolved?: unknown;
+  /** v5: visible Duel.* actions found in the body (send-to-deck, special-summon, etc.). */
+  actions?: readonly OperationAction[];
+  /** v5: Effect.CreateEffect registrations observed inside the body. */
+  sideEffects?: readonly SideEffect[];
+}
+
+/** A visible game action triggered by an operation body (`Duel.XXX`). */
+interface OperationAction {
+  kind: string;                                // "send-to-deck" | "special-summon" | "banish" | ...
+  method: string;                              // raw Duel method name
+  /** First argument descriptor (often the target card/group expression). */
+  target?: string;
+  /** Additional relevant args (reason, position, location) raw-stringified. */
+  argHints?: readonly string[];
+}
+
+/** An Effect.CreateEffect registration discovered inside an operation body. */
+interface SideEffect {
+  /** Code set via :SetCode(...) — the effect's event/flag code. */
+  code?: string;
+  /** Value set via :SetValue(...) — often a location/type mask. */
+  value?: string;
+  /** Types from :SetType(...). */
+  types?: readonly string[];
+  /** Properties from :SetProperty(...). */
+  properties?: readonly string[];
+  /** Category from :SetCategory(...). */
+  categories?: readonly string[];
+  /** Reset mask from :SetReset(...). */
+  reset?: string;
+  /** Target-range self/opponent from :SetTargetRange(...). */
+  targetRange?: { self: string; opponent: string };
+  /** The card variable on which :RegisterEffect was called (e.g. "c", "tc", "e:GetHandler()"). */
+  registeredOn?: string;
 }
 
 /** Simple AND-chain filter extracted from pure `c:IsX(...)` compositions. */
@@ -73,29 +111,100 @@ type FilterPredicate =
   | { kind: 'level'; value: number }              // IsLevel(4)
   | { kind: 'levelAbove'; value: number }         // IsLevelAbove(4)
   | { kind: 'levelBelow'; value: number }         // IsLevelBelow(4)
+  | { kind: 'rank'; value: number }               // IsRank(N)
+  | { kind: 'rankAbove'; value: number }          // IsRankAbove(N)
+  | { kind: 'rankBelow'; value: number }          // IsRankBelow(N)
+  | { kind: 'atk'; value: number }                // IsAttack(N)
+  | { kind: 'atkAbove'; value: number }           // IsAttackAbove(N)
+  | { kind: 'atkBelow'; value: number }           // IsAttackBelow(N)
+  | { kind: 'def'; value: number }                // IsDefense(N)
   | { kind: 'code'; value: number | 'self' }      // IsCode(12345) or IsCode(id) → 'self'
   | { kind: 'setCard'; value: string }            // IsSetCard(SET_DRACOTAIL)
   | { kind: 'faceup' }                            // IsFaceup()
   | { kind: 'facedown' }                          // IsFacedown()
   | { kind: 'monster' }                           // IsMonster()
   | { kind: 'spellTrap' }                         // IsSpellTrap()
+  | { kind: 'spell' }                             // IsSpell()
+  | { kind: 'trap' }                              // IsTrap()
   | { kind: 'ableToHand' }                        // IsAbleToHand()
   | { kind: 'ableToGrave' }                       // IsAbleToGrave()
   | { kind: 'ableToGraveAsCost' }                 // IsAbleToGraveAsCost()
   | { kind: 'ableToDeck' }                        // IsAbleToDeck()
+  | { kind: 'ableToRemove' }                      // IsAbleToRemove()
+  | { kind: 'ableToExtra' }                       // IsAbleToExtra()
   | { kind: 'canBeSpecialSummoned' }              // IsCanBeSpecialSummoned(...)
   | { kind: 'canBeEffectTarget' }                 // IsCanBeEffectTarget()
+  | { kind: 'canBeSynchroMaterial' }              // IsCanBeSynchroMaterial(...)
+  | { kind: 'canBeFusionMaterial' }               // IsCanBeFusionMaterial()
+  | { kind: 'canBeXyzMaterial' }                  // IsCanBeXyzMaterial(...)
+  | { kind: 'canBeLinkMaterial' }                 // IsCanBeLinkMaterial(...)
+  | { kind: 'canBeRitualMaterial' }               // IsCanBeRitualMaterial()
+  | { kind: 'canBeDisabledByEffect' }             // IsCanBeDisabledByEffect(e)
+  | { kind: 'canBeBattleTarget' }                 // IsCanBeBattleTarget()
+  | { kind: 'canBeTributed' }                     // IsAbleToTribute / IsReleasable
   | { kind: 'discardable' }                       // IsDiscardable()
   | { kind: 'ssetable' }                          // IsSSetable()
   | { kind: 'setable' }                           // IsSetable()
   | { kind: 'relateToEffect' }                    // IsRelateToEffect(e)
   | { kind: 'location'; value: string }           // IsLocation(LOCATION_GRAVE)
+  | { kind: 'onField' }                           // IsOnField()
   | { kind: 'link'; value: number }               // IsLink(N)
+  | { kind: 'linkAbove'; value: number }          // IsLinkAbove(N)
+  | { kind: 'linkBelow'; value: number }          // IsLinkBelow(N)
   | { kind: 'linkMonster' }                       // IsLinkMonster()
   | { kind: 'xyzMonster' }                        // IsXyzMonster()
   | { kind: 'fusionMonster' }                     // IsFusionMonster()
   | { kind: 'synchroMonster' }                    // IsSynchroMonster()
+  | { kind: 'ritualMonster' }                     // IsRitualMonster()
+  | { kind: 'effectMonster' }                     // IsEffectMonster()
+  | { kind: 'negatable' }                         // IsNegatableMonster() / IsNegatableEffect()
+  | { kind: 'forbidden' }                         // IsForbidden()
+  | { kind: 'controler'; value: string }          // IsControler(tp) / IsControler(1-tp)
+  | { kind: 'previousControler'; value: string }  // IsPreviousControler(...)
+  | { kind: 'player'; value: string }             // IsPlayer(tp)
+  | { kind: 'position'; value: string }           // IsPosition(POS_FACEUP_ATTACK)
+  | { kind: 'reason'; value: string }             // IsReason(REASON_EFFECT)
+  | { kind: 'uniqueOnField' }                     // CheckUniqueOnField(...)
+  | { kind: 'immuneToEffect' }                    // IsImmuneToEffect(e)
+  | { kind: 'hasFlag'; value: string }            // HasFlagEffect(id)
+  | { kind: 'publicCard' }                        // IsPublic()
+  | { kind: 'summonable' }                        // IsSummonable(nil)
+  | { kind: 'specialSummonable' }                 // IsSpecialSummonable()
+  | { kind: 'fieldSpell' }                        // IsFieldSpell()
+  | { kind: 'continuousSpell' }                   // IsContinuousSpell()
+  | { kind: 'continuousTrap' }                    // IsContinuousTrap()
+  | { kind: 'continuousSpellTrap' }               // IsContinuousSpellTrap()
+  | { kind: 'ritualSpell' }                       // IsRitualSpell()
+  | { kind: 'normalSpell' }                       // IsNormalSpell()
+  | { kind: 'normalTrap' }                        // IsNormalTrap()
+  | { kind: 'normalSpellTrap' }                   // IsNormalSpellTrap()
+  | { kind: 'trapMonster' }                       // IsTrapMonster()
+  | { kind: 'negatableSpellTrap' }                // IsNegatableSpellTrap()
+  | { kind: 'disabled' }                          // IsDisabled()
+  | { kind: 'releasableByEffect' }                // IsReleasableByEffect(e)
+  | { kind: 'attackPos' }                         // IsAttackPos()
+  | { kind: 'defensePos' }                        // IsDefensePos()
+  | { kind: 'sequence'; value: string }           // IsSequence(N)
+  | { kind: 'inExtraMZone' }                      // IsInExtraMZone()
+  | { kind: 'originalType'; value: string }       // IsOriginalType(TYPE_MONSTER)
+  | { kind: 'monsterCard' }                       // IsMonsterCard()
+  | { kind: 'linkSummoned' }                      // IsLinkSummoned()
+  | { kind: 'fusionSummoned' }                    // IsFusionSummoned()
+  | { kind: 'synchroSummoned' }                   // IsSynchroSummoned()
+  | { kind: 'xyzSummoned' }                       // IsXyzSummoned()
+  | { kind: 'ritualSummoned' }                    // IsRitualSummoned()
+  | { kind: 'pendulumSummoned' }                  // IsPendulumSummoned()
+  | { kind: 'listsCode'; value: string }          // ListsCode(id)
+  | { kind: 'listsCodeAsMaterial'; value: string }// ListsCodeAsMaterial(id)
+  // Numeric comparisons: `c:GetX() OP N`. `op` is '==' | '~=' | '<' | '<=' | '>' | '>='.
+  | { kind: 'attrCompare'; attr: 'level' | 'atk' | 'def' | 'rank' | 'link' | 'overlayCount';
+      op: string; value: number }
+  // Non-card game-state checks: Duel.IsPhase, Duel.IsMainPhase, etc. Scoped to condition bodies
+  // where they gate effect activation rather than filter a card.
+  | { kind: 'gameState'; method: string; args?: readonly string[];
+      op?: string; value?: string }
   | { kind: 'not'; inner: FilterPredicate }       // `not c:Is...()`
+  | { kind: 'or'; predicates: readonly FilterPredicate[] }  // `A or B or C`
   | { kind: 'raw'; source: string };              // unrecognized clause
 
 /** Summon procedure (Synchro/Fusion/Xyz/Link). v3: decodes arg roles into structured slots. */
@@ -129,7 +238,7 @@ export interface CardEffectCatalog {
   cardId: number;
   name: string;
   sourceFile: string;
-  parserVersion: 'v1-80pct';
+  parserVersion: typeof PARSER_VERSION;
   parsedAt: string;
   /** `s.listed_names = {...}`. Card codes this card is considered to be (treat-as). */
   listedNames: readonly number[];
@@ -162,6 +271,9 @@ const LISTED_NAMES_RE = /^\s*s\.listed_names\s*=\s*\{([^}]*)\}/;
 const LISTED_SERIES_RE = /^\s*s\.listed_series\s*=\s*\{([^}]*)\}/;
 const FUNCTION_DEF_RE = /^\s*function\s+s\.(\w+)\s*\(([^)]*)\)\s*$/;
 const SUMMON_PROC_RE = /^\s*(Synchro|Fusion|Xyz|Link|Pendulum|Ritual)\.(AddProcedure|AddProcMix)\s*\(/;
+/** Ritual procedure is instantiated via `local e<N> = Ritual.CreateProc(c, ...)` rather
+ *  than a top-level `AddProcedure`. The returned effect is configured separately. */
+const RITUAL_CREATE_PROC_RE = /^\s*local\s+(e\w+)\s*=\s*Ritual\.CreateProc\s*\(/;
 
 function parseLuaScript(path: string, cardId: number, cardName: string): CardEffectCatalog {
   const source = readFileSync(path, 'utf-8');
@@ -248,6 +360,30 @@ function parseLuaScript(path: string, cardId: number, cardName: string): CardEff
         clonedTo: [],
       });
       effectOrder.push(varName);
+      continue;
+    }
+
+    // Ritual procedure: `local eN = Ritual.CreateProc(c, ...)`. We capture it as both
+    // a summonProcedure entry AND an Effect entry so subsequent :Set* overrides on eN
+    // are tracked correctly by the Effect pipeline.
+    const ritualProcMatch = RITUAL_CREATE_PROC_RE.exec(line);
+    if (ritualProcMatch) {
+      const varName = ritualProcMatch[1];
+      effectsByVar.set(varName, {
+        id: varName,
+        categories: [],
+        types: [],
+        properties: [],
+        events: [],
+        clonedTo: [],
+      });
+      effectOrder.push(varName);
+      summonProcedures.push({
+        kind: 'Ritual',
+        rawCall: line.trim(),
+        opaque: false,
+        decoded: { slots: [], notes: ['Ritual.CreateProc (sacrifice-based ritual summon)'] },
+      });
       continue;
     }
 
@@ -349,7 +485,9 @@ function parseLuaScript(path: string, cardId: number, cardName: string): CardEff
     return out;
   });
 
-  // Coverage summary. Credit: resolved helper OR simpleFilter.complete => fully decoded.
+  // Coverage summary. A ref is fully decoded when we've extracted at least one
+  // concrete signal: complete filter, resolved helper, visible Duel actions, or
+  // a registered side-effect. Partial filter with no other signal is partial.
   let fullyDecoded = 0;
   let partiallyDecoded = 0;
   let opaqueUndecoded = 0;
@@ -361,7 +499,9 @@ function parseLuaScript(path: string, cardId: number, cardName: string): CardEff
       const hasFullFilter = ref.simpleFilter?.complete === true;
       const hasPartialFilter = ref.simpleFilter !== undefined && !ref.simpleFilter.complete;
       const hasResolved = ref.resolved !== undefined;
-      if (hasFullFilter || hasResolved) fullyDecoded++;
+      const hasActions = (ref.actions?.length ?? 0) > 0;
+      const hasSideEffects = (ref.sideEffects?.length ?? 0) > 0;
+      if (hasFullFilter || hasResolved || hasActions || hasSideEffects) fullyDecoded++;
       else if (hasPartialFilter) partiallyDecoded++;
       else opaqueUndecoded++;
     }
@@ -371,7 +511,7 @@ function parseLuaScript(path: string, cardId: number, cardName: string): CardEff
     cardId,
     name: cardName,
     sourceFile: path.split(/[/\\]/).slice(-2).join('/'),
-    parserVersion: 'v1-80pct',
+    parserVersion: PARSER_VERSION,
     parsedAt: new Date().toISOString().slice(0, 10),
     listedNames,
     listedSeries,
@@ -442,9 +582,17 @@ function applyMethod(
     case 'SetTarget':     eff.targetRaw = args; break;
     case 'SetOperation':  eff.operationRaw = args; break;
     case 'SetValue':      eff.valueRaw = args; break;
-    // Ignored for v1 (informational only): SetLabel, SetLabelObject, SetOwnerPlayer, SetHintTiming, SetReset, SetAbsoluteRange, SetDescription (already handled).
+    // Explicitly ignored — informational / timing metadata that doesn't change what the effect does.
+    case 'SetLabel':
+    case 'SetLabelObject':
+    case 'SetOwnerPlayer':
+    case 'SetHintTiming':
+    case 'SetReset':
+    case 'SetAbsoluteRange':
+    case 'SetHint':
+      break;
     default:
-      // Flag unknown Set* calls so v2 can prioritize.
+      // Flag unknown Set* calls so future versions can prioritize.
       if (method.startsWith('Set')) warnings.push(`Unhandled method ${method}(${args}) on line ${line}`);
   }
 }
@@ -490,30 +638,119 @@ function buildFunctionRef(raw: string, bodies: Map<string, { signature: string; 
     const entry = bodies.get(fname);
     if (!entry) return { name: `s.${fname}`, opaque: true };
 
-    if (isFilterSignature(entry.signature)) {
-      const simple = tryExtractSimpleFilter(entry.body);
+    const cardName = getCardParamName(entry.signature);
+    if (cardName !== undefined) {
+      const simple = tryExtractSimpleFilter(entry.body, cardName);
       if (simple) return { name: `s.${fname}`, simpleFilter: simple, opaque: !simple.complete };
       return { name: `s.${fname}`, opaque: true };
     }
 
-    const delegated = extractDelegatedFilter(entry.body, bodies);
-    if (delegated) return { name: `s.${fname}`, simpleFilter: delegated, opaque: !delegated.complete };
+    // Non-filter signature: walk the body for delegated filters + actions + side-effects.
+    return buildNonFilterRef(`s.${fname}`, entry.body, bodies);
+  }
 
-    return { name: `s.${fname}`, opaque: true };
+  // Higher-order call: `s.wrapper(arg1, arg2)`. When `s.wrapper` is a closure factory
+  // whose body is `return function(...) <body> end`, we textually substitute the
+  // wrapper's parameters with the call args and analyze the substituted body.
+  // Pattern from Code Igniter: `s.thtg(s.thfilter1)` — `thtg` returns a target fn
+  // that references `filter` which is actually `s.thfilter1`.
+  const hoMatch = /^s\.(\w+)\((.*)\)$/s.exec(trimmed);
+  if (hoMatch) {
+    const resolvedHo = resolveHigherOrderCall(hoMatch[1], hoMatch[2], bodies);
+    if (resolvedHo) return { ...resolvedHo, inline: trimmed };
   }
 
   const inlineBody = /^function\s*\(([^)]*)\)\s+return\s+([\s\S]*?)\s+end$/s.exec(trimmed);
-  if (inlineBody && isFilterSignature(inlineBody[1])) {
-    const simple = tryExtractSimpleFilter(`return ${inlineBody[2]}`);
-    if (simple) {
-      const r: FunctionRef = { inline: trimmed, simpleFilter: simple, opaque: !simple.complete };
-      if (resolved) r.resolved = resolved;
+  if (inlineBody) {
+    const cardName = getCardParamName(inlineBody[1]);
+    if (cardName !== undefined) {
+      const simple = tryExtractSimpleFilter(`return ${inlineBody[2]}`, cardName);
+      if (simple) {
+        const r: FunctionRef = { inline: trimmed, simpleFilter: simple, opaque: !simple.complete };
+        if (resolved) r.resolved = resolved;
+        return r;
+      }
+    }
+  }
+
+  // Inline non-filter lambda: `function(e,tp,...) <body> end` — AST-walk body.
+  const inlineFull = /^function\s*\(([^)]*)\)\s+([\s\S]*)\s+end$/.exec(trimmed);
+  if (inlineFull && !isFilterSignature(inlineFull[1])) {
+    const inlineR = buildNonFilterRef(undefined, inlineFull[2], bodies);
+    if (!inlineR.opaque || inlineR.actions || inlineR.sideEffects || inlineR.simpleFilter) {
+      const r: FunctionRef = { inline: trimmed, opaque: inlineR.opaque };
+      if (inlineR.simpleFilter)  r.simpleFilter  = inlineR.simpleFilter;
+      if (inlineR.actions)       r.actions       = inlineR.actions;
+      if (inlineR.sideEffects)   r.sideEffects   = inlineR.sideEffects;
+      if (resolved)              r.resolved      = resolved;
       return r;
     }
   }
 
   const r: FunctionRef = { inline: trimmed, opaque: !resolved };
   if (resolved) r.resolved = resolved;
+  return r;
+}
+
+/** Resolve a higher-order call like `s.thtg(s.thfilter1)`. Returns a FunctionRef
+ *  describing the closure returned by the wrapper, with the wrapper's parameters
+ *  textually substituted by the call args before analysis. Returns undefined when
+ *  the wrapper's body isn't the recognizable `return function(...) <body> end` shape. */
+function resolveHigherOrderCall(
+  wrapperName: string,
+  argString: string,
+  bodies: Map<string, { signature: string; body: string }>,
+): FunctionRef | undefined {
+  const entry = bodies.get(wrapperName);
+  if (!entry) return undefined;
+  const paramNames = entry.signature.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  const callArgs = splitTopLevelArgs(argString).map(a => a.trim());
+  if (paramNames.length !== callArgs.length) return undefined;
+
+  // Wrapper body must be exactly `return function(<sig>) <body> end`.
+  const closure = /^\s*return\s+function\s*\(([^)]*)\)\s+([\s\S]*?)\s+end\s*$/s.exec(entry.body);
+  if (!closure) return undefined;
+  const closureSig = closure[1];
+
+  // Substitute wrapper params in closure body (word-boundary replace).
+  let body = closure[2];
+  for (let i = 0; i < paramNames.length; i++) {
+    const name = paramNames[i];
+    if (!/^\w+$/.test(name)) continue; // skip weird params
+    body = body.replace(new RegExp(`\\b${name}\\b`, 'g'), callArgs[i]);
+  }
+
+  // If the closure is itself a filter, decode directly. Otherwise run the non-filter
+  // analyzer so delegated filters and actions inside the closure are captured.
+  const cardName = getCardParamName(closureSig);
+  if (cardName !== undefined) {
+    const simple = tryExtractSimpleFilter(body, cardName);
+    if (simple) return { opaque: !simple.complete, simpleFilter: simple };
+    return undefined;
+  }
+  return buildNonFilterRef(undefined, body, bodies);
+}
+
+/** Build a FunctionRef for a non-filter function body (target/cost/op/condition).
+ *  `name` is `s.funcName` when looked up from the script's top-level functions, or
+ *  undefined for inline lambdas. */
+function buildNonFilterRef(
+  name: string | undefined,
+  body: string,
+  bodies: Map<string, { signature: string; body: string }>,
+): FunctionRef {
+  const analysis = analyzeNonFilterBody(body, bodies);
+  const r: FunctionRef = {
+    ...(name !== undefined ? { name } : {}),
+    opaque: true,
+  };
+  if (!analysis) return r;
+  if (analysis.simpleFilter) {
+    r.simpleFilter = analysis.simpleFilter;
+    if (analysis.simpleFilter.complete) r.opaque = false;
+  }
+  if (analysis.actions)      { r.actions      = analysis.actions;      r.opaque = false; }
+  if (analysis.sideEffects)  { r.sideEffects  = analysis.sideEffects;  r.opaque = false; }
   return r;
 }
 
@@ -528,39 +765,39 @@ interface ResolvedHelper {
   params?: Readonly<Record<string, unknown>>;
 }
 
+/** Known Cost.* helper names mapped to their semantic kind. Arg shapes vary
+ *  (e.g. `DetachFromSelf(1)`, `DetachFromSelf(1,1,nil)`) — the resolver keeps
+ *  the raw args as `params.args` rather than enumerating every form. */
+const COST_HELPER_KINDS: Readonly<Record<string, string>> = {
+  DetachFromSelf: 'detach-material',
+  Discard: 'discard',
+  SelfDiscard: 'discard',
+  SelfTribute: 'tribute',
+  SelfRelease: 'tribute',
+  SelfToGrave: 'send-to-grave',
+  SelfBanish: 'banish',
+  SelfToExtra: 'return-to-extra',
+  SelfReveal: 'reveal',
+  PayLP: 'pay-lp',
+  HalfLP: 'pay-lp',
+};
+
 /** Resolve a helper call (pure function reference, no wrapping) into structured semantics.
  *  Returns undefined if no known helper pattern matches. */
 function resolveHelper(expr: string): ResolvedHelper | undefined {
-  // Cost.*
-  if (/^Cost\.DetachFromSelf\s*(\(\s*\d*\s*\))?$/.test(expr)) {
-    const m = /\(\s*(\d+)\s*\)/.exec(expr);
-    const count = m ? Number(m[1]) : 1;
-    return { helper: 'Cost.DetachFromSelf', kind: 'detach-material', params: { from: 'self', count } };
-  }
-  if (/^Cost\.Discard\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.Discard', kind: 'discard', params: { from: 'hand', count: 1 } };
-  }
-  if (/^Cost\.SelfDiscard\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.SelfDiscard', kind: 'discard', params: { target: 'self' } };
-  }
-  if (/^Cost\.SelfTribute\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.SelfTribute', kind: 'tribute', params: { target: 'self' } };
-  }
-  if (/^Cost\.SelfToGrave\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.SelfToGrave', kind: 'send-to-grave', params: { target: 'self' } };
-  }
-  if (/^Cost\.SelfBanish\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.SelfBanish', kind: 'banish', params: { target: 'self' } };
-  }
-  if (/^Cost\.SelfToExtra\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.SelfToExtra', kind: 'return-to-extra', params: { target: 'self' } };
-  }
-  if (/^Cost\.SelfReveal\s*(\(.*\))?$/.test(expr)) {
-    return { helper: 'Cost.SelfReveal', kind: 'reveal', params: { target: 'self' } };
-  }
-  const payLp = /^Cost\.PayLP\s*\(\s*(\d+|[A-Za-z0-9_]+)\s*\)/.exec(expr);
-  if (payLp) {
-    return { helper: 'Cost.PayLP', kind: 'pay-lp', params: { amount: payLp[1] } };
+  // Cost.* — match `Cost.Name` with any trailing call shape. Multi-arg forms like
+  // `Cost.DetachFromSelf(1,1,nil)` or `Cost.Discard(1,s.filter)` are common and
+  // must all resolve even if we don't parse every argument.
+  const costMatch = /^Cost\.(\w+)\s*(?:\((.*)\))?\s*$/.exec(expr);
+  if (costMatch) {
+    const helperName = costMatch[1];
+    const argStr = costMatch[2] ?? '';
+    const costKind = COST_HELPER_KINDS[helperName];
+    if (costKind) {
+      const params: Record<string, unknown> = {};
+      if (argStr.trim().length > 0) params.args = splitTopLevelArgs(argStr).map(s => s.trim());
+      return { helper: `Cost.${helperName}`, kind: costKind, params };
+    }
   }
 
   // Fusion.* — delegating wrappers. Semantics: Fusion Summon from ED using declared materials.
@@ -603,50 +840,55 @@ function resolveHelper(expr: string): ResolvedHelper | undefined {
   return undefined;
 }
 
-/** A signature is filter-like when the first param is `c` (possibly with optional extra args). */
+/** A signature is filter-like when one of its parameters is the card being filtered.
+ *  Canonical shapes:
+ *    - `(c)` / `(c,...)` — classic filter, first param is the card
+ *    - `(e,c)` / `(e,c,...)` — effect context + card (material filter, target-validity filter)
+ *    - `(_,c)` — ignored first param + card
+ *    - Underscore variants `(_c)` / `(e,_c)` are accepted too (Promethean Princess idiom). */
 function isFilterSignature(sig: string): boolean {
-  const first = sig.split(',')[0]?.trim();
-  return first === 'c';
+  return getCardParamName(sig) !== undefined;
 }
 
-/** Detect `Duel.IsExistingMatchingCard(s.filterName, ...)` in a target function body and
- *  recursively extract the referenced filter's simpleFilter. */
-function extractDelegatedFilter(
-  body: string,
-  bodies: Map<string, { signature: string; body: string }>,
-): SimpleFilter | undefined {
-  const m = /(?:Duel\.IsExistingMatchingCard|Duel\.SelectMatchingCard|Duel\.IsExistingTarget|Duel\.SelectTarget)\s*\(\s*(?:tp\s*,\s*)?s\.(\w+)/.exec(body);
-  if (!m) return undefined;
-  const filterName = m[1];
-  const entry = bodies.get(filterName);
-  if (!entry || !isFilterSignature(entry.signature)) return undefined;
-  return tryExtractSimpleFilter(entry.body);
+/** Return the identifier used for the filtered card, or undefined if this isn't a filter. */
+function getCardParamName(sig: string): string | undefined {
+  const params = sig.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  if (params.length === 0) return undefined;
+  const looksLikeCard = (p: string) => p === 'c' || p === '_c';
+  if (looksLikeCard(params[0])) return params[0];
+  // Shapes (e,c) / (_,c) / (e,c,og) / (e,c,...) — second param is the card.
+  if (params.length >= 2 && (params[0] === 'e' || params[0] === '_' || params[0] === '_e')
+      && looksLikeCard(params[1])) return params[1];
+  return undefined;
 }
 
 /** v4: AST-based filter extraction via luaparse. Handles multi-statement bodies,
  *  nested and/or, `if chk==0 then return X end` patterns, and inline lambdas.
  *  Falls back to regex-based v1 extractor on parse failure. */
-function tryExtractSimpleFilter(body: string): SimpleFilter | undefined {
+function tryExtractSimpleFilter(body: string, cardName: string = 'c'): SimpleFilter | undefined {
   const wrapped = `function __extract__() ${body} end`;
   let ast: luaparse.Chunk;
   try {
-    ast = luaparse.parse(wrapped, { comments: false, locations: false });
+    ast = luaparse.parse(wrapped, { comments: false, locations: false, luaVersion: '5.3' });
   } catch {
     return tryExtractSimpleFilterRegex(body);
   }
   const fnDecl = ast.body[0];
   if (!fnDecl || fnDecl.type !== 'FunctionDeclaration') return tryExtractSimpleFilterRegex(body);
-  return extractFilterFromStatements(fnDecl.body);
+  return extractFilterFromStatements(fnDecl.body, cardName);
 }
 
 /** Walk a function body's statements, finding the primary return whose
  *  arguments describe card-shape predicates. Skips `if chk==0 then return ... end`
  *  boilerplate — these are targeting-protocol lines, not filter logic. */
-function extractFilterFromStatements(stmts: readonly luaparse.Statement[]): SimpleFilter | undefined {
+function extractFilterFromStatements(
+  stmts: readonly luaparse.Statement[],
+  cardName: string = 'c',
+): SimpleFilter | undefined {
   // Primary pattern: last return statement, or the non-chk==0 branch of an if.
   for (const stmt of stmts) {
     if (stmt.type === 'ReturnStatement' && stmt.arguments.length === 1) {
-      return astExprToFilter(stmt.arguments[0]);
+      return astExprToFilter(stmt.arguments[0], cardName);
     }
   }
   // Look for `if chk == 0 then return A end; <rest>` — extract from the top-level
@@ -656,7 +898,7 @@ function extractFilterFromStatements(stmts: readonly luaparse.Statement[]): Simp
       // If the condition is `chk == 0` or similar protocol boilerplate, skip.
       // Otherwise try the inner body's return.
       for (const clause of stmt.clauses) {
-        const inner = extractFilterFromStatements(clause.body);
+        const inner = extractFilterFromStatements(clause.body, cardName);
         if (inner) return inner;
       }
     }
@@ -665,17 +907,46 @@ function extractFilterFromStatements(stmts: readonly luaparse.Statement[]): Simp
 }
 
 /** Convert a luaparse expression AST to SimpleFilter by walking and/or chains
- *  and decoding leaf `c:IsX(args)` predicates. */
-function astExprToFilter(expr: luaparse.Expression): SimpleFilter | undefined {
-  const predicates: FilterPredicate[] = [];
-  let complete = true;
-  for (const leaf of walkAndChain(expr)) {
-    const pred = astPredicateFromExpr(leaf);
-    predicates.push(pred);
-    if (pred.kind === 'raw') complete = false;
-  }
+ *  and decoding leaf `c:IsX(args)` predicates. `cardName` is the parameter that
+ *  refers to the filtered card (usually `c`; sometimes `_c`, or synthesized from
+ *  `e:GetHandler()` for condition bodies). */
+function astExprToFilter(expr: luaparse.Expression, cardName: string = 'c'): SimpleFilter | undefined {
+  const raw = walkAndChain(expr).map(l => astPredicateFromExpr(l, cardName));
+  // Drop gate-local-var leaves that just guard the chain (e.g. `ft>0 and c:IsX()`
+  // or `szone_chk and c:IsContinuousSpellTrap()`). They don't describe the card
+  // being filtered, so stripping them does not misrepresent the filter and lets
+  // the remaining card predicates express completeness.
+  const predicates = raw.filter(p => !isGateLeaf(p));
   if (predicates.length === 0) return undefined;
-  return { predicates, complete };
+  return { predicates, complete: predicates.every(isPredComplete) };
+}
+
+/** A `raw` leaf that references no card-shaped primitive (c:, e:, Duel., Card., s.).
+ *  These are local-var gates sprinkled into filter bodies as preconditions.
+ *  v7 additions: also strip gates that describe the EVENT/REASON context
+ *  rather than card identity — event-group existence checks, reason-effect
+ *  checks, Duel-scope existence queries. Stripping them lets the remaining
+ *  card predicates express completeness. */
+function isGateLeaf(pred: FilterPredicate): boolean {
+  if (pred.kind !== 'raw') return false;
+  const src = pred.source;
+  // Non-card-identity gates (v7): eg:/re: event-group + reason-effect context
+  // probes, and specific Duel.* existence/state checks that don't involve the
+  // filtered card. NOT included: Duel.GetAttacker (can appear in comparisons
+  // like `Duel.GetAttacker()==c` which DO filter on identity).
+  if (/^(?:eg|re):\w+\b/.test(src)) return true;
+  if (/^Duel[.:](?:IsExistingMatchingCard|CheckReleaseGroupCost|IsPlayerCanSpecialSummon\w*|GetMatchingGroup(?:Count)?|GetFlagEffect|GetLocationCount|IsMainPhase|IsChainDisablable)\b/.test(src)) return true;
+  if (/\b(?:c|e|_c|_e|Duel|Card|s|aux|re|rc|tc|rp|ep|tp)[.:]/.test(src)) return false;
+  if (/^\w+$/.test(src)) return true;
+  if (/^\w+\s*(?:==|~=|<=|>=|<|>)\s*\w+$/.test(src)) return true;
+  return false;
+}
+
+function isPredComplete(p: FilterPredicate): boolean {
+  if (p.kind === 'raw') return false;
+  if (p.kind === 'not') return isPredComplete(p.inner);
+  if (p.kind === 'or') return p.predicates.every(isPredComplete);
+  return true;
 }
 
 /** Walk a logical `and` chain, yielding each conjunct as a separate expression. */
@@ -686,22 +957,144 @@ function walkAndChain(expr: luaparse.Expression): luaparse.Expression[] {
   return [expr];
 }
 
-/** Decode a single expression (typically a c:IsX(arg) call) into a FilterPredicate. */
-function astPredicateFromExpr(expr: luaparse.Expression): FilterPredicate {
+/** Walk a logical `or` chain, yielding each disjunct as a separate expression. */
+function walkOrChain(expr: luaparse.Expression): luaparse.Expression[] {
+  if (expr.type === 'LogicalExpression' && expr.operator === 'or') {
+    return [...walkOrChain(expr.left), ...walkOrChain(expr.right)];
+  }
+  return [expr];
+}
+
+/** Decode a single expression (typically a c:IsX(arg) call) into a FilterPredicate.
+ *  `cardName` names the Lua identifier that refers to the filtered card — usually
+ *  `c`, sometimes `_c`. `e:GetHandler()` is also recognized as a card receiver
+ *  so condition bodies like `function(e) return e:GetHandler():IsX() end` decode
+ *  identically to their `function(c) return c:IsX() end` filter equivalents. */
+function astPredicateFromExpr(expr: luaparse.Expression, cardName: string = 'c'): FilterPredicate {
+  // Disjunction: `A or B` → `or` composite. Nested `or`s are flattened.
+  if (expr.type === 'LogicalExpression' && expr.operator === 'or') {
+    const leaves = walkOrChain(expr);
+    return { kind: 'or', predicates: leaves.map(l => astPredicateFromExpr(l, cardName)) };
+  }
   // Negation: `not X`
   if (expr.type === 'UnaryExpression' && expr.operator === 'not') {
-    const inner = astPredicateFromExpr(expr.argument);
+    const inner = astPredicateFromExpr(expr.argument, cardName);
     return { kind: 'not', inner };
   }
-  // Method call: `c:IsX(arg)` → CallExpression with base = MemberExpression(indexer=':', identifier=IsX)
+  // Method call on card receiver: `c:IsX(arg)` or `e:GetHandler():IsX(arg)`.
   if (expr.type === 'CallExpression' && expr.base.type === 'MemberExpression'
-      && expr.base.indexer === ':'
-      && expr.base.base.type === 'Identifier' && expr.base.base.name === 'c') {
+      && expr.base.indexer === ':' && isCardReceiver(expr.base.base, cardName)) {
     const method = expr.base.identifier.name;
     const argRaw = expr.arguments[0] ? exprToString(expr.arguments[0]) : '';
-    return decodeClause(`c:${method}(${argRaw})`);
+    return decodeMethodPredicate(method, argRaw, `c:${method}(${argRaw})`);
+  }
+  // Comparison: `c:GetLevel() == N` / `c:GetAttack() > N` / `c:GetOverlayCount() > 0`.
+  if (expr.type === 'BinaryExpression' && isComparisonOp(expr.operator)) {
+    const cmp = decodeAttrCompare(expr, cardName);
+    if (cmp) return cmp;
+    // Game-state comparison: `Duel.GetFlagEffect(tp,id) > 0` etc.
+    const gs = decodeGameStateCompare(expr);
+    if (gs) return gs;
+  }
+  // Bare game-state call: `Duel.IsMainPhase()` / `Duel.IsPhase(X)` / `Duel.IsChainDisablable(ev)`.
+  if (expr.type === 'CallExpression' && isDuelCall(expr)) {
+    const method = (expr.base as luaparse.MemberExpression).identifier.name;
+    if (DUEL_STATE_CHECKS.has(method)) {
+      const args = expr.arguments.map(exprToString);
+      return args.length > 0 ? { kind: 'gameState', method, args } : { kind: 'gameState', method };
+    }
   }
   return { kind: 'raw', source: exprToString(expr) };
+}
+
+/** True when `base` is a reference to the filtered card — either the bound identifier
+ *  or the idiomatic `e:GetHandler()` call used in condition bodies. */
+function isCardReceiver(base: luaparse.Expression, cardName: string): boolean {
+  if (base.type === 'Identifier' && (base.name === cardName || base.name === 'c')) return true;
+  // `e:GetHandler()` → CallExpression on Identifier:GetHandler
+  if (base.type === 'CallExpression'
+      && base.base.type === 'MemberExpression'
+      && base.base.indexer === ':'
+      && base.base.identifier.name === 'GetHandler'
+      && base.base.base.type === 'Identifier'
+      && (base.base.base.name === 'e' || base.base.base.name === '_e')) {
+    return true;
+  }
+  return false;
+}
+
+function isComparisonOp(op: string): boolean {
+  return op === '==' || op === '~=' || op === '<' || op === '<=' || op === '>' || op === '>=';
+}
+
+/** Card attribute accessors paired with their FilterPredicate "attr" kind. */
+const CARD_ATTR_GETTERS: Readonly<Record<string, 'level' | 'atk' | 'def' | 'rank' | 'link' | 'overlayCount'>> = {
+  GetLevel: 'level',
+  GetAttack: 'atk',
+  GetBaseAttack: 'atk',
+  GetDefense: 'def',
+  GetBaseDefense: 'def',
+  GetRank: 'rank',
+  GetLink: 'link',
+  GetOverlayCount: 'overlayCount',
+};
+
+/** Decode `c:GetX() OP N` as a typed numeric comparison. */
+function decodeAttrCompare(
+  expr: luaparse.BinaryExpression,
+  cardName: string,
+): FilterPredicate | undefined {
+  // Either side may hold the getter — normalize so `getter` is the call.
+  let getter: luaparse.CallExpression | undefined;
+  let other: luaparse.Expression | undefined;
+  let op: string = expr.operator;
+  if (expr.left.type === 'CallExpression') { getter = expr.left; other = expr.right; }
+  else if (expr.right.type === 'CallExpression') {
+    getter = expr.right; other = expr.left;
+    // Swap the comparison so semantics read "c:GetX() OP N" left-to-right.
+    op = ({ '<': '>', '<=': '>=', '>': '<', '>=': '<=' } as Record<string,string>)[op] ?? op;
+  }
+  if (!getter || !other) return undefined;
+  if (!(getter.base.type === 'MemberExpression'
+      && getter.base.indexer === ':'
+      && isCardReceiver(getter.base.base, cardName))) return undefined;
+  const attr = CARD_ATTR_GETTERS[getter.base.identifier.name];
+  if (!attr) return undefined;
+  const raw = exprToString(other);
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  return { kind: 'attrCompare', attr, op, value: n };
+}
+
+/** Duel.* methods that return a boolean the condition body cares about. */
+const DUEL_STATE_CHECKS = new Set([
+  'IsMainPhase', 'IsBattlePhase', 'IsEndPhase', 'IsDamageStep', 'IsPhase',
+  'IsTurnPlayer', 'IsChainDisablable', 'IsPlayerCanDiscardDeck',
+  'IsPlayerCanDraw', 'IsPlayerCanSpecialSummon', 'IsPlayerAffectedByEffect',
+]);
+
+/** Duel.* methods that return a count; decoded as a comparison. */
+const DUEL_COUNT_CHECKS = new Set([
+  'GetLocationCount', 'GetMZoneCount', 'GetFieldGroupCount', 'GetFlagEffect',
+  'GetCustomActivityCount', 'GetMatchingGroupCount', 'GetTurnCount',
+]);
+
+/** Decode `Duel.GetFlagEffect(tp,id) > 0` / `Duel.GetLocationCount(tp,LOCATION_MZONE) > 0`. */
+function decodeGameStateCompare(expr: luaparse.BinaryExpression): FilterPredicate | undefined {
+  let call: luaparse.CallExpression | undefined;
+  let other: luaparse.Expression | undefined;
+  let op: string = expr.operator;
+  if (expr.left.type === 'CallExpression') { call = expr.left; other = expr.right; }
+  else if (expr.right.type === 'CallExpression') {
+    call = expr.right; other = expr.left;
+    op = ({ '<': '>', '<=': '>=', '>': '<', '>=': '<=' } as Record<string,string>)[op] ?? op;
+  }
+  if (!call || !other || !isDuelCall(call)) return undefined;
+  const method = (call.base as luaparse.MemberExpression).identifier.name;
+  if (!DUEL_COUNT_CHECKS.has(method)) return undefined;
+  const args = call.arguments.map(exprToString);
+  const value = exprToString(other);
+  return { kind: 'gameState', method, args, op, value };
 }
 
 /** Convert a luaparse expression back to a readable string for fallback / opaque cases. */
@@ -772,11 +1165,15 @@ function decodeClause(clause: string): FilterPredicate {
     const inner = decodeClause(notMatch[1].trim());
     return { kind: 'not', inner };
   }
-  // "c:MethodName(args)"
-  const m = /^c:(\w+)\(\s*([^)]*)\s*\)$/.exec(clause);
+  // "c:MethodName(args)" — arg can be empty, or a balanced expression. Use simple paren-balanced match.
+  const m = /^c:(\w+)\((.*)\)$/.exec(clause);
   if (!m) return { kind: 'raw', source: clause };
-  const [, method, argRaw] = m;
-  const arg = argRaw.trim();
+  const method = m[1];
+  const arg = m[2].trim();
+  return decodeMethodPredicate(method, arg, clause);
+}
+
+function decodeMethodPredicate(method: string, arg: string, clause: string): FilterPredicate {
   switch (method) {
     case 'IsAttribute':            return { kind: 'attribute', value: arg };
     case 'IsRace':                 return { kind: 'race', value: arg };
@@ -784,30 +1181,497 @@ function decodeClause(clause: string): FilterPredicate {
     case 'IsLevel':                return { kind: 'level', value: Number(arg) };
     case 'IsLevelAbove':           return { kind: 'levelAbove', value: Number(arg) };
     case 'IsLevelBelow':           return { kind: 'levelBelow', value: Number(arg) };
+    case 'IsRank':                 return { kind: 'rank', value: Number(arg) };
+    case 'IsRankAbove':            return { kind: 'rankAbove', value: Number(arg) };
+    case 'IsRankBelow':            return { kind: 'rankBelow', value: Number(arg) };
+    case 'IsAttack':               return { kind: 'atk', value: Number(arg) };
+    case 'IsAttackAbove':          return { kind: 'atkAbove', value: Number(arg) };
+    case 'IsAttackBelow':          return { kind: 'atkBelow', value: Number(arg) };
+    case 'IsDefense':              return { kind: 'def', value: Number(arg) };
     case 'IsCode':                 return { kind: 'code', value: arg === 'id' ? 'self' : Number(arg) };
     case 'IsSetCard':              return { kind: 'setCard', value: arg };
     case 'IsFaceup':               return { kind: 'faceup' };
     case 'IsFacedown':             return { kind: 'facedown' };
     case 'IsMonster':              return { kind: 'monster' };
     case 'IsSpellTrap':            return { kind: 'spellTrap' };
+    case 'IsSpell':                return { kind: 'spell' };
+    case 'IsTrap':                 return { kind: 'trap' };
     case 'IsAbleToHand':           return { kind: 'ableToHand' };
     case 'IsAbleToGrave':          return { kind: 'ableToGrave' };
     case 'IsAbleToGraveAsCost':    return { kind: 'ableToGraveAsCost' };
     case 'IsAbleToDeck':           return { kind: 'ableToDeck' };
+    case 'IsAbleToRemove':         return { kind: 'ableToRemove' };
+    case 'IsAbleToExtra':          return { kind: 'ableToExtra' };
+    case 'IsAbleToTribute':
+    case 'IsReleasable':           return { kind: 'canBeTributed' };
     case 'IsCanBeSpecialSummoned': return { kind: 'canBeSpecialSummoned' };
     case 'IsCanBeEffectTarget':    return { kind: 'canBeEffectTarget' };
+    case 'IsCanBeSynchroMaterial': return { kind: 'canBeSynchroMaterial' };
+    case 'IsCanBeFusionMaterial':  return { kind: 'canBeFusionMaterial' };
+    case 'IsCanBeXyzMaterial':     return { kind: 'canBeXyzMaterial' };
+    case 'IsCanBeLinkMaterial':    return { kind: 'canBeLinkMaterial' };
+    case 'IsCanBeRitualMaterial':  return { kind: 'canBeRitualMaterial' };
+    case 'IsCanBeDisabledByEffect':return { kind: 'canBeDisabledByEffect' };
+    case 'IsCanBeBattleTarget':    return { kind: 'canBeBattleTarget' };
     case 'IsDiscardable':          return { kind: 'discardable' };
     case 'IsLink':                 return { kind: 'link', value: Number(arg) };
+    case 'IsLinkAbove':            return { kind: 'linkAbove', value: Number(arg) };
+    case 'IsLinkBelow':            return { kind: 'linkBelow', value: Number(arg) };
     case 'IsLinkMonster':          return { kind: 'linkMonster' };
     case 'IsXyzMonster':           return { kind: 'xyzMonster' };
     case 'IsFusionMonster':        return { kind: 'fusionMonster' };
     case 'IsSynchroMonster':       return { kind: 'synchroMonster' };
+    case 'IsRitualMonster':        return { kind: 'ritualMonster' };
+    case 'IsEffectMonster':        return { kind: 'effectMonster' };
+    case 'IsNegatableMonster':
+    case 'IsNegatableEffect':      return { kind: 'negatable' };
+    case 'IsForbidden':            return { kind: 'forbidden' };
     case 'IsSSetable':             return { kind: 'ssetable' };
     case 'IsSetable':              return { kind: 'setable' };
     case 'IsRelateToEffect':       return { kind: 'relateToEffect' };
     case 'IsLocation':             return { kind: 'location', value: arg };
+    case 'IsOnField':              return { kind: 'onField' };
+    case 'IsControler':            return { kind: 'controler', value: arg };
+    case 'IsPreviousControler':    return { kind: 'previousControler', value: arg };
+    case 'IsPlayer':               return { kind: 'player', value: arg };
+    case 'IsPosition':             return { kind: 'position', value: arg };
+    case 'IsReason':               return { kind: 'reason', value: arg };
+    case 'CheckUniqueOnField':     return { kind: 'uniqueOnField' };
+    case 'IsImmuneToEffect':       return { kind: 'immuneToEffect' };
+    case 'HasFlagEffect':          return { kind: 'hasFlag', value: arg };
+    case 'IsPublic':               return { kind: 'publicCard' };
+    case 'IsSummonable':           return { kind: 'summonable' };
+    case 'IsSpecialSummonable':    return { kind: 'specialSummonable' };
+    case 'IsFieldSpell':           return { kind: 'fieldSpell' };
+    case 'IsContinuousSpell':      return { kind: 'continuousSpell' };
+    case 'IsContinuousTrap':       return { kind: 'continuousTrap' };
+    case 'IsContinuousSpellTrap':  return { kind: 'continuousSpellTrap' };
+    case 'IsRitualSpell':          return { kind: 'ritualSpell' };
+    case 'IsNormalSpell':          return { kind: 'normalSpell' };
+    case 'IsNormalTrap':           return { kind: 'normalTrap' };
+    case 'IsNormalSpellTrap':      return { kind: 'normalSpellTrap' };
+    case 'IsTrapMonster':          return { kind: 'trapMonster' };
+    case 'IsNegatableSpellTrap':   return { kind: 'negatableSpellTrap' };
+    case 'IsDisabled':             return { kind: 'disabled' };
+    case 'IsReleasableByEffect':   return { kind: 'releasableByEffect' };
+    case 'IsAttackPos':            return { kind: 'attackPos' };
+    case 'IsDefensePos':           return { kind: 'defensePos' };
+    case 'IsSequence':             return { kind: 'sequence', value: arg };
+    case 'IsInExtraMZone':         return { kind: 'inExtraMZone' };
+    case 'IsOriginalType':         return { kind: 'originalType', value: arg };
+    case 'IsMonsterCard':          return { kind: 'monsterCard' };
+    case 'IsLinkSummoned':         return { kind: 'linkSummoned' };
+    case 'IsFusionSummoned':       return { kind: 'fusionSummoned' };
+    case 'IsSynchroSummoned':      return { kind: 'synchroSummoned' };
+    case 'IsXyzSummoned':          return { kind: 'xyzSummoned' };
+    case 'IsRitualSummoned':       return { kind: 'ritualSummoned' };
+    case 'IsPendulumSummoned':     return { kind: 'pendulumSummoned' };
+    case 'ListsCode':              return { kind: 'listsCode', value: arg };
+    case 'ListsCodeAsMaterial':    return { kind: 'listsCodeAsMaterial', value: arg };
     default:                       return { kind: 'raw', source: clause };
   }
+}
+
+// =============================================================================
+// v5 Non-filter body AST analyzer — walks target/cost/op/condition bodies for
+// (a) delegated filter references via Duel.IsExistingMatchingCard & friends,
+// (b) visible Duel.* actions (send-to-deck, special-summon, etc.),
+// (c) Effect.CreateEffect side-effect registrations.
+// =============================================================================
+
+interface NonFilterAnalysis {
+  simpleFilter?: SimpleFilter;
+  actions?: OperationAction[];
+  sideEffects?: SideEffect[];
+}
+
+/** Lua methods on `Duel` whose first card-ish argument carries a filter. The filter
+ *  is typically `s.X` or `Card.IsY` — both of which we know how to decode. */
+const DUEL_FILTER_METHODS = new Set([
+  'IsExistingMatchingCard', 'SelectMatchingCard',
+  'IsExistingTarget', 'SelectTarget',
+  'GetMatchingGroup', 'GetMatchingGroupCount',
+  'GetFirstMatchingCard', 'GetFieldGroup',
+]);
+
+/** Lua methods on `Duel` that perform a visible game action. Mapped to a normalized
+ *  action kind that downstream consumers can switch on. */
+const DUEL_ACTION_MAP: Readonly<Record<string, string>> = {
+  SendtoDeck: 'send-to-deck',
+  SendtoHand: 'send-to-hand',
+  SendtoGrave: 'send-to-grave',
+  SendtoExtraP: 'send-to-extra-p',
+  Destroy: 'destroy',
+  Remove: 'banish',
+  SpecialSummon: 'special-summon',
+  SpecialSummonStep: 'special-summon-step',
+  SpecialSummonComplete: 'special-summon-complete',
+  Summon: 'normal-summon',
+  MSet: 'monster-set',
+  SSet: 'spell-trap-set',
+  Draw: 'draw',
+  MoveToField: 'move-to-field',
+  NegateEffect: 'negate-effect',
+  NegateActivation: 'negate-activation',
+  NegateRelatedChain: 'negate-related-chain',
+  Damage: 'damage',
+  Recover: 'recover',
+  DiscardHand: 'discard-hand',
+  DiscardDeck: 'mill',
+  ConfirmCards: 'confirm',
+  ConfirmDecktop: 'confirm-decktop',
+  Equip: 'equip',
+  ChangePosition: 'change-position',
+  Overlay: 'attach-xyz-material',
+  BreakEffect: 'break-effect',
+  ShuffleDeck: 'shuffle-deck',
+  ShuffleHand: 'shuffle-hand',
+  ShuffleExtra: 'shuffle-extra',
+  Release: 'tribute',
+};
+
+function analyzeNonFilterBody(
+  body: string,
+  bodies: Map<string, { signature: string; body: string }>,
+): NonFilterAnalysis | undefined {
+  const wrapped = `function __extract__() ${body} end`;
+  let ast: luaparse.Chunk;
+  try {
+    ast = luaparse.parse(wrapped, { comments: false, locations: false, luaVersion: '5.3' });
+  } catch {
+    return undefined;
+  }
+  const fnDecl = ast.body[0];
+  if (!fnDecl || fnDecl.type !== 'FunctionDeclaration') return undefined;
+
+  // Collect all statements in document order, descending into nested blocks.
+  const flatStmts: luaparse.Statement[] = [];
+  walkStmts(fnDecl.body, s => flatStmts.push(s));
+
+  // Prefer a delegated filter when present (most informative). Fall back to the
+  // body's direct return expression — that covers condition bodies of the form
+  // `function(e) return e:GetHandler():IsX() and Duel.IsMainPhase() end`.
+  let simpleFilter = extractDelegatedFilterFromStmts(flatStmts, bodies);
+  if (!simpleFilter) simpleFilter = extractReturnPredicateFromStmts(fnDecl.body);
+
+  const actions = extractOperationActions(flatStmts);
+  const sideEffects = extractSideEffects(flatStmts);
+
+  const anyFound = simpleFilter !== undefined || actions.length > 0 || sideEffects.length > 0;
+  if (!anyFound) return undefined;
+
+  const out: NonFilterAnalysis = {};
+  if (simpleFilter) out.simpleFilter = simpleFilter;
+  if (actions.length > 0) out.actions = actions;
+  if (sideEffects.length > 0) out.sideEffects = sideEffects;
+  return out;
+}
+
+/** Extract a condition-style SimpleFilter from a non-filter body's return expression.
+ *  `cardName` defaults to 'c', but astPredicateFromExpr separately recognizes
+ *  `e:GetHandler():IsX()` as a handler predicate so condition bodies decode too.
+ *  v7: when descending into `if <Identifier> then return X end`, pass the
+ *  identifier name as cardName so target-callback validators like
+ *  `if chkc then return chkc:IsLocation(...) end` decode `chkc:IsX(...)` as a
+ *  card receiver instead of emitting them as raw. */
+function extractReturnPredicateFromStmts(
+  stmts: readonly luaparse.Statement[],
+  cardName: string = 'c',
+): SimpleFilter | undefined {
+  for (const stmt of stmts) {
+    if (stmt.type === 'ReturnStatement' && stmt.arguments.length === 1) {
+      return astExprToFilter(stmt.arguments[0], cardName);
+    }
+    // Descend into `if` clauses whose bodies return — handles `if chkc then return X end`.
+    if (stmt.type === 'IfStatement') {
+      for (const c of stmt.clauses) {
+        let nested = cardName;
+        if (c.type === 'IfClause' && c.condition.type === 'Identifier') {
+          // `if chkc then ...` → chkc is the card receiver inside the body.
+          nested = c.condition.name;
+        }
+        const inner = extractReturnPredicateFromStmts(c.body, nested);
+        if (inner) return inner;
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Recursively visit every statement, descending into if/while/for/do bodies. */
+function walkStmts(
+  stmts: readonly luaparse.Statement[],
+  visit: (s: luaparse.Statement) => void,
+): void {
+  for (const s of stmts) {
+    visit(s);
+    switch (s.type) {
+      case 'IfStatement':
+        for (const c of s.clauses) walkStmts(c.body, visit);
+        break;
+      case 'WhileStatement':
+      case 'RepeatStatement':
+      case 'ForNumericStatement':
+      case 'ForGenericStatement':
+      case 'DoStatement':
+        walkStmts(s.body, visit);
+        break;
+      // Nested FunctionDeclarations are closures (e.g. callbacks) — skip to avoid
+      // picking up actions from unrelated scopes.
+    }
+  }
+}
+
+/** Visit every CallExpression nested inside an expression tree. */
+function walkCallsInExpr(
+  expr: luaparse.Expression,
+  visit: (call: luaparse.CallExpression) => void,
+): void {
+  if (!expr) return;
+  if (expr.type === 'CallExpression') {
+    visit(expr);
+    for (const arg of expr.arguments) walkCallsInExpr(arg, visit);
+    walkCallsInExpr(expr.base, visit);
+    return;
+  }
+  switch (expr.type) {
+    case 'BinaryExpression':
+    case 'LogicalExpression':
+      walkCallsInExpr(expr.left, visit);
+      walkCallsInExpr(expr.right, visit);
+      break;
+    case 'UnaryExpression':
+      walkCallsInExpr(expr.argument, visit);
+      break;
+    case 'MemberExpression':
+      walkCallsInExpr(expr.base, visit);
+      break;
+    case 'IndexExpression':
+      walkCallsInExpr(expr.base, visit);
+      walkCallsInExpr(expr.index, visit);
+      break;
+    case 'TableCallExpression':
+    case 'StringCallExpression':
+      walkCallsInExpr(expr.base, visit);
+      break;
+    case 'TableConstructorExpression':
+      for (const f of expr.fields) {
+        if ('value' in f) walkCallsInExpr(f.value, visit);
+        if (f.type === 'TableKey') walkCallsInExpr(f.key, visit);
+      }
+      break;
+    // Literals / Identifier: leaf, nothing to recurse.
+  }
+}
+
+/** Walk every CallExpression inside any part of a statement. */
+function walkCallsInStmt(
+  stmt: luaparse.Statement,
+  visit: (call: luaparse.CallExpression) => void,
+): void {
+  switch (stmt.type) {
+    case 'CallStatement':
+      walkCallsInExpr(stmt.expression as luaparse.Expression, visit);
+      break;
+    case 'LocalStatement':
+    case 'AssignmentStatement':
+      for (const e of stmt.init) walkCallsInExpr(e, visit);
+      break;
+    case 'ReturnStatement':
+      for (const e of stmt.arguments) walkCallsInExpr(e, visit);
+      break;
+    case 'IfStatement':
+      for (const c of stmt.clauses) {
+        if ('condition' in c) walkCallsInExpr(c.condition, visit);
+      }
+      break;
+    case 'WhileStatement':
+    case 'RepeatStatement':
+      walkCallsInExpr(stmt.condition, visit);
+      break;
+    case 'ForNumericStatement':
+      walkCallsInExpr(stmt.start, visit);
+      walkCallsInExpr(stmt.end, visit);
+      if (stmt.step) walkCallsInExpr(stmt.step, visit);
+      break;
+    case 'ForGenericStatement':
+      for (const e of stmt.iterators) walkCallsInExpr(e, visit);
+      break;
+    // LabelStatement, BreakStatement, GotoStatement, FunctionDeclaration, DoStatement: no interesting calls.
+  }
+}
+
+/** Find the first Duel.* filter-method call whose filter argument resolves to a known
+ *  `s.filter` function (recursively decoded) or a `Card.IsX` direct predicate. */
+function extractDelegatedFilterFromStmts(
+  stmts: readonly luaparse.Statement[],
+  bodies: Map<string, { signature: string; body: string }>,
+): SimpleFilter | undefined {
+  let found: SimpleFilter | undefined;
+  for (const stmt of stmts) {
+    if (found) break;
+    walkCallsInStmt(stmt, call => {
+      if (found) return;
+      if (!isDuelCall(call)) return;
+      const method = (call.base as luaparse.MemberExpression).identifier.name;
+      if (!DUEL_FILTER_METHODS.has(method)) return;
+      for (const arg of call.arguments) {
+        const resolved = resolveFilterArg(arg, bodies);
+        if (resolved) { found = resolved; return; }
+      }
+    });
+  }
+  return found;
+}
+
+/** Resolve one argument of a Duel.* filter method to a SimpleFilter. */
+function resolveFilterArg(
+  arg: luaparse.Expression,
+  bodies: Map<string, { signature: string; body: string }>,
+): SimpleFilter | undefined {
+  // `s.filterName` — look up in helper body map and recursively decode.
+  if (arg.type === 'MemberExpression' && arg.indexer === '.'
+      && arg.base.type === 'Identifier' && arg.base.name === 's') {
+    const entry = bodies.get(arg.identifier.name);
+    if (entry && isFilterSignature(entry.signature)) {
+      return tryExtractSimpleFilter(entry.body);
+    }
+    return undefined;
+  }
+  // `Card.IsX` — single direct predicate (filter delegates entirely to this method).
+  if (arg.type === 'MemberExpression' && arg.indexer === '.'
+      && arg.base.type === 'Identifier' && arg.base.name === 'Card') {
+    const pred = decodeMethodPredicate(arg.identifier.name, '', `c:${arg.identifier.name}()`);
+    if (pred.kind !== 'raw') return { predicates: [pred], complete: true };
+    return undefined;
+  }
+  // `aux.FilterBoolFunction(Card.IsX, val)` — synthesized predicate.
+  if (arg.type === 'CallExpression'
+      && arg.base.type === 'MemberExpression'
+      && arg.base.indexer === '.'
+      && arg.base.base.type === 'Identifier' && arg.base.base.name === 'aux'
+      && /^FilterBoolFunction(Ex)?$/.test(arg.base.identifier.name)) {
+    const predArg = arg.arguments[0];
+    const valArg = arg.arguments[1];
+    if (predArg && predArg.type === 'MemberExpression'
+        && predArg.base.type === 'Identifier' && predArg.base.name === 'Card') {
+      const valRaw = valArg ? exprToString(valArg) : '';
+      const pred = decodeMethodPredicate(predArg.identifier.name, valRaw, `c:${predArg.identifier.name}(${valRaw})`);
+      if (pred.kind !== 'raw') return { predicates: [pred], complete: true };
+    }
+  }
+  return undefined;
+}
+
+/** Check a CallExpression is `Duel.X(...)`. */
+function isDuelCall(call: luaparse.CallExpression): boolean {
+  return call.base.type === 'MemberExpression'
+      && call.base.indexer === '.'
+      && call.base.base.type === 'Identifier' && call.base.base.name === 'Duel';
+}
+
+/** Collect all Duel.* visible actions encountered across every statement. */
+function extractOperationActions(stmts: readonly luaparse.Statement[]): OperationAction[] {
+  const actions: OperationAction[] = [];
+  for (const stmt of stmts) {
+    walkCallsInStmt(stmt, call => {
+      if (!isDuelCall(call)) return;
+      const method = (call.base as luaparse.MemberExpression).identifier.name;
+      const kind = DUEL_ACTION_MAP[method];
+      if (!kind) return;
+      const target = call.arguments[0] ? exprToString(call.arguments[0]) : undefined;
+      const argHints = call.arguments.slice(1).map(exprToString);
+      const entry: OperationAction = { kind, method };
+      if (target !== undefined) entry.target = target;
+      if (argHints.length > 0) entry.argHints = argHints;
+      actions.push(entry);
+    });
+  }
+  return actions;
+}
+
+/** Detect `local e1 = Effect.CreateEffect(X)` + following `e1:SetCode(...)` /
+ *  `e1:SetValue(...)` / ... / `Y:RegisterEffect(e1)` — emit a SideEffect per
+ *  registered effect. Tracks multiple concurrent effect variables. */
+function extractSideEffects(stmts: readonly luaparse.Statement[]): SideEffect[] {
+  interface Pending {
+    handler?: string;       // Effect.CreateEffect argument
+    code?: string;
+    value?: string;
+    types: string[];
+    properties: string[];
+    categories: string[];
+    reset?: string;
+    targetRange?: { self: string; opponent: string };
+  }
+  const pending = new Map<string, Pending>();
+  const emitted: SideEffect[] = [];
+
+  for (const stmt of stmts) {
+    // local eN = Effect.CreateEffect(handlerExpr)
+    if (stmt.type === 'LocalStatement'
+        && stmt.variables.length === 1
+        && stmt.init.length === 1) {
+      const init = stmt.init[0];
+      if (init.type === 'CallExpression'
+          && init.base.type === 'MemberExpression'
+          && init.base.indexer === '.'
+          && init.base.base.type === 'Identifier' && init.base.base.name === 'Effect'
+          && init.base.identifier.name === 'CreateEffect') {
+        const varName = stmt.variables[0].name;
+        const handlerArg = init.arguments[0] ? exprToString(init.arguments[0]) : undefined;
+        pending.set(varName, { handler: handlerArg, types: [], properties: [], categories: [] });
+        continue;
+      }
+    }
+    // eN:SetX(arg) | Y:RegisterEffect(eN)
+    if (stmt.type === 'CallStatement' && stmt.expression.type === 'CallExpression') {
+      const call = stmt.expression;
+      if (call.base.type === 'MemberExpression'
+          && call.base.indexer === ':'
+          && call.base.base.type === 'Identifier') {
+        const receiver = call.base.base.name;
+        const method = call.base.identifier.name;
+        const p = pending.get(receiver);
+        if (p) {
+          const argRaw = call.arguments[0] ? exprToString(call.arguments[0]) : '';
+          switch (method) {
+            case 'SetCode':        p.code = argRaw; break;
+            case 'SetValue':       p.value = argRaw; break;
+            case 'SetType':        if (argRaw) p.types.push(argRaw); break;
+            case 'SetProperty':    if (argRaw) p.properties.push(argRaw); break;
+            case 'SetCategory':    if (argRaw) p.categories.push(argRaw); break;
+            case 'SetReset':       p.reset = argRaw; break;
+            case 'SetTargetRange': {
+              const self = call.arguments[0] ? exprToString(call.arguments[0]) : '';
+              const opp  = call.arguments[1] ? exprToString(call.arguments[1]) : '';
+              p.targetRange = { self, opponent: opp };
+              break;
+            }
+          }
+        }
+        // Any receiver :RegisterEffect(eN) finalizes the SideEffect for eN.
+        if (method === 'RegisterEffect' && call.arguments[0]) {
+          const a = call.arguments[0];
+          if (a.type === 'Identifier' && pending.has(a.name)) {
+            const p = pending.get(a.name)!;
+            const se: SideEffect = { registeredOn: receiver };
+            if (p.code !== undefined)     se.code = p.code;
+            if (p.value !== undefined)    se.value = p.value;
+            if (p.types.length > 0)       se.types = p.types;
+            if (p.properties.length > 0)  se.properties = p.properties;
+            if (p.categories.length > 0)  se.categories = p.categories;
+            if (p.reset !== undefined)    se.reset = p.reset;
+            if (p.targetRange)            se.targetRange = p.targetRange;
+            // Only emit if it carries any identifying info (avoid empty records).
+            if (se.code || se.value || se.types || se.properties) emitted.push(se);
+            pending.delete(a.name);
+          }
+        }
+      }
+    }
+  }
+  return emitted;
 }
 
 // =============================================================================

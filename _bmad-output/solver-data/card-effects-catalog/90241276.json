@@ -2,8 +2,8 @@
   "cardId": 90241276,
   "name": "Snake-Eyes Poplar",
   "sourceFile": "official/c90241276.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_SNAKE_EYE"
@@ -32,15 +32,60 @@
       },
       "condition": {
         "inline": "function(e) return not e:GetHandler():IsReason(REASON_DRAW) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "reason",
+                "value": "REASON_DRAW"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -66,6 +111,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -80,11 +126,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -100,7 +146,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e3"
@@ -130,6 +194,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -144,11 +209,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -164,7 +229,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e2"
     },
@@ -191,6 +274,7 @@
       },
       "target": {
         "name": "s.pltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -198,37 +282,68 @@
               "value": "ATTRIBUTE_FIRE"
             },
             {
-              "kind": "raw",
-              "source": "Duel.GetLocationCount(p,LOCATION_SZONE)>0"
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "p",
+                "LOCATION_SZONE"
+              ],
+              "op": ">",
+              "value": "0"
             },
             {
-              "kind": "raw",
-              "source": "c:CheckUniqueOnField(p)"
+              "kind": "uniqueOnField"
             },
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsForbidden()"
+                "kind": "forbidden"
               }
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.plop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "tc:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "true"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_CHANGE_TYPE",
+            "value": "TYPE_SPELL|TYPE_CONTINUOUS",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD&~ RESET_TURN_SET"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 9,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 9,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

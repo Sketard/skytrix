@@ -2,8 +2,8 @@
   "cardId": 73898890,
   "name": "Dyna Mondo",
   "sourceFile": "official/c73898890.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -49,11 +49,46 @@
       },
       "target": {
         "name": "s.tdtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "canBeEffectTarget"
+            },
+            {
+              "kind": "ableToDeck"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "location",
+                  "value": "LOCATION_ONFIELD"
+                },
+                {
+                  "kind": "ritualMonster"
+                }
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "SEQ_DECKSHUFFLE",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -79,7 +114,19 @@
       },
       "condition": {
         "inline": "function(_,tp) return Duel.IsTurnPlayer(1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.SelfTribute",
@@ -87,27 +134,32 @@
         "resolved": {
           "helper": "Cost.SelfTribute",
           "kind": "tribute",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsRitualMonster()"
+              "kind": "ritualMonster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or Duel.GetMZoneCount(tp,rc)>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "raw",
+                  "source": "Duel.GetMZoneCount(tp,rc)>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.spop",
@@ -118,11 +170,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 1,
+    "fullyDecoded": 4,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 4
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 28"
-  ]
+  "warnings": []
 }

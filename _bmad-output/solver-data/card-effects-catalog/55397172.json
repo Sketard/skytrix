@@ -2,8 +2,8 @@
   "cardId": 55397172,
   "name": "Futsu no Mitama no Mitsurugi",
   "sourceFile": "official/c55397172.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     55397172,
     81560239
@@ -41,6 +41,7 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -59,12 +60,26 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -91,6 +106,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -109,11 +125,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -133,16 +149,51 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 3,
+    "fullyDecoded": 4,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

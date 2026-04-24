@@ -2,8 +2,8 @@
   "cardId": 29301450,
   "name": "S:P Little Knight",
   "sourceFile": "official/c29301450.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -54,15 +54,46 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsLinkSummoned() and e:GetLabel()==1 end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "linkSummoned"
+            },
+            {
+              "kind": "raw",
+              "source": "e:GetLabel()==1"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.rmtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToRemove"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.rmop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "tc",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -102,11 +133,34 @@
       },
       "condition": {
         "inline": "function(_,tp,_,ep) return ep==1-tp end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "ep==1-tp"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.tmprmtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "canBeEffectTarget"
+            },
+            {
+              "kind": "ableToRemove"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tmprmop",
@@ -117,11 +171,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 6
+    "fullyDecoded": 3,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetLabelObject(e1) on line 25"
-  ]
+  "warnings": []
 }

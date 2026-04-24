@@ -2,8 +2,8 @@
   "cardId": 33760966,
   "name": "Dracotail Arthalion",
   "sourceFile": "official/c33760966.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -50,15 +50,53 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsFusionSummoned() and e:GetLabelObject():GetLabel()>0 end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            },
+            {
+              "kind": "raw",
+              "source": "e:GetLabelObject():GetLabel()>0"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.thtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_MZONE|LOCATION_GRAVE"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.thop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -85,11 +123,58 @@
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_LEAVE_FIELD_REDIRECT",
+            "value": "LOCATION_REMOVED",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESET_EVENT|RESETS_REDIRECT"
+          }
+        ]
       }
     },
     {
@@ -106,7 +191,22 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.regop",
@@ -131,7 +231,22 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
@@ -159,7 +274,22 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
@@ -183,7 +313,22 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
@@ -195,11 +340,9 @@
   "coverage": {
     "totalEffects": 7,
     "totalFunctionRefs": 13,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 13
+    "fullyDecoded": 8,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 4
   },
-  "warnings": [
-    "Unhandled method SetLabelObject(e0) on line 27"
-  ]
+  "warnings": []
 }

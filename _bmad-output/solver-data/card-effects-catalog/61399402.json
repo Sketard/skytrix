@@ -2,8 +2,8 @@
   "cardId": 61399402,
   "name": "Light Dragon @Ignister",
   "sourceFile": "official/c61399402.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_IGNISTER"
@@ -42,10 +42,28 @@
       "range": "LOCATION_MZONE",
       "target": {
         "name": "s.reptg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:CheckRemoveOverlayCard(tp)"
+            }
+          ],
+          "complete": false
+        }
       },
       "value": {
         "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "s.repfilter(c,e:GetHandlerPlayer())"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     },
@@ -72,18 +90,45 @@
           "helper": "Cost.DetachFromSelf",
           "kind": "detach-material",
           "params": {
-            "from": "self",
-            "count": 1
+            "args": [
+              "1"
+            ]
           }
         }
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "g",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -107,10 +152,32 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "ep==1-tp"
+            },
+            {
+              "kind": "raw",
+              "source": "bc:IsControler(tp)"
+            },
+            {
+              "kind": "raw",
+              "source": "bc:IsRace(RACE_CYBERSE)"
+            },
+            {
+              "kind": "raw",
+              "source": "bc~=e:GetHandler()"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -121,11 +188,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -137,16 +204,30 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 3,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 5,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

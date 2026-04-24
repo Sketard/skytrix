@@ -2,8 +2,8 @@
   "cardId": 20665527,
   "name": "Amphibious Swarmship Amblowhale",
   "sourceFile": "official/c20665527.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -71,26 +71,41 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "linkMonster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsLinkBelow(3)"
+              "kind": "linkBelow",
+              "value": 3
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -118,7 +133,19 @@
       },
       "condition": {
         "name": "s.descon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "eg:IsContains(e:GetHandler())"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.SelfBanish",
@@ -126,9 +153,7 @@
         "resolved": {
           "helper": "Cost.SelfBanish",
           "kind": "banish",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
@@ -137,16 +162,26 @@
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 1,
+    "fullyDecoded": 4,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 4
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 75003700,
   "name": "Dracotail Lukias",
   "sourceFile": "official/c75003700.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     75003700
   ],
@@ -35,6 +35,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -56,11 +57,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -83,7 +84,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e2"
@@ -113,6 +132,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -134,11 +154,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -161,7 +181,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e1"
     },
@@ -187,10 +225,24 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_GRAVE"
+            },
+            {
+              "kind": "raw",
+              "source": "r&REASON_FUSION==REASON_FUSION"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.settg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -205,11 +257,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.setop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -225,7 +277,16 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],
@@ -233,8 +294,8 @@
     "totalEffects": 3,
     "totalFunctionRefs": 7,
     "fullyDecoded": 6,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

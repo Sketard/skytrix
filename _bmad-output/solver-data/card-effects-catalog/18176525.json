@@ -2,8 +2,8 @@
   "cardId": 18176525,
   "name": "Mitsurugi no Mikoto, Saji",
   "sourceFile": "official/c18176525.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_MITSURUGI"
@@ -33,6 +33,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -47,11 +48,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -67,7 +68,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e2",
@@ -98,6 +117,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -112,11 +132,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -132,7 +152,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e1"
     },
@@ -160,6 +198,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -174,11 +213,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -194,7 +233,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e1"
     },
@@ -216,14 +273,48 @@
       },
       "target": {
         "name": "s.reptg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "releasableByEffect"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "c:IsStatus(STATUS_DESTROY_CONFIRMED)"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) Duel.Release(e:GetHandler(),REASON_EFFECT|REASON_REPLACE) end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "REASON_EFFECT|REASON_REPLACE"
+            ]
+          }
+        ]
       },
       "value": {
         "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "s.repfilter(c,e:GetHandlerPlayer())"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     }
@@ -231,9 +322,9 @@
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 6,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 7,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

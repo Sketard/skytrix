@@ -2,16 +2,39 @@
   "cardId": 49721684,
   "name": "Mitsurugi Mirror",
   "sourceFile": "official/c49721684.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     19899073,
     55397172,
     13332685
   ],
   "listedSeries": [],
-  "summonProcedures": [],
+  "summonProcedures": [
+    {
+      "kind": "Ritual",
+      "rawCall": "local e1=Ritual.CreateProc({handler=c,lvtype=RITPROC_GREATER,filter=function(c) return c:IsRace(RACE_REPTILE) end,matfilter=function(c) return c:IsRace(RACE_REPTILE) end,location=LOCATION_HAND|LOCATION_GRAVE})",
+      "opaque": false,
+      "decoded": {
+        "slots": [],
+        "notes": [
+          "Ritual.CreateProc (sacrifice-based ritual summon)"
+        ]
+      }
+    }
+  ],
   "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [],
+      "properties": [],
+      "events": [],
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      }
+    },
     {
       "id": "e2",
       "categories": [
@@ -35,24 +58,56 @@
       },
       "condition": {
         "name": "s.tdcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "eg:IsContains(e:GetHandler())"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.tdtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToDeck"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "c",
+            "argHints": [
+              "nil",
+              "SEQ_DECKSHUFFLE",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
-    "totalEffects": 1,
+    "totalEffects": 2,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

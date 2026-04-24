@@ -2,8 +2,8 @@
   "cardId": 7511613,
   "name": "Ryzeal Duo Drive",
   "sourceFile": "official/c7511613.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_RYZEAL"
@@ -48,6 +48,15 @@
       },
       "value": {
         "inline": "function(e,c) return (c:IsControler(e:GetHandlerPlayer()) and 100 or -100)*e:GetHandler():GetOverlayCount() end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsControler(e:GetHandlerPlayer()) and 100 or - 100*e:GetHandler():GetOverlayCount()"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     },
@@ -73,6 +82,7 @@
       },
       "target": {
         "name": "s.attachtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -83,16 +93,15 @@
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsCanBeXyzMaterial(xyzc)"
+              "kind": "canBeXyzMaterial"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.attachop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -103,13 +112,21 @@
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsCanBeXyzMaterial(xyzc)"
+              "kind": "canBeXyzMaterial"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "attach-xyz-material",
+            "method": "Overlay",
+            "target": "c",
+            "argHints": [
+              "tc"
+            ]
+          }
+        ]
       }
     },
     {
@@ -131,20 +148,63 @@
       },
       "target": {
         "name": "s.thtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.thop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "thg",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "thg"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 4,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

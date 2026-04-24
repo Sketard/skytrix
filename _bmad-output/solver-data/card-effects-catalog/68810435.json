@@ -2,8 +2,8 @@
   "cardId": 68810435,
   "name": "Cooky☆Yummy",
   "sourceFile": "official/c68810435.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -33,16 +33,19 @@
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsLink(1) or c:IsType(TYPE_SYNCHRO) and c:IsLevel(2)"
-            },
-            {
-              "kind": "faceup"
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "opaque": false
       }
     },
     {
@@ -68,11 +71,29 @@
       },
       "target": {
         "name": "s.atktg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.atkop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e3"
@@ -103,11 +124,29 @@
       },
       "target": {
         "name": "s.atktg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.atkop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e2"
     }
@@ -115,9 +154,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

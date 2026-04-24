@@ -2,8 +2,8 @@
   "cardId": 10966439,
   "name": "Marshmao☆Yummy",
   "sourceFile": "official/c10966439.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -28,6 +28,7 @@
       },
       "condition": {
         "name": "s.spcon",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
@@ -38,17 +39,49 @@
               }
             }
           ],
-          "complete": true
-        },
-        "opaque": false
+          "complete": false
+        }
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -73,6 +106,7 @@
       },
       "target": {
         "name": "s.thpltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -87,12 +121,76 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thplop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "fieldSpell"
+                },
+                {
+                  "kind": "raw",
+                  "source": "szone_chk and c:IsContinuousSpellTrap()"
+                }
+              ]
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "faceup"
+                },
+                {
+                  "kind": "location",
+                  "value": "LOCATION_DECK"
+                }
+              ]
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "forbidden"
+              }
+            },
+            {
+              "kind": "uniqueOnField"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "sc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "sc",
+            "argHints": [
+              "tp",
+              "tp",
+              "place_location",
+              "POS_FACEUP",
+              "true"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e2b"
@@ -121,6 +219,7 @@
       },
       "target": {
         "name": "s.thpltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -135,12 +234,76 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thplop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "fieldSpell"
+                },
+                {
+                  "kind": "raw",
+                  "source": "szone_chk and c:IsContinuousSpellTrap()"
+                }
+              ]
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "faceup"
+                },
+                {
+                  "kind": "location",
+                  "value": "LOCATION_DECK"
+                }
+              ]
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "forbidden"
+              }
+            },
+            {
+              "kind": "uniqueOnField"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "sc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "sc",
+            "argHints": [
+              "tp",
+              "tp",
+              "place_location",
+              "POS_FACEUP",
+              "true"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e2a"
     }
@@ -148,9 +311,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 3,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

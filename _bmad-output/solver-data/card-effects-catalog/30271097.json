@@ -2,8 +2,8 @@
   "cardId": 30271097,
   "name": "The Fallen & The Virtuous",
   "sourceFile": "official/c30271097.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_BRANDED",
@@ -31,50 +31,81 @@
       },
       "cost": {
         "name": "s.effcost",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:ListsCode(CARD_ALBAZ)"
+              "kind": "listsCode",
+              "value": "CARD_ALBAZ"
             },
             {
               "kind": "ableToGraveAsCost"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.efftg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:ListsCode(CARD_ALBAZ)"
+              "kind": "listsCode",
+              "value": "CARD_ALBAZ"
             },
             {
               "kind": "ableToGraveAsCost"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.effop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(TIMING_END_PHASE,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 16"
-  ]
+  "warnings": []
 }

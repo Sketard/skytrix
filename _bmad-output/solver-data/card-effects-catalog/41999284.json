@@ -2,8 +2,8 @@
   "cardId": 41999284,
   "name": "Linkuriboh",
   "sourceFile": "official/c41999284.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -46,7 +46,23 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "name": "s.atkcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            },
+            {
+              "kind": "raw",
+              "source": "at:HasNonZeroAttack()"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.SelfTribute",
@@ -54,14 +70,23 @@
         "resolved": {
           "helper": "Cost.SelfTribute",
           "kind": "tribute",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "operation": {
         "name": "s.atkop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_SET_ATTACK_FINAL",
+            "value": "0",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     },
     {
@@ -83,26 +108,66 @@
       },
       "cost": {
         "name": "s.spcost",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "ft>- 1"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_BATTLE_START|TIMING_END_PHASE) on line 24"
-  ]
+  "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 32548318,
   "name": "Rahu Dracotail",
   "sourceFile": "official/c32548318.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"

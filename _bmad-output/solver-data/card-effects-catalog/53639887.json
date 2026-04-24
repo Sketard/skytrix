@@ -2,8 +2,8 @@
   "cardId": 53639887,
   "name": "Divine Temple of the Snake-Eye",
   "sourceFile": "official/c53639887.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_SNAKE_EYE"
@@ -27,7 +27,35 @@
       },
       "operation": {
         "name": "s.activate",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "tc:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "true"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_CHANGE_TYPE",
+            "value": "TYPE_SPELL|TYPE_CONTINUOUS",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD&~ RESET_TURN_SET"
+          }
+        ]
       }
     },
     {
@@ -47,7 +75,20 @@
       },
       "target": {
         "inline": "function(e,c) return c:IsLevel(1) and c:IsAttribute(ATTRIBUTE_FIRE) end",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "level",
+              "value": 1
+            },
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       },
       "value": {
         "inline": "1100",
@@ -82,30 +123,44 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "c:IsOriginalType(TYPE_MONSTER)"
+              "kind": "originalType",
+              "value": "TYPE_MONSTER"
             },
             {
-              "kind": "raw",
-              "source": "c:IsContinuousSpell()"
+              "kind": "continuousSpell"
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e4"
@@ -140,30 +195,44 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "c:IsOriginalType(TYPE_MONSTER)"
+              "kind": "originalType",
+              "value": "TYPE_MONSTER"
             },
             {
-              "kind": "raw",
-              "source": "c:IsContinuousSpell()"
+              "kind": "continuousSpell"
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e3"
     }
@@ -171,9 +240,9 @@
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 6
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 2
   },
   "warnings": []
 }

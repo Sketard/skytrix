@@ -2,8 +2,8 @@
   "cardId": 24224830,
   "name": "Called by the Grave",
   "sourceFile": "official/c24224830.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -24,14 +24,14 @@
       ],
       "target": {
         "name": "s.target",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToRemove()"
+              "kind": "ableToRemove"
             },
             {
               "kind": "raw",
@@ -39,21 +39,31 @@
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.activate",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "tc",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 0,
+    "fullyDecoded": 1,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

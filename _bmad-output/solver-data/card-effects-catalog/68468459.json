@@ -2,8 +2,8 @@
   "cardId": 68468459,
   "name": "Fallen of Albaz",
   "sourceFile": "official/c68468459.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -31,7 +31,19 @@
       },
       "condition": {
         "inline": "function() return not Duel.IsDamageStep() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.Discard()",
@@ -39,10 +51,7 @@
         "resolved": {
           "helper": "Cost.Discard",
           "kind": "discard",
-          "params": {
-            "from": "hand",
-            "count": 1
-          }
+          "params": {}
         }
       },
       "target": {
@@ -92,7 +101,19 @@
       },
       "condition": {
         "inline": "function() return not Duel.IsDamageStep() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.Discard()",
@@ -100,10 +121,7 @@
         "resolved": {
           "helper": "Cost.Discard",
           "kind": "discard",
-          "params": {
-            "from": "hand",
-            "count": 1
-          }
+          "params": {}
         }
       },
       "target": {
@@ -131,9 +149,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 6,
+    "fullyDecoded": 8,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

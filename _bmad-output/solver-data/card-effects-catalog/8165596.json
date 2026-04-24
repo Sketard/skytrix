@@ -2,8 +2,8 @@
   "cardId": 8165596,
   "name": "Number 90: Galaxy-Eyes Photon Lord",
   "sourceFile": "official/c8165596.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_PHOTON",
@@ -44,7 +44,16 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "inline": "function(e) return e:GetHandler():GetOverlayGroup():IsExists(Card.IsSetCard,1,nil,SET_PHOTON) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "e:GetHandler():GetOverlayGroup():IsExists(Card.IsSetCard,1,nil,SET_PHOTON)"
+            }
+          ],
+          "complete": false
+        }
       },
       "value": {
         "inline": "1",
@@ -72,11 +81,38 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp,chk) return rp==1-tp and re:IsMonsterEffect() and Duel.IsChainDisablable(ev) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "rp==1-tp"
+            },
+            {
+              "kind": "gameState",
+              "method": "IsChainDisablable",
+              "args": [
+                "ev"
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.DetachFromSelf(1,1,function(e,og) e:SetLabel(og:GetFirst():IsSetCard(SET_GALAXY) and 1 or 0) end)",
-        "opaque": true
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "1",
+              "1",
+              "function(e,og) e:SetLabel(og:GetFirst():IsSetCard(SET_GALAXY) and 1 or 0) end"
+            ]
+          }
+        }
       },
       "target": {
         "name": "s.distg",
@@ -84,7 +120,26 @@
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "eg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -108,10 +163,23 @@
       },
       "condition": {
         "inline": "function(e,tp) return Duel.IsTurnPlayer(1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.thmattg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
@@ -119,16 +187,24 @@
               "value": "<TableConstructorExpression>"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or relation_chk and c:IsCanBeXyzMaterial(hc,tp,REASON_EFFECT)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "raw",
+                  "source": "relation_chk and c:IsCanBeXyzMaterial(hc,tp,REASON_EFFECT)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.thmatop",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
@@ -136,24 +212,29 @@
               "value": "<TableConstructorExpression>"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or relation_chk and c:IsCanBeXyzMaterial(hc,tp,REASON_EFFECT)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "raw",
+                  "source": "relation_chk and c:IsCanBeXyzMaterial(hc,tp,REASON_EFFECT)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 6
+    "fullyDecoded": 3,
+    "partiallyDecoded": 4,
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 38"
-  ]
+  "warnings": []
 }

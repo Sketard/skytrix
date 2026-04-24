@@ -2,8 +2,8 @@
   "cardId": 5088741,
   "name": "Code Igniter",
   "sourceFile": "official/c5088741.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_AI"
@@ -23,6 +23,17 @@
         ],
         "notes": [
           "Rank 4"
+        ]
+      }
+    },
+    {
+      "kind": "Ritual",
+      "rawCall": "local e2=Ritual.CreateProc(c,RITPROC_GREATER,nil,nil,aux.Stringid(id,1))",
+      "opaque": false,
+      "decoded": {
+        "slots": [],
+        "notes": [
+          "Ritual.CreateProc (sacrifice-based ritual summon)"
         ]
       }
     }
@@ -51,15 +62,101 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsXyzSummoned() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "xyzSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
-        "inline": "s.thtg(s.thfilter1)",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "race",
+              "value": "RACE_CYBERSE"
+            },
+            {
+              "kind": "ritualMonster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "inline": "s.thtg(s.thfilter1)"
       },
       "operation": {
-        "inline": "s.thop(s.thfilter1)",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "race",
+              "value": "RACE_CYBERSE"
+            },
+            {
+              "kind": "ritualMonster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ],
+        "inline": "s.thop(s.thfilter1)"
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [],
+      "events": [],
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1,1,nil)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "1",
+              "1",
+              "nil"
+            ]
+          }
+        }
       }
     },
     {
@@ -85,24 +182,82 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and r==REASON_LINK end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_GRAVE"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
-        "inline": "s.thtg(s.thfilter2)",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_AI"
+            },
+            {
+              "kind": "trap"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "inline": "s.thtg(s.thfilter2)"
       },
       "operation": {
-        "inline": "s.thop(s.thfilter2)",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_AI"
+            },
+            {
+              "kind": "trap"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ],
+        "inline": "s.thop(s.thfilter2)"
       }
     }
   ],
   "coverage": {
-    "totalEffects": 2,
-    "totalFunctionRefs": 6,
-    "fullyDecoded": 0,
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 7,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 6
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 73819701,
   "name": "Fallen of the White Dragon",
   "sourceFile": "official/c73819701.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_ECCLESIA"
@@ -28,27 +28,70 @@
       },
       "cost": {
         "name": "s.selfspcost",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:ListsCode(CARD_ALBAZ)"
+              "kind": "listsCode",
+              "value": "CARD_ALBAZ"
             },
             {
               "kind": "ableToGraveAsCost"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.selfsptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.selfspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -73,6 +116,7 @@
       },
       "target": {
         "name": "s.hdgysptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -84,12 +128,26 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.hdgyspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e2b"
@@ -118,6 +176,7 @@
       },
       "target": {
         "name": "s.hdgysptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -129,12 +188,26 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.hdgyspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e2a"
     }
@@ -142,9 +215,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 7,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

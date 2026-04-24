@@ -2,8 +2,8 @@
   "cardId": 72578374,
   "name": "Khaos Starsource Dragon",
   "sourceFile": "official/c72578374.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -62,15 +62,49 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsFusionSummoned() and e:GetLabel()>0 end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            },
+            {
+              "kind": "raw",
+              "source": "e:GetLabel()>0"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "onField"
+            },
+            {
+              "kind": "controler",
+              "value": "1-tp"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -111,6 +145,7 @@
       },
       "target": {
         "name": "s.lvtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -130,23 +165,34 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.lvop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_CHANGE_LEVEL",
+            "value": "8",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetLabelObject(e1) on line 26"
-  ]
+  "warnings": []
 }

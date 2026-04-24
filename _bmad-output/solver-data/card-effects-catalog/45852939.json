@@ -2,8 +2,8 @@
   "cardId": 45852939,
   "name": "Eclipse Twins",
   "sourceFile": "official/c45852939.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -46,11 +46,38 @@
       },
       "target": {
         "inline": "function(e,c) return c:IsRank(4) end",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "rank",
+              "value": 4
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       },
       "value": {
         "inline": "function(e,_,rc) return rc==e:GetHandler() and 4 or 0 end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "rc==e:GetHandler() and 4"
+                },
+                {
+                  "kind": "raw",
+                  "source": "0"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       }
     },
     {
@@ -65,19 +92,66 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "inline": "function() return Duel.IsAbleToEnterBP() end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.IsAbleToEnterBP()"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.DetachFromSelf(1,1,nil)",
-        "opaque": true
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "1",
+              "1",
+              "nil"
+            ]
+          }
+        }
       },
       "target": {
         "name": "s.atktg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:GetEffectCount(EFFECT_EXTRA_ATTACK)==0"
+            },
+            {
+              "kind": "raw",
+              "source": "c:GetEffectCount(EFFECT_EXTRA_ATTACK_MONSTER)==0"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.atkop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_EXTRA_ATTACK_MONSTER",
+            "value": "1",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     },
     {
@@ -103,20 +177,59 @@
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "type",
+              "value": "TYPE_XYZ"
+            },
+            {
+              "kind": "rankBelow",
+              "value": 4
+            },
+            {
+              "kind": "canBeEffectTarget"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "sc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "attach-xyz-material",
+            "method": "Overlay",
+            "target": "sc",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 7
+    "fullyDecoded": 5,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

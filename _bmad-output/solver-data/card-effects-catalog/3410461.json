@@ -2,8 +2,8 @@
   "cardId": 3410461,
   "name": "Alba-Lenatus the Abyss Dragon",
   "sourceFile": "official/c3410461.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_FUSION"
@@ -41,7 +41,18 @@
       ],
       "operation": {
         "name": "s.atkop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_EXTRA_ATTACK_MONSTER",
+            "value": "c:GetMaterialCount()-1",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD_DISABLE"
+          }
+        ]
       }
     },
     {
@@ -59,16 +70,29 @@
       ],
       "operation": {
         "name": "s.regop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EVENT_PHASE+PHASE_END",
+            "types": [
+              "EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O"
+            ],
+            "categories": [
+              "CATEGORY_TOHAND+CATEGORY_SEARCH"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 0,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

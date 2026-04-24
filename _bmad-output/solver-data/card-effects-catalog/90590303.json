@@ -2,8 +2,8 @@
   "cardId": 90590303,
   "name": "Number 41: Bagooska the Terribly Tired Tapir",
   "sourceFile": "official/c90590303.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -47,11 +47,33 @@
       },
       "condition": {
         "name": "s.mtcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.mtop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       }
     },
     {
@@ -69,7 +91,15 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "name": "s.tgcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            }
+          ],
+          "complete": true
+        }
       },
       "value": {
         "inline": "aux.tgoval",
@@ -99,11 +129,28 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "name": "s.tgcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            }
+          ],
+          "complete": true
+        }
       },
       "value": {
         "name": "s.indval",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "tp~=e:GetHandlerPlayer()"
+            }
+          ],
+          "complete": false
+        }
       },
       "clonedFrom": "e2"
     },
@@ -124,11 +171,27 @@
       },
       "condition": {
         "name": "s.poscon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "defensePos"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.postg",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       },
       "value": {
         "inline": "POS_FACEUP_DEFENSE",
@@ -149,20 +212,39 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "name": "s.discon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "defensePos"
+            },
+            {
+              "kind": "raw",
+              "source": "pos&POS_DEFENSE~=0"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 5,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 8
+    "fullyDecoded": 7,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

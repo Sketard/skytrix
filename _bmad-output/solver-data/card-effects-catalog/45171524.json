@@ -2,8 +2,8 @@
   "cardId": 45171524,
   "name": "Mitsurugi Prayers",
   "sourceFile": "official/c45171524.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_MITSURUGI"
@@ -32,7 +32,17 @@
       },
       "cost": {
         "name": "s.effcost",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.efftg",
@@ -40,6 +50,7 @@
       },
       "operation": {
         "name": "s.effop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -55,18 +66,86 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "shuffle-hand",
+            "method": "ShuffleHand",
+            "target": "tp"
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "damage",
+            "method": "Damage",
+            "target": "tp",
+            "argHints": [
+              "800",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "special-summon-step",
+            "method": "SpecialSummonStep",
+            "target": "sc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "special-summon-complete",
+            "method": "SpecialSummonComplete"
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "sc",
+            "code": "EFFECT_CANNOT_DIRECT_ATTACK",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 1,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 16"
-  ]
+  "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 93360904,
   "name": "Yummyusment★Acroquey",
   "sourceFile": "official/c93360904.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -49,11 +49,33 @@
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "onField"
+            },
+            {
+              "kind": "controler",
+              "value": "1-tp"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -83,6 +105,7 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -94,11 +117,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -111,7 +134,21 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -134,6 +171,7 @@
       },
       "target": {
         "name": "s.tdtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -144,29 +182,47 @@
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToDeck() or c:IsAbleToExtra()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToDeck"
+                },
+                {
+                  "kind": "ableToExtra"
+                }
+              ]
             },
             {
               "kind": "faceup"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 2
   },
   "warnings": []
 }

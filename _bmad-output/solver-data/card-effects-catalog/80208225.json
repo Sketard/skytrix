@@ -2,8 +2,8 @@
   "cardId": 80208225,
   "name": "Dracotail Sting",
   "sourceFile": "official/c80208225.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     80208225
   ],
@@ -35,22 +35,66 @@
       },
       "target": {
         "name": "s.target",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToRemove"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.activate",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "tg",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "tp",
+            "argHints": [
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 0,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 16"
-  ]
+  "warnings": []
 }

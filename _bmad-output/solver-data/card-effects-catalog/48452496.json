@@ -2,8 +2,8 @@
   "cardId": 48452496,
   "name": "Snake-Eyes Flamberge Dragon",
   "sourceFile": "official/c48452496.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -26,6 +26,7 @@
       },
       "target": {
         "name": "s.pltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -35,25 +36,78 @@
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "Duel.GetLocationCount(p,LOCATION_SZONE)>0"
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "p",
+                "LOCATION_SZONE"
+              ],
+              "op": ">",
+              "value": "0"
             },
             {
-              "kind": "raw",
-              "source": "c:CheckUniqueOnField(p)"
+              "kind": "uniqueOnField"
             },
             {
-              "kind": "raw",
-              "source": "c:IsLocation(LOCATION_MZONE) or not c:IsForbidden()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "location",
+                  "value": "LOCATION_MZONE"
+                },
+                {
+                  "kind": "not",
+                  "inner": {
+                    "kind": "forbidden"
+                  }
+                }
+              ]
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.plop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "tc:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "tc:IsMonsterCard()"
+            ]
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "tc",
+            "argHints": [
+              "REASON_RULE",
+              "nil",
+              "PLAYER_NONE"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_CHANGE_TYPE",
+            "value": "TYPE_SPELL|TYPE_CONTINUOUS",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD&~ RESET_TURN_SET"
+          }
+        ]
       }
     },
     {
@@ -78,34 +132,59 @@
       },
       "condition": {
         "inline": "function(e,tp) return Duel.IsTurnPlayer(1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "c:IsMonsterCard()"
+              "kind": "monsterCard"
             },
             {
-              "kind": "raw",
-              "source": "c:IsContinuousSpell()"
+              "kind": "continuousSpell"
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -130,10 +209,20 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsPreviousLocation(LOCATION_ONFIELD|LOCATION_HAND) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsPreviousLocation(LOCATION_ONFIELD|LOCATION_HAND)"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.gysptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -149,11 +238,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.gyspop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -170,18 +259,30 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 7,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER_E) on line 24"
-  ]
+  "warnings": []
 }

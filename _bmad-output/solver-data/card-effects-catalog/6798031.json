@@ -2,8 +2,8 @@
   "cardId": 6798031,
   "name": "Ryzeal Cross",
   "sourceFile": "official/c6798031.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     6798031
   ],
@@ -42,6 +42,15 @@
       },
       "target": {
         "name": "s.xyzlimit",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "sumtyp&SUMMON_TYPE_XYZ==SUMMON_TYPE_XYZ"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     },
@@ -66,6 +75,7 @@
       },
       "target": {
         "name": "s.drtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -84,12 +94,36 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.drop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "tp",
+            "argHints": [
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -107,20 +141,71 @@
       "range": "LOCATION_FZONE",
       "condition": {
         "name": "s.negcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "type",
+              "value": "TYPE_XYZ"
+            },
+            {
+              "kind": "attrCompare",
+              "attr": "overlayCount",
+              "op": ">",
+              "value": 0
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.negop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_RYZEAL"
+            },
+            {
+              "kind": "type",
+              "value": "TYPE_XYZ"
+            },
+            {
+              "kind": "attrCompare",
+              "attr": "overlayCount",
+              "op": ">",
+              "value": 0
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

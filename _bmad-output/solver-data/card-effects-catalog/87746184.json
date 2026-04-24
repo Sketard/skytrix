@@ -2,8 +2,8 @@
   "cardId": 87746184,
   "name": "Albion the Branded Dragon",
   "sourceFile": "official/c87746184.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     87746184
   ],
@@ -66,7 +66,15 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsFusionSummoned() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "inline": "Fusion.SummonEffTG(params)",
@@ -111,10 +119,27 @@
       },
       "condition": {
         "name": "s.thsetcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:GetTurnID()==Duel.GetTurnCount()"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "reason",
+                "value": "REASON_RETURN"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.thsettg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -125,16 +150,23 @@
               "kind": "spellTrap"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or c:IsSSetable()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ssetable"
+                }
+              ]
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.thsetop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -145,22 +177,28 @@
               "kind": "spellTrap"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or c:IsSSetable()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ssetable"
+                }
+              ]
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

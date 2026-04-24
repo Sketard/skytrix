@@ -2,8 +2,8 @@
   "cardId": 20295753,
   "name": "Night Sword Serpent",
   "sourceFile": "official/c20295753.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -35,20 +35,67 @@
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_LEAVE_FIELD_REDIRECT",
+            "value": "LOCATION_REMOVED",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESET_EVENT|RESETS_REDIRECT"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

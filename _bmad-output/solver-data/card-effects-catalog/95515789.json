@@ -2,8 +2,8 @@
   "cardId": 95515789,
   "name": "Blazing Cartesia, the Virtuous",
   "sourceFile": "official/c95515789.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -30,11 +30,44 @@
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -58,7 +91,16 @@
       },
       "condition": {
         "inline": "function() return Duel.IsMainPhase() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "inline": "Fusion.SummonEffTG(table.unpack(params))",
@@ -101,26 +143,58 @@
       },
       "condition": {
         "inline": "function(_,tp) return Duel.GetFlagEffect(tp,id)>0 end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetFlagEffect",
+              "args": [
+                "tp",
+                "id"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.thtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.thop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "c",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 9,
-    "fullyDecoded": 2,
+    "fullyDecoded": 8,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 7
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END) on line 25"
-  ]
+  "warnings": []
 }

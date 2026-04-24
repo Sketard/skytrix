@@ -2,8 +2,8 @@
   "cardId": 34022970,
   "name": "Ext Ryzeal",
   "sourceFile": "official/c34022970.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     34022970
   ],
@@ -32,15 +32,56 @@
       },
       "condition": {
         "name": "s.selfspcon",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "# g>0"
+            },
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       },
       "target": {
         "name": "s.selfsptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "type",
+              "value": "TYPE_XYZ"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.selfspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       }
     },
     {
@@ -66,6 +107,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -81,11 +123,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -102,7 +144,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e3"
@@ -132,6 +192,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -147,11 +208,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -168,7 +229,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e2"
     }
@@ -176,9 +255,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

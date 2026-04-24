@@ -2,8 +2,8 @@
   "cardId": 70534340,
   "name": "Lubellion the Searing Dragon",
   "sourceFile": "official/c70534340.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -62,11 +62,40 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "name": "s.spcost",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "discardable"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "discard-hand",
+            "method": "DiscardHand",
+            "target": "tp",
+            "argHints": [
+              "Card.IsDiscardable",
+              "1",
+              "1",
+              "REASON_COST|REASON_DISCARD"
+            ]
+          }
+        ]
       },
       "target": {
         "inline": "Fusion.SummonEffTG(params)",
@@ -92,9 +121,9 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
+    "fullyDecoded": 4,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

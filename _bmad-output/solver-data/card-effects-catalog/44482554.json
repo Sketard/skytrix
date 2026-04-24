@@ -2,8 +2,8 @@
   "cardId": 44482554,
   "name": "Dracotail Pan",
   "sourceFile": "official/c44482554.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -33,10 +33,24 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_GRAVE"
+            },
+            {
+              "kind": "raw",
+              "source": "r&REASON_FUSION==REASON_FUSION"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.settg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -51,11 +65,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.setop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -71,7 +85,33 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "sg"
+            ]
+          },
+          {
+            "kind": "shuffle-deck",
+            "method": "ShuffleDeck",
+            "target": "tp"
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "dg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -98,10 +138,23 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "eg:IsContains(e:GetHandler())"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -120,11 +173,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -144,7 +197,31 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "c",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
@@ -152,8 +229,8 @@
     "totalEffects": 2,
     "totalFunctionRefs": 6,
     "fullyDecoded": 4,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

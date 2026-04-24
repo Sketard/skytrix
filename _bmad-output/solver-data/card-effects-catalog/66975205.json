@@ -2,8 +2,8 @@
   "cardId": 66975205,
   "name": "Yummyusment☆Mignon",
   "sourceFile": "official/c66975205.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -46,6 +46,15 @@
       },
       "value": {
         "name": "s.atkval",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "500*Duel.GetMatchingGroupCount(s.atkfilter,0,LOCATION_MZONE,LOCATION_MZONE,nil)"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     },
@@ -73,6 +82,7 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -88,12 +98,26 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -116,6 +140,7 @@
       },
       "target": {
         "name": "s.tdtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -126,29 +151,47 @@
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToDeck() or c:IsAbleToExtra()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToDeck"
+                },
+                {
+                  "kind": "ableToExtra"
+                }
+              ]
             },
             {
               "kind": "faceup"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

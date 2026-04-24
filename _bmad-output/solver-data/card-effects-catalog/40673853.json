@@ -2,8 +2,8 @@
   "cardId": 40673853,
   "name": "Vallon, the Super Psy Skyblaster",
   "sourceFile": "official/c40673853.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -49,7 +49,16 @@
       },
       "condition": {
         "inline": "function() return Duel.IsMainPhase() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.DetachFromSelf(1)",
@@ -58,18 +67,46 @@
           "helper": "Cost.DetachFromSelf",
           "kind": "detach-material",
           "params": {
-            "from": "self",
-            "count": 1
+            "args": [
+              "1"
+            ]
           }
         }
       },
       "target": {
         "name": "s.postg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_MZONE"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsCanTurnSet()"
+            },
+            {
+              "kind": "controler",
+              "value": "1-tp"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.posop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "change-position",
+            "method": "ChangePosition",
+            "target": "tc",
+            "argHints": [
+              "POS_FACEDOWN_DEFENSE"
+            ]
+          }
+        ]
       }
     },
     {
@@ -95,22 +132,38 @@
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "facedown"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 18"
-  ]
+  "warnings": []
 }

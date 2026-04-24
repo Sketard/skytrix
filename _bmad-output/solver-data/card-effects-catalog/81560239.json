@@ -2,8 +2,8 @@
   "cardId": 81560239,
   "name": "Mitsurugi Ritual",
   "sourceFile": "official/c81560239.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -24,11 +24,47 @@
       "descriptionStringId": "0",
       "cost": {
         "name": "s.effcost",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "b1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "b2"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "b1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "b2"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.effop",
@@ -40,8 +76,8 @@
     "totalEffects": 1,
     "totalFunctionRefs": 3,
     "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

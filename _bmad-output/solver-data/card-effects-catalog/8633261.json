@@ -2,8 +2,8 @@
   "cardId": 8633261,
   "name": "Ice Ryzeal",
   "sourceFile": "official/c8633261.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     8633261
   ],
@@ -32,15 +32,52 @@
       },
       "condition": {
         "name": "s.selfspcon",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "# g>0"
+            },
+            {
+              "kind": "gameState",
+              "method": "GetMZoneCount",
+              "args": [
+                "tp",
+                "g"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       },
       "target": {
         "name": "s.selfsptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToGraveAsCost"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.selfspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       }
     },
     {
@@ -65,6 +102,7 @@
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -83,11 +121,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -107,16 +145,30 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

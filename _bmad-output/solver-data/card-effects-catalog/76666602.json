@@ -2,8 +2,8 @@
   "cardId": 76666602,
   "name": "The Dragon that Devours the Dogma",
   "sourceFile": "official/c76666602.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_ECCLESIA",
@@ -71,7 +71,22 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "inline": "function(e) return Duel.IsExistingMatchingCard(s.atkimmconfilter,e:GetHandlerPlayer(),LOCATION_MZONE|LOCATION_GRAVE,LOCATION_MZONE|LOCATION_GRAVE,1,nil) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "setCard",
+              "value": "SET_ECCLESIA"
+            },
+            {
+              "kind": "monster"
+            }
+          ],
+          "complete": true
+        }
       },
       "value": {
         "inline": "500",
@@ -97,11 +112,35 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "inline": "function(e) return Duel.IsExistingMatchingCard(s.atkimmconfilter,e:GetHandlerPlayer(),LOCATION_MZONE|LOCATION_GRAVE,LOCATION_MZONE|LOCATION_GRAVE,1,nil) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "setCard",
+              "value": "SET_ECCLESIA"
+            },
+            {
+              "kind": "monster"
+            }
+          ],
+          "complete": true
+        }
       },
       "value": {
         "inline": "function(e,te) return te:GetOwner()~=e:GetOwner() end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "te:GetOwner()~=e:GetOwner()"
+            }
+          ],
+          "complete": false
+        }
       },
       "clonedFrom": "e1a"
     },
@@ -127,11 +166,31 @@
       },
       "target": {
         "name": "s.tdtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToDeck"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "SEQ_DECKSHUFFLE",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -156,10 +215,20 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():GetTurnID()==Duel.GetTurnCount() end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "e:GetHandler():GetTurnID()==Duel.GetTurnCount()"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -171,11 +240,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -188,16 +257,34 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

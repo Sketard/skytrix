@@ -2,8 +2,8 @@
   "cardId": 72238166,
   "name": "Node Ryzeal",
   "sourceFile": "official/c72238166.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     72238166
   ],
@@ -32,7 +32,22 @@
       },
       "condition": {
         "name": "s.selfspcon",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       },
       "operation": {
         "name": "s.selfspop",
@@ -59,22 +74,39 @@
       },
       "cost": {
         "name": "s.gyspcost",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "ableToGraveAsCost"
             },
             {
-              "kind": "raw",
-              "source": "Duel.GetMZoneCount(tp,c)>0"
+              "kind": "gameState",
+              "method": "GetMZoneCount",
+              "args": [
+                "tp",
+                "c"
+              ],
+              "op": ">",
+              "value": "0"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.gysptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -93,21 +125,39 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.gyspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon-step",
+            "method": "SpecialSummonStep",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP_DEFENSE"
+            ]
+          },
+          {
+            "kind": "special-summon-complete",
+            "method": "SpecialSummonComplete"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 4,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

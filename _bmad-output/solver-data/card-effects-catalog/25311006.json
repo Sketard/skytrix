@@ -2,8 +2,8 @@
   "cardId": 25311006,
   "name": "Triple Tactics Talent",
   "sourceFile": "official/c25311006.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -25,24 +25,96 @@
       },
       "condition": {
         "inline": "function(e,tp) return Duel.GetCustomActivityCount(id,1-tp,ACTIVITY_CHAIN)>0 end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetCustomActivityCount",
+              "args": [
+                "id",
+                "1-tp",
+                "ACTIVITY_CHAIN"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "b1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "b2"
+                },
+                {
+                  "kind": "raw",
+                  "source": "b3"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.effop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "p",
+            "argHints": [
+              "d",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "p",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "sg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKSHUFFLE",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "shuffle-hand",
+            "method": "ShuffleHand",
+            "target": "1-p"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

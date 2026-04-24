@@ -2,8 +2,8 @@
   "cardId": 58071334,
   "name": "Snake-Eyes Doomed Dragon",
   "sourceFile": "official/c58071334.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -64,13 +64,7 @@
           "predicates": [
             {
               "kind": "raw",
-              "source": "c:IsMonsterCard()"
-            },
-            {
-              "kind": "faceup"
-            },
-            {
-              "kind": "ableToGraveAsCost"
+              "source": "Duel.GetLocationCountFromEx(tp,tp,nil,c)>0"
             }
           ],
           "complete": false
@@ -79,11 +73,11 @@
       },
       "target": {
         "name": "s.hsptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsMonsterCard()"
+              "kind": "monsterCard"
             },
             {
               "kind": "faceup"
@@ -92,13 +86,22 @@
               "kind": "ableToGraveAsCost"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.hspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST|REASON_MATERIAL"
+            ]
+          }
+        ]
       }
     },
     {
@@ -122,43 +125,85 @@
       },
       "target": {
         "name": "s.pltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "Duel.GetLocationCount(p,LOCATION_SZONE)>0"
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "p",
+                "LOCATION_SZONE"
+              ],
+              "op": ">",
+              "value": "0"
             },
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsForbidden()"
+                "kind": "forbidden"
               }
             },
             {
-              "kind": "raw",
-              "source": "c:CheckUniqueOnField(p)"
+              "kind": "uniqueOnField"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.plop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "p",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "tc:IsMonsterCard()"
+            ]
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "tc",
+            "argHints": [
+              "REASON_RULE",
+              "nil",
+              "PLAYER_NONE"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_CHANGE_TYPE",
+            "value": "TYPE_SPELL|TYPE_CONTINUOUS",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD&~ RESET_TURN_SET"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 3,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

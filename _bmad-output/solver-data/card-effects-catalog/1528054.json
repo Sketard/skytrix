@@ -2,8 +2,8 @@
   "cardId": 1528054,
   "name": "Silhouhatte Rabbit",
   "sourceFile": "official/c1528054.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -48,6 +48,24 @@
       },
       "target": {
         "name": "s.indestg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "c==handler"
+                },
+                {
+                  "kind": "raw",
+                  "source": "c==handler:GetBattleTarget()"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       },
       "value": {
@@ -77,47 +95,75 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsLinkSummoned() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "linkSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.settg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsContinuousTrap()"
+              "kind": "continuousTrap"
             },
             {
-              "kind": "raw",
-              "source": "c:IsTrapMonster()"
+              "kind": "trapMonster"
             },
             {
               "kind": "ssetable"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.setop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsContinuousTrap()"
+              "kind": "continuousTrap"
             },
             {
-              "kind": "raw",
-              "source": "c:IsTrapMonster()"
+              "kind": "trapMonster"
             },
             {
               "kind": "ssetable"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_CANNOT_BE_LINK_MATERIAL",
+            "value": "1",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     },
     {
@@ -144,24 +190,54 @@
       },
       "condition": {
         "name": "s.descon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "eg:IsContains(e:GetHandler())"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "spellTrap"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 0,
+    "fullyDecoded": 5,
     "partiallyDecoded": 2,
-    "opaqueUndecoded": 5
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

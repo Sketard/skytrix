@@ -2,8 +2,8 @@
   "cardId": 84433129,
   "name": "Star Ryzeal",
   "sourceFile": "official/c84433129.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_RYZEAL"
@@ -30,6 +30,25 @@
       },
       "condition": {
         "name": "s.selfspcon",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.CheckRemoveOverlayCard(tp,1,0,1,REASON_COST)"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       },
       "target": {
@@ -38,7 +57,17 @@
       },
       "operation": {
         "name": "s.selfspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       }
     },
     {
@@ -63,6 +92,7 @@
       },
       "target": {
         "name": "s.settg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -77,11 +107,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.setop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -97,16 +127,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

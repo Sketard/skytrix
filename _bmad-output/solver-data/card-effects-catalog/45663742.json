@@ -2,8 +2,8 @@
   "cardId": 45663742,
   "name": "Snake-Eye Oak",
   "sourceFile": "official/c45663742.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     45663742
   ],
@@ -36,6 +36,7 @@
       },
       "target": {
         "name": "s.thsptg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
@@ -50,13 +51,20 @@
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or ft>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "raw",
+                  "source": "ft>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.thspop",
@@ -91,6 +99,7 @@
       },
       "target": {
         "name": "s.thsptg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
@@ -105,13 +114,20 @@
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or ft>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "raw",
+                  "source": "ft>0 and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.thspop",
@@ -137,6 +153,7 @@
       },
       "cost": {
         "name": "s.spcost",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -146,16 +163,32 @@
               "kind": "ableToGraveAsCost"
             },
             {
-              "kind": "raw",
-              "source": "Duel.GetMZoneCount(tp,Group.FromCards(c,forced))>0"
+              "kind": "gameState",
+              "method": "GetMZoneCount",
+              "args": [
+                "tp",
+                "Group.FromCards(c,forced)"
+              ],
+              "op": ">",
+              "value": "0"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -174,11 +207,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -198,15 +231,29 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 3,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 2,
     "opaqueUndecoded": 2
   },
   "warnings": []

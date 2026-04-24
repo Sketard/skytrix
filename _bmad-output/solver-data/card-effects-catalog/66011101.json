@@ -2,8 +2,8 @@
   "cardId": 66011101,
   "name": "Number 60: Dugares the Timeless",
   "sourceFile": "official/c66011101.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -42,10 +42,22 @@
       },
       "cost": {
         "inline": "Cost.DetachFromSelf(2,2,nil)",
-        "opaque": true
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "2",
+              "2",
+              "nil"
+            ]
+          }
+        }
       },
       "target": {
         "name": "s.efftg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -53,11 +65,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.effop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -66,16 +78,73 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "p",
+            "argHints": [
+              "d",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "shuffle-hand",
+            "method": "ShuffleHand",
+            "target": "tp"
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "discard-hand",
+            "method": "DiscardHand",
+            "target": "tp",
+            "argHints": [
+              "nil",
+              "1",
+              "1",
+              "REASON_EFFECT|REASON_DISCARD"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP_DEFENSE"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_SET_ATTACK_FINAL",
+            "value": "tc:GetAttack()*2",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 2,
+    "fullyDecoded": 3,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

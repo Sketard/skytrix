@@ -2,8 +2,8 @@
   "cardId": 30581601,
   "name": "Yummy★Snatchy",
   "sourceFile": "official/c30581601.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -48,6 +48,7 @@
       },
       "target": {
         "name": "s.pltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -55,23 +56,21 @@
               "value": "SET_YUMMY"
             },
             {
-              "kind": "raw",
-              "source": "c:IsFieldSpell()"
+              "kind": "fieldSpell"
             },
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsForbidden()"
+                "kind": "forbidden"
               }
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.plop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -79,20 +78,43 @@
               "value": "SET_YUMMY"
             },
             {
-              "kind": "raw",
-              "source": "c:IsFieldSpell()"
+              "kind": "fieldSpell"
             },
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsForbidden()"
+                "kind": "forbidden"
               }
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "fc",
+            "argHints": [
+              "REASON_RULE"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "sc",
+            "argHints": [
+              "tp",
+              "tp",
+              "LOCATION_FZONE",
+              "POS_FACEUP",
+              "true"
+            ]
+          }
+        ]
       }
     },
     {
@@ -115,7 +137,25 @@
       },
       "condition": {
         "inline": "function(e,tp) return Duel.IsMainPhase() or (Duel.IsTurnPlayer(1-tp) and Duel.IsBattlePhase()) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "gameState",
+                  "method": "IsMainPhase"
+                },
+                {
+                  "kind": "raw",
+                  "source": "Duel.IsTurnPlayer(1-tp) and Duel.IsBattlePhase()"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.PayLP(100)",
@@ -124,7 +164,9 @@
           "helper": "Cost.PayLP",
           "kind": "pay-lp",
           "params": {
-            "amount": "100"
+            "args": [
+              "100"
+            ]
           }
         }
       },
@@ -141,11 +183,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 2
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMING_BATTLE_START|TIMING_BATTLE_END|TIMINGS_CHECK_MONSTER) on line 26"
-  ]
+  "warnings": []
 }

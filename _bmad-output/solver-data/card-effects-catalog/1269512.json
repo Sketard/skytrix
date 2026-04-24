@@ -2,8 +2,8 @@
   "cardId": 1269512,
   "name": "Full Armored Utopic Ray Lancer",
   "sourceFile": "official/c1269512.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -73,24 +73,33 @@
       },
       "target": {
         "name": "s.distg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsAttackPos()"
+              "kind": "attackPos"
             },
             {
-              "kind": "raw",
-              "source": "c:IsNegatableMonster()"
+              "kind": "negatable"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            },
+            {
+              "kind": "negatable"
+            }
+          ],
+          "complete": true
+        }
       }
     },
     {
@@ -107,11 +116,39 @@
       "descriptionStringId": "1",
       "condition": {
         "name": "s.exatkcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.GetAttacker()==c"
+            },
+            {
+              "kind": "raw",
+              "source": "c:CanChainAttack()"
+            },
+            {
+              "kind": "raw",
+              "source": "aux.bdocon(e,tp,eg,ep,ev,re,r,rp)"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.DetachFromSelf(1,1,nil)",
-        "opaque": true
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "1",
+              "1",
+              "nil"
+            ]
+          }
+        }
       },
       "operation": {
         "inline": "function() Duel.ChainAttack() end",
@@ -122,9 +159,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 0,
+    "fullyDecoded": 3,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 4
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

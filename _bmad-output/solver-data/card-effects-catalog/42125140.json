@@ -2,8 +2,8 @@
   "cardId": 42125140,
   "name": "Dracotail Shaulas",
   "sourceFile": "official/c42125140.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -66,11 +66,49 @@
       },
       "target": {
         "name": "s.tdtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "setCard",
+                  "value": "SET_DRACOTAIL"
+                },
+                {
+                  "kind": "onField"
+                }
+              ]
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToDeck"
+            },
+            {
+              "kind": "canBeEffectTarget"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKSHUFFLE",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -97,11 +135,58 @@
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_LEAVE_FIELD_REDIRECT",
+            "value": "LOCATION_REMOVED",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESET_EVENT|RESETS_REDIRECT"
+          }
+        ]
       }
     },
     {
@@ -118,7 +203,19 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsDamageStep() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.regop",
@@ -143,7 +240,19 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsDamageStep() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
@@ -171,7 +280,19 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsDamageStep() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
@@ -195,7 +316,19 @@
       "range": "LOCATION_GRAVE",
       "condition": {
         "inline": "function() return not Duel.IsDamageStep() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
@@ -207,9 +340,9 @@
   "coverage": {
     "totalEffects": 6,
     "totalFunctionRefs": 12,
-    "fullyDecoded": 0,
+    "fullyDecoded": 8,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 12
+    "opaqueUndecoded": 4
   },
   "warnings": []
 }

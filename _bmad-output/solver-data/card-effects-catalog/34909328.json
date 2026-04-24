@@ -2,8 +2,8 @@
   "cardId": 34909328,
   "name": "Ryzeal Detonator",
   "sourceFile": "official/c34909328.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -55,19 +55,57 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return rp==1-tp end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "rp==1-tp"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.DetachFromSelf(1,1,nil)",
-        "opaque": true
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "1",
+              "1",
+              "nil"
+            ]
+          }
+        }
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "onField"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -92,35 +130,43 @@
       },
       "target": {
         "name": "s.attachtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsCanBeXyzMaterial(xyzc)"
+              "kind": "canBeXyzMaterial"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.attachop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsCanBeXyzMaterial(xyzc)"
+              "kind": "canBeXyzMaterial"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "attach-xyz-material",
+            "method": "Overlay",
+            "target": "c",
+            "argHints": [
+              "tc"
+            ]
+          }
+        ]
       }
     },
     {
@@ -141,7 +187,16 @@
       },
       "target": {
         "name": "s.reptg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:CheckRemoveOverlayCard(tp)"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "inline": "function(e,tp) e:GetHandler():RemoveOverlayCard(tp,1,1,REASON_EFFECT) end",
@@ -149,6 +204,15 @@
       },
       "value": {
         "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "s.repfilter(c,e:GetHandlerPlayer())"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     }
@@ -156,9 +220,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 0,
+    "fullyDecoded": 5,
     "partiallyDecoded": 2,
-    "opaqueUndecoded": 6
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

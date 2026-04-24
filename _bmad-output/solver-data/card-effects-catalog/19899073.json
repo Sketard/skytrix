@@ -2,8 +2,8 @@
   "cardId": 19899073,
   "name": "Ame no Murakumo no Mitsurugi",
   "sourceFile": "official/c19899073.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     19899073,
     81560239
@@ -35,11 +35,30 @@
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "# g>0"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.desop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "g",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -63,7 +82,15 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return rp==1-tp and (Duel.IsExistingMatchingCard(Card.IsDiscardable,tp,0,LOCATION_HAND,1,nil,REASON_EFFECT,1-tp) or Duel.IsChainDisablable(ev)) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "discardable"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.distg",
@@ -71,7 +98,34 @@
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "discardable"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "discard-hand",
+            "method": "DiscardHand",
+            "target": "1-tp",
+            "argHints": [
+              "nil",
+              "1",
+              "1",
+              "REASON_EFFECT|REASON_DISCARD",
+              "nil"
+            ]
+          },
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          }
+        ]
       }
     },
     {
@@ -98,6 +152,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -116,11 +171,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -140,16 +195,51 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

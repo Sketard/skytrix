@@ -2,8 +2,8 @@
   "cardId": 55273560,
   "name": "Incredible Ecclesia, the Virtuous",
   "sourceFile": "official/c55273560.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_SWORDSOUL"
@@ -29,7 +29,34 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "c:GetControler()",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "gameState",
+              "method": "GetFieldGroupCount",
+              "args": [
+                "c:GetControler()",
+                "LOCATION_MZONE",
+                "0",
+                "nil"
+              ],
+              "op": "<",
+              "value": "Duel.GetFieldGroupCount(c:GetControler(),0,LOCATION_MZONE,nil)"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       }
     },
     {
@@ -52,7 +79,16 @@
       },
       "condition": {
         "inline": "function() return Duel.IsMainPhase() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.SelfTribute",
@@ -60,42 +96,73 @@
         "resolved": {
           "helper": "Cost.SelfTribute",
           "kind": "tribute",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.sstg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsCode(CARD_ALBAZ) or c:IsSetCard(SET_SWORDSOUL)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "code",
+                  "value": null
+                },
+                {
+                  "kind": "setCard",
+                  "value": "SET_SWORDSOUL"
+                }
+              ]
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.ssop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsCode(CARD_ALBAZ) or c:IsSetCard(SET_SWORDSOUL)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "code",
+                  "value": null
+                },
+                {
+                  "kind": "setCard",
+                  "value": "SET_SWORDSOUL"
+                }
+              ]
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -119,26 +186,58 @@
       },
       "condition": {
         "inline": "function(_,tp) return Duel.GetFlagEffect(tp,id)>0 end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetFlagEffect",
+              "args": [
+                "tp",
+                "id"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.thtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.thop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 8,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER|TIMING_MAIN_END) on line 20"
-  ]
+  "warnings": []
 }

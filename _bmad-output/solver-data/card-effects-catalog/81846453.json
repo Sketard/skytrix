@@ -2,8 +2,8 @@
   "cardId": 81846453,
   "name": "Martial Metal Marcher",
   "sourceFile": "official/c81846453.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -58,10 +58,19 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "synchroSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -73,12 +82,48 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon-step",
+            "method": "SpecialSummonStep",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP_DEFENSE"
+            ]
+          },
+          {
+            "kind": "special-summon-complete",
+            "method": "SpecialSummonComplete"
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
       }
     },
     {
@@ -98,16 +143,27 @@
       },
       "operation": {
         "name": "s.tnop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "rc",
+            "code": "EFFECT_ADD_TYPE",
+            "value": "TYPE_TUNER",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 1,
+    "fullyDecoded": 4,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

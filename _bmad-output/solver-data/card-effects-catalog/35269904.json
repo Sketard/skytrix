@@ -2,8 +2,8 @@
   "cardId": 35269904,
   "name": "Triple Tactics Thrust",
   "sourceFile": "official/c35269904.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     35269904
   ],
@@ -31,15 +31,31 @@
       },
       "condition": {
         "name": "s.setcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetCustomActivityCount",
+              "args": [
+                "id",
+                "1-tp",
+                "ACTIVITY_CHAIN"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.settg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsNormalSpellTrap()"
+              "kind": "normalSpellTrap"
             },
             {
               "kind": "not",
@@ -49,21 +65,29 @@
               }
             },
             {
-              "kind": "raw",
-              "source": "tohand_chk and c:IsAbleToHand() or set_chk and c:IsSSetable()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "tohand_chk and c:IsAbleToHand()"
+                },
+                {
+                  "kind": "raw",
+                  "source": "set_chk and c:IsSSetable()"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.setop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsNormalSpellTrap()"
+              "kind": "normalSpellTrap"
             },
             {
               "kind": "not",
@@ -73,22 +97,70 @@
               }
             },
             {
-              "kind": "raw",
-              "source": "tohand_chk and c:IsAbleToHand() or set_chk and c:IsSSetable()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "tohand_chk and c:IsAbleToHand()"
+                },
+                {
+                  "kind": "raw",
+                  "source": "set_chk and c:IsSSetable()"
+                }
+              ]
             }
           ],
           "complete": false
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "sc"
+            ]
+          },
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "sc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "sc"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "sc",
+            "code": "EFFECT_CANNOT_TRIGGER",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_IGNORE_IMMUNE"
+            ],
+            "reset": "RESET_EVENT|RESETS_CANNOT_ACT|RESET_PHASE|PHASE_END"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

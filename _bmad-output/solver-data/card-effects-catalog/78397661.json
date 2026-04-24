@@ -2,8 +2,8 @@
   "cardId": 78397661,
   "name": "Ecclesia and the Dark Dragon",
   "sourceFile": "official/c78397661.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -56,27 +56,60 @@
       },
       "condition": {
         "inline": "function() return Duel.IsMainPhase() end",
-        "opaque": true
-      },
-      "target": {
-        "name": "s.rmsptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsCode(CARD_ALBAZ) or c:IsLevelBelow(4) and c:ListsCode(CARD_ALBAZ)"
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.rmsptg",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "code",
+                  "value": null
+                },
+                {
+                  "kind": "raw",
+                  "source": "c:IsLevelBelow(4) and c:ListsCode(CARD_ALBAZ)"
+                }
+              ]
             },
             {
               "kind": "canBeSpecialSummoned"
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.rmspop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     },
     {
@@ -100,6 +133,7 @@
       },
       "target": {
         "name": "s.tdtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -113,31 +147,39 @@
               "kind": "faceup"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToExtra()"
+              "kind": "ableToExtra"
             },
             {
               "kind": "canBeEffectTarget"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "tg+c",
+            "argHints": [
+              "nil",
+              "SEQ_DECKSHUFFLE",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 20"
-  ]
+  "warnings": []
 }

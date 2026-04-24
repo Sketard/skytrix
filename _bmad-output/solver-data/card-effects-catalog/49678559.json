@@ -2,8 +2,8 @@
   "cardId": 49678559,
   "name": "Number 102: Star Seraph Sentry",
   "sourceFile": "official/c49678559.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -59,18 +59,55 @@
           "helper": "Cost.DetachFromSelf",
           "kind": "detach-material",
           "params": {
-            "from": "self",
-            "count": 1
+            "args": [
+              "1"
+            ]
           }
         }
       },
       "target": {
         "name": "s.target",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.operation",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_SET_ATTACK_FINAL",
+            "value": "tc:GetAttack()/2",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "value": "RESET_TURN_SET",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
       }
     },
     {
@@ -89,16 +126,42 @@
       "range": "LOCATION_MZONE",
       "target": {
         "name": "s.reptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "reason",
+                "value": "REASON_REPLACE"
+              }
+            },
+            {
+              "kind": "raw",
+              "source": "c:CheckRemoveOverlayCard(tp)"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 1,
+    "fullyDecoded": 4,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

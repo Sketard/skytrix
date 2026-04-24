@@ -2,8 +2,8 @@
   "cardId": 14558127,
   "name": "Ash Blossom & Joyous Spring",
   "sourceFile": "official/c14558127.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -28,7 +28,49 @@
       },
       "condition": {
         "name": "s.discon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_TOHAND,true)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_SPECIAL_SUMMON,true)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_TOGRAVE,true)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_DRAW,true)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_DRAW,false)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_SEARCH,false)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_DECKDES,true)"
+                },
+                {
+                  "kind": "raw",
+                  "source": "checkfunc(CATEGORY_DECKDES,false)"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.SelfDiscard",
@@ -36,27 +78,44 @@
         "resolved": {
           "helper": "Cost.SelfDiscard",
           "kind": "discard",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.distg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "re:GetHandler():IsStatus(STATUS_DISABLED)"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 2,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

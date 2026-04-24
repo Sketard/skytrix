@@ -2,8 +2,8 @@
   "cardId": 94145021,
   "name": "Droll & Lock Bird",
   "sourceFile": "official/c94145021.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -26,11 +26,51 @@
       "range": "LOCATION_HAND",
       "condition": {
         "name": "s.condition",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "ev==1-tp"
+                },
+                {
+                  "kind": "raw",
+                  "source": "ev==PLAYER_ALL"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "name": "s.cost",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "location",
+              "value": "LOCATION_HAND"
+            },
+            {
+              "kind": "ableToGraveAsCost"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "c",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.operation",
@@ -41,9 +81,9 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "fullyDecoded": 1,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

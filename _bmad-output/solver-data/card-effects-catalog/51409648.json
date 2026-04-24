@@ -2,8 +2,8 @@
   "cardId": 51409648,
   "name": "Rindbrumm the Striking Dragon",
   "sourceFile": "official/c51409648.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -68,7 +68,35 @@
       },
       "operation": {
         "name": "s.negop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -94,10 +122,23 @@
       },
       "condition": {
         "inline": "function(_,tp) return Duel.IsTurnPlayer(1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sprmtg",
+        "opaque": true,
         "simpleFilter": {
           "predicates": [
             {
@@ -105,28 +146,58 @@
               "value": null
             },
             {
-              "kind": "raw",
-              "source": "sp_chk and c:IsAbleToRemove() or rmv_chk and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "sp_chk and c:IsAbleToRemove()"
+                },
+                {
+                  "kind": "raw",
+                  "source": "rmv_chk and c:IsCanBeSpecialSummoned(e,0,tp,false,false)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.sprmop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "sg",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "g:Sub(sg)",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 0,
+    "fullyDecoded": 3,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 5
+    "opaqueUndecoded": 2
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER_E|TIMING_MAIN_END) on line 29"
-  ]
+  "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 31425736,
   "name": "Cupsy☆Yummy",
   "sourceFile": "official/c31425736.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     31425736
   ],
@@ -35,16 +35,19 @@
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsLink(1) or c:IsType(TYPE_SYNCHRO) and c:IsLevel(2)"
-            },
-            {
-              "kind": "faceup"
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "opaque": false
       }
     },
     {
@@ -70,6 +73,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -88,11 +92,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -112,7 +116,34 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "tp",
+            "argHints": [
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e3"
@@ -143,6 +174,7 @@
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -161,11 +193,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -185,7 +217,34 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "draw",
+            "method": "Draw",
+            "target": "tp",
+            "argHints": [
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e2"
     }
@@ -193,8 +252,8 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

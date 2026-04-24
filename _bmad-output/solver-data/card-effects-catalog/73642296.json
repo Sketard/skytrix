@@ -2,8 +2,8 @@
   "cardId": 73642296,
   "name": "Ghost Belle & Haunted Mansion",
   "sourceFile": "official/c73642296.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -39,9 +39,7 @@
         "resolved": {
           "helper": "Cost.SelfDiscard",
           "kind": "discard",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
@@ -50,16 +48,23 @@
       },
       "operation": {
         "inline": "function(e,tp,eg,ep,ev) Duel.NegateActivation(ev) end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-activation",
+            "method": "NegateActivation",
+            "target": "ev"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 1,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "opaqueUndecoded": 2
   },
   "warnings": []
 }

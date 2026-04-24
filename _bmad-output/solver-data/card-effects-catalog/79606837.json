@@ -2,8 +2,8 @@
   "cardId": 79606837,
   "name": "Herald of the Arc Light",
   "sourceFile": "official/c79606837.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -54,6 +54,18 @@
       },
       "target": {
         "name": "s.rmtarget",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.IsPlayerCanRemove(e:GetHandlerPlayer(),c)"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       },
       "value": {
@@ -81,7 +93,29 @@
       "range": "LOCATION_MZONE",
       "condition": {
         "name": "s.discon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "re:IsMonsterEffect()"
+                },
+                {
+                  "kind": "raw",
+                  "source": "re:IsHasType(EFFECT_TYPE_ACTIVATE)"
+                }
+              ]
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.IsChainNegatable(ev)"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.SelfTribute",
@@ -89,9 +123,7 @@
         "resolved": {
           "helper": "Cost.SelfTribute",
           "kind": "tribute",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
@@ -100,7 +132,22 @@
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-activation",
+            "method": "NegateActivation",
+            "target": "ev"
+          },
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "eg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -123,6 +170,7 @@
       "descriptionStringId": "1",
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -134,11 +182,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -151,16 +199,34 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 3,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 4,
+    "partiallyDecoded": 2,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

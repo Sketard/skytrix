@@ -2,8 +2,8 @@
   "cardId": 89851827,
   "name": "Secreterion Dragon",
   "sourceFile": "official/c89851827.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -59,7 +59,16 @@
       "range": "LOCATION_MZONE",
       "value": {
         "inline": "function(e) return -100*Duel.GetFieldGroupCount(e:GetHandlerPlayer(),LOCATION_REMOVED,0) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "- 100*Duel.GetFieldGroupCount(e:GetHandlerPlayer(),LOCATION_REMOVED,0)"
+            }
+          ],
+          "complete": false
+        }
       }
     },
     {
@@ -81,11 +90,40 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsFusionSummoned() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "value": {
         "name": "s.actlimval",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "rc:IsSpecialSummoned()"
+            },
+            {
+              "kind": "raw",
+              "source": "rc:IsFaceup()"
+            },
+            {
+              "kind": "raw",
+              "source": "rc:IsRace(RACE_DRAGON|RACE_SPELLCASTER)"
+            },
+            {
+              "kind": "raw",
+              "source": "rc:IsLocation(LOCATION_MZONE)"
+            }
+          ],
+          "complete": false
+        }
       }
     },
     {
@@ -109,20 +147,65 @@
       },
       "target": {
         "name": "s.sptdtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "race",
+              "value": "RACE_DRAGON|RACE_SPELLCASTER"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "canBeSpecialSummoned"
+                },
+                {
+                  "kind": "ableToDeck"
+                }
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.sptdop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "sg",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "dg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
+    "fullyDecoded": 3,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 3
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

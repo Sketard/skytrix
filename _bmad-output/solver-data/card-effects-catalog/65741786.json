@@ -2,8 +2,8 @@
   "cardId": 65741786,
   "name": "I:P Masquerena",
   "sourceFile": "official/c65741786.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -46,7 +46,23 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            },
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
@@ -76,18 +92,30 @@
       },
       "operation": {
         "name": "s.indop",
-        "opaque": true
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "rc",
+            "code": "EFFECT_INDESTRUCTABLE_EFFECT",
+            "value": "s.indval",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 0,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "opaqueUndecoded": 3
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER|TIMING_MAIN_END) on line 16"
-  ]
+  "warnings": []
 }

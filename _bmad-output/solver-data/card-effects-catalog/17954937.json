@@ -2,8 +2,8 @@
   "cardId": 17954937,
   "name": "Mitsurugi Great Purification",
   "sourceFile": "official/c17954937.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -28,11 +28,37 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return ep==1-tp and Duel.IsChainDisablable(ev) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "ep==1-tp"
+            },
+            {
+              "kind": "gameState",
+              "method": "IsChainDisablable",
+              "args": [
+                "ev"
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "name": "s.discost",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.distg",
@@ -40,7 +66,22 @@
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          },
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "eg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -70,13 +111,12 @@
         "resolved": {
           "helper": "Cost.SelfBanish",
           "kind": "banish",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.sptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -88,23 +128,51 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "releasableByEffect"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "g",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_STANDBY_PHASE|TIMING_MAIN_END|TIMINGS_CHECK_MONSTER_E) on line 27"
-  ]
+  "warnings": []
 }

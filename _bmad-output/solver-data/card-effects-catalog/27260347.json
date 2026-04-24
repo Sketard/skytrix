@@ -2,8 +2,8 @@
   "cardId": 27260347,
   "name": "Snake-Eyes Diabellstar",
   "sourceFile": "official/c27260347.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     27260347
   ],
@@ -29,7 +29,20 @@
       },
       "condition": {
         "name": "s.btplcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "bc0==e:GetHandler()"
+            },
+            {
+              "kind": "raw",
+              "source": "s.checkzones(bc0,bc1)"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.btplop",
@@ -57,10 +70,19 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsContinuousSpell() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "continuousSpell"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.gypltg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -77,27 +99,40 @@
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsForbidden()"
+                "kind": "forbidden"
               }
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.gyplop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 70538272,
   "name": "Filia Regis",
   "sourceFile": "official/c70538272.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -57,27 +57,45 @@
       },
       "condition": {
         "inline": "function() return Duel.IsMainPhase() end",
-        "opaque": true
-      },
-      "target": {
-        "name": "s.rmvtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsAbleToRemove()"
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.rmvtg",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToRemove"
             },
             {
-              "kind": "raw",
-              "source": "c:IsLocation(LOCATION_GRAVE) or Duel.IsExistingMatchingCard(s.rethandfilter,tp,LOCATION_MZONE,0,1,nil)"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "location",
+                  "value": "LOCATION_GRAVE"
+                },
+                {
+                  "kind": "raw",
+                  "source": "Duel.IsExistingMatchingCard(s.rethandfilter,tp,LOCATION_MZONE,0,1,nil)"
+                }
+              ]
             }
           ],
           "complete": false
-        },
-        "opaque": true
+        }
       },
       "operation": {
         "name": "s.rmvop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -93,7 +111,30 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "tc",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -119,66 +160,126 @@
       },
       "condition": {
         "inline": "function(e,tp) return Duel.IsTurnPlayer(1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.thtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "Duel.GetMZoneCount(tp,c)>0"
+              "kind": "gameState",
+              "method": "GetMZoneCount",
+              "args": [
+                "tp",
+                "c"
+              ],
+              "op": ">",
+              "value": "0"
             },
             {
               "kind": "race",
               "value": "RACE_DRAGON"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or c:IsAbleToExtra()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ableToExtra"
+                }
+              ]
             },
             {
               "kind": "faceup"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.thop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "Duel.GetMZoneCount(tp,c)>0"
+              "kind": "gameState",
+              "method": "GetMZoneCount",
+              "args": [
+                "tp",
+                "c"
+              ],
+              "op": ">",
+              "value": "0"
             },
             {
               "kind": "race",
               "value": "RACE_DRAGON"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToHand() or c:IsAbleToExtra()"
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ableToExtra"
+                }
+              ]
             },
             {
               "kind": "faceup"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 3,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMING_MAIN_END|TIMINGS_CHECK_MONSTER) on line 17"
-  ]
+  "warnings": []
 }

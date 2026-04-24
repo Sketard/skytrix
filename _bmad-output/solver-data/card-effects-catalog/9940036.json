@@ -2,8 +2,8 @@
   "cardId": 9940036,
   "name": "Mereologic Aggregator",
   "sourceFile": "official/c9940036.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -51,10 +51,19 @@
       },
       "condition": {
         "name": "s.tgcond",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "xyzSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.tgtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -65,11 +74,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.tgop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -81,7 +90,16 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -102,11 +120,29 @@
       },
       "target": {
         "name": "s.atchtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.atchop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "attach-xyz-material",
+            "method": "Overlay",
+            "target": "c",
+            "argHints": [
+              "tg"
+            ]
+          }
+        ]
       }
     },
     {
@@ -132,20 +168,78 @@
       },
       "target": {
         "name": "s.distg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "onField"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsNegatable()"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.disop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-related-chain",
+            "method": "NegateRelatedChain",
+            "target": "tc",
+            "argHints": [
+              "RESET_TURN_SET"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "value": "RESET_TURN_SET",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_TRAPMONSTER",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

@@ -2,8 +2,8 @@
   "cardId": 97268402,
   "name": "Effect Veiler",
   "sourceFile": "official/c97268402.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -26,7 +26,23 @@
       "range": "LOCATION_HAND",
       "condition": {
         "name": "s.condition",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            },
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
       },
       "cost": {
         "inline": "Cost.SelfToGrave",
@@ -34,13 +50,12 @@
         "resolved": {
           "helper": "Cost.SelfToGrave",
           "kind": "send-to-grave",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.target",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -49,8 +64,7 @@
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsDisabled()"
+                "kind": "disabled"
               }
             },
             {
@@ -59,23 +73,49 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.operation",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-related-chain",
+            "method": "NegateRelatedChain",
+            "target": "tc",
+            "argHints": [
+              "RESET_TURN_SET"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "value": "RESET_TURN_SET",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
+    "fullyDecoded": 4,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER|TIMING_MAIN_END) on line 12"
-  ]
+  "warnings": []
 }

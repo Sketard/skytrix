@@ -2,8 +2,8 @@
   "cardId": 65681983,
   "name": "Crossout Designator",
   "sourceFile": "official/c65681983.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -26,10 +26,19 @@
       },
       "target": {
         "name": "s.rmtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "ableToRemove"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.rmop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -37,22 +46,31 @@
               "value": null
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToRemove()"
+              "kind": "ableToRemove"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "tc",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

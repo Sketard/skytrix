@@ -2,8 +2,8 @@
   "cardId": 11398059,
   "name": "King of the Feral Imps",
   "sourceFile": "official/c11398059.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -50,13 +50,15 @@
           "helper": "Cost.DetachFromSelf",
           "kind": "detach-material",
           "params": {
-            "from": "self",
-            "count": 1
+            "args": [
+              "1"
+            ]
           }
         }
       },
       "target": {
         "name": "s.target",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -68,11 +70,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.operation",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -85,7 +87,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          }
+        ]
       }
     }
   ],

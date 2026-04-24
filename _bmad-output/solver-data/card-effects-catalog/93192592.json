@@ -2,8 +2,8 @@
   "cardId": 93192592,
   "name": "Lollipo★Yummy Way",
   "sourceFile": "official/c93192592.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -60,11 +60,38 @@
       },
       "target": {
         "inline": "function(e,c) return c:IsLink(1) end",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "link",
+              "value": 1
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       },
       "value": {
         "inline": "function(e,sc) return sc:IsSetCard(SET_YUMMY) and 1 or -1 end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "sc:IsSetCard(SET_YUMMY) and 1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "- 1"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
       },
       "clonedTo": [
         "e0b"
@@ -91,11 +118,32 @@
       },
       "target": {
         "inline": "function(e,c) return c:IsLink(1) end",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "link",
+              "value": 1
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       },
       "value": {
         "inline": "function(e,sc) return sc and not sc:IsSetCard(SET_YUMMY) end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "sc:IsSetCard(SET_YUMMY)"
+              }
+            }
+          ],
+          "complete": false
+        }
       },
       "clonedFrom": "e0a"
     },
@@ -121,10 +169,19 @@
       },
       "condition": {
         "inline": "function(e) return e:GetHandler():IsSynchroSummoned() end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "synchroSummoned"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.gynegsptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -136,11 +193,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.gynegspop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -153,7 +210,25 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon-step",
+            "method": "SpecialSummonStep",
+            "target": "sc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "special-summon-complete",
+            "method": "SpecialSummonComplete"
+          }
+        ]
       }
     },
     {
@@ -176,7 +251,16 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return rp==1-tp end",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "rp==1-tp"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.SelfToExtra",
@@ -184,13 +268,12 @@
         "resolved": {
           "helper": "Cost.SelfToExtra",
           "kind": "return-to-extra",
-          "params": {
-            "target": "self"
-          }
+          "params": {}
         }
       },
       "target": {
         "name": "s.gysptg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -202,11 +285,11 @@
             }
           ],
           "complete": true
-        },
-        "opaque": false
+        }
       },
       "operation": {
         "name": "s.gyspop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -219,16 +302,30 @@
           ],
           "complete": true
         },
-        "opaque": false
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 9,
-    "fullyDecoded": 5,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 4
+    "fullyDecoded": 8,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

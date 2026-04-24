@@ -2,8 +2,8 @@
   "cardId": 44146295,
   "name": "Mirrorjade the Iceblade Dragon",
   "sourceFile": "official/c44146295.lua",
-  "parserVersion": "v1-80pct",
-  "parsedAt": "2026-04-23",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-24",
   "listedNames": [
     44146295
   ],
@@ -61,6 +61,7 @@
       },
       "cost": {
         "name": "s.rmcost",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -71,45 +72,63 @@
               "kind": "ableToGraveAsCost"
             },
             {
-              "kind": "raw",
-              "source": "c:ListsCodeAsMaterial(CARD_ALBAZ)"
+              "kind": "listsCodeAsMaterial",
+              "value": "CARD_ALBAZ"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.rmtg",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToRemove()"
+              "kind": "ableToRemove"
             }
           ],
-          "complete": false
-        },
-        "opaque": true
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.rmop",
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
               "kind": "monster"
             },
             {
-              "kind": "raw",
-              "source": "c:IsAbleToRemove()"
+              "kind": "ableToRemove"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "g",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       }
     },
     {
@@ -132,7 +151,27 @@
       "descriptionStringId": "1",
       "condition": {
         "name": "s.regcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:IsPreviousLocation(LOCATION_MZONE)"
+            },
+            {
+              "kind": "fusionSummoned"
+            },
+            {
+              "kind": "raw",
+              "source": "rp==1-tp"
+            },
+            {
+              "kind": "previousControler",
+              "value": "tp"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.regop",
@@ -143,11 +182,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 3,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 1
   },
-  "warnings": [
-    "Unhandled method SetHintTiming(0,TIMINGS_CHECK_MONSTER_E) on line 17"
-  ]
+  "warnings": []
 }
