@@ -1,188 +1,8 @@
 {
   "stamp": "2026-04-24",
   "tier": "C_UNVALIDATABLE",
-  "count": 347,
+  "count": 395,
   "skippedEdges": [
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 65741786,
-          "name": "I:P Masquerena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
     {
       "edge": {
         "from": {
@@ -4200,186 +4020,6 @@
     {
       "edge": {
         "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 65741786,
-          "name": "I:P Masquerena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 6153210,
-          "name": "Ketu Dracotail",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
           "cardId": 65681983,
           "name": "Crossout Designator",
           "effectId": "e1"
@@ -4709,366 +4349,6 @@
     {
       "edge": {
         "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 65741786,
-          "name": "I:P Masquerena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1a"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 65741786,
-          "name": "I:P Masquerena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 68468459,
-          "name": "Fallen of Albaz",
-          "effectId": "e1b"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
           "cardId": 68810435,
           "name": "Cooky☆Yummy",
           "effectId": "e3"
@@ -5385,186 +4665,6 @@
         ]
       },
       "reason": "summon-translator-declined (fromType=0x61)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 65741786,
-          "name": "I:P Masquerena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
     },
     {
       "edge": {
@@ -9474,186 +8574,6 @@
         "from": {
           "cardId": 95515789,
           "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 1498449,
-          "name": "Dracotail Faimena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 5088741,
-          "name": "Code Igniter",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 65741786,
-          "name": "I:P Masquerena",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 7375867,
-          "name": "Dracotail Mululu",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 75003700,
-          "name": "Dracotail Lukias",
-          "effectId": "e3"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 81846453,
-          "name": "Martial Metal Marcher",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
-          "effectId": "e2"
-        },
-        "to": {
-          "cardId": 84477320,
-          "name": "Dracotail Phryxul",
-          "effectId": "e2"
-        },
-        "reason": "fusion-material-then-trigger (→ EVENT_BE_MATERIAL)",
-        "confidence": "low",
-        "notes": [
-          "Fusion may not consume this card — depends on material selection"
-        ]
-      },
-      "reason": "edge-class-unsupported: fusion-material-then-trigger"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 95515789,
-          "name": "Blazing Cartesia, the Virtuous",
           "effectId": "e3"
         },
         "to": {
@@ -10538,6 +9458,114 @@
       "missing": [
         "monster/faceup-atk [9940036] — found at EXTRA/facedown instead"
       ]
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-1498449-e1-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "UNKNOWN",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
     },
     {
       "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e1-to-20665527-e2",
@@ -14166,6 +13194,258 @@
       ]
     },
     {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1a-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-68468459-e1b-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
       "bridgeId": "edge-summon-trigger-72238166-e2-to-34022970-e2",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -14276,6 +13556,114 @@
       "missing": [
         "monster/faceup-atk [8633261] — found at DECK/facedown instead"
       ]
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-7375867-e1-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
     },
     {
       "bridgeId": "edge-summon-trigger-84477320-e1a-to-33760966-e1",
@@ -14458,6 +13846,114 @@
       "missing": [
         "monster/faceup-atk [84433129] — found at DECK/facedown instead"
       ]
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-95515789-e2-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
     },
     {
       "bridgeId": "edge-summon-trigger-9674034-e3-to-45663742-e1",

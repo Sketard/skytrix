@@ -258,6 +258,9 @@ function candidateToBridge(
   } else if (edge.reason.startsWith('leave-field-then-trigger')) {
     translated = translateGenericTriggerOnEvent(edge, fromType, toType, 'leave-field');
     if (!translated) return { skip: `leave-field-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else if (edge.reason.startsWith('fusion-material-then-trigger')) {
+    translated = translateFusionMaterialThenTrigger(edge, fromType, toType);
+    if (!translated) return { skip: `fusion-material-translator-declined (fromType=0x${fromType.toString(16)})` };
   } else {
     return { skip: `edge-class-unsupported: ${edge.reason.split(' ')[0]}` };
   }
@@ -584,6 +587,71 @@ function translateGenericTriggerOnEvent(
         note: `[synthetic ${edgeKind}-trigger] place ${edge.to.name} on field as ${edgeKind} target`,
       },
     ],
+    produces: [],
+    steps,
+  };
+}
+
+// Phase 10e — translate fusion-material-then-trigger edges. Pattern: source's
+// effect Fusion-summons using toCard as material; toCard.eY (EVENT_BE_MATERIAL
+// trigger) fires as toCard is consumed. Multi-pick SELECT_CARD surfaces during
+// material selection — the existing `pickFallback` multi-pick logic prefers
+// targeted adds matching `step.target`, so we wire step 1 with target=toCard
+// to steer material selection.
+//
+// Not all sources work from a single synthetic setup: Quick-O Fusion in hand
+// (Faimena) activates from HAND with "no monsters on field" condition; Cartesia
+// needs MZONE + tribute setup; Fallen of Albaz fuses on-summon trigger; spell
+// Fusions (Polymerization et al.) activate from hand. This v1 places source +
+// toCard in hand/field via synthesis and relies on partial-stall diagnostics
+// to surface the specific setup gaps.
+function translateFusionMaterialThenTrigger(
+  edge: CandidateEdge,
+  fromType: number,
+  _toType: number,
+): BridgeSubroute | null {
+  if (isTrap(fromType)) return null;
+  if ((fromType & ED_TYPE_MASK) !== 0) return null; // ED sources → P8 precursor path
+
+  const steps: RouteStep[] = [];
+  if (isSpell(fromType)) {
+    steps.push({
+      action: 'activate',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      target: { kind: 'specific', cardId: edge.to.cardId },
+      note: `[synthetic fusion-material-trigger] activate ${edge.from.name}, use ${edge.to.name} as material`,
+    });
+  } else if (isMainDeckMonster(fromType)) {
+    // Main-deck monster Fusion source: most are Quick-O from hand (Dracotails)
+    // or NS-trigger Fusion (Fallen of Albaz). Try activate from hand first —
+    // if the source needs field-presence, the autopilot will stall at step 0
+    // and we get a tier-B diagnostic naming the setup gap.
+    steps.push({
+      action: 'activate',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      target: { kind: 'specific', cardId: edge.to.cardId },
+      note: `[synthetic fusion-material-trigger] activate ${edge.from.name} Fusion effect, target material=${edge.to.name}`,
+    });
+  } else {
+    return null;
+  }
+
+  // Drive the on-be-material trigger. Category varies (SET/SEARCH/SS/...);
+  // 'activate' with subject=toCard picks via tryActivateTrigger at SELECT_CHAIN.
+  steps.push({
+    action: 'activate',
+    subject: { kind: 'specific', cardId: edge.to.cardId },
+    note: `[synthetic fusion-material-trigger] activate ${edge.to.effectId} on-be-material trigger`,
+  });
+
+  return {
+    id: `edge-fusion-material-trigger-${edge.from.cardId}-${edge.from.effectId}-to-${edge.to.cardId}-${edge.to.effectId}`,
+    name: `[candidate] ${edge.from.name}.${edge.from.effectId} fuses w/ ${edge.to.name} → ${edge.to.effectId}`,
+    description: `${edge.reason} (confidence=${edge.confidence})`,
+    // toCard in deck; synthesis places it during startup. If the Fusion needs
+    // toCard in a specific zone (hand/field), the specific-setup failure is
+    // expected and surfaced as tier-B PARTIAL_STALL.
+    requiresDeckPieces: [edge.from.cardId, edge.to.cardId],
     produces: [],
     steps,
   };
