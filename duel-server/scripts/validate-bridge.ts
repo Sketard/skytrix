@@ -252,6 +252,12 @@ function candidateToBridge(
   } else if (edge.reason.startsWith('gy-send-then-trigger')) {
     translated = translateGenericTriggerOnEvent(edge, fromType, toType, 'gy-send');
     if (!translated) return { skip: `gy-send-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else if (edge.reason.startsWith('banish-then-trigger')) {
+    translated = translateGenericTriggerOnEvent(edge, fromType, toType, 'banish');
+    if (!translated) return { skip: `banish-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else if (edge.reason.startsWith('leave-field-then-trigger')) {
+    translated = translateGenericTriggerOnEvent(edge, fromType, toType, 'leave-field');
+    if (!translated) return { skip: `leave-field-translator-declined (fromType=0x${fromType.toString(16)})` };
   } else {
     return { skip: `edge-class-unsupported: ${edge.reason.split(' ')[0]}` };
   }
@@ -512,7 +518,7 @@ function translateGenericTriggerOnEvent(
   edge: CandidateEdge,
   fromType: number,
   toType: number,
-  edgeKind: 'destroy' | 'gy-send',
+  edgeKind: 'destroy' | 'gy-send' | 'banish' | 'leave-field',
 ): BridgeSubroute | null {
   if (isTrap(fromType)) return null;
   if ((fromType & ED_TYPE_MASK) !== 0) return null;
@@ -559,7 +565,12 @@ function translateGenericTriggerOnEvent(
     note: `[synthetic ${edgeKind}-trigger] activate ${edge.to.effectId} on-${edgeKind} SS trigger`,
   });
 
-  const idPrefix = edgeKind === 'destroy' ? 'edge-destroy-trigger' : 'edge-gy-send-trigger';
+  const idPrefix = ({
+    'destroy': 'edge-destroy-trigger',
+    'gy-send': 'edge-gy-send-trigger',
+    'banish': 'edge-banish-trigger',
+    'leave-field': 'edge-leave-field-trigger',
+  } as const)[edgeKind];
   return {
     id: `${idPrefix}-${edge.from.cardId}-${edge.from.effectId}-to-${edge.to.cardId}-${edge.to.effectId}`,
     name: `[candidate] ${edge.from.name}.${edge.from.effectId} ${edgeKind}s → ${edge.to.name}.${edge.to.effectId}`,

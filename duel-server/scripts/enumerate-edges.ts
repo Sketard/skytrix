@@ -424,6 +424,11 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       // Pattern 6: banish-then-trigger
       if (produces(fromEff, 'banish')) {
         for (const toCat of catalogs) {
+          // Phase 10d — filter intersection (same rationale as patterns 3/5).
+          if (fromEff.target?.simpleFilter?.complete) {
+            const toProps = propsByCard.get(toCat.cardId);
+            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
+          }
           for (const toEff of toCat.effects) {
             if (!triggersOn(toEff, REMOVED_EVENTS)) continue;
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
@@ -440,6 +445,11 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
       // Pattern 7: leave-field-then-trigger (card leaves Monster Zone for any reason)
       if (produces(fromEff, 'leave-field')) {
         for (const toCat of catalogs) {
+          // Phase 10d — filter intersection (same rationale as patterns 3/5/6).
+          if (fromEff.target?.simpleFilter?.complete) {
+            const toProps = propsByCard.get(toCat.cardId);
+            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
+          }
           for (const toEff of toCat.effects) {
             if (!triggersOn(toEff, LEAVE_FIELD_EVENTS)) continue;
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;

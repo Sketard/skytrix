@@ -186,26 +186,6 @@
     {
       "edge": {
         "from": {
-          "cardId": 1528054,
-          "name": "Silhouhatte Rabbit",
-          "effectId": "e3"
-        },
-        "to": {
-          "cardId": 44146295,
-          "name": "Mirrorjade the Iceblade Dragon",
-          "effectId": "e2"
-        },
-        "reason": "leave-field-then-trigger (→ EVENT_LEAVE_FIELD)",
-        "confidence": "low",
-        "notes": [
-          "Target may not be this card"
-        ]
-      },
-      "reason": "summon-translator-declined (fromType=0x4000021)"
-    },
-    {
-      "edge": {
-        "from": {
           "cardId": 17954937,
           "name": "Mitsurugi Great Purification",
           "effectId": "e1"
@@ -539,7 +519,7 @@
           "Banish target may not be this card — depends on target selection"
         ]
       },
-      "reason": "edge-class-unsupported: banish-then-trigger"
+      "reason": "banish-translator-declined (fromType=0x10002)"
     },
     {
       "edge": {
@@ -559,7 +539,7 @@
           "Target may not be this card"
         ]
       },
-      "reason": "edge-class-unsupported: leave-field-then-trigger"
+      "reason": "leave-field-translator-declined (fromType=0x10002)"
     },
     {
       "edge": {
@@ -1982,26 +1962,6 @@
         ]
       },
       "reason": "summon-translator-declined (fromType=0x61)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 44482554,
-          "name": "Dracotail Pan",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 44146295,
-          "name": "Mirrorjade the Iceblade Dragon",
-          "effectId": "e2"
-        },
-        "reason": "leave-field-then-trigger (→ EVENT_LEAVE_FIELD)",
-        "confidence": "low",
-        "notes": [
-          "Target may not be this card"
-        ]
-      },
-      "reason": "edge-class-unsupported: leave-field-then-trigger"
     },
     {
       "edge": {
@@ -4127,7 +4087,7 @@
           "Target may not be this card"
         ]
       },
-      "reason": "edge-class-unsupported: leave-field-then-trigger"
+      "reason": "leave-field-translator-declined (fromType=0x1021)"
     },
     {
       "edge": {
@@ -4435,7 +4395,7 @@
           "Banish target may not be this card — depends on target selection"
         ]
       },
-      "reason": "edge-class-unsupported: banish-then-trigger"
+      "reason": "banish-translator-declined (fromType=0x10002)"
     },
     {
       "edge": {
@@ -4455,7 +4415,7 @@
           "Target may not be this card"
         ]
       },
-      "reason": "edge-class-unsupported: leave-field-then-trigger"
+      "reason": "leave-field-translator-declined (fromType=0x10002)"
     },
     {
       "edge": {
@@ -5124,7 +5084,7 @@
           "Target may not be this card"
         ]
       },
-      "reason": "edge-class-unsupported: leave-field-then-trigger"
+      "reason": "leave-field-translator-declined (fromType=0x21)"
     },
     {
       "edge": {
@@ -5385,26 +5345,6 @@
         ]
       },
       "reason": "summon-translator-declined (fromType=0x61)"
-    },
-    {
-      "edge": {
-        "from": {
-          "cardId": 70871153,
-          "name": "Dracotail Urgula",
-          "effectId": "e1"
-        },
-        "to": {
-          "cardId": 44146295,
-          "name": "Mirrorjade the Iceblade Dragon",
-          "effectId": "e2"
-        },
-        "reason": "leave-field-then-trigger (→ EVENT_LEAVE_FIELD)",
-        "confidence": "low",
-        "notes": [
-          "Target may not be this card"
-        ]
-      },
-      "reason": "edge-class-unsupported: leave-field-then-trigger"
     },
     {
       "edge": {
