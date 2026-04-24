@@ -1,7 +1,7 @@
 {
   "archetype": "branded",
   "displayName": "Branded (Despia / Dracotail / Dogmatika)",
-  "version": 1,
+  "version": 2,
 
   "_rolesNote": "Branded is a multi-engine fusion archetype centered on Fallen-of-Albaz (and substitutes like Fallen of the White Dragon) + Despia Fusions. The branded-dracotail-bainbridge-2nd fixture pairs it with the Dracotail engine (Dragon/Spellcaster Fusion toolkit). This expertise covers: (a) Fusion core — Fallen of Albaz treatments, Branded spells, Despia enablers; (b) Dracotail engine — Lv4 Dragon/Spellcaster bodies + Fusion spells Rahu/Faimena; (c) Dogmatika enablers — Ecclesia variants, Guiding Ariadne; (d) the specific user-dictated combo plan lines (Arthalion+Dark Dragon+Secreterion+Mululu canonical AND Mirrorjade alt).",
 
@@ -217,6 +217,58 @@
         "counts": {}
       },
       "baselineScore": 3
+    },
+    {
+      "id": "branded-secreterion-on-field",
+      "_placeholder": true,
+      "_placeholderNote": "POC 2026-04-24 — intermediate-apex goal added to test whether baseline-driven gradient pulls DFS toward the canonical combo path (Cartesia Fusion → Secreterion → Urgula on-material → Rahu → Arthalion) vs the current shortcut (Cartesia Fusion → Arthalion direct). baselineScore=6 is a HAND-GUESS informed by position in existing baseline ladder (dark-dragon-body=4 < secreterion=6 < arthalion-secreterion-duo=7). Should be replaced by an ML-learned weight once trajectory-based baseline inference (Phase 5-lite policy-guided DFS) is online. Same rationale for the next goal `branded-mululu-on-field`.",
+      "name": "Secreterion on field (canonical mid-combo pivot)",
+      "description": "Secreterion Dragon (89851827) face-up on field. Intermediate apex: in the canonical Arthalion line plan, Secreterion is Fusion-summoned by Cartesia (1 Dragon + 1 Spellcaster materials = Urgula + Lukias), which triggers both materials' on-fusion-material effects (Urgula sets Rahu from deck, Lukias sets Flame). Secreterion's GY-eff then re-SS's Mululu. Presence on field signals the canonical 4-MZONE Dracotail chain is firing rather than the shortcut Cartesia → Arthalion direct path DFS currently picks (observed via HARNESS_DUMP_PATH + verification-fix on 2026-04-24).",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 89851827 },
+          "position": "faceup-atk",
+          "note": "Secreterion Dragon"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 6
+    },
+    {
+      "id": "branded-mululu-on-field",
+      "_placeholder": true,
+      "_placeholderNote": "POC 2026-04-24 — companion intermediate-apex goal to `branded-secreterion-on-field`. Mululu on field is a post-recursion signal: in canonical combo, she reaches field only via Secreterion GY-eff after being used as Arthalion Fusion material (Rahu → Arthalion using Lukias hand + Mululu deck). baselineScore=3 is a HAND-GUESS — smaller than Secreterion because Mululu's on-field presence alone is less impactful. Same placeholder semantic: replace by ML-learned weight eventually.",
+      "name": "Mululu on field (post-Secreterion recursion signal)",
+      "description": "Dracotail Mululu (7375867) face-up on field. In canonical plan, Mululu is Rahu→Arthalion material (deck) then re-SS'd by Secreterion GY-eff. Her presence implies both Secreterion and Arthalion already Fusion'd AND Secreterion's recursion fired. Strong signal the full Dracotail chain completed vs a shortcut path.",
+      "required": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 7375867 }, "position": "faceup-atk", "note": "Mululu" }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "branded-mirrorjade-solo",
+      "name": "Mirrorjade on field (solo apex)",
+      "description": "Apex for the Mirrorjade-fusion bridge (2026-04-24): Mirrorjade the Iceblade Dragon face-up on the field. Standalone state reachable via Fusion.AddProcMix(Fallen + Extra-type). Weaker than `branded-mirrorjade-line` (which needs Mirrorjade + Lubellion) but stronger than `any-fusion-partial` — Mirrorjade contributes one omniNegate on its own. Target of the partial-fusion → Mirrorjade subsumption successor.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 44146295 },
+          "position": "faceup-atk",
+          "note": "Mirrorjade the Iceblade Dragon"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1
+        }
+      },
+      "baselineScore": 6
     },
     {
       "id": "branded-dracotail-dark-dragon-body",
@@ -640,5 +692,33 @@
     }
   ],
 
-  "sourceNotes": "v1 (2026-04-21) — derived from _bmad-output/solver-data/branded-dracotail-combo-plan-2026-04-19.md (user-dictated 12-step canonical line). 36 cards mapped covering Branded+Despia+Dogmatika+Dracotail. 8 goals: canonical-full (7-piece endboard), 4MZONE-partial, Mirrorjade-alt, Arthalion+Secreterion duo, any-fusion-partial, dark-dragon-body, dracotail-trap-set, branded-trap-set. 10 routes capturing each Phase of the combo plan (Fallen-mill, Synchro, Dark-Dragon-banish, Lukias-search, Cartesia-Fusion, Urgula-GY-recycle, Rahu-Fusion-Arthalion, Secreterion-GY-re-SS, Albion-EP-set, Mirrorjade-alt, Cartesia-field-SS). Dogmatika/Despia enablers (Aluber 62962630, Guiding Ariadne 98301564) included in roleMap for completeness though not core to this fixture. Expected combo depth ~40-60 OCG decisions per the source plan — 5/5 matched is ambitious but goal catalogue pushes DFS toward canonical terminal with strong gradient signals."
+  "bridges": [
+    {
+      "id": "mirrorjade-fusion-via-extra-type-bridge",
+      "name": "Cartesia/Al.1/Bf.1 → Mirrorjade using Fallen + Extra-type monster on field",
+      "description": "Mirrorjade's Fusion procedure accepts Fallen of Albaz + 1 Fusion/Synchro/Xyz/Link monster. In branded-dracotail deck: Fallen of the White Dragon (treats-as-Fallen) + Dracotail Arthalion (Fusion) or Ecclesia and the Dark Dragon (Synchro) on field → Mirrorjade. Mechanically decoded from Fusion.AddProcMix(c,true,true,CARD_ALBAZ,aux.FilterBoolFunctionEx(Card.IsType,TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK)) via discovery-tooling mechanical-pipeline 2026-04-23.",
+      "requiresDeckPieces": [44146295, 73819701, 68468459],
+      "requiresInitialState": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [73819701, 68468459, 68468460] },
+          "note": "Fallen-class card in GY (mid-combo typical state: Fallen was SS'd → Synchro material → GY). Enables Mirrorjade Fusion via material retrieval from GY."
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [33760966, 78397661, 89851827, 79755671, 6153210, 70534340] },
+          "position": "faceup-atk",
+          "note": "Extra-type monster on field (Arthalion/Dark Dragon/Secreterion/Gulamel/Ketu/Lubellion) = the 2nd material slot of Mirrorjade's Fusion.AddProcMix."
+        }
+      ],
+      "produces": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 44146295 }, "position": "faceup-atk", "note": "Mirrorjade Fusion'd" }
+      ],
+      "steps": [
+        { "action": "fusionSummon", "subject": { "kind": "specific", "cardId": 44146295 }, "note": "Fusion Summon Mirrorjade: Fallen (hand/field, treats-as-Albaz) + Extra-type monster on field as materials" }
+      ]
+    }
+  ],
+
+  "sourceNotes": "v2 (2026-04-24) — added Mirrorjade bridge from mechanical-bridges-catalog-2026-04-23.md (discovery-tooling decomposition of Mirrorjade's Fusion.AddProcMix). Catalogued in `bridges` for future use by bridge-validator and smarter-subsumption scoring. Successor wiring DEFERRED: tested `any-fusion-partial → mirrorjade-solo via mirrorjade-fusion-via-extra-type-bridge` on 2026-04-24 and observed -3 regression on both fixtures. Root cause: `hasViableSuccessor` subsumption fires on deck-pieces-available check alone, but current DFS peaks at Arthalion/Secreterion (not Mirrorjade), so the waypoint subsumption punition (-3) runs without apex gain. Fix requires either (a) field-state-aware subsumption (apex reachability check at current state), or (b) a fixture where Mirrorjade IS the target peak. v1 (2026-04-21) — derived from _bmad-output/solver-data/branded-dracotail-combo-plan-2026-04-19.md (user-dictated 12-step canonical line). 36 cards mapped covering Branded+Despia+Dogmatika+Dracotail. 8 goals: canonical-full (7-piece endboard), 4MZONE-partial, Mirrorjade-alt, Arthalion+Secreterion duo, any-fusion-partial, dark-dragon-body, dracotail-trap-set, branded-trap-set. 10 routes capturing each Phase of the combo plan (Fallen-mill, Synchro, Dark-Dragon-banish, Lukias-search, Cartesia-Fusion, Urgula-GY-recycle, Rahu-Fusion-Arthalion, Secreterion-GY-re-SS, Albion-EP-set, Mirrorjade-alt, Cartesia-field-SS). Dogmatika/Despia enablers (Aluber 62962630, Guiding Ariadne 98301564) included in roleMap for completeness though not core to this fixture. Expected combo depth ~40-60 OCG decisions per the source plan — 5/5 matched is ambitious but goal catalogue pushes DFS toward canonical terminal with strong gradient signals."
 }
