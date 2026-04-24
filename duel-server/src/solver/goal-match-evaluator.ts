@@ -79,7 +79,7 @@ export function evaluateGoalMatch(
       if (ratio <= 0) continue;
 
       if (ratio >= 1 && deckSet && bridgeMap && goal.successors
-          && hasViableSuccessor(goal, bridgeMap, deckSet)) {
+          && hasViableSuccessor(goal, bridgeMap, deckSet, state, e)) {
         subsumed.push(goal.id);
         continue;
       }
@@ -107,15 +107,36 @@ function buildBridgeMap(expertise: readonly ArchetypeExpertise[]): Map<string, B
   return map;
 }
 
+/** Field-state-aware bridge viability check (2026-04-24).
+ *
+ *  A successor's bridge is viable when BOTH:
+ *    (1) every `requiresDeckPieces` id is present in the deck (static),
+ *    (2) every `requiresInitialState` CardSlot matches the current field
+ *        (dynamic — checked against the live state).
+ *
+ *  The `requiresInitialState` field is shared with bridge-validator, where
+ *  it declares prior-state card placements before a duel starts. Repurposed
+ *  here to encode bridge preconditions: a bridge whose preconditions are
+ *  not yet satisfied must not trigger subsumption, because the apex it
+ *  points to is not reachable from the current state.
+ *
+ *  Bridges without `requiresInitialState` (or with `[]`) fall back to
+ *  deck-only viability — preserves pre-2026-04-24 behavior for existing
+ *  bridges like `feral-imps-mikoto-ritual-tutor`. */
 function hasViableSuccessor(
   goal: ComboGoal,
   bridgeMap: Map<string, BridgeSubroute>,
   deckSet: ReadonlySet<number>,
+  state: FieldState,
+  expertise: ArchetypeExpertise,
 ): boolean {
   for (const s of goal.successors ?? []) {
     const bridge = bridgeMap.get(s.viaBridge);
     if (!bridge) continue;
-    if (bridge.requiresDeckPieces.every(id => deckSet.has(id))) return true;
+    if (!bridge.requiresDeckPieces.every(id => deckSet.has(id))) continue;
+    const preconditions = bridge.requiresInitialState ?? [];
+    if (!preconditions.every(slot => slotMatches(state, slot, expertise))) continue;
+    return true;
   }
   return false;
 }

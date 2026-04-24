@@ -259,7 +259,17 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     const alternatives: SolverResult[] = [];
     for (let i = 0; i < K; i++) {
       const altRoot = result.tree.children[i];
-      const mainPath = extractMainPath(altRoot);
+      // `extractMainPath(node)` walks `node.children[0]` recursively and
+      // returns the actions along that chain — by design it SKIPS `node.action`
+      // itself (so calling it on the tree root correctly omits the
+      // ROOT_ACTION sentinel placed by `makeNode(ROOT_ACTION, ...)`).
+      // Here `altRoot = result.tree.children[i]` holds a real enriched action
+      // (the first-level player decision), so we must prepend it manually —
+      // otherwise mainPath is off-by-one and starts at the game state AFTER
+      // the first decision. That off-by-one silently broke `verifyMainPath`
+      // on every solve: the fresh-duel replay compared mainPath[0] (= the
+      // 2nd decision) against the fresh state's first prompt and diverged.
+      const mainPath = [altRoot.action, ...extractMainPath(altRoot)];
       alternatives.push({
         tree: altRoot,
         mainPath,

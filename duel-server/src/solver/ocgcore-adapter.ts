@@ -512,7 +512,7 @@ export class OCGCoreAdapter implements GameOracle {
       const perZoneCounter = new Map<string, number>();
       for (const p of config.initialPlacements) {
         const controller = p.controller ?? PLAYER;
-        const locMap: Record<string, number> = {
+        const locMap: Record<string, OcgLocation> = {
           MZONE: OcgLocation.MZONE, SZONE: OcgLocation.SZONE,
           GRAVE: OcgLocation.GRAVE, REMOVED: OcgLocation.REMOVED,
           FZONE: OcgLocation.FZONE, PZONE: OcgLocation.PZONE,
@@ -524,7 +524,7 @@ export class OCGCoreAdapter implements GameOracle {
         const autoSeq = perZoneCounter.get(zoneKey) ?? 0;
         const sequence = p.sequence ?? autoSeq;
         perZoneCounter.set(zoneKey, autoSeq + 1);
-        const posMap: Record<string, number> = {
+        const posMap: Record<string, OcgPosition> = {
           FACEUP_ATTACK: OcgPosition.FACEUP_ATTACK,
           FACEUP_DEFENSE: OcgPosition.FACEUP_DEFENSE,
           FACEDOWN_ATTACK: OcgPosition.FACEDOWN_ATTACK,
