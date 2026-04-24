@@ -139,6 +139,20 @@ export interface BridgeSubroute {
   // must cover the apex's `required` for the apex to be reachable.
   produces: readonly CardSlot[];
   steps: readonly RouteStep[];
+  // Phase 3 (2026-04-24): optional declarative prior state. Consumed by
+  // bridge-validator to place cards directly into non-deck zones before
+  // the duel starts. Used for compositional bridges whose preconditions
+  // aren't the output of another catalogued bridge (e.g., Flamberge in GY,
+  // 2 Lv4 monsters on field). Cards here are NOT drawn from deck — they're
+  // synthesized into the target zone. Complementary to `precursors`.
+  requiresInitialState?: readonly CardSlot[];
+  // Phase 3 (2026-04-24): optional bridge composition. List of bridge IDs
+  // to execute first (in order) inside the same duel. The validator runs
+  // each precursor's steps before this bridge's, so this bridge starts
+  // from the precursors' cumulative output state. Example: cupsy-way
+  // depends on snake-eye-ash-1card-ignition's output (Ash + Poplar on
+  // field) as its starting state.
+  precursors?: readonly string[];
 }
 
 export interface GoalSuccessor {

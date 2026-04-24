@@ -570,6 +570,10 @@
       "id": "feral-imps-mikoto-ritual-tutor",
       "name": "2 Lv4 → Feral Imps → Habakiri → Saji tribute → Ritual → RS ritual body from deck",
       "description": "Universal Mitsurugi entry bridge (Phase B 2026-04-21): any engine producing 2 Lv4 monsters this turn can pivot into a Mitsurugi ritual body on field via a 4-piece chain (Feral Imps + Habakiri + Saji + Mitsurugi Ritual). Robustness: every piece after the initial Xyz summon is tutored — handtrap-resistant except at the Feral Imps Xyz summon itself. Mitsurugi Ritual's summon-from-deck + tribute-from-deck effects eliminate hand-content dependencies after Saji is tributed. Aramasa (40543231) or Kusanagi (82782870) are functional substitutes for Saji since all three Mikoto share the on-NS/SS and on-Tribute tutor effect — v1 pins Saji; substitution handling deferred.",
+      "requiresInitialState": [
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 20295753 }, "position": "faceup-atk", "note": "Lv4 Reptile material #1 (Night Sword Serpent as generic Lv4)" },
+        { "zone": "monster", "card": { "kind": "specific", "cardId": 20295753 }, "position": "faceup-atk", "note": "Lv4 Reptile material #2 (2 copies Night Sword Serpent as xyz materials)" }
+      ],
       "requiresDeckPieces": [11398059, 13332685, 18176525, 81560239],
       "produces": [
         {

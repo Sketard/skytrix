@@ -29,7 +29,10 @@ import { loadDatabase, loadScripts } from '../src/ocg-scripts.js';
 import { loadAllSolverConfigs } from '../src/solver/solver-config-loader.js';
 import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { FILLER_CARD } from '../src/solver/ocg-constants.js';
-import type { DuelConfig, Action, FieldState, FieldCard } from '../src/solver/solver-types.js';
+import type {
+  DuelConfig, Action, FieldState, FieldCard,
+  InitialPlacement, InitialPlacementZone, InitialPlacementPosition,
+} from '../src/solver/solver-types.js';
 import type {
   BridgeSubroute,
   RouteStep,
@@ -97,6 +100,86 @@ function expandSelector(selector: CardSelector, roleMap: Readonly<Record<number,
 }
 
 // =============================================================================
+// CardSlot → InitialPlacement conversion
+// =============================================================================
+
+const ZONE_KIND_TO_PLACEMENT_ZONE: Record<string, InitialPlacementZone> = {
+  monster: 'MZONE',
+  extraMonster: 'MZONE',
+  spellTrap: 'SZONE',
+  field: 'FZONE',
+  gy: 'GRAVE',
+  hand: 'HAND',
+  banished: 'REMOVED',
+  deck: 'DECK',
+};
+
+const POSITION_TO_PLACEMENT_POSITION: Record<string, InitialPlacementPosition> = {
+  'faceup-atk': 'FACEUP_ATTACK',
+  'faceup-def': 'FACEUP_DEFENSE',
+  'facedown': 'FACEDOWN_DEFENSE',
+};
+
+function cardSlotToPlacement(
+  slot: CardSlot,
+  roleMap: Readonly<Record<number, readonly CardRole[]>>,
+): InitialPlacement | null {
+  const cids = expandSelector(slot.card, roleMap);
+  if (cids.length === 0) return null;
+  const zone = ZONE_KIND_TO_PLACEMENT_ZONE[slot.zone];
+  if (!zone) return null;
+  const position = slot.position ? POSITION_TO_PLACEMENT_POSITION[slot.position] : undefined;
+  return { cardId: cids[0], zone, position, controller: 0 };
+}
+
+// =============================================================================
+// Bridge composition — flatten precursors into a single effective bridge
+// =============================================================================
+
+interface EffectiveBridge {
+  bridge: BridgeSubroute;
+  precursorStepCount: number;
+  chain: readonly string[];
+}
+
+function buildEffectiveBridge(
+  bridge: BridgeSubroute,
+  all: LoadedExpertise[],
+): EffectiveBridge {
+  const precursorIds = bridge.precursors ?? [];
+  if (precursorIds.length === 0) {
+    return { bridge, precursorStepCount: 0, chain: [] };
+  }
+
+  const precursorSteps: RouteStep[] = [];
+  const deckPieces = new Set<number>(bridge.requiresDeckPieces);
+  const initialState: CardSlot[] = [...(bridge.requiresInitialState ?? [])];
+  const chain: string[] = [];
+
+  for (const pid of precursorIds) {
+    const match = findBridge(all, pid);
+    if (!match) {
+      throw new Error(`precursor '${pid}' not found (referenced by '${bridge.id}')`);
+    }
+    // Recursive composition: allow precursors to themselves have precursors.
+    // Flattened via the same helper.
+    const recursive = buildEffectiveBridge(match.bridge, all);
+    precursorSteps.push(...recursive.bridge.steps);
+    for (const cid of recursive.bridge.requiresDeckPieces) deckPieces.add(cid);
+    if (recursive.bridge.requiresInitialState) initialState.push(...recursive.bridge.requiresInitialState);
+    chain.push(...recursive.chain, pid);
+  }
+
+  const effective: BridgeSubroute = {
+    ...bridge,
+    steps: [...precursorSteps, ...bridge.steps],
+    requiresDeckPieces: [...deckPieces],
+    requiresInitialState: initialState.length > 0 ? initialState : undefined,
+  };
+  return { bridge: effective, precursorStepCount: precursorSteps.length, chain };
+}
+
+// =============================================================================
 // State synthesis
 // =============================================================================
 
@@ -104,6 +187,7 @@ interface SynthesizedState {
   hand: number[];
   mainDeck: number[];
   extraDeck: number[];
+  initialPlacements: InitialPlacement[];
   notes: string[];
   priorStateWarning: string | null;
 }
@@ -162,6 +246,25 @@ function synthesizeState(
     }
   }
 
+  // Build initialPlacements from requiresInitialState. Cards placed directly
+  // into MZONE/GY/etc. must NOT also appear in mainDeck (duplicate) — exclude
+  // from deck synthesis.
+  const initialPlacements: InitialPlacement[] = [];
+  const placedCardIds = new Set<number>();
+  for (const slot of bridge.requiresInitialState ?? []) {
+    const placement = cardSlotToPlacement(slot, roleMap);
+    if (placement) {
+      initialPlacements.push(placement);
+      placedCardIds.add(placement.cardId);
+    } else {
+      notes.push(`requiresInitialState entry with selector ${JSON.stringify(slot.card)} / zone=${slot.zone} — skipped`);
+    }
+  }
+  for (const cid of placedCardIds) {
+    mainDeckNeeded.delete(cid);
+    extraDeckNeeded.delete(cid);
+  }
+
   // Intersection safety: a card can't be in both mainDeck and extraDeck.
   // ED wins for ED cards by design.
   for (const cid of extraDeckNeeded) mainDeckNeeded.delete(cid);
@@ -183,7 +286,7 @@ function synthesizeState(
   }
   mainDeck.push(...Array(Math.max(fillerCount, 0)).fill(FILLER_CARD));
 
-  return { hand, mainDeck, extraDeck, notes, priorStateWarning };
+  return { hand, mainDeck, extraDeck, initialPlacements, notes, priorStateWarning };
 }
 
 // =============================================================================
@@ -463,14 +566,31 @@ function formatZones(fs: FieldState): string {
 async function validateBridge(
   bridge: BridgeSubroute,
   expertise: LoadedExpertise,
+  allExpertise: LoadedExpertise[],
   adapter: OCGCoreAdapter,
   verbose: boolean,
 ): Promise<ValidationResult> {
+  // Flatten precursors into a single effective bridge with all steps,
+  // merged requiresDeckPieces, and merged requiresInitialState. produces
+  // stays the MAIN bridge's produces (what we're actually validating).
+  let effective: EffectiveBridge;
+  try {
+    effective = buildEffectiveBridge(bridge, allExpertise);
+  } catch (err) {
+    return {
+      bridgeId: bridge.id, archetype: expertise.archetype, ok: false,
+      stepsTotal: bridge.steps.length, stepsConsumed: 0,
+      matchedProduces: 0, totalProduces: bridge.produces.length,
+      priorStateWarning: null, reason: (err as Error).message,
+      trace: [], fieldStateSummary: '', missing: [],
+    };
+  }
+
   const result: ValidationResult = {
     bridgeId: bridge.id,
     archetype: expertise.archetype,
     ok: false,
-    stepsTotal: bridge.steps.length,
+    stepsTotal: effective.bridge.steps.length,
     stepsConsumed: 0,
     matchedProduces: 0,
     totalProduces: bridge.produces.length,
@@ -480,8 +600,12 @@ async function validateBridge(
     missing: [],
   };
 
-  const state = synthesizeState(bridge, expertise.roleMap);
+  const state = synthesizeState(effective.bridge, expertise.roleMap);
   result.priorStateWarning = state.priorStateWarning;
+  if (effective.chain.length > 0) {
+    const chainNote = `composed via precursors [${effective.chain.join(' → ')}] (${effective.precursorStepCount} prefix steps)`;
+    result.priorStateWarning = result.priorStateWarning ? `${result.priorStateWarning}; ${chainNote}` : chainNote;
+  }
 
   if (state.hand.length === 0) {
     result.reason = 'synthesis failed: empty hand';
@@ -496,6 +620,7 @@ async function validateBridge(
     opponentDeck: [],
     startingDrawCount: 0,
     drawCountPerTurn: 0,
+    initialPlacements: state.initialPlacements.length > 0 ? state.initialPlacements : undefined,
   };
 
   let handle;
@@ -507,7 +632,7 @@ async function validateBridge(
   }
 
   try {
-    const autopilot = new BridgeAutopilot(bridge, expertise.roleMap, verbose);
+    const autopilot = new BridgeAutopilot(effective.bridge, expertise.roleMap, verbose);
     while (true) {
       const legal = adapter.getLegalActions(handle);
       if (legal.length === 0) break;
@@ -616,7 +741,7 @@ async function main(): Promise<void> {
   const results: ValidationResult[] = [];
   try {
     for (const t of targets) {
-      const r = await validateBridge(t.bridge, t.expertise, adapter, verbose);
+      const r = await validateBridge(t.bridge, t.expertise, all, adapter, verbose);
       results.push(r);
       printResult(r, verbose);
     }

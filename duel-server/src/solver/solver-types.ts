@@ -33,6 +33,30 @@ export interface DuelConfig {
    *  the fixture's expected-combo endboard, so we can measure whether the
    *  solver *could* reach the canonical line given correct target picks. */
   preferredSearchTargets?: number[];
+  /** Cards placed directly into non-deck zones BEFORE `startDuel()`. Consumed
+   *  by `createNativeDuel` via `duelNewCard` with the mapped OcgLocation/
+   *  OcgPosition. Used by bridge-validator (2026-04-24) to seed mid-combo
+   *  starting states (e.g., Flamberge in GY, 2 Lv4 on field) that a bridge
+   *  subroute requires. Cards listed here are NOT drawn from deck — they're
+   *  synthesized into the zone directly. `sequence` auto-assigns per-zone
+   *  if omitted (first placement → 0, next → 1, …). */
+  initialPlacements?: InitialPlacement[];
+}
+
+export type InitialPlacementZone = 'MZONE' | 'SZONE' | 'GRAVE' | 'REMOVED' | 'FZONE' | 'PZONE' | 'HAND' | 'EXTRA' | 'DECK';
+export type InitialPlacementPosition = 'FACEUP_ATTACK' | 'FACEUP_DEFENSE' | 'FACEDOWN_ATTACK' | 'FACEDOWN_DEFENSE';
+
+export interface InitialPlacement {
+  cardId: number;
+  zone: InitialPlacementZone;
+  /** Defaults to auto-assigned per zone (0, 1, 2, …). For MZONE use 0-4 to
+   *  target a specific M1-M5 slot; for EMZ the sequence is engine-dependent. */
+  sequence?: number;
+  /** Defaults to FACEUP_ATTACK for monster zones, FACEDOWN for set/backrow,
+   *  FACEDOWN_ATTACK for hand/deck/extra/grave (inert). */
+  position?: InitialPlacementPosition;
+  /** Defaults to 0 (player). */
+  controller?: 0 | 1;
 }
 
 // =============================================================================

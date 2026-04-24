@@ -504,6 +504,43 @@ export class OCGCoreAdapter implements GameOracle {
       }
     }
 
+    // Seed mid-combo starting states: place cards directly into non-deck
+    // zones before startDuel. Used by bridge-validator (2026-04-24) to
+    // validate compositional bridges that assume prior state (e.g.,
+    // Flamberge in GY, 2 Lv4 on field).
+    if (config.initialPlacements && config.initialPlacements.length > 0) {
+      const perZoneCounter = new Map<string, number>();
+      for (const p of config.initialPlacements) {
+        const controller = p.controller ?? PLAYER;
+        const locMap: Record<string, number> = {
+          MZONE: OcgLocation.MZONE, SZONE: OcgLocation.SZONE,
+          GRAVE: OcgLocation.GRAVE, REMOVED: OcgLocation.REMOVED,
+          FZONE: OcgLocation.FZONE, PZONE: OcgLocation.PZONE,
+          HAND: OcgLocation.HAND, EXTRA: OcgLocation.EXTRA, DECK: OcgLocation.DECK,
+        };
+        const location = locMap[p.zone];
+        if (location === undefined) throw new Error(`[Solver] unknown initialPlacement zone: ${p.zone}`);
+        const zoneKey = `${controller}:${p.zone}`;
+        const autoSeq = perZoneCounter.get(zoneKey) ?? 0;
+        const sequence = p.sequence ?? autoSeq;
+        perZoneCounter.set(zoneKey, autoSeq + 1);
+        const posMap: Record<string, number> = {
+          FACEUP_ATTACK: OcgPosition.FACEUP_ATTACK,
+          FACEUP_DEFENSE: OcgPosition.FACEUP_DEFENSE,
+          FACEDOWN_ATTACK: OcgPosition.FACEDOWN_ATTACK,
+          FACEDOWN_DEFENSE: OcgPosition.FACEDOWN_DEFENSE,
+        };
+        const defaultPos = (p.zone === 'MZONE') ? OcgPosition.FACEUP_ATTACK
+          : (p.zone === 'SZONE' || p.zone === 'PZONE' || p.zone === 'FZONE') ? OcgPosition.FACEDOWN
+          : OcgPosition.FACEDOWN_ATTACK;
+        const position = p.position ? posMap[p.position] : defaultPos;
+        this.core.duelNewCard(duel, {
+          code: p.cardId, team: controller, duelist: 0, controller,
+          location, sequence, position,
+        });
+      }
+    }
+
     this.core.startDuel(duel);
     return duel;
   }
