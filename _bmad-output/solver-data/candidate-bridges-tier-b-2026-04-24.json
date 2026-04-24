@@ -1,6 +1,21 @@
 {
   "stamp": "2026-04-24",
   "tier": "B_PARTIAL",
-  "count": 0,
-  "results": []
+  "count": 1,
+  "results": [
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-31603289-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 6,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [31603289] — found at GY/facedown instead"
+      ]
+    }
+  ]
 }

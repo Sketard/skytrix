@@ -148,14 +148,35 @@ function loadCatalogEffect(cardId: number, effectId: string): CandidateEffect | 
 
 type TranslateResult = { bridge: BridgeSubroute } | { skip: string };
 
+/** Phase 8 — index of catalog bridges by the cardId(s) they put on field
+ *  (zone='monster' or 'extraMonster'). Used to auto-chain a precursor when
+ *  the synthetic edge's initiator is an ED/Ritual card we can't NS but
+ *  another bridge can summon. */
+type ProducesOnFieldIndex = Map<number, string[]>;
+
+function buildProducesIndex(allExpertise: LoadedExpertise[]): ProducesOnFieldIndex {
+  const idx: ProducesOnFieldIndex = new Map();
+  for (const exp of allExpertise) {
+    for (const bridge of exp.bridges) {
+      for (const slot of bridge.produces) {
+        if (slot.zone !== 'monster' && slot.zone !== 'extraMonster') continue;
+        for (const cid of expandSelector(slot.card, exp.roleMap)) {
+          const list = idx.get(cid) ?? [];
+          list.push(bridge.id);
+          idx.set(cid, list);
+        }
+      }
+    }
+  }
+  return idx;
+}
+
 /** Translate a mechanical edge into a synthetic BridgeSubroute for validation.
- *  Returns a skip-reason when the edge shape isn't supported (e.g., Trap
- *  initiator, Lv5+ tribute monster, non-search/summon edge class). The
- *  caller bucketizes skip reasons so opaque "unsupported" batches don't
- *  shadow root causes. */
+ *  Returns a skip-reason when the edge shape isn't supported. */
 function candidateToBridge(
   edge: CandidateEdge,
   cardProps: Readonly<Record<string, CandidateCardProps>>,
+  producesIndex: ProducesOnFieldIndex,
 ): TranslateResult {
   const fromProps = cardProps[String(edge.from.cardId)];
   const toProps = cardProps[String(edge.to.cardId)];
@@ -165,25 +186,60 @@ function candidateToBridge(
   const toType = toProps.type;
   const fromLevel = fromProps.level;
 
-  // Lv5+ main-deck monster initiators need tribute for NS — which our
-  // synthesis doesn't provide. Skip distinctly so these don't bucket as
-  // opaque UNKNOWN. Real promotion path: precursor that places tribute.
-  if (isMainDeckMonster(fromType) && fromLevel >= 5) {
-    return { skip: `lv5-plus-main-deck-monster-needs-tribute (Lv${fromLevel})` };
-  }
   if (isTrap(fromType)) {
     return { skip: 'trap-initiator-needs-prior-turn-set' };
   }
 
+  // Phase 8 — auto-precursor for ED/Ritual initiators. When fromCard is
+  // ED/Ritual (can't be NS'd from hand) AND a catalog bridge produces it
+  // on field, build a minimal bridge directly rather than calling the
+  // hand-init translators (which would decline). The precursor brings
+  // fromCard onto the field via its real summon procedure, firing the
+  // trigger we want to validate.
+  const isEdOrRitual = (fromType & ED_TYPE_MASK) !== 0;
+  const precursorIds = producesIndex.get(edge.from.cardId) ?? [];
+  if (isEdOrRitual) {
+    if (precursorIds.length === 0) {
+      return { skip: `summon-translator-declined (fromType=0x${fromType.toString(16)})` };
+    }
+    const isSelfTrigger = edge.from.cardId === edge.to.cardId;
+    return { bridge: buildPrecursorWiredBridge(edge, fromType, toType, precursorIds[0], isSelfTrigger) };
+  }
+
+  let translated: BridgeSubroute | null = null;
   if (edge.reason.startsWith('search-then-trigger')) {
-    const b = translateSearchThenTrigger(edge, fromType, toType);
-    return b ? { bridge: b } : { skip: `search-translator-declined (fromType=0x${fromType.toString(16)})` };
+    translated = translateSearchThenTrigger(edge, fromType, toType);
+    if (!translated) return { skip: `search-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else if (edge.reason.startsWith('summon-then-trigger')) {
+    translated = translateSummonThenTrigger(edge, fromType, toType);
+    if (!translated) return { skip: `summon-translator-declined (fromType=0x${fromType.toString(16)})` };
+  } else {
+    return { skip: `edge-class-unsupported: ${edge.reason.split(' ')[0]}` };
   }
-  if (edge.reason.startsWith('summon-then-trigger')) {
-    const b = translateSummonThenTrigger(edge, fromType, toType);
-    return b ? { bridge: b } : { skip: `summon-translator-declined (fromType=0x${fromType.toString(16)})` };
+
+  // Phase 8 — Lv5+ main-deck monster initiators: NS requires tribute.
+  // Auto-augment with `requiresInitialState` placing N vanilla fillers
+  // in MZONE face-up. Lv5-6 = 1 tribute, Lv7-8 = 2, Lv9+ = 3.
+  // (Empirically yields no tier-A lift on current catalog — most Lv5+
+  // edges are enumerator over-matches — but unblocks any genuine ones.)
+  if (isMainDeckMonster(fromType) && fromLevel >= 5) {
+    const tributesNeeded = fromLevel >= 9 ? 3 : fromLevel >= 7 ? 2 : 1;
+    const tributeFillers: CardSlot[] = Array(tributesNeeded).fill(null).map(() => ({
+      zone: 'monster' as const,
+      card: { kind: 'specific' as const, cardId: FILLER_CARD },
+      position: 'faceup-atk' as const,
+      note: `[auto-precursor phase 8] tribute material for Lv${fromLevel} ${edge.from.name} NS`,
+    }));
+    translated = {
+      ...translated,
+      requiresInitialState: [
+        ...(translated.requiresInitialState ?? []),
+        ...tributeFillers,
+      ],
+    };
   }
-  return { skip: `edge-class-unsupported: ${edge.reason.split(' ')[0]}` };
+
+  return { bridge: translated };
 }
 
 /** Pick the right ZoneKind for a summoned monster. Link monsters naturally
@@ -192,6 +248,78 @@ function candidateToBridge(
  *  (EMZ), so producing the wrong kind would cause a false tier-D rejection. */
 function fieldZoneKindForType(type: number): 'monster' | 'extraMonster' {
   return (type & TYPE_LINK) !== 0 ? 'extraMonster' : 'monster';
+}
+
+/** Phase 8 — build a synthetic bridge wired with a precursor that summons
+ *  the ED/Ritual fromCard onto the field. The precursor's summon procedure
+ *  fires EVENT_SUMMON_SUCCESS naturally; we then either:
+ *  - self-trigger (`from === to`): no extra steps; precursor's own resolution
+ *    triggered the effect we want to validate. produces = fromCard on field
+ *    (which is true post-precursor whether or not the trigger fired —
+ *    accept this false-positive risk; future enhancement could check trigger
+ *    output specifically).
+ *  - non-self: emit `activate from` step so the autopilot drives the trigger
+ *    explicitly. May fail if precursor's last step already exhausted OPT
+ *    (e.g., cupsy-way already used CW.1 in its own search step) — falls into
+ *    tier C with PARTIAL_STALL, correctly identifying the OPT exhaustion. */
+function buildPrecursorWiredBridge(
+  edge: CandidateEdge,
+  fromType: number,
+  toType: number,
+  precursorId: string,
+  isSelfTrigger: boolean,
+): BridgeSubroute {
+  const steps: RouteStep[] = isSelfTrigger
+    ? []
+    : [{
+        action: 'activate' as const,
+        subject: { kind: 'specific' as const, cardId: edge.from.cardId },
+        note: `[auto-precursor phase 8] activate ${edge.from.name} on field (placed by precursor=${precursorId})`,
+      }];
+
+  // Add a search-target pick step if the edge class is search-then-trigger.
+  if (!isSelfTrigger && edge.reason.startsWith('search-then-trigger')) {
+    steps.push({
+      action: 'search',
+      subject: { kind: 'specific', cardId: edge.from.cardId },
+      target: { kind: 'specific', cardId: edge.to.cardId },
+    });
+  }
+
+  // produces: derived from edge semantics
+  const toEffect = loadCatalogEffect(edge.to.cardId, edge.to.effectId);
+  const toCategorySS = toEffect?.categories.includes('CATEGORY_SPECIAL_SUMMON') ?? false;
+  let produces: CardSlot[];
+  if (isSelfTrigger) {
+    // Self-trigger: precursor placed fromCard on field; that's our produce.
+    produces = [{
+      zone: fieldZoneKindForType(fromType),
+      card: { kind: 'specific', cardId: edge.from.cardId },
+      position: 'faceup-atk',
+      note: `${edge.from.name} on field via ${precursorId} (self-trigger validates implicitly)`,
+    }];
+  } else if (edge.reason.startsWith('search-then-trigger')) {
+    produces = toCategorySS
+      ? [{ zone: fieldZoneKindForType(toType), card: { kind: 'specific', cardId: edge.to.cardId }, position: 'faceup-atk' }]
+      : [{ zone: 'hand', card: { kind: 'specific', cardId: edge.to.cardId } }];
+  } else {
+    // summon-then-trigger non-self: target ends up on field
+    produces = [{
+      zone: fieldZoneKindForType(toType),
+      card: { kind: 'specific', cardId: edge.to.cardId },
+      position: 'faceup-atk',
+    }];
+  }
+
+  return {
+    id: `edge-via-precursor-${precursorId}-${edge.from.cardId}-${edge.from.effectId}-to-${edge.to.cardId}-${edge.to.effectId}`,
+    name: `[candidate via precursor] ${edge.from.name}.${edge.from.effectId} → ${edge.to.name}.${edge.to.effectId}`,
+    description: `${edge.reason} (confidence=${edge.confidence}, precursor=${precursorId})`,
+    requiresDeckPieces: [edge.from.cardId, edge.to.cardId],
+    precursors: [precursorId],
+    produces,
+    steps,
+  };
 }
 
 function translateSearchThenTrigger(
@@ -862,6 +990,18 @@ function classify(
     return { tier: 'D_REJECTED', diagnosis: 'UNKNOWN' };
   }
 
+  // 4b. Target still in source zone (DECK/EXTRA/HAND) — applies regardless
+  // of stepsConsumed. Common patterns:
+  //  - bogus enumerator over-match (Marshmao filter "this card" → all Lv1
+  //    LIGHT Beasts), step 1 SS never fires
+  //  - auto-precursor (phase 8) whose precursor failed to summon initiator
+  //    because precursor itself has unmet preconditions
+  // Either way: edge isn't validatable as-is. Tier C with explicit diagnosis.
+  if (result.missing.some(m =>
+    m.includes('found at DECK/') || m.includes('found at EXTRA/') || m.includes('found at HAND/'))) {
+    return { tier: 'C_UNVALIDATABLE', diagnosis: 'EFFECT_DID_NOT_REACH_TARGET' };
+  }
+
   // 5. Zero steps consumed — initial conditions wrong.
   if (result.stepsConsumed === 0) {
     if (firstStep && ED_ACTIONS.has(firstStep.action) && !bridge.precursors?.length
@@ -888,20 +1028,9 @@ function classify(
     return { tier: 'C_UNVALIDATABLE', diagnosis: 'UNKNOWN' };
   }
 
-  // 6. Partial progress — some steps ran but not all.
+  // 6. Partial progress — some steps ran but not all. (Source-zone case
+  // already handled at step 4b above.)
   if (result.stepsConsumed < result.stepsTotal) {
-    // Sub-case: expected target still in a source zone (DECK / EXTRA / HAND).
-    // Means the preceding step's effect didn't actually reach the target —
-    // usually an enumerator over-match (e.g., Marshmao.e1 says "SS this card"
-    // with filter `this card` which the enumerator promotes to "SS any Lv1
-    // LIGHT Beast", creating bogus edges to other Lv1 LIGHT Beasts).
-    // Reclassify as tier C with explicit diagnosis so humans know it's an
-    // edge-predication problem, not a validator primitive gap.
-    const targetInSourceZone = result.missing.some(m =>
-      m.includes('found at DECK/') || m.includes('found at EXTRA/') || m.includes('found at HAND/'));
-    if (targetInSourceZone) {
-      return { tier: 'C_UNVALIDATABLE', diagnosis: 'EFFECT_DID_NOT_REACH_TARGET' };
-    }
     return { tier: 'B_PARTIAL', diagnosis: 'PARTIAL_STALL' };
   }
 
@@ -1181,10 +1310,12 @@ async function main(): Promise<void> {
       edges = edges.slice(0, candidatesLimit);
       console.log(`[validate-bridge] limit=${candidatesLimit} → ${edges.length} edges`);
     }
+    const producesIndex = buildProducesIndex(all);
+    console.log(`[validate-bridge] produces-index: ${producesIndex.size} cardIds with catalog precursors`);
     let translated = 0;
     const skipReasonHist: Record<string, number> = {};
     for (const edge of edges) {
-      const tr = candidateToBridge(edge, cf.cardProperties);
+      const tr = candidateToBridge(edge, cf.cardProperties, producesIndex);
       if ('skip' in tr) {
         // Bucket skip reasons by their leading tag (before any parenthesized
         // detail) so the histogram stays readable.
