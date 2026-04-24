@@ -417,6 +417,25 @@
       "steps": [
         { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 58071334 }, "note": "Alt-SS: 2 face-up monsters in own S/T zone → send to GY → SS Doomed Dragon (Extra Deck)" }
       ]
+    },
+    {
+      "id": "snake-eye-diabellstar-szone-continuous-spell-setup-bridge",
+      "name": "Diabellstar SZONE setup via Foolish Burial → Ash.e3 → Poplar.e4",
+      "description": "Phase 10c authoring: places Diabellstar face-up in SZONE as Continuous Spell. Builds on the Ash 1-card precursor (Ash + Poplar in MZONE). Foolish Burial sends Diabellstar deck→GY first. Ash.e3 ignition then sends Ash + Poplar field→GY (cost) and SS Oak from deck (resolve). Poplar.e4 triggers on its own GY-send (EVENT_TO_GRAVE), targeting Diabellstar (FIRE monster in GY) — places it face-up in own SZONE via EFFECT_CHANGE_TYPE → TYPE_SPELL|TYPE_CONTINUOUS. Unblocks downstream Diabellstar.e2 ignition edges (12 needs-zone-precursor skips in current tier-C bucket).",
+      "precursors": ["snake-eye-ash-1card-ignition-bridge"],
+      "requiresInitialState": [
+        { "zone": "hand", "card": { "kind": "specific", "cardId": 81439173 }, "note": "Foolish Burial in hand — required because synthesis's `step-0-subject-to-hand` rule applies to the effective bridge's step 0 (precursor's NS Ash), not this bridge's step 0." }
+      ],
+      "requiresDeckPieces": [9674034, 90241276, 45663742, 27260347],
+      "produces": [
+        { "zone": "spellTrap", "card": { "kind": "specific", "cardId": 27260347 }, "position": "faceup-atk", "note": "Diabellstar placed in SZONE as Continuous Spell via Poplar.e4" }
+      ],
+      "steps": [
+        { "action": "activate", "subject": { "kind": "specific", "cardId": 81439173 }, "target": { "kind": "specific", "cardId": 27260347 }, "note": "Foolish Burial (hand-activate): send Diabellstar from Deck to GY" },
+        { "action": "activate", "subject": { "kind": "specific", "cardId": 9674034 }, "note": "Ash.e3 ignition (MZONE): cost = Ash + Poplar from field to GY; resolve sets up SS info" },
+        { "action": "specialSummon", "subject": { "kind": "specific", "cardId": 45663742 }, "note": "Ash.e3 resolve: SS Oak (Lv1 FIRE Snake-Eye, non-Ash) from hand/Deck" },
+        { "action": "activate", "subject": { "kind": "specific", "cardId": 90241276 }, "target": { "kind": "specific", "cardId": 27260347 }, "note": "Poplar.e4 (triggered by Poplar's GY-send during Ash.e3 cost): place Diabellstar from GY → own SZONE face-up as Continuous Spell" }
+      ]
     }
   ],
 

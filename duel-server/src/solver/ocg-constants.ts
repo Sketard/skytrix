@@ -33,12 +33,20 @@ export const PHASE_MAP: Record<number, Phase> = {
   0x200: 'END',
 };
 
-/** OCGCore position enum → our canonical FieldCard.position union. */
+/** OCGCore position enum → our canonical FieldCard.position union.
+ *  Handles the discrete monster positions (1/2/4/8) AND the combined values
+ *  used for SZONE cards: POS_FACEUP=5 (FACEUP_ATTACK|FACEUP_DEFENSE) and
+ *  POS_FACEDOWN=10 (FACEDOWN_ATTACK|FACEDOWN_DEFENSE). MoveToField uses the
+ *  combined forms when placing cards in spell/trap zone, so without these
+ *  the position falls back to 'facedown' and breaks produces matching for
+ *  bridges that place cards face-up in SZONE (e.g. Poplar.e4 → Diabellstar). */
 export const POSITION_MAP: Record<number, FieldCard['position']> = {
   [OcgPosition.FACEUP_ATTACK]: 'faceup-atk',
   [OcgPosition.FACEUP_DEFENSE]: 'faceup-def',
   [OcgPosition.FACEDOWN_DEFENSE]: 'facedown-def',
   [OcgPosition.FACEDOWN_ATTACK]: 'facedown',
+  [OcgPosition.FACEUP]: 'faceup-atk',     // 5 — SZONE face-up convention
+  [OcgPosition.FACEDOWN]: 'facedown',     // 10 — SZONE face-down convention
 };
 
 /** OCGCore SELECT_* message types → our PromptType string union. */

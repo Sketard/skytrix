@@ -14,7 +14,7 @@
       "reason": "not all steps consumed",
       "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
       "missing": [
-        "monster/faceup-atk [31603289] — found at GY/facedown instead"
+        "monster/faceup-atk [31603289] — found at GY/faceup-atk instead"
       ]
     },
     {
