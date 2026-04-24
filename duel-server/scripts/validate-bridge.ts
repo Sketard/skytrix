@@ -222,11 +222,19 @@ function candidateToBridge(
   const isEdOrRitual = (fromType & ED_TYPE_MASK) !== 0;
   const fromEffect = loadCatalogEffect(edge.from.cardId, edge.from.effectId);
   const range = fromEffect?.range ?? '';
-  const needsNonHandZone = range !== ''
-    && !range.includes('LOCATION_HAND')
-    && (range.includes('LOCATION_SZONE')
-      || range.includes('LOCATION_FZONE')
-      || range.includes('LOCATION_GRAVE'));
+  // Phase 10b refined (P10c): a source needs a zone-precursor only when
+  // hand-activation / NS doesn't naturally reach the required range.
+  // - Spells / Traps activate from HAND and settle in SZONE/FZONE — no
+  //   precursor needed for LOCATION_SZONE/FZONE-only ranges.
+  // - Main-deck monsters NS to MZONE — precursor needed for SZONE/FZONE/GRAVE.
+  // - Anything with LOCATION_GRAVE-only range needs precursor (no natural path).
+  const rangeHasNonHand = range !== '' && !range.includes('LOCATION_HAND');
+  const rangeOnlyGrave = range === 'LOCATION_GRAVE';
+  const rangeRequiresSzoneOrFzone = rangeHasNonHand
+    && (range.includes('LOCATION_SZONE') || range.includes('LOCATION_FZONE'));
+  const sourceIsSpellOrTrap = isSpell(fromType) || isTrap(fromType);
+  const needsNonHandZone = rangeOnlyGrave
+    || (rangeRequiresSzoneOrFzone && !sourceIsSpellOrTrap);
   const precursorIds = producesIndex.get(edge.from.cardId) ?? [];
   if (isEdOrRitual || needsNonHandZone) {
     if (precursorIds.length === 0) {
