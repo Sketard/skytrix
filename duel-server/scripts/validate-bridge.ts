@@ -146,32 +146,44 @@ function loadCatalogEffect(cardId: number, effectId: string): CandidateEffect | 
   }
 }
 
+type TranslateResult = { bridge: BridgeSubroute } | { skip: string };
+
 /** Translate a mechanical edge into a synthetic BridgeSubroute for validation.
- *  Returns null if the edge shape isn't supported (e.g., Trap initiator —
- *  which requires setting on a prior turn then activating, which the current
- *  autopilot can't reproduce). */
+ *  Returns a skip-reason when the edge shape isn't supported (e.g., Trap
+ *  initiator, Lv5+ tribute monster, non-search/summon edge class). The
+ *  caller bucketizes skip reasons so opaque "unsupported" batches don't
+ *  shadow root causes. */
 function candidateToBridge(
   edge: CandidateEdge,
   cardProps: Readonly<Record<string, CandidateCardProps>>,
-): BridgeSubroute | null {
+): TranslateResult {
   const fromProps = cardProps[String(edge.from.cardId)];
   const toProps = cardProps[String(edge.to.cardId)];
-  if (!fromProps || !toProps) return null;
+  if (!fromProps || !toProps) return { skip: 'missing-card-props' };
 
   const fromType = fromProps.type;
   const toType = toProps.type;
+  const fromLevel = fromProps.level;
 
-  // Edge reason prefix determines translator.
+  // Lv5+ main-deck monster initiators need tribute for NS — which our
+  // synthesis doesn't provide. Skip distinctly so these don't bucket as
+  // opaque UNKNOWN. Real promotion path: precursor that places tribute.
+  if (isMainDeckMonster(fromType) && fromLevel >= 5) {
+    return { skip: `lv5-plus-main-deck-monster-needs-tribute (Lv${fromLevel})` };
+  }
+  if (isTrap(fromType)) {
+    return { skip: 'trap-initiator-needs-prior-turn-set' };
+  }
+
   if (edge.reason.startsWith('search-then-trigger')) {
-    return translateSearchThenTrigger(edge, fromType, toType);
+    const b = translateSearchThenTrigger(edge, fromType, toType);
+    return b ? { bridge: b } : { skip: `search-translator-declined (fromType=0x${fromType.toString(16)})` };
   }
   if (edge.reason.startsWith('summon-then-trigger')) {
-    return translateSummonThenTrigger(edge, fromType, toType);
+    const b = translateSummonThenTrigger(edge, fromType, toType);
+    return b ? { bridge: b } : { skip: `summon-translator-declined (fromType=0x${fromType.toString(16)})` };
   }
-  // All other edge classes (gy-send / destroy / banish / fusion-material /
-  // leave-field / battle) are ambiguous at synthesis (target not resolvable
-  // from edge data alone). Skip with null → recorded as SKIPPED in report.
-  return null;
+  return { skip: `edge-class-unsupported: ${edge.reason.split(' ')[0]}` };
 }
 
 /** Pick the right ZoneKind for a summoned monster. Link monsters naturally
@@ -803,10 +815,12 @@ type DiagnosisCode =
   | 'NONE'                           // tier A
   | 'TRIGGER_ORIGIN_MISMATCH'        // e.g., flamberge-gy, trigger wants 'from field' but state placement won't emit event
   | 'NEEDS_PRIOR_SUMMON_NO_PRECURSOR' // activate of Monster without precursor/placement to get it on field
+  | 'NEEDS_TRIBUTE_MATERIAL'         // Lv5+ main-deck monster initiator; NS requires tribute we didn't synthesize
   | 'MATERIAL_NOT_AVAILABLE'         // ED summon with no matching materials in legal pool
   | 'UNHANDLED_PROMPT'               // autopilot encountered SELECT_SUM / SELECT_COUNTER / etc. not yet supported
   | 'COST_MULTI_PICK_COMPLEX'        // multi-pick with non-trivial constraints we can't satisfy
   | 'PRODUCES_ZONE_MISMATCH'         // end state reached but slot in wrong zone (likely bridge authoring bug)
+  | 'EFFECT_DID_NOT_REACH_TARGET'    // partial-stall AND expected target still in source zone → edge prediction likely bogus (enumerator over-match)
   | 'PRE_DECLARED_LIMIT'             // bridge carries knownStructuralLimit — promoted to C regardless
   | 'SYNTHESIS_EMPTY_HAND'           // couldn't seed hand from bridge spec
   | 'PARTIAL_STALL'                  // stepsConsumed > 0 but autopilot stalled before completion
@@ -823,6 +837,17 @@ function classify(
 
   // 2. Full success → tier A.
   if (result.ok) return { tier: 'A_VERIFIED', diagnosis: 'NONE' };
+
+  // 2b. Effective success: produces matched AND no missing entries, even if
+  // the autopilot didn't consume every step (e.g., the synthetic translator
+  // emitted a redundant specialSummon step that was already produced by
+  // the prior step's effect resolution — common in summon-then-trigger
+  // non-self edges where the engine resolves the SS in-chain before our
+  // step-1 prompt would fire). The bridge is validated; declare tier A.
+  if (result.totalProduces > 0 && result.matchedProduces === result.totalProduces
+    && result.missing.length === 0) {
+    return { tier: 'A_VERIFIED', diagnosis: 'NONE' };
+  }
 
   const reason = result.reason ?? '';
   const firstStep = bridge.steps[0];
@@ -865,6 +890,18 @@ function classify(
 
   // 6. Partial progress — some steps ran but not all.
   if (result.stepsConsumed < result.stepsTotal) {
+    // Sub-case: expected target still in a source zone (DECK / EXTRA / HAND).
+    // Means the preceding step's effect didn't actually reach the target —
+    // usually an enumerator over-match (e.g., Marshmao.e1 says "SS this card"
+    // with filter `this card` which the enumerator promotes to "SS any Lv1
+    // LIGHT Beast", creating bogus edges to other Lv1 LIGHT Beasts).
+    // Reclassify as tier C with explicit diagnosis so humans know it's an
+    // edge-predication problem, not a validator primitive gap.
+    const targetInSourceZone = result.missing.some(m =>
+      m.includes('found at DECK/') || m.includes('found at EXTRA/') || m.includes('found at HAND/'));
+    if (targetInSourceZone) {
+      return { tier: 'C_UNVALIDATABLE', diagnosis: 'EFFECT_DID_NOT_REACH_TARGET' };
+    }
     return { tier: 'B_PARTIAL', diagnosis: 'PARTIAL_STALL' };
   }
 
@@ -1146,24 +1183,17 @@ async function main(): Promise<void> {
     }
     let translated = 0;
     const skipReasonHist: Record<string, number> = {};
-    let debugPrinted = 0;
     for (const edge of edges) {
-      const bridge = candidateToBridge(edge, cf.cardProperties);
-      if (!bridge) {
-        const reasonPrefix = edge.reason.split(' ')[0];
-        skipReasonHist[reasonPrefix] = (skipReasonHist[reasonPrefix] ?? 0) + 1;
-        skippedEdges.push({ edge, reason: `unsupported: ${edge.reason}` });
-        if (debugPrinted < 3 && verbose) {
-          const fp = cf.cardProperties[String(edge.from.cardId)];
-          const tp = cf.cardProperties[String(edge.to.cardId)];
-          console.log(`[debug skip] ${edge.reason}`);
-          console.log(`  from: ${edge.from.name}(${edge.from.cardId}) type=0x${fp?.type.toString(16)} propsFound=${!!fp}`);
-          console.log(`  to  : ${edge.to.name}(${edge.to.cardId}) type=0x${tp?.type.toString(16)} propsFound=${!!tp}`);
-          debugPrinted++;
-        }
+      const tr = candidateToBridge(edge, cf.cardProperties);
+      if ('skip' in tr) {
+        // Bucket skip reasons by their leading tag (before any parenthesized
+        // detail) so the histogram stays readable.
+        const bucket = tr.skip.split(' (')[0];
+        skipReasonHist[bucket] = (skipReasonHist[bucket] ?? 0) + 1;
+        skippedEdges.push({ edge, reason: tr.skip });
         continue;
       }
-      targets.push({ bridge, expertise: candidatesHost });
+      targets.push({ bridge: tr.bridge, expertise: candidatesHost });
       translated++;
     }
     console.log(`[validate-bridge] translated ${translated} edges → bridges; skipped ${skippedEdges.length}`);
@@ -1248,6 +1278,7 @@ async function main(): Promise<void> {
     const outDir = join(DATA_DIR, '..', '..', '_bmad-output', 'solver-data');
     const stamp = new Date().toISOString().slice(0, 10);
     const outA = join(outDir, `candidate-bridges-tier-a-${stamp}.json`);
+    const outB = join(outDir, `candidate-bridges-tier-b-${stamp}.json`);
     const outC = join(outDir, `candidate-bridges-tier-c-${stamp}.json`);
     const outD = join(outDir, `candidate-bridges-tier-d-${stamp}.json`);
 
@@ -1262,6 +1293,10 @@ async function main(): Promise<void> {
     writeFileSync(outA, JSON.stringify({
       stamp, tier: 'A_VERIFIED', count: byTier.A_VERIFIED,
       results: results.filter(r => r.tier === 'A_VERIFIED').map(slim),
+    }, null, 2));
+    writeFileSync(outB, JSON.stringify({
+      stamp, tier: 'B_PARTIAL', count: byTier.B_PARTIAL,
+      results: results.filter(r => r.tier === 'B_PARTIAL').map(slim),
     }, null, 2));
     writeFileSync(outC, JSON.stringify({
       stamp, tier: 'C_UNVALIDATABLE', count: byTier.C_UNVALIDATABLE,
@@ -1285,6 +1320,7 @@ async function main(): Promise<void> {
     }
     console.log(`\nTier-bucketed output:`);
     console.log(`  🟢 ${outA}`);
+    console.log(`  🟡 ${outB}`);
     console.log(`  🔵 ${outC}`);
     console.log(`  🔴 ${outD}`);
   }
