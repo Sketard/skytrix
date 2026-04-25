@@ -1,0 +1,392 @@
+[evaluate] pool size: 14
+[evaluate-par] fixtures: 15  budget=30000ms  node-budget=200  label='sanity-untuned-replay'
+[Scripts] Startup script not found: proc_compat.lua
+[Scripts] Startup script not found: proc_compat.lua
+[Scripts] Startup script not found: proc_compat.lua
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Scripts] Startup script not found: proc_compat.lua
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] solver-config.json loaded and validated
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: c0.lua
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Solver] OCGCore v11.0 initialized
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: c0.lua
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] OCGCore v11.0 initialized
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[ScriptReader] Not found: c0.lua
+[Solver] solver-config.json loaded and validated
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: c0.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=50596425
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=78397661
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=94445733
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=5318639
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=41999284
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=27381364
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+  [ddd-pendulum-opener] (ddd-wcq-top4)  score=17  expl=26  latent=9  matched=1/5  nodes=344  depth=50  az=0%  t2=38.2%  walk=25910ms  term=depth_cap
+  [ryzeal-mitsurugi-opener] (ryzeal-mitsurugi-hk-top8)  score=41.5  expl=45.5  latent=4  matched=1/5  nodes=359  depth=52  az=0%  t2=41.3%  walk=25898ms  term=timeout
+  [radiant-typhoon-opener] (radiant-typhoon-ygoprodeck-2026)  score=17  expl=17  latent=0  matched=2/3  nodes=424  depth=46  az=0%  t2=53.8%  walk=25954ms  term=timeout
+  [branded-dracotail-opener] (branded-dracotail-bainbridge-2nd)  score=71.78571428571428  expl=71.78571428571428  latent=0  matched=4/8  nodes=405  depth=45  az=0%  t2=55.6%  walk=25642ms  term=timeout
+  [kashtira-azamina-opener] (kashtira-azamina-verquin-wcq-top8)  score=8  expl=8  latent=0  matched=1/4  nodes=317  depth=26  az=0%  t2=59.2%  walk=25799ms  term=timeout
+  [horus-crystron-opener] (horus-crystron-santiago-wcq-top4)  score=10  expl=11  latent=1  matched=1/4  nodes=363  depth=45  az=0%  t2=54.2%  walk=25864ms  term=timeout
+  [dinomorphia-opener] (dinomorphia-696904)  score=1  expl=1  latent=0  matched=0/3  nodes=423  depth=27  az=0%  t2=41.7%  walk=25703ms  term=timeout
+  [spright-opener] (spright-greenville-wcq-top8)  score=9  expl=9  latent=0  matched=0/4  nodes=411  depth=29  az=0%  t2=62.1%  walk=25723ms  term=timeout
+  [snake-eye-yummy-opener] (snake-eye-yummy-sarcophagus-hollywood-wcq)  score=23.238095238095237  expl=23.238095238095237  latent=0  matched=1/7  nodes=351  depth=75  az=7%  t2=59.2%  walk=25970ms  term=depth_cap
+  [tearlaments-opener] (tearlaments-2026-fafnirymd)  score=15  expl=15  latent=0  matched=0/4  nodes=351  depth=68  az=0%  t2=59%  walk=25898ms  term=timeout
+  [floowandereeze-opener] (floowandereeze-2026)  score=12  expl=12  latent=0  matched=2/4  nodes=406  depth=55  az=0%  t2=27.3%  walk=25690ms  term=timeout
+  [labrynth-opener] (labrynth-2026)  score=9  expl=9  latent=0  matched=1/4  nodes=413  depth=31  az=0%  t2=58.4%  walk=25731ms  term=timeout
+  [stun-runick-opener] (stun-runick-melbourne-top8)  score=0  expl=0  latent=0  matched=0/4  nodes=353  depth=22  az=0%  t2=74.6%  walk=25680ms  term=timeout
+  [nekroz-ryzeal-opener] (nekroz-ryzeal-jan2026-tcg-1st)  score=1  expl=5  latent=4  matched=0/4  nodes=344  depth=26  az=7.4%  t2=43.4%  walk=25607ms  term=timeout
+  [branded-dracotail-opener-mirrorjade-line] (branded-dracotail-bainbridge-2nd)  score=63.64285714285714  expl=65.2278196435783  latent=1.584962500721156  matched=2/6  nodes=2703  depth=72  az=0%  t2=45.5%  walk=23838ms  term=timeout
+
+[evaluate-par] ═══ AGGREGATE ═══
+  cumulative matched:          16/69
+  cumulative score:            299.16666666666663
+  cumulative explorationScore: 318.7516291673878
+  fixtures:                    15
+
+[evaluate] wrote C:\Users\Axel\Desktop\code\skytrix\_bmad-output\solver-data\graph-ml-v1\sanity-untuned-replay.json
+
+[evaluate] ═══ COMPARISON vs ../_bmad-output/solver-data/graph-ml-v1/regression-untuned.json ═══
+  prev label: 'm1-regression-untuned'  (2026-04-24T22:14:19.406Z)
+  curr label: 'sanity-untuned-replay'  (2026-04-25T06:39:26.717Z)
+  cumulative matched:           11 → 16  (Δ+5)
+  cumulative score:             186.85714285714286 → 299.16666666666663  (Δ+112.30952380952377)
+  cumulative explorationScore:  205.61203035930632 → 318.7516291673878  (Δ+113.14)
+
+  IMPROVEMENTS (9):
+    ✓ ddd-pendulum-opener: matched 0→1 (Δ+1)  score 2→17 (Δ+15.00)
+    ✓ ryzeal-mitsurugi-opener: matched 1→1 (Δ+0)  score 33→41.5 (Δ+8.50)
+    ✓ radiant-typhoon-opener: matched 0→2 (Δ+2)  score 2→17 (Δ+15.00)
+    ✓ branded-dracotail-opener: matched 3→4 (Δ+1)  score 30.642857142857142→71.78571428571428 (Δ+41.14)
+    ✓ horus-crystron-opener: matched 1→1 (Δ+0)  score 8→10 (Δ+2.00)
+    ✓ snake-eye-yummy-opener: matched 1→1 (Δ+0)  score 15.571428571428571→23.238095238095237 (Δ+7.67)
+    ✓ tearlaments-opener: matched 0→0 (Δ+0)  score 10→15 (Δ+5.00)
+    ✓ floowandereeze-opener: matched 0→2 (Δ+2)  score 2→12 (Δ+10.00)
+    ✓ branded-dracotail-opener-mirrorjade-line: matched 2→2 (Δ+0)  score 56.64285714285714→63.64285714285714 (Δ+7.00)
+
+  CORRECTIONS (1):
+    ~ spright-opener: matched 1→0 (Δ-1)  score 8→9 (Δ+1.00)  [correction: stricter endboard]
+
+  STABLE (5):
+    = kashtira-azamina-opener: matched 1→1 (Δ+0)  score 8→8 (Δ+0.00)
+    = dinomorphia-opener: matched 0→0 (Δ+0)  score 1→1 (Δ+0.00)
+    = labrynth-opener: matched 1→1 (Δ+0)  score 9→9 (Δ+0.00)
+    = stun-runick-opener: matched 0→0 (Δ+0)  score 0→0 (Δ+0.00)
+    = nekroz-ryzeal-opener: matched 0→0 (Δ+0)  score 1→1 (Δ+0.00)
+
+[evaluate] PASS: no regressions

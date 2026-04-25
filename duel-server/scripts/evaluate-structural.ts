@@ -42,7 +42,10 @@ import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { InterruptionScorer } from '../src/solver/interruption-scorer.js';
 import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { RouteAwareRanker } from '../src/solver/route-aware-ranker.js';
+import { GraphGuidedRanker } from '../src/solver/graph-guided-ranker.js';
+import { loadTunedWeightsIfEnabled } from '../src/solver/graph-weights-loader.js';
 import { filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
+import type { ActionRanker } from '../src/solver/solver-strategy.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
 import { MCTSSolver } from '../src/solver/mcts-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
@@ -200,7 +203,7 @@ export async function runFixture(
   allConfigs: ReturnType<typeof loadAllSolverConfigs>,
   timeLimitMs: number,
   rootChildBudgetNodes: number | undefined,
-  opts?: { useHints?: boolean; algorithm?: 'dfs' | 'mcts' },
+  opts?: { useHints?: boolean; algorithm?: 'dfs' | 'mcts'; dfsRanker?: ActionRanker },
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
   if (!deck) throw new Error(`Deck '${hand.deck}' not found`);
@@ -248,9 +251,12 @@ export async function runFixture(
   const algorithm = opts?.algorithm ?? 'dfs';
   const hasher = new ZobristHasher();
   const table = new TranspositionTable(perFixtureConfig.transpositionMaxEntries);
+  // dfsRanker = outer ranker stack (potentially GraphGuidedRanker(ranker)).
+  // Defaults to `ranker` so existing serial callers keep working unchanged.
+  const dfsRanker: ActionRanker = opts?.dfsRanker ?? ranker;
   const solver = algorithm === 'mcts'
-    ? new MCTSSolver(scorer, adapter, ranker, perFixtureConfig)
-    : new DfsSolver(hasher, table, scorer, adapter, ranker, perFixtureConfig);
+    ? new MCTSSolver(scorer, adapter, dfsRanker, perFixtureConfig)
+    : new DfsSolver(hasher, table, scorer, adapter, dfsRanker, perFixtureConfig);
   if (algorithm === 'mcts') {
     (solver as MCTSSolver).setSeed(duelConfig.deckSeed);
   }
@@ -414,7 +420,15 @@ export interface EvaluationContext {
   fixture: FixtureFile;
   adapter: OCGCoreAdapter;
   scorer: InterruptionScorer;
+  /** Inner expertise host (always RouteAwareRanker). `runFixture` calls
+   *  `setArchetypeExpertise` here. */
   ranker: RouteAwareRanker;
+  /** Outer ranker passed to the DfsSolver. When `SOLVER_USE_TUNED_WEIGHTS=1`
+   *  is set at process boot, this is `GraphGuidedRanker(ranker)` with weights
+   *  loaded from `data/trained-weights/<basename>.json`. Otherwise it equals
+   *  `ranker`. Mirror of solver-worker.ts wiring so the eval harness reflects
+   *  production runtime exactly. */
+  dfsRanker: ActionRanker;
   allConfigs: ReturnType<typeof loadAllSolverConfigs>;
   /** Same map injected into the scorer — exposed so diagnostic probes can
    *  call `computeLatentInterruption` / `computeStructuralValue` directly
@@ -501,11 +515,24 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
   );
   const ranker = new RouteAwareRanker(new GoldfishChainRanker(allConfigs.interruptionTags));
 
+  // Graph-ml-v1 opt-in : mirror solver-worker.ts wiring exactly so the eval
+  // harness sees the same ranker stack production does. When env gate is off,
+  // `dfsRanker === ranker` and behaviour is unchanged.
+  const tunedWeights = loadTunedWeightsIfEnabled({ dataDir: DATA_DIR });
+  const dfsRanker: ActionRanker = tunedWeights
+    ? (() => {
+        const gr = new GraphGuidedRanker(ranker);
+        gr.setWeights(tunedWeights);
+        return gr;
+      })()
+    : ranker;
+
   return {
     fixture,
     adapter,
     scorer,
     ranker,
+    dfsRanker,
     allConfigs,
     cardMetadata,
     metadataSize: cardMetadata.size,

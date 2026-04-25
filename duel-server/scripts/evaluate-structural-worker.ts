@@ -44,6 +44,12 @@ export default async function runFixtureTask(task: FixtureTask): Promise<Fixture
     ctx.allConfigs,
     task.timeLimitMs,
     task.nodeBudget,
-    { useHints: task.useHints ?? false, algorithm: task.algorithm ?? 'dfs' },
+    {
+      useHints: task.useHints ?? false,
+      algorithm: task.algorithm ?? 'dfs',
+      // Plumb the GraphGuidedRanker-wrapped ranker through to DfsSolver.
+      // When SOLVER_USE_TUNED_WEIGHTS is off, this equals ctx.ranker (no-op).
+      dfsRanker: ctx.dfsRanker,
+    },
   );
 }

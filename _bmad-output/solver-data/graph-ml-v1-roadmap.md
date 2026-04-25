@@ -8,9 +8,11 @@ Research project : self-play learning of grammar baselines via CMA-ES + MAP-Elit
 
 ## Current Status
 
-**Active milestone**: Option A SUCCESSFUL 2026-04-25 — per-archetype training at 30s/eval lifts ALL 3 archetypes with **0 regressions**. F4 falsified. F6/F7/F8 added. **M2 MAP-Elites likely unnecessary** for v1.
-**Last update**: 2026-04-25 (option A : 3 archetype-isolated runs + gates ; horus skipped per user)
-**Next action**: ship `tier-a-snake-eye.json` (+61 % aggregate gate) OR extend to remaining archetypes before shipping.
+**Active milestone**: Diagnostic audit 2026-04-25 — F6/F7/F8 INVALIDATED. Two bugs (wiring bypass + parallel-pool non-determinism) inflated prior claims. Real learning at production budget : small (+8.57 own fixture, +2.50 cross-transfer, −11 cross-regression).
+**Last update**: 2026-04-25 (audit complete : bugs fixed, sequential mode mandatory, retract premature claims)
+**Next action**: decide whether to invest in stronger-training experiments (longer gen / scale calibration / multi-fixture / tier-B) OR conclude v1 framework as marginal-effect tool.
+
+See `findings-v3-diagnostic-audit.md` for full retraction + corrected numbers.
 
 ### M1 Verdict — Branded tier-A (50 gen, μ=5 λ=10, 4s / 200-node eval)
 
@@ -35,9 +37,12 @@ Convergence CSV : `_bmad-output/solver-data/graph-ml-v1/metrics-m1-branded-tier-
 3. **F3 — `matched²` is wall-clock-gated, not ranking-gated** on branded. +25 % lift was entirely from `goalMatchPoints`. M2+ : longer budgets, simpler fixtures, or accept sparse `matched²`.
 4. **F4 (2026-04-25, regression gate) — Training-budget specificity**. Tuned weights gave +25 % at training budget (4 s) but **zero improvement at production budget (30 s)** on branded. M2 must train at production budget ⇒ ~10× cost vs M1 tooling.
 5. **F5 (2026-04-25, regression gate) — Single-fixture training overfits**. Branded-only weights caused 3 hard regressions (ryzeal −94 %, horus −88 %, snake-eye −49 %) when cross-applied. ⚠️ **REFRAMED by F6**: the cause was 4 s training-budget undersampling, not the single-fixture choice itself.
-6. **F6 (2026-04-25, option A) — F4 falsified at production-budget training**. Re-training branded at 30 s/eval lifts branded +106 % on its own fixture and 6 other fixtures with 0 regressions. Threshold: ≥30 s/eval on tier-A. Per-archetype training cost: ~10 min, not 8 h.
-7. **F7 (2026-04-25, option A) — Per-archetype training generalises positively at production budget**. All 3 isolated weight files (branded/ryzeal/snake-eye) lift most or all 15 fixtures with **0 regressions across 45 fixture-evals**. Tier-A edges encode structural fundamentals OR `goalMatchPoints` regularises via strategic grammar. **M2 MAP-Elites likely unnecessary**.
-8. **F8 (2026-04-25, option A) — Cross-archetype transfer ≠ no specialisation**. Counter-intuitively, snake-eye weights beat branded-trained weights ON branded (+41 vs +33 score lift). Pick shipped weight by aggregate gate metric, not archetype-deck-match. Current best: `tier-a-snake-eye.json` (+61 % aggregate).
+6. ~~**F6 — F4 falsified at production-budget training**~~ ❌ **INVALIDATED 2026-04-25 (audit)** : wiring bypass + parallel-pool non-determinism. F4 partially restored (training-budget effects real but smaller than F6 implied).
+7. ~~**F7 — Per-archetype training generalises positively**~~ ❌ **INVALIDATED 2026-04-25** : "0 regressions" was an artefact. Real test shows snake-eye-tuned causes −11 (−15.8 %) on ryzeal-mitsurugi.
+8. ~~**F8 — Cross-archetype transfer ≠ no specialisation**~~ ❌ **INVALIDATED 2026-04-25** : neither weight file was actually loaded in those gates.
+9. **F9 (2026-04-25, audit) — Parallel pool is non-deterministic AND systematically lower-scoring**. Aggregate score = sequential × ~0.82, σ ≈ 1.9. Use `--pool-size=1` for any comparison gate. Cost: ~5× wall-time but mandatory.
+10. **F10 (2026-04-25, audit) — `evaluate-structural` worker bypassed `loadTunedWeightsIfEnabled`**. Production `solver-worker.ts` was correct, eval harness was not. Fixed via `EvaluationContext.dfsRanker` plumbing + loud-fail loader + JSONL trace.
+11. **F11 (2026-04-25, audit) — Learning is real but small at production budget**. After fixes, `tier-a-snake-eye.json` produces +1 matched, −1.36 score net (over 15 fixtures). +8.57 own fixture, +2.50 cross-transfer to branded, −11 cross-regression on ryzeal-mitsurugi. Shuffle-test produces distinct effect (matched −3) → ranker IS edge-identity-sensitive. Framework functional but learning lift below shippable threshold at current settings.
 
 ### M1 files done
 - ✅ `src/solver/graph-weights-types.ts` — shared schema
