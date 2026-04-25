@@ -1,4 +1,5 @@
 import { CardDetail, IndexedCardDetail } from './card-detail';
+import { CardType } from '../enums/card-type.enum';
 import { IndexedCardDetailDTO } from './dto/card-detail-dto';
 import { IndexedCardImageDTO } from './dto/card-image-dto';
 import { DeckDTO } from './dto/deck-dto';
@@ -154,8 +155,15 @@ export class Deck {
       const firstNoneAvailableSlot = this[zone].findIndex(e => e.index === -1);
       this[zone][previousIndex].index = firstNoneAvailableSlot;
       this[zone][firstNoneAvailableSlot].index = -1;
-    } else {
-      this[zone][newIndex].index = previousIndex;
+    } else if (newIndex < previousIndex) {
+      for (let i = newIndex; i < previousIndex; i++) {
+        this[zone][i].index++;
+      }
+      this[zone][previousIndex].index = newIndex;
+    } else if (newIndex > previousIndex) {
+      for (let i = previousIndex + 1; i <= newIndex; i++) {
+        this[zone][i].index--;
+      }
       this[zone][previousIndex].index = newIndex;
     }
     return this.sortDeck();
@@ -215,6 +223,33 @@ export class Deck {
     return correctedZone;
   }
 
+  public sortByType(): Deck {
+    this.sortDeckPartByType(this.mainDeck);
+    this.sortDeckPartByType(this.extraDeck);
+    this.sortDeckPartByType(this.sideDeck);
+    return this.sortDeck();
+  }
+
+  private sortDeckPartByType(zone: Array<IndexedCardDetail>): void {
+    const realCards = zone.filter(e => e.index !== -1);
+    realCards.sort((a, b) => {
+      const pa = this.typePriority(a.card.card.types ?? []);
+      const pb = this.typePriority(b.card.card.types ?? []);
+      return pa !== pb ? pa - pb : (a.card.card.name ?? '').localeCompare(b.card.card.name ?? '');
+    });
+    realCards.forEach((card, i) => { card.index = i; });
+  }
+
+  private typePriority(types: CardType[]): number {
+    if (types.includes(CardType.FUSION)) return 0;
+    if (types.includes(CardType.SYNCHRO)) return 1;
+    if (types.includes(CardType.XYZ)) return 2;
+    if (types.includes(CardType.LINK)) return 3;
+    if (types.includes(CardType.SPELL)) return 5;
+    if (types.includes(CardType.TRAP)) return 6;
+    return 4; // all other monsters (effect, normal, ritual, pendulum, etc.)
+  }
+
   private sortImages(): Deck {
     this.images = this.sortDeckPart(this.images);
     return this.clone();
@@ -262,7 +297,7 @@ export class Deck {
     return slicedArray.concat(filledArray.slice(slicedArray.length));
   }
 
-  private cleanSlots = (slots: Array<IndexedCardDetail>, image?: boolean): Array<IndexedCardDetail> => {
+  private cleanSlots = (slots: Array<IndexedCardDetail>, _image?: boolean): Array<IndexedCardDetail> => {
     return slots.filter((slot: IndexedCardDetail) => slot.index !== -1);
   };
 }

@@ -66,6 +66,12 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   answered = false;
 
   ngOnInit(): void {
+    if (this.promptData?.type === 'SELECT_TRIBUTE') {
+      const p = this.promptData as SelectTributeMsg;
+      console.warn('[SELECT_TRIBUTE] cards=%d min=%d max=%d excluded=%d cards=%o',
+        p.cards.length, p.min, p.max, this.excludedCards.length,
+        p.cards.map((c, i) => ({ i, name: c.name, amount: c.amount ?? 1, loc: c.location, seq: c.sequence })));
+    }
     console.log('[PromptCardGrid] type=%s cards=%d excluded=%d displayEntries=%d',
       this.promptData?.type, this.cards.length, this.excludedCards.length, this.displayEntries.length);
 
@@ -181,6 +187,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     const p = this.promptData;
     if (!p) return 1;
     if (p.type === 'SELECT_SUM') return (p as SelectSumMsg).minCards;
+    // For SELECT_TRIBUTE min/max are tribute counts, not card counts — use 1 as card-count floor
+    if (p.type === 'SELECT_TRIBUTE') return 1;
     if ('min' in p) return (p as { min: number }).min;
     return 1;
   }
@@ -199,6 +207,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       if (sum.maxCards > 0) return sum.maxCards;
       return this.cards.length;
     }
+    // For SELECT_TRIBUTE max is a tribute count — any card count up to total cards is valid
+    if (p.type === 'SELECT_TRIBUTE') return this.cards.length;
     if ('max' in p) return p.max;
     return 1;
   }
@@ -230,12 +240,27 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     return false;
   }
 
+  /** Sum of tribute amounts of currently selected cards (SELECT_TRIBUTE). */
+  get selectedTributeSum(): number {
+    if (this.promptData?.type !== 'SELECT_TRIBUTE') return 0;
+    let sum = 0;
+    for (const idx of this.selectedIndices()) {
+      const card = this.cards[idx];
+      sum += card?.amount ?? 1;
+    }
+    return sum;
+  }
+
   get isConfirmEnabled(): boolean {
     const count = this.selectedIndices().size;
     if (this.isToggleMode) return this.canFinish || this.toggledIndex() !== null;
     if (this.promptData?.type === 'SELECT_SUM') {
       const p = this.promptData as SelectSumMsg;
       return this.selectedSum >= p.targetSum;
+    }
+    if (this.promptData?.type === 'SELECT_TRIBUTE') {
+      const p = this.promptData as SelectTributeMsg;
+      return this.selectedTributeSum >= p.min && this.selectedTributeSum <= p.max;
     }
     if (this.isMultiSelect) return count >= this.minSelect && count <= this.maxSelect;
     return count === 1;
@@ -286,8 +311,10 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
         if (currentAmt === undefined) {
           // Unselected → select with max amount (link rating or 1 for normal monsters)
           if (next.size >= this.maxSelect) return map;
+          // In exact mode (selectMax=0), prevent overshooting the target sum.
+          // In at-least mode (selectMax=1), allow adding cards even after reaching the target.
           const currentSum = Array.from(next.values()).reduce((s, a) => s + a, 0);
-          if (currentSum >= p.targetSum) return map;
+          if (p.selectMax === 0 && currentSum >= p.targetSum) return map;
           next.set(index, amtMax);
         } else if (amtMin !== amtMax && currentAmt !== amtMin) {
           // Dual-amount card selected at max → toggle down to min (use as single monster)
@@ -326,7 +353,12 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
         if (!this.isMultiSelect && !this.isToggleMode) {
           next.clear();
         }
-        if (this.isMultiSelect && next.size >= this.maxSelect) {
+        if (this.promptData?.type === 'SELECT_TRIBUTE') {
+          // Block adding more cards once the tribute count requirement is already met
+          const p = this.promptData as SelectTributeMsg;
+          const currentSum = Array.from(next).reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0);
+          if (currentSum >= p.max) return set;
+        } else if (this.isMultiSelect && next.size >= this.maxSelect) {
           return set;
         }
         next.add(index);
@@ -338,6 +370,24 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       .map(i => this.cards[i])
       .filter(Boolean);
     this.preTargetCards.emit(selected);
+  }
+
+  /** True when SELECT_SUM minimum is met (confirm enabled). Drives the two-button layout. */
+  get isSumReady(): boolean {
+    return this.promptData?.type === 'SELECT_SUM' && this.isConfirmEnabled;
+  }
+
+  /** True when more cards can still be added to the SELECT_SUM selection. */
+  get canAddMoreMaterials(): boolean {
+    const selectedCount = this.selectedCardAmounts().size;
+    return selectedCount < this.cards.length && selectedCount < this.maxSelect;
+  }
+
+  /** Finish the SELECT_UNSELECT_CARD selection without toggling any card (sends null). */
+  confirmFinish(): void {
+    if (this.answered) return;
+    this.answered = true;
+    this.response.emit({ index: null });
   }
 
   cancel(): void {
@@ -372,6 +422,10 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     } else if (type === 'SELECT_CHAIN') {
       this.response.emit({ index: indices[0] ?? null });
     } else {
+      if (type === 'SELECT_TRIBUTE') {
+        const tributeSum = indices.reduce((s, i) => s + (this.cards[i]?.amount ?? 1), 0);
+        console.warn('[SELECT_TRIBUTE] confirm indices=%o tributeSum=%d', indices, tributeSum);
+      }
       this.response.emit({ indices });
     }
   }

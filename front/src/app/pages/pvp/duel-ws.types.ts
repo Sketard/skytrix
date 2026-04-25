@@ -753,6 +753,10 @@ export interface ActivityPingMsg {
   type: 'ACTIVITY_PING';
 }
 
+export interface AnimationsDoneMsg {
+  type: 'ANIMATIONS_DONE';
+}
+
 export interface InactivityWarningMsg {
   type: 'INACTIVITY_WARNING';
   remainingSec: number;
@@ -936,6 +940,7 @@ export type ClientMessage =
   | RematchRequestMsg
   | RequestStateSyncMsg
   | ActivityPingMsg
+  | AnimationsDoneMsg
   // Replay messages (4)
   | ReplayLoadMsg
   | ReplayForkMsg

@@ -265,6 +265,8 @@
       "revealedCards": "Cartes révélées",
       "noValidTargets": "Aucune cible valide",
       "sumProgress": "{{selected}} / {{target}} requis",
+      "sumConfirm": "Invoquer",
+      "sumAddMore": "Ajouter un matériau",
       "selectCounters": "Sélectionner les compteurs",
       "searchCardName": "Rechercher un nom de carte...",
       "searching": "Recherche...",
@@ -354,6 +356,7 @@
     "exportStandard": "Export standard",
     "exportCardmarket": "Export Cardmarket",
     "import": "Importer",
+    "sortByType": "Trier par type",
     "testHand": "Tester une main",
     "simulator": "Simulateur",
     "pvpDuel": "Duel PvP",
@@ -398,7 +401,8 @@
     "cardType": "Type de carte",
     "attribute": "Attribut",
     "min": "Min.",
-    "max": "Max."
+    "max": "Max.",
+    "cardSet": "Extension"
   },
   "cardInspector": {
     "owned": "Possédées"

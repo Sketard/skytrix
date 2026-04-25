@@ -560,11 +560,10 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     }
 
     case OcgMessageType.SELECT_TRIBUTE:
-      dlog.debug('SELECT_TRIBUTE', { selects: msg.selects.length, min: msg.min, max: msg.max, cancelable: msg.can_cancel });
       return {
         type: 'SELECT_TRIBUTE', player: msg.player as Player,
         min: msg.min, max: msg.max,
-        cards: msg.selects.map(c => toCardInfo(c)),
+        cards: msg.selects.map(c => ({ ...toCardInfo(c), amount: c.release_param })),
         cancelable: msg.can_cancel,
       };
 
@@ -1008,7 +1007,6 @@ function runDuelLoop(): void {
 
       // RETRY: OCGCore rejected the previous response — flag for re-prompt
       if (msg.type === OcgMessageType.RETRY) {
-        dlog.warn('RETRY received — OCGCore rejected previous response');
         hasRetry = true;
         continue;
       }
@@ -1832,7 +1830,6 @@ port.on('message', (msg: MainToWorkerMessage) => {
       return;
     }
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
-    dlog.debug('transformResponse', { promptType: msg.promptType });
     if (response) {
       if (forkMode) {
         core!.duelSetResponse(duel, response as never);

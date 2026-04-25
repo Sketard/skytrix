@@ -86,6 +86,8 @@ export class AnimationOrchestratorService {
   private _pollCount = 0;
   /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
   private _isProcessing = false;
+  /** Set while inline replayBuffer is dispatching buffered events, so processEvent skips re-buffering. */
+  private _isReplayingBuffer = false;
   /** Active await-signal effect (cleaned up on destroy/resetForSwitch). */
   private _awaitSignalEffect: EffectRef | null = null;
 
@@ -270,8 +272,12 @@ export class AnimationOrchestratorService {
     // No await-signal (overlay not involved), no external processAnimationQueue
     // (would be a no-op since _isProcessing is true — causing a 10s deadlock).
     if (inlineFromLoop) {
-      batch.push({ kind: 'batch-end', resolve: () => { shuffleHandLock?.release(); } });
+      batch.push({ kind: 'batch-end', resolve: () => {
+        this._isReplayingBuffer = false;
+        shuffleHandLock?.release();
+      } });
       this.trace('batchEnqueue', { bufferLen: buffer.length, directives: batch.filter(e => 'kind' in e).length, inline: true });
+      this._isReplayingBuffer = true;
       this.dataSource.prependToQueue(batch);
       this.chainManager.clearWaiting();
       return Promise.resolve();
@@ -643,8 +649,10 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
 
   private processEvent(event: GameEvent): number | 'async' | Promise<void> {
-    // Buffer board-changing events during chain resolution
-    if (this.chainManager.bufferIfResolving(event)) {
+    // Buffer board-changing events during chain resolution, unless we are
+    // currently dispatching an inline buffer replay — in that case events
+    // must play through rather than be re-buffered (which would loop forever).
+    if (!this._isReplayingBuffer && this.chainManager.bufferIfResolving(event)) {
       const moveInfo = event.type === 'MSG_MOVE' ? ` card=${(event as MoveMsg).cardCode} reason=${(event as MoveMsg).reason}` : '';
       this.logger.log(DuelLogCategory.CHAIN, 'Buffering %s during chain resolution%s', event.type, moveInfo);
       return 0;

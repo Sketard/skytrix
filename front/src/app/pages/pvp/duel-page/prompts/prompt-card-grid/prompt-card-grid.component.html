@@ -47,7 +47,9 @@
 
   <div class="actions">
     @if (promptData?.type === 'SELECT_SUM') {
-      <span class="selection-count" aria-live="polite">{{ 'duel.prompt.sumProgress' | translate:{selected: selectedSum, target: sumTarget} }}</span>
+      <span class="selection-count" [class.selection-count--ready]="isSumReady" aria-live="polite">
+        {{ 'duel.prompt.sumProgress' | translate:{selected: selectedSum, target: sumTarget} }}
+      </span>
     } @else if (isMultiSelect && !isToggleMode) {
       <span class="selection-count" aria-live="polite">{{ selectedIndices().size }} / {{ maxSelect }} selected</span>
     }
@@ -60,12 +62,43 @@
         {{ 'common.cancel' | translate }}
       </button>
     }
-    <button class="btn btn--primary prompt-confirm-btn"
-            [class.btn--ready]="isToggleMode && canFinish && toggledIndex() === null"
-            (click)="confirm()"
-            [disabled]="!isConfirmEnabled || answered"
-            type="button">
-      {{ 'common.confirm' | translate }}
-    </button>
+    @if (isToggleMode && canFinish && !answered) {
+      @if (toggledIndex() !== null) {
+        <button class="btn btn--secondary"
+                (click)="confirmFinish()"
+                type="button">
+          {{ 'duel.prompt.sumConfirm' | translate }}
+        </button>
+        <button class="btn btn--primary prompt-confirm-btn"
+                (click)="confirm()"
+                type="button">
+          {{ 'duel.prompt.sumAddMore' | translate }}
+        </button>
+      } @else {
+        <button class="btn btn--primary prompt-confirm-btn"
+                (click)="confirmFinish()"
+                type="button">
+          {{ 'duel.prompt.sumConfirm' | translate }}
+        </button>
+      }
+    } @else if (isSumReady && !answered) {
+      <button class="btn btn--secondary"
+              type="button"
+              [disabled]="!canAddMoreMaterials">
+        {{ 'duel.prompt.sumAddMore' | translate }}
+      </button>
+      <button class="btn btn--primary prompt-confirm-btn"
+              (click)="confirm()"
+              type="button">
+        {{ 'duel.prompt.sumConfirm' | translate }}
+      </button>
+    } @else {
+      <button class="btn btn--primary prompt-confirm-btn"
+              (click)="confirm()"
+              [disabled]="!isConfirmEnabled || answered"
+              type="button">
+        {{ 'common.confirm' | translate }}
+      </button>
+    }
   </div>
 }

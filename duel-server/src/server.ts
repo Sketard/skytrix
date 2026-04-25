@@ -17,6 +17,7 @@ import {
   REPLAY_WORKER_WATCHDOG_MS,
   REPLAY_CACHE_TTL_MS,
   MAX_REPLAY_WORKERS,
+  ANIMATIONS_DONE_TIMEOUT_MS,
   extractCardCodes,
 } from './types.js';
 import type {
@@ -819,6 +820,8 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
         intervalRef: null,
         lastTickMs: 0,
         turnCount: 0,
+        pendingPlayer: null,
+        pendingTimeout: null,
       };
       // Send initial TIMER_STATE for both players (clients display 5:00 from start)
       // Note: no-ops if players haven't connected yet — sendTimerStateToPlayer covers on connection
@@ -923,7 +926,8 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
     session.promptSentAt[targetPlayer] = Date.now();
     const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
     sendToPlayer(session, opponentOfTarget, { type: 'WAITING_RESPONSE' });
-    startTurnTimer(session);
+    // Park the timer: runs for the prompted player, starts only after ANIMATIONS_DONE.
+    scheduleTimerStart(session, targetPlayer);
     startInactivityTimer(session, targetPlayer);
   }
 
@@ -974,11 +978,9 @@ function validateResponseData(prompt: ServerMessage, data: Record<string, unknow
   const cardsLen = cards?.length ?? 0;
 
   switch (prompt.type) {
-    case 'SELECT_CARD':
-    case 'SELECT_TRIBUTE': {
+    case 'SELECT_CARD': {
       const indices = data['indices'];
       if (indices === null) {
-        // Cancel — only valid when cancelable
         return p['cancelable'] ? null : 'cancel not allowed for this prompt';
       }
       if (!Array.isArray(indices)) return 'indices must be an array';
@@ -991,6 +993,38 @@ function validateResponseData(prompt: ServerMessage, data: Record<string, unknow
         }
       }
       if (new Set(indices).size !== indices.length) return 'duplicate indices';
+      return null;
+    }
+
+    case 'SELECT_TRIBUTE': {
+      // min/max from OCGCore are TRIBUTE COUNTS, not card counts.
+      // Each card has an `amount` (release_param) indicating how many tributes it provides.
+      // A single card with amount=2 satisfies min=2 by itself.
+      const indices = data['indices'];
+      if (indices === null) {
+        return p['cancelable'] ? null : 'cancel not allowed for this prompt';
+      }
+      if (!Array.isArray(indices)) return 'indices must be an array';
+      if (indices.length === 0) return 'indices must not be empty';
+      if (indices.length > cardsLen) return `indices length ${indices.length} exceeds cards length ${cardsLen}`;
+      for (const idx of indices) {
+        if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
+          return `index ${idx} out of bounds [0, ${cardsLen})`;
+        }
+      }
+      if (new Set(indices).size !== indices.length) return 'duplicate indices';
+      // Validate tribute count (sum of release_param of selected cards)
+      const cardsList = cards as Array<Record<string, unknown>> | undefined;
+      if (cardsList) {
+        const min = (p['min'] as number) ?? 1;
+        const max = (p['max'] as number) ?? cardsLen;
+        const tributeSum = (indices as number[]).reduce((sum, idx) => {
+          const amount = cardsList[idx]?.['amount'] as number | undefined;
+          return sum + (typeof amount === 'number' ? amount : 1);
+        }, 0);
+        logger.warn('SELECT_TRIBUTE validation', { indicesLen: (indices as number[]).length, tributeSum, min, max });
+        if (tributeSum < min || tributeSum > max) return `tribute sum ${tributeSum} not in [${min}, ${max}]`;
+      }
       return null;
     }
 
@@ -1230,7 +1264,46 @@ function pauseTurnTimer(session: ActiveDuelSession): void {
   sendToPlayer(session, 1, timerMsg);
 }
 
-function resumeTurnTimer(session: ActiveDuelSession): void {
+
+/**
+ * Park the timer as pending for `player` — starts only when ANIMATIONS_DONE arrives.
+ * A safety timeout fires startTurnTimer() after ANIMATIONS_DONE_TIMEOUT_MS
+ * in case the client never sends the message (disconnect, bug, etc.).
+ */
+function scheduleTimerStart(session: ActiveDuelSession, player: Player): void {
+  const ctx = session.timerContext;
+  if (!ctx) return;
+
+  // Deduct elapsed from whoever was active, then freeze.
+  pauseTurnTimer(session);
+  ctx.activePlayer = player;
+
+  // Clear any previous pending slot.
+  if (ctx.pendingTimeout) {
+    clearTimeout(ctx.pendingTimeout);
+    ctx.pendingTimeout = null;
+  }
+  ctx.pendingPlayer = player;
+
+  ctx.pendingTimeout = setTimeout(() => {
+    ctx.pendingPlayer = null;
+    ctx.pendingTimeout = null;
+    startTurnTimer(session);
+  }, ANIMATIONS_DONE_TIMEOUT_MS);
+}
+
+/**
+ * Commit a pending timer immediately (used on reconnect so we don't wait for
+ * ANIMATIONS_DONE from a client that may have just re-established its connection).
+ */
+function commitPendingTimer(session: ActiveDuelSession): void {
+  const ctx = session.timerContext;
+  if (!ctx) return;
+  if (ctx.pendingTimeout) {
+    clearTimeout(ctx.pendingTimeout);
+    ctx.pendingTimeout = null;
+  }
+  ctx.pendingPlayer = null;
   startTurnTimer(session);
 }
 
@@ -1251,9 +1324,15 @@ function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, new
   if (!ctx || newTurnCount <= ctx.turnCount) return;
 
   logger.debug('handleTurnChange', { duelId: session.duelId, fromTurn: ctx.turnCount, toTurn: newTurnCount, activePlayer: newTurnPlayer });
-  // New turn detected — pause current timer, add increment, switch active player
+  // New turn detected — pause current timer, cancel any pending ANIMATIONS_DONE slot,
+  // add increment, switch active player.
   const wasRunning = ctx.running;
   pauseTurnTimer(session);
+  if (ctx.pendingTimeout) {
+    clearTimeout(ctx.pendingTimeout);
+    ctx.pendingTimeout = null;
+    ctx.pendingPlayer = null;
+  }
   addTurnIncrement(session, newTurnPlayer, newTurnCount);
 
   // Send updated TIMER_STATE for the player who received the increment
@@ -1329,10 +1408,17 @@ function clearInactivityTimer(session: ActiveDuelSession, player: Player): void 
 function clearAllDuelTimers(session: ActiveDuelSession): void {
   // Clear turn timer
   const ctx = session.timerContext;
-  if (ctx?.intervalRef) {
-    clearInterval(ctx.intervalRef);
-    ctx.intervalRef = null;
-    ctx.running = false;
+  if (ctx) {
+    if (ctx.intervalRef) {
+      clearInterval(ctx.intervalRef);
+      ctx.intervalRef = null;
+      ctx.running = false;
+    }
+    if (ctx.pendingTimeout) {
+      clearTimeout(ctx.pendingTimeout);
+      ctx.pendingTimeout = null;
+    }
+    ctx.pendingPlayer = null;
   }
   session.timerContext = null;
 
@@ -1534,9 +1620,11 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
     logger.log('Player reconnected', { duelId: session.duelId, player: playerIndex });
 
-    // Story 3.2 — Resume turn timer on reconnect if a prompt is pending
+    // Story 3.2 — Resume turn timer on reconnect if a prompt is pending.
+    // Use commitPendingTimer so we don't wait for ANIMATIONS_DONE from the
+    // freshly reconnected client (board re-render is fast, timer starts immediately).
     if (session.awaitingResponse.some(a => a)) {
-      resumeTurnTimer(session);
+      commitPendingTimer(session);
       // Restart inactivity timer for the prompted player
       for (const p of [0, 1] as const) {
         if (session.awaitingResponse[p]) {
@@ -1784,7 +1872,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
 // Client Message Handling
 // =============================================================================
 
-const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC', 'ACTIVITY_PING']);
+const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC', 'ACTIVITY_PING', 'ANIMATIONS_DONE']);
 
 function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg: ClientMessage): void {
   // Validate message type
@@ -1891,6 +1979,19 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       if (session.awaitingResponse[playerIndex]) {
         clearInactivityTimer(session, playerIndex as Player);
         startInactivityTimer(session, playerIndex as Player);
+      }
+      break;
+    }
+
+    case 'ANIMATIONS_DONE': {
+      const ctx = session.timerContext;
+      if (ctx && ctx.pendingPlayer === playerIndex) {
+        if (ctx.pendingTimeout) {
+          clearTimeout(ctx.pendingTimeout);
+          ctx.pendingTimeout = null;
+        }
+        ctx.pendingPlayer = null;
+        startTurnTimer(session);
       }
       break;
     }

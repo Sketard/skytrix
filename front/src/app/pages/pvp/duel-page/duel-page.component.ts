@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, OnInit, signal, TemplateRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -169,6 +169,17 @@ export class DuelPageComponent implements OnInit {
   // Delegate animation signals to service
   readonly isAnimating = this.animationService.isAnimating;
   readonly animatingZone = this.animationService.animatingZone;
+
+  // Notify server when animations complete so it can start the turn timer.
+  // Fires on every (pendingPrompt, isAnimating) change: sends immediately if
+  // not animating, or defers until the queue drains.
+  private readonly _animationsDoneEffect = effect(() => {
+    const prompt = this.wsService.pendingPrompt();
+    const animating = this.isAnimating();
+    if (prompt && !animating) {
+      untracked(() => this.wsService.sendAnimationsDone());
+    }
+  });
   private readonly lpTracker = inject(LpAnimationTracker);
   readonly animatingLpPlayer = this.lpTracker.animatingLpPlayer;
 
