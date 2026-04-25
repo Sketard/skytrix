@@ -42,7 +42,7 @@ import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { InterruptionScorer } from '../src/solver/interruption-scorer.js';
 import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { RouteAwareRanker } from '../src/solver/route-aware-ranker.js';
-import { GraphGuidedRanker } from '../src/solver/graph-guided-ranker.js';
+import { GraphGuidedRanker, type RankerTrackingDump } from '../src/solver/graph-guided-ranker.js';
 import { loadTunedWeightsIfEnabled } from '../src/solver/graph-weights-loader.js';
 import { filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
 import type { ActionRanker } from '../src/solver/solver-strategy.js';
@@ -83,6 +83,10 @@ export interface FixtureResult {
    *  Matches `result.score` from SolverResult for backward-compat with
    *  pre-3.0 baselines. */
   score: number;
+  /** Transposition table hits during the run. Surfaced for fitness-evaluator's
+   *  `novelty` term (= nodesExplored − transpositionHits). Optional in result
+   *  schema (older baselines may lack it). */
+  transpositionHits?: number;
   /** DFS guidance signal (= scoreBreakdown.explorationScore = interruption
    *  + latent). Surfaced at this level so tuning sweeps can observe the
    *  effect of structural-weight / latentDiscount changes even when the
@@ -104,6 +108,11 @@ export interface FixtureResult {
   actionsZeroPct: number;
   turn2Pct: number;
   wallMs: number;
+  /** Populated when `runFixture` was called with `dumpEdges=true` and the
+   *  active dfsRanker is a `GraphGuidedRanker`. Captures per-edge usage
+   *  during this fixture's DFS run (graph-ml-v1 audit reco #2). Stays
+   *  optional so existing baselines / consumers are unaffected. */
+  edgeUsage?: RankerTrackingDump;
 }
 
 export interface BaselineFile {
@@ -203,7 +212,15 @@ export async function runFixture(
   allConfigs: ReturnType<typeof loadAllSolverConfigs>,
   timeLimitMs: number,
   rootChildBudgetNodes: number | undefined,
-  opts?: { useHints?: boolean; algorithm?: 'dfs' | 'mcts'; dfsRanker?: ActionRanker },
+  opts?: {
+    useHints?: boolean;
+    algorithm?: 'dfs' | 'mcts';
+    dfsRanker?: ActionRanker;
+    /** When true and `dfsRanker instanceof GraphGuidedRanker`, enable per-edge
+     *  usage tracking on the ranker for the duration of this fixture's DFS run
+     *  and embed the dump in the returned `FixtureResult.edgeUsage`. */
+    dumpEdges?: boolean;
+  },
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
   if (!deck) throw new Error(`Deck '${hand.deck}' not found`);
@@ -285,9 +302,25 @@ export async function runFixture(
     }
   }
 
+  // Edge-usage tracking (graph-ml-v1 audit reco #2). Toggled per-fixture so
+  // worker reuse across tasks doesn't leak hits between fixtures. Only fires
+  // when dfsRanker is a GraphGuidedRanker — RouteAware-only paths skip
+  // silently (no graph weights to track).
+  let trackingActive = false;
+  if (opts?.dumpEdges && dfsRanker instanceof GraphGuidedRanker) {
+    dfsRanker.enableTracking();
+    trackingActive = true;
+  }
+
   const t0 = Date.now();
   const result = solver.solve(adapter, solverConfig, signal, () => {}, startHandle);
   const wallMs = Date.now() - t0;
+
+  let edgeUsage: RankerTrackingDump | undefined;
+  if (trackingActive && dfsRanker instanceof GraphGuidedRanker) {
+    edgeUsage = dfsRanker.getTracking();
+    dfsRanker.disableTracking();
+  }
 
   const peakFs = result.stats.diagnostic?.bestTurn1FieldState as undefined | {
     zones: Record<string, { cardId: number; cardName?: string; position?: string }[]>;
@@ -341,6 +374,7 @@ export async function runFixture(
 
   return {
     score: result.score,
+    transpositionHits: result.stats.transpositionHits,
     explorationScore: result.scoreBreakdown.explorationScore,
     breakdown: result.scoreBreakdown,
     matched: matchedCardIds.length,
@@ -353,6 +387,7 @@ export async function runFixture(
     actionsZeroPct: Number(actionsZeroPct.toFixed(1)),
     turn2Pct: Number(turn2Pct.toFixed(1)),
     wallMs,
+    ...(edgeUsage ? { edgeUsage } : {}),
   };
 }
 
@@ -563,6 +598,10 @@ export interface FixtureTask {
    *  with UCB1 selection + epsilon-greedy rollouts via the same ranker +
    *  scorer as DFS. */
   algorithm?: 'dfs' | 'mcts';
+  /** Graph-ml-v1 audit reco #2: per-fixture per-edge usage dump. Worker
+   *  toggles tracking on the GraphGuidedRanker for this task only. No-op when
+   *  the dfsRanker isn't graph-guided (a warning is logged main-side). */
+  dumpEdges?: boolean;
 }
 
 /** Minimal pool surface consumed by `runEvaluationParallel`. Kept structural
@@ -582,6 +621,10 @@ export interface ParallelEvaluationOptions extends EvaluationOptions {
   useHints?: boolean;
   /** Solver algorithm for this evaluation run. Defaults to 'dfs'. */
   algorithm?: 'dfs' | 'mcts';
+  /** When set, each fixture's per-edge usage dump is written to
+   *  `<dumpEdgesDir>/<fixtureId>.json`. Only effective when
+   *  `SOLVER_USE_TUNED_WEIGHTS=1` so the worker has a GraphGuidedRanker. */
+  dumpEdgesDir?: string;
 }
 
 /**
@@ -608,6 +651,10 @@ export async function runEvaluationParallel(
   console.log(`[evaluate-par] fixtures: ${validHands.length}  budget=${opts.timeLimitMs}ms  ${modeTag}  label='${opts.label}'`);
 
   const fixtureResults: Record<string, FixtureResult> = {};
+  if (opts.dumpEdgesDir) {
+    mkdirSync(resolve(opts.dumpEdgesDir), { recursive: true });
+    console.log(`[evaluate-par] edge usage dump → ${resolve(opts.dumpEdgesDir)}/<fixture>.json`);
+  }
   // Dispatch all tasks up-front; pool schedules them across its worker set.
   // Promise.allSettled so a single fixture failure does not abort the sweep.
   const settled = await Promise.allSettled(validHands.map(async hand => {
@@ -619,6 +666,7 @@ export async function runEvaluationParallel(
       label: opts.label,
       useHints: opts.useHints,
       algorithm: opts.algorithm,
+      dumpEdges: opts.dumpEdgesDir !== undefined,
     });
     return { hand, res };
   }));
@@ -631,6 +679,16 @@ export async function runEvaluationParallel(
         `latent=${res.breakdown.latentPoints}  matched=${res.matched}/${res.matchedTotal}  ` +
         `nodes=${res.nodesExplored}  depth=${res.maxDepthReached}  ` +
         `az=${res.actionsZeroPct}%  t2=${res.turn2Pct}%  walk=${res.wallMs}ms  term=${res.terminationReason}`);
+      if (opts.dumpEdgesDir && res.edgeUsage) {
+        const dumpPath = resolve(opts.dumpEdgesDir, `${hand.id}.json`);
+        writeFileSync(dumpPath, JSON.stringify({
+          fixtureId: hand.id,
+          deck: hand.deck,
+          ...res.edgeUsage,
+        }, null, 2) + '\n', 'utf-8');
+      } else if (opts.dumpEdgesDir && !res.edgeUsage) {
+        console.warn(`  [${hand.id}] dump-edges requested but no edgeUsage — set SOLVER_USE_TUNED_WEIGHTS=1 so the worker uses GraphGuidedRanker.`);
+      }
     } else {
       console.error(`  FAIL: ${s.reason instanceof Error ? s.reason.message : String(s.reason)}`);
     }
@@ -728,6 +786,7 @@ async function main(): Promise<void> {
   const useHints = process.argv.includes('--use-hints');
   const algorithmArg = parseStringArg('algorithm');
   const algorithm: 'dfs' | 'mcts' = algorithmArg === 'mcts' ? 'mcts' : 'dfs';
+  const dumpEdgesDir = parseStringArg('dump-edges-per-fixture');
 
   // Parallel mode: main thread stays lightweight (fixture JSON + config read,
   // no WASM boot). Each Piscina worker boots its own OCGCore/scorer once.
@@ -763,6 +822,7 @@ async function main(): Promise<void> {
       weightsOverride,
       useHints,
       algorithm,
+      dumpEdgesDir,
     });
 
     if (outPath) {

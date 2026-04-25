@@ -50,6 +50,7 @@ export default async function runFixtureTask(task: FixtureTask): Promise<Fixture
       // Plumb the GraphGuidedRanker-wrapped ranker through to DfsSolver.
       // When SOLVER_USE_TUNED_WEIGHTS is off, this equals ctx.ranker (no-op).
       dfsRanker: ctx.dfsRanker,
+      dumpEdges: task.dumpEdges ?? false,
     },
   );
 }

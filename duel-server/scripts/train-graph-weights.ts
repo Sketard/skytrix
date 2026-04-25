@@ -28,7 +28,7 @@
 // Roadmap: memory `project_graph_ml_v1_roadmap_2026_04_24.md`.
 // =============================================================================
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 import {
@@ -49,6 +49,7 @@ import {
   EvolutionStrategy,
   DEFAULT_ES_CONFIG,
   type Vector,
+  type PopulationSnapshot,
 } from './lib/evolution-strategy.js';
 import {
   initWeights,
@@ -82,6 +83,12 @@ interface Args {
   edgesFile: string;
   weightsDir: string;
   csv?: string;
+  /** Directory for forensic trace files (population.jsonl, mutations.jsonl,
+   *  meta.json). When omitted, defaults to
+   *  `data/training-logs/<basename>-<seed>-<timestamp>/`. Pass `--no-trace`
+   *  to disable entirely. */
+  traceDir?: string;
+  noTrace: boolean;
 }
 
 function parseArgs(): Args {
@@ -115,6 +122,8 @@ function parseArgs(): Args {
     edgesFile: pick('edges') ?? join(DATA_DIR, 'trained-weights', 'edges-all.json'),
     weightsDir: join(DATA_DIR, 'trained-weights'),
     csv: pick('csv'),
+    traceDir: pick('trace-dir'),
+    noTrace: process.argv.includes('--no-trace'),
   };
 }
 
@@ -158,6 +167,9 @@ function buildMaskedPacker(template: GraphWeights, activeEdgeIds: Set<EdgeId>) {
   for (let i = 0; i < allOrdered.length; i++) {
     if (activeEdgeIds.has(allOrdered[i])) activeIndices.push(i);
   }
+  /** EdgeIds that the active vector covers, in vector-index order.
+   *  `activeOrdered[i]` is the edge whose weight maps to `vector[i]`. */
+  const activeOrdered: EdgeId[] = activeIndices.map(i => allOrdered[i]);
 
   const unpackActive = (activeVec: Vector): GraphWeights => {
     const full: number[] = packToVector(template);
@@ -172,7 +184,7 @@ function buildMaskedPacker(template: GraphWeights, activeEdgeIds: Set<EdgeId>) {
     return activeIndices.map(i => full[i]);
   };
 
-  return { activeIndices, unpackActive, packActive };
+  return { activeIndices, activeOrdered, unpackActive, packActive };
 }
 
 // -----------------------------------------------------------------------------
@@ -230,8 +242,8 @@ async function main(): Promise<void> {
   });
 
   // ---- Baseline: all-zeros weights (= no graph bonus) ---------------------
-  const baseline = evaluator.evaluate(template);
-  console.log(`[train] baseline (weights=0): fitness=${baseline.fitness.toFixed(3)} matched=${baseline.signals.matched}/${baseline.signals.matchedTotal} goalMatch=${baseline.signals.partialGoals.toFixed(2)} nodes=${baseline.signals.nodesExplored}`);
+  const baseline = await evaluator.evaluate(template);
+  console.log(`[train] baseline (weights=0): fitness=${baseline.fitness.toFixed(3)} matched=${baseline.signals.matched}/${baseline.signals.matchedTotal} expl=${baseline.signals.explorationScore.toFixed(2)} goalMatch=${baseline.signals.partialGoals.toFixed(2)} nodes=${baseline.signals.nodesExplored}`);
 
   // ---- ES loop -------------------------------------------------------------
   const es = new EvolutionStrategy({
@@ -244,15 +256,100 @@ async function main(): Promise<void> {
 
   const csvRows: string[] = ['generation,bestFitness,meanFitness,stdFitness,sigma,successRate'];
 
+  // ---- Forensic trace setup (graph-ml-v1 audit reco #1 + #3) -------------
+  // population.jsonl  — one line per individual per gen (parents + offspring)
+  // mutations.jsonl   — one line per offspring with parent → child Δfitness + deltas
+  // meta.json         — run config + edgeIdsOrdered (so vector indices map to edges)
+  let traceDir: string | undefined;
+  let populationPath: string | undefined;
+  let mutationsPath: string | undefined;
+  if (!args.noTrace) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    traceDir = args.traceDir
+      ? resolve(args.traceDir)
+      : join(DATA_DIR, 'training-logs', `${args.basename}-seed${args.seed}-${stamp}`);
+    mkdirSync(traceDir, { recursive: true });
+    populationPath = join(traceDir, 'population.jsonl');
+    mutationsPath = join(traceDir, 'mutations.jsonl');
+    const metaPath = join(traceDir, 'meta.json');
+    writeFileSync(metaPath, JSON.stringify({
+      runId: `${args.basename}-seed${args.seed}-${stamp}`,
+      fixture: args.fixture,
+      tier: args.tier,
+      mu: args.mu,
+      lambda: args.lambda,
+      generations: args.generations,
+      seed: args.seed,
+      budgetMs: args.budgetMs,
+      nodeBudget: args.nodeBudget ?? null,
+      activeEdgeCount: masker.activeOrdered.length,
+      // edgeIdsOrdered[i] is the edge whose weight maps to vector[i] / deltas[i].
+      edgeIdsOrdered: masker.activeOrdered,
+      baselineFitness: baseline.fitness,
+    }, null, 2) + '\n', 'utf-8');
+    // Truncate (or create) the JSONL files at start so re-runs don't append.
+    writeFileSync(populationPath, '', 'utf-8');
+    writeFileSync(mutationsPath, '', 'utf-8');
+    console.log(`[train] trace dir → ${traceDir}`);
+  }
+
   const initialActiveVec: Vector = masker.packActive(template);
 
-  const fitnessFn = (vec: Vector): number => {
+  const fitnessFn = async (vec: Vector): Promise<number> => {
     const weights = masker.unpackActive(vec);
-    return evaluator.evaluate(weights).fitness;
+    return (await evaluator.evaluate(weights)).fitness;
   };
 
   let bestFitness = baseline.fitness;
   let bestWeights = template;
+
+  const onPop = (snap: PopulationSnapshot): void => {
+    if (!populationPath || !mutationsPath) return;
+    const popLines: string[] = [];
+    for (let i = 0; i < snap.parents.length; i++) {
+      popLines.push(JSON.stringify({
+        gen: snap.generation,
+        kind: 'parent',
+        idx: i,
+        fitness: snap.parents[i].fitness,
+        sigma: snap.sigma,
+        vector: Array.from(snap.parents[i].vector),
+      }));
+    }
+    for (let i = 0; i < snap.offspring.length; i++) {
+      const o = snap.offspring[i];
+      popLines.push(JSON.stringify({
+        gen: snap.generation,
+        kind: 'offspring',
+        idx: i,
+        parentIdx: o.parentIdx,
+        fitness: o.fitness,
+        survivedAsParent: o.survivedAsParent,
+        sigma: snap.sigma,
+        vector: Array.from(o.vector),
+      }));
+    }
+    appendFileSync(populationPath, popLines.join('\n') + (popLines.length > 0 ? '\n' : ''), 'utf-8');
+
+    if (snap.offspring.length > 0) {
+      const mutLines: string[] = [];
+      for (let i = 0; i < snap.offspring.length; i++) {
+        const o = snap.offspring[i];
+        mutLines.push(JSON.stringify({
+          gen: snap.generation,
+          childIdx: i,
+          parentIdx: o.parentIdx,
+          parentFitness: o.parentFitness,
+          childFitness: o.fitness,
+          deltaFitness: o.fitness - o.parentFitness,
+          survivedAsParent: o.survivedAsParent,
+          sigma: snap.sigma,
+          deltas: o.deltas,
+        }));
+      }
+      appendFileSync(mutationsPath, mutLines.join('\n') + '\n', 'utf-8');
+    }
+  };
 
   const onGen = (stats: { generation: number; bestFitness: number; meanFitness: number; stdFitness: number; sigma: number; successRate: number }, best: { vector: Vector; fitness: number }): void => {
     console.log(`[train] gen=${stats.generation} best=${stats.bestFitness.toFixed(3)} mean=${stats.meanFitness.toFixed(3)} std=${stats.stdFitness.toFixed(3)} σ=${stats.sigma.toFixed(3)} succ=${(stats.successRate * 100).toFixed(0)}%`);
@@ -279,7 +376,7 @@ async function main(): Promise<void> {
     }
   };
 
-  const { best, history } = await es.run(initialActiveVec, fitnessFn, onGen);
+  const { best, history } = await es.run(initialActiveVec, fitnessFn, onGen, onPop);
 
   // ---- Final save ---------------------------------------------------------
   const finalWeights: GraphWeights = {
@@ -300,9 +397,12 @@ async function main(): Promise<void> {
   console.log(`[train] final weights → ${finalPath}`);
 
   // ---- Post-training re-evaluation (sanity: does saved vector = training best?) -
-  const reEval = evaluator.evaluate(finalWeights);
-  console.log(`[train] re-eval: fitness=${reEval.fitness.toFixed(3)} matched=${reEval.signals.matched}/${reEval.signals.matchedTotal} goalMatch=${reEval.signals.partialGoals.toFixed(2)} nodes=${reEval.signals.nodesExplored} term=${reEval.signals.terminationReason}`);
-  console.log(`[train] Δ vs baseline: fitness ${(reEval.fitness - baseline.fitness >= 0 ? '+' : '')}${(reEval.fitness - baseline.fitness).toFixed(3)} | goalMatch ${(reEval.signals.partialGoals - baseline.signals.partialGoals >= 0 ? '+' : '')}${(reEval.signals.partialGoals - baseline.signals.partialGoals).toFixed(2)} | matched ${reEval.signals.matched}→${reEval.signals.matched} (baseline ${baseline.signals.matched})`);
+  const reEval = await evaluator.evaluate(finalWeights);
+  console.log(`[train] re-eval: fitness=${reEval.fitness.toFixed(3)} matched=${reEval.signals.matched}/${reEval.signals.matchedTotal} expl=${reEval.signals.explorationScore.toFixed(2)} goalMatch=${reEval.signals.partialGoals.toFixed(2)} nodes=${reEval.signals.nodesExplored} term=${reEval.signals.terminationReason}`);
+  const dF = reEval.fitness - baseline.fitness;
+  const dExpl = reEval.signals.explorationScore - baseline.signals.explorationScore;
+  const dGoal = reEval.signals.partialGoals - baseline.signals.partialGoals;
+  console.log(`[train] Δ vs baseline: fitness ${dF >= 0 ? '+' : ''}${dF.toFixed(3)} | expl ${dExpl >= 0 ? '+' : ''}${dExpl.toFixed(2)} | goalMatch ${dGoal >= 0 ? '+' : ''}${dGoal.toFixed(2)} | matched ${reEval.signals.matched} (baseline ${baseline.signals.matched})`);
 
   if (args.csv) {
     mkdirSync(dirname(resolve(args.csv)), { recursive: true });

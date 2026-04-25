@@ -32,7 +32,13 @@ export interface EvolutionStrategyConfig {
   lambda: number;
   /** Initial step-size for Gaussian mutation. Typical: 0.3-1.0 (domain-dependent). */
   initialSigma: number;
-  /** Min σ — mutation floor to preserve exploration. Typical: 1e-4. */
+  /** Min σ — mutation floor to preserve exploration.
+   *  **Raised from 1e-4 to 0.05 (2026-04-25 audit F2)**: prior floor allowed σ
+   *  to collapse exponentially below numerical-noise level when the 1/5 rule
+   *  hit a flat plateau (gen 31+ on tier-a-branded-trace ran 19 consecutive
+   *  gens at acceptance=0% with σ shrinking 0.084 → 0.002). 0.05 keeps
+   *  exploration alive at the cost of slightly less precision near optima
+   *  — acceptable for graph-edge weights whose meaningful range is O(0.5-2). */
   sigmaMin: number;
   /** Max σ — mutation ceiling to prevent divergence. Typical: 10.0. */
   sigmaMax: number;
@@ -52,7 +58,7 @@ export const DEFAULT_ES_CONFIG: EvolutionStrategyConfig = {
   mu: 10,
   lambda: 40,
   initialSigma: 0.5,
-  sigmaMin: 1e-4,
+  sigmaMin: 0.05,
   sigmaMax: 10.0,
   sigmaIncreaseFactor: 1.22,
   sigmaDecreaseFactor: 0.82,
@@ -70,6 +76,32 @@ export type Vector = readonly number[];
 export interface Individual {
   vector: Vector;
   fitness: number;
+}
+
+/** Offspring with provenance — preserves the parent → child mutation linkage
+ *  so post-hoc analysis can answer "which mutation moved fitness by how much?".
+ *  See graph-ml-v1 audit reco #1 (mutation logger) + #3 (population snapshot). */
+export interface OffspringRecord {
+  vector: Vector;
+  fitness: number;
+  /** Index of the parent that was perturbed (in the parents[] array of the
+   *  generation that produced this offspring, BEFORE selection runs). */
+  parentIdx: number;
+  parentFitness: number;
+  /** Per-dimension perturbation that produced this offspring. Length = dim. */
+  deltas: number[];
+  /** Set after "+" selection: did this child survive into the next gen's
+   *  parent set? Useful to filter mutations.jsonl to "winners". */
+  survivedAsParent: boolean;
+}
+
+export interface PopulationSnapshot {
+  /** 0 = bootstrap (μ parents from initialVector); 1..N = end of generation N. */
+  generation: number;
+  parents: Individual[];
+  /** [] for the bootstrap snapshot. */
+  offspring: OffspringRecord[];
+  sigma: number;
 }
 
 export interface GenerationStats {
@@ -128,11 +160,18 @@ export class EvolutionStrategy {
   }
 
   /** Run full training loop. `initialVector` is the starting point (length = dim).
-   *  Returns the best individual found across all generations. */
+   *  Returns the best individual found across all generations.
+   *
+   *  Callbacks:
+   *  - `onGeneration` — per-gen summary stats + current best. Cheap; cheap to log.
+   *  - `onPopulation` — full μ+λ population (incl. parent linkage and per-offspring
+   *    deltas). Used by trace dumpers to write `population.jsonl` + `mutations.jsonl`.
+   *    Bootstrap fires once with `generation=0, offspring=[]`. */
   async run(
     initialVector: Vector,
     fitness: FitnessFn,
     onGeneration?: (stats: GenerationStats, best: Individual) => void,
+    onPopulation?: (snap: PopulationSnapshot) => void,
   ): Promise<{ best: Individual; history: GenerationStats[] }> {
     const dim = initialVector.length;
     const { mu, lambda, maxGenerations } = this.config;
@@ -140,28 +179,48 @@ export class EvolutionStrategy {
     // Bootstrap: mu parents are perturbations around the initial vector.
     let parents: Individual[] = [];
     for (let i = 0; i < mu; i++) {
-      const vec = i === 0 ? [...initialVector] : this.mutate(initialVector, dim);
+      const vec = i === 0 ? [...initialVector] : this.mutate(initialVector, dim).vector;
       const fit = await fitness(vec);
       parents.push({ vector: vec, fitness: fit });
     }
     parents.sort((a, b) => b.fitness - a.fitness);
+
+    if (onPopulation) onPopulation({ generation: 0, parents, offspring: [], sigma: this.sigma });
 
     const history: GenerationStats[] = [];
     let prevBest = parents[0].fitness;
 
     for (let gen = 0; gen < maxGenerations; gen++) {
       // Generate lambda offspring by mutating random parents
-      const offspring: Individual[] = [];
+      const offspringRecords: OffspringRecord[] = [];
       for (let i = 0; i < lambda; i++) {
-        const parent = parents[Math.floor(this.rng() * parents.length)];
-        const child = this.mutate(parent.vector, dim);
+        const parentIdx = Math.floor(this.rng() * parents.length);
+        const parent = parents[parentIdx];
+        const { vector: child, deltas } = this.mutate(parent.vector, dim);
         const fit = await fitness(child);
-        offspring.push({ vector: child, fitness: fit });
+        offspringRecords.push({
+          vector: child,
+          fitness: fit,
+          parentIdx,
+          parentFitness: parent.fitness,
+          deltas,
+          survivedAsParent: false, // patched after selection
+        });
       }
 
-      // "+" selection: keep top-mu from parents ∪ offspring
-      const combined = [...parents, ...offspring].sort((a, b) => b.fitness - a.fitness);
+      // "+" selection: keep top-mu from parents ∪ offspring (by reference, so we
+      // can identify surviving offspring without per-individual ids).
+      const offspringIndividuals: Individual[] = offspringRecords.map(o => ({
+        vector: o.vector, fitness: o.fitness,
+      }));
+      const combined = [...parents, ...offspringIndividuals].sort((a, b) => b.fitness - a.fitness);
       parents = combined.slice(0, mu);
+
+      // Mark which offspring survived into the new parent set (object identity).
+      const survivors = new Set<Individual>(parents);
+      for (let i = 0; i < offspringRecords.length; i++) {
+        offspringRecords[i].survivedAsParent = survivors.has(offspringIndividuals[i]);
+      }
 
       // 1/5 success rule — success = at least one offspring beat the previous best
       const improved = parents[0].fitness > prevBest;
@@ -180,6 +239,12 @@ export class EvolutionStrategy {
       };
       history.push(stats);
       if (onGeneration) onGeneration(stats, parents[0]);
+      if (onPopulation) onPopulation({
+        generation: gen + 1,
+        parents,
+        offspring: offspringRecords,
+        sigma: this.sigma,
+      });
     }
 
     return { best: parents[0], history };
@@ -187,10 +252,18 @@ export class EvolutionStrategy {
 
   // -------- internals --------
 
-  private mutate(vector: Vector, dim: number): Vector {
+  /** Mutate `vector` by adding a fresh Gaussian draw scaled by σ to each
+   *  dimension. Returns both the new vector and the per-dim deltas (so callers
+   *  can persist mutation provenance). */
+  private mutate(vector: Vector, dim: number): { vector: Vector; deltas: number[] } {
     const out = new Array<number>(dim);
-    for (let i = 0; i < dim; i++) out[i] = vector[i] + this.sigma * gaussian(this.rng);
-    return out;
+    const deltas = new Array<number>(dim);
+    for (let i = 0; i < dim; i++) {
+      const d = this.sigma * gaussian(this.rng);
+      deltas[i] = d;
+      out[i] = vector[i] + d;
+    }
+    return { vector: out, deltas };
   }
 
   private successRate(): number {

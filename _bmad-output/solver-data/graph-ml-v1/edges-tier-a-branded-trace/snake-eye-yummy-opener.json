@@ -1,0 +1,190 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "deck": "snake-eye-yummy-sarcophagus-hollywood-wcq",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 35,
+  "cardsTouched": [
+    9674034,
+    45663742,
+    66975205,
+    90241276
+  ],
+  "byEdgeId": {
+    "9674034.e1->90241276.e1": {
+      "hits": 12,
+      "cumulativeContribution": -136.11937092977635,
+      "weight": -0.11343280910814697
+    },
+    "9674034.e2->90241276.e1": {
+      "hits": 12,
+      "cumulativeContribution": 337.05495247544064,
+      "weight": 0.2808791270628673
+    },
+    "9674034.e3->45663742.e1": {
+      "hits": 12,
+      "cumulativeContribution": 907.2904866741878,
+      "weight": 0.756075405561823
+    },
+    "9674034.e3->45663742.e2": {
+      "hits": 12,
+      "cumulativeContribution": 23.30765544850048,
+      "weight": 0.019423046207083728
+    },
+    "9674034.e3->58071334.e1": {
+      "hits": 12,
+      "cumulativeContribution": -928.0683080909399,
+      "weight": -0.7733902567424498
+    },
+    "9674034.e3->90241276.e2": {
+      "hits": 12,
+      "cumulativeContribution": 438.5001833270732,
+      "weight": 0.36541681943922777
+    },
+    "9674034.e3->90241276.e3": {
+      "hits": 12,
+      "cumulativeContribution": 589.0646470858701,
+      "weight": 0.49088720590489177
+    },
+    "90241276.e1->90241276.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276.e1->90241276.e3": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205.e2->10966439.e2a": {
+      "hits": 6,
+      "cumulativeContribution": -145.24614942844553,
+      "weight": -0.24207691571407589
+    },
+    "66975205.e2->10966439.e2b": {
+      "hits": 6,
+      "cumulativeContribution": -60.74001308946365,
+      "weight": -0.10123335514910609
+    },
+    "66975205.e2->30581601.e1": {
+      "hits": 6,
+      "cumulativeContribution": -571.2165954513883,
+      "weight": -0.9520276590856473
+    },
+    "66975205.e2->31425736.e2": {
+      "hits": 6,
+      "cumulativeContribution": -87.16009047741194,
+      "weight": -0.14526681746235323
+    },
+    "66975205.e2->31425736.e3": {
+      "hits": 6,
+      "cumulativeContribution": -381.0685722217312,
+      "weight": -0.6351142870362187
+    },
+    "66975205.e2->68810435.e2": {
+      "hits": 6,
+      "cumulativeContribution": -222.99652449274328,
+      "weight": -0.3716608741545721
+    },
+    "66975205.e2->68810435.e3": {
+      "hits": 6,
+      "cumulativeContribution": 36.7006471098406,
+      "weight": 0.06116774518306767
+    },
+    "45663742.e1->45663742.e1": {
+      "hits": 2,
+      "cumulativeContribution": -184.1029100661589,
+      "weight": -0.9205145503307944
+    },
+    "45663742.e1->45663742.e2": {
+      "hits": 2,
+      "cumulativeContribution": 77.97230366422411,
+      "weight": 0.3898615183211206
+    },
+    "45663742.e1->90241276.e1": {
+      "hits": 2,
+      "cumulativeContribution": -53.143723767542205,
+      "weight": -0.26571861883771103
+    },
+    "45663742.e1->90241276.e2": {
+      "hits": 2,
+      "cumulativeContribution": -87.22278711974238,
+      "weight": -0.43611393559871187
+    },
+    "45663742.e1->90241276.e3": {
+      "hits": 2,
+      "cumulativeContribution": 29.678063968694858,
+      "weight": 0.14839031984347428
+    },
+    "45663742.e1->9674034.e1": {
+      "hits": 2,
+      "cumulativeContribution": 66.38985376954408,
+      "weight": 0.33194926884772036
+    },
+    "45663742.e1->9674034.e2": {
+      "hits": 2,
+      "cumulativeContribution": -39.95033657039004,
+      "weight": -0.19975168285195022
+    },
+    "45663742.e2->45663742.e1": {
+      "hits": 2,
+      "cumulativeContribution": -226.93164310819293,
+      "weight": -1.1346582155409646
+    },
+    "45663742.e2->45663742.e2": {
+      "hits": 2,
+      "cumulativeContribution": 13.339543392562309,
+      "weight": 0.06669771696281154
+    },
+    "45663742.e2->90241276.e1": {
+      "hits": 2,
+      "cumulativeContribution": 86.00701990292609,
+      "weight": 0.4300350995146304
+    },
+    "45663742.e2->90241276.e2": {
+      "hits": 2,
+      "cumulativeContribution": -80.91856847782647,
+      "weight": -0.40459284238913235
+    },
+    "45663742.e2->90241276.e3": {
+      "hits": 2,
+      "cumulativeContribution": 90.18824035979416,
+      "weight": 0.4509412017989708
+    },
+    "45663742.e2->9674034.e1": {
+      "hits": 2,
+      "cumulativeContribution": -168.80939535921814,
+      "weight": -0.8440469767960908
+    },
+    "45663742.e2->9674034.e2": {
+      "hits": 2,
+      "cumulativeContribution": -117.75140499120087,
+      "weight": -0.5887570249560043
+    },
+    "45663742.e3->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 102.33076089604171,
+      "weight": 0.5116538044802086
+    },
+    "45663742.e3->90241276.e2": {
+      "hits": 2,
+      "cumulativeContribution": -70.31428787069216,
+      "weight": -0.3515714393534608
+    },
+    "45663742.e3->90241276.e3": {
+      "hits": 2,
+      "cumulativeContribution": 52.05759033687818,
+      "weight": 0.2602879516843909
+    },
+    "45663742.e3->9674034.e1": {
+      "hits": 2,
+      "cumulativeContribution": 294.13623971269425,
+      "weight": 1.4706811985634713
+    },
+    "45663742.e3->9674034.e2": {
+      "hits": 2,
+      "cumulativeContribution": 68.59250608594728,
+      "weight": 0.3429625304297364
+    }
+  }
+}
