@@ -1,8 +1,78 @@
 {
   "stamp": "2026-04-25",
   "tier": "B_PARTIAL",
-  "count": 9,
+  "count": 21,
   "results": [
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-11398059-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [11398059] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-13332685-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [13332685] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-13332685-e3",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [13332685] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-20295753-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [20295753] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-81560239-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [81560239] — found at GY/faceup-atk instead"
+      ]
+    },
     {
       "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-31603289-e1",
       "tier": "B_PARTIAL",
@@ -15,6 +85,104 @@
       "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
       "missing": [
         "monster/faceup-atk [31603289] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-41999284-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "extraMonster/faceup-atk [41999284] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-90241276-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [90241276] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-90241276-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [90241276] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-90241276-e3",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [90241276] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-9674034-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [9674034] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-9674034-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [9674034] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-9674034-e3",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [9674034] — found at GY/faceup-atk instead"
       ]
     },
     {

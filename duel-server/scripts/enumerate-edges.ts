@@ -399,6 +399,23 @@ const DESTROYED_EVENTS = new Set(['EVENT_DESTROYED']);
 const REMOVED_EVENTS = new Set(['EVENT_REMOVE']);
 const LEAVE_FIELD_EVENTS = new Set(['EVENT_LEAVE_FIELD', 'EVENT_LEAVE_FIELD_P']);
 const BATTLE_EVENTS = new Set(['EVENT_BATTLED', 'EVENT_DAMAGE_STEP_END']);
+const CHAIN_EVENTS = new Set(['EVENT_CHAINING']);
+
+// Categories that handtraps / chain-reactive cards typically watch for.
+// A toEff producing one of these is a plausible chain target — we emit a
+// chain-link edge so RL has signal that "handtrap X may react to card Y".
+// State-bound (depends on opponent's actual chain context); confidence kept low.
+const CHAIN_REACTIVE_CATEGORIES = new Set([
+  'CATEGORY_TOHAND',          // searches → Ash, Belle
+  'CATEGORY_SEARCH',          // tutors → Ash, Belle
+  'CATEGORY_SPECIAL_SUMMON',  // SS → Maxx C, Mulcharmy, Veiler-class
+  'CATEGORY_TO_GRAVE',        // mill → Ash
+  'CATEGORY_DRAW',            // draw → Ash
+  'CATEGORY_DECKDES',         // deck destruction → Ash
+  'CATEGORY_DESTROY',         // destroy → Ogre, Belle (some)
+  'CATEGORY_DISABLE',         // negate → Ogre
+  'CATEGORY_REMOVE',          // banish-eff
+]);
 
 function produces(effect: Effect, kind: 'tohand' | 'summon' | 'tograve' | 'fusion-material' | 'destroy' | 'banish' | 'leave-field'): boolean {
   const cats = new Set(effect.categories);
@@ -625,6 +642,31 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
               to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
               reason: 'battle-then-trigger (→ EVENT_BATTLED)',
               confidence: 'low',
+            });
+          }
+        }
+      }
+      // Pattern 9: chain-link-then-trigger (handtraps + chain-reactive cards).
+      // Source has EVENT_CHAINING trigger (Ash Blossom, Veiler, Belle, Ogre,
+      // Maxx C, Mulcharmy, etc.) — emit edges to every cross-card effect that
+      // produces a chain-reactable category. Confidence is intrinsically low:
+      // the actual reaction is gated on opp's chain context (player ownership,
+      // chained card category, location), which the static enumerator cannot
+      // resolve. RL still benefits — it can learn that handtrap X has any
+      // signal at all on cards in its potential reaction set.
+      if (triggersOn(fromEff, CHAIN_EVENTS)) {
+        for (const toCat of catalogs) {
+          // Cross-card only — handtraps don't react to their own activation.
+          if (toCat.cardId === fromCat.cardId) continue;
+          for (const toEff of toCat.effects) {
+            // toEff must produce ≥1 category that handtraps watch for.
+            if (!toEff.categories.some(c => CHAIN_REACTIVE_CATEGORIES.has(c))) continue;
+            edges.push({
+              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
+              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
+              reason: 'chain-link-then-trigger (→ EVENT_CHAINING, category match)',
+              confidence: 'low',
+              notes: ['Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)'],
             });
           }
         }
