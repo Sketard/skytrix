@@ -8,11 +8,11 @@ Research project : self-play learning of grammar baselines via CMA-ES + MAP-Elit
 
 ## Current Status
 
-**Active milestone**: Diagnostic audit 2026-04-25 — F6/F7/F8 INVALIDATED. Two bugs (wiring bypass + parallel-pool non-determinism) inflated prior claims. Real learning at production budget : small (+8.57 own fixture, +2.50 cross-transfer, −11 cross-regression).
-**Last update**: 2026-04-25 (audit complete : bugs fixed, sequential mode mandatory, retract premature claims)
-**Next action**: decide whether to invest in stronger-training experiments (longer gen / scale calibration / multi-fixture / tier-B) OR conclude v1 framework as marginal-effect tool.
+**Active milestone**: Edge precision audit shipped 2026-04-25 (`e8f30996`). 43 fusionSummoned false-positives removed. F12/F13 documented. **User directive : focus on branded-dracotail + D/D/D for the next iteration.**
+**Last update**: 2026-04-25 (precision audit complete)
+**Next action**: 4-step plan in memory roadmap — extract D/D/D catalogues, parser upgrade for synchro/xyz/link/ritual gates, F12 refactor decision, re-train on cleaned graph. Validate plan with user before execution.
 
-See `findings-v3-diagnostic-audit.md` for full retraction + corrected numbers.
+See `findings-v3-diagnostic-audit.md` for retraction context and `learned-weights-mining.md` for top-edges per archetype.
 
 ### M1 Verdict — Branded tier-A (50 gen, μ=5 λ=10, 4s / 200-node eval)
 
