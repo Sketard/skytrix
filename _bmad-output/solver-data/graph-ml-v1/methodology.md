@@ -130,6 +130,34 @@ v4 is the current production ship: 50 gens × λ=10 on `branded-dracotail-opener
 
 The soft-bias mechanism (default `baseRankScale = 30`, tunable via `SOLVER_BASE_RANK_SCALE` env) means trained weights nudge the base ranker's ordering instead of overriding it. v3 weights re-evaluated under the soft-bias ranker fall to cum=253.14 (-27 vs v3 hard-flip), so soft-bias semantics REQUIRE retraining — weights are not portable between regimes.
 
+## Inter-seed variance — what to expect
+
+Three independent training runs (seeds 7, 11, 42) on the same fixture/config:
+
+| Seed | cum score | cum matched | branded matched | mitsurugi cross |
+|---|---|---|---|---|
+| 7 | 266.43 (-6.31) | 15/69 (+1) | 6/8 | 54.5 (2/5) |
+| 11 | 280.50 (+7.76) | 15/69 (+1) | 6/8 | 39.5 (1/5) |
+| 42 | 283.43 (+10.69) | 17/69 (+3) | 5/8 | 69 (3/5) |
+| **Mean** | **276.79** | **15.67** | — | 54.33 |
+| **σ** | 8.96 | 1.15 | — | 14.84 |
+
+**Honest characterization**: 3/3 seeds beat the untuned baseline on `cum matched` (+1 to +3) but only 2/3 beat it on `cum score`. Cross-fixture lifts are directionally positive but seed-dependent — mitsurugi's +29.5 score with seed=42 doesn't reproduce on seeds 7 and 11.
+
+**Implication for production**: train ≥3 seeds, ship the best. The shipped `tier-a-latest.json` (seed=42) represents the upper end of the distribution, not the median. Future retraining experiments should report mean ± stddev to avoid mistaking lucky draws for real progress.
+
+## Base-rank-scale tuning — sweep on v4 weights
+
+Holding v4 weights fixed and varying `SOLVER_BASE_RANK_SCALE`:
+
+| Scale | cum score | cum matched | branded score | mitsurugi |
+|---|---|---|---|---|
+| 10 | 274.86 | **18/69** | 54.79 (5/8) | 69 (3/5) |
+| 30 (default) | **283.43** | 17/69 | 62.36 (5/8) | 69 (3/5) |
+| 100 | 240.07 | 10/69 | 28 (0/8) | 59 (2/5) |
+
+`scale=30` wins on cumulative score; `scale=10` slightly more aggressive (+1 matched, lower training-fixture score). `scale=100` is broken: graph bonus is too small to encode the trained signal but large enough to introduce ranking noise → worse than untuned. The default value is well-tuned for the magnitude of v4 weights — leave at 30 unless retraining with a different graph scale.
+
 ## Soft-bias ranker — operational notes
 
 `GraphGuidedRanker.rank()` (post-F8 refactor):
