@@ -437,6 +437,49 @@ function triggersOn(effect: Effect, events: ReadonlySet<string>): boolean {
   return effect.events.some(ev => events.has(ev));
 }
 
+// =============================================================================
+// Summon-type gate filter (precision audit 2026-04-25)
+//
+// Some on-summon triggers (EVENT_SPSUMMON_SUCCESS) gate themselves with a
+// `condition` that requires a specific summon type — e.g. Branded Albion's e1
+// has `function(e) return e:GetHandler():IsFusionSummoned() end`. Pattern 2
+// previously emitted an edge whenever the from-effect produced ANY SS, even
+// when the from-effect's SS was non-Fusion (regular SS, Ritual SS, etc.) and
+// the to-effect's gate would never fire. That generated 43 false-positive
+// edges in the branded/yummy/snake-eye/mitsurugi catalog — confirmed by the
+// edge-validation-report.md sweep.
+//
+// Catalog v7 only marks `CATEGORY_FUSION_SUMMON` explicitly. Synchro/Xyz/Link/
+// Ritual summons are not category-tagged and are recognised via
+// `summonProcedures`, which the catalog stores at the card level rather than
+// per-effect. Until the parser is upgraded to expose these as effect-level
+// flags, the gate filter only handles `fusionSummoned`. Other summon-type
+// gates remain optimistically passed (potential false-positives surfaced by
+// `validate-edges-precision.mjs`).
+// =============================================================================
+
+/** Map a `condition.simpleFilter` predicate kind that gates the trigger by
+ *  summon-type to the category the from-effect must carry. Only entries with
+ *  reliable category-level evidence in catalog v7 are listed; Synchro/Xyz/
+ *  Link/Ritual gates wait on a parser upgrade. */
+const SUMMON_TYPE_GATES: Record<string, string> = {
+  fusionSummoned: 'CATEGORY_FUSION_SUMMON',
+};
+
+/** When `toEff.condition.simpleFilter.predicates` contains a summon-type
+ *  gate (e.g., fusionSummoned), the from-effect MUST carry the matching
+ *  CATEGORY_*_SUMMON. Returns the list of required categories ; empty when
+ *  no recognised gate is present (the legacy permissive behaviour). */
+function requiredFromCategoriesForSummonGate(toEff: Effect): string[] {
+  const preds = toEff.condition?.simpleFilter?.predicates ?? [];
+  const out: string[] = [];
+  for (const p of preds) {
+    const cat = SUMMON_TYPE_GATES[p.kind];
+    if (cat !== undefined) out.push(cat);
+  }
+  return out;
+}
+
 // True when every Special Summon action in the operation body targets the
 // handler itself (`c` or `e:GetHandler()`). Such effects only summon "this card"
 // and cannot legitimately be the source of a cross-card summon-then-trigger
@@ -507,6 +550,17 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
             // Skip unless `toEff` is self-trigger (EFFECT_TYPE_SINGLE) — indicates card's own trigger
             if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
             if (ssFilters.length === 0) continue;  // no filter info → skip (was the legacy gate)
+
+            // Precision filter (2026-04-25) — when toEff's condition gates the
+            // trigger by summon-type (e.g., fusionSummoned), require the from-
+            // effect to carry the matching CATEGORY_*_SUMMON. Skips false-
+            // positive edges where a generic SS would never satisfy the gate.
+            const requiredCats = requiredFromCategoriesForSummonGate(toEff);
+            if (requiredCats.length > 0) {
+              const fromCats = new Set(fromEff.categories);
+              if (!requiredCats.every(c => fromCats.has(c))) continue;
+            }
+
             const toProps = propsByCard.get(toCat.cardId);
             if (!toProps) continue;
             // Conjunction: every present filter must match. Track lowest confidence.

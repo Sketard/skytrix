@@ -44,7 +44,16 @@ export class GraphGuidedRanker implements ActionRanker {
 
   constructor(base: ActionRanker, opts: { scale?: number } = {}) {
     this.base = base;
-    this.scale = opts.scale ?? DEFAULT_GRAPH_SCALE;
+    // SCALE precedence : explicit opts.scale > SOLVER_GRAPH_SCALE env var
+    // > DEFAULT_GRAPH_SCALE. Env override lets calibration sweeps run
+    // multiple values without rebuilding.
+    if (opts.scale !== undefined) {
+      this.scale = opts.scale;
+    } else {
+      const envScale = process.env['SOLVER_GRAPH_SCALE'];
+      const parsed = envScale ? Number(envScale) : NaN;
+      this.scale = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_GRAPH_SCALE;
+    }
   }
 
   /** Replace the active weight map. Clears the outgoing-by-card cache.
