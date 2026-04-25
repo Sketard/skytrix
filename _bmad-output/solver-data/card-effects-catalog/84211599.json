@@ -1,0 +1,134 @@
+{
+  "cardId": 84211599,
+  "name": "Pot of Prosperity",
+  "sourceFile": "official/c84211599.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.cost",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetFlagEffect",
+              "args": [
+                "tp",
+                "id"
+              ],
+              "op": "==",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "t3"
+                },
+                {
+                  "kind": "raw",
+                  "source": "t6"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "rg",
+            "argHints": [
+              "POS_FACEDOWN",
+              "REASON_COST"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "confirm-decktop",
+            "method": "ConfirmDecktop",
+            "target": "p",
+            "argHints": [
+              "d"
+            ]
+          },
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "sc",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-p",
+            "argHints": [
+              "sc"
+            ]
+          },
+          {
+            "kind": "shuffle-hand",
+            "method": "ShuffleHand",
+            "target": "p"
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "sc",
+            "argHints": [
+              "REASON_RULE"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

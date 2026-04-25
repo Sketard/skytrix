@@ -1,0 +1,117 @@
+{
+  "stamp": "2026-04-25",
+  "tier": "B_PARTIAL",
+  "count": 9,
+  "results": [
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-31603289-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 6,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [31603289] — found at GY/faceup-atk instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-destroy-trigger-59438930-e1-to-20665527-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 3,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-1498449-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-44482554-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-70871153-e1",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_CHAIN step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-7375867-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-75003700-e3",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-6153210-e1-to-84477320-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 2,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-destroy-trigger-68810435-e3-to-20665527-e2",
+      "tier": "B_PARTIAL",
+      "diagnosis": "PARTIAL_STALL",
+      "stepsTotal": 3,
+      "stepsConsumed": 1,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "not all steps consumed",
+      "priorStateWarning": null,
+      "missing": []
+    }
+  ]
+}

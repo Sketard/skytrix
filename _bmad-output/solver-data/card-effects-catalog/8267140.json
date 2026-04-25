@@ -1,0 +1,78 @@
+{
+  "cardId": 8267140,
+  "name": "Cosmic Cyclone",
+  "sourceFile": "official/c8267140.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "cost": {
+        "inline": "Cost.PayLP(1000)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.PayLP",
+          "kind": "pay-lp",
+          "params": {
+            "args": [
+              "1000"
+            ]
+          }
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "spellTrap"
+            },
+            {
+              "kind": "ableToRemove"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "name": "s.activate",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "banish",
+            "method": "Remove",
+            "target": "tc",
+            "argHints": [
+              "POS_FACEUP",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}
