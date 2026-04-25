@@ -8,9 +8,9 @@ Research project : self-play learning of grammar baselines via CMA-ES + MAP-Elit
 
 ## Current Status
 
-**Active milestone**: M1 PASSED ; regression gate exposed F4+F5 ; M2 scope clarified, **awaiting user decision** on path.
-**Last update**: 2026-04-25 (15-fixture regression gate run, 3 regressions identified)
-**Next action**: user alignment on M2 path — option A (minimum-viable per-archetype isolated runs at production budget, ~2 h) vs option B (full MAP-Elites framework, ~10 h). See `findings-m1-regression-gate.md` decision point.
+**Active milestone**: Option A SUCCESSFUL 2026-04-25 — per-archetype training at 30s/eval lifts ALL 3 archetypes with **0 regressions**. F4 falsified. F6/F7/F8 added. **M2 MAP-Elites likely unnecessary** for v1.
+**Last update**: 2026-04-25 (option A : 3 archetype-isolated runs + gates ; horus skipped per user)
+**Next action**: ship `tier-a-snake-eye.json` (+61 % aggregate gate) OR extend to remaining archetypes before shipping.
 
 ### M1 Verdict — Branded tier-A (50 gen, μ=5 λ=10, 4s / 200-node eval)
 
@@ -34,7 +34,10 @@ Convergence CSV : `_bmad-output/solver-data/graph-ml-v1/metrics-m1-branded-tier-
 2. **F2 — Population diversity collapses without pressure** (std: 4.685 gen 1 → 0.011 gen 2 → < 0.003 through gen 50). Quantitative motivation for MAP-Elites in M2.
 3. **F3 — `matched²` is wall-clock-gated, not ranking-gated** on branded. +25 % lift was entirely from `goalMatchPoints`. M2+ : longer budgets, simpler fixtures, or accept sparse `matched²`.
 4. **F4 (2026-04-25, regression gate) — Training-budget specificity**. Tuned weights gave +25 % at training budget (4 s) but **zero improvement at production budget (30 s)** on branded. M2 must train at production budget ⇒ ~10× cost vs M1 tooling.
-5. **F5 (2026-04-25, regression gate) — Single-fixture training overfits**. Branded-only weights caused 3 hard regressions (ryzeal −94 %, horus −88 %, snake-eye −49 %) when cross-applied. Single-pop single-fixture is falsified as a production strategy ; M2 must use archetype cells OR isolated per-archetype loops.
+5. **F5 (2026-04-25, regression gate) — Single-fixture training overfits**. Branded-only weights caused 3 hard regressions (ryzeal −94 %, horus −88 %, snake-eye −49 %) when cross-applied. ⚠️ **REFRAMED by F6**: the cause was 4 s training-budget undersampling, not the single-fixture choice itself.
+6. **F6 (2026-04-25, option A) — F4 falsified at production-budget training**. Re-training branded at 30 s/eval lifts branded +106 % on its own fixture and 6 other fixtures with 0 regressions. Threshold: ≥30 s/eval on tier-A. Per-archetype training cost: ~10 min, not 8 h.
+7. **F7 (2026-04-25, option A) — Per-archetype training generalises positively at production budget**. All 3 isolated weight files (branded/ryzeal/snake-eye) lift most or all 15 fixtures with **0 regressions across 45 fixture-evals**. Tier-A edges encode structural fundamentals OR `goalMatchPoints` regularises via strategic grammar. **M2 MAP-Elites likely unnecessary**.
+8. **F8 (2026-04-25, option A) — Cross-archetype transfer ≠ no specialisation**. Counter-intuitively, snake-eye weights beat branded-trained weights ON branded (+41 vs +33 score lift). Pick shipped weight by aggregate gate metric, not archetype-deck-match. Current best: `tier-a-snake-eye.json` (+61 % aggregate).
 
 ### M1 files done
 - ✅ `src/solver/graph-weights-types.ts` — shared schema

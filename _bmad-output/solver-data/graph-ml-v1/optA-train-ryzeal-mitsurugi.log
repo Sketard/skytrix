@@ -1,0 +1,26 @@
+[train] fixture=ryzeal-mitsurugi-opener tier=A generations=8 μ=3 λ=4 budget=30000ms seed=42
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[train] edges: total=926 active(tier=A)=267
+[train] baseline (weights=0): fitness=55.406 matched=0/5 goalMatch=53.50 nodes=2018
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=65681983
+[train] gen=1 best=55.423 mean=53.522 std=1.888 σ=0.500 succ=0%
+[train] gen=2 best=65.707 mean=62.276 std=5.935 σ=0.500 succ=50%
+[train] gen=3 best=65.707 mean=65.699 std=0.007 σ=0.500 succ=33%
+[train] gen=4 best=65.707 mean=65.701 std=0.006 σ=0.500 succ=25%
+[train] gen=5 best=65.707 mean=65.701 std=0.006 σ=0.500 succ=20%
+[train] gen=6 best=65.707 mean=65.701 std=0.006 σ=0.500 succ=20%
+[train] gen=7 best=65.707 mean=65.701 std=0.006 σ=0.410 succ=0%
+[train] gen=8 best=65.707 mean=65.701 std=0.006 σ=0.336 succ=0%
+[train] final weights → C:\Users\Axel\Desktop\code\skytrix\duel-server\data\trained-weights\tier-a-ryzeal-mitsurugi.json
+[train] re-eval: fitness=65.719 matched=1/5 goalMatch=59.00 nodes=1742 term=depth_cap
+[train] Δ vs baseline: fitness +10.313 | goalMatch +5.50 | matched 1→1 (baseline 0)
+[train] csv → ../_bmad-output/solver-data/graph-ml-v1/metrics-optA-ryzeal-mitsurugi.csv

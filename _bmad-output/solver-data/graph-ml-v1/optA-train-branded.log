@@ -1,0 +1,26 @@
+[train] fixture=branded-dracotail-opener tier=A generations=8 μ=3 λ=4 budget=30000ms seed=42
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[train] edges: total=926 active(tier=A)=267
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=78397661
+[train] baseline (weights=0): fitness=45.730 matched=0/8 goalMatch=43.79 nodes=2017
+[train] gen=1 best=48.343 mean=48.338 std=0.006 σ=0.500 succ=100%
+[train] gen=2 best=48.351 mean=48.344 std=0.006 σ=0.500 succ=100%
+[train] gen=3 best=48.397 mean=48.381 std=0.026 σ=0.500 succ=100%
+[train] gen=4 best=48.399 mean=48.397 std=0.002 σ=0.500 succ=100%
+[train] gen=5 best=48.400 mean=48.398 std=0.002 σ=0.610 succ=100%
+[train] gen=6 best=48.417 mean=48.413 std=0.003 σ=0.744 succ=100%
+[train] gen=7 best=48.426 mean=48.421 std=0.005 σ=0.908 succ=100%
+[train] gen=8 best=48.426 mean=48.422 std=0.004 σ=1.108 succ=80%
+[train] final weights → C:\Users\Axel\Desktop\code\skytrix\duel-server\data\trained-weights\tier-a-branded.json
+[train] re-eval: fitness=48.408 matched=0/8 goalMatch=46.29 nodes=2204 term=timeout
+[train] Δ vs baseline: fitness +2.678 | goalMatch +2.50 | matched 0→0 (baseline 0)
+[train] csv → ../_bmad-output/solver-data/graph-ml-v1/metrics-optA-branded.csv
