@@ -3,17 +3,81 @@
   "name": "Branded Fusion",
   "sourceFile": "official/c44362883.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
-  "effects": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.cost",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetCustomActivityCount",
+              "args": [
+                "id",
+                "tp",
+                "ACTIVITY_SPSUMMON"
+              ],
+              "op": "==",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "inline": "aux.FilterBoolFunction(Card.ListsCodeAsMaterial, CARD_ALBAZ)",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.FilterBoolFunction",
+          "kind": "filter-wrap",
+          "params": {
+            "predicate": "ListsCodeAsMaterial",
+            "value": "CARD_ALBAZ"
+          }
+        },
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "listsCodeAsMaterial",
+              "value": "CARD_ALBAZ"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "Fusion.CreateSummonEff — fusion-summon from extra deck using declared materials",
+        "opaque": true
+      }
+    }
+  ],
   "coverage": {
-    "totalEffects": 0,
-    "totalFunctionRefs": 0,
-    "fullyDecoded": 0,
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 0
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

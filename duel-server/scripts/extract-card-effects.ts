@@ -275,6 +275,18 @@ const SUMMON_PROC_RE = /^\s*(Synchro|Fusion|Xyz|Link|Pendulum|Ritual)\.(AddProce
  *  than a top-level `AddProcedure`. The returned effect is configured separately. */
 const RITUAL_CREATE_PROC_RE = /^\s*local\s+(e\w+)\s*=\s*Ritual\.CreateProc\s*\(/;
 
+/** Phase 19 (pivot): Fusion summon helpers that create a synthetic activation
+ *  effect for the spell card. Two shapes:
+ *    - Polymerization-class: `Fusion.RegisterSummonEff(c)` — vanilla, no args.
+ *      Top-level call inside initial_effect, no local variable.
+ *    - Branded-Fusion-class: `local eN = Fusion.CreateSummonEff(<args>)` —
+ *      args is an inline table `{handler=c, fusfilter=..., ...}` OR a
+ *      reference to a local `params` table.
+ *  Both decode to a synthetic Effect with categories=[SS, FUSION_SUMMON],
+ *  events=[EVENT_FREE_CHAIN], target.simpleFilter=<decoded fusfilter if any>. */
+const FUSION_REGISTER_SUMMON_EFF_RE = /^\s*Fusion\.RegisterSummonEff\s*\(/;
+const FUSION_CREATE_SUMMON_EFF_RE = /^\s*local\s+(e\w+)\s*=\s*Fusion\.CreateSummonEff\s*\(([\s\S]*?)\)\s*$/;
+
 function parseLuaScript(path: string, cardId: number, cardName: string): CardEffectCatalog {
   const source = readFileSync(path, 'utf-8');
   const lines = source.split(/\r?\n/);
@@ -384,6 +396,70 @@ function parseLuaScript(path: string, cardId: number, cardName: string): CardEff
         opaque: false,
         decoded: { slots: [], notes: ['Ritual.CreateProc (sacrifice-based ritual summon)'] },
       });
+      continue;
+    }
+
+    // Phase 19 pivot: Fusion summon helpers create a synthetic activation effect.
+    // Detect both shapes and seed an Effect entry with the canonical fusion
+    // summon shape (categories=SS+FUSION_SUMMON, events=EVENT_FREE_CHAIN,
+    // type=ACTIVATE, optional fusfilter as target.simpleFilter). Without this,
+    // Polymerization / Branded Fusion / Rahu Dracotail land in the catalog
+    // with 0 effects and emit no edges in enumerate-edges.
+    const fusionRegisterMatch = FUSION_REGISTER_SUMMON_EFF_RE.exec(line);
+    if (fusionRegisterMatch) {
+      const varName = 'e_fusion';
+      effectsByVar.set(varName, {
+        id: varName,
+        categories: ['CATEGORY_SPECIAL_SUMMON', 'CATEGORY_FUSION_SUMMON'],
+        types: ['EFFECT_TYPE_ACTIVATE'],
+        properties: [],
+        events: ['EVENT_FREE_CHAIN'],
+        clonedTo: [],
+        // No fusfilter for vanilla RegisterSummonEff — generic Fusion summon.
+        operationRaw: 'Fusion.RegisterSummonEff(c) — vanilla fusion summon',
+      });
+      effectOrder.push(varName);
+      continue;
+    }
+    const fusionCreateMatch = FUSION_CREATE_SUMMON_EFF_RE.exec(line);
+    if (fusionCreateMatch) {
+      const [, varName, argExpr] = fusionCreateMatch;
+      // Extract fusfilter from inline table or referenced `params` local.
+      // Inline: `{handler=c, fusfilter=aux.FilterBoolFunction(Card.IsX, val), ...}`
+      // Local-ref: `params` → walk back through prior lines for `local params = {...}`.
+      let tableBody: string | undefined;
+      const trimmed = argExpr.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        tableBody = trimmed.slice(1, -1);
+      } else if (/^[a-zA-Z_]\w*$/.test(trimmed)) {
+        // Find `local <id> = { ... }` declaration earlier in the body.
+        for (let j = i - 1; j >= 0; j--) {
+          const m = new RegExp(`local\\s+${trimmed}\\s*=\\s*\\{([\\s\\S]*?)\\}`, 'm').exec(lines.slice(j, i + 1).join('\n'));
+          if (m) { tableBody = m[1]; break; }
+        }
+      }
+      let targetRaw: string | undefined;
+      if (tableBody) {
+        // Accept any Card.<method>: IsX (level/attribute/race), ListsCode,
+        // ListsCodeAsMaterial — `decodeMethodPredicate` handles each kind.
+        const fusfilter = /fusfilter\s*=\s*aux\.FilterBoolFunction(?:Ex)?\s*\(\s*Card\.(\w+)\s*,\s*([^)]+?)\s*\)/.exec(tableBody);
+        if (fusfilter) {
+          // Synthesize a target function reference body so the standard
+          // `buildFunctionRef` pipeline decodes it via aux.FilterBoolFunction.
+          targetRaw = `aux.FilterBoolFunction(Card.${fusfilter[1]}, ${fusfilter[2].trim()})`;
+        }
+      }
+      effectsByVar.set(varName, {
+        id: varName,
+        categories: ['CATEGORY_SPECIAL_SUMMON', 'CATEGORY_FUSION_SUMMON'],
+        types: ['EFFECT_TYPE_ACTIVATE'],
+        properties: [],
+        events: ['EVENT_FREE_CHAIN'],
+        clonedTo: [],
+        ...(targetRaw ? { targetRaw } : {}),
+        operationRaw: 'Fusion.CreateSummonEff — fusion-summon from extra deck using declared materials',
+      });
+      effectOrder.push(varName);
       continue;
     }
 
@@ -688,7 +764,23 @@ function buildFunctionRef(raw: string, bodies: Map<string, { signature: string; 
   }
 
   const r: FunctionRef = { inline: trimmed, opaque: !resolved };
-  if (resolved) r.resolved = resolved;
+  if (resolved) {
+    r.resolved = resolved;
+    // Phase 19: when the resolved helper is a `filter-wrap` (aux.FilterBoolFunction),
+    // synthesize the equivalent simpleFilter directly. Without this, downstream
+    // consumers (enumerate-edges) only see `resolved` and miss the filter signal.
+    if (resolved.kind === 'filter-wrap' && resolved.params) {
+      const predName = resolved.params['predicate'] as string | undefined;
+      const predValue = resolved.params['value'] as string | undefined;
+      if (predName) {
+        const pred = decodeMethodPredicate(predName, predValue ?? '', `c:${predName}(${predValue ?? ''})`);
+        if (pred.kind !== 'raw') {
+          r.simpleFilter = { predicates: [pred], complete: true };
+          r.opaque = false;
+        }
+      }
+    }
+  }
   return r;
 }
 
@@ -808,9 +900,10 @@ function resolveHelper(expr: string): ResolvedHelper | undefined {
     return { helper: 'Fusion.SummonEffOP', kind: 'fusion-summon-operation' };
   }
 
-  // aux.FilterBoolFunction(Card.IsX, value) / aux.FilterBoolFunctionEx(...) — synthesizes a filter
-  // predicate matching cards where Card.IsX(value) is true.
-  const filterBool = /^aux\.FilterBoolFunction(?:Ex)?\s*\(\s*Card\.(Is\w+)\s*,\s*([^)]+?)\s*\)$/.exec(expr);
+  // aux.FilterBoolFunction(Card.<method>, value) / aux.FilterBoolFunctionEx(...) — synthesizes a filter
+  // predicate matching cards where Card.<method>(value) is true. <method> can be
+  // any predicate decoder accepts: IsX (level/attr/race), ListsCode, ListsCodeAsMaterial.
+  const filterBool = /^aux\.FilterBoolFunction(?:Ex)?\s*\(\s*Card\.(\w+)\s*,\s*([^)]+?)\s*\)$/.exec(expr);
   if (filterBool) {
     return {
       helper: `aux.FilterBoolFunction${expr.includes('Ex') ? 'Ex' : ''}`,

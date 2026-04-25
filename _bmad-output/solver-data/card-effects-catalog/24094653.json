@@ -7,13 +7,32 @@
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
-  "effects": [],
+  "effects": [
+    {
+      "id": "e_fusion",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "operation": {
+        "inline": "Fusion.RegisterSummonEff(c) — vanilla fusion summon",
+        "opaque": true
+      }
+    }
+  ],
   "coverage": {
-    "totalEffects": 0,
-    "totalFunctionRefs": 0,
+    "totalEffects": 1,
+    "totalFunctionRefs": 1,
     "fullyDecoded": 0,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 0
+    "opaqueUndecoded": 1
   },
   "warnings": []
 }

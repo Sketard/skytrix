@@ -1,7 +1,7 @@
 {
   "stamp": "2026-04-25",
   "tier": "C_UNVALIDATABLE",
-  "count": 548,
+  "count": 641,
   "skippedEdges": [
     {
       "edge": {
@@ -551,6 +551,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 14558127,
+          "name": "Ash Blossom & Joyous Spring",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -794,6 +814,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 14558127,
+          "name": "Ash Blossom & Joyous Spring",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -1174,6 +1214,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 14558127,
+          "name": "Ash Blossom & Joyous Spring",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -3591,6 +3651,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "trap-initiator-needs-prior-turn-set"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 17954937,
+          "name": "Mitsurugi Great Purification",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -3834,6 +3914,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "trap-initiator-needs-prior-turn-set"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 17954937,
+          "name": "Mitsurugi Great Purification",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -4214,6 +4314,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "trap-initiator-needs-prior-turn-set"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 17954937,
+          "name": "Mitsurugi Great Purification",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -7239,6 +7359,26 @@
           "effectId": "e3"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x4000021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 29301450,
+          "name": "S:P Little Knight",
+          "effectId": "e3"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -7442,6 +7582,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x4000021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 29301450,
+          "name": "S:P Little Knight",
+          "effectId": "e3"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -7822,6 +7982,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x4000021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 29301450,
+          "name": "S:P Little Knight",
+          "effectId": "e3"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -10316,6 +10496,26 @@
           "effectId": "e4"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e4"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -10559,6 +10759,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e4"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -10899,6 +11119,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e4"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -13316,6 +13556,26 @@
           "effectId": "e5"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e5"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -13559,6 +13819,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e5"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -13899,6 +14179,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e5"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -16316,6 +16616,26 @@
           "effectId": "e6"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e6"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -16559,6 +16879,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e6"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -16899,6 +17239,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 33760966,
+          "name": "Dracotail Arthalion",
+          "effectId": "e6"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -19356,6 +19716,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x800021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 34909328,
+          "name": "Ryzeal Detonator",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -19599,6 +19979,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x800021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 34909328,
+          "name": "Ryzeal Detonator",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -19959,6 +20359,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x800021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 34909328,
+          "name": "Ryzeal Detonator",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -23391,6 +23811,26 @@
           "effectId": "e4"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e4"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -23634,6 +24074,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e4"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -23994,6 +24454,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e4"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -26411,6 +26891,26 @@
           "effectId": "e5"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e5"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -26654,6 +27154,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e5"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -27014,6 +27534,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e5"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -29431,6 +29971,26 @@
           "effectId": "e6"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e6"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -29674,6 +30234,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e6"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -30034,6 +30614,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 42125140,
+          "name": "Dracotail Shaulas",
+          "effectId": "e6"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -32610,6 +33210,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -32853,6 +33473,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -33233,6 +33873,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 51409648,
+          "name": "Rindbrumm the Striking Dragon",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -36625,6 +37285,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 59438930,
+          "name": "Ghost Ogre & Snow Rabbit",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -36868,6 +37548,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 59438930,
+          "name": "Ghost Ogre & Snow Rabbit",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -37248,6 +37948,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 59438930,
+          "name": "Ghost Ogre & Snow Rabbit",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -39963,6 +40683,26 @@
           "effectId": "e2"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x3021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 67098897,
+          "name": "Cooky★Yummy Way",
+          "effectId": "e2"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -40206,6 +40946,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x3021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 67098897,
+          "name": "Cooky★Yummy Way",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -40586,6 +41346,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x3021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 67098897,
+          "name": "Cooky★Yummy Way",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -43303,6 +44083,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 73642296,
+          "name": "Ghost Belle & Haunted Mansion",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -43546,6 +44346,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 73642296,
+          "name": "Ghost Belle & Haunted Mansion",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -43926,6 +44746,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "edge-class-unsupported: chain-link-then-trigger"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 73642296,
+          "name": "Ghost Belle & Haunted Mansion",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -47395,6 +48235,26 @@
           "effectId": "e2"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x2021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79606837,
+          "name": "Herald of the Arc Light",
+          "effectId": "e2"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -47638,6 +48498,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x2021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79606837,
+          "name": "Herald of the Arc Light",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -48018,6 +48898,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x2021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79606837,
+          "name": "Herald of the Arc Light",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -50435,6 +51335,26 @@
           "effectId": "e1"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e1"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -50678,6 +51598,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -51058,6 +51998,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e1"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -53475,6 +54435,26 @@
           "effectId": "e4"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e4"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -53718,6 +54698,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e4"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -54098,6 +55098,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e4"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -56475,6 +57495,26 @@
           "effectId": "e5"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e5"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -56718,6 +57758,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e5"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -57098,6 +58158,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e5"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -59475,6 +60555,26 @@
           "effectId": "e6"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e6"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -59718,6 +60818,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e6"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -60098,6 +61218,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x61)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 79755671,
+          "name": "Dracotail Gulamel",
+          "effectId": "e6"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -63490,6 +64630,26 @@
           "effectId": "e2"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x800021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 8165596,
+          "name": "Number 90: Galaxy-Eyes Photon Lord",
+          "effectId": "e2"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -63733,6 +64893,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x800021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 8165596,
+          "name": "Number 90: Galaxy-Eyes Photon Lord",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -64113,6 +65293,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x800021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 8165596,
+          "name": "Number 90: Galaxy-Eyes Photon Lord",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -67336,6 +68536,26 @@
           "effectId": "e2"
         },
         "to": {
+          "cardId": 24094653,
+          "name": "Polymerization",
+          "effectId": "e_fusion"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x3021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 93192592,
+          "name": "Lollipo★Yummy Way",
+          "effectId": "e2"
+        },
+        "to": {
           "cardId": 24224830,
           "name": "Called by the Grave",
           "effectId": "e1"
@@ -67579,6 +68799,26 @@
           "cardId": 31603289,
           "name": "Cupsy★Yummy Way",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x3021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 93192592,
+          "name": "Lollipo★Yummy Way",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 32548318,
+          "name": "Rahu Dracotail",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -67959,6 +69199,26 @@
           "cardId": 44146295,
           "name": "Mirrorjade the Iceblade Dragon",
           "effectId": "e2"
+        },
+        "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
+        "confidence": "low",
+        "notes": [
+          "Reactive — fires only when chained effect matches handtrap-specific filter (per-card category subset)"
+        ]
+      },
+      "reason": "summon-translator-declined (fromType=0x3021)"
+    },
+    {
+      "edge": {
+        "from": {
+          "cardId": 93192592,
+          "name": "Lollipo★Yummy Way",
+          "effectId": "e2"
+        },
+        "to": {
+          "cardId": 44362883,
+          "name": "Branded Fusion",
+          "effectId": "e1"
         },
         "reason": "chain-link-then-trigger (→ EVENT_CHAINING, category match)",
         "confidence": "low",
@@ -70483,6 +71743,20 @@
       ]
     },
     {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-24094653-e_fusion",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [24094653] — found at DECK/facedown instead"
+      ]
+    },
+    {
       "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-24224830-e1",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -70634,6 +71908,20 @@
       "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
       "missing": [
         "monster/faceup-atk [31603289] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-32548318-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [32548318] — found at DECK/facedown instead"
       ]
     },
     {
@@ -70900,6 +72188,20 @@
       "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
       "missing": [
         "monster/faceup-atk [44146295] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-feral-imps-mikoto-ritual-tutor-19899073-e2-to-44362883-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 8,
+      "stepsConsumed": 7,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "first step is xyzSummon of cardId=11398059 — assumes material on field; filler placeholder inserted; composed via precursors [feral-imps-mikoto-ritual-tutor] (7 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [44362883] — found at DECK/facedown instead"
       ]
     },
     {
@@ -72261,6 +73563,114 @@
       ]
     },
     {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-24094653-e_fusion-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
       "bridgeId": "edge-summon-trigger-27204311-e1-to-10966439-e2a",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -73521,6 +74931,20 @@
       ]
     },
     {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-24094653-e_fusion",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [24094653] — found at DECK/facedown instead"
+      ]
+    },
+    {
       "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-24224830-e1",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -73658,6 +75082,20 @@
       "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
       "missing": [
         "monster/faceup-atk [31425736] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-32548318-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [32548318] — found at DECK/facedown instead"
       ]
     },
     {
@@ -73910,6 +75348,20 @@
       "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
       "missing": [
         "monster/faceup-atk [44146295] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-via-precursor-cupsy-way-synchro-link-1-as-tuner-bridge-31603289-e2-to-44362883-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 7,
+      "stepsConsumed": 5,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "not all steps consumed",
+      "priorStateWarning": "composed via precursors [snake-eye-ash-1card-ignition-bridge → cupsy-way-synchro-link-1-as-tuner-bridge] (6 prefix steps)",
+      "missing": [
+        "monster/faceup-atk [44362883] — found at DECK/facedown instead"
       ]
     },
     {
@@ -75131,6 +76583,184 @@
       ]
     },
     {
+      "bridgeId": "edge-summon-trigger-32548318-e1-to-33760966-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [33760966] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-32548318-e1-to-75003700-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-32548318-e1-to-75003700-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-32548318-e1-to-84477320-e1a",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-32548318-e1-to-84477320-e1b",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-32548318-e1-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
       "bridgeId": "edge-via-precursor-mirrorjade-fusion-via-extra-type-bridge-44146295-e1-to-72578374-e2",
       "tier": "C_UNVALIDATABLE",
       "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
@@ -75185,6 +76815,884 @@
       "missing": [
         "monster/faceup-atk [44146295] — found at EXTRA/facedown instead"
       ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-10966439-e2a",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-10966439-e2b",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [10966439] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-1528054-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "extraMonster/faceup-atk [1528054] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-18176525-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-18176525-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-18176525-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [18176525] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-19899073-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [19899073] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-29301450-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "extraMonster/faceup-atk [29301450] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-30581601-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "extraMonster/faceup-atk [30581601] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-31425736-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-31425736-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [31425736] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-31603289-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [31603289] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-33760966-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [33760966] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-34022970-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-34022970-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [34022970] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-3410461-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [3410461] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-34909328-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [34909328] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-35844557-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-35844557-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [35844557] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-40543231-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-40543231-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-40543231-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [40543231] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-45663742-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-45663742-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [45663742] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-5088741-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [5088741] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-58071334-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [58071334] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-67098897-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [67098897] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-68468459-e1a",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-68468459-e1b",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [68468459] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-68810435-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-68810435-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [68810435] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-70534340-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [70534340] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-72578374-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [72578374] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-73819701-e2a",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-73819701-e2b",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [73819701] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-73898890-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "extraMonster/faceup-atk [73898890] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-75003700-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-75003700-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [75003700] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-7511613-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [7511613] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-76666602-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [76666602] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-81846453-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [81846453] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-82782870-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-82782870-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-82782870-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [82782870] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-84433129-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [84433129] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-84477320-e1a",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-84477320-e1b",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [84477320] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-8633261-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [8633261] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-87746184-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [87746184] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-90241276-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-90241276-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [90241276] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-93192592-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [93192592] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-9674034-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-9674034-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [9674034] — found at DECK/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-summon-trigger-44362883-e1-to-9940036-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "EFFECT_DID_NOT_REACH_TARGET",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 1,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": [
+        "monster/faceup-atk [9940036] — found at EXTRA/facedown instead"
+      ]
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-1498449-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-44482554-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-5088741-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-65741786-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-70871153-e1",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-7375867-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-75003700-e3",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-81846453-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
+    },
+    {
+      "bridgeId": "edge-fusion-material-trigger-44362883-e1-to-84477320-e2",
+      "tier": "C_UNVALIDATABLE",
+      "diagnosis": "NEEDS_PRIOR_SUMMON_NO_PRECURSOR",
+      "stepsTotal": 2,
+      "stepsConsumed": 0,
+      "matchedProduces": 0,
+      "totalProduces": 0,
+      "reason": "no progress — autopilot stalled at prompt=SELECT_IDLECMD step=activate",
+      "priorStateWarning": null,
+      "missing": []
     },
     {
       "bridgeId": "edge-summon-trigger-45171524-e1-to-19899073-e1",
