@@ -95,6 +95,33 @@ export const EXPLORATORY_PROMPTS: ReadonlySet<PromptType> = new Set<PromptType>(
   'SELECT_OPTION',
 ]);
 
+/** Phase B (graph-ml-v2) — YGO-vocabulary classification of a SELECT_*
+ *  Action. Distinguishes engine-protocol verbs (Normal Summon, Set, Attack,
+ *  phase-change) that the card-effects-catalog cannot classify, because
+ *  these aren't card-script Lua actions but responses to ocgcore prompts.
+ *  Populated by `OCGCoreAdapter` at enumeration time from the existing
+ *  `actionTag` field; readers stay backward-compat (undefined = "not
+ *  derivable from current actionTag map"). */
+export type ActionVerb =
+  | 'normal-summon'      // hand → MZONE face-up atk, level 1-4, no tribute;
+                         //   consumes 1/turn NS slot. Real "starter" candidate.
+  | 'tribute-summon'     // hand → MZONE face-up atk, level 5+, requires tributes;
+                         //   consumes 1/turn NS slot. Rare in modern combo decks
+                         //   (Lv5+ usually go through Special Summon procedures
+                         //   or are activated for their effect, not tribute-NS).
+  | 'set-monster'        // hand → MZONE face-down def; same 1/turn slot as NS
+  | 'set-st'             // set spell/trap face-down
+  | 'summon-procedure'   // ED summon procedure (Synchro/Xyz/Link/Fusion/Ritual)
+                         //   OR card-effect self-SS via EFFECT_SPSUMMON_PROC
+  | 'pendulum-summon'    // pendulum-summon trigger from EFFECT_SPSUMMON_PROC_G
+  | 'activate'           // activate effect (idle, chain, or trap)
+  | 'change-position'    // atk↔def position change on a face-up monster
+  | 'attack'             // declare attack
+  | 'go-to-bp'           // transition main → battle phase
+  | 'go-to-mp2'          // transition battle → main phase 2
+  | 'end-phase'          // end the current player's turn
+  | 'pass';              // decline (e.g., SELECT_CHAIN no-link)
+
 export interface Action {
   responseIndex: number;
   cardId: number;
@@ -124,6 +151,13 @@ export interface Action {
    *  (3× Ash Blossom in HAND vs 1 in GY → first match could pick the wrong
    *  zone). All other rankers ignore this field. */
   sourceZone?: ZoneId;
+  /** Phase B (graph-ml-v2): YGO-vocabulary verb classifying this action.
+   *  Populated by `OCGCoreAdapter` from the existing `actionTag` field via
+   *  a small mapping table. Optional for backward compat — pre-MVP-v3
+   *  consumers (and SELECT_* prompts that the mapping doesn't cover) see
+   *  `actionVerb === undefined`. Used by feature-extractor `act_verb_*`
+   *  features. See `ActionVerb` type for the YGO vocabulary. */
+  actionVerb?: ActionVerb;
 }
 
 export interface FieldCard {
@@ -155,6 +189,64 @@ export interface FieldState {
    *  in pre-flight). Optional for backward compat — undefined means the
    *  feature extractor leaves the slot at 0. */
   normalSummonUsed?: [boolean, boolean];
+  /** Phase B (graph-ml-v2) — engine-derived "playable hand" count.
+   *  At every IDLECMD-class prompt, OCGCore enumerates `summons[]`,
+   *  `special_summons[]`, and `activates[]` based on its own (C++-evaluated)
+   *  activation-condition checks. This field captures the count of distinct
+   *  hand cardIds appearing in any of those arrays — i.e. *how many hand
+   *  cards the engine offers as "playable right now"*. Bypasses parser
+   *  opacity entirely (audit 2026-04-26: 36% of conditions are opaque to
+   *  v7-gate-strip parser; the engine has 0% opacity by construction).
+   *  Populated by `OCGCoreAdapter` during `enumerateActions(SELECT_IDLECMD)`;
+   *  `undefined` for non-IDLECMD prompts or pre-Phase-B callers. Read by
+   *  ranker features `hand_combo_potential_engine` and
+   *  `hand_dead_card_count_engine` (Sprint 3 candidates). */
+  activatableHandCardCount?: number;
+  /** Phase B (graph-ml-v2) axis E (tempo / commitment) — per-turn cumulative
+   *  action counters. Snapshot of the adapter's InternalHandle counters at
+   *  query time. Reset by adapter on every NEW_TURN. All fields optional for
+   *  backward compat — pre-axis-E callers see undefined and the feature
+   *  extractor falls back to 0.
+   *
+   *  YGO meaning: a "good" combo turn is dense in special summons, effect
+   *  activations, distinct cards used, chain resolutions, and cards drawn.
+   *  These features encode the axiom "YGO is mana-less; combo strength =
+   *  action density per turn" (axis E, deep dive memo §2.E).
+   *
+   *  - `specialSummonsThisTurn[player]`: count of MSG_SPSUMMONING for that
+   *    player since the last NEW_TURN. Excludes Normal Summons (tracked
+   *    separately by `normalSummonUsed`). INCLUDES pendulum summons (which
+   *    also fire SPSUMMONING in OCGCore — pendulum is a kind of SS).
+   *  - `chainResolutionsThisTurn`: count of MSG_CHAIN_END events since
+   *    NEW_TURN. Per-turn global counter (chains are not player-scoped).
+   *    Heavy combo turns produce 5+; control turns 0-1. Includes opp-driven
+   *    chains (e.g., handtrap responses) — accepted limitation.
+   *  - `cardsDrawnThisTurn[player]`: total count of cards drawn this turn
+   *    per player (draw phase + effect-driven draws like Pot of Desires).
+   *    RANDOM pulls via MSG_DRAW only — NOT tutors. See cardsSearchedThisTurn.
+   *  - `effectsActivatedThisTurn`: total count of OWN effect activations
+   *    this turn (action.team !== 1, _isEffectActivation === true,
+   *    cardId > 0). Tag-INDEPENDENT — counts ALL effect activations, NOT
+   *    only tagged interruption cards (the OPT-scoped activationLog is for
+   *    Story 1.8 HOPT enforcement; that one IS tag-filtered and includes
+   *    opp activations for cross-team HOPT counting). The feature here is
+   *    own-side action density.
+   *  - `distinctCardsUsedThisTurn`: number of distinct OWN cardIds with at
+   *    least one effect activation this turn. Tag-INDEPENDENT and own-only,
+   *    same scope as `effectsActivatedThisTurn`. Indicates "breadth of
+   *    engine deployment" vs single-card overactivation. */
+  specialSummonsThisTurn?: [number, number];
+  chainResolutionsThisTurn?: number;
+  cardsDrawnThisTurn?: [number, number];
+  effectsActivatedThisTurn?: number;
+  distinctCardsUsedThisTurn?: number;
+  /** Phase B (graph-ml-v2) axis E — count of tutors performed this turn
+   *  (per-player). A tutor = MSG_MOVE from `LOCATION_DECK` to `LOCATION_HAND`
+   *  on the same controller. Distinct from `cardsDrawnThisTurn` (random
+   *  pulls via MSG_DRAW). YGO-strategic: tutor strictly dominates random
+   *  draw because the player chooses the card; the ranker should weight
+   *  tutor activity higher than draw activity. */
+  cardsSearchedThisTurn?: [number, number];
 }
 
 // =============================================================================

@@ -56,6 +56,19 @@ export interface FieldQueryContext {
    *  InternalHandle.normalSummonsByPlayer. Forwarded to FieldState.
    *  Optional: callers that don't track it omit the field. */
   normalSummonUsed?: [boolean, boolean];
+  /** Phase B (graph-ml-v2) — engine-derived activatable-hand count. Computed
+   *  by the adapter at IDLECMD enumeration time (count of distinct hand
+   *  cardIds appearing in any summons/special_summons/activates entry).
+   *  Forwarded to FieldState.activatableHandCardCount. Optional. */
+  activatableHandCardCount?: number;
+  /** Phase B (graph-ml-v2) axis E — per-turn cumulative counters from the
+   *  adapter's InternalHandle. Forwarded as-is to FieldState. All optional. */
+  specialSummonsThisTurn?: [number, number];
+  chainResolutionsThisTurn?: number;
+  cardsDrawnThisTurn?: [number, number];
+  effectsActivatedThisTurn?: number;
+  distinctCardsUsedThisTurn?: number;
+  cardsSearchedThisTurn?: [number, number];
 }
 
 // =============================================================================
@@ -70,7 +83,13 @@ export interface FieldQueryContext {
  *  `duelQuery` with `OcgQueryFlags.CODE` — see `queryCardCode`. This was
  *  the C6 bug fixed in the Epic 1 review. */
 export function queryFieldState(ctx: FieldQueryContext): FieldState {
-  const { core, nativeHandle, turn, phase, getCardName, normalSummonUsed } = ctx;
+  const {
+    core, nativeHandle, turn, phase, getCardName,
+    normalSummonUsed, activatableHandCardCount,
+    specialSummonsThisTurn, chainResolutionsThisTurn, cardsDrawnThisTurn,
+    effectsActivatedThisTurn, distinctCardsUsedThisTurn,
+    cardsSearchedThisTurn,
+  } = ctx;
   const field = core.duelQueryField(nativeHandle);
 
   const zones: Record<string, FieldCard[]> = {};
@@ -182,6 +201,19 @@ export function queryFieldState(ctx: FieldQueryContext): FieldState {
     oppZones: oppZones as Record<ZoneId, FieldCard[]>,
     normalSummonUsed: normalSummonUsed
       ? [normalSummonUsed[0], normalSummonUsed[1]]
+      : undefined,
+    activatableHandCardCount,
+    specialSummonsThisTurn: specialSummonsThisTurn
+      ? [specialSummonsThisTurn[0], specialSummonsThisTurn[1]]
+      : undefined,
+    chainResolutionsThisTurn,
+    cardsDrawnThisTurn: cardsDrawnThisTurn
+      ? [cardsDrawnThisTurn[0], cardsDrawnThisTurn[1]]
+      : undefined,
+    effectsActivatedThisTurn,
+    distinctCardsUsedThisTurn,
+    cardsSearchedThisTurn: cardsSearchedThisTurn
+      ? [cardsSearchedThisTurn[0], cardsSearchedThisTurn[1]]
       : undefined,
   };
 }

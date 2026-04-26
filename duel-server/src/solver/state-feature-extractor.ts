@@ -24,6 +24,9 @@
 // =============================================================================
 
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { ZoneId, Phase } from '../ws-protocol.js';
 import type {
   Action,
@@ -33,6 +36,36 @@ import type {
   InterruptionType,
 } from './solver-types.js';
 import type { CardMetadata, CardMetadataMap } from './card-metadata.js';
+
+// Verb-index loader (MVP v3) — loads `data/derived/verb-index.json` once,
+// caches per-process. Parser-derived verb tags per cardId from
+// `card-effects-catalog/`. Used by `act_verb_*` action features.
+const __filename_sfe = fileURLToPath(import.meta.url);
+const VERB_INDEX_PATH = join(dirname(__filename_sfe), '..', '..', 'data', 'derived', 'verb-index.json');
+
+interface VerbIndexEntry {
+  verbs: readonly string[];
+  costs: readonly string[];
+  noCost: boolean;
+  summonProcedureKinds: readonly string[];
+}
+interface VerbIndex {
+  schemaVersion: number;
+  catalogParserVersion: string;
+  cards: Record<string, VerbIndexEntry>;
+}
+
+let _verbIndexCache: VerbIndex | undefined;
+function loadVerbIndex(): VerbIndex {
+  if (_verbIndexCache) return _verbIndexCache;
+  const raw = readFileSync(VERB_INDEX_PATH, 'utf-8');
+  const parsed = JSON.parse(raw) as VerbIndex;
+  if (parsed.schemaVersion !== 1) {
+    throw new Error(`[state-feature-extractor] verb-index.json schemaVersion ${parsed.schemaVersion} unsupported`);
+  }
+  _verbIndexCache = parsed;
+  return parsed;
+}
 import {
   TYPE_MONSTER,
   TYPE_SPELL,
@@ -91,6 +124,11 @@ export interface FeatureContext {
   mainDeckSet: ReadonlySet<number>;
   /** Pre-computed `Set<cardId>` for `act_card_in_extra_deck_pool`. */
   extraDeckSet: ReadonlySet<number>;
+  /** MVP v3 — verb-index loaded from `data/derived/verb-index.json`. Used by
+   *  catalog-derived `act_verb_*` action features (add_from_deck, special_summon,
+   *  destroy, draw). Adapter-derived verbs (normal-summon, summon-procedure, ...)
+   *  read `action.actionVerb` directly and don't consult the index. */
+  verbIndex: VerbIndex;
 }
 
 // =============================================================================
@@ -105,6 +143,7 @@ export const STATE_FEATURE_NAMES: readonly string[] = [
   'phase_battle_active',
   'is_self_turn',
   'lp_self_norm',
+  'normal_summon_used',  // MVP v3 — state.normalSummonUsed[0] (plumbed c6e923b2)
   // B. Hand composition (11)
   'hand_size',
   'hand_monsters_count',
@@ -153,6 +192,16 @@ export const STATE_FEATURE_NAMES: readonly string[] = [
   'interruption_pieces_hand_count',
   'unique_interruption_types_field',
   'gy_revival_targets_count',
+  // S. Engine-derived axis D (2) — MVP v3, 2026-04-26
+  'hand_combo_potential_engine',         // distinct hand cardIds offered at IDLECMD (engine truth, sidesteps parser opacity)
+  'hand_dead_card_count_engine',         // (hand size) − above
+  // T. Axis E action density / tempo (6) — MVP v3, 2026-04-26
+  'special_summons_this_turn_norm',      // own MSG_SPSUMMONING count this turn / 8
+  'effects_activated_this_turn_norm',    // total own effect activations this turn / 12
+  'distinct_cards_used_this_turn_norm',  // distinct cardIds with ≥1 own activation this turn / 7
+  'chain_resolutions_this_turn_norm',    // count of MSG_CHAIN_END this turn / 5
+  'cards_drawn_this_turn_norm',          // RANDOM pulls (MSG_DRAW) this turn / 8
+  'cards_searched_this_turn_norm',       // TUTORS (MSG_MOVE deck→hand) this turn / 8
 ];
 
 export const ACTION_FEATURE_NAMES: readonly string[] = [
@@ -207,18 +256,31 @@ export const ACTION_FEATURE_NAMES: readonly string[] = [
   'act_card_in_extra_deck_pool',
   'act_card_in_main_deck_pool',
   'act_card_overlay_count_norm',
+  // L. YGO action verbs (12) — MVP v3, 2026-04-26
+  'act_verb_normal_summon',          // adapter actionVerb tag (Lv ≤ 4 direct NS — real starter signal)
+  'act_verb_tribute_summon',         // adapter actionVerb tag (Lv ≥ 5 tribute NS — almost always bad in combo)
+  'act_verb_set_monster',            // adapter actionVerb tag
+  'act_verb_set_st',                 // adapter actionVerb tag
+  'act_verb_summon_procedure',       // adapter actionVerb tag (Synchro/Xyz/Link/Fusion/Ritual + alt-SS-proc)
+  'act_verb_pendulum_summon',        // adapter actionVerb tag (PZONE source)
+  'act_verb_activate',               // adapter actionVerb tag (idle/chain activate)
+  'act_verb_attack',                 // adapter actionVerb tag
+  'act_verb_add_from_deck',          // verb-index: tutor (deck→hand)
+  'act_verb_special_summon_effect',  // verb-index: SS via card effect (not procedure)
+  'act_verb_destroy',                // verb-index: any destroy verb
+  'act_verb_draw',                   // verb-index: Duel.Draw appears in operation
 ];
 
-export const STATE_DIM = STATE_FEATURE_NAMES.length;        // 49
-export const ACTION_DIM = ACTION_FEATURE_NAMES.length;      // 46
-export const FEATURE_DIM = STATE_DIM + ACTION_DIM;          // 95
+export const STATE_DIM = STATE_FEATURE_NAMES.length;        // 58 (49 + 1 NS + 2 axis S + 6 axis T)
+export const ACTION_DIM = ACTION_FEATURE_NAMES.length;      // 58 (46 + 12 axis L)
+export const FEATURE_DIM = STATE_DIM + ACTION_DIM;          // 116
 
-// Sanity guards — fail loud at boot if the arrays drift from the design doc.
-if (STATE_DIM !== 49) {
-  throw new Error(`[state-feature-extractor] STATE_DIM expected 49, got ${STATE_DIM}`);
+// Sanity guards — fail loud at boot if the arrays drift from the spec.
+if (STATE_DIM !== 58) {
+  throw new Error(`[state-feature-extractor] STATE_DIM expected 58, got ${STATE_DIM}`);
 }
-if (ACTION_DIM !== 46) {
-  throw new Error(`[state-feature-extractor] ACTION_DIM expected 46, got ${ACTION_DIM}`);
+if (ACTION_DIM !== 58) {
+  throw new Error(`[state-feature-extractor] ACTION_DIM expected 58, got ${ACTION_DIM}`);
 }
 
 /** sha256 of the ordered concatenation of state + action feature names.
@@ -252,6 +314,8 @@ export function extractStateFeatures(state: FieldState, ctx: FeatureContext): nu
   // ~all states are self-turn until a SELECT_CHAIN on opp turn).
   out[i++] = 1;
   out[i++] = clamp01(state.lifePoints[0] / 8000);
+  // MVP v3 — slot 6: normal-summon-used flag (state.normalSummonUsed[0])
+  out[i++] = state.normalSummonUsed?.[0] ? 1 : 0;
 
   // ---- B. Hand composition (11) ----
   const hand = state.zones.HAND ?? [];
@@ -461,6 +525,33 @@ export function extractStateFeatures(state: FieldState, ctx: FeatureContext): nu
   out[i++] = clamp01(uniqueTypesOnField.size / 8);
   out[i++] = clamp01(gyRevivalTargets / 10);
 
+  // ---- S. Engine-derived axis D (2) — MVP v3 ----
+  // F14_engine: distinct hand cardIds the OCG engine offered as playable at
+  // IDLECMD. Sidesteps parser opacity (audit: 36% conditions opaque on
+  // snake-eye-yummy). Adapter clears the counter on every non-IDLECMD prompt
+  // → undefined here means "stale or not at IDLECMD" → both features emit 0.
+  const ahcc = state.activatableHandCardCount;
+  if (ahcc === undefined) {
+    out[i++] = 0;
+    out[i++] = 0;
+  } else {
+    out[i++] = clamp01(ahcc / 7);
+    // F15_engine: dead-card count = (hand size) − F14. Only meaningful when
+    // ahcc is defined (gated together via the if branch).
+    out[i++] = clamp01((hand.length - ahcc) / 7);
+  }
+
+  // ---- T. Axis E action density / tempo (6) — MVP v3 ----
+  // YGO is mana-less; combo strength = action density per turn. These 6
+  // counters reset on every NEW_TURN. All condition-free, message-handler-
+  // driven (SPSUMMONING / CHAIN_END / DRAW / MOVE deck→hand), 100% reliable.
+  out[i++] = clamp01((state.specialSummonsThisTurn?.[0] ?? 0) / 8);
+  out[i++] = clamp01((state.effectsActivatedThisTurn ?? 0) / 12);
+  out[i++] = clamp01((state.distinctCardsUsedThisTurn ?? 0) / 7);
+  out[i++] = clamp01((state.chainResolutionsThisTurn ?? 0) / 5);
+  out[i++] = clamp01((state.cardsDrawnThisTurn?.[0] ?? 0) / 8);
+  out[i++] = clamp01((state.cardsSearchedThisTurn?.[0] ?? 0) / 8);
+
   return out;
 }
 
@@ -584,6 +675,27 @@ export function extractActionFeatures(
   // when it's on the field. 0 for hand/GY/banished/undefined-zone sources.
   out[i++] = sourceOverlayCount(state, sz) / 3;
 
+  // ---- L. YGO action verbs (12) — MVP v3 ----
+  // Adapter-derived (8 features, 100% coverage on prompts the adapter tags):
+  const av = action.actionVerb;
+  out[i++] = av === 'normal-summon' ? 1 : 0;     // Lv ≤ 4 direct NS — real starter signal
+  out[i++] = av === 'tribute-summon' ? 1 : 0;    // Lv ≥ 5 tribute NS — almost always bad in combo
+  out[i++] = av === 'set-monster' ? 1 : 0;
+  out[i++] = av === 'set-st' ? 1 : 0;
+  out[i++] = av === 'summon-procedure' ? 1 : 0;  // Synchro/Xyz/Link/Fusion/Ritual + alt-SS-proc
+  out[i++] = av === 'pendulum-summon' ? 1 : 0;
+  out[i++] = av === 'activate' ? 1 : 0;
+  out[i++] = av === 'attack' ? 1 : 0;
+  // Catalog-derived (4 features, sparse but non-trivial coverage). Per-card
+  // tags from verb-index — multi-effect cards get the union of their verbs
+  // (known FP limitation; per-effect granularity needs an effectId on Action,
+  // deferred to Sprint 3).
+  const vi = action.cardId === 0 ? undefined : ctx.verbIndex.cards[String(action.cardId)];
+  out[i++] = vi?.verbs.includes('add-from-deck') ? 1 : 0;
+  out[i++] = vi?.verbs.includes('special-summon') ? 1 : 0;
+  out[i++] = vi?.verbs.includes('destroy') ? 1 : 0;
+  out[i++] = vi?.verbs.includes('draw') ? 1 : 0;
+
   return out;
 }
 
@@ -695,5 +807,6 @@ export function buildFeatureContext(args: {
     interruptionWeights: args.interruptionWeights,
     mainDeckSet: new Set(args.mainDeck),
     extraDeckSet: new Set(args.extraDeck),
+    verbIndex: loadVerbIndex(),
   };
 }

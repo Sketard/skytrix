@@ -54,6 +54,56 @@ function ocgLocationToZoneId(
   }
 }
 
+/** Phase B (graph-ml-v2) — engine-derived F14_engine helper. Given the
+ *  enumerated Action[] from a SELECT_IDLECMD prompt, count the number of
+ *  *distinct* hand cardIds that have at least one offered slot (NS,
+ *  tribute summon, special summon, set-monster, set-st, activate). Pass-
+ *  actions (cardId === 0, like to_bp / to_ep / pass) are excluded.
+ *
+ *  The count bypasses parser opacity entirely: the OCGCore engine has
+ *  already evaluated each effect's activation condition in C++ when
+ *  building the prompt. A hand card present in any of the enumerated
+ *  arrays is, by definition, currently activatable. Cards in HAND that
+ *  have NO offered action are "dead" right now (handtraps without an opp
+ *  trigger, condition-gated cards waiting on a board state, etc.).
+ *
+ *  Semantics: this is `hand_combo_potential_engine` — the upper bound on
+ *  "useful hand cards right now". The dual `hand_dead_card_count_engine`
+ *  derives as `(hand size) − (this count)`. */
+function countActivatableHandCardIds(actions: readonly Action[]): number {
+  const ids = new Set<number>();
+  for (const a of actions) {
+    if (a.sourceZone !== 'HAND') continue;
+    if (a.cardId === 0) continue;
+    ids.add(a.cardId);
+  }
+  return ids.size;
+}
+
+/** Phase B (graph-ml-v2) — map adapter's internal `actionTag` strings to
+ *  the YGO-vocabulary `ActionVerb` enum. The adapter already classifies
+ *  enumerated SELECT_* options into `actionTag` ('summon', 'ss', 'mset',
+ *  'sset', 'pos', 'activate', 'attack', 'chain', 'to_bp', 'to_m2',
+ *  'to_ep', 'pass', 'psummon'); this table converts those to the typed
+ *  `ActionVerb`. Single source of truth — used by the local `pushAction`
+ *  helpers to populate `Action.actionVerb` automatically. Tags absent
+ *  from the table leave `actionVerb` undefined (backward-compat). */
+const ACTION_TAG_TO_VERB: Readonly<Record<string, ActionVerb>> = {
+  'summon':   'normal-summon',
+  'ss':       'summon-procedure',
+  'psummon':  'pendulum-summon',
+  'mset':     'set-monster',
+  'sset':     'set-st',
+  'pos':      'change-position',
+  'activate': 'activate',
+  'chain':    'activate',
+  'attack':   'attack',
+  'to_bp':    'go-to-bp',
+  'to_m2':    'go-to-mp2',
+  'to_ep':    'end-phase',
+  'pass':     'pass',
+};
+
 import type { CardDB, ScriptDB } from '../types.js';
 import type { Phase } from '../ws-protocol.js';
 import { STARTUP_SCRIPTS } from '../ocg-scripts.js';
@@ -62,6 +112,7 @@ import type { GameOracle, DuelHandle } from './game-oracle.js';
 import type {
   ActivationLog,
   Action,
+  ActionVerb,
   DuelConfig,
   FieldState,
   InterruptionTag,
@@ -116,6 +167,43 @@ interface InternalHandle {
    *  feature (currently zeroed in Day 1.5 pre-flight). Cloned across both
    *  fork paths. */
   normalSummonsByPlayer: [boolean, boolean];
+  /** Phase B (graph-ml-v2) — count of distinct hand cardIds for which the
+   *  most recent IDLECMD enumeration offered at least one slot (NS, tribute
+   *  summon, special summon, set, activate). Engine-derived: bypasses the
+   *  parser opacity issue (audit 2026-04-26: 36% of conditions are opaque
+   *  to v7-gate-strip). Set during IDLECMD enumeration (`enumerateActions`);
+   *  cleared (set to undefined) on every NEW_TURN reset and on non-IDLECMD
+   *  prompts so the FieldState only carries the value when it's truly fresh.
+   *  Surfaces via `FieldState.activatableHandCardCount`. */
+  lastIdlecmdActivatableHandCount?: number;
+  /** Phase B (graph-ml-v2) axis E (tempo / commitment) — per-turn cumulative
+   *  counters tracking action density. Reset on every NEW_TURN. Surface via
+   *  FieldState's matching optional fields. All condition-free, history-
+   *  direct: incremented by message handlers on SPSUMMONING / CHAIN_END /
+   *  DRAW. Cloned across both fork paths (snapshot + replay). */
+  specialSummonsThisTurn: [number, number];
+  chainResolutionsThisTurn: number;
+  cardsDrawnThisTurn: [number, number];
+  /** Phase B (graph-ml-v2) axis E — count of cards moved from own deck to
+   *  own hand by an effect (= tutor / search) this turn. Distinct from
+   *  `cardsDrawnThisTurn` which counts random pulls via MSG_DRAW
+   *  (`Duel.Draw`). Tutors emit MSG_MOVE with `from.location === DECK` and
+   *  `to.location === HAND`; this filter excludes bounces (field → hand)
+   *  and salvages (GY → hand). YGO-strategic: a tutor is essentially
+   *  always preferred to a random draw because the player chooses the
+   *  card; the ranker should learn to weight tutors > draws. */
+  cardsSearchedThisTurn: [number, number];
+  /** Phase B (graph-ml-v2) axis E — total count of effect activations this
+   *  turn, INDEPENDENT of the OPT-tracking tag filter. The existing
+   *  `activationLog` only records tagged interruption cards (Story 1.8); it
+   *  is empty for combo-card activations like Snake-Eye Ash effect, Branded
+   *  Fusion activation, etc. — i.e. precisely the activations that drive
+   *  combo turns. These two counters track ALL `_isEffectActivation` flags
+   *  the adapter sets, regardless of tag. Reset on NEW_TURN. */
+  effectActivationsThisTurnAll: number;
+  /** Distinct cardIds with ≥1 effect activation this turn, regardless of
+   *  tag. Set, not Map — we only need cardinality. Reset on NEW_TURN. */
+  distinctEffectCardsThisTurn: Set<number>;
   /** Phase 5-lite trace-assist (2026-04-19) — accumulated partial picks for
    *  multi-pick mechanical prompts (SELECT_CARD min>1, SELECT_TRIBUTE,
    *  SELECT_SUM). Only populated when `adapter.exposeMultiPickMechanical` is
@@ -317,6 +405,12 @@ export class OCGCoreAdapter implements GameOracle {
       phase: 'DRAW',
       activationLog: new Map(),
       normalSummonsByPlayer: [false, false],
+      specialSummonsThisTurn: [0, 0],
+      chainResolutionsThisTurn: 0,
+      cardsDrawnThisTurn: [0, 0],
+      cardsSearchedThisTurn: [0, 0],
+      effectActivationsThisTurnAll: 0,
+      distinctEffectCardsThisTurn: new Set(),
     };
     internal.id = id;
     this.activeHandles.set(id, internal);
@@ -613,6 +707,17 @@ export class OCGCoreAdapter implements GameOracle {
       return this.enumerateMultiPickAtomic(internal);
     }
 
+    // Phase B (graph-ml-v2) — F14_engine staleness guard. The
+    // `lastIdlecmdActivatableHandCount` is computed at SELECT_IDLECMD enum
+    // time and meaningful only AT that prompt. Between two prompts, the
+    // engine processes actions that may change hand state (discards,
+    // self-SS, etc.). Always clear here at the start of the prompt-finding
+    // loop; the SELECT_IDLECMD branch in the player path below will
+    // re-populate. Other prompts (BATTLECMD / CHAIN / EFFECTYN, opp
+    // prompts, auto-respond mechanical paths) leave it undefined → feature
+    // extractor reads as 0, no signal.
+    internal.lastIdlecmdActivatableHandCount = undefined;
+
     while (true) {
       const status = this.core.duelProcess(internal.nativeHandle);
       const messages = this.core.duelGetMessage(internal.nativeHandle);
@@ -629,15 +734,62 @@ export class OCGCoreAdapter implements GameOracle {
           // players. Only the turn player can NS, so resetting both is
           // equivalent and simpler.
           internal.normalSummonsByPlayer = [false, false];
+          // Phase B (graph-ml-v2) — clear stale IDLECMD-activatable count on
+          // every NEW_TURN; it'll be repopulated on the next IDLECMD enum.
+          internal.lastIdlecmdActivatableHandCount = undefined;
+          // Axis E (tempo / commitment) — reset per-turn action counters.
+          internal.specialSummonsThisTurn = [0, 0];
+          internal.chainResolutionsThisTurn = 0;
+          internal.cardsDrawnThisTurn = [0, 0];
+          internal.cardsSearchedThisTurn = [0, 0];
+          internal.effectActivationsThisTurnAll = 0;
+          internal.distinctEffectCardsThisTurn = new Set();
         } else if (m.type === OcgMessageType.NEW_PHASE) {
           const p = (m as unknown as { phase: number }).phase;
           if (p && PHASE_MAP[p]) internal.phase = PHASE_MAP[p];
         } else if (m.type === OcgMessageType.SUMMONING || m.type === OcgMessageType.FLIPSUMMONING) {
           // Phase B — NS / tribute summon / flip summon all share the same
           // YGO once-per-turn budget. SPSUMMONING (special summon) is NOT
-          // tracked — it has no NS budget.
+          // tracked here — it has no NS budget. (It IS tracked separately
+          // for axis E `specialSummonsThisTurn` below.)
           const ctrl = (m as unknown as { controller: 0 | 1 }).controller;
           if (ctrl === 0 || ctrl === 1) internal.normalSummonsByPlayer[ctrl] = true;
+        } else if (m.type === OcgMessageType.SPSUMMONING) {
+          // Axis E — count special summons per player this turn. Tracked
+          // separately from `normalSummonsByPlayer` (different budget).
+          const ctrl = (m as unknown as { controller: 0 | 1 }).controller;
+          if (ctrl === 0 || ctrl === 1) internal.specialSummonsThisTurn[ctrl]++;
+        } else if (m.type === OcgMessageType.CHAIN_END) {
+          // Axis E — count completed chain resolutions this turn. Per-turn
+          // global counter (chains are not player-scoped at this granularity).
+          internal.chainResolutionsThisTurn++;
+        } else if (m.type === OcgMessageType.DRAW) {
+          // Axis E — count cards drawn this turn per player. `drawn` is the
+          // array of drawn cards; its length is the draw size for this event.
+          // YGO semantic: this is RANDOM card pulls (Duel.Draw / draw phase /
+          // Pot of Desires-style). Distinct from tutors — see MOVE handler
+          // below for the search counter.
+          const ms = m as unknown as { player: number; drawn: readonly unknown[] };
+          if (ms.player === 0 || ms.player === 1) {
+            internal.cardsDrawnThisTurn[ms.player] += ms.drawn?.length ?? 0;
+          }
+        } else if (m.type === OcgMessageType.MOVE) {
+          // Axis E — count tutors (deck → hand) per player. YGO-strategic:
+          // tutoring is almost always preferred over drawing (chosen card vs
+          // random). Filter strictly: from.location must be DECK, to.location
+          // must be HAND, and from.controller === to.controller (own deck to
+          // own hand only). Excludes bounces (field → hand), salvages
+          // (GY → hand), banished → hand recur, and inter-player movements.
+          const ms = m as unknown as {
+            from: { location: number; controller: 0 | 1 };
+            to: { location: number; controller: 0 | 1 };
+          };
+          if (ms.from.location === OcgLocation.DECK
+              && ms.to.location === OcgLocation.HAND
+              && ms.from.controller === ms.to.controller) {
+            const ctrl = ms.from.controller;
+            if (ctrl === 0 || ctrl === 1) internal.cardsSearchedThisTurn[ctrl]++;
+          }
         }
       }
 
@@ -710,7 +862,17 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Exploratory prompt for player 0 — enumerate legal actions
         if (promptType) {
-          return this.enumerateActionsWithResponses(msgAny, promptType, internal.config);
+          const actions = this.enumerateActionsWithResponses(msgAny, promptType, internal.config);
+          // Phase B (graph-ml-v2) — engine-derived F14_engine. The counter
+          // was cleared to undefined at the start of `runUntilPlayerPrompt`;
+          // we only POPULATE here if this is an IDLECMD prompt. Non-IDLECMD
+          // exploratory prompts (BATTLECMD / CHAIN / EFFECTYN / etc.) leave
+          // it undefined, so the feature extractor sees no F14 signal at
+          // those prompts.
+          if (promptType === 'SELECT_IDLECMD') {
+            internal.lastIdlecmdActivatableHandCount = countActivatableHandCardIds(actions);
+          }
+          return actions;
         }
 
         return [];
@@ -834,6 +996,14 @@ export class OCGCoreAdapter implements GameOracle {
     // Helper: cache response AND store it on the action for DFS recursion safety
     const pushAction = (action: Action, response: unknown): void => {
       action._response = response;
+      // Phase B: auto-derive YGO-vocabulary actionVerb from internal actionTag.
+      // Centralised here so each call site in the switch below stays focused
+      // on the OCGCore-specific tag string. Backward-compat: if actionTag is
+      // unrecognised or missing, actionVerb stays undefined.
+      if (action.actionVerb === undefined && action.actionTag !== undefined) {
+        const verb = ACTION_TAG_TO_VERB[action.actionTag];
+        if (verb !== undefined) action.actionVerb = verb;
+      }
       this._lastActionResponses.set(action.responseIndex, response);
       actions.push(action);
     };
@@ -851,7 +1021,17 @@ export class OCGCoreAdapter implements GameOracle {
         for (let i = 0; i < ((msg['summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['summons'] as { code: number }[])[i]);
           // Normal Summon source = always HAND by definition.
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'summon', sourceZone: 'HAND' }, { type: 1, action: 0, index: i });
+          // Phase B: split direct NS (level 1-4, free) vs tribute summon
+          // (level 5+, costs board). YGO meaning: only direct-NS targets are
+          // real "starter" candidates — tribute summons are rare in modern
+          // combo decks because Lv5+ monsters go through Special Summon
+          // procedures or activate their effect from hand. Level lookup via
+          // existing cardDB.stmt; the row's level field is masked to 8 bits
+          // (the high bits encode pendulum scales) — see card-metadata.ts:166.
+          const row = this.cardDB.stmt.get(card.code) as { level?: number } | undefined;
+          const level = (row?.level ?? 0) & 0xff;
+          const verb: ActionVerb = level >= 5 ? 'tribute-summon' : 'normal-summon';
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'summon', sourceZone: 'HAND', actionVerb: verb }, { type: 1, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['special_summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['special_summons'] as { code: number; location?: number; sequence?: number }[])[i]);
@@ -1507,6 +1687,28 @@ export class OCGCoreAdapter implements GameOracle {
         internal.normalSummonsByPlayer[0],
         internal.normalSummonsByPlayer[1],
       ],
+      activatableHandCardCount: internal.lastIdlecmdActivatableHandCount,
+      // Axis E — per-turn cumulative counters. The two derived counts
+      // (effects + distinct cards) are computed from the existing
+      // activationLog; the 3 raw counters are tracked by message handlers.
+      specialSummonsThisTurn: [
+        internal.specialSummonsThisTurn[0],
+        internal.specialSummonsThisTurn[1],
+      ],
+      chainResolutionsThisTurn: internal.chainResolutionsThisTurn,
+      cardsDrawnThisTurn: [
+        internal.cardsDrawnThisTurn[0],
+        internal.cardsDrawnThisTurn[1],
+      ],
+      // Phase B axis E — use the unfiltered counters (tag-independent), NOT
+      // the activationLog (which is OPT-scoped to tagged interruption cards
+      // only and would be near-empty for own-combo turns).
+      effectsActivatedThisTurn: internal.effectActivationsThisTurnAll,
+      distinctCardsUsedThisTurn: internal.distinctEffectCardsThisTurn.size,
+      cardsSearchedThisTurn: [
+        internal.cardsSearchedThisTurn[0],
+        internal.cardsSearchedThisTurn[1],
+      ],
     });
   }
 
@@ -1545,6 +1747,13 @@ export class OCGCoreAdapter implements GameOracle {
       phase: parent.phase,
       activationLog: cloneActivationLog(parent.activationLog),
       normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
+      lastIdlecmdActivatableHandCount: parent.lastIdlecmdActivatableHandCount,
+      specialSummonsThisTurn: [parent.specialSummonsThisTurn[0], parent.specialSummonsThisTurn[1]],
+      chainResolutionsThisTurn: parent.chainResolutionsThisTurn,
+      cardsDrawnThisTurn: [parent.cardsDrawnThisTurn[0], parent.cardsDrawnThisTurn[1]],
+      cardsSearchedThisTurn: [parent.cardsSearchedThisTurn[0], parent.cardsSearchedThisTurn[1]],
+      effectActivationsThisTurnAll: parent.effectActivationsThisTurnAll,
+      distinctEffectCardsThisTurn: new Set(parent.distinctEffectCardsThisTurn),
       isSnapshotChild: true,
     };
 
@@ -1629,6 +1838,13 @@ export class OCGCoreAdapter implements GameOracle {
       // messages emitted during reconstruction are NOT re-tracked. Cloning
       // the parent's already-tracked state is the correct snapshot.
       normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
+      lastIdlecmdActivatableHandCount: parent.lastIdlecmdActivatableHandCount,
+      specialSummonsThisTurn: [parent.specialSummonsThisTurn[0], parent.specialSummonsThisTurn[1]],
+      chainResolutionsThisTurn: parent.chainResolutionsThisTurn,
+      cardsDrawnThisTurn: [parent.cardsDrawnThisTurn[0], parent.cardsDrawnThisTurn[1]],
+      cardsSearchedThisTurn: [parent.cardsSearchedThisTurn[0], parent.cardsSearchedThisTurn[1]],
+      effectActivationsThisTurnAll: parent.effectActivationsThisTurnAll,
+      distinctEffectCardsThisTurn: new Set(parent.distinctEffectCardsThisTurn),
     };
     this.activeHandles.set(id, internal);
     return this.toPublicHandle(internal);
@@ -1648,6 +1864,24 @@ export class OCGCoreAdapter implements GameOracle {
   private recordActivation(internal: InternalHandle, action: Action): void {
     if (action._isEffectActivation !== true) return;
     if (action.cardId <= 0) return; // belt-and-braces (pass-action carries cardId=0)
+    // Phase B axis E — record EVERY OWN effect activation, BEFORE the tag
+    // filter below. The activationLog (Map keyed by tagged cardIds, Story
+    // 1.8) only tracks interruption cards for OPT-counter logic; it is
+    // empty for combo activations (Snake-Eye Ash, Diabellstar e2, Branded
+    // Fusion, etc.). These two counters are the unfiltered own-side ground
+    // truth.
+    //
+    // `action.team === 1` marks opponent-side activations (set by adapter
+    // on adversarial-mode SELECT_CHAIN actions, see SELECT_CHAIN enumerator
+    // for player===OPPONENT branch). We exclude them so the action-density
+    // signal reflects "MY combo activity" not "this turn's total chain
+    // activity (mine + opp handtraps)". The Story 1.8 OPT log below DOES
+    // still record opp tagged activations (HOPT enforcement is cross-team).
+    if (action.team !== 1) {
+      internal.effectActivationsThisTurnAll++;
+      internal.distinctEffectCardsThisTurn.add(action.cardId);
+    }
+
     const tag = this.tags[String(action.cardId)];
     if (!tag) return;
 
