@@ -12,7 +12,8 @@ Version: 2026-04-26 (post Phase A scorer fix)
 | Training script | `scripts/train-graph-weights.ts` |
 | Evaluation script | `scripts/evaluate-structural.ts` |
 | Mutation analysis | `scripts/analyze-mutations.mjs` |
-| **Phase A scorer fix (2026-04-26)** | `--implicit-goals=10` (eval/train CLI flag) — expectedBoard cards score +N/match into interruptionScore. Highly recommended for any eval; +14 cum matched vs Phase-A-off when combined with v4. |
+| **Phase A scorer fix (2026-04-26)** | `--implicit-goals=10` (eval/train CLI flag) — expectedBoard cards score +N/match into interruptionScore. Highly recommended for any eval; +18 cum matched vs untuned baseline when combined with v4 at nb=400. |
+| **Canonical budget (2026-04-26)** | `--budget-ms=6000 --node-budget=400` (was nb=200 pre-2026-04-26). Budget-scaling test confirmed nb=200 was budget-bound; nb=400 is the sweet spot. |
 
 ## Evaluation methodology — `--pool-size=1` is canonical
 
@@ -21,23 +22,31 @@ Version: 2026-04-26 (post Phase A scorer fix)
 **For meaningful weight evaluation, always pass `--pool-size=1`.** Single-duel production usage (one solver run at a time) corresponds to the pool=1 measurement.
 
 ```bash
-# Canonical evaluation invocation (post Phase A — 2026-04-26)
+# Canonical evaluation invocation (post Phase A budget scaling — 2026-04-26)
 cd duel-server
 SOLVER_USE_TUNED_WEIGHTS=1 \
 SOLVER_TUNED_WEIGHTS_FILE=tier-a-latest \
 SOLVER_INSTRUMENT=1 \
 npx tsx scripts/evaluate-structural.ts \
-  --budget-ms=3000 --node-budget=200 \
+  --budget-ms=6000 --node-budget=400 \
   --pool-size=1 \
   --implicit-goals=10 \
-  --label=tier-a-latest-phase-a \
-  --out=../_bmad-output/solver-data/graph-ml-v1/eval-tier-a-latest-phase-a.json
+  --label=tier-a-latest-phase-a-nb400 \
+  --out=../_bmad-output/solver-data/graph-ml-v1/eval-tier-a-latest-phase-a-nb400.json
 ```
 
 The `--implicit-goals=10` flag enables Phase A — fixture's `expectedBoard`
 cards score +10/match into `interruptionScore`. **Default-on for any eval**
-since it delivers +14 cum matched (28/69 vs 14/69 untuned baseline) when
-combined with v4 weights. Omit only when reproducing pre-Phase-A baselines.
+since it delivers +18 cum matched (32/69 vs 14/69 untuned baseline at
+nb=200) when combined with v4 weights at nb=400.
+
+**Why nb=400 (not nb=200):** the 2026-04-26 budget-scaling test showed that
+nb=200 was budget-bound, not structural-bound. Doubling to nb=400 (with a
+proportional 6000ms wall budget) lifts +3 matched at zero design cost
+(branded primary 5→6, radiant-typhoon 1→2, stun-runick 1→2). nb=800 yields
+only +1 marginal (stun-runick 2→3) — diminishing returns. nb=400 is the
+practical sweet spot at 2× nb=200 wall cost. Full memo:
+`_bmad-output/solver-data/phase-a/budget-scaling-2026-04-26.md`.
 
 `--pool-size=12` evaluations are valid as **stress tests** (do trained weights survive contention?) but should never be used as the primary quality benchmark.
 
