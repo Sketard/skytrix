@@ -237,8 +237,19 @@ export async function runFixture(
   // per-fixture context; the shared instances are reused across fixtures.
   // Filtering runs on the post-hand-removal mainDeck PLUS the hand itself
   // (initial hand cards ARE in-deck semantically).
+  //
+  // `SOLVER_DISABLE_EXPERTISE=1` (2026-04-26) — ablation flag for honest
+  // baseline measurement. When set, both scorer and ranker receive an empty
+  // expertise list, so:
+  //   - InterruptionScorer.evaluateGoalMatch returns 0 (goalMatchPoints=0)
+  //   - RouteAwareRanker.rank passes through to base ranker (no route bonuses)
+  // Used to measure how much of the cum-score lift is attributable to
+  // authored expertise scaffolding vs. pure search/structural/Phase-A.
   const deckCardIds = [...deck.main, ...deck.extra];
-  const filteredExpertise = filterExpertiseByDeck(allConfigs.archetypeExpertise, deckCardIds);
+  const expertiseDisabled = process.env.SOLVER_DISABLE_EXPERTISE === '1';
+  const filteredExpertise = expertiseDisabled
+    ? []
+    : filterExpertiseByDeck(allConfigs.archetypeExpertise, deckCardIds);
   scorer.setArchetypeExpertise(filteredExpertise);
   scorer.setDeckContents(deckCardIds);
   ranker.setArchetypeExpertise(filteredExpertise);
