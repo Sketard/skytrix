@@ -146,10 +146,24 @@ export class NeuralFeatureRanker implements ActionRanker {
   private extraDeck: readonly number[] = [];
   private context: FeatureContext | undefined;
 
-  // Pre-flight linear cache: flatten W1 to a Float64Array(95) for hot-path
-  // dot-product. Rebuilt at setNeuralWeights time.
+  // Forward-pass caches. `hiddenDim === 0` ⇒ linear path
+  // (linearW × FEATURE_DIM dot product). `hiddenDim > 0` ⇒ MLP path
+  // (W1 × hidden×input → ReLU → W2 × output×hidden). Caches are rebuilt at
+  // every `setNeuralWeights` call.
+  private hiddenDim = 0;
+  // Linear (hidden=[]): linearW is FEATURE_DIM, linearB is the scalar bias.
   private linearW: Float64Array | undefined;
-  private linearB: number = 0;
+  private linearB = 0;
+  // MLP (hidden=[H]): row-major flattened W1 (H × FEATURE_DIM),
+  //                   b1 (H),
+  //                   W2 (H — single output unit so W2 collapses to a vector),
+  //                   b2 (scalar).
+  private mlpW1: Float64Array | undefined;
+  private mlpB1: Float64Array | undefined;
+  private mlpW2: Float64Array | undefined;
+  private mlpB2 = 0;
+  // Reusable hidden activation buffer; allocated once per setNeuralWeights call.
+  private mlpHiddenBuf: Float64Array | undefined;
 
   // Tracking
   private tracking: { forwardPasses: number; cardsTouched: Set<number> } | undefined;
@@ -197,20 +211,25 @@ export class NeuralFeatureRanker implements ActionRanker {
   setNeuralWeights(weights: NeuralWeights | undefined): void {
     if (!weights) {
       this.weights = undefined;
+      this.hiddenDim = 0;
       this.linearW = undefined;
       this.linearB = 0;
+      this.mlpW1 = undefined;
+      this.mlpB1 = undefined;
+      this.mlpW2 = undefined;
+      this.mlpB2 = 0;
+      this.mlpHiddenBuf = undefined;
       return;
     }
     validateFeatureSpec(weights);
     this.weights = weights;
-    // Pre-flight linear path: flatten W1 to Float64Array. Day 2 MLP would
-    // take a different shape — branch on arch.hidden.length when adding.
+
     if (weights.arch.hidden.length === 0) {
+      // Linear: W1 is FEATURE_DIM weights, b1 is a 1-entry bias.
       const w1 = weights.params.W1;
       const flat = new Float64Array(FEATURE_DIM);
-      // W1 may be stored as number[] (linear) or number[][] (MLP). Linear
-      // accepts both shapes for forward-compat: number[] = direct, number[][]
-      // = [[w0,w1,...]] single-row outer wrap.
+      // W1 accepts number[] or number[][] (single-row outer wrap) for
+      // forward-compat with hand-authored JSONs.
       if (Array.isArray(w1[0])) {
         const row = (w1 as number[][])[0];
         for (let i = 0; i < FEATURE_DIM; i++) flat[i] = row[i] ?? 0;
@@ -218,15 +237,88 @@ export class NeuralFeatureRanker implements ActionRanker {
         const flatArr = w1 as number[];
         for (let i = 0; i < FEATURE_DIM; i++) flat[i] = flatArr[i] ?? 0;
       }
+      this.hiddenDim = 0;
       this.linearW = flat;
       this.linearB = weights.params.b1[0] ?? 0;
-    } else {
-      // Day 2 MLP: not implemented in Day 1.5 pre-flight. Fail loud.
+      this.mlpW1 = undefined;
+      this.mlpB1 = undefined;
+      this.mlpW2 = undefined;
+      this.mlpB2 = 0;
+      this.mlpHiddenBuf = undefined;
+      return;
+    }
+
+    if (weights.arch.hidden.length !== 1) {
       throw new Error(
-        `[NeuralFeatureRanker] MLP path not implemented in pre-flight (arch.hidden=${JSON.stringify(weights.arch.hidden)}). ` +
-        `Day 2 task if pre-flight GO.`,
+        `[NeuralFeatureRanker] Only 1-hidden-layer MLPs supported (arch.hidden=${JSON.stringify(weights.arch.hidden)}). ` +
+        `Multi-hidden architectures are deferred — see design doc §6 ablation #3.`,
       );
     }
+    const H = weights.arch.hidden[0];
+    if (!Number.isInteger(H) || H <= 0) {
+      throw new Error(`[NeuralFeatureRanker] Invalid hidden dim ${H} (must be positive integer)`);
+    }
+    if (weights.arch.activation !== 'relu') {
+      throw new Error(`[NeuralFeatureRanker] Only ReLU activation supported (got '${weights.arch.activation}')`);
+    }
+
+    // MLP shape: W1 [H × FEATURE_DIM], b1 [H], W2 [1 × H], b2 [1].
+    const w1Raw = weights.params.W1;
+    const b1Raw = weights.params.b1;
+    const w2Raw = weights.params.W2;
+    const b2Raw = weights.params.b2;
+    if (!Array.isArray(w1Raw) || !Array.isArray(b1Raw)) {
+      throw new Error(`[NeuralFeatureRanker] MLP requires W1 and b1 in params`);
+    }
+    if (!Array.isArray(w2Raw) || !Array.isArray(b2Raw)) {
+      throw new Error(`[NeuralFeatureRanker] MLP requires W2 and b2 in params`);
+    }
+    if (b1Raw.length !== H) {
+      throw new Error(`[NeuralFeatureRanker] b1 length ${b1Raw.length} != hidden ${H}`);
+    }
+    if (b2Raw.length !== 1) {
+      throw new Error(`[NeuralFeatureRanker] b2 length ${b2Raw.length} != 1`);
+    }
+
+    const w1Flat = new Float64Array(H * FEATURE_DIM);
+    if (!Array.isArray(w1Raw[0])) {
+      throw new Error(`[NeuralFeatureRanker] MLP W1 must be 2D ([H × FEATURE_DIM]); got 1D length ${w1Raw.length}`);
+    }
+    const w1Rows = w1Raw as number[][];
+    if (w1Rows.length !== H) {
+      throw new Error(`[NeuralFeatureRanker] W1 row count ${w1Rows.length} != hidden ${H}`);
+    }
+    for (let h = 0; h < H; h++) {
+      const row = w1Rows[h];
+      if (!Array.isArray(row) || row.length !== FEATURE_DIM) {
+        throw new Error(`[NeuralFeatureRanker] W1[${h}] length ${row?.length ?? 'NA'} != FEATURE_DIM ${FEATURE_DIM}`);
+      }
+      for (let i = 0; i < FEATURE_DIM; i++) {
+        w1Flat[h * FEATURE_DIM + i] = row[i] ?? 0;
+      }
+    }
+
+    const w2Flat = new Float64Array(H);
+    // W2 shape [1 × H] — accept either [[...H values...]] or [H...] for simplicity.
+    const w2Source: number[] = Array.isArray(w2Raw[0])
+      ? ((w2Raw as unknown) as number[][])[0]
+      : ((w2Raw as unknown) as number[]);
+    if (w2Source.length !== H) {
+      throw new Error(`[NeuralFeatureRanker] W2 length ${w2Source.length} != hidden ${H}`);
+    }
+    for (let h = 0; h < H; h++) w2Flat[h] = w2Source[h] ?? 0;
+
+    const b1Flat = new Float64Array(H);
+    for (let h = 0; h < H; h++) b1Flat[h] = b1Raw[h] ?? 0;
+
+    this.hiddenDim = H;
+    this.linearW = undefined;
+    this.linearB = 0;
+    this.mlpW1 = w1Flat;
+    this.mlpB1 = b1Flat;
+    this.mlpW2 = w2Flat;
+    this.mlpB2 = b2Raw[0] ?? 0;
+    this.mlpHiddenBuf = new Float64Array(H);
   }
 
   enableTracking(): void {
@@ -258,9 +350,9 @@ export class NeuralFeatureRanker implements ActionRanker {
 
   rank(actions: Action[], state: FieldState): Action[] {
     const baseRanked = this.base.rank(actions, state);
-    if (baseRanked.length === 0 || !this.weights || !this.linearW || !this.context) {
-      return baseRanked;
-    }
+    if (baseRanked.length === 0 || !this.weights || !this.context) return baseRanked;
+    // Both linear (linearW set) and MLP (mlpW1 set) paths are valid.
+    if (!this.linearW && !this.mlpW1) return baseRanked;
 
     const stateVec = extractStateFeatures(state, this.context);
     const bonusScale = this.weights.params.bonusScale ?? this.defaultBonusScale;
@@ -271,7 +363,7 @@ export class NeuralFeatureRanker implements ActionRanker {
       // Override is_self_turn with action-derived value.
       const stateVecForAction = stateVec.slice();
       stateVecForAction[4] = a.team === 1 ? 0 : 1;
-      const score = this.linearForward(stateVecForAction, actionVec);
+      const score = this.forward(stateVecForAction, actionVec);
       if (this.tracking) {
         this.tracking.forwardPasses++;
         if (a.cardId !== 0) this.tracking.cardsTouched.add(a.cardId);
@@ -288,12 +380,47 @@ export class NeuralFeatureRanker implements ActionRanker {
 
   // ---- Internal -------------------------------------------------------------
 
+  private forward(stateVec: number[], actionVec: number[]): number {
+    return this.hiddenDim === 0
+      ? this.linearForward(stateVec, actionVec)
+      : this.mlpForward(stateVec, actionVec);
+  }
+
   private linearForward(stateVec: number[], actionVec: number[]): number {
     const w = this.linearW!;
     let sum = this.linearB;
     for (let i = 0; i < STATE_DIM; i++) sum += w[i] * stateVec[i];
     for (let j = 0; j < ACTION_DIM; j++) sum += w[STATE_DIM + j] * actionVec[j];
     return sum;
+  }
+
+  /** MLP forward pass: `y = W2 · ReLU(W1·x + b1) + b2`. Hot-path inlined,
+   *  no allocations beyond the persistent `mlpHiddenBuf`. ~3 K multiplies
+   *  per call at H=32 — negligible vs the WASM duel step. */
+  private mlpForward(stateVec: number[], actionVec: number[]): number {
+    const H = this.hiddenDim;
+    const W1 = this.mlpW1!;
+    const b1 = this.mlpB1!;
+    const W2 = this.mlpW2!;
+    const hidden = this.mlpHiddenBuf!;
+
+    // Hidden layer: h_j = ReLU(sum_i W1[j*FD + i] * x[i] + b1[j]).
+    for (let h = 0; h < H; h++) {
+      const rowBase = h * FEATURE_DIM;
+      let pre = b1[h];
+      for (let i = 0; i < STATE_DIM; i++) {
+        pre += W1[rowBase + i] * stateVec[i];
+      }
+      for (let j = 0; j < ACTION_DIM; j++) {
+        pre += W1[rowBase + STATE_DIM + j] * actionVec[j];
+      }
+      hidden[h] = pre > 0 ? pre : 0;  // ReLU
+    }
+
+    // Output: y = sum_h W2[h] * hidden[h] + b2.
+    let out = this.mlpB2;
+    for (let h = 0; h < H; h++) out += W2[h] * hidden[h];
+    return out;
   }
 
   private rebuildContext(): void {
