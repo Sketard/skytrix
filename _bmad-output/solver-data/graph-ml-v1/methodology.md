@@ -1,17 +1,18 @@
 # graph-ml-v1 — operational methodology
 
-Version: 2026-04-25 (post-audit ship of v3 weights)
+Version: 2026-04-26 (post Phase A scorer fix)
 
 ## Quick reference
 
 | What | How |
 |---|---|
-| Production weights | `duel-server/data/trained-weights/tier-a-latest.json` |
+| Production weights | `duel-server/data/trained-weights/tier-a-latest.json` (v4, trained 2026-04-25 seed=42) |
 | Enable in solver | `SOLVER_USE_TUNED_WEIGHTS=1` (env var, opt-in) |
 | Pin a specific file | `SOLVER_TUNED_WEIGHTS_FILE=<basename>` (file under `data/trained-weights/`, no `.json`) |
 | Training script | `scripts/train-graph-weights.ts` |
 | Evaluation script | `scripts/evaluate-structural.ts` |
 | Mutation analysis | `scripts/analyze-mutations.mjs` |
+| **Phase A scorer fix (2026-04-26)** | `--implicit-goals=10` (eval/train CLI flag) — expectedBoard cards score +N/match into interruptionScore. Highly recommended for any eval; +14 cum matched vs Phase-A-off when combined with v4. |
 
 ## Evaluation methodology — `--pool-size=1` is canonical
 
@@ -20,7 +21,7 @@ Version: 2026-04-25 (post-audit ship of v3 weights)
 **For meaningful weight evaluation, always pass `--pool-size=1`.** Single-duel production usage (one solver run at a time) corresponds to the pool=1 measurement.
 
 ```bash
-# Canonical evaluation invocation
+# Canonical evaluation invocation (post Phase A — 2026-04-26)
 cd duel-server
 SOLVER_USE_TUNED_WEIGHTS=1 \
 SOLVER_TUNED_WEIGHTS_FILE=tier-a-latest \
@@ -28,9 +29,15 @@ SOLVER_INSTRUMENT=1 \
 npx tsx scripts/evaluate-structural.ts \
   --budget-ms=3000 --node-budget=200 \
   --pool-size=1 \
-  --label=tier-a-latest \
-  --out=../_bmad-output/solver-data/graph-ml-v1/eval-tier-a-latest.json
+  --implicit-goals=10 \
+  --label=tier-a-latest-phase-a \
+  --out=../_bmad-output/solver-data/graph-ml-v1/eval-tier-a-latest-phase-a.json
 ```
+
+The `--implicit-goals=10` flag enables Phase A — fixture's `expectedBoard`
+cards score +10/match into `interruptionScore`. **Default-on for any eval**
+since it delivers +14 cum matched (28/69 vs 14/69 untuned baseline) when
+combined with v4 weights. Omit only when reproducing pre-Phase-A baselines.
 
 `--pool-size=12` evaluations are valid as **stress tests** (do trained weights survive contention?) but should never be used as the primary quality benchmark.
 

@@ -807,6 +807,18 @@ async function main(): Promise<void> {
   const algorithm: 'dfs' | 'mcts' = algorithmArg === 'mcts' ? 'mcts' : 'dfs';
   const dumpEdgesDir = parseStringArg('dump-edges-per-fixture');
 
+  // Phase A scorer fix (2026-04-26) — `--implicit-goals=N` CLI flag is a
+  // reproducibility wrapper that sets the SOLVER_IMPLICIT_GOALS env vars
+  // BEFORE workers spawn (Piscina worker_threads inherit env at creation).
+  // The env-var path remains the source of truth in `runFixture` so an
+  // explicit env var still works without the flag.
+  const implicitGoalsArg = parseNumArg('implicit-goals');
+  if (implicitGoalsArg !== undefined && implicitGoalsArg > 0) {
+    process.env.SOLVER_IMPLICIT_GOALS = '1';
+    process.env.SOLVER_IMPLICIT_GOALS_WEIGHT = String(implicitGoalsArg);
+    console.log(`[evaluate] --implicit-goals=${implicitGoalsArg}: expectedBoard cards score +${implicitGoalsArg}/match into interruptionScore`);
+  }
+
   // Parallel mode: main thread stays lightweight (fixture JSON + config read,
   // no WASM boot). Each Piscina worker boots its own OCGCore/scorer once.
   const fixture = loadFixtureFile();

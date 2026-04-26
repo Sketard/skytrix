@@ -193,6 +193,24 @@ function buildMaskedPacker(template: GraphWeights, activeEdgeIds: Set<EdgeId>) {
 
 async function main(): Promise<void> {
   const args = parseArgs();
+
+  // Phase A scorer fix (2026-04-26) — `--implicit-goals=N` enables the
+  // expectedBoard-aligned reward in the scorer for the entire ES run.
+  // Training under Phase A means the fitness landscape (β·explorationScore)
+  // includes the implicit goal points, biasing ES toward weights that favor
+  // expectedBoard-aligned states.
+  const implicitGoalsArg = (() => {
+    const arg = process.argv.find(a => a.startsWith('--implicit-goals='));
+    if (!arg) return undefined;
+    const n = Number(arg.slice('--implicit-goals='.length));
+    return Number.isFinite(n) ? n : undefined;
+  })();
+  if (implicitGoalsArg !== undefined && implicitGoalsArg > 0) {
+    process.env.SOLVER_IMPLICIT_GOALS = '1';
+    process.env.SOLVER_IMPLICIT_GOALS_WEIGHT = String(implicitGoalsArg);
+    console.log(`[train] --implicit-goals=${implicitGoalsArg}: expectedBoard rewards active during ES`);
+  }
+
   console.log(`[train] fixture=${args.fixture} tier=${args.tier} generations=${args.generations} μ=${args.mu} λ=${args.lambda} budget=${args.budgetMs}ms seed=${args.seed}`);
 
   // ---- Load fixture + boot OCGCore (same recipe as setupEvaluationContext) --
