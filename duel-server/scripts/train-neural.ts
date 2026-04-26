@@ -77,6 +77,13 @@ interface Args {
   traceDir?: string;
   noTrace: boolean;
   fixedBonusScale: number;
+  /** Initial vector population. `zero` keeps the legacy pre-flight regime
+   *  (vec = 0, ES mutates with σ_init). `gaussian:STD` draws each weight
+   *  from N(0, STD) — recommended for MLP because zero-init degenerates
+   *  hidden-unit symmetry (all units identical → ES bootstrap can't break
+   *  the symmetry within the σ_init=0.3 ball). Day 2 found MLP ≈ linear
+   *  under zero-init smoke; gaussian random init is the next test. */
+  initMode: { kind: 'zero' } | { kind: 'gaussian'; std: number };
 }
 
 function parseArgs(): Args {
@@ -115,6 +122,13 @@ function parseArgs(): Args {
   const baseRaw = pick('basename') ?? 'neural-tier-a-latest';
   const basename = baseRaw.includes('seed') ? baseRaw : `${baseRaw}-seed${seed}`;
 
+  // --init-std=0 → zero init (legacy pre-flight). >0 → gaussian N(0, std).
+  // MLP recommendation: 0.1 (or He: sqrt(2/95) ≈ 0.145).
+  const initStd = numOrDefault(pick('init-std'), 0);
+  const initMode: Args['initMode'] = initStd > 0
+    ? { kind: 'gaussian', std: initStd }
+    : { kind: 'zero' };
+
   return {
     fixtures,
     arch,
@@ -130,7 +144,44 @@ function parseArgs(): Args {
     traceDir: pick('trace-dir'),
     noTrace: process.argv.includes('--no-trace'),
     fixedBonusScale: numOrDefault(pick('bonus-scale'), 100),
+    initMode,
   };
+}
+
+// -----------------------------------------------------------------------------
+// Initial vector
+// -----------------------------------------------------------------------------
+
+function mulberry32(seed: number): () => number {
+  let a = seed | 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function gaussianSampler(seed: number): () => number {
+  const rng = mulberry32(seed);
+  return () => {
+    let u = 0, v = 0;
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  };
+}
+
+/** Build the ES bootstrap vector. Zero-init (legacy) or Gaussian N(0, std)
+ *  seeded deterministically off `args.seed - 1` so it doesn't share state
+ *  with the ES's own RNG (which seeds at `args.seed`). */
+function buildInitialVector(layout: VectorLayout, args: Args): Vector {
+  const vec: number[] = new Array(layout.total).fill(0);
+  if (args.initMode.kind === 'zero') return vec;
+  const sample = gaussianSampler(args.seed - 1);
+  const std = args.initMode.std;
+  for (let i = 0; i < layout.total; i++) vec[i] = sample() * std;
+  return vec;
 }
 
 // -----------------------------------------------------------------------------
@@ -436,7 +487,10 @@ async function main(): Promise<void> {
     }
   };
 
-  const initialVec: Vector = new Array(layout.total).fill(0);
+  const initialVec = buildInitialVector(layout, args);
+  if (args.initMode.kind === 'gaussian') {
+    console.log(`[train-neural] init=gaussian(0, ${args.initMode.std}) seeded off ${args.seed - 1}`);
+  }
   const { best, history } = await es.run(initialVec, fitnessFn, onGen, onPop);
   if (best.fitness > bestFitness) {
     bestFitness = best.fitness;
