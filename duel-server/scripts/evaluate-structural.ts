@@ -44,6 +44,8 @@ import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { RouteAwareRanker } from '../src/solver/route-aware-ranker.js';
 import { GraphGuidedRanker, type RankerTrackingDump } from '../src/solver/graph-guided-ranker.js';
 import { loadTunedWeightsIfEnabled } from '../src/solver/graph-weights-loader.js';
+import { NeuralFeatureRanker } from '../src/solver/neural-ranker.js';
+import { loadNeuralWeightsIfEnabled } from '../src/solver/neural-weights-loader.js';
 import { filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
 import type { ActionRanker } from '../src/solver/solver-strategy.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
@@ -298,9 +300,17 @@ export async function runFixture(
   const algorithm = opts?.algorithm ?? 'dfs';
   const hasher = new ZobristHasher();
   const table = new TranspositionTable(perFixtureConfig.transpositionMaxEntries);
-  // dfsRanker = outer ranker stack (potentially GraphGuidedRanker(ranker)).
-  // Defaults to `ranker` so existing serial callers keep working unchanged.
+  // dfsRanker = outer ranker stack (potentially GraphGuidedRanker(ranker) or
+  // NeuralFeatureRanker(ranker)). Defaults to `ranker` so existing serial
+  // callers keep working unchanged.
   const dfsRanker: ActionRanker = opts?.dfsRanker ?? ranker;
+  // Phase B (graph-ml-v2): refresh per-fixture deck pools on the neural ranker.
+  // Deck Sets are pre-computed once per call and reused across the rank()
+  // batch. Cheap; idempotent if the pools haven't changed.
+  if (dfsRanker instanceof NeuralFeatureRanker) {
+    dfsRanker.setMainDeck(deck.main);
+    dfsRanker.setExtraDeck(deck.extra);
+  }
   const solver = algorithm === 'mcts'
     ? new MCTSSolver(scorer, adapter, dfsRanker, perFixtureConfig)
     : new DfsSolver(hasher, table, scorer, adapter, dfsRanker, perFixtureConfig);
@@ -580,17 +590,28 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
   );
   const ranker = new RouteAwareRanker(new GoldfishChainRanker(allConfigs.interruptionTags));
 
-  // Graph-ml-v1 opt-in : mirror solver-worker.ts wiring exactly so the eval
-  // harness sees the same ranker stack production does. When env gate is off,
-  // `dfsRanker === ranker` and behaviour is unchanged.
-  const tunedWeights = loadTunedWeightsIfEnabled({ dataDir: DATA_DIR });
-  const dfsRanker: ActionRanker = tunedWeights
-    ? (() => {
-        const gr = new GraphGuidedRanker(ranker);
-        gr.setWeights(tunedWeights);
-        return gr;
-      })()
-    : ranker;
+  // Graph-ml-v1 (SOLVER_USE_TUNED_WEIGHTS=1) and graph-ml-v2 (SOLVER_USE_NEURAL_WEIGHTS=1)
+  // are mutually exclusive — when both env vars are set, neural wins (Phase B
+  // design doc §2). Off by default → `dfsRanker === ranker`, behaviour unchanged.
+  const neuralWeights = loadNeuralWeightsIfEnabled({ dataDir: DATA_DIR });
+  const tunedWeights = neuralWeights ? undefined : loadTunedWeightsIfEnabled({ dataDir: DATA_DIR });
+  let dfsRanker: ActionRanker;
+  if (neuralWeights) {
+    const nr = new NeuralFeatureRanker(ranker);
+    nr.setMetadata(cardMetadata);
+    nr.setInterruptionTags(allConfigs.interruptionTags);
+    nr.setInterruptionWeights(allConfigs.interruptionWeights);
+    nr.setNeuralWeights(neuralWeights);
+    // Per-fixture mainDeck/extraDeck pools are pushed by `runFixture` (deck-pool
+    // features need per-fixture context).
+    dfsRanker = nr;
+  } else if (tunedWeights) {
+    const gr = new GraphGuidedRanker(ranker);
+    gr.setWeights(tunedWeights);
+    dfsRanker = gr;
+  } else {
+    dfsRanker = ranker;
+  }
 
   return {
     fixture,
