@@ -121,11 +121,61 @@ export function queryFieldState(ctx: FieldQueryContext): FieldState {
   zones['DECK'] = queryPileZone(core, nativeHandle, PLAYER, OcgLocation.DECK, getCardName);
   zones['EXTRA'] = queryPileZone(core, nativeHandle, PLAYER, OcgLocation.EXTRA, getCardName);
 
+  // Opponent-side zones (Phase B) — same layout as p0, queried with
+  // controller=OPPONENT. Populated unconditionally; ranker features 32-35
+  // read MZONE/EMZ/SZONE/FIELD only. Pile zones included for Phase B+
+  // backlog features (no info-leak concern: solver never crosses a network
+  // boundary with FieldState).
+  const oppZones: Record<string, FieldCard[]> = {};
+  for (const z of ALL_ZONE_IDS) oppZones[z] = [];
+
+  for (let seq = 0; seq < p1.monsters.length; seq++) {
+    const slot = p1.monsters[seq];
+    const pos = slot?.position as number ?? 0;
+    if (!slot || pos === 0) continue;
+
+    const cardCode = queryCardCode(core, nativeHandle, OPPONENT, OcgLocation.MZONE, seq);
+    if (!cardCode) continue;
+
+    const zoneId = seq < 5 ? `M${seq + 1}` : (seq === 5 ? 'EMZ_L' : 'EMZ_R');
+    const overlayCount = queryOverlayCount(core, nativeHandle, OPPONENT, OcgLocation.MZONE, seq);
+    oppZones[zoneId] = [{
+      cardId: cardCode,
+      cardName: getCardName(cardCode),
+      position: POSITION_MAP[pos] ?? 'faceup-atk',
+      overlayCount,
+    }];
+  }
+
+  for (let seq = 0; seq < p1.spells.length; seq++) {
+    const slot = p1.spells[seq];
+    const pos = slot?.position as number ?? 0;
+    if (!slot || pos === 0) continue;
+
+    const cardCode = queryCardCode(core, nativeHandle, OPPONENT, OcgLocation.SZONE, seq);
+    if (!cardCode) continue;
+
+    const zoneId = seq < 5 ? `S${seq + 1}` : 'FIELD';
+    oppZones[zoneId] = [{
+      cardId: cardCode,
+      cardName: getCardName(cardCode),
+      position: POSITION_MAP[pos] ?? 'facedown',
+      overlayCount: 0,
+    }];
+  }
+
+  oppZones['HAND'] = queryPileZone(core, nativeHandle, OPPONENT, OcgLocation.HAND, getCardName);
+  oppZones['GY'] = queryPileZone(core, nativeHandle, OPPONENT, OcgLocation.GRAVE, getCardName);
+  oppZones['BANISHED'] = queryPileZone(core, nativeHandle, OPPONENT, OcgLocation.REMOVED, getCardName);
+  oppZones['DECK'] = queryPileZone(core, nativeHandle, OPPONENT, OcgLocation.DECK, getCardName);
+  oppZones['EXTRA'] = queryPileZone(core, nativeHandle, OPPONENT, OcgLocation.EXTRA, getCardName);
+
   return {
     zones: zones as Record<ZoneId, FieldCard[]>,
     lifePoints: [p0.lp, p1.lp],
     turn,
     phase,
+    oppZones: oppZones as Record<ZoneId, FieldCard[]>,
   };
 }
 

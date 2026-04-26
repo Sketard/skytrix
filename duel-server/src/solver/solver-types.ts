@@ -138,6 +138,15 @@ export interface FieldState {
   lifePoints: [number, number];
   turn: number;
   phase: Phase;
+  /** Phase B (graph-ml-v2) — opponent-side zone snapshot from the active
+   *  player's perspective. Same `ZoneId` keys as `zones`, but cards belong to
+   *  player 1 (e.g. `oppZones.M1` is opp's first main monster zone).
+   *  Optional for backward compat — pre-Phase-B FieldState consumers see
+   *  `oppZones === undefined` and behave unchanged. Populated by
+   *  `queryFieldState` (board + pile zones for completeness; ranker features
+   *  32-35 read board-only). No player info-leak concern: solver never
+   *  exposes FieldState across a network boundary. */
+  oppZones?: Record<ZoneId, FieldCard[]>;
 }
 
 // =============================================================================
