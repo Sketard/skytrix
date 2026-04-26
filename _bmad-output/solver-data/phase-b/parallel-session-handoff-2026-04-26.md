@@ -52,32 +52,30 @@ into feature `normal_summon_used` (slot 5) lands in the post-C1 commit.
   results, in-flight C1 job ID + ETA, and a paragraph on the deferred
   extractor-wiring constraint.
 
+### C. ES-vs-re-eval determinism investigation — `e5068169`
+**SHIPPED.** User confirmed "ok pour c" after items A+B+D+handoff landed.
+
+- Built `duel-server/scripts/diag-determinism.ts`: runs N consecutive
+  `runFixture` calls on the same weights, reports outcome vs compute
+  variance.
+- Ran 5× snake-eye-yummy + neural-pre-flight-seed7 at canonical
+  nb=400/budget-ms=6000.
+- **Result: state leak FALSIFIED.** Score/matched/interruptionScore
+  bit-stable (11/2/11.00) across all 5 runs. Only nodes vary (316-370,
+  15.4% span). All runs hit `term=timeout` at ~5220ms.
+- The eval is wall-clock-bound, not nb-bound. ES-vs-re-eval gap is CPU-
+  load-dependent node throughput, not state corruption.
+- Full report:
+  `_bmad-output/solver-data/phase-b/determinism-investigation-2026-04-26.md`.
+
+**Recommendation for Day 3+ training (in report):** switch ES selection
+or eval to nb-bound regime (`budget-ms=30000`) or median-of-N rollouts.
+For C1 in-flight: leave alone; re-eval candidates at nb-bound on hold-out
+for ship gate.
+
 ## Items skipped / deferred
 
-### C. ES-vs-re-eval determinism investigation
-**Status:** NOT STARTED. Held pending user confirmation. Concern: ~30s
-CPU per run × 5 runs at canonical budget = real CPU competition with the
-in-flight 4-fix × 60 gen training. Lite-mode alternative (nb=200/3000ms ×
-3 runs) was offered. User OK'd "starting with A" and approved the
-plumbing-first plan, but explicit go on C compute was not given before
-this handoff was written.
-
-**Notes for whoever picks up C:**
-- Suspected pattern: ES converged fitness=19 on seed 7, re-eval at best
-  weights gave 11 (gap -8). Same shape on MLP randinit seed 42 (26 → 21,
-  gap -5).
-- Hypothesis 1: adapter state accumulation across 300+ consecutive evals
-  in ES (state "loaded") vs re-eval (state "fresh") — testable by
-  running 5 consecutive solves at same weights and looking for variance.
-- Hypothesis 2: wall-clock DFS budget hits a different terminal under
-  CPU load.
-- Lite-mode test: load a pre-flight weights JSON
-  (`data/trained-weights/neural-pre-flight-seed7.json` — gitignored,
-  exists locally per verdict memo), run snake-eye-yummy 5× at
-  nb=200/3000ms, log score/matched/nodes per run.
-- If score varies: adapter state leak confirmed.
-- If score stable: wall-clock timing.
-- Output target: `_bmad-output/solver-data/phase-b/determinism-investigation-2026-04-26.md`.
+None — all 4 items (A, B, D, C) shipped this session.
 
 ## Constraints honored
 - ✅ Did NOT modify `train-neural.ts` / `train-neural-pre-flight.ts`.
