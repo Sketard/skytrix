@@ -107,6 +107,15 @@ interface InternalHandle {
    *  `usesPerTurn > 1`. Cleared on every NEW_TURN. Cloned by `forkViaReplay`.
    *  Populated only for player-side activations of tagged cards (Story 1.8). */
   activationLog: Map<number, number[]>;
+  /** Phase B (graph-ml-v2) — per-turn normal-summon-used tracking. Index =
+   *  player (0/1). True once the player has consumed their once-per-turn
+   *  normal-summon budget (NS, tribute summon, OR flip summon all share the
+   *  same per-YGO-rules budget). Reset to [false, false] on NEW_TURN; set
+   *  on SUMMONING / FLIPSUMMONING messages keyed by `controller`. Surfaced
+   *  via `FieldState.normalSummonUsed` for the ranker's `normal_summon_used`
+   *  feature (currently zeroed in Day 1.5 pre-flight). Cloned across both
+   *  fork paths. */
+  normalSummonsByPlayer: [boolean, boolean];
   /** Phase 5-lite trace-assist (2026-04-19) — accumulated partial picks for
    *  multi-pick mechanical prompts (SELECT_CARD min>1, SELECT_TRIBUTE,
    *  SELECT_SUM). Only populated when `adapter.exposeMultiPickMechanical` is
@@ -307,6 +316,7 @@ export class OCGCoreAdapter implements GameOracle {
       turn: 0,
       phase: 'DRAW',
       activationLog: new Map(),
+      normalSummonsByPlayer: [false, false],
     };
     internal.id = id;
     this.activeHandles.set(id, internal);
@@ -615,9 +625,19 @@ export class OCGCoreAdapter implements GameOracle {
           // currently runs only turn 1 in goldfish mode, so this clear is
           // defensive — but Epic 2 (adversarial multi-turn) will rely on it.
           internal.activationLog.clear();
+          // Phase B (graph-ml-v2) — NS budget resets per-turn for both
+          // players. Only the turn player can NS, so resetting both is
+          // equivalent and simpler.
+          internal.normalSummonsByPlayer = [false, false];
         } else if (m.type === OcgMessageType.NEW_PHASE) {
           const p = (m as unknown as { phase: number }).phase;
           if (p && PHASE_MAP[p]) internal.phase = PHASE_MAP[p];
+        } else if (m.type === OcgMessageType.SUMMONING || m.type === OcgMessageType.FLIPSUMMONING) {
+          // Phase B — NS / tribute summon / flip summon all share the same
+          // YGO once-per-turn budget. SPSUMMONING (special summon) is NOT
+          // tracked — it has no NS budget.
+          const ctrl = (m as unknown as { controller: 0 | 1 }).controller;
+          if (ctrl === 0 || ctrl === 1) internal.normalSummonsByPlayer[ctrl] = true;
         }
       }
 
@@ -1483,6 +1503,10 @@ export class OCGCoreAdapter implements GameOracle {
       turn: internal.turn,
       phase: internal.phase,
       getCardName: (code) => this.getCardName(code),
+      normalSummonUsed: [
+        internal.normalSummonsByPlayer[0],
+        internal.normalSummonsByPlayer[1],
+      ],
     });
   }
 
@@ -1520,6 +1544,7 @@ export class OCGCoreAdapter implements GameOracle {
       turn: parent.turn,
       phase: parent.phase,
       activationLog: cloneActivationLog(parent.activationLog),
+      normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
       isSnapshotChild: true,
     };
 
@@ -1598,6 +1623,12 @@ export class OCGCoreAdapter implements GameOracle {
       // state. Each entry is a fresh array — mutating the parent's log after
       // a fork must NOT affect the child, and vice versa.
       activationLog: cloneActivationLog(parent.activationLog),
+      // Phase B — clone the per-turn NS budget. The replay path uses
+      // `runUntilWaitingRaw`, which advances the engine without entering
+      // `runUntilPlayerPrompt`'s message loop, so SUMMONING/FLIPSUMMONING
+      // messages emitted during reconstruction are NOT re-tracked. Cloning
+      // the parent's already-tracked state is the correct snapshot.
+      normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
     };
     this.activeHandles.set(id, internal);
     return this.toPublicHandle(internal);

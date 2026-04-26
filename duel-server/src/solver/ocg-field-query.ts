@@ -52,6 +52,10 @@ export interface FieldQueryContext {
   phase: Phase;
   /** Resolve a cardId to a display name via the adapter's card DB. */
   getCardName: (code: number) => string;
+  /** Phase B (graph-ml-v2) — per-player NS-used snapshot from the adapter's
+   *  InternalHandle.normalSummonsByPlayer. Forwarded to FieldState.
+   *  Optional: callers that don't track it omit the field. */
+  normalSummonUsed?: [boolean, boolean];
 }
 
 // =============================================================================
@@ -66,7 +70,7 @@ export interface FieldQueryContext {
  *  `duelQuery` with `OcgQueryFlags.CODE` — see `queryCardCode`. This was
  *  the C6 bug fixed in the Epic 1 review. */
 export function queryFieldState(ctx: FieldQueryContext): FieldState {
-  const { core, nativeHandle, turn, phase, getCardName } = ctx;
+  const { core, nativeHandle, turn, phase, getCardName, normalSummonUsed } = ctx;
   const field = core.duelQueryField(nativeHandle);
 
   const zones: Record<string, FieldCard[]> = {};
@@ -176,6 +180,9 @@ export function queryFieldState(ctx: FieldQueryContext): FieldState {
     turn,
     phase,
     oppZones: oppZones as Record<ZoneId, FieldCard[]>,
+    normalSummonUsed: normalSummonUsed
+      ? [normalSummonUsed[0], normalSummonUsed[1]]
+      : undefined,
   };
 }
 

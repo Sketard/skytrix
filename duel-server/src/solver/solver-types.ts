@@ -147,6 +147,14 @@ export interface FieldState {
    *  32-35 read board-only). No player info-leak concern: solver never
    *  exposes FieldState across a network boundary. */
   oppZones?: Record<ZoneId, FieldCard[]>;
+  /** Phase B (graph-ml-v2) — per-player normal-summon-used flag, indexed by
+   *  player (0/1). True once the player has consumed their once-per-turn
+   *  NS / tribute / flip-summon budget. Tracked by `OCGCoreAdapter` on
+   *  SUMMONING / FLIPSUMMONING messages, reset on NEW_TURN. Surfaces the
+   *  state-feature-extractor `normal_summon_used` slot (currently zeroed
+   *  in pre-flight). Optional for backward compat — undefined means the
+   *  feature extractor leaves the slot at 0. */
+  normalSummonUsed?: [boolean, boolean];
 }
 
 // =============================================================================
