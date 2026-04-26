@@ -25,6 +25,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "1528054": {
+    "cardName": "Silhouhatte Rabbit",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "When card in S/T zone is SS to Monster Zone: destroy 1 opp Spell/Trap"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "1861629": {
     "cardName": "Decode Talker",
     "effects": [
@@ -36,6 +50,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "2311090": {
+    "cardName": "Spright Carrot",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Tribute Lv/Rk/Lk 2 mon: negate opp Spell/Trap effect"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "2347656": {
@@ -217,6 +245,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "7336745": {
+    "cardName": "Dinomorphia Intact",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Pay half LP: negate monster effect activation + destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "7480763": {
     "cardName": "Artifact Dagda",
     "effects": [
@@ -388,6 +430,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "13455674": {
+    "cardName": "Crystron Quariongandrax",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On-Synchro-Summon: banish opp monsters from field/GY up to # materials (persistent removal)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "13974207": {
@@ -606,6 +662,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "22110647": {
+    "cardName": "Mecha Phantom Beast Dracossack",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "description": "Tribute Mecha Phantom Beast to destroy 1 card on field"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "22850702": {
     "cardName": "Chaos Angel",
     "effects": [
@@ -716,6 +786,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "28226490": {
+    "cardName": "Tearlaments Kaleido-Heart",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On SS or Aqua to GY: shuffle 1 opp card into deck"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "29301450": {
     "cardName": "S:P Little Knight",
     "effects": [
@@ -729,6 +813,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "29369059": {
+    "cardName": "Yummy☆Surprise",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "description": "Bounce 2 own LIGHT Beasts + 2 opp cards to hand"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "29479265": {
     "cardName": "Unchained Abomination",
     "effects": [
@@ -740,6 +838,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "29587993": {
+    "cardName": "Mist Valley Apex Avian",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Bounce 1 Mist Valley card: negate any activation + destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "30271097": {
@@ -756,6 +868,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-14",
+    "_validated": false
+  },
+  "30430448": {
+    "cardName": "Runick Freezing Curses",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Negate opp Effect Monster effects until end of turn (skip own Battle Phase)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "30998403": {
@@ -1038,6 +1164,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "44822037": {
+    "cardName": "Angel Statue - Azurune",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "Send Cont. Trap mon to GY: negate opp Special Summon + destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "44852429": {
     "cardName": "D/D/D Cursed King Siegfried",
     "effects": [
@@ -1076,6 +1216,20 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "46396218": {
+    "cardName": "Azamina Ilia Silvia",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Tribute self to negate any opp activation"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "46593546": {
@@ -1260,6 +1414,29 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-14",
+    "_validated": false
+  },
+  "52068432": {
+    "cardName": "Nekroz of Trishula",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "activeZones": [
+          "HAND"
+        ],
+        "description": "Discard from hand: negate activation that targets a Nekroz mon"
+      },
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On Ritual Summon: banish 3 opp cards (1 hand+field+GY each)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "52331012": {
@@ -1800,6 +1977,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "75922381": {
+    "cardName": "Spright Red",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Tribute Lv/Rk/Lk 2 mon: negate opp monster effect"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "78397661": {
     "cardName": "Ecclesia and the Dark Dragon",
     "effects": [
@@ -2079,6 +2270,20 @@
     "_oracleVersion": "2026-04-09",
     "_validated": false
   },
+  "90846359": {
+    "cardName": "Rivalry of Warlords",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous",
+        "description": "Each player can only control 1 Type of monster"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
   "91781484": {
     "cardName": "D/D/D Headhunt",
     "effects": [
@@ -2104,6 +2309,25 @@
     ],
     "_generatedBy": "claude-opus-4-6",
     "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "92714517": {
+    "cardName": "Big Welcome Labrynth",
+    "sharedOpt": true,
+    "totalUsesPerTurn": 1,
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "Banish from GY: bounce 1 opp card (if Lv8+ Fiend on field)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
     "_validated": false
   },
   "92731385": {

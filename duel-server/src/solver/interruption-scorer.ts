@@ -57,45 +57,20 @@ const SCORED_ZONE_IDS: readonly ZoneId[] = ALL_ZONE_IDS.filter(z => !NON_SCORED_
 // =============================================================================
 // Phase 2.3 V1 latent scoring — turn-1 combo-progress state bonus
 // =============================================================================
-
-/** Hardcoded D/D-family card IDs that earn latent combo-progress bonuses.
- *  Narrowly scoped to the D/D archetype so Branded/Mitsurugi intermediate
- *  states are unaffected by construction (neither archetype uses Dark
- *  Contracts or Doom Queen Machinex).
- *
- *  Rationale: the canonical D/D/D turn-1 peak (Siegfried + Deus Machinex
- *  endboard, confirmed via `probe-ddd-mainpath-autopsy.ts` on 2026-04-17)
- *  has 2 Dark Contracts in the S/T zone + Doom Queen Machinex in PZONE.
- *  Rewarding this shape gives the DFS a gradient between "bare field" (0
- *  latent) and "mid-combo progress" (5-11 latent), which downstream phases
- *  (alpha-beta pruning, iterative deepening) can exploit for cutoffs.
- *
- *  DO NOT widen this set to generic continuous spells or "any monster on
- *  field" — both would leak into Branded (Cartesia ritual) and Mitsurugi
- *  (continuous trap shell), reintroducing regression risk. */
-const DARK_CONTRACT_IDS: ReadonlySet<number> = new Set([
-  46372010, // Dark Contract with the Gate
-  32665564, // Dark Contract with the Zero King
-  9030160,  // Dark Contract with the Eternal Darkness
-  73360025, // Dark Contract with the Swamp King
-]);
-
-const DOOM_QUEEN_MACHINEX_ID = 20715411; // D/D/D Zero Doom Queen Machinex
-
-/** Pendulum scale zones under Master Rule 5 (S1/S5 double as P_L/P_R). */
-const PZONE_IDS: readonly ZoneId[] = ['S1', 'S5'];
-
-/** S/T zones where continuous spells (Dark Contracts) live. */
-const ST_ZONE_IDS: readonly ZoneId[] = ['S1', 'S2', 'S3', 'S4', 'S5'];
-
-/** Per-contract latent bonus. */
-const DARK_CONTRACT_BONUS = 2;
-/** Maximum contracts counted (caps at 4 to prevent pathological
- *  duplicate-contract paths from dominating). */
-const DARK_CONTRACT_MAX_COUNT = 4;
-/** Doom Queen in PZONE bonus — one-shot (at most one can be in each PZONE
- *  slot but the combo only needs one to mark canonical progress). */
-const DOOM_QUEEN_PZONE_BONUS = 3;
+// REMOVED 2026-04-26 (Phase 1 scorer audit): the D/D hardcode (DARK_CONTRACT_IDS
+// + DOOM_QUEEN_MACHINEX_ID) was archetype-tagged latent that biased the scorer
+// toward a specific archetype's mid-combo states. Per the philosophical shift
+// 2026-04-26 (auto-discovery roadmap), the scorer must be deck-agnostic — any
+// archetype-specific latent reward is scaffolding.
+//
+// Honest baseline impact: D/D fixture loses up to 11 latent points at canonical
+// Doom-Queen-PZONE+4-contracts states. The same shape is now scored ONLY via
+// `weighted` (= tagged interruption pieces on field) + `fallbackPoints`
+// (untagged faceup monsters) + structural F1/F2/F3 latent.
+//
+// History: this hardcode was added in Phase 2.3 V1 (2026-04-17) before the
+// audit framework existed. It was already documented as "narrowly scoped to
+// D/D archetype" — by definition scaffolding under the new philosophy.
 
 // =============================================================================
 // InterruptionScorer
@@ -336,34 +311,12 @@ export class InterruptionScorer {
       }
     }
 
-    // Phase 2.3 V1 — turn-1 latent combo-progress bonus. Gated on
-    // `turn === 1` so turn-0 baseline and turn>=2 virtual terminals are
-    // unaffected. Hardcoded to D/D card IDs for zero-regression-by-
-    // construction on Branded/Mitsurugi. Capped at
-    // DARK_CONTRACT_BONUS * DARK_CONTRACT_MAX_COUNT + DOOM_QUEEN_PZONE_BONUS
-    // = 2*4 + 3 = 11 points to prevent dominating the tagged-weighted peak.
+    // Phase 2.3 V1 D/D hardcode REMOVED 2026-04-26 (Phase 1 scorer audit).
+    // The archetype-tagged latent reward (DARK_CONTRACT_IDS + DOOM_QUEEN_MACHINEX_ID)
+    // biased the scorer toward a specific deck and was scaffolding under the
+    // auto-discovery roadmap. `latentPoints` now starts at 0 and only accumulates
+    // deck-agnostic structural signal (Step 1 F1/F2/F3 below).
     let latentPoints = 0;
-    if (fieldState.turn === 1) {
-      let contractCount = 0;
-      for (const zoneId of ST_ZONE_IDS) {
-        const cards = fieldState.zones[zoneId];
-        for (const card of cards) {
-          if (DARK_CONTRACT_IDS.has(card.cardId)) contractCount++;
-        }
-      }
-      const contractBonus = DARK_CONTRACT_BONUS * Math.min(contractCount, DARK_CONTRACT_MAX_COUNT);
-      latentPoints += contractBonus;
-
-      let doomQueenInPzone = false;
-      for (const zoneId of PZONE_IDS) {
-        const cards = fieldState.zones[zoneId];
-        for (const card of cards) {
-          if (card.cardId === DOOM_QUEEN_MACHINEX_ID) { doomQueenInPzone = true; break; }
-        }
-        if (doomQueenInPzone) break;
-      }
-      if (doomQueenInPzone) latentPoints += DOOM_QUEEN_PZONE_BONUS;
-    }
 
     // Step 1 structural value function — deck-agnostic features that score
     // combo-enabling latent states (ritual unlock, tutor chain, material
