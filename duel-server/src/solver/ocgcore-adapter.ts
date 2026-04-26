@@ -14,6 +14,46 @@ import createCore, {
   type OcgMessage,
 } from '@n1xx1/ocgcore-wasm';
 
+import type { ZoneId as ZoneIdHelper } from '../ws-protocol.js';
+
+/** Phase B: convert an OCGCore (location, sequence) pair to a solver ZoneId.
+ *  Used to populate `Action.sourceZone` for `NeuralFeatureRanker` features.
+ *  Returns `undefined` when the location can't be cleanly mapped (e.g. opp-side
+ *  source — currently we treat all enumerated actions as self-perspective at
+ *  SELECT_IDLECMD/BATTLECMD; SELECT_CHAIN may include opp-side chain links
+ *  but we lack controller info in `selects[i]`, so we return the self-zone
+ *  interpretation; Day 2 can plumb controller if needed). */
+function ocgLocationToZoneId(
+  location: number | undefined,
+  sequence: number | undefined,
+): ZoneIdHelper | undefined {
+  if (location === undefined) return undefined;
+  switch (location) {
+    case OcgLocation.MZONE: {
+      const s = sequence ?? 0;
+      if (s < 5) return `M${s + 1}` as ZoneIdHelper;
+      if (s === 5) return 'EMZ_L';
+      if (s === 6) return 'EMZ_R';
+      return undefined;
+    }
+    case OcgLocation.SZONE: {
+      const s = sequence ?? 0;
+      if (s < 5) return `S${s + 1}` as ZoneIdHelper;
+      if (s === 5) return 'FIELD';
+      return undefined;
+    }
+    case OcgLocation.PZONE:  // MR4 pendulum zone — only S1/S5 in MR5
+      return sequence === 0 ? 'S1' : 'S5';
+    case OcgLocation.FZONE: return 'FIELD';
+    case OcgLocation.HAND: return 'HAND';
+    case OcgLocation.GRAVE: return 'GY';
+    case OcgLocation.REMOVED: return 'BANISHED';
+    case OcgLocation.DECK: return 'DECK';
+    case OcgLocation.EXTRA: return 'EXTRA';
+    default: return undefined;
+  }
+}
+
 import type { CardDB, ScriptDB } from '../types.js';
 import type { Phase } from '../ws-protocol.js';
 import { STARTUP_SCRIPTS } from '../ocg-scripts.js';
@@ -790,7 +830,8 @@ export class OCGCoreAdapter implements GameOracle {
         let idx = 0;
         for (let i = 0; i < ((msg['summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['summons'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'summon' }, { type: 1, action: 0, index: i });
+          // Normal Summon source = always HAND by definition.
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'summon', sourceZone: 'HAND' }, { type: 1, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['special_summons'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['special_summons'] as { code: number; location?: number; sequence?: number }[])[i]);
@@ -807,26 +848,28 @@ export class OCGCoreAdapter implements GameOracle {
           const isPsummon = (loc === OcgLocation.PZONE)
             || (loc === OcgLocation.SZONE && (seq === 0 || seq === 4));
           const tag = isPsummon ? 'psummon' : 'ss';
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: tag }, { type: 1, action: 1, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: tag, sourceZone: ocgLocationToZoneId(loc, seq) }, { type: 1, action: 1, index: i });
         }
         for (let i = 0; i < ((msg['pos_changes'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['pos_changes'] as { code: number }[])[i]);
+          // Position change applies to a monster on the field (MZONE).
           pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'pos' }, { type: 1, action: 2, index: i });
         }
         for (let i = 0; i < ((msg['monster_sets'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['monster_sets'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'mset' }, { type: 1, action: 3, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'mset', sourceZone: 'HAND' }, { type: 1, action: 3, index: i });
         }
         for (let i = 0; i < ((msg['spell_sets'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['spell_sets'] as { code: number }[])[i]);
-          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'sset' }, { type: 1, action: 4, index: i });
+          pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'sset', sourceZone: 'HAND' }, { type: 1, action: 4, index: i });
         }
         for (let i = 0; i < ((msg['activates'] ?? []) as unknown[]).length; i++) {
-          const card = ((msg['activates'] as { code: number; location?: number }[])[i]);
+          const card = ((msg['activates'] as { code: number; location?: number; sequence?: number }[])[i]);
           pushAction({
             responseIndex: idx++, cardId: card.code, promptType, isExploratory,
             actionTag: 'activate',
             _isEffectActivation: isFieldActivation(card.location),
+            sourceZone: ocgLocationToZoneId(card.location, card.sequence),
           }, { type: 1, action: 5, index: i });
         }
         if (msg['to_bp']) {
@@ -841,13 +884,17 @@ export class OCGCoreAdapter implements GameOracle {
         let idx = 0;
         for (let i = 0; i < ((msg['attacks'] ?? []) as unknown[]).length; i++) {
           const card = ((msg['attacks'] as { code: number }[])[i]);
+          // Attack source = a monster on field (MZONE/EMZ); precise sequence
+          // not exposed in attacks[]. We leave sourceZone undefined; ranker
+          // features for attacks default to 0 across act_src_in_*.
           pushAction({ responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'attack' }, { type: 0, action: 0, index: i });
         }
         for (let i = 0; i < ((msg['chains'] ?? []) as unknown[]).length; i++) {
-          const card = ((msg['chains'] as { code: number; location?: number }[])[i]);
+          const card = ((msg['chains'] as { code: number; location?: number; sequence?: number }[])[i]);
           pushAction({
             responseIndex: idx++, cardId: card.code, promptType, isExploratory, actionTag: 'chain',
             _isEffectActivation: isFieldActivation(card.location),
+            sourceZone: ocgLocationToZoneId(card.location, card.sequence),
           }, { type: 0, action: 1, index: i });
         }
         if (msg['to_m2']) {
@@ -859,13 +906,14 @@ export class OCGCoreAdapter implements GameOracle {
         break;
       }
       case 'SELECT_CHAIN': {
-        const selects = (msg['selects'] ?? []) as { code: number; description: bigint; location?: number }[];
+        const selects = (msg['selects'] ?? []) as { code: number; description: bigint; location?: number; sequence?: number }[];
         for (let i = 0; i < selects.length; i++) {
           pushAction({
             responseIndex: i, cardId: selects[i].code, promptType, isExploratory,
             description: this.decodeDescription(selects[i].description),
             actionTag: 'activate',
             _isEffectActivation: isFieldActivation(selects[i].location),
+            sourceZone: ocgLocationToZoneId(selects[i].location, selects[i].sequence),
           }, { type: 8, index: i });
         }
         if (!(msg['forced'] as boolean)) {

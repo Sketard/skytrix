@@ -115,6 +115,15 @@ export interface Action {
    *  OCGCoreAdapter populates `team: 1` on opponent SELECT_CHAIN actions.
    *  Minimax MCTS uses this to tag nodes as max (player) or min (opponent). */
   team?: 0 | 1;
+  /** Phase B (graph-ml-v2): zone the action's source card is in at activation
+   *  time. Populated by OCGCoreAdapter from `card.location` / `selects[i].location`
+   *  + `sequence` + controller. Self-controlled source = ZoneId; opp-controlled
+   *  source or unhandled prompt = `undefined`. Used by `NeuralFeatureRanker`'s
+   *  `act_src_in_*` features — replaces a silently-corrupting "scan FieldState
+   *  for first occurrence of cardId" strategy that broke on multi-copy cards
+   *  (3× Ash Blossom in HAND vs 1 in GY → first match could pick the wrong
+   *  zone). All other rankers ignore this field. */
+  sourceZone?: ZoneId;
 }
 
 export interface FieldCard {
