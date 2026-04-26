@@ -3,7 +3,7 @@
   "name": "Infinite Impermanence",
   "sourceFile": "official/c10045474.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -32,7 +32,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_NEGATE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.activate",
@@ -49,6 +72,50 @@
           {
             "kind": "break-effect",
             "method": "BreakEffect"
+          },
+          {
+            "kind": "register-flag-effect",
+            "method": "RegisterFlagEffect",
+            "target": "c",
+            "argHints": [
+              "id",
+              "RESET_CHAIN",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e3",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e4",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e5",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_ZONE",
+            "argHints": [
+              "tp",
+              "zone"
+            ]
           }
         ],
         "sideEffects": [

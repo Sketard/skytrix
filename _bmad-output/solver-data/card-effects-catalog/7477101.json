@@ -3,7 +3,7 @@
   "name": "Seventh Tachyon",
   "sourceFile": "official/c7477101.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_NUMBER"
@@ -31,12 +31,51 @@
       },
       "cost": {
         "name": "s.cost",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.target",
         "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "number"
+            },
+            {
+              "kind": "raw",
+              "source": "number>=101"
+            },
+            {
+              "kind": "raw",
+              "source": "number<=107"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.IsExistingMatchingCard(s.thfilter,tp,LOCATION_DECK,0,1,nil,c:GetRace(),c:GetAttribute(),c:GetRank())"
+            }
+          ],
+          "complete": false
+        },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_CONFIRM"
+            ]
+          },
           {
             "kind": "confirm",
             "method": "ConfirmCards",
@@ -49,6 +88,30 @@
             "kind": "shuffle-extra",
             "method": "ShuffleExtra",
             "target": "tp"
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND"
+            ]
           }
         ]
       },
@@ -82,6 +145,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
             "kind": "send-to-hand",
             "method": "SendtoHand",
             "target": "sc",
@@ -109,6 +181,15 @@
             "target": "tp"
           },
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TODECK"
+            ]
+          },
+          {
             "kind": "break-effect",
             "method": "BreakEffect"
           },
@@ -121,6 +202,14 @@
               "SEQ_DECKTOP",
               "REASON_EFFECT"
             ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
           }
         ]
       }
@@ -130,8 +219,8 @@
     "totalEffects": 1,
     "totalFunctionRefs": 3,
     "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

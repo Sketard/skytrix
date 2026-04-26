@@ -1328,20 +1328,16 @@
     {
       "id": "branded-dracotail-opener",
       "deck": "branded-dracotail-bainbridge-2nd",
-      "description": "Branded Dracotail opener (Arthalion line, user-audited 2026-04-13, re-validated 2026-04-17): Dracotail Faimena + Dracotail Lukias + Mululu + Branded Fusion + Blazing Cartesia. Ground-truthed against [branded-dracotail-combo-reference.md](branded-dracotail-combo-reference.md). Hand and expectedBoard KEPT from prior user audit — all 6 pieces (Arthalion + Ecclesia + 3 Dracotail trap set + Faimena kept in HAND) match the canonical Fusion+Dracotail-trap-package turn-1 finish. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit (Pan required tribute, dead in opening hands) — this correction is preserved. Multi-line fixture: pairs with branded-dracotail-opener-mirrorjade-line which tests the alternate Branded-centric endboard from the same opener. Methodology v2 position fields already applied.",
+      "description": "Branded Dracotail Arthalion+Dark Dragon+Secreterion line — auto-generated from PvP replay 2e4445ae-9359-4b93-aa7e-461a8d4e179f (2026-04-19, 118 steps, turnCount=2, captured 8-piece endboard). Hand: Dracotail Lukias (75003700) + Fallen of the White Dragon (73819701) + Dracotail Phryxul (84477320) + The Fallen & The Virtuous (30271097) + Branded Fusion (44362883). Note: Blazing Cartesia not in opening hand — the 'minimalist' line uses Fallen of the White Dragon's on-SS to fetch Incredible Ecclesia (Lv4 Tuner, Synchro material), then Ecclesia and the Dark Dragon's banish-self effect fetches Blazing Cartesia from Deck (mentions Fallen of Albaz). Cartesia then Fusion-summons Secreterion using Urgula (searched by Lukias NS) + Lukias, triggering Urgula/Lukias on-fusion-material sets. Urgula GY-eff recycles Lukias to hand → Rahu Dracotail fuses Lukias+Mululu → Arthalion. Arthalion on-fusion returns Fallen of the White Dragon to hand. Secreterion GY-eff revives Mululu (shuffles Lukias or Phyrxul back). Albion EP-eff sets The Fallen & The Virtuous. Dark Dragon returns from banishment at EP. Combo plan: [branded-dracotail-combo-plan-2026-04-19.md](branded-dracotail-combo-plan-2026-04-19.md) (plan targeted 7/8; replay produces 8 because Blazing Cartesia survives as Fusion activator, not material). Raw-replay trajectory: [branded-dracotail-opener.raw-replay.json](branded-dracotail-opener.raw-replay.json).",
       "hand": [
-        1498449,
         75003700,
         73819701,
-        44362883,
-        95515789
+        84477320,
+        30271097,
+        44362883
       ],
-      "deckSeed": "55555,66666",
-      "maxDepth": 100,
-      "preferredIntermediates": [
-        7375867,
-        55273560
-      ],
+      "deckSeed": "3510667737223306533,13278052914564331778",
+      "maxDepth": 75,
       "expectedBoard": [
         {
           "zone": "MZONE",
@@ -1356,10 +1352,22 @@
           "position": "attack"
         },
         {
-          "zone": "SZONE",
-          "cardId": 5431722,
-          "cardName": "Dracotail Flame",
-          "position": "set"
+          "zone": "MZONE",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "position": "attack"
         },
         {
           "zone": "SZONE",
@@ -1369,14 +1377,15 @@
         },
         {
           "zone": "SZONE",
-          "cardId": 80208225,
-          "cardName": "Dracotail Sting",
+          "cardId": 30271097,
+          "cardName": "The Fallen & The Virtuous",
           "position": "set"
         },
         {
-          "zone": "HAND",
-          "cardId": 1498449,
-          "cardName": "Dracotail Faimena"
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "position": "set"
         }
       ],
       "_seedFrozen": true
@@ -1541,28 +1550,22 @@
     {
       "id": "snake-eye-yummy-opener",
       "deck": "snake-eye-yummy-sarcophagus-hollywood-wcq",
-      "description": "Snake-Eye Yummy Sarcophagus opener (updated 2026-04-19 with 9-interruption combo deck): Snake-Eye Ash + 4 handtrap support (Ash Blossom + Fuwalos + Effect Veiler + Infinite Impermanence). Pure 1-card Ash opener targeting the Divine Temple + Silhouhatte + Promethean Princess combo line. Expected endboard: Silhouhatte Rabbit + Lollipo Yummy Way + Flamberge + Divine Temple + I:P Masquerena (as Cont Spell) + Azurune (set) + Yummy Surprise (set).",
+      "description": "Snake-Eye Yummy 9-interruption combo opener — Ash 1-card (post-P3 replay, full combo)",
       "hand": [
+        66975205,
         9674034,
-        14558127,
-        42141493,
-        97268402,
-        10045474
+        35269904,
+        90241276,
+        25311006
       ],
-      "deckSeed": "56565,67676",
+      "deckSeed": "12301164246358577464,15489252968079702587",
       "maxDepth": 75,
       "expectedBoard": [
         {
           "zone": "MZONE",
-          "cardId": 1528054,
-          "cardName": "Silhouhatte Rabbit",
-          "position": "attack"
-        },
-        {
-          "zone": "MZONE",
           "cardId": 93192592,
           "cardName": "Lollipo★Yummy Way",
-          "position": "attack"
+          "position": "defense"
         },
         {
           "zone": "MZONE",
@@ -1571,9 +1574,15 @@
           "position": "attack"
         },
         {
-          "zone": "FIELD",
-          "cardId": 53639887,
-          "cardName": "Divine Temple of the Snake-Eye",
+          "zone": "MZONE",
+          "cardId": 1528054,
+          "cardName": "Silhouhatte Rabbit",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 29369059,
+          "cardName": "Yummy☆Surprise",
           "position": "set"
         },
         {
@@ -1586,12 +1595,12 @@
           "zone": "SZONE",
           "cardId": 65741786,
           "cardName": "I:P Masquerena",
-          "position": "attack"
+          "position": "set"
         },
         {
-          "zone": "SZONE",
-          "cardId": 29369059,
-          "cardName": "Yummy☆Surprise",
+          "zone": "FIELD",
+          "cardId": 53639887,
+          "cardName": "Divine Temple of the Snake-Eye",
           "position": "set"
         }
       ],

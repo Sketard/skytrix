@@ -3,7 +3,7 @@
   "name": "Ame no Murakumo no Mitsurugi",
   "sourceFile": "official/c19899073.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     19899073,
     81560239
@@ -35,7 +35,7 @@
       },
       "target": {
         "name": "s.destg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -44,7 +44,21 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "# g",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -94,7 +108,16 @@
       },
       "target": {
         "name": "s.distg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.disop",
@@ -171,7 +194,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -196,6 +233,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",
@@ -237,9 +283,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 5,
+    "fullyDecoded": 6,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

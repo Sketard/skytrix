@@ -3,7 +3,7 @@
   "name": "Gallant Granite",
   "sourceFile": "official/c32530043.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -69,7 +69,33 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.effop",
@@ -88,6 +114,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
             "kind": "send-to-hand",
             "method": "SendtoHand",
             "target": "g",
@@ -102,6 +137,15 @@
             "target": "1-tp",
             "argHints": [
               "g"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
             ]
           },
           {

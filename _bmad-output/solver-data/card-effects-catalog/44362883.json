@@ -43,7 +43,17 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
       },
       "target": {
         "inline": "aux.FilterBoolFunction(Card.ListsCodeAsMaterial, CARD_ALBAZ)",
@@ -67,17 +77,21 @@
         }
       },
       "operation": {
-        "inline": "Fusion.CreateSummonEff — fusion-summon from extra deck using declared materials",
-        "opaque": true
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 2,
+    "fullyDecoded": 3,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

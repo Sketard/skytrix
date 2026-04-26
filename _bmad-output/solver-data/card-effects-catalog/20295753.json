@@ -3,7 +3,7 @@
   "name": "Night Sword Serpent",
   "sourceFile": "official/c20295753.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -31,7 +31,16 @@
       },
       "condition": {
         "inline": "function(e)return e:GetHandler():IsReason(REASON_EFFECT) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "reason",
+              "value": "REASON_EFFECT"
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
@@ -53,7 +62,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -70,6 +93,15 @@
               "false",
               "false",
               "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1",
+              "true"
             ]
           }
         ],
@@ -93,9 +125,9 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 2,
+    "fullyDecoded": 3,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

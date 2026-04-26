@@ -3,7 +3,7 @@
   "name": "Vallon, the Super Psy Skyblaster",
   "sourceFile": "official/c40673853.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -75,7 +75,7 @@
       },
       "target": {
         "name": "s.postg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -92,7 +92,30 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_POSCHANGE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_POSITION",
+              "g",
+              "1",
+              "tp",
+              "POS_FACEDOWN_DEFENSE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.posop",
@@ -140,7 +163,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -161,8 +207,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 5,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

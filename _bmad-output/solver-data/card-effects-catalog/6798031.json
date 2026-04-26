@@ -3,7 +3,7 @@
   "name": "Ryzeal Cross",
   "sourceFile": "official/c6798031.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     6798031
   ],
@@ -94,7 +94,42 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TODECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "g",
+              "2",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DRAW",
+              "nil",
+              "0",
+              "tp",
+              "1"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.drop",
@@ -192,9 +227,31 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_CARD",
+            "argHints": [
+              "0",
+              "id"
+            ]
+          },
+          {
             "kind": "negate-effect",
             "method": "NegateEffect",
             "target": "ev"
+          },
+          {
+            "kind": "register-flag-effect",
+            "method": "RegisterFlagEffect",
+            "target": "c",
+            "argHints": [
+              "id",
+              "RESETS_STANDARD_PHASE_END",
+              "EFFECT_FLAG_CLIENT_HINT",
+              "1",
+              "0",
+              "aux.Stringid(id,1)"
+            ]
           }
         ]
       }

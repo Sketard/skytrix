@@ -3,7 +3,7 @@
   "name": "Ash Blossom & Joyous Spring",
   "sourceFile": "official/c14558127.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -32,41 +32,8 @@
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "or",
-              "predicates": [
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_TOHAND,true)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_SPECIAL_SUMMON,true)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_TOGRAVE,true)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_DRAW,true)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_DRAW,false)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_SEARCH,false)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_DECKDES,true)"
-                },
-                {
-                  "kind": "raw",
-                  "source": "checkfunc(CATEGORY_DECKDES,false)"
-                }
-              ]
+              "kind": "raw",
+              "source": "false"
             }
           ],
           "complete": false
@@ -83,7 +50,7 @@
       },
       "target": {
         "name": "s.distg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -95,7 +62,21 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "eg",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.disop",
@@ -113,8 +94,8 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
     "opaqueUndecoded": 0
   },
   "warnings": []

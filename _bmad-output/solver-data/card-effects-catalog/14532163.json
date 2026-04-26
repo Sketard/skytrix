@@ -46,7 +46,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "# g",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",

@@ -3,7 +3,7 @@
   "name": "Promethean Princess, Bestower of Flames",
   "sourceFile": "official/c2772337.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -49,7 +49,19 @@
       },
       "target": {
         "inline": "function(_,_c)return not _c:IsAttribute(ATTRIBUTE_FIRE) end",
-        "opaque": true
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "attribute",
+                "value": "ATTRIBUTE_FIRE"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
       }
     },
     {
@@ -82,7 +94,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -100,6 +126,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -141,11 +176,26 @@
       },
       "condition": {
         "inline": "function(e,tp,eg) return eg:IsExists(Card.IsControler,1,nil,1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "Card.IsControler",
+                "1",
+                "nil",
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.destg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -166,7 +216,33 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "tg",
+              "2",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -200,9 +276,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 3,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

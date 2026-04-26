@@ -3,7 +3,7 @@
   "name": "Ghost Ogre & Snow Rabbit",
   "sourceFile": "official/c59438930.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -30,6 +30,10 @@
         "opaque": true,
         "simpleFilter": {
           "predicates": [
+            {
+              "kind": "raw",
+              "source": "re:GetHandler():IsOnField()"
+            },
             {
               "kind": "or",
               "predicates": [
@@ -58,7 +62,30 @@
       },
       "target": {
         "name": "s.target",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "re:GetHandler():IsDestructable()"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "eg",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.operation",
@@ -79,9 +106,9 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
+    "fullyDecoded": 3,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

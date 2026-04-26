@@ -3,7 +3,7 @@
   "name": "Herald of the Arc Light",
   "sourceFile": "official/c79606837.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -97,21 +97,8 @@
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "or",
-              "predicates": [
-                {
-                  "kind": "raw",
-                  "source": "re:IsMonsterEffect()"
-                },
-                {
-                  "kind": "raw",
-                  "source": "re:IsHasType(EFFECT_TYPE_ACTIVATE)"
-                }
-              ]
-            },
-            {
               "kind": "raw",
-              "source": "Duel.IsChainNegatable(ev)"
+              "source": "false"
             }
           ],
           "complete": false
@@ -128,7 +115,42 @@
       },
       "target": {
         "name": "s.distg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_NEGATE",
+              "eg",
+              "1",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "eg",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.disop",
@@ -182,7 +204,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -200,6 +236,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",
@@ -224,9 +269,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 4,
+    "fullyDecoded": 5,
     "partiallyDecoded": 2,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

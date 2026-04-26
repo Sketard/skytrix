@@ -3,7 +3,7 @@
   "name": "Cupsy★Yummy Way",
   "sourceFile": "official/c31603289.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -198,7 +198,33 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "2",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_HANDES",
+              "nil",
+              "0",
+              "tp",
+              "1"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -220,6 +246,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
             "kind": "send-to-hand",
             "method": "SendtoHand",
             "target": "g",
@@ -240,6 +275,15 @@
             "kind": "shuffle-hand",
             "method": "ShuffleHand",
             "target": "tp"
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DISCARD"
+            ]
           },
           {
             "kind": "break-effect",
@@ -310,7 +354,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.gyspop",
@@ -328,6 +386,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",

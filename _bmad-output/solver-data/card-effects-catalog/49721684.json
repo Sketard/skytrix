@@ -3,7 +3,7 @@
   "name": "Mitsurugi Mirror",
   "sourceFile": "official/c49721684.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     19899073,
     55397172,
@@ -58,18 +58,21 @@
       },
       "condition": {
         "name": "s.tdcon",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "not",
-              "inner": {
-                "kind": "raw",
-                "source": "eg:IsContains(e:GetHandler())"
-              }
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.tdconfilter",
+                "1",
+                "nil",
+                "tp"
+              ]
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -82,7 +85,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tdop",
@@ -105,8 +122,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

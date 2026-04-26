@@ -3,7 +3,7 @@
   "name": "Dracotail Urgula",
   "sourceFile": "official/c70871153.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -33,7 +33,7 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -41,11 +41,11 @@
               "value": "LOCATION_GRAVE"
             },
             {
-              "kind": "raw",
-              "source": "r&REASON_FUSION==REASON_FUSION"
+              "kind": "reason",
+              "value": "REASON_FUSION"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -87,6 +87,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
@@ -98,6 +107,15 @@
             "kind": "shuffle-deck",
             "method": "ShuffleDeck",
             "target": "tp"
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
           },
           {
             "kind": "break-effect",
@@ -151,7 +169,42 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tdop",
@@ -183,8 +236,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

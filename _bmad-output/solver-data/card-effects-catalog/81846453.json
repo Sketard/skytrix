@@ -3,7 +3,7 @@
   "name": "Martial Metal Marcher",
   "sourceFile": "official/c81846453.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -82,7 +82,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -139,7 +162,16 @@
       ],
       "condition": {
         "name": "s.tncon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "reason",
+              "value": "REASON_SYNCHRO"
+            }
+          ],
+          "complete": true
+        }
       },
       "operation": {
         "name": "s.tnop",
@@ -161,9 +193,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 4,
+    "fullyDecoded": 5,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

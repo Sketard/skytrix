@@ -5,14 +5,41 @@
 //   find every effect EB whose trigger matches that change.
 // Output: list of edges (EA → EB) with match reason.
 //
-// Current match patterns (v1):
-//   1. Search-then-trigger: EA adds to hand (CATEGORY_TOHAND) → EB triggers on EVENT_TO_HAND
-//      and EB's card matches EA's target filter (simpleFilter intersection with cards.cdb row).
-//   2. Summon-then-trigger: EA Special Summons / NS / SS / Fusion / Synchro / Xyz / Link →
-//      EB triggers on EVENT_SUMMON_SUCCESS / EVENT_SPSUMMON_SUCCESS.
-//   3. GY-send-then-trigger: EA sends cards to GY (CATEGORY_TO_GRAVE) → EB triggers on EVENT_TO_GRAVE.
-//   4. Fusion-material-then-trigger: EA Fusion Summons (CATEGORY_FUSION_SUMMON) → EB triggers on
-//      EVENT_BE_MATERIAL.
+// Match patterns (v2 — exhaustivity sweep 2026-04-25):
+//   1.  Search-then-trigger:    CATEGORY_TOHAND/SEARCH        → EVENT_TO_HAND
+//   2.  Summon-then-trigger:    CATEGORY_SPECIAL_SUMMON       → EVENT_(SP)SUMMON_SUCCESS
+//   3.  GY-send-then-trigger:   CATEGORY_TOGRAVE              → EVENT_TO_GRAVE
+//   4.  Fusion-material-trig.:  CATEGORY_FUSION_SUMMON        → EVENT_BE_MATERIAL
+//   5.  Destroy-then-trigger:   CATEGORY_DESTROY              → EVENT_DESTROYED
+//   6.  Banish-then-trigger:    CATEGORY_REMOVE               → EVENT_REMOVE
+//   7.  Leave-field-trigger:    CATEGORY_DESTROY/REMOVE/      → EVENT_LEAVE_FIELD(_P)
+//                                CATEGORY_TOGRAVE/TODECK/
+//                                CATEGORY_TOHAND
+//   8.  Battle-then-trigger:    CATEGORY_ATKCHANGE/DAMAGE     → EVENT_BATTLED / EVENT_DAMAGE_STEP_END
+//   9.  Chain-link reactive:    EVENT_CHAINING/SOLVING (htp)  → from-side category produced
+//   10. Release-then-trigger:   CATEGORY_RELEASE              → EVENT_RELEASE
+//   11. Leave-grave-trigger:    CATEGORY_LEAVE_GRAVE          → EVENT_LEAVE_GRAVE
+//   12. Chain-resolved-trig.:   EVENT_CHAIN_SOLVED on to-eff  ← any from production
+//   13. Material-then-summon:   from-card matches a slot      → on-summon trigger of ED apex
+//                                filter in to-card's
+//                                summonProcedures.decoded
+//   14. Alt-SS-proc-precond:    from-card matches the target/ → on-summon trigger of to-card
+//                                cost filter of a
+//                                EFFECT_SPSUMMON_PROC effect
+//   15. Be-target-then-trigger: from-effect targets to-card   → EVENT_BE_TARGET on to-effect
+//                                (filter intersection)
+//   16. Damage-then-trigger:    CATEGORY_DAMAGE/RECOVER       → EVENT_DAMAGE / EVENT_RECOVER
+//   17. Equip-then-trigger:     CATEGORY_EQUIP                → EVENT_EQUIP
+//   18. Flip/pos-then-trigger:  CATEGORY_POSITION/FLIP        → EVENT_FLIP / EVENT_CHANGE_POS /
+//                                                                EVENT_FLIP_SUMMON_SUCCESS
+//
+// Filter precision is enforced via:
+//   - target ∩ operation filter intersection (Phase 15) for Patterns 1, 2 and family.
+//   - Summon-type gates (fusionSummoned/synchroSummoned/xyzSummoned/linkSummoned/
+//     ritualSummoned) on to-effect condition predicates, matched against
+//     from-card's inferred summon-type (categories or summonProcedures self-SS).
+//   - REASON_FUSION/SYNCHRO/XYZ/RITUAL predicates on to-effect condition gates.
+//   - listsCode / listsCodeAsMaterial against to-card's listedNames.
 //
 // Usage: npx tsx scripts/enumerate-edges.ts [cardId1 cardId2 ...]
 //                                            [--json=<out.json>]
@@ -74,9 +101,38 @@ interface Effect {
   clonedTo?: readonly string[];
 }
 
+interface ResolvedHelper {
+  helper: string;
+  kind: string;
+  params?: Readonly<Record<string, unknown>>;
+}
+
+interface SlotRequirement {
+  role: 'tuner' | 'non-tuner' | 'material' | 'fallen-of-albaz' | 'extra';
+  min?: number;
+  max?: number;
+  filter?: ResolvedHelper | { raw: string } | { simpleFilter: SimpleFilter };
+}
+
+interface DecodedProcedure {
+  slots: readonly SlotRequirement[];
+  extras?: readonly string[];
+  notes?: readonly string[];
+}
+
+interface SummonProcedure {
+  kind: 'Synchro' | 'Fusion' | 'Xyz' | 'Link' | 'Pendulum' | 'Ritual';
+  rawCall: string;
+  opaque: boolean;
+  decoded?: DecodedProcedure;
+}
+
 interface Catalog {
   cardId: number;
   name: string;
+  listedNames?: readonly number[];
+  listedSeries?: readonly string[];
+  summonProcedures?: readonly SummonProcedure[];
   effects: readonly Effect[];
 }
 
@@ -88,6 +144,9 @@ interface CardProperties {
   attribute: number;
   race: number;
   setcodes: readonly number[];
+  /** From catalog `listedNames` — card codes this card considers "listed".
+   *  Used by `listsCode` / `listsCodeAsMaterial` predicate evaluation. */
+  listedNames: readonly number[];
 }
 
 // =============================================================================
@@ -98,7 +157,7 @@ const catalogDir = join('..', '_bmad-output', 'solver-data', 'card-effects-catal
 const cardDb = new Database(join('data', 'cards.cdb'), { readonly: true });
 const cardStmt = cardDb.prepare('SELECT t.id, t.name, d.type, d.level, d.attribute, d.race, d.setcode FROM texts t LEFT JOIN datas d ON d.id = t.id WHERE t.id = ?');
 
-function loadCardProperties(cardId: number): CardProperties | undefined {
+function loadCardProperties(cardId: number, listedNames: readonly number[] = []): CardProperties | undefined {
   const row = cardStmt.get(cardId) as { id: number; name: string; type: number; level: number; attribute: number; race: number; setcode: number | bigint } | undefined;
   if (!row) return undefined;
   return {
@@ -109,6 +168,7 @@ function loadCardProperties(cardId: number): CardProperties | undefined {
     attribute: row.attribute ?? 0,
     race: row.race ?? 0,
     setcodes: unpackSetcodes(row.setcode),
+    listedNames,
   };
 }
 
@@ -141,6 +201,20 @@ const RACE_HEX: Readonly<Record<string, number>> = {
   RACE_PSYCHIC: 0x100000, RACE_DIVINE: 0x200000, RACE_CREATORGOD: 0x400000, RACE_WYRM: 0x800000,
   RACE_CYBERSE: 0x1000000, RACE_ILLUSION: 0x2000000,
 };
+// TYPE_X bitmask constants from ocgcore (constant.lua). Used to evaluate the
+// `type` predicate against `card.type` — supports `+` / `|` OR-masks via
+// `resolveOrMask`, e.g., `TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK`.
+const TYPE_HEX: Readonly<Record<string, number>> = {
+  TYPE_MONSTER: 0x1, TYPE_SPELL: 0x2, TYPE_TRAP: 0x4,
+  TYPE_NORMAL: 0x10, TYPE_EFFECT: 0x20, TYPE_FUSION: 0x40,
+  TYPE_RITUAL: 0x80, TYPE_TRAPMONSTER: 0x100, TYPE_SPIRIT: 0x200,
+  TYPE_UNION: 0x400, TYPE_DUAL: 0x800, TYPE_TUNER: 0x1000,
+  TYPE_SYNCHRO: 0x2000, TYPE_TOKEN: 0x4000, TYPE_QUICKPLAY: 0x10000,
+  TYPE_CONTINUOUS: 0x20000, TYPE_EQUIP: 0x40000, TYPE_FIELD: 0x80000,
+  TYPE_COUNTER: 0x100000, TYPE_FLIP: 0x200000, TYPE_TOON: 0x400000,
+  TYPE_XYZ: 0x800000, TYPE_PENDULUM: 0x1000000, TYPE_SPSUMMON: 0x2000000,
+  TYPE_LINK: 0x4000000,
+};
 // Setcode constants resolved from archetype_setcode_constants.lua (re-used via inline parse).
 const SET_HEX = loadSetcodeMap();
 
@@ -154,11 +228,33 @@ function loadSetcodeMap(): Readonly<Record<string, number>> {
   return out;
 }
 
-/** Resolve a `|`-separated mask value (e.g. "RACE_DRAGON|RACE_SPELLCASTER") via
- *  the given hex map. Returns the bitwise-OR of all recognized tokens, or
- *  undefined if any token is unknown. Handles single tokens too. */
+// CARD_* card-code constants from card_counter_constants.lua + constant.lua.
+// Used to resolve summon-procedure slot filters like `{raw: 'CARD_ALBAZ'}` to a
+// concrete card id, and to evaluate `code` predicates whose value is one of
+// these named constants instead of a literal number.
+const CARD_CODE_CONSTANTS = loadCardCodeConstants();
+
+function loadCardCodeConstants(): Readonly<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (const file of ['card_counter_constants.lua', 'constant.lua']) {
+    const path = join('data', 'scripts_full', file);
+    if (!existsSync(path)) continue;
+    const text = readFileSync(path, 'utf-8');
+    for (const m of text.matchAll(/^\s*(CARD_[A-Z0-9_]+)\s*=\s*(\d+)/gm)) {
+      out[m[1]] = Number(m[2]);
+    }
+  }
+  return out;
+}
+
+/** Resolve a `|`- or `+`-separated mask value (e.g. "RACE_DRAGON|RACE_SPELLCASTER",
+ *  "TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK") via the given hex map. Both
+ *  separators are accepted because Lua source uses `+` for SetCategory/SetType
+ *  composition (`TYPE_FUSION+TYPE_SYNCHRO`) while parser-decoded `or` chains
+ *  emit `|`. Returns the bitwise-OR of all recognized tokens, or undefined if
+ *  any token is unknown. Handles single tokens too. */
 function resolveOrMask(value: string, map: Readonly<Record<string, number>>): number | undefined {
-  const parts = value.split('|').map(s => s.trim()).filter(s => s.length > 0);
+  const parts = value.split(/[|+]/).map(s => s.trim()).filter(s => s.length > 0);
   let combined = 0;
   for (const p of parts) {
     const hex = map[p];
@@ -192,8 +288,13 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
       const v = pred.value;
       if (v === 'self') return card.cardId === sourceCardId;
       // Parser emits `{value: null}` (JSON-serialized NaN) when the IsCode arg
-      // is an unresolved constant like `CARD_ALBAZ`. Don't hard-fail on those —
-      // return 'unknown' so the outer filter stays optimistic.
+      // is an unresolved CARD_* constant. Resolve it via CARD_CODE_CONSTANTS;
+      // fall back to 'unknown' only when the token is genuinely unknown.
+      if (typeof v === 'string') {
+        const resolved = CARD_CODE_CONSTANTS[v];
+        if (resolved !== undefined) return card.cardId === resolved;
+        return 'unknown';
+      }
       if (v === null || v === undefined || typeof v !== 'number' || Number.isNaN(v)) return 'unknown';
       return card.cardId === v;
     }
@@ -208,16 +309,15 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
       return (card.type & 0x1) !== 0;
     case 'spellTrap':
       return (card.type & 0x2) !== 0 || (card.type & 0x4) !== 0;
-    case 'type':
-      // TYPE_FUSION=0x40, TYPE_SYNCHRO=0x2000, TYPE_XYZ=0x800000, TYPE_LINK=0x4000000, etc.
-      // For v1 resolve only the common ones.
-      const typeMap: Record<string, number> = {
-        TYPE_MONSTER: 0x1, TYPE_SPELL: 0x2, TYPE_TRAP: 0x4,
-        TYPE_FUSION: 0x40, TYPE_RITUAL: 0x80, TYPE_TUNER: 0x1000,
-        TYPE_SYNCHRO: 0x2000, TYPE_XYZ: 0x800000, TYPE_LINK: 0x4000000,
-      };
-      const mask = typeMap[pred.value as string];
-      return mask !== undefined ? (card.type & mask) !== 0 : 'unknown';
+    case 'type': {
+      // TYPE_X bitmask. Slot filters often use OR-masks like
+      // `TYPE_FUSION+TYPE_SYNCHRO+TYPE_XYZ+TYPE_LINK` (Mirrorjade) or
+      // `TYPE_NORMAL+TYPE_EFFECT`. Use `resolveOrMask` so multi-token
+      // values evaluate concretely instead of returning 'unknown'.
+      const mask = resolveOrMask(pred.value as string, TYPE_HEX);
+      if (mask === undefined) return 'unknown';
+      return (card.type & mask) !== 0;
+    }
     case 'not': {
       const inner = evalPredicate(pred.inner!, card, sourceCardId);
       return inner === 'unknown' ? 'unknown' : !inner;
@@ -275,10 +375,28 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
     case 'controler':
     case 'previousControler':
     case 'reason':
-    case 'listsCode':
-    case 'listsCodeAsMaterial':
     case 'gameState':
       return 'unknown';
+    // listsCode / listsCodeAsMaterial: catalog stores `listedNames` per card,
+    // populated from `s.listed_names = {...}`. Evaluate concretely when the
+    // predicate value resolves to a numeric card-code (literal, CARD_* constant,
+    // or `id` self-reference) and the candidate's listedNames table is available.
+    case 'listsCode':
+    case 'listsCodeAsMaterial': {
+      const raw = pred.value;
+      let target: number | undefined;
+      if (typeof raw === 'number' && Number.isFinite(raw)) target = raw;
+      else if (typeof raw === 'string') {
+        if (raw === 'id') target = sourceCardId;
+        else if (/^\d+$/.test(raw)) target = Number(raw);
+        else if (raw in CARD_CODE_CONSTANTS) target = CARD_CODE_CONSTANTS[raw];
+      }
+      if (target === undefined) return 'unknown';
+      // Catalog cards always carry their own id implicitly. Match own id too —
+      // a card "lists itself" trivially via the card-code system.
+      if (card.cardId === target) return true;
+      return card.listedNames.includes(target);
+    }
     // Type-shape predicates on extra-deck monsters — check against card.type bits.
     case 'linkMonster':
       return (card.type & 0x4000000) !== 0;
@@ -318,13 +436,9 @@ function evalPredicate(pred: FilterPredicate, card: CardProperties, sourceCardId
     // cards, card.type IS the original type (cdb stores native type). Same
     // semantics as `type` for our use.
     case 'originalType': {
-      const typeMap: Record<string, number> = {
-        TYPE_MONSTER: 0x1, TYPE_SPELL: 0x2, TYPE_TRAP: 0x4,
-        TYPE_FUSION: 0x40, TYPE_RITUAL: 0x80, TYPE_TUNER: 0x1000,
-        TYPE_SYNCHRO: 0x2000, TYPE_XYZ: 0x800000, TYPE_LINK: 0x4000000,
-      };
-      const mask = typeMap[pred.value as string];
-      return mask !== undefined ? (card.type & mask) !== 0 : 'unknown';
+      const mask = resolveOrMask(pred.value as string, TYPE_HEX);
+      if (mask === undefined) return 'unknown';
+      return (card.type & mask) !== 0;
     }
     case 'link':
       // For Link monsters, `datas.level` stores the rating. Non-Link monsters fail.
@@ -379,6 +493,26 @@ function cardMatchesFilter(
   return { match: true, confidence: 'low' };
 }
 
+/** AND-intersect a list of present filters. Empty list = no constraint (true,
+ *  high). Tracks the lowest confidence across present filters. Mirrors the
+ *  Phase 15 conjunction logic so search/summon/destroy/banish patterns can
+ *  share precision discipline. */
+function cardMatchesAllFilters(
+  filters: readonly SimpleFilter[],
+  card: CardProperties,
+  sourceCardId: number,
+): { match: boolean; confidence: 'high' | 'medium' | 'low' } {
+  if (filters.length === 0) return { match: true, confidence: 'high' };
+  let minConf: 'high' | 'medium' | 'low' = 'high';
+  for (const f of filters) {
+    const r = cardMatchesFilter(f, card, sourceCardId);
+    if (!r.match) return { match: false, confidence: 'high' };
+    if (r.confidence === 'low') minConf = 'low';
+    else if (r.confidence === 'medium' && minConf === 'high') minConf = 'medium';
+  }
+  return { match: true, confidence: minConf };
+}
+
 // =============================================================================
 // Edge enumeration
 // =============================================================================
@@ -394,12 +528,27 @@ interface Edge {
 const SUMMON_EVENTS = new Set(['EVENT_SUMMON_SUCCESS', 'EVENT_SPSUMMON_SUCCESS']);
 const HAND_EVENTS = new Set(['EVENT_TO_HAND']);
 const GRAVE_EVENTS = new Set(['EVENT_TO_GRAVE']);
-const MATERIAL_EVENTS = new Set(['EVENT_BE_MATERIAL']);
+const MATERIAL_EVENTS = new Set(['EVENT_BE_MATERIAL', 'EVENT_BE_PRE_MATERIAL']);
 const DESTROYED_EVENTS = new Set(['EVENT_DESTROYED']);
 const REMOVED_EVENTS = new Set(['EVENT_REMOVE']);
 const LEAVE_FIELD_EVENTS = new Set(['EVENT_LEAVE_FIELD', 'EVENT_LEAVE_FIELD_P']);
-const BATTLE_EVENTS = new Set(['EVENT_BATTLED', 'EVENT_DAMAGE_STEP_END']);
-const CHAIN_EVENTS = new Set(['EVENT_CHAINING']);
+const BATTLE_EVENTS = new Set(['EVENT_BATTLED', 'EVENT_DAMAGE_STEP_END', 'EVENT_BATTLE_DESTROYED', 'EVENT_BATTLE_DESTROYING']);
+// Pattern 9 covers chain-link reactivity (handtraps). EVENT_CHAINING fires
+// when ANY effect activates a chain link; EVENT_CHAIN_SOLVING fires once the
+// link is added and about to resolve. Both are cooperatively used by handtraps
+// (some trigger pre-, some post-add).
+const CHAIN_EVENTS = new Set(['EVENT_CHAINING', 'EVENT_CHAIN_SOLVING']);
+const RELEASE_EVENTS = new Set(['EVENT_RELEASE']);
+const LEAVE_GRAVE_EVENTS = new Set(['EVENT_LEAVE_GRAVE']);
+const CHAIN_RESOLVED_EVENTS = new Set(['EVENT_CHAIN_SOLVED', 'EVENT_BREAK_EFFECT']);
+const SS_PROC_EVENTS = new Set(['EFFECT_SPSUMMON_PROC', 'EFFECT_SPSUMMON_PROC_G']);
+const BE_TARGET_EVENTS = new Set(['EVENT_BE_TARGET']);
+const DAMAGE_EVENTS = new Set(['EVENT_DAMAGE', 'EVENT_RECOVER', 'EVENT_BATTLE_DAMAGE']);
+const EQUIP_EVENTS = new Set(['EVENT_EQUIP']);
+// Position changes — flip-summon success fires its own event distinct from
+// generic position change. Flip effect triggers (face-down → face-up via
+// flip summon) use FLIP_SUMMON_SUCCESS.
+const POSITION_EVENTS = new Set(['EVENT_FLIP', 'EVENT_CHANGE_POS', 'EVENT_FLIP_SUMMON_SUCCESS']);
 
 // Categories that handtraps / chain-reactive cards typically watch for.
 // A toEff producing one of these is a plausible chain target — we emit a
@@ -409,7 +558,7 @@ const CHAIN_REACTIVE_CATEGORIES = new Set([
   'CATEGORY_TOHAND',          // searches → Ash, Belle
   'CATEGORY_SEARCH',          // tutors → Ash, Belle
   'CATEGORY_SPECIAL_SUMMON',  // SS → Maxx C, Mulcharmy, Veiler-class
-  'CATEGORY_TO_GRAVE',        // mill → Ash
+  'CATEGORY_TOGRAVE',         // mill → Ash  (was the typo-bugged 'CATEGORY_TO_GRAVE')
   'CATEGORY_DRAW',            // draw → Ash
   'CATEGORY_DECKDES',         // deck destruction → Ash
   'CATEGORY_DESTROY',         // destroy → Ogre, Belle (some)
@@ -417,19 +566,41 @@ const CHAIN_REACTIVE_CATEGORIES = new Set([
   'CATEGORY_REMOVE',          // banish-eff
 ]);
 
-function produces(effect: Effect, kind: 'tohand' | 'summon' | 'tograve' | 'fusion-material' | 'destroy' | 'banish' | 'leave-field'): boolean {
+type ProducesKind =
+  | 'tohand' | 'summon' | 'tograve' | 'fusion-material'
+  | 'destroy' | 'banish' | 'leave-field' | 'release'
+  | 'leave-grave' | 'atk-or-damage' | 'damage-or-recover'
+  | 'equip' | 'flip-or-position' | 'targets';
+
+function produces(effect: Effect, kind: ProducesKind): boolean {
   const cats = new Set(effect.categories);
   switch (kind) {
     case 'tohand':          return cats.has('CATEGORY_TOHAND') || cats.has('CATEGORY_SEARCH');
     case 'summon':          return cats.has('CATEGORY_SPECIAL_SUMMON');
-    // CATEGORY_LEAVE_GRAVE means "card leaves GY" (revive/banish from GY) —
-    // the OPPOSITE of "sends to GY". Only CATEGORY_TO_GRAVE matches the
-    // gy-send-then-trigger pattern.
-    case 'tograve':         return cats.has('CATEGORY_TO_GRAVE');
+    // CATEGORY_LEAVE_GRAVE = "card leaves GY" (revive/banish-from-GY) — the
+    // OPPOSITE of "sends to GY". Only CATEGORY_TOGRAVE matches gy-send.
+    case 'tograve':         return cats.has('CATEGORY_TOGRAVE');
     case 'fusion-material': return cats.has('CATEGORY_FUSION_SUMMON');
     case 'destroy':         return cats.has('CATEGORY_DESTROY');
     case 'banish':          return cats.has('CATEGORY_REMOVE');
-    case 'leave-field':     return cats.has('CATEGORY_LEAVE_FIELD') || cats.has('CATEGORY_DESTROY') || cats.has('CATEGORY_REMOVE') || cats.has('CATEGORY_TO_GRAVE');
+    // ocgcore has no CATEGORY_LEAVE_FIELD constant; "leaving the field" is
+    // the union of every category that physically removes a card from a
+    // field zone (destroy, banish, send-to-GY/deck/hand, release).
+    case 'leave-field':     return cats.has('CATEGORY_DESTROY') || cats.has('CATEGORY_REMOVE')
+                                || cats.has('CATEGORY_TOGRAVE') || cats.has('CATEGORY_TODECK')
+                                || cats.has('CATEGORY_TOHAND')  || cats.has('CATEGORY_RELEASE');
+    case 'release':         return cats.has('CATEGORY_RELEASE');
+    case 'leave-grave':     return cats.has('CATEGORY_LEAVE_GRAVE');
+    case 'atk-or-damage':   return cats.has('CATEGORY_ATKCHANGE') || cats.has('CATEGORY_DAMAGE')
+                                || cats.has('CATEGORY_DEFCHANGE');
+    case 'damage-or-recover': return cats.has('CATEGORY_DAMAGE') || cats.has('CATEGORY_RECOVER');
+    case 'equip':           return cats.has('CATEGORY_EQUIP');
+    case 'flip-or-position': return cats.has('CATEGORY_POSITION') || cats.has('CATEGORY_FLIP');
+    // `targets` is signalled by `EFFECT_FLAG_CARD_TARGET` on properties OR by
+    // a non-trivial `target.simpleFilter` (the standard ocgcore target
+    // declaration). Both flow through patterns identifying targeted cards.
+    case 'targets':         return effect.properties?.includes('EFFECT_FLAG_CARD_TARGET') === true
+                                || (effect.target?.simpleFilter !== undefined);
   }
 }
 
@@ -458,26 +629,98 @@ function triggersOn(effect: Effect, events: ReadonlySet<string>): boolean {
 // `validate-edges-precision.mjs`).
 // =============================================================================
 
-/** Map a `condition.simpleFilter` predicate kind that gates the trigger by
- *  summon-type to the category the from-effect must carry. Only entries with
- *  reliable category-level evidence in catalog v7 are listed; Synchro/Xyz/
- *  Link/Ritual gates wait on a parser upgrade. */
-const SUMMON_TYPE_GATES: Record<string, string> = {
-  fusionSummoned: 'CATEGORY_FUSION_SUMMON',
+/** Token shared with `summonTypeGatesOnToEff` — `fusionSummoned` etc. always
+ *  ties to a category check on the from-effect; the synthetic `__SYNCHRO__` /
+ *  `__XYZ__` / `__LINK__` / `__RITUAL__` / `__PENDULUM__` tags are sentinels
+ *  decoded via from-card procedure inspection. */
+const SUMMON_TYPE_TO_CATEGORY: Readonly<Record<string, string>> = {
+  fusionSummoned:    'CATEGORY_FUSION_SUMMON',
+  synchroSummoned:   '__SYNCHRO__',
+  xyzSummoned:       '__XYZ__',
+  linkSummoned:      '__LINK__',
+  ritualSummoned:    '__RITUAL__',
+  pendulumSummoned:  '__PENDULUM__',
 };
 
-/** When `toEff.condition.simpleFilter.predicates` contains a summon-type
- *  gate (e.g., fusionSummoned), the from-effect MUST carry the matching
- *  CATEGORY_*_SUMMON. Returns the list of required categories ; empty when
- *  no recognised gate is present (the legacy permissive behaviour). */
-function requiredFromCategoriesForSummonGate(toEff: Effect): string[] {
-  const preds = toEff.condition?.simpleFilter?.predicates ?? [];
-  const out: string[] = [];
-  for (const p of preds) {
-    const cat = SUMMON_TYPE_GATES[p.kind];
-    if (cat !== undefined) out.push(cat);
+/** REASON_X conditions on to-effect → equivalent summon-type gate. Branded
+ *  Disciple, Albion the Sanctifire, Mirrorjade-recur etc. trigger via
+ *  `IsReason(REASON_FUSION)` — semantically identical to `IsFusionSummoned()`
+ *  for static edge identification. */
+const REASON_TO_GATE: Readonly<Record<string, string>> = {
+  REASON_FUSION:   'fusionSummoned',
+  REASON_SYNCHRO:  'synchroSummoned',
+  REASON_XYZ:      'xyzSummoned',
+  REASON_RITUAL:   'ritualSummoned',
+};
+
+/** Set of summon-type tokens the to-effect requires for its on-summon trigger
+ *  (e.g. {'fusionSummoned'}). Walks `condition.simpleFilter.predicates` AND
+ *  one level of OR/NOT awareness:
+ *   - Conjuncted `IsXSummoned()` / `IsReason(REASON_X)` — hard gate.
+ *   - OR-composite where every disjunct is a summon-type → all tokens added
+ *     (the to-effect accepts any of them).
+ *   - `not` is ignored: a `not IsFusionSummoned` condition wouldn't constrain
+ *     which from-effect could legitimately fire it.
+ *   - Nested `not(or(...))` and other rare shapes fall through (permissive). */
+function summonTypeGatesOnToEff(toEff: Effect): Set<string> {
+  const out = new Set<string>();
+  for (const p of toEff.condition?.simpleFilter?.predicates ?? []) {
+    if (p.kind in SUMMON_TYPE_TO_CATEGORY) out.add(p.kind);
+    else if (p.kind === 'reason' && typeof p.value === 'string') {
+      const tok = REASON_TO_GATE[p.value];
+      if (tok !== undefined) out.add(tok);
+    } else if (p.kind === 'or' && p.predicates) {
+      const inner: string[] = [];
+      let allGate = true;
+      for (const q of p.predicates) {
+        if (q.kind in SUMMON_TYPE_TO_CATEGORY) inner.push(q.kind);
+        else if (q.kind === 'reason' && typeof q.value === 'string'
+              && REASON_TO_GATE[q.value] !== undefined) inner.push(REASON_TO_GATE[q.value]);
+        else { allGate = false; break; }
+      }
+      if (allGate) for (const tok of inner) out.add(tok);
+    }
   }
   return out;
+}
+
+/** Does the from-effect (in from-card context) satisfy at least one of the
+ *  to-effect's summon-type gates? Returns `{ ok: true }` when:
+ *   - No gate is present (permissive default).
+ *   - At least one gate is provably satisfied via:
+ *     - `fusionSummoned` → from-effect carries CATEGORY_FUSION_SUMMON.
+ *     - `synchroSummoned/xyzSummoned/linkSummoned/ritualSummoned/pendulumSummoned`:
+ *       from-effect Special-Summons its handler (self-SS) AND the from-card's
+ *       `summonProcedures` declares the matching kind. The bulk of on-summon
+ *       triggers fall here (a Synchro/Xyz/Link monster triggering itself).
+ *  Cross-card cases (card A SS's card B as a Synchro from card C's effect)
+ *  fall through optimistically because the catalog can't pin SS-type at the
+ *  from-effect level. */
+function fromEffSatisfiesAnyGate(
+  fromEff: Effect,
+  fromCard: Catalog,
+  gates: ReadonlySet<string>,
+): boolean {
+  if (gates.size === 0) return true;
+  const fromCats = new Set(fromEff.categories);
+  for (const gate of gates) {
+    const tag = SUMMON_TYPE_TO_CATEGORY[gate];
+    if (tag === 'CATEGORY_FUSION_SUMMON') {
+      if (fromCats.has('CATEGORY_FUSION_SUMMON')) return true;
+      continue;
+    }
+    const procKind = ({
+      __SYNCHRO__: 'Synchro',
+      __XYZ__: 'Xyz',
+      __LINK__: 'Link',
+      __RITUAL__: 'Ritual',
+      __PENDULUM__: 'Pendulum',
+    } as Record<string, string>)[tag];
+    if (procKind === undefined) continue;
+    const hasProc = (fromCard.summonProcedures ?? []).some(p => p.kind === procKind);
+    if (hasProc && isSelfTargetingSS(fromEff)) return true;
+  }
+  return false;
 }
 
 // True when every Special Summon action in the operation body targets the
@@ -494,119 +737,119 @@ function isSelfTargetingSS(eff: Effect): boolean {
 }
 
 function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
-  // Load properties for every card referenced.
+  // Load properties for every card referenced (carries listedNames for
+  // listsCode predicate evaluation).
   const propsByCard = new Map<number, CardProperties>();
   for (const c of catalogs) {
-    const p = loadCardProperties(c.cardId);
+    const p = loadCardProperties(c.cardId, c.listedNames ?? []);
     if (p) propsByCard.set(c.cardId, p);
   }
+  const catalogByCard = new Map<number, Catalog>();
+  for (const c of catalogs) catalogByCard.set(c.cardId, c);
 
   const edges: Edge[] = [];
 
+  // Helper: collect intersection of present filters from a from-effect, ANDed.
+  // Used by every pattern that filters from-effect → to-card via filter match.
+  const intersectFilters = (eff: Effect): SimpleFilter[] => [
+    eff.target?.simpleFilter,
+    eff.operation?.simpleFilter,
+  ].filter((f): f is SimpleFilter => f !== undefined);
+
+  // Helper: emit an edge when filter intersection holds. Used by patterns
+  // 1 / 3 / 5 / 6 / 7 — single from-effect → cross-card to-effect with a shared
+  // filter discipline. `requireSelfTrigger` enforces EFFECT_TYPE_SINGLE on the
+  // to-effect (the trigger is on the card itself); pattern 1 leaves it false
+  // because field-spell-style on-add triggers also count.
+  const tryEmitFiltered = (
+    fromCat: Catalog, fromEff: Effect, toCat: Catalog, toEff: Effect,
+    events: ReadonlySet<string>, reason: string,
+    opts: { requireSelfTrigger: boolean; baseConfidence?: 'high' | 'medium' | 'low'; notes?: readonly string[] },
+  ): void => {
+    if (!triggersOn(toEff, events)) return;
+    if (opts.requireSelfTrigger && !toEff.types.includes('EFFECT_TYPE_SINGLE')) return;
+    const toProps = propsByCard.get(toCat.cardId);
+    if (!toProps) return;
+    const filters = intersectFilters(fromEff);
+    const matched = cardMatchesAllFilters(filters, toProps, fromCat.cardId);
+    if (!matched.match) return;
+    // When no filters were present, baseConfidence applies (defaults low —
+    // the from-effect produces the category but didn't narrow its target).
+    const conf = filters.length === 0 ? (opts.baseConfidence ?? 'low') : matched.confidence;
+    edges.push({
+      from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
+      to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
+      reason, confidence: conf,
+      ...(opts.notes && opts.notes.length > 0 ? { notes: [...opts.notes] } : {}),
+    });
+  };
+
   for (const fromCat of catalogs) {
     for (const fromEff of fromCat.effects) {
-      // Pattern 1: search-then-trigger (EA adds to hand)
-      if (produces(fromEff, 'tohand') && fromEff.target?.simpleFilter) {
+      // ----- Pattern 1: search-then-trigger ---------------------------------
+      // Search → EVENT_TO_HAND. Field-spell on-add triggers (e.g., Belle de
+      // Fleur class) don't always carry EFFECT_TYPE_SINGLE, so we accept any
+      // trigger type. Filter intersection (Phase 15) prunes false-positives.
+      if (produces(fromEff, 'tohand')) {
         for (const toCat of catalogs) {
           if (toCat.cardId === fromCat.cardId) continue;
-          const toProps = propsByCard.get(toCat.cardId);
-          if (!toProps) continue;
-          const matched = cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId);
-          if (!matched.match) continue;
           for (const toEff of toCat.effects) {
-            if (!triggersOn(toEff, HAND_EVENTS)) continue;
-            edges.push({
-              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-              reason: 'search-then-trigger (add-to-hand → EVENT_TO_HAND, filter match)',
-              confidence: matched.confidence,
-              notes: toEff.condition?.inline?.includes('REASON_DRAW') ? ['target triggers only if NOT drawn — reason passed via add-from-deck qualifies'] : undefined,
-            });
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, HAND_EVENTS,
+              'search-then-trigger (add-to-hand → EVENT_TO_HAND, filter match)',
+              { requireSelfTrigger: false, baseConfidence: 'low',
+                notes: toEff.condition?.inline?.includes('REASON_DRAW')
+                  ? ['target triggers only if NOT drawn — reason passed via add-from-deck qualifies']
+                  : undefined,
+              });
           }
         }
       }
-      // Pattern 2: summon-then-trigger (EA summons a card)
+      // ----- Pattern 2: summon-then-trigger ---------------------------------
+      // Phase 15 + 2026-04-25 gate logic. Self-targeting SS only triggers its
+      // own on-summon effects (skip cross-card). Summon-type gates on the
+      // to-effect (fusionSummoned, synchroSummoned, ...) are required-or-skip.
       if (produces(fromEff, 'summon')) {
         const fromSelfSS = isSelfTargetingSS(fromEff);
-        // Phase 15 — AND-intersect target.simpleFilter AND operation.simpleFilter
-        // (both pruning when present). Phase 12 used `??` (operation overrides
-        // target) which over-broadened in cases like Phryxul.e1a where target
-        // says `[Dracotail, not(self)]` (the SS-pick filter) but operation says
-        // `[ableToHand]` (the follow-up SendtoHand filter). With `??`, operation
-        // erased the not(self) constraint → 100 bogus Phryxul-as-source edges +
-        // 4 false-positive Phryxul self-trigger tier-A. With AND, the most
-        // restrictive filter wins. One for One still benefits: target=`[monster,
-        // ableToGraveAsCost]` AND operation=`[level=1, canBeSpecialSummoned]`
-        // gives a tight intersection.
-        const ssFilters = [fromEff.target?.simpleFilter, fromEff.operation?.simpleFilter]
-          .filter((f): f is SimpleFilter => f !== undefined);
-        for (const toCat of catalogs) {
-          // Self-SS source can only trigger ITS OWN on-summon effects — skip
-          // cross-card pairings to suppress ~750 bogus candidates per batch.
-          if (fromSelfSS && toCat.cardId !== fromCat.cardId) continue;
-          // Self-trigger allowed (e.g., a card's own SS triggers its own on-SS effect)
-          for (const toEff of toCat.effects) {
-            if (!triggersOn(toEff, SUMMON_EVENTS)) continue;
-            // Skip unless `toEff` is self-trigger (EFFECT_TYPE_SINGLE) — indicates card's own trigger
-            if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
-            if (ssFilters.length === 0) continue;  // no filter info → skip (was the legacy gate)
-
-            // Precision filter (2026-04-25) — when toEff's condition gates the
-            // trigger by summon-type (e.g., fusionSummoned), require the from-
-            // effect to carry the matching CATEGORY_*_SUMMON. Skips false-
-            // positive edges where a generic SS would never satisfy the gate.
-            const requiredCats = requiredFromCategoriesForSummonGate(toEff);
-            if (requiredCats.length > 0) {
-              const fromCats = new Set(fromEff.categories);
-              if (!requiredCats.every(c => fromCats.has(c))) continue;
+        const ssFilters = intersectFilters(fromEff);
+        if (ssFilters.length > 0) {
+          for (const toCat of catalogs) {
+            if (fromSelfSS && toCat.cardId !== fromCat.cardId) continue;
+            for (const toEff of toCat.effects) {
+              if (!triggersOn(toEff, SUMMON_EVENTS)) continue;
+              if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
+              const gates = summonTypeGatesOnToEff(toEff);
+              if (!fromEffSatisfiesAnyGate(fromEff, fromCat, gates)) continue;
+              const toProps = propsByCard.get(toCat.cardId);
+              if (!toProps) continue;
+              const matched = cardMatchesAllFilters(ssFilters, toProps, fromCat.cardId);
+              if (!matched.match) continue;
+              edges.push({
+                from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
+                to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
+                reason: 'summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)',
+                confidence: matched.confidence,
+              });
             }
-
-            const toProps = propsByCard.get(toCat.cardId);
-            if (!toProps) continue;
-            // Conjunction: every present filter must match. Track lowest confidence.
-            let minConf: 'high' | 'medium' | 'low' = 'high';
-            let allMatched = true;
-            for (const f of ssFilters) {
-              const matched = cardMatchesFilter(f, toProps, fromCat.cardId);
-              if (!matched.match) { allMatched = false; break; }
-              if (matched.confidence === 'low') minConf = 'low';
-              else if (matched.confidence === 'medium' && minConf === 'high') minConf = 'medium';
-            }
-            if (!allMatched) continue;
-            edges.push({
-              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-              reason: 'summon-then-trigger (SS → EVENT_SUMMON_SUCCESS, filter match)',
-              confidence: minConf,
-            });
           }
         }
       }
-      // Pattern 3: GY-send-then-trigger
+      // ----- Pattern 3: gy-send-then-trigger --------------------------------
+      // Bug fix 2026-04-25: was checking CATEGORY_TO_GRAVE which doesn't exist
+      // in ocgcore (it's CATEGORY_TOGRAVE — see produces()). Fixed → pattern
+      // now actually fires.
       if (produces(fromEff, 'tograve')) {
         for (const toCat of catalogs) {
-          // Phase 10a — filter intersection: when source has a complete target
-          // filter, prune to-cards that statically can't satisfy it. Mirrors
-          // pattern 1 / 2 logic.
-          if (fromEff.target?.simpleFilter?.complete) {
-            const toProps = propsByCard.get(toCat.cardId);
-            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
-          }
           for (const toEff of toCat.effects) {
-            if (!triggersOn(toEff, GRAVE_EVENTS)) continue;
-            if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
-            // Can't always filter-match (GY-send target often unspecified). Report low confidence.
-            edges.push({
-              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-              reason: 'gy-send-then-trigger (→ EVENT_TO_GRAVE)',
-              confidence: 'low',
-              notes: ['filter not verified — GY-send target may not match; check manually'],
-            });
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, GRAVE_EVENTS,
+              'gy-send-then-trigger (→ EVENT_TO_GRAVE)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['GY-send target may not be this card — depends on target selection'],
+              });
           }
         }
       }
-      // Pattern 4: Fusion-material-then-trigger
+      // ----- Pattern 4: fusion-material-then-trigger ------------------------
+      // Fusion summon → EVENT_BE_MATERIAL on materials consumed.
       if (produces(fromEff, 'fusion-material')) {
         for (const toCat of catalogs) {
           for (const toEff of toCat.effects) {
@@ -622,71 +865,49 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
           }
         }
       }
-      // Pattern 5: destroy-then-trigger
+      // ----- Pattern 5: destroy-then-trigger --------------------------------
       if (produces(fromEff, 'destroy')) {
         for (const toCat of catalogs) {
-          // Phase 10a — filter intersection (same rationale as pattern 3).
-          if (fromEff.target?.simpleFilter?.complete) {
-            const toProps = propsByCard.get(toCat.cardId);
-            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
-          }
           for (const toEff of toCat.effects) {
-            if (!triggersOn(toEff, DESTROYED_EVENTS)) continue;
-            if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
-            edges.push({
-              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-              reason: 'destroy-then-trigger (→ EVENT_DESTROYED)',
-              confidence: 'low',
-              notes: ['Destroy target may not be this card — depends on target selection'],
-            });
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, DESTROYED_EVENTS,
+              'destroy-then-trigger (→ EVENT_DESTROYED)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Destroy target may not be this card — depends on target selection'],
+              });
           }
         }
       }
-      // Pattern 6: banish-then-trigger
+      // ----- Pattern 6: banish-then-trigger ---------------------------------
       if (produces(fromEff, 'banish')) {
         for (const toCat of catalogs) {
-          // Phase 10d — filter intersection (same rationale as patterns 3/5).
-          if (fromEff.target?.simpleFilter?.complete) {
-            const toProps = propsByCard.get(toCat.cardId);
-            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
-          }
           for (const toEff of toCat.effects) {
-            if (!triggersOn(toEff, REMOVED_EVENTS)) continue;
-            if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
-            edges.push({
-              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-              reason: 'banish-then-trigger (→ EVENT_REMOVE)',
-              confidence: 'low',
-              notes: ['Banish target may not be this card — depends on target selection'],
-            });
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, REMOVED_EVENTS,
+              'banish-then-trigger (→ EVENT_REMOVE)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Banish target may not be this card — depends on target selection'],
+              });
           }
         }
       }
-      // Pattern 7: leave-field-then-trigger (card leaves Monster Zone for any reason)
+      // ----- Pattern 7: leave-field-then-trigger ----------------------------
+      // CATEGORY_LEAVE_FIELD doesn't exist in ocgcore — pattern fires for any
+      // category that physically removes a card from a field zone (covered
+      // inside produces('leave-field')).
       if (produces(fromEff, 'leave-field')) {
         for (const toCat of catalogs) {
-          // Phase 10d — filter intersection (same rationale as patterns 3/5/6).
-          if (fromEff.target?.simpleFilter?.complete) {
-            const toProps = propsByCard.get(toCat.cardId);
-            if (toProps && !cardMatchesFilter(fromEff.target.simpleFilter, toProps, fromCat.cardId).match) continue;
-          }
           for (const toEff of toCat.effects) {
-            if (!triggersOn(toEff, LEAVE_FIELD_EVENTS)) continue;
-            if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
-            edges.push({
-              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
-              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
-              reason: 'leave-field-then-trigger (→ EVENT_LEAVE_FIELD)',
-              confidence: 'low',
-              notes: ['Target may not be this card'],
-            });
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, LEAVE_FIELD_EVENTS,
+              'leave-field-then-trigger (→ EVENT_LEAVE_FIELD)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Target may not be this card'],
+              });
           }
         }
       }
-      // Pattern 8: battle-then-trigger
-      if (fromEff.categories.includes('CATEGORY_ATK_CHANGE') || fromEff.categories.includes('CATEGORY_DAMAGE')) {
+      // ----- Pattern 8: battle-then-trigger ---------------------------------
+      // Bug fix 2026-04-25: was checking CATEGORY_ATK_CHANGE which doesn't
+      // exist (it's CATEGORY_ATKCHANGE). DEFCHANGE included for symmetry.
+      if (produces(fromEff, 'atk-or-damage')) {
         for (const toCat of catalogs) {
           for (const toEff of toCat.effects) {
             if (!triggersOn(toEff, BATTLE_EVENTS)) continue;
@@ -700,20 +921,11 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
           }
         }
       }
-      // Pattern 9: chain-link-then-trigger (handtraps + chain-reactive cards).
-      // Source has EVENT_CHAINING trigger (Ash Blossom, Veiler, Belle, Ogre,
-      // Maxx C, Mulcharmy, etc.) — emit edges to every cross-card effect that
-      // produces a chain-reactable category. Confidence is intrinsically low:
-      // the actual reaction is gated on opp's chain context (player ownership,
-      // chained card category, location), which the static enumerator cannot
-      // resolve. RL still benefits — it can learn that handtrap X has any
-      // signal at all on cards in its potential reaction set.
+      // ----- Pattern 9: chain-link-then-trigger -----------------------------
       if (triggersOn(fromEff, CHAIN_EVENTS)) {
         for (const toCat of catalogs) {
-          // Cross-card only — handtraps don't react to their own activation.
           if (toCat.cardId === fromCat.cardId) continue;
           for (const toEff of toCat.effects) {
-            // toEff must produce ≥1 category that handtraps watch for.
             if (!toEff.categories.some(c => CHAIN_REACTIVE_CATEGORIES.has(c))) continue;
             edges.push({
               from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
@@ -725,9 +937,343 @@ function enumerateEdges(catalogs: readonly Catalog[]): Edge[] {
           }
         }
       }
+      // ----- Pattern 10: release-then-trigger -------------------------------
+      // Tribute / release triggers (Mitsurugi Ritual on tribute, Phantom of
+      // Chaos, Branded Beast). Release target may match the from-filter when
+      // present (e.g. Mitsurugi Ritual targets a Mitsurugi via target.filter).
+      if (produces(fromEff, 'release')) {
+        for (const toCat of catalogs) {
+          for (const toEff of toCat.effects) {
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, RELEASE_EVENTS,
+              'release-then-trigger (→ EVENT_RELEASE)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Release target may not be this card — depends on tribute selection'],
+              });
+          }
+        }
+      }
+      // ----- Pattern 11: leave-grave-then-trigger ---------------------------
+      // Card leaves GY (revive / banish-from-GY / shuffle-back) → EVENT_LEAVE_GRAVE.
+      // E.g. Mirrorjade's GY-recur, certain Engage-class persistent monitors.
+      // Distinct from leave-field (Pattern 7).
+      if (produces(fromEff, 'leave-grave')) {
+        for (const toCat of catalogs) {
+          for (const toEff of toCat.effects) {
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, LEAVE_GRAVE_EVENTS,
+              'leave-grave-then-trigger (→ EVENT_LEAVE_GRAVE)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Target leaving GY may not be this card'],
+              });
+          }
+        }
+      }
+      // ----- Pattern 12: chain-resolved-then-trigger ------------------------
+      // To-effect triggers on `EVENT_CHAIN_SOLVED` / `EVENT_BREAK_EFFECT` —
+      // post-resolution observers (Branded Disciple's "after a Fusion Summon
+      // chain resolves" idiom). The to-effect's gate set narrows which from-
+      // effects are valid sources. Without a gate, fall back to "produces a
+      // chain-reactive category" pruning to keep the edge count tractable.
+      // Cross-card only.
+      for (const toCat of catalogs) {
+        if (toCat.cardId === fromCat.cardId) continue;
+        for (const toEff of toCat.effects) {
+          if (!triggersOn(toEff, CHAIN_RESOLVED_EVENTS)) continue;
+          if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
+          const gates = summonTypeGatesOnToEff(toEff);
+          if (gates.size > 0) {
+            // Hard summon-type gate present → require from-effect to satisfy.
+            if (!fromEffSatisfiesAnyGate(fromEff, fromCat, gates)) continue;
+          } else {
+            // No gate → require from-effect to produce a chain-visible result.
+            if (!fromEff.categories.some(c => CHAIN_REACTIVE_CATEGORIES.has(c))) continue;
+          }
+          edges.push({
+            from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
+            to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
+            reason: 'chain-resolved-then-trigger (→ EVENT_CHAIN_SOLVED, gate match)',
+            confidence: gates.size > 0 ? 'medium' : 'low',
+          });
+        }
+      }
+      // ----- Pattern 15: be-target-then-trigger -----------------------------
+      // From-effect targets cards via `target.simpleFilter`; to-effect triggers
+      // on EVENT_BE_TARGET. Filter intersection prunes to-cards the from-effect
+      // can't legally target (e.g. setCard / type / location restriction). Cross-
+      // card only — a card targeting itself is a self-trigger, not a network edge.
+      if (produces(fromEff, 'targets')) {
+        for (const toCat of catalogs) {
+          if (toCat.cardId === fromCat.cardId) continue;
+          for (const toEff of toCat.effects) {
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, BE_TARGET_EVENTS,
+              'be-target-then-trigger (→ EVENT_BE_TARGET, filter match)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Targeting reactive — fires only when this card is among the chosen targets'],
+              });
+          }
+        }
+      }
+      // ----- Pattern 16: damage-then-trigger --------------------------------
+      // CATEGORY_DAMAGE / CATEGORY_RECOVER → EVENT_DAMAGE / EVENT_RECOVER /
+      // EVENT_BATTLE_DAMAGE. Burn / heal triggers (e.g., Solemn Strike, Honest's
+      // damage payment, Mulcharmy-style draw-trigger). Distinct from Pattern 8
+      // which targets EVENT_BATTLED (resolution).
+      if (produces(fromEff, 'damage-or-recover')) {
+        for (const toCat of catalogs) {
+          for (const toEff of toCat.effects) {
+            if (!triggersOn(toEff, DAMAGE_EVENTS)) continue;
+            if (!toEff.types.includes('EFFECT_TYPE_SINGLE')) continue;
+            edges.push({
+              from: { cardId: fromCat.cardId, name: fromCat.name, effectId: fromEff.id },
+              to: { cardId: toCat.cardId, name: toCat.name, effectId: toEff.id },
+              reason: 'damage-then-trigger (→ EVENT_DAMAGE / EVENT_RECOVER)',
+              confidence: 'low',
+              notes: ['Damage delta may not affect this card directly — depends on damage target / amount'],
+            });
+          }
+        }
+      }
+      // ----- Pattern 17: equip-then-trigger ---------------------------------
+      // Equip cards / equip-style effects → EVENT_EQUIP. From-effect carries
+      // CATEGORY_EQUIP and typically a target.simpleFilter for the equipee.
+      if (produces(fromEff, 'equip')) {
+        for (const toCat of catalogs) {
+          for (const toEff of toCat.effects) {
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, EQUIP_EVENTS,
+              'equip-then-trigger (→ EVENT_EQUIP, filter match)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Equip target may not be this card — depends on equip selection'],
+              });
+          }
+        }
+      }
+      // ----- Pattern 18: flip-or-position-then-trigger ----------------------
+      // CATEGORY_POSITION / CATEGORY_FLIP on from-effect → EVENT_FLIP /
+      // EVENT_CHANGE_POS / EVENT_FLIP_SUMMON_SUCCESS on to-effect. Covers
+      // flip-effect monsters (Sangan-class) and reposition responders.
+      if (produces(fromEff, 'flip-or-position')) {
+        for (const toCat of catalogs) {
+          for (const toEff of toCat.effects) {
+            tryEmitFiltered(fromCat, fromEff, toCat, toEff, POSITION_EVENTS,
+              'flip-or-position-then-trigger (→ EVENT_FLIP / EVENT_CHANGE_POS)',
+              { requireSelfTrigger: true, baseConfidence: 'low',
+                notes: ['Position-change target may not be this card — depends on selection'],
+              });
+          }
+        }
+      }
     }
   }
+
+  // ---------- Pattern 13: material-then-summon (out of fromEff loop) -------
+  // For each catalog card C with `summonProcedures.decoded.slots`, emit edges
+  // from every catalog card F that statically matches a slot's filter to C's
+  // on-summon trigger effects (EVENT_SUMMON_SUCCESS / EVENT_SPSUMMON_SUCCESS,
+  // EFFECT_TYPE_SINGLE). This captures the structural relation "F is a viable
+  // material for C → summoning C triggers C's on-summon effect".
+  //
+  // Slot.filter resolution priority:
+  //   1. {simpleFilter}      — parser-decoded (post-upgrade)
+  //   2. ResolvedHelper      — kind 'filter-wrap' synthesised here
+  //   3. {raw: 'CARD_*'}     — resolved via CARD_CODE_CONSTANTS → code predicate
+  //   4. {raw: 's.matfilter'} — opaque (parser-side resolution still pending)
+  //   5. undefined            — generic slot ("any 2 monsters") — gated only
+  //                             by procedure kind (Synchro=tuner+nontuner,
+  //                             Xyz=rank R N times, Link=co-linkable monster)
+  //
+  // Source from-effect is synthesised as `_material` so the edge is clearly
+  // a material-relation, not an effect-to-effect transition.
+  for (const toCat of catalogs) {
+    for (const proc of toCat.summonProcedures ?? []) {
+      const slots = proc.decoded?.slots ?? [];
+      if (slots.length === 0) continue;
+      // Locate the on-summon trigger effects of toCat (the apex's own effects
+      // that fire when it lands). Vanilla / non-trigger ED monsters (Mirrorjade,
+      // Salamangreat Almiraj) have NO on-summon trigger but the material
+      // relation is still structurally meaningful — the solver needs to know
+      // "F can be used to summon C". For those we emit edges to a synthetic
+      // `_summon` effectId so the relation is preserved at lower granularity.
+      const onSummonEffs = toCat.effects.filter(e =>
+        triggersOn(e, SUMMON_EVENTS) && e.types.includes('EFFECT_TYPE_SINGLE'));
+      const targetEffectIds: string[] = onSummonEffs.length > 0
+        ? onSummonEffs.map(e => e.id)
+        : ['_summon'];
+
+      // Collect a SimpleFilter per slot we can decode statically.
+      const slotFilters: { role: string; filter: SimpleFilter | null; note?: string }[] = [];
+      for (const slot of slots) {
+        const sf = slotToSimpleFilter(slot);
+        slotFilters.push({ role: slot.role, filter: sf });
+      }
+
+      for (const fromCat of catalogs) {
+        if (fromCat.cardId === toCat.cardId) continue;
+        const fromProps = propsByCard.get(fromCat.cardId);
+        if (!fromProps) continue;
+        // Card matches if ANY slot's filter passes (or any opaque slot, which
+        // is treated as low-confidence permissive).
+        let bestConf: 'high' | 'medium' | 'low' | null = null;
+        let matchedRole: string | null = null;
+        for (const s of slotFilters) {
+          if (s.filter === null) {
+            // Opaque slot — keep low-confidence catch-all match.
+            if (bestConf === null) { bestConf = 'low'; matchedRole = s.role; }
+            continue;
+          }
+          const r = cardMatchesFilter(s.filter, fromProps, toCat.cardId);
+          if (!r.match) continue;
+          if (bestConf === null
+              || (bestConf === 'low' && r.confidence !== 'low')
+              || (bestConf === 'medium' && r.confidence === 'high')) {
+            bestConf = r.confidence;
+            matchedRole = s.role;
+          }
+        }
+        if (bestConf === null) continue;
+        for (const toEffId of targetEffectIds) {
+          edges.push({
+            from: { cardId: fromCat.cardId, name: fromCat.name, effectId: '_material' },
+            to: { cardId: toCat.cardId, name: toCat.name, effectId: toEffId },
+            reason: `material-then-summon (${proc.kind}/${matchedRole}${toEffId === '_summon' ? ' → vanilla summon' : ' → on-summon trigger'})`,
+            confidence: bestConf,
+            notes: ['from-card is statically a viable material for to-card; actual usage depends on extra-deck choice'],
+          });
+        }
+      }
+    }
+  }
+
+  // ---------- Pattern 14: alt-SS-proc precondition --------------------------
+  // For each catalog card C with an `EFFECT_SPSUMMON_PROC` /
+  // `EFFECT_SPSUMMON_PROC_G` effect E (custom Special Summon procedure), the
+  // procedure's own target/cost filter declares which cards must exist on
+  // field / in GY / in hand to enable the SS. From-cards matching that filter
+  // → C's on-summon trigger effects. Captures patterns like:
+  //   - Snake-Eyes Doomed Dragon: send a face-up monster to GY → SS self.
+  //   - Ext Ryzeal: send an Xyz to GY → SS self from hand.
+  //   - Ryzeal core: HAND → field via "send LP-cost monster".
+  //
+  // Source from-effect is synthesised as `_alt-ss-cost` to flag the relation.
+  // Confidence is bounded to 'low' baseline (state-bound by zone availability)
+  // and downgrades from filter match if known.
+  //
+  // The procedure's filter is searched in priority order: target → cost →
+  // operation. The first non-empty SimpleFilter wins.
+  for (const toCat of catalogs) {
+    for (const procEff of toCat.effects) {
+      if (!triggersOn(procEff, SS_PROC_EVENTS)) continue;
+      // Locate a SimpleFilter on the procedure: the picker for cost/material.
+      const procFilter = procEff.target?.simpleFilter
+                       ?? procEff.cost?.simpleFilter
+                       ?? procEff.operation?.simpleFilter;
+      if (!procFilter) continue;
+      // Skip filters that only carry "trivially-true" predicates (e.g.,
+      // `[ableToGraveAsCost]` alone matches every monster) — the resulting
+      // edge set would be unbounded without informational value. The signal
+      // for the solver is still present via the procedure existence itself,
+      // but we only emit when a meaningful narrowing predicate is present.
+      const hasNarrowingPredicate = procFilter.predicates.some(p =>
+        p.kind !== 'ableToGraveAsCost' && p.kind !== 'ableToHand'
+        && p.kind !== 'ableToDeck' && p.kind !== 'ableToRemove'
+        && p.kind !== 'canBeSpecialSummoned' && p.kind !== 'discardable'
+        && p.kind !== 'gameState');
+      if (!hasNarrowingPredicate) continue;
+
+      // Find C's on-summon trigger effects. Same fallback as Pattern 13:
+      // when no on-summon trigger exists (vanilla cards with custom SS proc
+      // but no follow-up effect), emit to a synthetic `_summon` effectId so
+      // the alt-SS-proc relation is preserved.
+      const onSummonEffs = toCat.effects.filter(e =>
+        triggersOn(e, SUMMON_EVENTS) && e.types.includes('EFFECT_TYPE_SINGLE'));
+      const targetEffectIds: string[] = onSummonEffs.length > 0
+        ? onSummonEffs.map(e => e.id)
+        : ['_summon'];
+
+      for (const fromCat of catalogs) {
+        if (fromCat.cardId === toCat.cardId) continue;
+        const fromProps = propsByCard.get(fromCat.cardId);
+        if (!fromProps) continue;
+        const matched = cardMatchesFilter(procFilter, fromProps, toCat.cardId);
+        if (!matched.match) continue;
+        // Cap baseline confidence at 'low' — the procedure precondition is
+        // a STATE constraint (zone availability, GY contents) layered on top
+        // of the filter match. Filter being 'high' just means the type/level/
+        // attribute is correct; it doesn't mean the precondition will hold.
+        const conf: 'low' | 'medium' = matched.confidence === 'high' ? 'medium' : 'low';
+        for (const toEffId of targetEffectIds) {
+          edges.push({
+            from: { cardId: fromCat.cardId, name: fromCat.name, effectId: '_alt-ss-cost' },
+            to: { cardId: toCat.cardId, name: toCat.name, effectId: toEffId },
+            reason: `alt-ss-proc-precondition (${procEff.id}${toEffId === '_summon' ? ' → vanilla summon' : ' → on-summon trigger'})`,
+            confidence: conf,
+            notes: ['from-card is a viable cost/material for to-card\'s alt SS proc; precondition is state-bound (zone availability)'],
+          });
+        }
+      }
+    }
+  }
+
   return edges;
+}
+
+/** Resolve a summon-procedure slot's filter into a SimpleFilter we can match
+ *  cards against. Returns null when the slot's filter is opaque (e.g. raw
+ *  references like `s.matfilter` whose body lives outside the catalog) — the
+ *  caller treats null as a permissive low-confidence catch-all. */
+function slotToSimpleFilter(slot: SlotRequirement): SimpleFilter | null {
+  if (!slot.filter) return null;
+  // Parser-decoded path (post-upgrade): the slot already carries a SimpleFilter.
+  if ('simpleFilter' in slot.filter) return slot.filter.simpleFilter;
+  // Resolved aux helper: `aux.FilterBoolFunction(Card.IsX, value)`.
+  if ('kind' in slot.filter && slot.filter.kind === 'filter-wrap' && slot.filter.params) {
+    const predName = slot.filter.params['predicate'] as string | undefined;
+    const predValue = slot.filter.params['value'] as string | undefined;
+    const pred = synthesiseSlotPredicate(predName, predValue);
+    if (pred) return { predicates: [pred], complete: true };
+    return null;
+  }
+  if ('raw' in slot.filter) {
+    const raw = slot.filter.raw;
+    // CARD_X token → resolves to a `code` predicate against the literal id.
+    if (raw in CARD_CODE_CONSTANTS) {
+      return { predicates: [{ kind: 'code', value: CARD_CODE_CONSTANTS[raw] }], complete: true };
+    }
+    // s.matfilter / s.synfilter / etc. — body lives in the from-card's helper
+    // map but the catalog doesn't surface it. Parser upgrade pending.
+    return null;
+  }
+  return null;
+}
+
+/** Convert an `aux.FilterBoolFunction(Card.IsX, value)` shape into a single
+ *  FilterPredicate. Mirrors the parser's `decodeMethodPredicate` for the few
+ *  shapes that appear inside slot filters (level / attribute / race / ListsCode).
+ *  Returns undefined for unrecognised method names — caller falls back to
+ *  treating the slot as opaque. */
+function synthesiseSlotPredicate(method?: string, value?: string): FilterPredicate | undefined {
+  if (!method) return undefined;
+  const v = (value ?? '').trim();
+  switch (method) {
+    case 'IsAttribute':         return { kind: 'attribute', value: v };
+    case 'IsRace':              return { kind: 'race', value: v };
+    case 'IsType':              return { kind: 'type', value: v };
+    case 'IsLevel':             return { kind: 'level', value: Number(v) };
+    case 'IsLevelAbove':        return { kind: 'levelAbove', value: Number(v) };
+    case 'IsLevelBelow':        return { kind: 'levelBelow', value: Number(v) };
+    case 'IsCode':
+      if (v === 'id') return { kind: 'code', value: 'self' };
+      if (/^\d+$/.test(v)) return { kind: 'code', value: Number(v) };
+      if (v in CARD_CODE_CONSTANTS) return { kind: 'code', value: CARD_CODE_CONSTANTS[v] };
+      return { kind: 'code', value: v };  // unresolved — evalPredicate returns 'unknown'
+    case 'IsSetCard':           return { kind: 'setCard', value: v };
+    case 'IsLinkMonster':       return { kind: 'linkMonster' };
+    case 'IsXyzMonster':        return { kind: 'xyzMonster' };
+    case 'IsFusionMonster':     return { kind: 'fusionMonster' };
+    case 'IsSynchroMonster':    return { kind: 'synchroMonster' };
+    case 'IsRitualMonster':     return { kind: 'ritualMonster' };
+    case 'ListsCode':           return { kind: 'listsCode', value: v };
+    case 'ListsCodeAsMaterial': return { kind: 'listsCodeAsMaterial', value: v };
+    default:                    return undefined;
+  }
 }
 
 // =============================================================================

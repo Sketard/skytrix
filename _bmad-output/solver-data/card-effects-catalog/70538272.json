@@ -3,7 +3,7 @@
   "name": "Filia Regis",
   "sourceFile": "official/c70538272.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -18,7 +18,19 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "s.matfilter1"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "race",
+                    "value": "RACE_DRAGON"
+                  },
+                  {
+                    "kind": "type",
+                    "value": "TYPE_FUSION"
+                  }
+                ],
+                "complete": true
+              }
             }
           },
           {
@@ -26,7 +38,19 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "s.matfilter2"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "race",
+                    "value": "RACE_DRAGON"
+                  },
+                  {
+                    "kind": "levelAbove",
+                    "value": 7
+                  }
+                ],
+                "complete": true
+              }
             }
           }
         ]
@@ -70,7 +94,7 @@
       },
       "target": {
         "name": "s.rmvtg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -91,7 +115,42 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_REMOVE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_MZONE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.rmvop",
@@ -119,6 +178,15 @@
             "argHints": [
               "POS_FACEUP",
               "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_RTOHAND"
             ]
           },
           {
@@ -209,7 +277,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -249,6 +331,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_RTOHAND"
+            ]
+          },
+          {
             "kind": "send-to-hand",
             "method": "SendtoHand",
             "target": "tc",
@@ -277,8 +368,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 5,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

@@ -3,7 +3,7 @@
   "name": "Mitsurugi no Mikoto, Kusanagi",
   "sourceFile": "official/c82782870.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     82782870
   ],
@@ -57,7 +57,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -125,7 +148,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -190,7 +236,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -227,21 +296,31 @@
       },
       "target": {
         "name": "s.reptg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.repfilter",
+                "1",
+                "c",
+                "tp"
+              ]
+            },
             {
               "kind": "releasableByEffect"
             },
             {
               "kind": "not",
               "inner": {
-                "kind": "raw",
-                "source": "c:IsStatus(STATUS_DESTROY_CONFIRMED)"
+                "kind": "hasFlag",
+                "value": "STATUS:STATUS_DESTROY_CONFIRMED"
               }
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "operation": {
@@ -276,8 +355,8 @@
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 7,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 8,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

@@ -3,7 +3,7 @@
   "name": "King of the Feral Imps",
   "sourceFile": "official/c11398059.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -70,7 +70,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.operation",
@@ -88,6 +102,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",

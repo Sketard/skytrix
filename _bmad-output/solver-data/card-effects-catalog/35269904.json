@@ -3,7 +3,7 @@
   "name": "Triple Tactics Thrust",
   "sourceFile": "official/c35269904.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     35269904
   ],
@@ -113,6 +113,15 @@
           "complete": false
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "desc"
+            ]
+          },
           {
             "kind": "spell-trap-set",
             "method": "SSet",

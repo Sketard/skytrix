@@ -3,7 +3,7 @@
   "name": "Yummy★Snatchy",
   "sourceFile": "official/c30581601.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -20,7 +20,23 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "s.matfilter"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "levelBelow",
+                    "value": 4
+                  },
+                  {
+                    "kind": "attribute",
+                    "value": "ATTRIBUTE_LIGHT"
+                  },
+                  {
+                    "kind": "race",
+                    "value": "RACE_BEAST"
+                  }
+                ],
+                "complete": true
+              }
             }
           }
         ]
@@ -91,6 +107,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOFIELD"
+            ]
+          },
+          {
             "kind": "send-to-grave",
             "method": "SendtoGrave",
             "target": "fc",
@@ -112,6 +137,14 @@
               "LOCATION_FZONE",
               "POS_FACEUP",
               "true"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
             ]
           }
         ]
@@ -172,20 +205,54 @@
       },
       "target": {
         "name": "s.synchtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "res"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_EXTRA"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.synchop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 3,
+    "fullyDecoded": 5,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

@@ -3,7 +3,7 @@
   "name": "Code Igniter",
   "sourceFile": "official/c5088741.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_AI"
@@ -89,6 +89,20 @@
           ],
           "complete": true
         },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ],
         "inline": "s.thtg(s.thfilter1)"
       },
       "operation": {
@@ -109,6 +123,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",
@@ -188,6 +211,10 @@
             {
               "kind": "location",
               "value": "LOCATION_GRAVE"
+            },
+            {
+              "kind": "reason",
+              "value": "REASON_LINK"
             }
           ],
           "complete": true
@@ -210,6 +237,20 @@
           ],
           "complete": true
         },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ],
         "inline": "s.thtg(s.thfilter2)"
       },
       "operation": {
@@ -230,6 +271,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",

@@ -3,7 +3,7 @@
   "name": "Yummyusment★Acroquey",
   "sourceFile": "official/c93360904.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -45,7 +45,22 @@
       },
       "condition": {
         "name": "s.descon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.desconfilter",
+                "1",
+                "nil",
+                "tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.destg",
@@ -61,7 +76,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -101,7 +139,23 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.spconfilter",
+                "1",
+                "nil",
+                "tp",
+                "rp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
@@ -117,7 +171,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -135,6 +203,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -197,7 +274,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TODECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "g+c",
+              "3",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tdop",
@@ -220,9 +320,9 @@
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 6,
+    "fullyDecoded": 8,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

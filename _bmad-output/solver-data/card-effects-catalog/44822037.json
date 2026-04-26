@@ -3,7 +3,7 @@
   "name": "Angel Statue - Azurune",
   "sourceFile": "official/c44822037.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -37,7 +37,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "e:GetHandler()",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.activate",
@@ -54,6 +68,15 @@
               "true",
               "false",
               "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1",
+              "true"
             ]
           },
           {
@@ -92,7 +115,7 @@
       "descriptionStringId": "1",
       "target": {
         "name": "s.bttg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -101,7 +124,21 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "bc",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.btop",
@@ -122,8 +159,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 3,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 4,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

@@ -3,7 +3,7 @@
   "name": "Ghost Belle & Haunted Mansion",
   "sourceFile": "official/c73642296.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -31,7 +31,16 @@
       },
       "condition": {
         "name": "s.negcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "false"
+            }
+          ],
+          "complete": false
+        }
       },
       "cost": {
         "inline": "Cost.SelfDiscard",
@@ -44,7 +53,30 @@
       },
       "target": {
         "name": "s.negtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_NEGATE",
+              "eg",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "inline": "function(e,tp,eg,ep,ev) Duel.NegateActivation(ev) end",
@@ -62,9 +94,9 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

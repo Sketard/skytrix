@@ -3,7 +3,7 @@
   "name": "Ext Ryzeal",
   "sourceFile": "official/c34022970.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     34022970
   ],
@@ -35,10 +35,6 @@
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "# g>0"
-            },
-            {
               "kind": "gameState",
               "method": "GetLocationCount",
               "args": [
@@ -49,9 +45,9 @@
               "value": "0"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "opaque": false
       },
       "target": {
         "name": "s.selfsptg",
@@ -79,6 +75,14 @@
             "target": "g",
             "argHints": [
               "REASON_COST"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
             ]
           }
         ]
@@ -123,7 +127,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -145,6 +163,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",
@@ -208,7 +235,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thop",
@@ -230,6 +271,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",
@@ -255,8 +305,8 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 6,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 7,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

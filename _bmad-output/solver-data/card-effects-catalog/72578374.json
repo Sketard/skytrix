@@ -3,7 +3,7 @@
   "name": "Khaos Starsource Dragon",
   "sourceFile": "official/c72578374.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -18,7 +18,19 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "s.matfilter"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "attribute",
+                    "value": "ATTRIBUTE_LIGHT|ATTRIBUTE_DARK"
+                  },
+                  {
+                    "kind": "race",
+                    "value": "RACE_DRAGON"
+                  }
+                ],
+                "complete": true
+              }
             }
           },
           {
@@ -90,7 +102,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "# g",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -165,7 +200,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_LVCHANGE",
+              "g",
+              "1",
+              "tp",
+              "8"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.lvop",

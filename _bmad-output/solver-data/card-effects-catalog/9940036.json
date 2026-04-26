@@ -3,7 +3,7 @@
   "name": "Mereologic Aggregator",
   "sourceFile": "official/c9940036.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -74,7 +74,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOGRAVE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_EXTRA"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tgop",
@@ -91,6 +105,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOGRAVE"
+            ]
+          },
           {
             "kind": "send-to-grave",
             "method": "SendtoGrave",
@@ -128,12 +151,46 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_LEAVE_GRAVE",
+              "g",
+              "# g",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.atchop",
         "opaque": false,
         "actions": [
+          {
+            "kind": "detach-xyz-material",
+            "method": "RemoveOverlayCard",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "ct",
+              "ct",
+              "REASON_EFFECT"
+            ]
+          },
           {
             "kind": "attach-xyz-material",
             "method": "Overlay",
@@ -168,7 +225,7 @@
       },
       "target": {
         "name": "s.distg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -180,7 +237,30 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_NEGATE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.disop",
@@ -237,8 +317,8 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 6,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 7,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

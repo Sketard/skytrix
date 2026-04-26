@@ -3,7 +3,7 @@
   "name": "Mirrorjade the Iceblade Dragon",
   "sourceFile": "official/c44146295.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     44146295
   ],
@@ -20,7 +20,15 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "CARD_ALBAZ"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "code",
+                    "value": 68468459
+                  }
+                ],
+                "complete": true
+              }
             }
           },
           {
@@ -80,6 +88,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOGRAVE"
+            ]
+          },
+          {
             "kind": "send-to-grave",
             "method": "SendtoGrave",
             "target": "g",
@@ -102,7 +119,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_MZONE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.rmop",
@@ -119,6 +150,28 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "register-flag-effect",
+            "method": "RegisterFlagEffect",
+            "target": "c",
+            "argHints": [
+              "id",
+              "RESETS_STANDARD_PHASE_END|reset",
+              "EFFECT_FLAG_CLIENT_HINT",
+              "1",
+              "0",
+              "aux.Stringid(id,2)"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_REMOVE"
+            ]
+          },
           {
             "kind": "banish",
             "method": "Remove",
@@ -151,40 +204,46 @@
       "descriptionStringId": "1",
       "condition": {
         "name": "s.regcon",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "c:IsPreviousLocation(LOCATION_MZONE)"
+              "kind": "location",
+              "value": "PREV:LOCATION_MZONE"
             },
             {
               "kind": "fusionSummoned"
-            },
-            {
-              "kind": "raw",
-              "source": "rp==1-tp"
             },
             {
               "kind": "previousControler",
               "value": "tp"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "operation": {
         "name": "s.regop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 3,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

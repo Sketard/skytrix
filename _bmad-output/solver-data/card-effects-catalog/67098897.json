@@ -3,7 +3,7 @@
   "name": "Cooky★Yummy Way",
   "sourceFile": "official/c67098897.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -183,7 +183,7 @@
       },
       "target": {
         "name": "s.postg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -196,7 +196,30 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_POSITION"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_POSITION",
+              "g",
+              "# g",
+              "tp",
+              "POS_FACEDOWN_DEFENSE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.posop",
@@ -267,7 +290,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.gyspop",
@@ -285,6 +322,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -305,8 +351,8 @@
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 9,
-    "fullyDecoded": 7,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 8,
+    "partiallyDecoded": 1,
     "opaqueUndecoded": 0
   },
   "warnings": []

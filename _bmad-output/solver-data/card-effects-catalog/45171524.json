@@ -3,7 +3,7 @@
   "name": "Mitsurugi Prayers",
   "sourceFile": "official/c45171524.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_MITSURUGI"
@@ -33,6 +33,15 @@
       "cost": {
         "name": "s.effcost",
         "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        },
         "actions": [
           {
             "kind": "tribute",
@@ -46,7 +55,16 @@
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.effop",
@@ -67,6 +85,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
           {
             "kind": "send-to-hand",
             "method": "SendtoHand",
@@ -100,6 +127,15 @@
             "argHints": [
               "800",
               "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
             ]
           },
           {
@@ -144,8 +180,8 @@
     "totalEffects": 1,
     "totalFunctionRefs": 3,
     "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

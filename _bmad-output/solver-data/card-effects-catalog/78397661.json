@@ -3,7 +3,7 @@
   "name": "Ecclesia and the Dark Dragon",
   "sourceFile": "official/c78397661.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -69,7 +69,7 @@
       },
       "target": {
         "name": "s.rmsptg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -90,12 +90,61 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK|LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.rmspop",
         "opaque": false,
         "actions": [
+          {
+            "kind": "temp-banish-until",
+            "method": "aux.RemoveUntil",
+            "argHints": [
+              "c",
+              "nil",
+              "REASON_EFFECT",
+              "PHASE_END",
+              "id",
+              "e",
+              "tp",
+              "aux.DefaultFieldReturnOp"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -154,7 +203,39 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TODECK"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TODECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "tg+c",
+              "3",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tdop",
@@ -177,8 +258,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

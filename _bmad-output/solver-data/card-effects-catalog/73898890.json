@@ -3,7 +3,7 @@
   "name": "Dyna Mondo",
   "sourceFile": "official/c73898890.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -72,7 +72,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "tg",
+              "2",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tdop",
@@ -139,7 +153,7 @@
       },
       "target": {
         "name": "s.sptg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -159,20 +173,46 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

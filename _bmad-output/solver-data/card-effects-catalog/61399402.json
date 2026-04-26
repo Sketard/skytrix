@@ -3,7 +3,7 @@
   "name": "Light Dragon @Ignister",
   "sourceFile": "official/c61399402.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_IGNISTER"
@@ -42,16 +42,39 @@
       "range": "LOCATION_MZONE",
       "target": {
         "name": "s.reptg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.repfilter",
+                "1",
+                "nil",
+                "tp"
+              ]
+            },
             {
               "kind": "raw",
               "source": "c:CheckRemoveOverlayCard(tp)"
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "detach-xyz-material",
+            "method": "RemoveOverlayCard",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "1",
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       },
       "value": {
         "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
@@ -106,7 +129,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -120,6 +157,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
           {
             "kind": "destroy",
             "method": "Destroy",
@@ -157,10 +203,6 @@
           "predicates": [
             {
               "kind": "raw",
-              "source": "ep==1-tp"
-            },
-            {
-              "kind": "raw",
               "source": "bc:IsControler(tp)"
             },
             {
@@ -188,7 +230,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -205,6 +261,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -225,8 +290,8 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 5,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
     "opaqueUndecoded": 0
   },
   "warnings": []

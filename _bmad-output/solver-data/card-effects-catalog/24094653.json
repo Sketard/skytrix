@@ -22,17 +22,21 @@
         "EVENT_FREE_CHAIN"
       ],
       "operation": {
-        "inline": "Fusion.RegisterSummonEff(c) — vanilla fusion summon",
-        "opaque": true
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 1,
-    "fullyDecoded": 0,
+    "fullyDecoded": 1,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

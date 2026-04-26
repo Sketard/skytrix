@@ -3,7 +3,7 @@
   "name": "Ryzeal Detonator",
   "sourceFile": "official/c34909328.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -91,7 +91,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -141,7 +164,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_LEAVE_GRAVE",
+              "nil",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.attachop",
@@ -158,6 +195,15 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_XMATERIAL"
+            ]
+          },
           {
             "kind": "attach-xyz-material",
             "method": "Overlay",
@@ -191,6 +237,16 @@
         "simpleFilter": {
           "predicates": [
             {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.repfilter",
+                "1",
+                "nil",
+                "tp"
+              ]
+            },
+            {
               "kind": "raw",
               "source": "c:CheckRemoveOverlayCard(tp)"
             }
@@ -200,7 +256,20 @@
       },
       "operation": {
         "inline": "function(e,tp) e:GetHandler():RemoveOverlayCard(tp,1,1,REASON_EFFECT) end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "detach-xyz-material",
+            "method": "RemoveOverlayCard",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "tp",
+              "1",
+              "1",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
       },
       "value": {
         "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
@@ -220,9 +289,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 5,
+    "fullyDecoded": 6,
     "partiallyDecoded": 2,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

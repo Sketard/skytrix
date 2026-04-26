@@ -3,7 +3,7 @@
   "name": "Yummy☆Surprise",
   "sourceFile": "official/c29369059.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_YUMMY"
@@ -51,7 +51,7 @@
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -75,7 +75,45 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "tg",
+              "4",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND|LOCATION_GRAVE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_ONFIELD|LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.effop",
@@ -109,6 +147,15 @@
             ]
           },
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
             "kind": "special-summon",
             "method": "SpecialSummon",
             "target": "sc",
@@ -119,6 +166,15 @@
               "false",
               "false",
               "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
             ]
           },
           {
@@ -142,6 +198,15 @@
             "kind": "shuffle-hand",
             "method": "ShuffleHand",
             "target": "tp"
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOFIELD"
+            ]
           },
           {
             "kind": "break-effect",
@@ -191,8 +256,8 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
     "opaqueUndecoded": 0
   },
   "warnings": []

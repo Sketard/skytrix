@@ -3,7 +3,7 @@
   "name": "Silhouhatte Rabbit",
   "sourceFile": "official/c1528054.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -142,11 +142,28 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
             "argHints": [
               "g"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
             ]
           }
         ],
@@ -190,18 +207,21 @@
       },
       "condition": {
         "name": "s.descon",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "not",
-              "inner": {
-                "kind": "raw",
-                "source": "eg:IsContains(e:GetHandler())"
-              }
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "Card.IsSummonLocation",
+                "1",
+                "nil",
+                "LOCATION_STZONE"
+              ]
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -214,7 +234,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -235,8 +278,8 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 5,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 6,
+    "partiallyDecoded": 1,
     "opaqueUndecoded": 0
   },
   "warnings": []

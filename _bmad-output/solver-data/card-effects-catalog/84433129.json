@@ -3,7 +3,7 @@
   "name": "Star Ryzeal",
   "sourceFile": "official/c84433129.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_RYZEAL"
@@ -53,7 +53,27 @@
       },
       "target": {
         "name": "s.selfsptg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_REMOVEXYZ"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.selfspop",
@@ -65,6 +85,40 @@
             "target": "g",
             "argHints": [
               "REASON_COST"
+            ]
+          },
+          {
+            "kind": "raise-event",
+            "method": "RaiseSingleEvent",
+            "target": "xyzc",
+            "argHints": [
+              "EVENT_DETACH_MATERIAL",
+              "e",
+              "0",
+              "0",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "kind": "raise-event",
+            "method": "RaiseEvent",
+            "target": "xyzc",
+            "argHints": [
+              "EVENT_DETACH_MATERIAL",
+              "e",
+              "REASON_EFFECT",
+              "tp",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
             ]
           }
         ]
@@ -129,6 +183,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
@@ -143,9 +206,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 3,
+    "fullyDecoded": 4,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

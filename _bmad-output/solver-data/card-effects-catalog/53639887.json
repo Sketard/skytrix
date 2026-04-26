@@ -3,7 +3,7 @@
   "name": "Divine Temple of the Snake-Eye",
   "sourceFile": "official/c53639887.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_SNAKE_EYE"
@@ -29,6 +29,15 @@
         "name": "s.activate",
         "opaque": false,
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOFIELD"
+            ]
+          },
           {
             "kind": "move-to-field",
             "method": "MoveToField",
@@ -119,7 +128,22 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return eg:IsExists(Card.IsSummonPlayer,1,nil,1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "Card.IsSummonPlayer",
+                "1",
+                "nil",
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
@@ -141,7 +165,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -191,7 +238,22 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return eg:IsExists(Card.IsSummonPlayer,1,nil,1-tp) end",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "Card.IsSummonPlayer",
+                "1",
+                "nil",
+                "1-tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
@@ -213,7 +275,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -240,9 +325,9 @@
   "coverage": {
     "totalEffects": 4,
     "totalFunctionRefs": 8,
-    "fullyDecoded": 6,
+    "fullyDecoded": 8,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

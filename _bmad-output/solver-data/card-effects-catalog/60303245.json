@@ -3,7 +3,7 @@
   "name": "Salamangreat Almiraj",
   "sourceFile": "official/c60303245.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -18,7 +18,19 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "s.matfilter"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "raw",
+                    "source": "c:IsNormalSummoned()"
+                  },
+                  {
+                    "kind": "atkBelow",
+                    "value": 1000
+                  }
+                ],
+                "complete": false
+              }
             }
           }
         ]
@@ -64,7 +76,18 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.immop",
@@ -105,7 +128,22 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.spcfilter",
+                "1",
+                "nil",
+                "tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
       },
       "target": {
         "name": "s.sptg",
@@ -127,7 +165,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -153,9 +205,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 5,
+    "fullyDecoded": 6,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

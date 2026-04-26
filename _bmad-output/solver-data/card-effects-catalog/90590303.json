@@ -3,7 +3,7 @@
   "name": "Number 41: Bagooska the Terribly Tired Tapir",
   "sourceFile": "official/c90590303.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -65,6 +65,17 @@
         "name": "s.mtop",
         "opaque": false,
         "actions": [
+          {
+            "kind": "detach-xyz-material",
+            "method": "RemoveOverlayCard",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "tp",
+              "1",
+              "1",
+              "REASON_COST"
+            ]
+          },
           {
             "kind": "destroy",
             "method": "Destroy",

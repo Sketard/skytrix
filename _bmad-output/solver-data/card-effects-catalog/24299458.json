@@ -29,11 +29,24 @@
       },
       "condition": {
         "inline": "aux.StatChangeDamageStepCondition",
-        "opaque": true
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.StatChangeDamageStepCondition",
+          "kind": "damage-step-condition"
+        }
       },
       "cost": {
         "name": "s.cost",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.target",
@@ -48,11 +61,32 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOGRAVE"
+            ]
+          },
+          {
             "kind": "send-to-grave",
             "method": "SendtoGrave",
             "target": "g",
             "argHints": [
               "REASON_COST"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "nil",
+              "# og",
+              "0",
+              "0"
             ]
           }
         ]
@@ -61,6 +95,15 @@
         "name": "s.activate",
         "opaque": false,
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_NEGATE"
+            ]
+          },
           {
             "kind": "negate-related-chain",
             "method": "NegateRelatedChain",
@@ -110,9 +153,9 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

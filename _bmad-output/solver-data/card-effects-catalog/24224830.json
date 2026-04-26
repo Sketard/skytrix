@@ -3,7 +3,7 @@
   "name": "Called by the Grave",
   "sourceFile": "official/c24224830.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -24,7 +24,7 @@
       ],
       "target": {
         "name": "s.target",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -39,7 +39,30 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_REMOVE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.activate",
@@ -53,6 +76,22 @@
               "POS_FACEUP",
               "REASON_EFFECT"
             ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e2",
+            "argHints": [
+              "tp"
+            ]
           }
         ]
       }
@@ -61,8 +100,8 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 1,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

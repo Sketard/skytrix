@@ -3,7 +3,7 @@
   "name": "Number 60: Dugares the Timeless",
   "sourceFile": "official/c66011101.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -65,7 +65,45 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DRAW",
+              "nil",
+              "0",
+              "tp",
+              "2"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_HANDES",
+              "nil",
+              "0",
+              "tp",
+              "1"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.effop",
@@ -79,6 +117,14 @@
           "complete": true
         },
         "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          },
           {
             "kind": "draw",
             "method": "Draw",
@@ -109,6 +155,15 @@
             ]
           },
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
             "kind": "special-summon",
             "method": "SpecialSummon",
             "target": "g",
@@ -119,6 +174,15 @@
               "false",
               "false",
               "POS_FACEUP_DEFENSE"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATKDEF"
             ]
           }
         ],

@@ -3,7 +3,7 @@
   "name": "Dracotail Phryxul",
   "sourceFile": "official/c84477320.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     84477320
   ],
@@ -55,7 +55,42 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_MZONE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -80,6 +115,15 @@
               "false",
               "false",
               "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_RTOHAND"
             ]
           },
           {
@@ -145,7 +189,42 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_MZONE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -170,6 +249,15 @@
               "false",
               "false",
               "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_RTOHAND"
             ]
           },
           {
@@ -211,7 +299,7 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -219,11 +307,11 @@
               "value": "LOCATION_GRAVE"
             },
             {
-              "kind": "raw",
-              "source": "r&REASON_FUSION==REASON_FUSION"
+              "kind": "reason",
+              "value": "REASON_FUSION"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -265,6 +353,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
@@ -279,8 +376,8 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 6,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 7,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

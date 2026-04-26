@@ -3,7 +3,7 @@
   "name": "Dracotail Faimena",
   "sourceFile": "official/c1498449.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -95,7 +95,7 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -103,11 +103,11 @@
               "value": "LOCATION_GRAVE"
             },
             {
-              "kind": "raw",
-              "source": "r&REASON_FUSION==REASON_FUSION"
+              "kind": "reason",
+              "value": "REASON_FUSION"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -149,6 +149,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
@@ -163,8 +172,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 7,
-    "fullyDecoded": 6,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 7,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

@@ -3,7 +3,7 @@
   "name": "Albion the Branded Dragon",
   "sourceFile": "official/c87746184.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     87746184
   ],
@@ -22,7 +22,15 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "CARD_ALBAZ"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "code",
+                    "value": 68468459
+                  }
+                ],
+                "complete": true
+              }
             }
           },
           {
@@ -162,7 +170,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.thsetop",
@@ -189,7 +211,26 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "aux.Stringid(id,2)"
+            ]
+          },
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "sc"
+            ]
+          }
+        ]
       }
     }
   ],

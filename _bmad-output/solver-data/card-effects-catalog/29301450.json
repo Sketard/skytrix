@@ -3,7 +3,7 @@
   "name": "S:P Little Knight",
   "sourceFile": "official/c29301450.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -78,7 +78,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_REMOVE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.rmop",
@@ -91,6 +114,14 @@
             "argHints": [
               "POS_FACEUP",
               "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
             ]
           }
         ]
@@ -160,20 +191,50 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "tg",
+              "2",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.tmprmop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "temp-banish-until",
+            "method": "aux.RemoveUntil",
+            "argHints": [
+              "tg",
+              "nil",
+              "REASON_EFFECT",
+              "PHASE_END",
+              "id",
+              "e",
+              "tp",
+              "aux.DefaultFieldReturnOp"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 3,
+    "fullyDecoded": 4,
     "partiallyDecoded": 2,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

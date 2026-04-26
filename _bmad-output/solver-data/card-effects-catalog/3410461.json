@@ -3,7 +3,7 @@
   "name": "Alba-Lenatus the Abyss Dragon",
   "sourceFile": "official/c3410461.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_FUSION"
@@ -42,6 +42,16 @@
       "operation": {
         "name": "s.atkop",
         "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          }
+        ],
         "sideEffects": [
           {
             "registeredOn": "c",
@@ -71,6 +81,16 @@
       "operation": {
         "name": "s.regop",
         "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          }
+        ],
         "sideEffects": [
           {
             "registeredOn": "c",

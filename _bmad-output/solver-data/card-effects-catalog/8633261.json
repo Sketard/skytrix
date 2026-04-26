@@ -3,7 +3,7 @@
   "name": "Ice Ryzeal",
   "sourceFile": "official/c8633261.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     8633261
   ],
@@ -35,10 +35,6 @@
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "raw",
-              "source": "# g>0"
-            },
-            {
               "kind": "gameState",
               "method": "GetMZoneCount",
               "args": [
@@ -49,9 +45,9 @@
               "value": "0"
             }
           ],
-          "complete": false
+          "complete": true
         },
-        "opaque": true
+        "opaque": false
       },
       "target": {
         "name": "s.selfsptg",
@@ -75,6 +71,14 @@
             "target": "g",
             "argHints": [
               "REASON_COST"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
             ]
           }
         ]
@@ -121,7 +125,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -147,6 +165,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
             "kind": "special-summon",
             "method": "SpecialSummon",
             "target": "g",
@@ -166,8 +193,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

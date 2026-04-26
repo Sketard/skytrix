@@ -3,7 +3,7 @@
   "name": "Mulcharmy Fuwalos",
   "sourceFile": "official/c42141493.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_MULCHARMY"
@@ -75,25 +75,60 @@
             "argHints": [
               "REASON_COST|REASON_DISCARD"
             ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
           }
         ]
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        }
       },
       "operation": {
         "name": "s.effop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e2",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 4,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 2
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

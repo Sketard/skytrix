@@ -3,7 +3,7 @@
   "name": "Snake-Eyes Doomed Dragon",
   "sourceFile": "official/c58071334.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -65,6 +65,10 @@
             {
               "kind": "raw",
               "source": "Duel.GetLocationCountFromEx(tp,tp,nil,c)>0"
+            },
+            {
+              "kind": "raw",
+              "source": "Duel.IsExistingMatchingCard(s.hspfilter,tp,LOCATION_STZONE,0,2,nil)"
             }
           ],
           "complete": false
@@ -87,7 +91,18 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOGRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.hspop",
@@ -152,7 +167,18 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOFIELD"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.plop",

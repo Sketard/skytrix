@@ -3,7 +3,7 @@
   "name": "Rindbrumm the Striking Dragon",
   "sourceFile": "official/c51409648.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -18,7 +18,15 @@
             "min": 1,
             "max": 1,
             "filter": {
-              "raw": "CARD_ALBAZ"
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "code",
+                    "value": 68468459
+                  }
+                ],
+                "complete": true
+              }
             }
           },
           {
@@ -60,11 +68,47 @@
       },
       "condition": {
         "name": "s.negcon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "re:IsMonsterEffect()"
+            },
+            {
+              "kind": "raw",
+              "source": "re:IsActiveType(TYPE_EXTRA)"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.negtg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "eg",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.negop",
@@ -82,6 +126,15 @@
             "kind": "negate-effect",
             "method": "NegateEffect",
             "target": "ev"
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_RTOHAND"
+            ]
           },
           {
             "kind": "break-effect",
@@ -138,7 +191,7 @@
       },
       "target": {
         "name": "s.sprmtg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -160,12 +213,56 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_REMOVE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.sprmop",
         "opaque": false,
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -195,9 +292,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 3,
+    "fullyDecoded": 5,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 2
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

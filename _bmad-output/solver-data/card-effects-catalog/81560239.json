@@ -3,7 +3,7 @@
   "name": "Mitsurugi Ritual",
   "sourceFile": "official/c81560239.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -46,7 +46,7 @@
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -64,20 +64,86 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_RELEASE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND|LOCATION_MZONE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_RELEASE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND|LOCATION_MZONE|LOCATION_DECK"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.effop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "ritual-summon-operation",
+            "method": "Ritual.Operation",
+            "argHints": [
+              "params1"
+            ]
+          },
+          {
+            "kind": "ritual-summon-operation",
+            "method": "Ritual.Operation",
+            "argHints": [
+              "params2"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 0,
-    "partiallyDecoded": 2,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

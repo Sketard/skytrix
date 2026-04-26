@@ -3,7 +3,7 @@
   "name": "Dracotail Mululu",
   "sourceFile": "official/c7375867.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -55,7 +55,17 @@
       },
       "operation": {
         "name": "s.fusop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
       }
     },
     {
@@ -81,7 +91,7 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -89,11 +99,11 @@
               "value": "LOCATION_GRAVE"
             },
             {
-              "kind": "raw",
-              "source": "r&REASON_FUSION==REASON_FUSION"
+              "kind": "reason",
+              "value": "REASON_FUSION"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -135,11 +145,29 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
             "argHints": [
               "g"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_NEGATE"
             ]
           }
         ]
@@ -149,9 +177,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

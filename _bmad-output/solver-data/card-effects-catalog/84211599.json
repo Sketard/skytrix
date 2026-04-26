@@ -42,7 +42,17 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
       },
       "target": {
         "name": "s.target",
@@ -67,12 +77,42 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "aux.Stringid(id,0)"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_REMOVE"
+            ]
+          },
+          {
             "kind": "banish",
             "method": "Remove",
             "target": "rg",
             "argHints": [
               "POS_FACEDOWN",
               "REASON_COST"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "0",
+              "LOCATION_DECK"
             ]
           }
         ]
@@ -87,6 +127,15 @@
             "target": "p",
             "argHints": [
               "d"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "p",
+              "HINTMSG_ATOHAND"
             ]
           },
           {
@@ -117,6 +166,14 @@
             "target": "sc",
             "argHints": [
               "REASON_RULE"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
             ]
           }
         ]

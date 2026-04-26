@@ -3,7 +3,7 @@
   "name": "Droll & Lock Bird",
   "sourceFile": "official/c94145021.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -74,16 +74,42 @@
       },
       "operation": {
         "name": "s.operation",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e2",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e3",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 1,
+    "fullyDecoded": 2,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

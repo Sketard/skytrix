@@ -3,7 +3,7 @@
   "name": "Snake-Eyes Diabellstar",
   "sourceFile": "official/c27260347.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [
     27260347
   ],
@@ -46,7 +46,43 @@
       },
       "operation": {
         "name": "s.btplop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "c:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "c:IsMonsterCard()"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_CHANGE_TYPE",
+            "value": "TYPE_SPELL|TYPE_CONTINUOUS",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD&~ RESET_TURN_SET"
+          }
+        ]
       }
     },
     {
@@ -104,12 +140,67 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_LEAVE_GRAVE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.gyplop",
         "opaque": false,
         "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "c:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "c:IsMonsterCard()"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          },
           {
             "kind": "special-summon",
             "method": "SpecialSummon",
@@ -130,9 +221,9 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 3,
+    "fullyDecoded": 4,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

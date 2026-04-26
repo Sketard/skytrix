@@ -3,7 +3,7 @@
   "name": "Dracotail Pan",
   "sourceFile": "official/c44482554.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -33,7 +33,7 @@
       },
       "condition": {
         "inline": "function(e,tp,eg,ep,ev,re,r,rp) return e:GetHandler():IsLocation(LOCATION_GRAVE) and (r&REASON_FUSION)==REASON_FUSION end",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -41,11 +41,11 @@
               "value": "LOCATION_GRAVE"
             },
             {
-              "kind": "raw",
-              "source": "r&REASON_FUSION==REASON_FUSION"
+              "kind": "reason",
+              "value": "REASON_FUSION"
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -87,6 +87,15 @@
         },
         "actions": [
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SET"
+            ]
+          },
+          {
             "kind": "spell-trap-set",
             "method": "SSet",
             "target": "tp",
@@ -98,6 +107,15 @@
             "kind": "shuffle-deck",
             "method": "ShuffleDeck",
             "target": "tp"
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
           },
           {
             "kind": "break-effect",
@@ -138,18 +156,22 @@
       },
       "condition": {
         "name": "s.spcon",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "not",
-              "inner": {
-                "kind": "raw",
-                "source": "eg:IsContains(e:GetHandler())"
-              }
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.spconfilter",
+                "1",
+                "nil",
+                "e",
+                "tp"
+              ]
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "target": {
@@ -173,7 +195,33 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -209,6 +257,15 @@
             ]
           },
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
             "kind": "special-summon",
             "method": "SpecialSummon",
             "target": "g",
@@ -228,8 +285,8 @@
   "coverage": {
     "totalEffects": 2,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 2,
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

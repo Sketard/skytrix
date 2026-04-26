@@ -49,17 +49,21 @@
         }
       },
       "operation": {
-        "inline": "Fusion.CreateSummonEff — fusion-summon from extra deck using declared materials",
-        "opaque": true
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
       }
     }
   ],
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 2,
-    "fullyDecoded": 1,
+    "fullyDecoded": 2,
     "partiallyDecoded": 0,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

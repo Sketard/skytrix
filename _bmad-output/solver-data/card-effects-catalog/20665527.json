@@ -3,7 +3,7 @@
   "name": "Amphibious Swarmship Amblowhale",
   "sourceFile": "official/c20665527.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -45,6 +45,15 @@
       "range": "LOCATION_MZONE",
       "value": {
         "name": "s.atkval",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.GetMatchingGroupCount(Card.IsType,e:GetHandlerPlayer(),LOCATION_GRAVE,LOCATION_GRAVE,nil,TYPE_LINK)*200"
+            }
+          ],
+          "complete": false
+        },
         "opaque": true
       }
     },
@@ -86,7 +95,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -133,18 +165,21 @@
       },
       "condition": {
         "name": "s.descon",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
-              "kind": "not",
-              "inner": {
-                "kind": "raw",
-                "source": "eg:IsContains(e:GetHandler())"
-              }
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.desfilter",
+                "1",
+                "nil",
+                "tp"
+              ]
             }
           ],
-          "complete": false
+          "complete": true
         }
       },
       "cost": {
@@ -158,12 +193,44 @@
       },
       "target": {
         "name": "s.destg",
-        "opaque": true
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.IsExistingMatchingCard(aux.TRUE,tp,LOCATION_ONFIELD,LOCATION_ONFIELD,1,nil)"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "nil",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
         "opaque": false,
         "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
           {
             "kind": "destroy",
             "method": "Destroy",
@@ -179,9 +246,9 @@
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 6,
-    "fullyDecoded": 4,
-    "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "fullyDecoded": 6,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

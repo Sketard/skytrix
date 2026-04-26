@@ -3,7 +3,7 @@
   "name": "Triple Tactics Talent",
   "sourceFile": "official/c25311006.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [],
@@ -45,7 +45,7 @@
       },
       "target": {
         "name": "s.efftg",
-        "opaque": true,
+        "opaque": false,
         "simpleFilter": {
           "predicates": [
             {
@@ -67,7 +67,45 @@
             }
           ],
           "complete": false
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DRAW",
+              "nil",
+              "0",
+              "tp",
+              "2"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_CONTROL",
+              "nil",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "nil",
+              "0",
+              "1-tp",
+              "LOCATION_HAND"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.effop",
@@ -83,11 +121,29 @@
             ]
           },
           {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_CONTROL"
+            ]
+          },
+          {
             "kind": "confirm",
             "method": "ConfirmCards",
             "target": "p",
             "argHints": [
               "g"
+            ]
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "p",
+              "HINTMSG_TODECK"
             ]
           },
           {
@@ -112,8 +168,8 @@
   "coverage": {
     "totalEffects": 1,
     "totalFunctionRefs": 3,
-    "fullyDecoded": 2,
-    "partiallyDecoded": 1,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
     "opaqueUndecoded": 0
   },
   "warnings": []

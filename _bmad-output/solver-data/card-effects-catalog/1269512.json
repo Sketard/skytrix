@@ -3,7 +3,7 @@
   "name": "Full Armored Utopic Ray Lancer",
   "sourceFile": "official/c1269512.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [],
   "summonProcedures": [
@@ -84,7 +84,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "nil",
+              "1",
+              "1-tp",
+              "LOCATION_MZONE"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.disop",
@@ -124,8 +138,7 @@
               "source": "Duel.GetAttacker()==c"
             },
             {
-              "kind": "raw",
-              "source": "c:CanChainAttack()"
+              "kind": "canBeBattleTarget"
             },
             {
               "kind": "raw",
@@ -152,16 +165,22 @@
       },
       "operation": {
         "inline": "function() Duel.ChainAttack() end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "chain-attack",
+            "method": "ChainAttack"
+          }
+        ]
       }
     }
   ],
   "coverage": {
     "totalEffects": 3,
     "totalFunctionRefs": 5,
-    "fullyDecoded": 3,
+    "fullyDecoded": 4,
     "partiallyDecoded": 1,
-    "opaqueUndecoded": 1
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }

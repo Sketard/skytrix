@@ -3,7 +3,7 @@
   "name": "Dracotail Gulamel",
   "sourceFile": "official/c79755671.lua",
   "parserVersion": "v7-gate-strip",
-  "parsedAt": "2026-04-24",
+  "parsedAt": "2026-04-25",
   "listedNames": [],
   "listedSeries": [
     "SET_DRACOTAIL"
@@ -68,7 +68,16 @@
       },
       "condition": {
         "name": "s.descon",
-        "opaque": true
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "false"
+            }
+          ],
+          "complete": false
+        }
       },
       "target": {
         "name": "s.destg",
@@ -84,7 +93,30 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.desop",
@@ -143,7 +175,21 @@
             }
           ],
           "complete": true
-        }
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
       },
       "operation": {
         "name": "s.spop",
@@ -160,6 +206,15 @@
               "false",
               "false",
               "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1",
+              "true"
             ]
           }
         ],
@@ -212,7 +267,33 @@
       },
       "operation": {
         "name": "s.regop",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "raise-event",
+            "method": "RaiseSingleEvent",
+            "target": "c",
+            "argHints": [
+              "EVENT_CUSTOM+id",
+              "re",
+              "r",
+              "rp",
+              "ep",
+              "ev"
+            ]
+          },
+          {
+            "kind": "register-flag-effect",
+            "method": "RegisterFlagEffect",
+            "target": "c",
+            "argHints": [
+              "id+1",
+              "RESET_EVENT|RESETS_STANDARD|RESET_CHAIN",
+              "0",
+              "1"
+            ]
+          }
+        ]
       },
       "clonedTo": [
         "e4"
@@ -252,7 +333,17 @@
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "reset-flag-effect",
+            "method": "ResetFlagEffect",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "id+1"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e3",
       "clonedTo": [
@@ -295,7 +386,17 @@
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "reset-flag-effect",
+            "method": "ResetFlagEffect",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "id+1"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e4"
     },
@@ -334,7 +435,17 @@
       },
       "operation": {
         "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
-        "opaque": true
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "reset-flag-effect",
+            "method": "ResetFlagEffect",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "id+1"
+            ]
+          }
+        ]
       },
       "clonedFrom": "e4"
     }
@@ -342,9 +453,9 @@
   "coverage": {
     "totalEffects": 6,
     "totalFunctionRefs": 13,
-    "fullyDecoded": 8,
-    "partiallyDecoded": 0,
-    "opaqueUndecoded": 5
+    "fullyDecoded": 12,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
   },
   "warnings": []
 }
