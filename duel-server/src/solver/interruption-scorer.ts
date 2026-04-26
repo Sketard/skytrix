@@ -19,7 +19,13 @@ import type { CardMetadataMap } from './card-metadata.js';
 import type { StructuralWeights, StructuralTutorCards } from './structural-value-computer.js';
 import { computeStructuralValue } from './structural-value-computer.js';
 import type { ArchetypeExpertise } from './strategic-grammar.js';
-import { evaluateGoalMatch, goalMatchReachableUpperBound } from './goal-match-evaluator.js';
+import {
+  evaluateGoalMatch,
+  goalMatchReachableUpperBound,
+  evaluateImplicitGoals,
+  implicitGoalsReachableUpperBound,
+  type ImplicitBoardGoal,
+} from './goal-match-evaluator.js';
 
 // =============================================================================
 // Zone Constants (local to scorer)
@@ -103,6 +109,10 @@ export class InterruptionScorer {
   private readonly tutorCards: StructuralTutorCards | undefined;
   private archetypeExpertise: readonly ArchetypeExpertise[] = [];
   private deckCardIds: readonly number[] | undefined;
+  // Phase A scorer fix (2026-04-26) — fixture's `expectedBoard` injected as
+  // implicit goals at eval time. Empty / zero in production runtime.
+  private implicitGoals: readonly ImplicitBoardGoal[] = [];
+  private implicitGoalWeight = 0;
 
   constructor(
     tags: Record<string, InterruptionTag>,
@@ -158,6 +168,16 @@ export class InterruptionScorer {
     this.deckCardIds = deckCardIds;
   }
 
+  /** Phase A scorer fix (2026-04-26). Inject the fixture's `expectedBoard`
+   *  as implicit goals; each card present on the terminal field contributes
+   *  `weight` units to `interruptionScore`. Eval-only — production worker
+   *  never calls this (no expectedBoard available). Pass `goals=[]` or
+   *  `weight=0` to disable. */
+  setImplicitBoardGoals(goals: readonly ImplicitBoardGoal[], weight: number): void {
+    this.implicitGoals = goals;
+    this.implicitGoalWeight = weight;
+  }
+
   /** Strategic Grammar v1 α-β upper-bound delta (2026-04-21). Returns an
    *  optimistic estimate of the goalMatchPoints still reachable from
    *  `fieldState`, given that `currentGoalMatchPoints` already contribute to
@@ -168,8 +188,19 @@ export class InterruptionScorer {
   goalMatchUpperBoundDelta(
     fieldState: FieldState,
     currentGoalMatchPoints: number,
+    currentImplicitGoalPoints: number = 0,
   ): number {
-    return goalMatchReachableUpperBound(fieldState, this.archetypeExpertise, currentGoalMatchPoints);
+    const grammar = goalMatchReachableUpperBound(
+      fieldState, this.archetypeExpertise, currentGoalMatchPoints,
+    );
+    // Phase A scorer fix (2026-04-26) — widen the bound by still-reachable
+    // implicit goal points, otherwise α-β cuts subtrees that could still
+    // produce expectedBoard cards (the very thing the gradient is meant to
+    // reward). When implicit goals are empty / weight=0 this returns 0.
+    const implicit = implicitGoalsReachableUpperBound(
+      fieldState, this.implicitGoals, this.implicitGoalWeight, currentImplicitGoalPoints,
+    );
+    return grammar + implicit;
   }
 
   /** Replace the per-interruption-type weights. Same tuning rationale as
@@ -207,7 +238,7 @@ export class InterruptionScorer {
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
       bounce: 0, handRip: 0, sendToGy: 0,
       weighted: 0, fallbackPoints: 0, latentPoints: 0,
-      goalMatchPoints: 0,
+      goalMatchPoints: 0, implicitGoalPoints: 0,
       interruptionScore: 0, explorationScore: 0,
     };
 
@@ -369,28 +400,37 @@ export class InterruptionScorer {
     const goalMatch = evaluateGoalMatch(fieldState, this.archetypeExpertise, this.deckCardIds);
     const goalMatchPoints = goalMatch.totalPoints;
 
-    // Split scoring (methodology v5 + Strategic Grammar v1).
-    //   interruptionScore = weighted + fallbackPoints + goalMatchPoints
+    // Phase A scorer fix (2026-04-26) — implicit goals from `expectedBoard`.
+    // Counts INTO `interruptionScore` for the same reason as goalMatchPoints.
+    // Eval-only: production runtime never sets implicit goals so this is 0.
+    const implicit = evaluateImplicitGoals(
+      fieldState, this.implicitGoals, this.implicitGoalWeight,
+    );
+    const implicitGoalPoints = implicit.totalPoints;
+
+    // Split scoring (methodology v5 + Strategic Grammar v1 + Phase A).
+    //   interruptionScore = weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints
     //   explorationScore  = interruptionScore + latentPoints
     // interruptionScore is the user-facing grade (DecisionNode.score,
     // reportScore, rubric). explorationScore is the DFS guidance signal
     // (action ordering, TT, α-β floor) and is returned as `score` to
     // preserve the pre-v5 DFS internal contract.
-    const interruptionScore = weighted + fallbackPoints + goalMatchPoints;
+    const interruptionScore = weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints;
     const explorationScore = interruptionScore + latentPoints;
     breakdown.weighted = weighted;
     breakdown.fallbackPoints = fallbackPoints;
     breakdown.latentPoints = latentPoints;
     breakdown.goalMatchPoints = goalMatchPoints;
+    breakdown.implicitGoalPoints = implicitGoalPoints;
     breakdown.interruptionScore = interruptionScore;
     breakdown.explorationScore = explorationScore;
 
     solverAssert(
-      Math.abs(interruptionScore - (weighted + fallbackPoints + goalMatchPoints)) < 1e-9
+      Math.abs(interruptionScore - (weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints)) < 1e-9
       && Math.abs(explorationScore - (interruptionScore + latentPoints)) < 1e-9,
       'InterruptionScorer.scoreWithCards',
       'score invariant drift',
-      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints, goalMatchPoints },
+      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints, goalMatchPoints, implicitGoalPoints },
     );
 
     return { score: explorationScore, scoreBreakdown: breakdown, endBoardCards };

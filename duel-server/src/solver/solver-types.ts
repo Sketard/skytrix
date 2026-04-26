@@ -173,9 +173,17 @@ export interface ScoreBreakdown {
    *  because goal-completion IS part of end-board disruption value, not
    *  latent exploration signal. 0 when no archetypeExpertise loaded. */
   goalMatchPoints: number;
-  /** `weighted + fallbackPoints + goalMatchPoints`. User-facing end-board
-   *  grade — consumed by harness `reportScore`, regression rubric,
-   *  `DecisionNode.score` display. */
+  /** Phase A scorer fix (2026-04-26) — Σ(weight × matched) over the
+   *  fixture's `expectedBoard` cards present on the terminal field. Set
+   *  per-fixture by the eval harness (env-gated `SOLVER_IMPLICIT_GOALS=1`);
+   *  always 0 in production runtime where no `expectedBoard` is supplied.
+   *  Counts INTO `interruptionScore` to flip DFS preference from a high-
+   *  structural-score short terminal to a longer terminal that reaches
+   *  more expectedBoard cards. */
+  implicitGoalPoints: number;
+  /** `weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints`.
+   *  User-facing end-board grade — consumed by harness `reportScore`,
+   *  regression rubric, `DecisionNode.score` display. */
   interruptionScore: number;
   /** `interruptionScore + latentPoints`. DFS guidance signal — drives action
    *  ordering, TT storage, α-β floor (`bestTurn1ExplorationScore`), virtual-
@@ -206,7 +214,7 @@ export const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
   weighted: 0, fallbackPoints: 0, latentPoints: 0,
-  goalMatchPoints: 0,
+  goalMatchPoints: 0, implicitGoalPoints: 0,
   interruptionScore: 0, explorationScore: 0,
 });
 

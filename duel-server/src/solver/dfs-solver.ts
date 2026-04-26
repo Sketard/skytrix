@@ -641,6 +641,7 @@ export class DfsSolver implements SolverStrategy {
     const grammarUpperBoundDelta = this.scorer.goalMatchUpperBoundDelta(
       fieldState,
       interim.scoreBreakdown.goalMatchPoints,
+      interim.scoreBreakdown.implicitGoalPoints,
     );
     const maxPlausibleGain = (remainingPlies * BRANCH_BOUND_RECOVERY_PER_PLY) + grammarUpperBoundDelta;
     if (pathTurn1ExplorationScore + maxPlausibleGain < ctx.bestTurn1ExplorationScore) {

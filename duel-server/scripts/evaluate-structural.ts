@@ -243,6 +243,25 @@ export async function runFixture(
   scorer.setDeckContents(deckCardIds);
   ranker.setArchetypeExpertise(filteredExpertise);
 
+  // Phase A scorer fix (2026-04-26) — env-gated implicit ComboGoals from the
+  // fixture's `expectedBoard`. Each card present on the terminal field
+  // contributes `weight` units to interruptionScore. Always called per fixture
+  // so a prior fixture's implicit goals never leak into this one (workers are
+  // pooled across fixtures). Defaults to disabled (weight=0, goals=[]) so
+  // pre-Phase-A baselines reproduce when the env vars are absent.
+  const implicitGoalsEnabled = process.env.SOLVER_IMPLICIT_GOALS === '1';
+  const implicitGoalWeight = implicitGoalsEnabled
+    ? Number(process.env.SOLVER_IMPLICIT_GOALS_WEIGHT ?? '10')
+    : 0;
+  const implicitGoals = (implicitGoalsEnabled && hand.expectedBoard)
+    ? hand.expectedBoard.map(e => ({
+        zone: e.zone,
+        cardId: e.cardId,
+        ...(e.position !== undefined ? { position: e.position } : {}),
+      }))
+    : [];
+  scorer.setImplicitBoardGoals(implicitGoals, implicitGoalWeight);
+
   const preferredSearchTargets = [
     ...(hand.expectedBoard ?? []).map(e => e.cardId),
     ...(hand.preferredIntermediates ?? []),

@@ -188,6 +188,122 @@ export function goalMatchReachableUpperBound(
   return Math.max(0, totalReachablePoints - currentGoalMatchPoints);
 }
 
+// =============================================================================
+// Phase A scorer fix (2026-04-26) — implicit board goals from `expectedBoard`.
+// The eval harness wires the fixture's expectedBoard list into the scorer as
+// implicit goals so each card present on the terminal field contributes
+// `weight` units to `interruptionScore`. Distinct from the grammar's
+// ComboGoal/ZoneKind plumbing because the fixture format uses MZONE/SZONE
+// shorthand (M1-M5 + EMZ_L/EMZ_R / S1-S5 respectively) that doesn't map 1:1
+// to a single ZoneKind. Production runtime never sets implicit goals — this
+// path is eval-only (gated on SOLVER_IMPLICIT_GOALS=1 in evaluate-structural).
+// =============================================================================
+
+export interface ImplicitBoardGoal {
+  /** 'MZONE' | 'SZONE' | individual ZoneId ('M1'-'M5', 'S1'-'S5', 'FIELD',
+   *  'EMZ_L', 'EMZ_R', 'HAND', 'GY', 'BANISHED', 'EXTRA'). Mirrors the fixture's
+   *  expectedBoard.zone shorthand. */
+  zone: string;
+  cardId: number;
+  position?: 'attack' | 'defense' | 'set';
+}
+
+const MZONE_EXPANSION_SET: ReadonlySet<string> = new Set(['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R']);
+const SZONE_EXPANSION_SET: ReadonlySet<string> = new Set(['S1', 'S2', 'S3', 'S4', 'S5']);
+
+const IMPLICIT_SCANNED_ZONES: readonly ZoneId[] = [
+  'M1', 'M2', 'M3', 'M4', 'M5',
+  'S1', 'S2', 'S3', 'S4', 'S5',
+  'FIELD', 'EMZ_L', 'EMZ_R',
+  'HAND', 'GY', 'BANISHED', 'EXTRA',
+];
+
+function implicitZoneMatches(expected: string, actual: string): boolean {
+  if (expected === actual) return true;
+  if (expected === 'MZONE') return MZONE_EXPANSION_SET.has(actual);
+  if (expected === 'SZONE') return SZONE_EXPANSION_SET.has(actual);
+  return false;
+}
+
+function implicitPositionMatches(
+  expected: 'attack' | 'defense' | 'set' | undefined,
+  actual: FieldCard['position'],
+): boolean {
+  if (!expected) return true;
+  if (expected === 'attack') return actual === 'faceup-atk';
+  if (expected === 'defense') return actual === 'faceup-def';
+  if (expected === 'set') return actual === 'facedown' || actual === 'facedown-def';
+  return false;
+}
+
+function implicitGoalMatches(state: FieldState, g: ImplicitBoardGoal): boolean {
+  for (const zoneId of IMPLICIT_SCANNED_ZONES) {
+    if (!implicitZoneMatches(g.zone, zoneId)) continue;
+    const cards = state.zones[zoneId];
+    if (!cards || cards.length === 0) continue;
+    for (const card of cards) {
+      if (card.cardId !== g.cardId) continue;
+      if (!implicitPositionMatches(g.position, card.position)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+export interface ImplicitGoalResult {
+  totalPoints: number;
+  matchedCount: number;
+}
+
+/** Count `expectedBoard` matches in `state.zones` and return `matchedCount × weight`.
+ *  Pure / side-effect-free. Returns zero when goals/weight are absent so the
+ *  scorer's caller can call this unconditionally. */
+export function evaluateImplicitGoals(
+  state: FieldState,
+  goals: readonly ImplicitBoardGoal[],
+  weight: number,
+): ImplicitGoalResult {
+  if (goals.length === 0 || weight <= 0) return { totalPoints: 0, matchedCount: 0 };
+  let matched = 0;
+  for (const g of goals) {
+    if (implicitGoalMatches(state, g)) matched++;
+  }
+  return { totalPoints: matched * weight, matchedCount: matched };
+}
+
+/** Optimistic upper bound on still-reachable implicit-goal points from
+ *  `state`. A goal contributes `weight` to the bound when the card is present
+ *  in any non-banished zone (HAND/DECK/GY/EXTRA/field) — generous, so DFS's
+ *  α-β cut never elaguates a branch that could still complete an expectedBoard
+ *  card. Subtracts `currentImplicitPoints` so the delta is the headroom over
+ *  what's already credited at this state.
+ *
+ *  Returns 0 when the implicit goal list is empty or weight is zero. */
+export function implicitGoalsReachableUpperBound(
+  state: FieldState,
+  goals: readonly ImplicitBoardGoal[],
+  weight: number,
+  currentImplicitPoints: number,
+): number {
+  if (goals.length === 0 || weight <= 0) return 0;
+  let reachableCount = 0;
+  for (const g of goals) {
+    if (cardReachableAnywhere(state, g.cardId)) reachableCount++;
+  }
+  return Math.max(0, reachableCount * weight - currentImplicitPoints);
+}
+
+function cardReachableAnywhere(state: FieldState, cardId: number): boolean {
+  for (const zoneId of REACHABLE_ZONES) {
+    const cards = state.zones[zoneId];
+    if (!cards) continue;
+    for (const card of cards) {
+      if (card.cardId === cardId) return true;
+    }
+  }
+  return false;
+}
+
 /** A CardSlot is "reachable" when at least one candidate card is still in a
  *  non-banished zone of the game state. Does not account for OPT constraints,
  *  tribute costs, or summoning restrictions — intentionally loose. */
