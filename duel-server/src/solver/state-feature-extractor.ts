@@ -366,13 +366,33 @@ export function extractStateFeatures(state: FieldState, ctx: FeatureContext): nu
   out[i++] = clamp01((2 - emzOccupied) / 2);
 
   // ---- D. Opponent-board summary (4) ----
-  // FieldState as currently surfaced by ocg-field-query.queryFieldState only
-  // includes player-0 zones. Day 2 task if Phase B pre-flight GO: extend
-  // FieldState with opp-zone snapshot. Pre-flight zeros these slots.
-  out[i++] = 0;  // monsters_opp_count
-  out[i++] = 0;  // spell_traps_opp_count
-  out[i++] = 0;  // field_spell_opp_present
-  out[i++] = 0;  // opp_overlay_units
+  // Day 2 wiring (post-pre-flight): reads `state.oppZones` populated by
+  // `queryFieldState` (commit b4142292). Backward-compat: if the FieldState
+  // doesn't carry oppZones (legacy callers, tests), the 4 slots stay zero —
+  // matching the Day 1.5 pre-flight behaviour exactly. featureSpecHash is
+  // unchanged because feature names are unchanged.
+  let monstersOpp = 0;
+  let spellTrapsOpp = 0;
+  let fieldSpellOppPresent = 0;
+  let oppOverlay = 0;
+  const oz = state.oppZones;
+  if (oz) {
+    for (const z of SELF_MONSTER_ZONES) {
+      const cards = oz[z] ?? [];
+      for (const c of cards) {
+        monstersOpp++;
+        oppOverlay += c.overlayCount;
+      }
+    }
+    for (const z of SELF_SZONE_ZONES) {
+      spellTrapsOpp += (oz[z] ?? []).length;
+    }
+    fieldSpellOppPresent = (oz.FIELD ?? []).length > 0 ? 1 : 0;
+  }
+  out[i++] = clamp01(monstersOpp / 7);
+  out[i++] = clamp01(spellTrapsOpp / 5);
+  out[i++] = fieldSpellOppPresent;
+  out[i++] = clamp01(oppOverlay / 10);
 
   // ---- E. Resource pools (6) ----
   const gy = state.zones.GY ?? [];
