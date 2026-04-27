@@ -22,7 +22,9 @@ import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { RouteAwareRanker } from './route-aware-ranker.js';
 import { GraphGuidedRanker } from './graph-guided-ranker.js';
+import { NeuralFeatureRanker } from './neural-ranker.js';
 import { loadTunedWeightsIfEnabled } from './graph-weights-loader.js';
+import { loadNeuralWeightsIfEnabled } from './neural-weights-loader.js';
 import type { ActionRanker } from './solver-strategy.js';
 import type {
   DuelConfig,
@@ -109,20 +111,31 @@ const scorer = new InterruptionScorer(
 const baseRanker = new GoldfishChainRanker(allConfigs.interruptionTags);
 const routeAwareRanker = new RouteAwareRanker(baseRanker);
 
-// Graph-ml-v1 opt-in : when `SOLVER_USE_TUNED_WEIGHTS=1` and a weights
-// file is present, wrap RouteAwareRanker with GraphGuidedRanker. Ranking
-// becomes graph-weight-biased; when off, `ranker === routeAwareRanker`
-// and behaviour is byte-identical to pre-M1. `setArchetypeExpertise`
-// always targets `routeAwareRanker` directly — GraphGuidedRanker has no
-// expertise coupling.
-const tunedWeights = loadTunedWeightsIfEnabled({ dataDir });
-const ranker: ActionRanker = tunedWeights
-  ? (() => {
-      const gr = new GraphGuidedRanker(routeAwareRanker);
-      gr.setWeights(tunedWeights);
-      return gr;
-    })()
-  : routeAwareRanker;
+// Phase B (graph-ml-v2 / neural) and graph-ml-v1 are mutually exclusive —
+// when both env vars are set, neural wins (Phase B design doc §2; mirrors
+// evaluate-structural.ts). NeuralFeatureRanker wraps RouteAwareRanker and
+// adds a neural bonus over the deck-agnostic feature vector. Per-fixture
+// metadata + mainDeck/extraDeck pools are pushed by runSolve() below.
+// `setArchetypeExpertise` always targets `routeAwareRanker` directly —
+// neither GraphGuidedRanker nor NeuralFeatureRanker has expertise coupling.
+const neuralWeights = loadNeuralWeightsIfEnabled({ dataDir });
+const tunedWeights = neuralWeights ? undefined : loadTunedWeightsIfEnabled({ dataDir });
+let ranker: ActionRanker;
+let neuralRanker: NeuralFeatureRanker | undefined;
+if (neuralWeights) {
+  const nr = new NeuralFeatureRanker(routeAwareRanker);
+  nr.setInterruptionTags(allConfigs.interruptionTags);
+  nr.setInterruptionWeights(allConfigs.interruptionWeights);
+  nr.setNeuralWeights(neuralWeights);
+  neuralRanker = nr;
+  ranker = nr;
+} else if (tunedWeights) {
+  const gr = new GraphGuidedRanker(routeAwareRanker);
+  gr.setWeights(tunedWeights);
+  ranker = gr;
+} else {
+  ranker = routeAwareRanker;
+}
 
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
@@ -147,7 +160,16 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     ...task.duelConfig.extraDeck,
     ...task.duelConfig.hand,
   ];
-  scorer.setCardMetadata(buildCardMetadataMap(cardDB, duelCards));
+  const cardMetadata = buildCardMetadataMap(cardDB, duelCards);
+  scorer.setCardMetadata(cardMetadata);
+  // Phase B: per-solve metadata + deck pools for the neural ranker. The
+  // feature extractor needs these to populate `act_card_in_main_deck_pool`
+  // / `act_card_in_extra_deck_pool` and to look up source-card type bits.
+  if (neuralRanker) {
+    neuralRanker.setMetadata(cardMetadata);
+    neuralRanker.setMainDeck(task.duelConfig.mainDeck);
+    neuralRanker.setExtraDeck(task.duelConfig.extraDeck);
+  }
 
   // Activate archetype-expertise for this duel — pass the deck's main (per the
   // loader's convention) to filter to matching archetypes (keyCards overlap
