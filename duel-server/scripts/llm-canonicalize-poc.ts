@@ -44,10 +44,23 @@ interface TrajectoryStep {
   annotation?: string;
 }
 
-interface TrajectoryFile {
+interface CanonicalTrajectoryFile {
   fixtureId: string;
   description: string;
   steps: TrajectoryStep[];
+}
+
+interface DumpTrajectoryFile {
+  schemaVersion: number;
+  fixtureId: string;
+  trajectory: TrajectoryStep[];
+}
+
+type TrajectoryFile = CanonicalTrajectoryFile | DumpTrajectoryFile;
+
+function getSteps(traj: TrajectoryFile): TrajectoryStep[] {
+  if ('trajectory' in traj) return traj.trajectory;
+  return traj.steps;
 }
 
 function parseStringArg(name: string): string | undefined {
@@ -307,9 +320,10 @@ async function main(): Promise<void> {
   const groundTruthLines: string[] = [];
   let promptsGenerated = 0;
   const expectedBoard = hand.expectedBoard ?? [];
+  const steps = getSteps(traj);
 
-  for (let i = 0; i < traj.steps.length; i++) {
-    const step = traj.steps[i];
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
     const legal = adapter.getLegalActions(handle);
     if (legal.length === 0) {
       console.error(`[poc] step ${i}: no legal actions`);
