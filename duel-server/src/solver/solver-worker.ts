@@ -23,8 +23,10 @@ import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { RouteAwareRanker } from './route-aware-ranker.js';
 import { GraphGuidedRanker } from './graph-guided-ranker.js';
 import { NeuralFeatureRanker } from './neural-ranker.js';
+import { PolicyGuidedRanker } from './policy-guided-ranker.js';
 import { loadTunedWeightsIfEnabled } from './graph-weights-loader.js';
 import { loadNeuralWeightsIfEnabled } from './neural-weights-loader.js';
+import { loadVerbPolicyIfEnabled } from './verb-policy-loader.js';
 import type { ActionRanker } from './solver-strategy.js';
 import type {
   DuelConfig,
@@ -120,8 +122,10 @@ const routeAwareRanker = new RouteAwareRanker(baseRanker);
 // neither GraphGuidedRanker nor NeuralFeatureRanker has expertise coupling.
 const neuralWeights = loadNeuralWeightsIfEnabled({ dataDir });
 const tunedWeights = neuralWeights ? undefined : loadTunedWeightsIfEnabled({ dataDir });
+const verbPolicyWeights = loadVerbPolicyIfEnabled({ dataDir });
 let ranker: ActionRanker;
 let neuralRanker: NeuralFeatureRanker | undefined;
+let policyRanker: PolicyGuidedRanker | undefined;
 if (neuralWeights) {
   const nr = new NeuralFeatureRanker(routeAwareRanker);
   nr.setInterruptionTags(allConfigs.interruptionTags);
@@ -135,6 +139,19 @@ if (neuralWeights) {
   ranker = gr;
 } else {
   ranker = routeAwareRanker;
+}
+
+// Phase 3 Stage 3b — verb-class policy wraps whichever ranker is current.
+// Composition over extension: policy provides move-ordering prior at
+// SELECT_IDLECMD, inner provides value/route bonus on every prompt. Off
+// by default → wrapper not constructed → no behaviour change.
+if (verbPolicyWeights) {
+  const pgr = new PolicyGuidedRanker(ranker);
+  pgr.setInterruptionTags(allConfigs.interruptionTags);
+  pgr.setInterruptionWeights(allConfigs.interruptionWeights);
+  pgr.setVerbPolicyWeights(verbPolicyWeights);
+  policyRanker = pgr;
+  ranker = pgr;
 }
 
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
@@ -169,6 +186,14 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
     neuralRanker.setMetadata(cardMetadata);
     neuralRanker.setMainDeck(task.duelConfig.mainDeck);
     neuralRanker.setExtraDeck(task.duelConfig.extraDeck);
+  }
+  // Phase 3 Stage 3b — same per-solve metadata/deck-pool wiring for the
+  // policy ranker. Its FeatureContext mirrors the neural ranker's; both
+  // need the per-fixture deck Sets to populate `act_card_in_*_pool` etc.
+  if (policyRanker) {
+    policyRanker.setMetadata(cardMetadata);
+    policyRanker.setMainDeck(task.duelConfig.mainDeck);
+    policyRanker.setExtraDeck(task.duelConfig.extraDeck);
   }
 
   // Activate archetype-expertise for this duel — pass the deck's main (per the

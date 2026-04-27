@@ -46,6 +46,8 @@ import { GraphGuidedRanker, type RankerTrackingDump } from '../src/solver/graph-
 import { loadTunedWeightsIfEnabled } from '../src/solver/graph-weights-loader.js';
 import { NeuralFeatureRanker } from '../src/solver/neural-ranker.js';
 import { loadNeuralWeightsIfEnabled } from '../src/solver/neural-weights-loader.js';
+import { PolicyGuidedRanker } from '../src/solver/policy-guided-ranker.js';
+import { loadVerbPolicyIfEnabled } from '../src/solver/verb-policy-loader.js';
 import { filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
 import type { ActionRanker } from '../src/solver/solver-strategy.js';
 import { DfsSolver } from '../src/solver/dfs-solver.js';
@@ -545,7 +547,12 @@ export async function runFixture(
   // Phase B (graph-ml-v2): refresh per-fixture deck pools on the neural ranker.
   // Deck Sets are pre-computed once per call and reused across the rank()
   // batch. Cheap; idempotent if the pools haven't changed.
-  if (dfsRanker instanceof NeuralFeatureRanker) {
+  // PolicyGuidedRanker delegates these setters to its inner — calling on the
+  // outer wrapper updates both feature contexts.
+  if (dfsRanker instanceof PolicyGuidedRanker) {
+    dfsRanker.setMainDeck(deck.main);
+    dfsRanker.setExtraDeck(deck.extra);
+  } else if (dfsRanker instanceof NeuralFeatureRanker) {
     dfsRanker.setMainDeck(deck.main);
     dfsRanker.setExtraDeck(deck.extra);
   }
@@ -948,6 +955,7 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
   // design doc §2). Off by default → `dfsRanker === ranker`, behaviour unchanged.
   const neuralWeights = loadNeuralWeightsIfEnabled({ dataDir: DATA_DIR });
   const tunedWeights = neuralWeights ? undefined : loadTunedWeightsIfEnabled({ dataDir: DATA_DIR });
+  const verbPolicyWeights = loadVerbPolicyIfEnabled({ dataDir: DATA_DIR });
   let dfsRanker: ActionRanker;
   if (neuralWeights) {
     const nr = new NeuralFeatureRanker(ranker);
@@ -964,6 +972,17 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     dfsRanker = gr;
   } else {
     dfsRanker = ranker;
+  }
+
+  // Phase 3 Stage 3b — verb-policy wraps whichever ranker is current.
+  // setMainDeck/setExtraDeck are pushed per-fixture by `runFixture`.
+  if (verbPolicyWeights) {
+    const pgr = new PolicyGuidedRanker(dfsRanker);
+    pgr.setMetadata(cardMetadata);
+    pgr.setInterruptionTags(allConfigs.interruptionTags);
+    pgr.setInterruptionWeights(allConfigs.interruptionWeights);
+    pgr.setVerbPolicyWeights(verbPolicyWeights);
+    dfsRanker = pgr;
   }
 
   const neuralWeightsBasename = neuralWeights
