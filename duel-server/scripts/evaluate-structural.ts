@@ -53,7 +53,16 @@ import { MCTSSolver } from '../src/solver/mcts-solver.js';
 import { ZobristHasher } from '../src/solver/zobrist.js';
 import { TranspositionTable } from '../src/solver/transposition-table.js';
 import { buildCardMetadataMap, type CardMetadataMap } from '../src/solver/card-metadata.js';
-import type { DuelConfig, SolverConfig, ScoreBreakdown } from '../src/solver/solver-types.js';
+import {
+  buildFeatureContext,
+  extractActionFeatures,
+  extractStateFeatures,
+  STATE_FEATURE_NAMES,
+  ACTION_FEATURE_NAMES,
+  computeFeatureSpecHash,
+} from '../src/solver/state-feature-extractor.js';
+import type { NeuralWeights } from '../src/solver/neural-ranker.js';
+import type { DuelConfig, SolverConfig, ScoreBreakdown, SolverAction } from '../src/solver/solver-types.js';
 
 export interface HandFixture {
   id: string;
@@ -205,6 +214,197 @@ function loadHintForFixture(fixtureId: string): HintFile | undefined {
   }
 }
 
+/** Phase 3 Stage 1 (2026-04-27) — trajectory dump format. One JSON file per
+ *  fixture. The trajectory is the DFS's best mainPath replayed step-by-step
+ *  on a fresh duel fork with per-step state + action features captured.
+ *
+ *  Schema-versioned so downstream Phase 3-4 corpus consumers can detect
+ *  drift. Bump on any breaking change. */
+export interface TrajectoryDumpFile {
+  schemaVersion: 1;
+  fixtureId: string;
+  deckLabel: string;
+  /** Basename of the weights file used during the DFS solve. `null` when no
+   *  trained weights were loaded (vanilla DFS). */
+  weightsBasename: string | null;
+  weightsHash: string | null;
+  weightsArch: string | null;
+  /** Hash of the feature spec at dump time. Loaders SHOULD validate it
+   *  matches their own `computeFeatureSpecHash()` before consuming, otherwise
+   *  feature names are mis-aligned. */
+  featureSpecHash: string;
+  evalConfig: {
+    expertiseDisabled: boolean;
+    implicitGoalsWeight: number;
+    budgetMs: number;
+    nodeBudget: number | null;
+  };
+  outcome: {
+    score: number;
+    matched: number;
+    matchedTotal: number;
+    matchedCardIds: number[];
+    missingCardIds: number[];
+    nodesExplored: number;
+    wallMs: number;
+    terminationReason: string;
+  };
+  trajectory: TrajectoryStepDump[];
+}
+
+export interface TrajectoryStepDump {
+  step: number;
+  promptType: string;
+  responseIndex: number;
+  cardId: number;
+  cardName: string;
+  actionDescription: string;
+  actionVerb: string | null;
+  /** Named state features at this step (pre-action). Object form for human-
+   *  readability + analysis flexibility; downstream ML training can re-key
+   *  to ordered arrays via `STATE_FEATURE_NAMES`. */
+  stateFeatures: Record<string, number>;
+  /** Named action features for the chosen action (the one the DFS picked
+   *  at this prompt). */
+  actionFeatures: Record<string, number>;
+}
+
+/** Walk a `mainPath` on a fresh duel fork, extracting state + action features
+ *  per step, and write the resulting JSON to disk. Side-effect free on the
+ *  caller's adapter state — uses its own duel handle and destroys it on exit.
+ *
+ *  Drift handling: if a step's (responseIndex, cardId) doesn't match any
+ *  legal action at the current prompt, the dump records the divergence and
+ *  truncates the trajectory there. Empty mainPath → write a stub with
+ *  `trajectory: []` (still useful as a per-fixture record of "DFS had no
+ *  decisions to make" — see snake-eye / mitsurugi at honest baseline). */
+export function dumpTrajectoryToFile(
+  adapter: OCGCoreAdapter,
+  duelConfig: DuelConfig,
+  mainPath: SolverAction[],
+  meta: {
+    fixtureId: string;
+    deckLabel: string;
+    weightsBasename: string | null;
+    weights: NeuralWeights | null;
+    cardMetadata: CardMetadataMap;
+    interruptionTags: ReturnType<typeof loadAllSolverConfigs>['interruptionTags'];
+    interruptionWeights: ReturnType<typeof loadAllSolverConfigs>['interruptionWeights'];
+    mainDeck: readonly number[];
+    extraDeck: readonly number[];
+    expertiseDisabled: boolean;
+    implicitGoalsWeight: number;
+    budgetMs: number;
+    nodeBudget: number | null;
+    outcome: {
+      score: number;
+      matched: number;
+      matchedTotal: number;
+      matchedCardIds: number[];
+      missingCardIds: number[];
+      nodesExplored: number;
+      wallMs: number;
+      terminationReason: string;
+    };
+  },
+  outPath: string,
+): void {
+  const ctx = buildFeatureContext({
+    metadata: meta.cardMetadata,
+    interruptionTags: meta.interruptionTags,
+    interruptionWeights: meta.interruptionWeights,
+    mainDeck: meta.mainDeck,
+    extraDeck: meta.extraDeck,
+  });
+
+  // Fresh handle for replay — DFS may have left its solving handle dirty.
+  // Phase 5-lite (2026-04-19): replay-trajectory.ts also flips this flag for
+  // fixtures recorded with multi-pick exposure. Mirror so both authored and
+  // ML-extracted trajectories use identical replay semantics.
+  const wasMultiPick = adapter.exposeMultiPickMechanical;
+  adapter.exposeMultiPickMechanical = true;
+  const handle = adapter.createDuel(duelConfig);
+  const trajectory: TrajectoryStepDump[] = [];
+
+  try {
+    for (let i = 0; i < mainPath.length; i++) {
+      const step = mainPath[i];
+      const legal = adapter.getLegalActions(handle);
+      if (legal.length === 0) {
+        // Path exhausted before mainPath — record divergence and stop.
+        break;
+      }
+      const matched = legal.find(
+        a => a.responseIndex === step.responseIndex && a.cardId === step.cardId,
+      );
+      if (!matched) {
+        // Drift — re-record needed; truncate dump here.
+        break;
+      }
+      const fieldState = adapter.getFieldState(handle);
+      const stateVec = extractStateFeatures(fieldState, ctx);
+      const actionVec = extractActionFeatures(matched, fieldState, ctx);
+      // Apply the same is_self_turn override the ranker sees (extractFeatures
+      // sets stateVec[4] from action.team). Keep the dump consistent with the
+      // 116-dim vector NeuralFeatureRanker actually scored.
+      stateVec[4] = matched.team === 1 ? 0 : 1;
+
+      const stateNamed: Record<string, number> = {};
+      for (let j = 0; j < STATE_FEATURE_NAMES.length; j++) {
+        stateNamed[STATE_FEATURE_NAMES[j]] = stateVec[j];
+      }
+      const actionNamed: Record<string, number> = {};
+      for (let j = 0; j < ACTION_FEATURE_NAMES.length; j++) {
+        actionNamed[ACTION_FEATURE_NAMES[j]] = actionVec[j];
+      }
+
+      trajectory.push({
+        step: i,
+        promptType: matched.promptType,
+        responseIndex: step.responseIndex,
+        cardId: step.cardId,
+        cardName: step.cardName,
+        actionDescription: step.actionDescription,
+        actionVerb: matched.actionVerb ?? null,
+        stateFeatures: stateNamed,
+        actionFeatures: actionNamed,
+      });
+
+      adapter.applyAction(handle, matched);
+    }
+  } finally {
+    adapter.destroyDuel(handle);
+    adapter.exposeMultiPickMechanical = wasMultiPick;
+  }
+
+  const archStr = meta.weights
+    ? (meta.weights.arch.hidden.length === 0
+        ? 'linear'
+        : `mlp[${meta.weights.arch.hidden.join(',')}]`)
+    : null;
+
+  const dump: TrajectoryDumpFile = {
+    schemaVersion: 1,
+    fixtureId: meta.fixtureId,
+    deckLabel: meta.deckLabel,
+    weightsBasename: meta.weightsBasename,
+    weightsHash: meta.weights?.featureSpecHash ?? null,
+    weightsArch: archStr,
+    featureSpecHash: computeFeatureSpecHash(),
+    evalConfig: {
+      expertiseDisabled: meta.expertiseDisabled,
+      implicitGoalsWeight: meta.implicitGoalsWeight,
+      budgetMs: meta.budgetMs,
+      nodeBudget: meta.nodeBudget,
+    },
+    outcome: meta.outcome,
+    trajectory,
+  };
+
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, JSON.stringify(dump, null, 2) + '\n', 'utf-8');
+}
+
 export async function runFixture(
   adapter: OCGCoreAdapter,
   scorer: InterruptionScorer,
@@ -222,6 +422,22 @@ export async function runFixture(
      *  usage tracking on the ranker for the duration of this fixture's DFS run
      *  and embed the dump in the returned `FixtureResult.edgeUsage`. */
     dumpEdges?: boolean;
+    /** Phase 3 Stage 1 — when set, after the DFS solve completes, replay the
+     *  best mainPath on a fresh duel fork and write a per-fixture trajectory
+     *  JSON to `<dumpTrajectoriesDir>/<fixtureId>.json`. Side-effect free on
+     *  the caller's adapter state. Requires `cardMetadata` for the feature
+     *  context. */
+    dumpTrajectoriesDir?: string;
+    /** Phase 3 Stage 1 — card metadata for feature extraction. Required when
+     *  `dumpTrajectoriesDir` is set; ignored otherwise. */
+    cardMetadata?: CardMetadataMap;
+    /** Phase 3 Stage 1 — basename of the trained weights used in the DFS
+     *  solve, embedded in the trajectory dump for traceability. Pass `null`
+     *  for vanilla (untrained) DFS. */
+    weightsBasename?: string | null;
+    /** Phase 3 Stage 1 — neural weights blob (architecture + featureSpecHash
+     *  metadata only; not used in extraction). Pass `null` if vanilla. */
+    weights?: NeuralWeights | null;
   },
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
@@ -412,6 +628,43 @@ export async function runFixture(
   const actionsZeroPct = totalTerminals > 0 ? (actionsZeroCount / totalTerminals) * 100 : 0;
   const turn2Pct = totalTerminals > 0 ? (turn2Count / totalTerminals) * 100 : 0;
 
+  // Phase 3 Stage 1 — trajectory dump. Always runs when the dir is set, even
+  // for empty mainPath (writes a stub so corpus completeness is auditable).
+  if (opts?.dumpTrajectoriesDir && opts?.cardMetadata) {
+    const outPath = resolve(opts.dumpTrajectoriesDir, `${hand.id}.json`);
+    dumpTrajectoryToFile(
+      adapter,
+      duelConfig,
+      result.mainPath,
+      {
+        fixtureId: hand.id,
+        deckLabel: hand.deck,
+        weightsBasename: opts.weightsBasename ?? null,
+        weights: opts.weights ?? null,
+        cardMetadata: opts.cardMetadata,
+        interruptionTags: allConfigs.interruptionTags,
+        interruptionWeights: allConfigs.interruptionWeights,
+        mainDeck: deck.main,
+        extraDeck: deck.extra,
+        expertiseDisabled,
+        implicitGoalsWeight: implicitGoalWeight,
+        budgetMs: timeLimitMs,
+        nodeBudget: rootChildBudgetNodes ?? null,
+        outcome: {
+          score: result.score,
+          matched: matchedCardIds.length,
+          matchedTotal: expected.length,
+          matchedCardIds,
+          missingCardIds,
+          nodesExplored: result.stats.nodesExplored,
+          wallMs,
+          terminationReason: result.stats.terminationReason,
+        },
+      },
+      outPath,
+    );
+  }
+
   return {
     score: result.score,
     transpositionHits: result.stats.transpositionHits,
@@ -510,6 +763,15 @@ export interface EvaluationContext {
    *  on a FieldState without rebuilding metadata. */
   cardMetadata: CardMetadataMap;
   metadataSize: number;
+  /** Phase 3 Stage 1 — neural weights blob loaded at boot (same one wired
+   *  into `dfsRanker` when graph-ml-v2 is active). `null` when no neural
+   *  weights loaded. Read by the trajectory dump for embedded traceability
+   *  (featureSpecHash, arch). */
+  neuralWeights: NeuralWeights | null;
+  /** Phase 3 Stage 1 — basename of the loaded neural weights file.
+   *  Defaults to `process.env.SOLVER_NEURAL_WEIGHTS_FILE` when set, else
+   *  `'neural-tier-a-latest'`. `null` when neural weights are not loaded. */
+  neuralWeightsBasename: string | null;
   dispose(): void;
 }
 
@@ -613,6 +875,10 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     dfsRanker = ranker;
   }
 
+  const neuralWeightsBasename = neuralWeights
+    ? (process.env['SOLVER_NEURAL_WEIGHTS_FILE'] ?? 'neural-tier-a-latest')
+    : null;
+
   return {
     fixture,
     adapter,
@@ -622,6 +888,8 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     allConfigs,
     cardMetadata,
     metadataSize: cardMetadata.size,
+    neuralWeights: neuralWeights ?? null,
+    neuralWeightsBasename,
     dispose: () => adapter.destroyAll(),
   };
 }
@@ -653,6 +921,11 @@ export interface FixtureTask {
    *  toggles tracking on the GraphGuidedRanker for this task only. No-op when
    *  the dfsRanker isn't graph-guided (a warning is logged main-side). */
   dumpEdges?: boolean;
+  /** Phase 3 Stage 1 (2026-04-27) — when set, the worker writes a per-fixture
+   *  trajectory JSON to `<dumpTrajectoriesDir>/<fixtureId>.json` after the
+   *  DFS solve completes. Worker pulls cardMetadata + neural weights from
+   *  its own EvaluationContext for traceability metadata. */
+  dumpTrajectoriesDir?: string;
 }
 
 /** Minimal pool surface consumed by `runEvaluationParallel`. Kept structural
@@ -676,6 +949,11 @@ export interface ParallelEvaluationOptions extends EvaluationOptions {
    *  `<dumpEdgesDir>/<fixtureId>.json`. Only effective when
    *  `SOLVER_USE_TUNED_WEIGHTS=1` so the worker has a GraphGuidedRanker. */
   dumpEdgesDir?: string;
+  /** Phase 3 Stage 1 (2026-04-27) — when set, each fixture's mainPath is
+   *  replayed on a fresh duel fork after the DFS solve and dumped to
+   *  `<dumpTrajectoriesDir>/<fixtureId>.json` with per-step state + action
+   *  features. Foundation for Phase 4 policy distillation corpus. */
+  dumpTrajectoriesDir?: string;
 }
 
 /**
@@ -706,6 +984,10 @@ export async function runEvaluationParallel(
     mkdirSync(resolve(opts.dumpEdgesDir), { recursive: true });
     console.log(`[evaluate-par] edge usage dump → ${resolve(opts.dumpEdgesDir)}/<fixture>.json`);
   }
+  if (opts.dumpTrajectoriesDir) {
+    mkdirSync(resolve(opts.dumpTrajectoriesDir), { recursive: true });
+    console.log(`[evaluate-par] trajectory dump → ${resolve(opts.dumpTrajectoriesDir)}/<fixture>.json`);
+  }
   // Dispatch all tasks up-front; pool schedules them across its worker set.
   // Promise.allSettled so a single fixture failure does not abort the sweep.
   const settled = await Promise.allSettled(validHands.map(async hand => {
@@ -718,6 +1000,9 @@ export async function runEvaluationParallel(
       useHints: opts.useHints,
       algorithm: opts.algorithm,
       dumpEdges: opts.dumpEdgesDir !== undefined,
+      dumpTrajectoriesDir: opts.dumpTrajectoriesDir
+        ? resolve(opts.dumpTrajectoriesDir)
+        : undefined,
     });
     return { hand, res };
   }));
@@ -838,6 +1123,7 @@ async function main(): Promise<void> {
   const algorithmArg = parseStringArg('algorithm');
   const algorithm: 'dfs' | 'mcts' = algorithmArg === 'mcts' ? 'mcts' : 'dfs';
   const dumpEdgesDir = parseStringArg('dump-edges-per-fixture');
+  const dumpTrajectoriesDir = parseStringArg('dump-trajectories');
 
   // Phase A scorer fix (2026-04-26) — `--implicit-goals=N` CLI flag is a
   // reproducibility wrapper that sets the SOLVER_IMPLICIT_GOALS env vars
@@ -886,6 +1172,7 @@ async function main(): Promise<void> {
       useHints,
       algorithm,
       dumpEdgesDir,
+      dumpTrajectoriesDir,
     });
 
     if (outPath) {

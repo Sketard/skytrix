@@ -51,6 +51,11 @@ export default async function runFixtureTask(task: FixtureTask): Promise<Fixture
       // When SOLVER_USE_TUNED_WEIGHTS is off, this equals ctx.ranker (no-op).
       dfsRanker: ctx.dfsRanker,
       dumpEdges: task.dumpEdges ?? false,
+      // Phase 3 Stage 1 — trajectory dump traceability + feature context.
+      dumpTrajectoriesDir: task.dumpTrajectoriesDir,
+      cardMetadata: task.dumpTrajectoriesDir ? ctx.cardMetadata : undefined,
+      weightsBasename: ctx.neuralWeightsBasename,
+      weights: ctx.neuralWeights,
     },
   );
 }
