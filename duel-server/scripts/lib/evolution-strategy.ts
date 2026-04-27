@@ -52,6 +52,14 @@ export interface EvolutionStrategyConfig {
   maxGenerations: number;
   /** RNG seed. Fixed for reproducibility. */
   seed: number;
+  /** Optional: when > 1, dispatch bootstrap parents and per-gen offspring
+   *  fitness calls via Promise.all so an external worker pool can run them
+   *  in parallel. Default 1 = sequential. Determinism preserved because
+   *  RNG-consuming `mutate()` runs synchronously in-order before fitness
+   *  is awaited. The fitness function is responsible for bounding its own
+   *  concurrency (e.g., a Piscina pool with N threads will queue beyond N).
+   */
+  concurrency?: number;
 }
 
 export const DEFAULT_ES_CONFIG: EvolutionStrategyConfig = {
@@ -175,13 +183,32 @@ export class EvolutionStrategy {
   ): Promise<{ best: Individual; history: GenerationStats[] }> {
     const dim = initialVector.length;
     const { mu, lambda, maxGenerations } = this.config;
+    // Concurrency: when > 1, dispatch all bootstrap parents and per-gen
+    // offspring fitness calls via Promise.all, allowing a worker pool to
+    // run them in parallel. Determinism preserved because mutate() (which
+    // consumes RNG) runs synchronously in-order BEFORE the fitness calls
+    // are awaited; only fitness evaluation is concurrent. Default 1 =
+    // existing sequential behaviour.
+    const concurrency = Math.max(1, this.config.concurrency ?? 1);
 
     // Bootstrap: mu parents are perturbations around the initial vector.
     let parents: Individual[] = [];
-    for (let i = 0; i < mu; i++) {
-      const vec = i === 0 ? [...initialVector] : this.mutate(initialVector, dim).vector;
-      const fit = await fitness(vec);
-      parents.push({ vector: vec, fitness: fit });
+    if (concurrency > 1) {
+      // Pre-compute mu vectors (sync, deterministic), then evaluate fitness
+      // concurrently via Promise.all.
+      const bootstrapVecs: Vector[] = [];
+      for (let i = 0; i < mu; i++) {
+        const vec = i === 0 ? [...initialVector] : this.mutate(initialVector, dim).vector;
+        bootstrapVecs.push(vec);
+      }
+      const fits = await Promise.all(bootstrapVecs.map(v => fitness(v)));
+      parents = bootstrapVecs.map((vec, i) => ({ vector: vec, fitness: fits[i] }));
+    } else {
+      for (let i = 0; i < mu; i++) {
+        const vec = i === 0 ? [...initialVector] : this.mutate(initialVector, dim).vector;
+        const fit = await fitness(vec);
+        parents.push({ vector: vec, fitness: fit });
+      }
     }
     parents.sort((a, b) => b.fitness - a.fitness);
 
@@ -193,19 +220,45 @@ export class EvolutionStrategy {
     for (let gen = 0; gen < maxGenerations; gen++) {
       // Generate lambda offspring by mutating random parents
       const offspringRecords: OffspringRecord[] = [];
-      for (let i = 0; i < lambda; i++) {
-        const parentIdx = Math.floor(this.rng() * parents.length);
-        const parent = parents[parentIdx];
-        const { vector: child, deltas } = this.mutate(parent.vector, dim);
-        const fit = await fitness(child);
-        offspringRecords.push({
-          vector: child,
-          fitness: fit,
-          parentIdx,
-          parentFitness: parent.fitness,
-          deltas,
-          survivedAsParent: false, // patched after selection
-        });
+      if (concurrency > 1) {
+        // Pre-compute all lambda offspring vectors (sync, deterministic in
+        // RNG draw order: parentIdx + mutate consume RNG), then evaluate
+        // fitness via Promise.all. The fitness function is responsible for
+        // bounding its own concurrency via the worker pool — Promise.all
+        // simply hands lambda promises to the runtime at once.
+        const stagedOffspring: { vec: Vector; parentIdx: number; parent: Individual; deltas: number[] }[] = [];
+        for (let i = 0; i < lambda; i++) {
+          const parentIdx = Math.floor(this.rng() * parents.length);
+          const parent = parents[parentIdx];
+          const { vector: child, deltas } = this.mutate(parent.vector, dim);
+          stagedOffspring.push({ vec: child, parentIdx, parent, deltas });
+        }
+        const fits = await Promise.all(stagedOffspring.map(s => fitness(s.vec)));
+        for (let i = 0; i < lambda; i++) {
+          offspringRecords.push({
+            vector: stagedOffspring[i].vec,
+            fitness: fits[i],
+            parentIdx: stagedOffspring[i].parentIdx,
+            parentFitness: stagedOffspring[i].parent.fitness,
+            deltas: stagedOffspring[i].deltas,
+            survivedAsParent: false,
+          });
+        }
+      } else {
+        for (let i = 0; i < lambda; i++) {
+          const parentIdx = Math.floor(this.rng() * parents.length);
+          const parent = parents[parentIdx];
+          const { vector: child, deltas } = this.mutate(parent.vector, dim);
+          const fit = await fitness(child);
+          offspringRecords.push({
+            vector: child,
+            fitness: fit,
+            parentIdx,
+            parentFitness: parent.fitness,
+            deltas,
+            survivedAsParent: false,
+          });
+        }
       }
 
       // "+" selection: keep top-mu from parents ∪ offspring (by reference, so we
