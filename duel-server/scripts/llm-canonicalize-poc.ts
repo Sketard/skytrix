@@ -166,12 +166,15 @@ function buildPrompt(
   stepIndex: number,
   expectedBoard: { cardName: string; zone: string; position?: string }[],
   getName: (id: number) => string,
+  noHint: boolean,
 ): string {
   const promptType = legal[0].promptType;
 
-  const expectedSummary = expectedBoard.length > 0
-    ? expectedBoard.map(e => `  - ${e.cardName} @ ${e.zone}${e.position ? `/${e.position}` : ''}`).join('\n')
-    : '  (no fixture-defined expected board)';
+  const expectedSummary = noHint
+    ? '  (HIDDEN — your task is to discover the optimal endboard from card text alone)'
+    : expectedBoard.length > 0
+      ? expectedBoard.map(e => `  - ${e.cardName} @ ${e.zone}${e.position ? `/${e.position}` : ''}`).join('\n')
+      : '  (no fixture-defined expected board)';
 
   const handCardNames = (state.zones.HAND ?? []).map(c => describeCard(c, metadata, getName));
 
@@ -243,8 +246,9 @@ Return your answer as JSON:
 async function main(): Promise<void> {
   const trajectoryPath = parseStringArg('trajectory');
   const outDir = parseStringArg('out');
+  const noHint = process.argv.includes('--no-hint');
   if (!trajectoryPath || !outDir) {
-    console.error('Usage: --trajectory=<path> --out=<output-dir>');
+    console.error('Usage: --trajectory=<path> --out=<output-dir> [--no-hint]');
     process.exit(2);
   }
 
@@ -326,7 +330,7 @@ async function main(): Promise<void> {
     const isStrategic = promptType === 'SELECT_IDLECMD' || promptType === 'SELECT_CARD';
     if (isStrategic) {
       const state = adapter.getFieldState(handle);
-      const prompt = buildPrompt(hand, deck.main, deck.extra, metadata, state, legal, i, expectedBoard, getName);
+      const prompt = buildPrompt(hand, deck.main, deck.extra, metadata, state, legal, i, expectedBoard, getName, noHint);
       const filename = `step-${String(i).padStart(2, '0')}-${promptType.toLowerCase()}.md`;
       writeFileSync(join(fixtureOutDir, filename), prompt, 'utf-8');
       const groundTruthIdx = legal.findIndex(a => a.responseIndex === step.responseIndex && a.cardId === step.cardId);
