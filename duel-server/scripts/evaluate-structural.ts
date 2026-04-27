@@ -63,6 +63,7 @@ import {
 } from '../src/solver/state-feature-extractor.js';
 import type { NeuralWeights } from '../src/solver/neural-ranker.js';
 import type { DuelConfig, SolverConfig, ScoreBreakdown, SolverAction } from '../src/solver/solver-types.js';
+import { extractMainPath } from '../src/solver/tree-utils.js';
 
 export interface HandFixture {
   id: string;
@@ -249,6 +250,14 @@ export interface TrajectoryDumpFile {
     wallMs: number;
     terminationReason: string;
   };
+  /** Phase 3 Stage 3a augmentation (2026-04-27) — present iff this dump is
+   *  an alt branch of the search tree (not the primary mainPath). Primary
+   *  dumps omit this field. */
+  altOf?: {
+    mainFixtureId: string;
+    rank: number;
+    score: number;
+  };
   trajectory: TrajectoryStepDump[];
 }
 
@@ -306,6 +315,12 @@ export function dumpTrajectoryToFile(
       wallMs: number;
       terminationReason: string;
     };
+    /** Phase 3 Stage 3a augmentation (2026-04-27) — when present, this dump
+     *  represents an alt branch of the search tree, not the primary mainPath.
+     *  rank=1 = best alt, rank=K-1 = worst alt kept. score = node.score
+     *  (interruptionScore on that alt's tree node, NOT the post-replay
+     *  field-state matched count — that requires a separate replay pass). */
+    altOf?: { mainFixtureId: string; rank: number; score: number };
   },
   outPath: string,
 ): void {
@@ -398,6 +413,7 @@ export function dumpTrajectoryToFile(
       nodeBudget: meta.nodeBudget,
     },
     outcome: meta.outcome,
+    ...(meta.altOf ? { altOf: meta.altOf } : {}),
     trajectory,
   };
 
@@ -438,6 +454,12 @@ export async function runFixture(
     /** Phase 3 Stage 1 — neural weights blob (architecture + featureSpecHash
      *  metadata only; not used in extraction). Pass `null` if vanilla. */
     weights?: NeuralWeights | null;
+    /** Phase 3 Stage 3a — when set and > 0, after the main mainPath dump,
+     *  walk the top-K alt children of `result.tree` (excluding the main's
+     *  first decision) and dump each as `<fixtureId>_alt-N.json`. Augments
+     *  the corpus by ~K samples per fixture without rerunning DFS. Empty
+     *  alts (zero score, empty subtree) are skipped silently. */
+    dumpAltsK?: number;
   },
 ): Promise<FixtureResult> {
   const deck = fixture.decks[hand.deck];
@@ -663,6 +685,75 @@ export async function runFixture(
       },
       outPath,
     );
+
+    // Phase 3 Stage 3a alt augmentation. Walk the top-K children of result.tree
+    // (excluding the main mainPath's first decision) sorted by node.score desc,
+    // dump each as `<fixtureId>_alt-N.json`. Skips empty-trajectory alts (alt
+    // had no further decisions explored — common when nodeBudget is tight and
+    // the DFS only fully explored the main branch).
+    // Note: in single-worker DFS mode, `result.tree` is the iterative-deepening
+    // last-completed iteration's tree, which generally contains only 1 deeply-
+    // explored root child (the α-β winner). Alt yield at typical budgets
+    // (nb=400/6s) is therefore ~0-1 per fixture. The multi-seed orchestrator
+    // (solver-worker.ts) merges trees from multiple seeds and produces richer
+    // alts; bypassed here for evaluator simplicity. For meaningful augmentation,
+    // prefer multi-budget runs over alt extraction.
+    const dumpAltsK = opts.dumpAltsK ?? 0;
+    if (dumpAltsK > 0 && result.tree?.children?.length) {
+      const mainFirstResponseIdx = result.mainPath[0]?.responseIndex;
+      const altCandidates = result.tree.children
+        .filter(c => c.action.responseIndex !== mainFirstResponseIdx)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, dumpAltsK);
+      for (let i = 0; i < altCandidates.length; i++) {
+        const altRoot = altCandidates[i];
+        // Same prepend-then-extract pattern used by solver-worker.ts top-K
+        // (see verification-off-by-one fix 2026-04-24).
+        const altMainPath = [altRoot.action, ...extractMainPath(altRoot)];
+        if (altMainPath.length === 0) continue;
+        const altOutPath = resolve(opts.dumpTrajectoriesDir, `${hand.id}_alt-${i + 1}.json`);
+        dumpTrajectoryToFile(
+          adapter,
+          duelConfig,
+          altMainPath,
+          {
+            fixtureId: `${hand.id}_alt-${i + 1}`,
+            deckLabel: hand.deck,
+            weightsBasename: opts.weightsBasename ?? null,
+            weights: opts.weights ?? null,
+            cardMetadata: opts.cardMetadata,
+            interruptionTags: allConfigs.interruptionTags,
+            interruptionWeights: allConfigs.interruptionWeights,
+            mainDeck: deck.main,
+            extraDeck: deck.extra,
+            expertiseDisabled,
+            implicitGoalsWeight: implicitGoalWeight,
+            budgetMs: timeLimitMs,
+            nodeBudget: rootChildBudgetNodes ?? null,
+            outcome: {
+              // Alt-specific score from the tree node; matched/missing left
+              // as the main's (re-running matched-on-board for each alt would
+              // require an extra replay pass — defer until the alts prove
+              // useful for training).
+              score: altRoot.score,
+              matched: matchedCardIds.length,
+              matchedTotal: expected.length,
+              matchedCardIds,
+              missingCardIds,
+              nodesExplored: result.stats.nodesExplored,
+              wallMs,
+              terminationReason: result.stats.terminationReason,
+            },
+            altOf: {
+              mainFixtureId: hand.id,
+              rank: i + 1,
+              score: altRoot.score,
+            },
+          },
+          altOutPath,
+        );
+      }
+    }
   }
 
   return {
@@ -926,6 +1017,11 @@ export interface FixtureTask {
    *  DFS solve completes. Worker pulls cardMetadata + neural weights from
    *  its own EvaluationContext for traceability metadata. */
   dumpTrajectoriesDir?: string;
+  /** Phase 3 Stage 3a (2026-04-27) — when > 0 and `dumpTrajectoriesDir` is
+   *  set, the worker also dumps the top-K alt branches of the search tree
+   *  as `<fixtureId>_alt-N.json`. Augments the policy training corpus
+   *  without rerunning DFS. */
+  dumpAltsK?: number;
 }
 
 /** Minimal pool surface consumed by `runEvaluationParallel`. Kept structural
@@ -954,6 +1050,10 @@ export interface ParallelEvaluationOptions extends EvaluationOptions {
    *  `<dumpTrajectoriesDir>/<fixtureId>.json` with per-step state + action
    *  features. Foundation for Phase 4 policy distillation corpus. */
   dumpTrajectoriesDir?: string;
+  /** Phase 3 Stage 3a (2026-04-27) — when > 0, dump the top-K alt branches
+   *  of each fixture's search tree alongside the main mainPath. Augments
+   *  the corpus by ~K samples per fixture without rerunning DFS. */
+  dumpAltsK?: number;
 }
 
 /**
@@ -1003,6 +1103,7 @@ export async function runEvaluationParallel(
       dumpTrajectoriesDir: opts.dumpTrajectoriesDir
         ? resolve(opts.dumpTrajectoriesDir)
         : undefined,
+      dumpAltsK: opts.dumpAltsK,
     });
     return { hand, res };
   }));
@@ -1124,6 +1225,7 @@ async function main(): Promise<void> {
   const algorithm: 'dfs' | 'mcts' = algorithmArg === 'mcts' ? 'mcts' : 'dfs';
   const dumpEdgesDir = parseStringArg('dump-edges-per-fixture');
   const dumpTrajectoriesDir = parseStringArg('dump-trajectories');
+  const dumpAltsK = parseNumArg('dump-trajectories-alts');
 
   // Phase A scorer fix (2026-04-26) — `--implicit-goals=N` CLI flag is a
   // reproducibility wrapper that sets the SOLVER_IMPLICIT_GOALS env vars
@@ -1173,6 +1275,7 @@ async function main(): Promise<void> {
       algorithm,
       dumpEdgesDir,
       dumpTrajectoriesDir,
+      dumpAltsK,
     });
 
     if (outPath) {

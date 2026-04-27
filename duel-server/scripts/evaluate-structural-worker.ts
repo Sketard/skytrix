@@ -56,6 +56,8 @@ export default async function runFixtureTask(task: FixtureTask): Promise<Fixture
       cardMetadata: task.dumpTrajectoriesDir ? ctx.cardMetadata : undefined,
       weightsBasename: ctx.neuralWeightsBasename,
       weights: ctx.neuralWeights,
+      // Phase 3 Stage 3a alt augmentation.
+      dumpAltsK: task.dumpAltsK,
     },
   );
 }
