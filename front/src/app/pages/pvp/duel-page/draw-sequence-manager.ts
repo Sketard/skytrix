@@ -525,7 +525,14 @@ export class DrawSequenceManager {
     }, totalMs + 2000);
     this._drawTimeouts.push(guardId);
 
-    this.confirmCardsInHand(msg.cards).finally(() => { clearTimeout(guardId); done(); });
+    this.confirmCardsInHand(msg.cards).finally(() => {
+      clearTimeout(guardId);
+      // queueMicrotask ensures done() runs AFTER _processAnimationQueueInner.finally
+      // (_isProcessing=false). Without this, if confirmCardsInHand resolves synchronously
+      // (all popLandedFloat=false), done() fires first and processAnimationQueue() bails
+      // on _isProcessing=true — leaving _isAnimating=true and blocking the next prompt.
+      queueMicrotask(() => done());
+    });
     this.ctx.announceEvent('Cards revealed', msg.player);
     return 'async';
   }
@@ -534,11 +541,13 @@ export class DrawSequenceManager {
     const flipDuration = this.ctx.scaledDuration(300, 150);
     const highlightDuration = this.ctx.scaledDuration(600, 300);
     const holdDuration = this.ctx.scaledDuration(200, 100);
+    let animatedCount = 0;
 
     for (const card of cards) {
       const floatEl = this.cardTravelService.popLandedFloat('HAND');
       this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — popLandedFloat=%s cardCode=%d', !!floatEl, card.cardCode);
       if (!floatEl) continue;
+      animatedCount++;
 
       const relPlayer = this.ctx.relativePlayer(card.player);
 
@@ -572,6 +581,7 @@ export class DrawSequenceManager {
 
       this.cardTravelService.returnToLanded(floatEl as HTMLDivElement);
     }
+    this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — done: animated=%d/%d', animatedCount, cards.length);
   }
 
 }

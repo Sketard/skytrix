@@ -54,6 +54,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   preTargetCards = new EventEmitter<CardInfo[]>();
   excludedCards: CardInfo[] = [];
   revealedCards: CardInfo[] = [];
+  /** Cards revealed by MSG_CONFIRM_CARDS — keyed by "location-player-sequence" to show face-up even if position is face-down. */
+  confirmedCardKeys = new Set<string>();
   ownPlayerIndex = 0;
 
   readonly selectedIndices = signal<Set<number>>(new Set());
@@ -270,7 +272,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
 
   getCardImageUrl(card: CardInfo): string {
     if (card.position != null && !isFaceUp(card.position) && card.player !== this.ownPlayerIndex) {
-      return PromptCardGridComponent.CARD_BACK;
+      const key = `${card.location}-${card.player}-${card.sequence}`;
+      if (!this.confirmedCardKeys.has(key)) return PromptCardGridComponent.CARD_BACK;
     }
     return getCardImageUrlByCode(card.cardCode);
   }
@@ -408,7 +411,8 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
     const type = this.promptData?.type;
 
     if (type === 'SELECT_SUM') {
-      this.response.emit({ indices: Array.from(this.selectedCardAmounts().keys()) });
+      const indices = Array.from(this.selectedCardAmounts().keys());
+      this.response.emit({ indices });
       return;
     }
 

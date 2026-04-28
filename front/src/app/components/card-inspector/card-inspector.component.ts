@@ -42,6 +42,7 @@ export class CardInspectorComponent {
 
   readonly isVisible = computed(() => this.card() !== null);
   readonly showPersonalMetadata = computed(() => this.ownedCount() !== undefined);
+  readonly lightboxOpen = signal(false);
 
   /** Index of the currently displayed image within card().images */
   readonly currentImageIndex = signal(0);
@@ -95,6 +96,9 @@ export class CardInspectorComponent {
     return img?.url ?? c.imageUrlFull ?? c.imageUrl;
   });
 
+  openLightbox(): void { this.lightboxOpen.set(true); }
+  closeLightbox(): void { this.lightboxOpen.set(false); }
+
   changeOwned(delta: number): void {
     this.ownedCount.set(Math.max(0, (this.ownedCount() ?? 0) + delta));
   }
@@ -105,6 +109,7 @@ export class CardInspectorComponent {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.lightboxOpen()) { this.closeLightbox(); return; }
     if (!this.isVisible()) return;
     if (this.mode() === 'permanent') return;
     this.dismissed.emit();

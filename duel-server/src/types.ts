@@ -133,6 +133,7 @@ export interface WorkerError {
 export interface WorkerRetry {
   type: 'WORKER_RETRY';
   duelId: string;
+  playerIndex: 0 | 1;
 }
 
 export interface CapturedResponse {

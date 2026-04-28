@@ -833,26 +833,28 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       break;
 
     case 'WORKER_RETRY': {
-      // OCGCore rejected the player's response — re-send the cached prompt
-      for (const p of [0, 1] as const) {
-        const cached = session.lastSentPrompt[p];
-        if (cached) {
-          session.invalidResponseCount[p]++;
-          logger.warn('RETRY: re-sending prompt', { duelId: session.duelId, retryCount: session.invalidResponseCount[p], promptType: cached.type, player: p });
+      // OCGCore rejected the player's response — re-send the cached prompt.
+      // lastSentPrompt is intentionally NOT cleared on PLAYER_RESPONSE for exactly this case.
+      const p = wmsg.playerIndex;
+      const cached = session.lastSentPrompt[p];
+      if (cached) {
+        session.invalidResponseCount[p]++;
+        logger.warn('RETRY: re-sending prompt', { duelId: session.duelId, retryCount: session.invalidResponseCount[p], promptType: cached.type, player: p });
 
-          if (session.invalidResponseCount[p] >= MAX_INVALID_RESPONSES) {
-            const winner: Player = p === 0 ? 1 : 0;
-            const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
-            logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'too_many_invalid_responses' });
-            sendToPlayer(session, 0, endMsg);
-            sendToPlayer(session, 1, endMsg);
-            handleDuelEnd(session);
-            requestReplayFromWorker(session, 'TIMEOUT');
-            return;
-          }
-
-          sendToPlayer(session, p, cached);
+        if (session.invalidResponseCount[p] >= MAX_INVALID_RESPONSES) {
+          const winner: Player = p === 0 ? 1 : 0;
+          const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
+          logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'too_many_invalid_responses' });
+          sendToPlayer(session, 0, endMsg);
+          sendToPlayer(session, 1, endMsg);
+          handleDuelEnd(session);
+          requestReplayFromWorker(session, 'TIMEOUT');
+          return;
         }
+
+        // Re-open the response window so the player can answer again.
+        session.awaitingResponse[p] = true;
+        sendToPlayer(session, p, cached);
       }
       break;
     }
@@ -1030,9 +1032,9 @@ function validateResponseData(prompt: ServerMessage, data: Record<string, unknow
 
     case 'SELECT_SUM': {
       const indices = data['indices'];
-      if (!Array.isArray(indices)) return 'indices must be an array';
       const mustLen = (p['mustSelect'] as unknown[])?.length ?? 0;
       const totalLen = mustLen + cardsLen;
+      if (!Array.isArray(indices)) return 'indices must be an array';
       for (const idx of indices) {
         if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= totalLen) {
           return `index ${idx} out of bounds [0, ${totalLen})`;
@@ -1929,7 +1931,8 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
 
       session.invalidResponseCount[playerIndex] = 0;
       session.awaitingResponse[playerIndex] = false;
-      session.lastSentPrompt[playerIndex] = null;
+      // Keep lastSentPrompt set — WORKER_RETRY (OCGCore rejected response) needs it to re-send.
+      // It is overwritten when the next SELECT prompt is broadcast, or cleared on reconnect/reset.
       session.lastSentHint[playerIndex] = null;
 
       // Story 3.2 — Pause turn timer + clear inactivity/race timers on player response

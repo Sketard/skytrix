@@ -38,6 +38,18 @@ const patches = [
       'selects:Array.from({length:e.u32()},()=>({code:e.u32(),controller:e.u8(),location:e.u8(),sequence:e.u32(),position:e.u32(),amount:e.u32()})),' +
       'selects_must:Array.from({length:e.u32()},()=>({code:e.u32(),controller:e.u8(),location:e.u8(),sequence:e.u32(),position:e.u32(),amount:e.u32()}))',
   },
+  // ── P3: Fix SORT_CARD response encoder (spurious length prefix) ──
+  // The encoder writes i8(order.length) before the rank bytes, but OCGCore C++
+  // reads N bytes directly (N = number of cards from the SORT_CARD message).
+  // The length byte is misread as rank[0]; since N == number of cards (e.g. 4),
+  // it's out of range [0, N-1] → OCGCore sends RETRY for every manual sort.
+  // Fix: remove the i8(order.length) prefix so only the rank bytes are written.
+  {
+    file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
+    label: 'SORT_CARD encoder — remove spurious length prefix',
+    from:  'case 15:if(!e.order){t.i8(-1);break}t.i8(e.order.length);for(let r of e.order)t.i8(r);break;',
+    to:    'case 15:if(!e.order){t.i8(-1);break}for(let r of e.order)t.i8(r);break;',
+  },
 ];
 
 let failed = 0;

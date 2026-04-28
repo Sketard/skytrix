@@ -64,6 +64,7 @@ let systemStrings: Map<number, string> = new Map();
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
 let lastAnnounceNumberOptions: number[] = [];
+let lastResponsePlayerIndex: 0 | 1 = 0;
 
 // Replay capture state
 let capturedResponses: CapturedResponse[] = [];
@@ -1052,7 +1053,7 @@ function runDuelLoop(): void {
 
     // RETRY recovery: tell the server to re-send the cached prompt
     if (hasRetry && status === OcgProcessResult.WAITING) {
-      port.postMessage({ type: 'WORKER_RETRY', duelId });
+      port.postMessage({ type: 'WORKER_RETRY', duelId, playerIndex: lastResponsePlayerIndex });
     }
 
     if (status === OcgProcessResult.END) {
@@ -1829,6 +1830,7 @@ port.on('message', (msg: MainToWorkerMessage) => {
       dlog.error('Received PLAYER_RESPONSE but no active duel');
       return;
     }
+    lastResponsePlayerIndex = msg.playerIndex;
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
     if (response) {
       if (forkMode) {
