@@ -515,10 +515,21 @@ export async function runFixture(
     : [];
   scorer.setImplicitBoardGoals(implicitGoals, implicitGoalWeight);
 
-  const preferredSearchTargets = [
-    ...(hand.expectedBoard ?? []).map(e => e.cardId),
-    ...(hand.preferredIntermediates ?? []),
-  ];
+  // Honest baseline gate (2026-04-28). When SOLVER_DISABLE_PREFERRED=1,
+  // strip the fixture's `expectedBoard` cardIds + `preferredIntermediates`
+  // out of the SELECT_CARD enumeration hint. This removes a known
+  // fixture-leak in the action enumeration: large-pool SELECT_CARD prompts
+  // (e.g. Lukias deck-search with 6+ Dracotail candidates) currently
+  // surface the top-K matches against `preferredSearchTargets` as branch
+  // points; without it, they auto-resolve to the first OCG-index candidate.
+  // Production solver ships with the hint enabled (preserves existing
+  // 26/69 ceiling); honest baseline measurement requires the gate.
+  const preferredSearchTargets = process.env.SOLVER_DISABLE_PREFERRED === '1'
+    ? []
+    : [
+        ...(hand.expectedBoard ?? []).map(e => e.cardId),
+        ...(hand.preferredIntermediates ?? []),
+      ];
 
   const duelConfig: DuelConfig = {
     mainDeck,

@@ -27,9 +27,11 @@
     "vitest": "^4.1.2"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@n1xx1/ocgcore-wasm": "npm:@jsr/n1xx1__ocgcore-wasm@^0.1.1",
     "better-sqlite3": "^12.6.2",
     "piscina": "^5.1.4",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
   }
 }
