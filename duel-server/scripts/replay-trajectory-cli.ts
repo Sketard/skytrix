@@ -63,7 +63,7 @@
 //     --out=path/to/result.json     # optional, otherwise stdout JSON
 // =============================================================================
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 import {
@@ -76,6 +76,14 @@ import { loadAllSolverConfigs } from '../src/solver/solver-config-loader.js';
 import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { buildCardMetadataMap } from '../src/solver/card-metadata.js';
 import { InterruptionScorer } from '../src/solver/interruption-scorer.js';
+import {
+  buildFeatureContext,
+  extractStateFeatures,
+  extractActionFeatures,
+  computeFeatureSpecHash,
+  STATE_DIM,
+  ACTION_DIM,
+} from '../src/solver/state-feature-extractor.js';
 import type { Action, DuelConfig, FieldState, ZoneId } from '../src/solver/solver-types.js';
 
 // =============================================================================
@@ -87,6 +95,21 @@ interface Args {
   planFile: string;
   outFile?: string;
   maxIterations: number;
+  /** Tier 3 corpus dump path (JSONL). When set, every SELECT_CARD prompt
+   *  encountered during replay emits one line: state features (58) +
+   *  per-candidate action features (58 each) + the picked candidate index.
+   *  The picked index reflects whichever the replay chose at that prompt
+   *  (target-driven if matched, else legal[0] auto-pick). */
+  dumpCorpus?: string;
+  /** Continue policy when the plan is exhausted at SELECT_IDLECMD.
+   *  - `end-phase` (default): pick end-phase immediately, end the turn.
+   *  - `aggressive`: prefer productive actions (summon-procedure, activate,
+   *    normal-summon, pendulum-summon, set-st) until none productive remain,
+   *    then fall back to end-phase. Used by enumerate-pivot.ts to differentiate
+   *    starter candidates by their cascade depth. */
+  continueMode: 'end-phase' | 'aggressive';
+  /** Max aggressive-mode actions before forcing end-phase. Safety cap. */
+  maxAggressiveActions: number;
 }
 
 function parseArgs(): Args {
@@ -97,7 +120,12 @@ function parseArgs(): Args {
   const fixtureId = pick('fixture-id');
   const planFile = pick('plan-file');
   if (!fixtureId || !planFile) {
-    console.error('Usage: --fixture-id=<id> --plan-file=<path> [--out=<path>] [--max-iterations=2000]');
+    console.error('Usage: --fixture-id=<id> --plan-file=<path> [--out=<path>] [--max-iterations=2000] [--dump-corpus=<path.jsonl>]');
+    process.exit(2);
+  }
+  const continueModeRaw = pick('continue-mode') ?? 'end-phase';
+  if (continueModeRaw !== 'end-phase' && continueModeRaw !== 'aggressive') {
+    console.error(`[replay] --continue-mode must be 'end-phase' or 'aggressive', got '${continueModeRaw}'`);
     process.exit(2);
   }
   return {
@@ -105,6 +133,9 @@ function parseArgs(): Args {
     planFile,
     outFile: pick('out'),
     maxIterations: Number(pick('max-iterations') ?? '2000'),
+    dumpCorpus: pick('dump-corpus'),
+    continueMode: continueModeRaw,
+    maxAggressiveActions: Number(pick('max-aggressive-actions') ?? '40'),
   };
 }
 
@@ -330,6 +361,21 @@ async function main(): Promise<void> {
     allConfigs.structuralTutorCards,
   );
 
+  // Tier 3 corpus extraction — only when --dump-corpus is set.
+  const featureCtx = args.dumpCorpus ? buildFeatureContext({
+    metadata,
+    interruptionTags: allConfigs.interruptionTags,
+    interruptionWeights: allConfigs.interruptionWeights,
+    mainDeck: deck.main,
+    extraDeck: deck.extra,
+  }) : null;
+  if (args.dumpCorpus) {
+    const abs = resolve(args.dumpCorpus);
+    mkdirSync(dirname(abs), { recursive: true });
+    // Truncate the file at the start of each run so re-runs don't bloat.
+    writeFileSync(abs, '', 'utf-8');
+  }
+
   const nameCache = new Map<number, string>();
   const getName = (code: number): string => {
     if (!code) return '(pass)';
@@ -362,6 +408,11 @@ async function main(): Promise<void> {
   const replayLog: ReplayLogEntry[] = [];
   let planIdx = 0;
   let rawIdx = 0;
+  /** The plan-step index that most recently committed an IDLECMD action.
+   *  Stamped on every corpus row so the enumeration tool can map a sub-prompt
+   *  back to the IDLECMD plan step that triggered it. Set on IDLECMD pick;
+   *  read by the corpus dump on every prompt. */
+  let lastCommittedPlanStepIndex: number | null = null;
   /** Pending sub-prompt overrides for the active plan step, consumed in order
    *  at SELECT_CARD/SELECT_OPTION/SELECT_PLACE/SELECT_UNSELECT_CARD prompts. */
   let pendingTargets: TargetSpec[] = [];
@@ -375,6 +426,7 @@ async function main(): Promise<void> {
 
   let stepCount = 0;
   let endPhaseAttempts = 0;
+  let aggressiveActions = 0;
   const MAX_END_PHASE_ATTEMPTS = 50;
   const SUB_PROMPT_PICKABLE = new Set([
     'SELECT_CARD', 'SELECT_OPTION', 'SELECT_PLACE', 'SELECT_UNSELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_POSITION',
@@ -513,6 +565,7 @@ async function main(): Promise<void> {
               break;
             }
             planStepIndex = planIdx;
+            lastCommittedPlanStepIndex = planIdx;
             // Load the step's targets and chainTargets into pending queues.
             // Any leftovers from the previous step are dropped — they should
             // have been consumed before reaching the next IDLECMD.
@@ -521,15 +574,31 @@ async function main(): Promise<void> {
             planIdx++;
             pickSource = 'plan';
           } else if (endTurn) {
-            chosen = legal.find(a => a.actionVerb === 'end-phase')
-              ?? legal[legal.length - 1];
-            endPhaseAttempts++;
-            if (endPhaseAttempts > MAX_END_PHASE_ATTEMPTS) {
-              stoppedReason = 'ceiling';
-              errorMessage = 'End-phase loop exceeded ceiling';
-              break;
+            // Plan exhausted at IDLECMD. Two continuation policies:
+            //  - end-phase (default): pick end-phase immediately.
+            //  - aggressive: prefer productive verbs to keep cascading until
+            //    no productive action remains. Used by enumerate-pivot to
+            //    measure each starter's cascade depth (differentiates
+            //    candidates that auto-finish-end-phase would lump together).
+            const PRODUCTIVE_VERBS = ['summon-procedure', 'activate', 'pendulum-summon', 'normal-summon', 'set-st', 'set-monster'];
+            const productive = args.continueMode === 'aggressive' && aggressiveActions < args.maxAggressiveActions
+              ? legal.find(a => PRODUCTIVE_VERBS.includes(a.actionVerb ?? ''))
+              : undefined;
+            if (productive) {
+              chosen = productive;
+              aggressiveActions++;
+              pickSource = 'auto-end-phase';  // reuse tag; aggressiveActions disambiguates
+            } else {
+              chosen = legal.find(a => a.actionVerb === 'end-phase')
+                ?? legal[legal.length - 1];
+              endPhaseAttempts++;
+              if (endPhaseAttempts > MAX_END_PHASE_ATTEMPTS) {
+                stoppedReason = 'ceiling';
+                errorMessage = 'End-phase loop exceeded ceiling';
+                break;
+              }
+              pickSource = 'auto-end-phase';
             }
-            pickSource = 'auto-end-phase';
           } else {
             break;
           }
@@ -565,6 +634,50 @@ async function main(): Promise<void> {
         stoppedReason = 'ceiling';
         errorMessage = `No action chosen at step ${stepCount} promptType=${promptType}`;
         break;
+      }
+
+      // Tier 3 corpus dump — emit one JSONL row per SELECT_CARD prompt with
+      // the full feature space (state[58] + per-candidate action[58]) and
+      // the picked candidate's index. Only SELECT_CARD prompts are captured
+      // because that is the layer where `preferredSearchTargets` (the leak)
+      // currently steers DFS — Tier 3 will replace that heuristic with a
+      // learned scorer of (state, candidate) pairs.
+      if (featureCtx && promptType === 'SELECT_CARD' && legal.length >= 2) {
+        try {
+          const fs = adapter.getFieldState(handle);
+          const stateVec = extractStateFeatures(fs, featureCtx);
+          const candidates = legal.map(a => ({
+            cardId: a.cardId,
+            cardName: getName(a.cardId),
+            responseIndex: a.responseIndex,
+            actionFeatures: extractActionFeatures(a, fs, featureCtx),
+          }));
+          const pickedIndex = legal.findIndex(a => a.responseIndex === chosen!.responseIndex && a.cardId === chosen!.cardId);
+          const row = {
+            fixtureId: args.fixtureId,
+            stepIndex: stepCount,
+            planStepIndex,
+            /** Index of the most recently committed IDLECMD plan step at the
+             *  moment this sub-prompt fired. Lets the enumeration tool map
+             *  any SELECT_CARD row back to its parent plan step. */
+            ownerPlanStepIndex: lastCommittedPlanStepIndex,
+            pickSource,
+            promptType,
+            promptHint: chosen!.description,
+            stateDim: STATE_DIM,
+            actionDim: ACTION_DIM,
+            featureSpecHash: computeFeatureSpecHash(),
+            stateFeatures: stateVec,
+            candidates,
+            pickedIndex,
+            pickedCardId: chosen!.cardId,
+            pickedResponseIndex: chosen!.responseIndex,
+          };
+          appendFileSync(resolve(args.dumpCorpus!), JSON.stringify(row) + '\n', 'utf-8');
+        } catch (e) {
+          // Don't let corpus extraction break the replay; record but continue.
+          console.error(`[corpus-dump] step ${stepCount} failed:`, (e as Error).message);
+        }
       }
 
       const cardName = chosen.cardName || getName(chosen.cardId);

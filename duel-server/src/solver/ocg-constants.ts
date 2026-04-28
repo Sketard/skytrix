@@ -49,7 +49,11 @@ export const POSITION_MAP: Record<number, FieldCard['position']> = {
   [OcgPosition.FACEDOWN]: 'facedown',     // 10 — SZONE face-down convention
 };
 
-/** OCGCore SELECT_* message types → our PromptType string union. */
+/** OCGCore SELECT_* message types → our PromptType string union.
+ *  ANNOUNCE_NUMBER is included so that effects like Lance Soldier's level-up
+ *  (`Duel.AnnounceLevel(tp,1,ct)`) get a player-mode response instead of
+ *  silently stalling the engine — without this, the adapter would return
+ *  no actions and the replay would terminate at the AnnounceLevel call. */
 export const MESSAGE_TO_PROMPT: Record<number, PromptType> = {
   [OcgMessageType.SELECT_IDLECMD]: 'SELECT_IDLECMD',
   [OcgMessageType.SELECT_BATTLECMD]: 'SELECT_BATTLECMD',
@@ -65,6 +69,7 @@ export const MESSAGE_TO_PROMPT: Record<number, PromptType> = {
   [OcgMessageType.SELECT_SUM]: 'SELECT_SUM',
   [OcgMessageType.SELECT_COUNTER]: 'SELECT_COUNTER',
   [OcgMessageType.SELECT_DISFIELD]: 'SELECT_DISFIELD',
+  [OcgMessageType.ANNOUNCE_NUMBER]: 'ANNOUNCE_NUMBER',
 };
 
 /** Set of SELECT_* message type numeric IDs — fast-path check in

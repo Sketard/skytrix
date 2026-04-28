@@ -19,7 +19,15 @@ discovery refuting prior human-authored ceilings**.
 | **branded-dracotail-opener** | (none) | 3/8 | **7/8** | **+3** | **+4 (est.)** |
 | **ryzeal-mitsurugi-opener** | 4/5 | 3/5 | **5/5** | **+? (TBD)** | **+4 (est.)** |
 | radiant-typhoon-opener | 3/3 | 3/3 | 3/3 | 0 | 0 |
+| **ddd-pendulum-opener** (2026-04-28) | (none) | n/a | **2/5** | **+1** | **+1** |
 | (snake-eye-yummy-opener) | n/a | incompatible format (PvP raw-replay) | — | — | — |
+
+**D/D/D (4th archetype family — pendulum-combo):** β-1 v2 from-scratch, 20 iterations,
+honest baseline 1/5 → 2/5 (Cursed King Siegfried + Deus Machinex). Subagent diagnosed
+3 missing as structurally unreachable from this opener: Wave High King Caesar (only 1
+Lv6 Fiend possible — Clovis), Sky King Zeus Ragnarok (Link 3 would consume the others),
+Headhunt (no in-deck trap tutor). Methodology validated on a 4th archetype family but
+lift is at the low end (+1) — D/D/D's expected board exceeds 5-card hand's budget.
 
 Tier 1 honest baseline measurement landed: DFS-canonical-eval **with**
 `preferredSearchTargets` leak = 26/69; **without** = 22/69 (Δ-4 cum

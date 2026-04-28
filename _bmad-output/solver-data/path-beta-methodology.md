@@ -260,6 +260,66 @@ Adapter selon mode β-1 vs β-3. Voir mes dispatches précédents (en historique
 
 ---
 
+## Critic-mode prompt — mandatory skip-card analysis (R2, Sprint 1 refinement)
+
+**Why this section exists.** When a critic LLM is dispatched on a fixture
+that plateaus, it tends to fall into a "use-everything bias": the implicit
+framing is *"given all hand cards, what's the optimal activation order?"*
+rather than *"which hand cards are productive vs which are dead weight?"*.
+This bias produced the branded 7/8 critic verdict ("8/8 mechanically
+impossible") which actually meant *"8/8 impossible IF you activate every
+hand card"* — but the canonical 8/8 line might NOT activate one of them
+(e.g. Branded Fusion's ED-Fusion lock blocks downstream Synchros).
+
+**Mandatory section in every critic prompt** (insert before the workflow
+phase):
+
+```
+## Mandatory skip-card analysis (DO BEFORE AUTHORING)
+
+Before drafting any plan, generate a skip table for each hand card:
+
+| Hand card | Activated → enables | Skipped → preserves | Lock cost if activated |
+|-----------|---------------------|---------------------|------------------------|
+
+For each card, answer in 1 line each column. The "Lock cost" column is
+critical — many YGO cards impose constraints when activated (ED locks,
+attribute locks, position locks, no-NS locks). Read the oracle text
+explicitly looking for the words: "for the rest of this turn", "until end
+of phase", "you can only Special Summon", "cannot Special Summon except".
+
+Before committing to a plan that activates card X, briefly state:
+"I am activating X because [enabler] — and I have verified that X's
+constraint [lock-text or 'none'] does NOT block [downstream card I need]."
+
+Hand cards aren't always meant to be used. Sometimes the best plan
+deliberately leaves a card in hand. Question every activation.
+```
+
+**Mechanical companion.** Always run `scripts/enumerate-skip.ts` on the
+final candidate plan BEFORE declaring "this is the best" — it
+deterministically tests every single-step and pair-step removal in
+~30s-2min wall, $0 LLM. If skip-enum surfaces a variant ≥ baseline matched,
+the LLM was wrong about the ceiling.
+
+```bash
+npx tsx scripts/enumerate-skip.ts \
+  --fixture-id=<fixture> \
+  --base-plan=path/to/best-plan.json \
+  --out-dir=data/path-beta-poc/<fixture>/enumerate-skip/ \
+  [--combo-depth=2]
+```
+
+Skip-enum result interpretation:
+- **All variants ≤ baseline**: empirical local-optimum confirmation. The
+  ceiling is real (or requires ADD-step authoring, not skip).
+- **One variant > baseline**: the LLM missed a skip — re-author with that
+  step removed.
+- **Multiple variants tied at baseline**: the skipped step was redundant
+  (no contribution); ship the simpler plan.
+
+---
+
 ## Roadmap forward
 
 Décision pending au moment de l'écriture (2026-04-28) :

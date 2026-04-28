@@ -1640,6 +1640,18 @@ export class OCGCoreAdapter implements GameOracle {
       case OcgMessageType.SELECT_UNSELECT_CARD:
         if (msg['can_finish']) return { type: 7, index: null };
         return { type: 7, index: 0 };
+      case OcgMessageType.ANNOUNCE_NUMBER: {
+        // ANNOUNCE_NUMBER fires for effects like Lance Soldier's
+        // `Duel.AnnounceLevel(tp,1,ct)` — caller picks any value in
+        // `options[]`. Default: max value, which is what combo decks
+        // typically want (max level-up = enables higher-rank Xyz / higher-
+        // level Synchro materials downstream). Without this case the
+        // adapter would return [] (no SELECT_* match) and the replay would
+        // stall at the AnnounceLevel call.
+        const opts = (msg['options'] as Array<bigint | number> | undefined) ?? [];
+        const value = opts.length > 0 ? Number(opts[opts.length - 1]) : 0;
+        return { type: 19, value };
+      }
       default:
         // Latent risk on OCGCore upgrades: an unhandled prompt type silently
         // falls back to SELECT_OPTION first choice. Throw in dev to surface

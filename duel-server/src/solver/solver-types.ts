@@ -77,7 +77,8 @@ export type PromptType =
   | 'SELECT_TRIBUTE'
   | 'SELECT_SUM'
   | 'SELECT_COUNTER'
-  | 'SELECT_DISFIELD';
+  | 'SELECT_DISFIELD'
+  | 'ANNOUNCE_NUMBER';
 
 // Exploratory prompts become tree branches in the solver.
 // All other PromptType values (SELECT_POSITION, SELECT_PLACE, SELECT_TRIBUTE,
