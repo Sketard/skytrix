@@ -200,6 +200,13 @@ export class AnimationOrchestratorService {
 
     if (buffer.length === 0) return Promise.resolve();
 
+    // Mark drain start: events about to be replayed must NOT re-buffer back
+    // into chainManager when they pass through processEvent (mid-chain
+    // pre-replay can fire while _insideChainResolution is still true). Cleared
+    // in batch-end resolve, in the reduced-motion path below, and as a safety
+    // net by chainManager.reset().
+    this.chainManager.beginDrain();
+
     // Reduced motion: apply state changes instantly
     if (this.ctx.reducedMotion()) {
       for (const event of buffer) {
@@ -212,6 +219,7 @@ export class AnimationOrchestratorService {
           this.lpTracker.fireLpReplayEvent(event);
         }
       }
+      this.chainManager.endDrain();
       return Promise.resolve();
     }
 
@@ -336,6 +344,10 @@ export class AnimationOrchestratorService {
         this.drawManager.endHandBatch(rp);
       }
       for (const l of sessionHandLocks) l.release();
+      // Drain complete — events processed past this point are again subject
+      // to bufferIfResolving (e.g., events arriving from the server after the
+      // batch finishes but before MSG_CHAIN_SOLVED).
+      this.chainManager.endDrain();
     };
 
     // Inline path: called from mid-chain pre-replay inside _processAnimationQueueInner.
@@ -355,6 +367,7 @@ export class AnimationOrchestratorService {
     return new Promise<void>(resolve => {
       const safety = setTimeout(() => {
         this.logger.warn('replayBuffer safety timeout — forcing resolve');
+        this.chainManager.endDrain();
         resolve();
       }, this.ctx.safetyTimeout(REPLAY_BUFFER_SAFETY_TIMEOUT_MS));
       batch.push({
@@ -675,7 +688,7 @@ export class AnimationOrchestratorService {
       // alive; `replayBuffer()` will reuse them via its own preLockQueuedSources
       // pass (the `!has` guard prevents duplication), and MSG_CHAIN_END's
       // `releaseAllPreLocks()` is the safety net for any orphans.
-      const buffered = this.chainManager.isResolving
+      const buffered = this.chainManager.shouldBufferDuringChain
         && ChainResolutionManager.BOARD_CHANGING_EVENTS.has(event.type);
       if (!buffered) {
         if (event.type === 'MSG_MOVE') {

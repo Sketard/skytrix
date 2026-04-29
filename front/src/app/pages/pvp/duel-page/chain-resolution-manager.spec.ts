@@ -122,6 +122,23 @@ describe('ChainResolutionManager', () => {
       const nonBoardEvent = { type: 'MSG_HINT' } as any;
       expect(mgr.bufferIfResolving(nonBoardEvent)).toBeFalse();
     });
+
+    it('should not re-buffer events while a drain is in progress', () => {
+      mgr.handleSolving(solving(0));
+      mgr.bufferIfResolving(move());
+      mgr.drainBuffer();
+      mgr.beginDrain();
+      // While draining, replayed events pass through processEvent and would
+      // otherwise be re-buffered into the same buffer they were just drained
+      // from — causing the mid-chain pre-replay infinite loop.
+      expect(mgr.isResolving).toBeTrue();
+      expect(mgr.bufferIfResolving(move())).toBeFalse();
+      expect(mgr.shouldBufferDuringChain).toBeFalse();
+      expect(mgr.hasBufferedEvents).toBeFalse();
+      mgr.endDrain();
+      expect(mgr.shouldBufferDuringChain).toBeTrue();
+      expect(mgr.bufferIfResolving(move())).toBeTrue();
+    });
   });
 
   describe('BOARD_CHANGING_EVENTS set', () => {
