@@ -6,7 +6,7 @@ import {
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
-import { SelectIdleCmdMsg, SelectBattleCmdMsg, IdleCmdResponse, BattleCmdResponse } from '../../../duel-ws.types';
+import { LOCATION, SelectIdleCmdMsg, SelectBattleCmdMsg, IdleCmdResponse, BattleCmdResponse } from '../../../duel-ws.types';
 import { IDLE_ACTION, BATTLE_ACTION } from '../../idle-action-codes';
 
 type ActionListPrompt = SelectIdleCmdMsg | SelectBattleCmdMsg;
@@ -48,8 +48,11 @@ export class PromptActionListReadonlyComponent implements PromptSubComponent<Act
     switch (r.action) {
       case IDLE_ACTION.SUMMON:
         return { label: 'Normal Summon', cardName: prompt.summons[r.index ?? 0]?.name ?? '' };
-      case IDLE_ACTION.SPECIAL_SUMMON:
-        return { label: 'Special Summon', cardName: prompt.specialSummons[r.index ?? 0]?.name ?? '' };
+      case IDLE_ACTION.SPECIAL_SUMMON: {
+        const card = prompt.specialSummons[r.index ?? 0];
+        const isPendulum = card != null && card.location === LOCATION.SZONE && (card.sequence === 0 || card.sequence === 4);
+        return { label: isPendulum ? 'Pendulum Summon' : 'Special Summon', cardName: card?.name ?? '' };
+      }
       case IDLE_ACTION.REPOSITION:
         return { label: 'Change Position', cardName: prompt.repositions[r.index ?? 0]?.name ?? '' };
       case IDLE_ACTION.SET_MONSTER:

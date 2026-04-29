@@ -326,7 +326,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   // Yu-Gi-Oh game mechanic keywords highlighted à la Master Duel.
   // Sorted longest-first so multi-word terms match before their substrings.
   private static readonly HINT_KEYWORDS = [
-    'Tribute Summon', 'Normal Summon', 'Special Summon', 'Flip Summon',
+    'Tribute Summon', 'Normal Summon', 'Pendulum Summon', 'Special Summon', 'Flip Summon',
     'Fusion Material', 'Synchro Material', 'Xyz Material', 'Link Material',
     'Pendulum Spell',
     'Attack Position', 'Defense Position',

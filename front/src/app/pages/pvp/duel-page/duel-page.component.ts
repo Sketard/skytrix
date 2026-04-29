@@ -1003,9 +1003,31 @@ export class DuelPageComponent implements OnInit {
         }
       });
     };
+    // Special Summon entries sourced from pendulum scales (SZONE seq 0/4 in
+    // MR5) get the 'Pendulum Summon' label; same dedup discipline as
+    // buildActionableCardsFromIdle (OCG emits N identical entries when an
+    // effect grants extra Pendulum Summons; YGO doesn't distinguish "which
+    // use" the player consumes).
+    const addSpecialSummonMatches = (cards: CardInfo[]) => {
+      const seenPendulum = new Set<string>();
+      cards.forEach((card, idx) => {
+        if (card.cardCode !== cardCode || card.location !== targetLocation || card.sequence !== targetSequence) return;
+        const isPendulum = card.location === LOCATION.SZONE && (card.sequence === 0 || card.sequence === 4);
+        if (isPendulum) {
+          const dedupKey = `${card.cardCode}-${card.location}-${card.sequence}`;
+          if (seenPendulum.has(dedupKey)) return;
+          seenPendulum.add(dedupKey);
+        }
+        result.push({
+          label: isPendulum ? 'Pendulum Summon' : 'Special Summon',
+          actionCode: IDLE_ACTION.SPECIAL_SUMMON,
+          index: idx,
+        });
+      });
+    };
     if (prompt.type === 'SELECT_IDLECMD') {
       addMatches(prompt.summons, 'Normal Summon', IDLE_ACTION.SUMMON);
-      addMatches(prompt.specialSummons, 'Special Summon', IDLE_ACTION.SPECIAL_SUMMON);
+      addSpecialSummonMatches(prompt.specialSummons);
       addMatches(prompt.repositions, 'Change Position', IDLE_ACTION.REPOSITION);
       addMatches(prompt.setMonsters, 'Set', IDLE_ACTION.SET_MONSTER);
       addMatches(prompt.activations, 'Activate Effect', IDLE_ACTION.ACTIVATE);
