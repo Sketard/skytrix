@@ -565,7 +565,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return {
         type: 'SELECT_TRIBUTE', player: msg.player as Player,
         min: msg.min, max: msg.max,
-        cards: msg.selects.map(c => toCardInfo(c)),
+        cards: msg.selects.map(c => ({ ...toCardInfo(c), releaseParam: c.release_param })),
         cancelable: msg.can_cancel,
       };
 

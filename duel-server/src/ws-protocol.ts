@@ -124,6 +124,12 @@ export interface CardInfo {
   position?: number;
   description?: string;
   amount?: number;
+  /**
+   * Tribute "release_param" value for SELECT_TRIBUTE entries — encodes the
+   * effective tribute count this card provides (some cards count as 2 toward
+   * a tribute summon's total). Absent for other prompt types.
+   */
+  releaseParam?: number;
 }
 
 export interface PlaceOption {
