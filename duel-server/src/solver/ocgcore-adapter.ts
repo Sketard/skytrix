@@ -1643,13 +1643,20 @@ export class OCGCoreAdapter implements GameOracle {
       case OcgMessageType.ANNOUNCE_NUMBER: {
         // ANNOUNCE_NUMBER fires for effects like Lance Soldier's
         // `Duel.AnnounceLevel(tp,1,ct)` — caller picks any value in
-        // `options[]`. Default: max value, which is what combo decks
-        // typically want (max level-up = enables higher-rank Xyz / higher-
-        // level Synchro materials downstream). Without this case the
-        // adapter would return [] (no SELECT_* match) and the replay would
-        // stall at the AnnounceLevel call.
+        // `options[]`. The response `value` field is the INDEX of the
+        // chosen option (consistent with duel-worker.ts:947 which converts
+        // client-side value → idx via `lastAnnounceNumberOptions.indexOf`).
+        // Default: index of the LAST option = max announced value, which
+        // is what combo decks typically want (max level-up = enables
+        // higher-rank Xyz / higher-level Synchro materials downstream).
+        // Without this case the adapter would return [] (no SELECT_* match)
+        // and the replay would stall at the AnnounceLevel call. Plan-grammar
+        // override (specific value, not max) is a Sprint-2 candidate.
         const opts = (msg['options'] as Array<bigint | number> | undefined) ?? [];
-        const value = opts.length > 0 ? Number(opts[opts.length - 1]) : 0;
+        const value = opts.length > 0 ? opts.length - 1 : 0;
+        if (process.env.SOLVER_DEBUG_ANNOUNCE === '1') {
+          console.log(`[autoRespondMechanical] ANNOUNCE_NUMBER opts=[${opts.map(Number).join(',')}] picked-idx=${value} picked-value=${Number(opts[value] ?? 0)}`);
+        }
         return { type: 19, value };
       }
       default:
