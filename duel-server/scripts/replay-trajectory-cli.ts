@@ -430,6 +430,14 @@ async function main(): Promise<void> {
   const MAX_END_PHASE_ATTEMPTS = 50;
   const SUB_PROMPT_PICKABLE = new Set([
     'SELECT_CARD', 'SELECT_OPTION', 'SELECT_PLACE', 'SELECT_UNSELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_POSITION',
+    // SELECT_YESNO + SELECT_EFFECTYN are pickable so plans can override the
+    // default policy via `targets: [{responseIndex: 0|1}]`:
+    //   - SELECT_EFFECTYN defaults to YES; force NO when an optional effect
+    //     would burn its OPT or eat a chain link the plan needs preserved.
+    //   - SELECT_YESNO defaults to NO; force YES when a "place card from deck"
+    //     style trigger (e.g. Divine Temple of the Snake-Eye placing a
+    //     Snake-Eye monster as Cont Spell) would silently be declined.
+    'SELECT_YESNO', 'SELECT_EFFECTYN',
   ]);
 
   function tryConsumeTarget(legal: Action[], promptType: string): Action | null {
@@ -605,8 +613,12 @@ async function main(): Promise<void> {
         } else {
           // Sub-prompt resolution order (plan mode):
           //   - SELECT_CHAIN: consume next chainTarget if any, else auto-pass
+          //   - SELECT_EFFECTYN: consume next target if any, else auto-YES
+          //   - SELECT_YESNO: consume next target if any, else auto-NO (legal[0]).
+          //     Default-NO is preserved (changing it cascades plans that rely
+          //     on declining optional Y/N triggers); plans that need YES must
+          //     specify `targets: [{responseIndex: 1}]` or a cardName match.
           //   - SELECT_CARD/OPTION/PLACE/etc.: consume next target if any, else legal[0]
-          //   - SELECT_EFFECTYN: auto-YES (no override; trivial 2-option prompt)
           if (promptType === 'SELECT_CHAIN') {
             chosen = tryConsumeChainTarget(legal);
             if (chosen) {
@@ -616,8 +628,13 @@ async function main(): Promise<void> {
               pickSource = 'auto';
             }
           } else if (promptType === 'SELECT_EFFECTYN') {
-            chosen = legal.find(a => a.responseIndex === 1) ?? legal[0];
-            pickSource = 'auto';
+            chosen = tryConsumeTarget(legal, promptType);
+            if (chosen) {
+              pickSource = 'target';
+            } else {
+              chosen = legal.find(a => a.responseIndex === 1) ?? legal[0];
+              pickSource = 'auto';
+            }
           } else {
             chosen = tryConsumeTarget(legal, promptType);
             if (chosen) {
