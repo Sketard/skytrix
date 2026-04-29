@@ -99,6 +99,29 @@ const patches = [
     to: '--Utilities to be added to the core\n\n-- POLYFILL: Duel.GetReasonEffect / Duel.GetReasonPlayer\n-- Bound in upstream edo9300/ygopro-core (libduel.cpp 4154/4158) but missing\n-- in @n1xx1/ocgcore-wasm 0.1.1. The Duel.Overlay monkey-patch below (line\n-- ~438) crashes without these. Strip both polyfills if/when the underlying\n-- WASM build adds the bindings (see patch-ocgcore-wasm.mjs P4 for context).\nif not Duel.GetReasonEffect then Duel.GetReasonEffect=function() return nil end end\nif not Duel.GetReasonPlayer then Duel.GetReasonPlayer=function() return PLAYER_NONE end end\n',
   },
 
+  // ── P5: Fix OVERLAY_CARD query parser — wrong flag tag matched ──
+  // The parser branches on `s === E.TARGET_CARD` but assigns to `t.overlayCards`
+  // and decodes the buffer as `u32 count + u32×count code`. Per the bundle's
+  // own d.ts: TARGET_CARD → `targetCards: OcgCardQueryInfoCard[]` (refs),
+  // OVERLAY_CARD → `overlayCards: number[]` (codes). The decode logic is
+  // correct for OVERLAY_CARD; only the flag tag is wrong. Querying a Xyz with
+  // `OcgQueryFlags.OVERLAY_CARD` therefore returns `{}` (no case matches),
+  // and querying with TARGET_CARD returns `{overlayCards: []}` (wrong payload
+  // decoded as overlay). Net effect: every Xyz monster's overlay list is
+  // empty in BoardState, so the rendered Xyz appears with no materials —
+  // visible bug on Rank-Up summons (Wise King → Marksman Tell) but actually
+  // affects every Xyz summon.
+  //
+  // Fix: rewire the existing parser branch to match OVERLAY_CARD instead of
+  // TARGET_CARD. We don't decode TARGET_CARD anywhere in the codebase, so
+  // dropping that (already-broken) path is harmless.
+  {
+    file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
+    label: 'OVERLAY_CARD parser — match OVERLAY_CARD, not TARGET_CARD',
+    from:  's===E.TARGET_CARD&&o>=4){t.overlayCards=[];',
+    to:    's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];',
+  },
+
 ];
 
 let failed = 0;
