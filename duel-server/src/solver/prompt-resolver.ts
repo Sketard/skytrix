@@ -53,9 +53,10 @@ export interface DivergenceInfo {
   reason: string;
 }
 
-/** The shared context every oracle reads from (and some mutate). Phase 2 only
- *  uses the fields needed by MechanicalDefaultOracle — Phase 5+ extends with
- *  expertise/plan/raw fields. The full schema is documented in the refactor
+/** The shared context every oracle reads from (and some mutate). The schema
+ *  grows incrementally per phase — Phase 2 needed only the basic prompt
+ *  payload + player + config; Phase 3 adds DFS-side flags. Phase 5+ extends
+ *  with expertise/plan/raw fields. The full target schema is in the refactor
  *  design doc §"DecisionContext". */
 export interface DecisionContext {
   // ---- OCG prompt payload ----
@@ -70,6 +71,13 @@ export interface DecisionContext {
    *  to the opponent goldfish sub-case. 0 = player, 1 = opponent. Sourced
    *  from `msg.player`. */
   player: 0 | 1;
+
+  // ---- DFS-side flags (Phase 3) ----
+  /** When true, BranchingOracle dispatches multi-pick prompts (SELECT_CARD
+   *  min>1, SELECT_TRIBUTE, SELECT_SUM, SELECT_UNSELECT_CARD) through
+   *  tryInteractiveMechanical (trace-assist). Default false. Mirrors
+   *  OCGCoreAdapter.exposeMultiPickMechanical. */
+  exposeMultiPickMechanical?: boolean;
 
   // ---- Config ----
   config?: DuelConfig;

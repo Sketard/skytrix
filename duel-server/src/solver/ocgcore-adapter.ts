@@ -132,6 +132,9 @@ import {
 import { queryFieldState, decodeFieldMask } from './ocg-field-query.js';
 import { solverAssert } from './solver-assert.js';
 import { time as instrumentTime } from './solver-instrumentation.js';
+import { PromptResolver, type DecisionContext } from './prompt-resolver.js';
+import { MechanicalDefaultOracle } from './mechanical-default-oracle.js';
+import { BranchingOracle, OpponentBranchingOracle, type BranchingDelegate } from './branching-oracles.js';
 
 // =============================================================================
 // Internal Handle State
@@ -273,6 +276,49 @@ export class OCGCoreAdapter implements GameOracle {
    *  bound exploration, and interactive multi-pick would produce non-terminal
    *  trees the DFS can't rank. Only set to true by `scripts/trace-assist.ts`. */
   exposeMultiPickMechanical = false;
+
+  /** Phase 3 of prompt-resolver-refactor (2026-05-01). When env
+   *  `SOLVER_USE_PROMPT_RESOLVER=1` is set, runUntilPlayerPrompt routes its
+   *  prompt-resolution decisions through the unified PromptResolver +
+   *  OracleChain abstraction instead of the hand-coded inline switches.
+   *  Default OFF — Phase 5+ flips the default after a 1-week soak window.
+   *  Lazy-initialized on first use to avoid construction cost when disabled. */
+  private dfsResolver: PromptResolver | null = null;
+
+  private getOrBuildDfsResolver(): PromptResolver {
+    if (this.dfsResolver) return this.dfsResolver;
+    const delegate: BranchingDelegate = {
+      enumerateActionsWithResponses: (msg, promptType, config) => this.enumerateActionsWithResponses(msg, promptType, config),
+      selectCardIsExploratory: (msg) => this.selectCardIsExploratory(msg),
+      selectCardIsPreferredExploratory: (msg, config) => this.selectCardIsPreferredExploratory(msg, config),
+      enumeratePreferredSelectCard: (msg, config) => this.enumeratePreferredSelectCard(msg, config),
+      tryInteractiveMechanical: (msg, promptType) => {
+        // The trace-assist `tryInteractiveMechanical` mutates `internal.pendingMultiPick`,
+        // so it needs the InternalHandle. Phase 3 wires it through a per-call
+        // closure: callers update the captured handle via `setBranchingInternal`
+        // right before each resolve(). This keeps the BranchingDelegate stateless
+        // from the oracle's perspective.
+        const internal = this.dfsBranchingInternal;
+        solverAssert(
+          internal !== null,
+          'OCGCoreAdapter.dfsResolver',
+          'tryInteractiveMechanical called without InternalHandle bound — call setBranchingInternal before resolve()',
+        );
+        return this.tryInteractiveMechanical(msg, promptType, internal!);
+      },
+    };
+    this.dfsResolver = new PromptResolver([
+      new OpponentBranchingOracle(delegate),
+      new BranchingOracle(delegate),
+      new MechanicalDefaultOracle(),
+    ]);
+    return this.dfsResolver;
+  }
+
+  /** Per-call binding of the InternalHandle for the BranchingDelegate's
+   *  tryInteractiveMechanical path. Set right before `resolver.resolve()` in
+   *  runUntilPlayerPrompt; cleared after to avoid leaks. */
+  private dfsBranchingInternal: InternalHandle | null = null;
 
   get snapshotAvailable(): boolean {
     return this._snapshotAvailable;
@@ -801,6 +847,57 @@ export class OCGCoreAdapter implements GameOracle {
 
         const promptType = MESSAGE_TO_PROMPT[selectMsg.type];
         const msgAny = selectMsg as unknown as Record<string, unknown>;
+
+        // Phase 3 of prompt-resolver-refactor: route through PromptResolver
+        // when the env flag is set. Default OFF; bit-exact gate compares
+        // _bmad-output/solver-data/phase-1-baselines/ between flag-OFF and
+        // flag-ON to ensure no regression. Phase 5+ flips the default.
+        const useResolver = process.env.SOLVER_USE_PROMPT_RESOLVER === '1'
+          || process.env.SOLVER_USE_PROMPT_RESOLVER === 'true';
+
+        if (useResolver && promptType) {
+          const resolver = this.getOrBuildDfsResolver();
+          const ctx: DecisionContext = {
+            promptType,
+            msg: msgAny,
+            caller: 'dfs',
+            player: ((msgAny['player'] as number) === OPPONENT ? 1 : 0),
+            exposeMultiPickMechanical: this.exposeMultiPickMechanical,
+            config: internal.config,
+          };
+          this.dfsBranchingInternal = internal;
+          let result;
+          try {
+            result = resolver.resolve(ctx);
+          } finally {
+            this.dfsBranchingInternal = null;
+          }
+          if (result.kind === 'response') {
+            this.core.duelSetResponse(internal.nativeHandle, result.response as never);
+            internal.responseHistory.push(result.response);
+            continue;
+          }
+          if (result.kind === 'branches') {
+            // F14 plumbing — graph-ml-v2 feature, must survive bit-exact.
+            // Mirrors the legacy hook at line 873. Done here as a post-resolve
+            // hook because lastIdlecmdActivatableHandCount lives on the
+            // private InternalHandle.
+            if (promptType === 'SELECT_IDLECMD') {
+              internal.lastIdlecmdActivatableHandCount = countActivatableHandCardIds(result.actions);
+            }
+            return result.actions;
+          }
+          // 'divergence' is plan/replay-only; DFS chain composition does not
+          // include any oracle that emits divergence. Fall through to the
+          // legacy switch-case as a safety net (should be unreachable).
+          solverAssert(
+            false,
+            'OCGCoreAdapter.runUntilPlayerPrompt',
+            `unexpected resolver result kind=${(result as { kind: string }).kind} for promptType=${promptType} caller=dfs`,
+          );
+        }
+
+        // ---- Legacy path (default; flag OFF) ----
 
         // Opponent prompts
         if ((msgAny['player'] as number) === OPPONENT) {
