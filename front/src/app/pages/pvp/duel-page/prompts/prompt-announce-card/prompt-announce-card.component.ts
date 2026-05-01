@@ -18,7 +18,7 @@ import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { AnnounceCardMsg } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { DuelCardArtService } from '../../duel-card-art.service';
 
 interface CardNameEntry {
   code: number;
@@ -45,10 +45,11 @@ export class PromptAnnounceCardComponent implements PromptSubComponent<AnnounceC
 
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly artService = inject(DuelCardArtService);
   private readonly searchSubject = new Subject<string>();
   private readonly destroy$ = new Subject<void>();
 
-  readonly getCardImageUrl = getCardImageUrlByCode;
+  readonly getCardImageUrl = (code: number | null) => this.artService.resolveUrl(code);
   readonly results = signal<CardNameEntry[]>([]);
   readonly selectedEntry = signal<CardNameEntry | null>(null);
   readonly highlightedIndex = signal(-1);

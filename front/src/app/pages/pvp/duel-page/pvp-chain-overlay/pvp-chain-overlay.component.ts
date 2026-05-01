@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import type { ChainLinkState } from '../../types';
-import { getCardImageUrlByCode } from '../../pvp-card.utils';
+import { DuelCardArtService } from '../duel-card-art.service';
 import { ANIMATION_DATA_SOURCE } from '../animation-data-source';
 import { AnimationOrchestratorService } from '../animation-orchestrator.service';
 import { ChainResolutionManager } from '../chain-resolution-manager';
@@ -84,6 +84,7 @@ export class PvpChainOverlayComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly logger = inject(DuelLogger);
+  private readonly artService = inject(DuelCardArtService);
 
   readonly activeChainLinks = this.dataSource.activeChainLinks;
   readonly phase = this.dataSource.chainPhase;
@@ -186,7 +187,7 @@ export class PvpChainOverlayComponent {
 
   /** Card image URL helper for template */
   getCardImageUrl(cardCode: number): string {
-    return getCardImageUrlByCode(cardCode);
+    return this.artService.resolveUrl(cardCode);
   }
 
   constructor() {

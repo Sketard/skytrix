@@ -4,6 +4,7 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  inject,
   OnInit,
   signal,
 } from '@angular/core';
@@ -11,7 +12,7 @@ import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { AnnounceNumberMsg, SelectCounterMsg } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { DuelCardArtService } from '../../duel-card-art.service';
 
 type NumericPrompt = AnnounceNumberMsg | SelectCounterMsg;
 
@@ -30,7 +31,8 @@ export class PromptNumericInputComponent implements PromptSubComponent<NumericPr
   @HostBinding('class.read-only') readOnly = false;
   preSelectedResponse: unknown = undefined;
 
-  readonly getCardImageUrl = getCardImageUrlByCode;
+  private readonly artService = inject(DuelCardArtService);
+  readonly getCardImageUrl = (code: number | null) => this.artService.resolveUrl(code);
   readonly value = signal(0);
   readonly cardCounts = signal<number[]>([]);
   answered = false;

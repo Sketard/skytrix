@@ -115,7 +115,7 @@ export class LobbyPageComponent implements OnInit {
         next: response => {
           this.creatingRoom.set(false);
           this.router.navigate(['/pvp/duel', response.roomCode], {
-            state: { wsToken1: response.wsToken1, wsToken2: response.wsToken2 },
+            state: { wsToken1: response.wsToken1, wsToken2: response.wsToken2, decklistId: result.decklistId1 },
             queryParams: { solo: 'true' },
           });
         },

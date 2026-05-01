@@ -2,7 +2,7 @@ import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal
 import type { GameEvent } from '../types';
 import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
-import { getCardImageUrlByCode } from '../pvp-card.utils';
+import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
 import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
@@ -47,6 +47,7 @@ export class AnimationOrchestratorService {
   readonly moveRouter = inject(MoveAnimationRouter);
   private readonly battleTracker = inject(BattleAnimationTracker);
   private readonly toastService = inject(DuelToastService);
+  private readonly artService = inject(DuelCardArtService);
 
   // --- Public read-only signals ---
   private readonly _isAnimating = signal(false);
@@ -855,8 +856,8 @@ export class AnimationOrchestratorService {
     const rel2 = this.ctx.relativePlayer(msg.card2.player);
     const key1 = locationToZoneKey(msg.card1.location, msg.card1.sequence, rel1);
     const key2 = locationToZoneKey(msg.card2.location, msg.card2.sequence, rel2);
-    const img1 = this.cardTravelService.toAbsoluteUrl(getCardImageUrlByCode(msg.card1.cardCode));
-    const img2 = this.cardTravelService.toAbsoluteUrl(getCardImageUrlByCode(msg.card2.cardCode));
+    const img1 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card1.cardCode));
+    const img2 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card2.cardCode));
     const duration = this.ctx.scaledDuration(400, 200);
 
     const lock1 = this.rbs.lockZone(key1);

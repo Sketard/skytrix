@@ -4,6 +4,7 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  inject,
   OnInit,
   signal,
 } from '@angular/core';
@@ -11,7 +12,7 @@ import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { SortCardMsg, SortChainMsg, CardInfo } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { DuelCardArtService } from '../../duel-card-art.service';
 
 type SortPrompt = SortCardMsg | SortChainMsg;
 
@@ -24,6 +25,8 @@ type SortPrompt = SortCardMsg | SortChainMsg;
   imports: [TranslatePipe],
 })
 export class PromptSortCardComponent implements PromptSubComponent<SortPrompt>, OnInit {
+  private readonly artService = inject(DuelCardArtService);
+
   promptData: SortPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
@@ -51,7 +54,7 @@ export class PromptSortCardComponent implements PromptSubComponent<SortPrompt>, 
   }
 
   getCardImageUrl(card: CardInfo): string {
-    return getCardImageUrlByCode(card.cardCode);
+    return this.artService.resolveUrl(card.cardCode);
   }
 
   getRank(index: number): number | null {

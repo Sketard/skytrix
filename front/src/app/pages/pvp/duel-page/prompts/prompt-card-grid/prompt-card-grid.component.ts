@@ -4,6 +4,7 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  inject,
   signal,
 } from '@angular/core';
 import { PromptSubComponent } from '../prompt.types';
@@ -11,7 +12,8 @@ import { HintContext } from '../../../types';
 import { CardInfo, CardLocation, LOCATION, SelectCardMsg, SelectChainMsg, SelectTributeMsg, SelectSumMsg, SelectUnselectCardMsg } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CardNamePipe } from '../../../../../core/pipes/card-i18n.pipe';
-import { getCardImageUrlByCode, isFaceUp } from '../../../pvp-card.utils';
+import { isFaceUp } from '../../../pvp-card.utils';
+import { DuelCardArtService } from '../../duel-card-art.service';
 import { getZoneIconPath, getZoneDisplayOrder } from '../../../zone-icons';
 
 type CardGridPrompt = SelectCardMsg | SelectChainMsg | SelectTributeMsg | SelectSumMsg | SelectUnselectCardMsg;
@@ -45,6 +47,8 @@ function cardKey(c: CardInfo): string {
   imports: [TranslatePipe, CardNamePipe],
 })
 export class PromptCardGridComponent implements PromptSubComponent<CardGridPrompt> {
+  private readonly artService = inject(DuelCardArtService);
+
   promptData: CardGridPrompt | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
@@ -275,7 +279,7 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
       const key = `${card.location}-${card.player}-${card.sequence}`;
       if (!this.confirmedCardKeys.has(key)) return PromptCardGridComponent.CARD_BACK;
     }
-    return getCardImageUrlByCode(card.cardCode);
+    return this.artService.resolveUrl(card.cardCode);
   }
 
   isSelected(index: number): boolean {

@@ -4,6 +4,7 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  inject,
   OnInit,
   signal,
 } from '@angular/core';
@@ -12,7 +13,7 @@ import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { CardInfo, POSITION, SelectPositionMsg, SelectOptionMsg, AnnounceRaceMsg, AnnounceAttribMsg } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { DuelCardArtService } from '../../duel-card-art.service';
 
 interface OptionItem {
   index: number;
@@ -38,7 +39,8 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
   preSelectedResponse: unknown = undefined;
   revealedCards: CardInfo[] = [];
 
-  readonly getCardImageUrl = getCardImageUrlByCode;
+  private readonly artService = inject(DuelCardArtService);
+  readonly getCardImageUrl = (code: number | null) => this.artService.resolveUrl(code);
 
   readonly selectedIndex = signal<number | null>(null);
   answered = false;

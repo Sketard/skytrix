@@ -1,15 +1,34 @@
 import { DestroyRef, effect, Injectable, inject, Signal, untracked, WritableSignal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { RoomStateMachineService } from './room-state-machine.service';
+import { DuelCardArtService } from './duel-card-art.service';
 import { preloadCardImages } from '../pvp-card.utils';
 import type { RoomState } from './room-state-machine.service';
+
+interface IndexedCardDetailDTO {
+  card: {
+    card: { passcode: number };
+    images: { id: number; smallUrl: string }[];
+  };
+  selectedImageId?: number;
+}
+
+interface DeckDTO {
+  mainDeck: IndexedCardDetailDTO[];
+  extraDeck: IndexedCardDetailDTO[];
+  sideDeck: IndexedCardDetailDTO[];
+}
 
 @Injectable()
 export class DuelLoadingEffectsService {
 
   private readonly wsService = inject(DuelWebSocketService);
   private readonly roomService = inject(RoomStateMachineService);
+  private readonly artService = inject(DuelCardArtService);
+  private readonly http = inject(HttpClient);
   private readonly notify = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -104,10 +123,30 @@ export class DuelLoadingEffectsService {
   }
 
   private async preFetchCardImages(thumbnailsReady: WritableSignal<boolean>): Promise<void> {
+    const artMap = await this.buildArtMap();
+    this.artService.setArtMap(artMap);
     const codes = this.wsService.cardCodes();
     if (codes.length > 0) {
-      await preloadCardImages(codes);
+      await preloadCardImages(codes, artMap);
     }
     thumbnailsReady.set(true);
+  }
+
+  private async buildArtMap(): Promise<Map<number, string>> {
+    const decklistId = this.roomService.decklistId;
+    if (!decklistId) return new Map();
+    try {
+      const deck = await firstValueFrom(this.http.get<DeckDTO>(`/api/decks/${decklistId}`));
+      const map = new Map<number, string>();
+      const allSlots = [...deck.mainDeck, ...deck.extraDeck, ...deck.sideDeck];
+      for (const slot of allSlots) {
+        if (!slot.selectedImageId) continue;
+        const image = slot.card.images.find(img => img.id === slot.selectedImageId);
+        if (image) map.set(slot.card.card.passcode, image.smallUrl);
+      }
+      return map;
+    } catch {
+      return new Map();
+    }
   }
 }

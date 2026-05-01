@@ -1,7 +1,8 @@
 import { AfterViewInit, afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, input, output, signal } from '@angular/core';
 import { ChainLinkState, DuelState } from '../../types';
 import { BoardZone, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectIdleCmdMsg, ZoneId, TimerStateMsg } from '../../duel-ws.types';
-import { isFaceUp, isDefense, getCardImageUrl } from '../../pvp-card.utils';
+import { isFaceUp, isDefense } from '../../pvp-card.utils';
+import { DuelCardArtService } from '../duel-card-art.service';
 import { ActionableCardsMap, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupPileActions, isActivateAction } from '../idle-action-codes';
 import { EQUIP_HOVER_COLOR, EQUIP_HOVER_SHADOW } from '../equip-line.constants';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
@@ -208,9 +209,14 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly playerDeckCount = computed(() => this.duelState().players[0]?.deckCount ?? 0);
   readonly opponentDeckCount = computed(() => this.duelState().players[1]?.deckCount ?? 0);
 
+  private readonly artService = inject(DuelCardArtService);
+
+  getCardImageUrl(card: { cardCode: number | null }): string {
+    return this.artService.resolveUrl(card.cardCode);
+  }
+
   readonly isFaceUp = isFaceUp;
   readonly isDefense = isDefense;
-  readonly getCardImageUrl = getCardImageUrl;
   readonly formatStat = formatStat;
   readonly getAttributeName = getAttributeName;
   readonly getRaceName = getRaceName;
