@@ -108,7 +108,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly actionResponse = output<{ action: number; index: number | null }>();
   readonly menuRequest = output<{ zoneId: ZoneId; element: HTMLElement; actions: CardAction[] }>();
   readonly zonePillRequest = output<{ zoneId: ZoneId; playerIndex: number }>();
-  readonly cardInspectRequest = output<{ cardCode: number }>();
+  readonly cardInspectRequest = output<{ cardCode: number; liveCard?: CardOnField }>();
   readonly targetedZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly preTargetZoneKeys = input<ReadonlySet<string>>(new Set());
   readonly revealedZoneKeys = input<ReadonlySet<string>>(new Set());
@@ -216,7 +216,14 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly getRaceName = getRaceName;
   readonly totalCounters = totalCounters;
 
-  protected readonly equipMap = computed(() => {
+  /**
+   * Bidirectional adjacency map of persistent card-to-card links exposed by
+   * the server (Equip Spells + effect-target relations like Number 39 Utopia
+   * material chases, Chaos Hunter banished tracking, etc.). Built from
+   * `card.linkedCards`, which merges OcgQueryFlags.EQUIP_CARD and
+   * OcgQueryFlags.TARGET_CARD on the server side.
+   */
+  protected readonly linkedZoneMap = computed(() => {
     const map = new Map<string, string[]>();
     const state = this.duelState();
     for (let relPlayer = 0; relPlayer < 2; relPlayer++) {
@@ -224,22 +231,23 @@ export class PvpBoardContainerComponent implements AfterViewInit {
       if (!player) continue;
       for (const zone of player.zones) {
         const card = zone.cards[0];
-        if (!card?.equipTarget) continue;
-        const equipKey = `${zone.zoneId}-${relPlayer}`;
-        const target = card.equipTarget;
-        const targetZoneId = locationToZoneId(target.location, target.sequence);
-        if (!targetZoneId) continue;
-        const targetKey = `${targetZoneId}-${target.controller}`;
-        const eArr = map.get(equipKey);
-        if (eArr) eArr.push(targetKey); else map.set(equipKey, [targetKey]);
-        const tArr = map.get(targetKey);
-        if (tArr) tArr.push(equipKey); else map.set(targetKey, [equipKey]);
+        if (!card?.linkedCards?.length) continue;
+        const sourceKey = `${zone.zoneId}-${relPlayer}`;
+        for (const link of card.linkedCards) {
+          const targetZoneId = locationToZoneId(link.location, link.sequence);
+          if (!targetZoneId) continue;
+          const targetKey = `${targetZoneId}-${link.controller}`;
+          const sArr = map.get(sourceKey);
+          if (sArr) sArr.push(targetKey); else map.set(sourceKey, [targetKey]);
+          const tArr = map.get(targetKey);
+          if (tArr) tArr.push(sourceKey); else map.set(targetKey, [sourceKey]);
+        }
       }
     }
     return map;
   });
 
-  protected readonly equipHighlightedZones = signal(new Set<string>());
+  protected readonly linkedHighlightedZones = signal(new Set<string>());
 
   private static readonly MONSTER_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5']);
   private static readonly STAT_ZONES = new Set<ZoneId>(['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R']);
@@ -304,7 +312,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   onZoneCardClick(event: MouseEvent, zone: ZoneRenderData): void {
     if (zone.card?.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode });
+      this.cardInspectRequest.emit({ cardCode: zone.card.cardCode, liveCard: zone.card });
     }
     if (this.readOnly()) return;
     const actions = this.getActionsForZone(zone.zoneId);
@@ -442,7 +450,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   onEmzCardClick(event: MouseEvent, zoneId: ZoneId, card: CardOnField): void {
     if (card.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: card.cardCode });
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
     }
     if (this.readOnly()) return;
     const actions = this.getActionsForZone(zoneId);
@@ -453,7 +461,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   onCardInspect(card: CardOnField): void {
     if (card.cardCode) {
-      this.cardInspectRequest.emit({ cardCode: card.cardCode });
+      this.cardInspectRequest.emit({ cardCode: card.cardCode, liveCard: card });
     }
   }
 
@@ -462,29 +470,29 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     this.actionResponse.emit(event);
   }
 
-  private equipHoverLines: HTMLDivElement[] = [];
+  private linkedHoverLines: HTMLDivElement[] = [];
 
   onEquipHover(zoneKey: string): void {
-    const linked = this.equipMap().get(zoneKey);
+    const linked = this.linkedZoneMap().get(zoneKey);
     if (linked?.length) {
-      this.equipHighlightedZones.set(new Set(linked));
+      this.linkedHighlightedZones.set(new Set(linked));
       const srcEl = this.cardTravelService.getZoneElement(zoneKey);
       for (const targetKey of linked) {
         const dstEl = this.cardTravelService.getZoneElement(targetKey);
         const line = this.cardTravelService.createLineBetween(srcEl, dstEl, {
           color: EQUIP_HOVER_COLOR, shadow: EQUIP_HOVER_SHADOW,
         });
-        if (line) this.equipHoverLines.push(line);
+        if (line) this.linkedHoverLines.push(line);
       }
     }
   }
 
   onEquipLeave(): void {
-    if (this.equipHighlightedZones().size > 0) {
-      this.equipHighlightedZones.set(new Set());
+    if (this.linkedHighlightedZones().size > 0) {
+      this.linkedHighlightedZones.set(new Set());
     }
-    for (const line of this.equipHoverLines) line.remove();
-    this.equipHoverLines.length = 0;
+    for (const line of this.linkedHoverLines) line.remove();
+    this.linkedHoverLines.length = 0;
   }
 
   buildAriaLabel(card: CardOnField): string {
