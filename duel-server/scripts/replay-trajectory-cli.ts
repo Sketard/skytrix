@@ -101,6 +101,12 @@ interface Args {
    *  The picked index reflects whichever the replay chose at that prompt
    *  (target-driven if matched, else legal[0] auto-pick). */
   dumpCorpus?: string;
+  /** Phase 1 baseline trace dump path (JSONL). When set, every prompt encountered
+   *  during replay emits one line capturing the full decision context: prompt
+   *  type, the enumerated `legal: Action[]` pool that the resolver saw, the
+   *  chosen response, and the pick source. Used to gate Phase 3-4 bit-exact
+   *  reproduction across the PromptResolver refactor. */
+  dumpTrace?: string;
   /** Continue policy when the plan is exhausted at SELECT_IDLECMD.
    *  - `end-phase` (default): pick end-phase immediately, end the turn.
    *  - `aggressive`: prefer productive actions (summon-procedure, activate,
@@ -120,7 +126,7 @@ function parseArgs(): Args {
   const fixtureId = pick('fixture-id');
   const planFile = pick('plan-file');
   if (!fixtureId || !planFile) {
-    console.error('Usage: --fixture-id=<id> --plan-file=<path> [--out=<path>] [--max-iterations=2000] [--dump-corpus=<path.jsonl>]');
+    console.error('Usage: --fixture-id=<id> --plan-file=<path> [--out=<path>] [--max-iterations=2000] [--dump-corpus=<path.jsonl>] [--dump-trace=<path.jsonl>]');
     process.exit(2);
   }
   const continueModeRaw = pick('continue-mode') ?? 'end-phase';
@@ -134,6 +140,7 @@ function parseArgs(): Args {
     outFile: pick('out'),
     maxIterations: Number(pick('max-iterations') ?? '2000'),
     dumpCorpus: pick('dump-corpus'),
+    dumpTrace: pick('dump-trace'),
     continueMode: continueModeRaw,
     maxAggressiveActions: Number(pick('max-aggressive-actions') ?? '40'),
   };
@@ -245,6 +252,19 @@ interface ReplayLogEntry {
   appliedCardId: number;
   appliedResponseIndex: number;
   planStepIndex: number | null;
+}
+
+/** Phase 1 baseline trace entry — one per prompt encountered. Captures the
+ *  enumerated legal pool the resolver saw AND the chosen response, so a
+ *  Phase 3/4 refactor diff can pinpoint exactly where a divergence enters
+ *  (different pool = enumeration drift; same pool but different pick = oracle
+ *  drift). The `legal` list preserves OCG-index order. */
+interface ResponseTraceEntry {
+  step: number;
+  promptType: string;
+  pickSource: 'plan' | 'raw' | 'target' | 'auto' | 'auto-end-phase';
+  legal: LegalActionSummary[];
+  picked: { cardId: number; responseIndex: number };
 }
 
 interface DivergenceInfo {
@@ -406,6 +426,9 @@ async function main(): Promise<void> {
   const handle = adapter.createDuel(duelConfig);
 
   const replayLog: ReplayLogEntry[] = [];
+  /** Phase 1 baseline trace — populated only when --dump-trace is set. Streamed
+   *  to disk on shutdown to keep memory bounded for long replays. */
+  const responseTrace: ResponseTraceEntry[] = [];
   let planIdx = 0;
   let rawIdx = 0;
   /** The plan-step index that most recently committed an IDLECMD action.
@@ -708,6 +731,16 @@ async function main(): Promise<void> {
         planStepIndex,
       });
 
+      if (args.dumpTrace) {
+        responseTrace.push({
+          step: stepCount,
+          promptType,
+          pickSource,
+          legal: legal.map(a => summarizeAction(a, getName)),
+          picked: { cardId: chosen.cardId, responseIndex: chosen.responseIndex },
+        });
+      }
+
       adapter.applyAction(handle, chosen);
       stepCount++;
 
@@ -785,6 +818,14 @@ async function main(): Promise<void> {
   };
 
   adapter.destroyAll();
+
+  if (args.dumpTrace) {
+    const abs = resolve(args.dumpTrace);
+    mkdirSync(dirname(abs), { recursive: true });
+    const lines = responseTrace.map(e => JSON.stringify(e)).join('\n') + '\n';
+    writeFileSync(abs, lines, 'utf-8');
+    console.log(`[replay] wrote response trace (${responseTrace.length} prompts) to ${abs}`);
+  }
 
   const out = JSON.stringify(result, null, 2) + '\n';
   if (args.outFile) {
