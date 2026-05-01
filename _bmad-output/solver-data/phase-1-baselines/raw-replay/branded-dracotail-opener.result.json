@@ -1,0 +1,401 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "expectedBoardSize": 8,
+  "matched": 6,
+  "matchedCardIds": [
+    33760966,
+    78397661,
+    95515789,
+    69932023,
+    30271097,
+    5431722
+  ],
+  "missingCardIds": [
+    7375867,
+    89851827
+  ],
+  "score": 23,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 1,
+    "targetedNegate": 0,
+    "floodgate": 0,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 1,
+    "moveToSt": 0,
+    "bounce": 1,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 22,
+    "fallbackPoints": 1,
+    "latentPoints": 0,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 23,
+    "explorationScore": 23
+  },
+  "stoppedReason": "completed",
+  "stoppedAtPlanStep": null,
+  "divergence": null,
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Fallen of the White Dragon (normal-summon) [raw]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 0
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 1
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Fallen of the White Dragon [raw]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 2
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 3
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_CARD",
+      "applied": "Incredible Ecclesia, the Virtuous [raw]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 4
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 5
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "The Fallen & The Virtuous (set-st) [raw]",
+      "appliedCardId": 30271097,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 6
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 7
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ecclesia and the Dark Dragon (summon-procedure) [raw]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 8
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Incredible Ecclesia, the Virtuous [auto]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Fallen of the White Dragon [auto]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 9
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 10
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Branded Fusion (set-st) [raw]",
+      "appliedCardId": 44362883,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 11
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 12
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ecclesia and the Dark Dragon (activate) [raw]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 13
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 14
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_CARD",
+      "applied": "Blazing Cartesia, the Virtuous [raw]",
+      "appliedCardId": 95515789,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 15
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 16
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Blazing Cartesia, the Virtuous (activate) [raw]",
+      "appliedCardId": 95515789,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 17
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 18
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Arthalion [raw]",
+      "appliedCardId": 33760966,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 19
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Dracotail Lukias [raw]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 20
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Dracotail Phryxul [raw]",
+      "appliedCardId": 84477320,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 21
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Dracotail Lukias (activate) [raw]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 22
+    },
+    {
+      "step": 28,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Dracotail Phryxul (activate) [raw]",
+      "appliedCardId": 84477320,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 23
+    },
+    {
+      "step": 29,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 30,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 31,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Flame [raw]",
+      "appliedCardId": 5431722,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 24
+    },
+    {
+      "step": 32,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Horn [raw]",
+      "appliedCardId": 69932023,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 25
+    },
+    {
+      "step": 33,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 34,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "(pass) (end-phase) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 26
+    },
+    {
+      "step": 35,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 36,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 37,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "M1",
+      "cardName": "Blazing Cartesia, the Virtuous",
+      "cardId": 95515789,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M2",
+      "cardName": "Dracotail Arthalion",
+      "cardId": 33760966,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M3",
+      "cardName": "Ecclesia and the Dark Dragon",
+      "cardId": 78397661,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "The Fallen & The Virtuous",
+      "cardId": 30271097,
+      "position": "facedown"
+    },
+    {
+      "zone": "S2",
+      "cardName": "Branded Fusion",
+      "cardId": 44362883,
+      "position": "facedown"
+    },
+    {
+      "zone": "S3",
+      "cardName": "Dracotail Flame",
+      "cardId": 5431722,
+      "position": "facedown"
+    },
+    {
+      "zone": "S4",
+      "cardName": "Dracotail Horn",
+      "cardId": 69932023,
+      "position": "facedown"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 2,
+  "finalPhase": "DRAW"
+}

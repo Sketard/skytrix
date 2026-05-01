@@ -1,0 +1,53 @@
+{
+  "plan": [
+    {
+      "cardName": "Snake-Eye Ash",
+      "verb": "normal-summon",
+      "targets": [
+        {
+          "promptHint": "Ash search target = Poplar",
+          "cardName": "Snake-Eyes Poplar"
+        },
+        {
+          "promptHint": "Poplar search Snake-Eye S/T = Divine Temple",
+          "cardName": "Divine Temple of the Snake-Eye"
+        }
+      ],
+      "chainTargets": [
+        {
+          "promptHint": "Chain: Poplar SS-from-hand trigger",
+          "cardName": "Snake-Eyes Poplar"
+        },
+        {
+          "promptHint": "Chain: Poplar Snake-Eye S/T search trigger",
+          "cardName": "Snake-Eyes Poplar"
+        }
+      ]
+    },
+    {
+      "cardName": "Salamangreat Almiraj",
+      "verb": "summon-procedure",
+      "targets": [
+        {
+          "promptHint": "Almiraj material = Snake-Eye Ash",
+          "cardName": "Snake-Eye Ash"
+        }
+      ]
+    },
+    {
+      "cardName": "Divine Temple of the Snake-Eye",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Divine Temple YESNO = YES (place Snake-Eye monster as Cont Spell)",
+          "responseIndex": 1
+        },
+        {
+          "promptHint": "Place Flamberge from deck as Cont Spell (matched cardId 48452496)",
+          "cardName": "Snake-Eyes Flamberge Dragon"
+        }
+      ]
+    }
+  ],
+  "endTurn": true
+}

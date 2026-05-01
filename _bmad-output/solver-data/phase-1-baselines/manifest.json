@@ -1,0 +1,109 @@
+{
+  "pinnedCommitSha": "7f2aa40640a8d3f4b99356df8c818f5b506aa079",
+  "workingTreeDirty": true,
+  "capturedAt": "2026-05-01T10:33:30.529Z",
+  "manifestVersion": 1,
+  "decisions": {
+    "snapshotMode": "ON (default, no env var needed)",
+    "aggressiveContinuation": "β-1 only (parité stricte, β-3 omits aggressive)",
+    "expertiseInEval": "OFF (SOLVER_DISABLE_EXPERTISE=1, honest baseline)",
+    "neuralWeightsInEval": "ON (SOLVER_USE_NEURAL_WEIGHTS=1)",
+    "nodeBudget": "400 (deterministic)",
+    "poolSize": "1 (NOT 4 — see eval section in README; pool=4 is non-deterministic on ryzeal-mitsurugi cum matched)",
+    "implicitGoals": "10"
+  },
+  "entries": [
+    {
+      "category": "canonical-eval",
+      "label": "69-fixture eval (SOLVER_DISABLE_EXPERTISE=1)",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/canonical-eval.json"
+      ],
+      "command": "SOLVER_DISABLE_EXPERTISE=1 SOLVER_USE_NEURAL_WEIGHTS=1 npx tsx scripts/evaluate-structural.ts --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\canonical-eval.json --budget-ms=6000 --node-budget=400 --pool-size=1 --implicit-goals=10"
+    },
+    {
+      "category": "plan-replay",
+      "label": "branded-dracotail-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/plan-replay/branded-dracotail-opener.result.json",
+        "_bmad-output/solver-data/phase-1-baselines/plan-replay/branded-dracotail-opener.trace.jsonl"
+      ],
+      "command": "npx tsx scripts/replay-trajectory-cli.ts --fixture-id=branded-dracotail-opener --plan-file=data/path-beta-poc/branded-dracotail-opener/critic-branded-best-plan.json --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\plan-replay\\branded-dracotail-opener.result.json --dump-trace=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\plan-replay\\branded-dracotail-opener.trace.jsonl",
+      "note": "β-1 critic mode, expected 7/8"
+    },
+    {
+      "category": "plan-replay",
+      "label": "ddd-pendulum-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/plan-replay/ddd-pendulum-opener.result.json",
+        "_bmad-output/solver-data/phase-1-baselines/plan-replay/ddd-pendulum-opener.trace.jsonl"
+      ],
+      "command": "npx tsx scripts/replay-trajectory-cli.ts --fixture-id=ddd-pendulum-opener --plan-file=data/path-beta-poc/ddd-pendulum-opener/sprint2-option-b-best-plan.json --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\plan-replay\\ddd-pendulum-opener.result.json --dump-trace=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\plan-replay\\ddd-pendulum-opener.trace.jsonl",
+      "note": "β-1 sprint 2 option B, expected 3/5"
+    },
+    {
+      "category": "plan-replay",
+      "label": "snake-eye-yummy-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/plan-replay/snake-eye-yummy-opener.result.json",
+        "_bmad-output/solver-data/phase-1-baselines/plan-replay/snake-eye-yummy-opener.trace.jsonl"
+      ],
+      "command": "npx tsx scripts/replay-trajectory-cli.ts --fixture-id=snake-eye-yummy-opener --plan-file=data/path-beta-poc/snake-eye-yummy-opener/beta1v2-yesno-best-plan.json --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\plan-replay\\snake-eye-yummy-opener.result.json --dump-trace=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\plan-replay\\snake-eye-yummy-opener.trace.jsonl",
+      "note": "β-1 v2 + YESNO override (sprint 2), expected 4/7"
+    },
+    {
+      "category": "raw-replay",
+      "label": "ryzeal-mitsurugi-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/raw-replay/ryzeal-mitsurugi-opener.result.json",
+        "_bmad-output/solver-data/phase-1-baselines/raw-replay/ryzeal-mitsurugi-opener.trace.jsonl"
+      ],
+      "command": "npx tsx scripts/replay-trajectory-cli.ts --fixture-id=ryzeal-mitsurugi-opener --plan-file=data/path-beta-poc/ryzeal-mitsurugi-opener/beta3-best-trajectory.json --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\raw-replay\\ryzeal-mitsurugi-opener.result.json --dump-trace=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\raw-replay\\ryzeal-mitsurugi-opener.trace.jsonl",
+      "note": "β-3, expected 5/5"
+    },
+    {
+      "category": "raw-replay",
+      "label": "radiant-typhoon-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/raw-replay/radiant-typhoon-opener.result.json",
+        "_bmad-output/solver-data/phase-1-baselines/raw-replay/radiant-typhoon-opener.trace.jsonl"
+      ],
+      "command": "npx tsx scripts/replay-trajectory-cli.ts --fixture-id=radiant-typhoon-opener --plan-file=data/path-beta-poc/radiant-typhoon-opener/beta3-best-trajectory.json --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\raw-replay\\radiant-typhoon-opener.result.json --dump-trace=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\raw-replay\\radiant-typhoon-opener.trace.jsonl",
+      "note": "β-3, expected 3/3"
+    },
+    {
+      "category": "raw-replay",
+      "label": "branded-dracotail-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/raw-replay/branded-dracotail-opener.result.json",
+        "_bmad-output/solver-data/phase-1-baselines/raw-replay/branded-dracotail-opener.trace.jsonl"
+      ],
+      "command": "npx tsx scripts/replay-trajectory-cli.ts --fixture-id=branded-dracotail-opener --plan-file=data/path-beta-poc/branded-dracotail-opener/beta3-best-trajectory.json --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\raw-replay\\branded-dracotail-opener.result.json --dump-trace=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\raw-replay\\branded-dracotail-opener.trace.jsonl",
+      "note": "β-3 alt path, expected 6/8"
+    },
+    {
+      "category": "enumerate-skip",
+      "label": "branded-dracotail-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/enumerate-skip/branded-dracotail-opener"
+      ],
+      "command": "npx tsx scripts/enumerate-skip.ts --fixture-id=branded-dracotail-opener --base-plan=data/path-beta-poc/branded-dracotail-opener/critic-branded-best-plan.json --out-dir=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\enumerate-skip\\branded-dracotail-opener --combo-depth=1"
+    },
+    {
+      "category": "enumerate-skip",
+      "label": "snake-eye-yummy-opener",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/enumerate-skip/snake-eye-yummy-opener"
+      ],
+      "command": "npx tsx scripts/enumerate-skip.ts --fixture-id=snake-eye-yummy-opener --base-plan=data/path-beta-poc/snake-eye-yummy-opener/beta1v2-yesno-best-plan.json --out-dir=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\enumerate-skip\\snake-eye-yummy-opener --combo-depth=1"
+    },
+    {
+      "category": "adversarial",
+      "label": "alexandrite-handtraps",
+      "files": [
+        "_bmad-output/solver-data/phase-1-baselines/adversarial/alexandrite-handtraps.json"
+      ],
+      "command": "npx tsx scripts/capture-adversarial-baseline.ts --out=C:\\Users\\Axel\\Desktop\\code\\skytrix\\_bmad-output\\solver-data\\phase-1-baselines\\adversarial\\alexandrite-handtraps.json"
+    }
+  ]
+}

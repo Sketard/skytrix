@@ -1,0 +1,770 @@
+{
+  "fixtureId": "ddd-pendulum-opener",
+  "expectedBoardSize": 5,
+  "matched": 3,
+  "matchedCardIds": [
+    46593546,
+    44852429,
+    30998403
+  ],
+  "missingCardIds": [
+    79559912,
+    91781484
+  ],
+  "score": 37,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 2,
+    "targetedNegate": 1,
+    "floodgate": 0,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 1,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 0,
+    "moveToSt": 0,
+    "bounce": 0,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 37,
+    "fallbackPoints": 0,
+    "latentPoints": 0,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 37,
+    "explorationScore": 37
+  },
+  "stoppedReason": "completed",
+  "stoppedAtPlanStep": null,
+  "divergence": null,
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D Savant Kepler (activate) [plan]",
+      "appliedCardId": 11609969,
+      "appliedResponseIndex": 9,
+      "planStepIndex": 0
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D Scale Surveyor (activate) [plan]",
+      "appliedCardId": 42382265,
+      "appliedResponseIndex": 8,
+      "planStepIndex": 1
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "D/D Scale Surveyor [auto]",
+      "appliedCardId": 42382265,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Dark Contract with the Gate (activate) [plan]",
+      "appliedCardId": 46372010,
+      "appliedResponseIndex": 6,
+      "planStepIndex": 2
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Dark Contract with the Gate (activate) [plan]",
+      "appliedCardId": 46372010,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 3
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D/D Zero Doom Queen Machinex [target]",
+      "appliedCardId": 20715411,
+      "appliedResponseIndex": 12,
+      "planStepIndex": null
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D/D Zero Doom Queen Machinex (activate) [plan]",
+      "appliedCardId": 20715411,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 4
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D/D Zero Doom Queen Machinex (activate) [plan]",
+      "appliedCardId": 20715411,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 5
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CARD",
+      "applied": "Dark Contract with the Zero King [target]",
+      "appliedCardId": 32665564,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Dark Contract with the Zero King (activate) [plan]",
+      "appliedCardId": 32665564,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 6
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D/D Zero Doom Queen Machinex [target]",
+      "appliedCardId": 20715411,
+      "appliedResponseIndex": 2,
+      "planStepIndex": null
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D Lance Soldier [target]",
+      "appliedCardId": 67322708,
+      "appliedResponseIndex": 13,
+      "planStepIndex": null
+    },
+    {
+      "step": 28,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 29,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 30,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D/D First King Clovis (summon-procedure) [plan]",
+      "appliedCardId": 70576413,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 7
+    },
+    {
+      "step": 31,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D Lance Soldier [target]",
+      "appliedCardId": 67322708,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 32,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D Scale Surveyor [target]",
+      "appliedCardId": 42382265,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 33,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [target]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 34,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 35,
+      "promptType": "SELECT_CHAIN",
+      "applied": "D/D/D First King Clovis (activate) [target]",
+      "appliedCardId": 70576413,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 36,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D Lance Soldier [auto]",
+      "appliedCardId": 67322708,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 37,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 38,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 39,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 40,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 41,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D/D Cursed King Siegfried (summon-procedure) [plan]",
+      "appliedCardId": 44852429,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 8
+    },
+    {
+      "step": 42,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D Lance Soldier [target]",
+      "appliedCardId": 67322708,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 43,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D/D First King Clovis [target]",
+      "appliedCardId": 70576413,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 44,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [target]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 45,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 46,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 47,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D Lance Soldier (activate) [plan]",
+      "appliedCardId": 67322708,
+      "appliedResponseIndex": 9,
+      "planStepIndex": 9
+    },
+    {
+      "step": 48,
+      "promptType": "SELECT_CARD",
+      "applied": "Dark Contract with the Gate [target]",
+      "appliedCardId": 46372010,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 49,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 50,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 51,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "D/D/D Zero Doom Queen Machinex [auto]",
+      "appliedCardId": 20715411,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 52,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 53,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 54,
+      "promptType": "SELECT_YESNO",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 55,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 56,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D Savant Copernicus (normal-summon) [plan]",
+      "appliedCardId": 46796664,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 10
+    },
+    {
+      "step": 57,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 58,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 59,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "D/D Savant Copernicus [auto]",
+      "appliedCardId": 46796664,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 60,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 61,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D Necro Slime [target]",
+      "appliedCardId": 72291412,
+      "appliedResponseIndex": 11,
+      "planStepIndex": null
+    },
+    {
+      "step": 62,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 63,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D Necro Slime (activate) [plan]",
+      "appliedCardId": 72291412,
+      "appliedResponseIndex": 10,
+      "planStepIndex": 11
+    },
+    {
+      "step": 64,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 65,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D/D Flame King Genghis [target]",
+      "appliedCardId": 74583607,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 66,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D/D First King Clovis [auto]",
+      "appliedCardId": 70576413,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 67,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 68,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "D/D/D First King Clovis [auto]",
+      "appliedCardId": 70576413,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 69,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 70,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 71,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D/D Sky King Zeus Ragnarok (summon-procedure) [plan]",
+      "appliedCardId": 30998403,
+      "appliedResponseIndex": 7,
+      "planStepIndex": 12
+    },
+    {
+      "step": 72,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D Lance Soldier [target]",
+      "appliedCardId": 67322708,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 73,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D/D Zero Doom Queen Machinex [target]",
+      "appliedCardId": 20715411,
+      "appliedResponseIndex": 3,
+      "planStepIndex": null
+    },
+    {
+      "step": 74,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "D/D Savant Copernicus [target]",
+      "appliedCardId": 46796664,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 75,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [target]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 76,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 77,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 78,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "D/D/D Deviser King Deus Machinex (summon-procedure) [plan]",
+      "appliedCardId": 46593546,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 13
+    },
+    {
+      "step": 79,
+      "promptType": "SELECT_CARD",
+      "applied": "D/D/D Flame King Genghis [target]",
+      "appliedCardId": 74583607,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 80,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [target]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 81,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 82,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 83,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "(pass) (end-phase) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 4,
+      "planStepIndex": null
+    },
+    {
+      "step": 84,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 85,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "M1",
+      "cardName": "D/D/D Cursed King Siegfried",
+      "cardId": 44852429,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M2",
+      "cardName": "D/D/D Deviser King Deus Machinex",
+      "cardId": 46593546,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "EMZ_L",
+      "cardName": "D/D/D Sky King Zeus Ragnarok",
+      "cardId": 30998403,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "D/D Savant Kepler",
+      "cardId": 11609969,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S3",
+      "cardName": "Dark Contract with the Zero King",
+      "cardId": 32665564,
+      "position": "faceup-atk"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 2,
+  "finalPhase": "DRAW"
+}

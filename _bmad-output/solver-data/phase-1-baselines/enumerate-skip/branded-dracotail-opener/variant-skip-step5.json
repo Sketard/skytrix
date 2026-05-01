@@ -1,0 +1,61 @@
+{
+  "plan": [
+    {
+      "cardName": "Dracotail Lukias",
+      "verb": "normal-summon",
+      "targets": [
+        {
+          "promptHint": "Lukias on-summon search Mululu",
+          "cardName": "Dracotail Mululu"
+        }
+      ]
+    },
+    {
+      "cardName": "Fallen of the White Dragon",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "FoWD send-to-GY: Lubellion",
+          "cardName": "Lubellion the Searing Dragon"
+        },
+        {
+          "promptHint": "FoWD on-SS: SS Incredible Ecclesia",
+          "cardName": "Incredible Ecclesia"
+        }
+      ]
+    },
+    {
+      "cardName": "The Fallen & The Virtuous",
+      "verb": "set-st"
+    },
+    {
+      "cardName": "Ecclesia and the Dark Dragon",
+      "verb": "summon-procedure"
+    },
+    {
+      "cardName": "Ecclesia and the Dark Dragon",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Eccl-DD QE: SS Cartesia",
+          "cardName": "Blazing Cartesia"
+        }
+      ]
+    },
+    {
+      "cardName": "Secreterion Dragon",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Secreterion GY-revive: target Mululu (SS)",
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "promptHint": "Secreterion GY-revive: target Lukias (bottom-deck)",
+          "cardName": "Dracotail Lukias"
+        }
+      ]
+    }
+  ],
+  "endTurn": true
+}

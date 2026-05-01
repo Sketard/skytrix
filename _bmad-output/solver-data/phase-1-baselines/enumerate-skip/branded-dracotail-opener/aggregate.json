@@ -1,0 +1,131 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "basePlan": "C:\\Users\\Axel\\Desktop\\code\\skytrix\\duel-server\\data\\path-beta-poc\\branded-dracotail-opener\\critic-branded-best-plan.json",
+  "comboDepth": 1,
+  "candidateSteps": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "baseline": {
+    "matched": 7,
+    "expectedBoardSize": 8,
+    "score": 37,
+    "stoppedReason": "completed",
+    "finalBoardSize": 8
+  },
+  "variantsCount": 7,
+  "improvedCount": 0,
+  "tiedCount": 0,
+  "variants": [
+    {
+      "skippedStepIndices": [
+        6
+      ],
+      "skippedSteps": [
+        "Secreterion Dragon (activate)"
+      ],
+      "matched": 6,
+      "expectedBoardSize": 8,
+      "score": 36,
+      "stoppedReason": "completed",
+      "finalBoardSize": 7,
+      "matchedDelta": -1,
+      "scoreDelta": -1
+    },
+    {
+      "skippedStepIndices": [
+        2
+      ],
+      "skippedSteps": [
+        "The Fallen & The Virtuous (set-st)"
+      ],
+      "matched": 6,
+      "expectedBoardSize": 8,
+      "score": 31,
+      "stoppedReason": "completed",
+      "finalBoardSize": 7,
+      "matchedDelta": -1,
+      "scoreDelta": -6
+    },
+    {
+      "skippedStepIndices": [
+        0
+      ],
+      "skippedSteps": [
+        "Dracotail Lukias (normal-summon)"
+      ],
+      "matched": 3,
+      "expectedBoardSize": 8,
+      "score": 7,
+      "stoppedReason": "divergence",
+      "finalBoardSize": 3,
+      "matchedDelta": -4,
+      "scoreDelta": -30
+    },
+    {
+      "skippedStepIndices": [
+        5
+      ],
+      "skippedSteps": [
+        "Blazing Cartesia, the Virtuous (activate)"
+      ],
+      "matched": 2,
+      "expectedBoardSize": 8,
+      "score": 9.584962500721156,
+      "stoppedReason": "divergence",
+      "finalBoardSize": 3,
+      "matchedDelta": -5,
+      "scoreDelta": -27.415037499278846
+    },
+    {
+      "skippedStepIndices": [
+        4
+      ],
+      "skippedSteps": [
+        "Ecclesia and the Dark Dragon (activate)"
+      ],
+      "matched": 2,
+      "expectedBoardSize": 8,
+      "score": 7,
+      "stoppedReason": "divergence",
+      "finalBoardSize": 3,
+      "matchedDelta": -5,
+      "scoreDelta": -30
+    },
+    {
+      "skippedStepIndices": [
+        3
+      ],
+      "skippedSteps": [
+        "Ecclesia and the Dark Dragon (summon-procedure)"
+      ],
+      "matched": 1,
+      "expectedBoardSize": 8,
+      "score": 10.584962500721156,
+      "stoppedReason": "divergence",
+      "finalBoardSize": 4,
+      "matchedDelta": -6,
+      "scoreDelta": -26.415037499278846
+    },
+    {
+      "skippedStepIndices": [
+        1
+      ],
+      "skippedSteps": [
+        "Fallen of the White Dragon (activate)"
+      ],
+      "matched": 1,
+      "expectedBoardSize": 8,
+      "score": 7,
+      "stoppedReason": "divergence",
+      "finalBoardSize": 2,
+      "matchedDelta": -6,
+      "scoreDelta": -30
+    }
+  ]
+}

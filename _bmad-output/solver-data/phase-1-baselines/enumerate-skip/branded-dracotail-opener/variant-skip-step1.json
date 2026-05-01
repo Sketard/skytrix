@@ -1,0 +1,75 @@
+{
+  "plan": [
+    {
+      "cardName": "Dracotail Lukias",
+      "verb": "normal-summon",
+      "targets": [
+        {
+          "promptHint": "Lukias on-summon search Mululu",
+          "cardName": "Dracotail Mululu"
+        }
+      ]
+    },
+    {
+      "cardName": "The Fallen & The Virtuous",
+      "verb": "set-st"
+    },
+    {
+      "cardName": "Ecclesia and the Dark Dragon",
+      "verb": "summon-procedure"
+    },
+    {
+      "cardName": "Ecclesia and the Dark Dragon",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Eccl-DD QE: SS Cartesia",
+          "cardName": "Blazing Cartesia"
+        }
+      ]
+    },
+    {
+      "cardName": "Blazing Cartesia, the Virtuous",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Cartesia QE: fuse to Secreterion",
+          "cardName": "Secreterion Dragon"
+        },
+        {
+          "promptHint": "After Mululu-trigger: set Flame",
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "promptHint": "After Phryxul-trigger: set Horn",
+          "cardName": "Dracotail Horn"
+        }
+      ],
+      "chainTargets": [
+        {
+          "promptHint": "Activate Mululu GY-fusion-material trigger",
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "promptHint": "Activate Phryxul GY-fusion-material trigger",
+          "cardName": "Dracotail Phryxul"
+        }
+      ]
+    },
+    {
+      "cardName": "Secreterion Dragon",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Secreterion GY-revive: target Mululu (SS)",
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "promptHint": "Secreterion GY-revive: target Lukias (bottom-deck)",
+          "cardName": "Dracotail Lukias"
+        }
+      ]
+    }
+  ],
+  "endTurn": true
+}

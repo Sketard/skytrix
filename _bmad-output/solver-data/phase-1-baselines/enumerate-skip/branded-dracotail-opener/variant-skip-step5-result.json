@@ -1,0 +1,324 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "expectedBoardSize": 8,
+  "matched": 2,
+  "matchedCardIds": [
+    95515789,
+    30271097
+  ],
+  "missingCardIds": [
+    33760966,
+    78397661,
+    7375867,
+    89851827,
+    69932023,
+    5431722
+  ],
+  "score": 9.584962500721156,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 0,
+    "targetedNegate": 0,
+    "floodgate": 0,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 1,
+    "moveToSt": 0,
+    "bounce": 0,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 6,
+    "fallbackPoints": 2,
+    "latentPoints": 1.584962500721156,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 8,
+    "explorationScore": 9.584962500721156
+  },
+  "stoppedReason": "divergence",
+  "stoppedAtPlanStep": 5,
+  "divergence": {
+    "step": 28,
+    "promptType": "SELECT_IDLECMD",
+    "expected": "Secreterion Dragon (activate)",
+    "legalActionsAtPrompt": [
+      {
+        "responseIndex": 0,
+        "cardId": 44362883,
+        "cardName": "Branded Fusion",
+        "verb": "set-st",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 1,
+        "cardId": 95515789,
+        "cardName": "Blazing Cartesia, the Virtuous",
+        "verb": "activate",
+        "sourceZone": "M1"
+      },
+      {
+        "responseIndex": 2,
+        "cardId": 0,
+        "cardName": "(pass)",
+        "verb": "end-phase"
+      }
+    ],
+    "reason": "No legal action matches \"Secreterion Dragon\" verb=activate at this prompt. Plan step 5 of 6."
+  },
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Dracotail Lukias (normal-summon) [plan]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 0
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Dracotail Lukias [auto]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Mululu [target]",
+      "appliedCardId": 7375867,
+      "appliedResponseIndex": 2,
+      "planStepIndex": null
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Fallen of the White Dragon (activate) [plan]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 1
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_CARD",
+      "applied": "Lubellion the Searing Dragon [target]",
+      "appliedCardId": 70534340,
+      "appliedResponseIndex": 4,
+      "planStepIndex": null
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Fallen of the White Dragon [auto]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_CARD",
+      "applied": "Incredible Ecclesia, the Virtuous [target]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "The Fallen & The Virtuous (set-st) [plan]",
+      "appliedCardId": 30271097,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 2
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ecclesia and the Dark Dragon (summon-procedure) [plan]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 3
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Incredible Ecclesia, the Virtuous [auto]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Dracotail Lukias [auto]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ecclesia and the Dark Dragon (activate) [plan]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 4
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_CARD",
+      "applied": "Blazing Cartesia, the Virtuous [target]",
+      "appliedCardId": 95515789,
+      "appliedResponseIndex": 2,
+      "planStepIndex": null
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "M1",
+      "cardName": "Blazing Cartesia, the Virtuous",
+      "cardId": 95515789,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M2",
+      "cardName": "Fallen of the White Dragon",
+      "cardId": 73819701,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "The Fallen & The Virtuous",
+      "cardId": 30271097,
+      "position": "facedown"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 1,
+  "finalPhase": "MAIN1"
+}

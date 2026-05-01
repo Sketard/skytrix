@@ -1,0 +1,481 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "expectedBoardSize": 8,
+  "matched": 6,
+  "matchedCardIds": [
+    78397661,
+    95515789,
+    89851827,
+    69932023,
+    30271097,
+    5431722
+  ],
+  "missingCardIds": [
+    33760966,
+    7375867
+  ],
+  "score": 36,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 1,
+    "targetedNegate": 0,
+    "floodgate": 1,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 1,
+    "moveToSt": 0,
+    "bounce": 1,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 34,
+    "fallbackPoints": 2,
+    "latentPoints": 0,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 36,
+    "explorationScore": 36
+  },
+  "stoppedReason": "completed",
+  "stoppedAtPlanStep": null,
+  "divergence": null,
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Dracotail Lukias (normal-summon) [plan]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 0
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Dracotail Lukias [auto]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Mululu [target]",
+      "appliedCardId": 7375867,
+      "appliedResponseIndex": 2,
+      "planStepIndex": null
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Fallen of the White Dragon (activate) [plan]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 1
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_CARD",
+      "applied": "Lubellion the Searing Dragon [target]",
+      "appliedCardId": 70534340,
+      "appliedResponseIndex": 4,
+      "planStepIndex": null
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Fallen of the White Dragon [auto]",
+      "appliedCardId": 73819701,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_CARD",
+      "applied": "Incredible Ecclesia, the Virtuous [target]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "The Fallen & The Virtuous (set-st) [plan]",
+      "appliedCardId": 30271097,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 2
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ecclesia and the Dark Dragon (summon-procedure) [plan]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 3
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Incredible Ecclesia, the Virtuous [auto]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Dracotail Lukias [auto]",
+      "appliedCardId": 75003700,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ecclesia and the Dark Dragon (activate) [plan]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 4
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_CARD",
+      "applied": "Blazing Cartesia, the Virtuous [target]",
+      "appliedCardId": 95515789,
+      "appliedResponseIndex": 2,
+      "planStepIndex": null
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 28,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Blazing Cartesia, the Virtuous (activate) [plan]",
+      "appliedCardId": 95515789,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 5
+    },
+    {
+      "step": 29,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 30,
+      "promptType": "SELECT_CARD",
+      "applied": "Secreterion Dragon [target]",
+      "appliedCardId": 89851827,
+      "appliedResponseIndex": 5,
+      "planStepIndex": null
+    },
+    {
+      "step": 31,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Dracotail Phryxul [auto]",
+      "appliedCardId": 84477320,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 32,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Dracotail Mululu [auto]",
+      "appliedCardId": 7375867,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 33,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 34,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Dracotail Mululu (activate) [target]",
+      "appliedCardId": 7375867,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 35,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Dracotail Phryxul (activate) [target]",
+      "appliedCardId": 84477320,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 36,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 37,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Flame [target]",
+      "appliedCardId": 5431722,
+      "appliedResponseIndex": 6,
+      "planStepIndex": null
+    },
+    {
+      "step": 38,
+      "promptType": "SELECT_CARD",
+      "applied": "Dracotail Horn [target]",
+      "appliedCardId": 69932023,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 39,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 40,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "(pass) (end-phase) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 3,
+      "planStepIndex": null
+    },
+    {
+      "step": 41,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Ecclesia and the Dark Dragon (activate) [auto]",
+      "appliedCardId": 78397661,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 42,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 43,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 44,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Incredible Ecclesia, the Virtuous [auto]",
+      "appliedCardId": 55273560,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 45,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 46,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 47,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "M1",
+      "cardName": "Blazing Cartesia, the Virtuous",
+      "cardId": 95515789,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M2",
+      "cardName": "Fallen of the White Dragon",
+      "cardId": 73819701,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M3",
+      "cardName": "Secreterion Dragon",
+      "cardId": 89851827,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M4",
+      "cardName": "Ecclesia and the Dark Dragon",
+      "cardId": 78397661,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "The Fallen & The Virtuous",
+      "cardId": 30271097,
+      "position": "facedown"
+    },
+    {
+      "zone": "S2",
+      "cardName": "Dracotail Flame",
+      "cardId": 5431722,
+      "position": "facedown"
+    },
+    {
+      "zone": "S3",
+      "cardName": "Dracotail Horn",
+      "cardId": 69932023,
+      "position": "facedown"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 2,
+  "finalPhase": "DRAW"
+}

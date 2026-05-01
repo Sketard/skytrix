@@ -1,0 +1,47 @@
+{
+  "fixture": "adversarial-alexandrite",
+  "setup": {
+    "handtraps": [
+      {
+        "cardId": 14558127,
+        "cardName": "Ash Blossom & Joyous Spring"
+      },
+      {
+        "cardId": 27204311,
+        "cardName": "Nibiru, the Primal Being"
+      },
+      {
+        "cardId": 97268402,
+        "cardName": "Effect Veiler"
+      }
+    ],
+    "deckCardId": 43096270,
+    "deckSize": 40,
+    "handSize": 5,
+    "seed": [
+      "42",
+      "137"
+    ],
+    "config": {
+      "mode": "adversarial",
+      "speed": "fast",
+      "timeLimitMs": 3000
+    }
+  },
+  "result": {
+    "mainPathHash": 1,
+    "mainPath": [
+      {
+        "cardId": 43096270,
+        "responseIndex": 3,
+        "actionVerb": null,
+        "sourceZone": null,
+        "team": 0,
+        "isExploratory": false
+      }
+    ],
+    "score": 4,
+    "nodesExplored": 15,
+    "divergence": null
+  }
+}

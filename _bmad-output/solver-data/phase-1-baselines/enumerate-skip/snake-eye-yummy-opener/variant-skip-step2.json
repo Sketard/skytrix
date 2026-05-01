@@ -1,0 +1,67 @@
+{
+  "plan": [
+    {
+      "cardName": "Snake-Eye Ash",
+      "verb": "normal-summon",
+      "targets": [
+        {
+          "promptHint": "Ash search target = Poplar",
+          "cardName": "Snake-Eyes Poplar"
+        },
+        {
+          "promptHint": "Poplar search Snake-Eye S/T = Divine Temple",
+          "cardName": "Divine Temple of the Snake-Eye"
+        }
+      ],
+      "chainTargets": [
+        {
+          "promptHint": "Chain: Poplar SS-from-hand trigger",
+          "cardName": "Snake-Eyes Poplar"
+        },
+        {
+          "promptHint": "Chain: Poplar Snake-Eye S/T search trigger",
+          "cardName": "Snake-Eyes Poplar"
+        }
+      ]
+    },
+    {
+      "cardName": "Salamangreat Almiraj",
+      "verb": "summon-procedure",
+      "targets": [
+        {
+          "promptHint": "Almiraj material = Snake-Eye Ash",
+          "cardName": "Snake-Eye Ash"
+        }
+      ]
+    },
+    {
+      "cardName": "Silhouhatte Rabbit",
+      "verb": "summon-procedure",
+      "targets": [
+        {
+          "promptHint": "Material 1 = Almiraj",
+          "cardName": "Salamangreat Almiraj"
+        },
+        {
+          "promptHint": "Material 2 = Poplar",
+          "cardName": "Snake-Eyes Poplar"
+        },
+        {
+          "promptHint": "Silhouhatte set-trap target = Angel Statue Azurune",
+          "cardName": "Angel Statue"
+        }
+      ],
+      "chainTargets": [
+        {
+          "promptHint": "Chain: Silhouhatte set-trap trigger",
+          "cardName": "Silhouhatte Rabbit"
+        },
+        {
+          "promptHint": "Chain: Poplar GY trigger after Synchro material send",
+          "cardName": "Snake-Eyes Poplar"
+        }
+      ]
+    }
+  ],
+  "endTurn": true
+}
