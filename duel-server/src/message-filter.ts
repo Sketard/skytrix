@@ -260,9 +260,11 @@ function sanitizeFaceDownCard(card: CardOnField): CardOnField {
       currentRScale: undefined,
       baseLScale: undefined,
       baseRScale: undefined,
+      currentType: undefined,
+      baseType: undefined,
       isLink: undefined,
       isEffectNegated: undefined,
-      equipTarget: undefined,
+      linkedCards: undefined,
     };
   }
   return card;

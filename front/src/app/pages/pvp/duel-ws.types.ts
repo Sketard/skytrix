@@ -65,6 +65,25 @@ export type ZoneId =
 // Board State Sub-Types (BOARD_STATE / STATE_SYNC)
 // =============================================================================
 
+/**
+ * Persistent link from one card on the field to another, exposed via the
+ * server's BOARD_STATE so the client can render visual ties (highlights,
+ * arrows) between linked cards. Two sources today, merged here:
+ *
+ *  - `'equip'`: an Equip Spell pointing at the monster it equips (from the
+ *    spell side; OCGCore exposes this via `OcgQueryFlags.EQUIP_CARD`).
+ *  - `'target'`: a persistent effect-target relation (Number 39 Utopia ↔ its
+ *    chased materials, Chaos Hunter ↔ banished tracking, "until end phase"
+ *    targets, the equipped monster's view of which spells equip it, etc.;
+ *    OCGCore exposes this via `OcgQueryFlags.TARGET_CARD`).
+ */
+export interface LinkedCardRef {
+  kind: 'equip' | 'target';
+  controller: 0 | 1;
+  location: number;
+  sequence: number;
+}
+
 export interface CardOnField {
   cardCode: number | null;
   name: string | null;
@@ -87,9 +106,19 @@ export interface CardOnField {
   currentRScale?: number;
   baseLScale?: number;
   baseRScale?: number;
+  /**
+   * Live `OcgType` bitmask — what the card *currently* is on the field,
+   * including type alterations (Effect/Tuner/Synchro/Xyz/Link/Pendulum/
+   * Flip/etc. flags that effects can grant or remove). Distinct from
+   * `baseType` (the printed type from the card DB).
+   */
+  currentType?: number;
+  /** Printed `OcgType` bitmask from the card DB. */
+  baseType?: number;
   isLink?: boolean;
   isEffectNegated?: boolean;
-  equipTarget?: { controller: 0 | 1; location: number; sequence: number } | null;
+  /** Persistent links to other cards (equip + effect-target relations). */
+  linkedCards?: LinkedCardRef[];
 }
 
 export interface BoardZone {

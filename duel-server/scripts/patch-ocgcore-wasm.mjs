@@ -99,6 +99,44 @@ const patches = [
     to: '--Utilities to be added to the core\n\n-- POLYFILL: Duel.GetReasonEffect / Duel.GetReasonPlayer\n-- Bound in upstream edo9300/ygopro-core (libduel.cpp 4154/4158) but missing\n-- in @n1xx1/ocgcore-wasm 0.1.1. The Duel.Overlay monkey-patch below (line\n-- ~438) crashes without these. Strip both polyfills if/when the underlying\n-- WASM build adds the bindings (see patch-ocgcore-wasm.mjs P4 for context).\nif not Duel.GetReasonEffect then Duel.GetReasonEffect=function() return nil end end\nif not Duel.GetReasonPlayer then Duel.GetReasonPlayer=function() return PLAYER_NONE end end\n',
   },
 
+  // ── P6: Add missing TYPE branch to query parser ──
+  // OcgQueryFlags.TYPE (8) is declared in the bundle's d.ts and corresponds
+  // to the live-altered card type bitmask (Effect/Tuner/Synchro/Xyz/Link/
+  // Pendulum/Flip/...) — distinct from the static `type` field on the card
+  // DB. Without this branch, querying TYPE returns `{}` and any "is this
+  // card currently a Tuner / Synchro / etc." check is impossible. C++ writes
+  // it as a single u32 value (verified against edo9300/ygopro-core
+  // card.cpp::get_infos QUERY_TYPE branch).
+  //
+  // Insert the new branch right after E.ALIAS (matches d.ts ordering).
+  {
+    file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
+    label: 'TYPE parser — add missing branch',
+    from:  's===E.ALIAS&&o===4)t.alias=e.u32();else if(s===E.LEVEL',
+    to:    's===E.ALIAS&&o===4)t.alias=e.u32();else if(s===E.TYPE&&o===4)t.type=e.u32();else if(s===E.LEVEL',
+  },
+
+  // ── P7: Add missing TARGET_CARD branch to query parser ──
+  // OcgQueryFlags.TARGET_CARD (32768) is declared in the bundle's d.ts as
+  // `targetCards: OcgCardQueryInfoCard[]` — list of persistent effect-target
+  // links on this card (Equip Spell targets accessed from the equipped side,
+  // Number 39 Utopia material chases, Chaos Hunter banished tracking, etc.).
+  // Distinct from EQUIP_CARD (single ref, only set on the equipping spell)
+  // and OVERLAY_CARD (Xyz materials as raw u32 codes).
+  //
+  // C++ writes `u32 count + count × {u8 controller, u8 location, u32 sequence,
+  // u32 position}` (verified against edo9300/ygopro-core card.cpp::get_infos
+  // QUERY_TARGET_CARD branch). The 10-byte per-card layout matches the
+  // existing `p(e)` helper used by EQUIP_CARD/REASON_CARD.
+  //
+  // Insert after the OVERLAY_CARD branch.
+  {
+    file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
+    label: 'TARGET_CARD parser — add missing branch',
+    from:  's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];let r=e.u32();for(let S=0;S<r;S++)t.overlayCards.push(e.u32())}',
+    to:    's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];let r=e.u32();for(let S=0;S<r;S++)t.overlayCards.push(e.u32())}else if(s===E.TARGET_CARD&&o>=4){t.targetCards=[];let r=e.u32();for(let S=0;S<r;S++)t.targetCards.push(p(e))}',
+  },
+
   // ── P5: Fix OVERLAY_CARD query parser — wrong flag tag matched ──
   // The parser branches on `s === E.TARGET_CARD` but assigns to `t.overlayCards`
   // and decodes the buffer as `u32 count + u32×count code`. Per the bundle's

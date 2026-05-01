@@ -32,6 +32,7 @@ import type {
   PlayerBoardState,
   BoardZone,
   CardOnField,
+  LinkedCardRef,
   Position,
   PreComputedState,
   DecisionMoment,
@@ -709,6 +710,8 @@ function buildBoardState(): ServerMessage {
   const FLAG_RACE = OcgQueryFlags.RACE as number;
   const FLAG_STATUS = OcgQueryFlags.STATUS as number;
   const FLAG_EQUIP = OcgQueryFlags.EQUIP_CARD as number;
+  const FLAG_TARGET = OcgQueryFlags.TARGET_CARD as number;
+  const FLAG_TYPE = OcgQueryFlags.TYPE as number;
   const FLAG_LSCALE = OcgQueryFlags.LSCALE as number;
   const FLAG_RSCALE = OcgQueryFlags.RSCALE as number;
 
@@ -744,6 +747,8 @@ function buildBoardState(): ServerMessage {
       const raceInfo = queryFlag(controller, location, sequence, FLAG_RACE);
       const statusInfo = queryFlag(controller, location, sequence, FLAG_STATUS);
       const equipInfo = queryFlag(controller, location, sequence, FLAG_EQUIP);
+      const targetInfo = queryFlag(controller, location, sequence, FLAG_TARGET);
+      const typeInfo = queryFlag(controller, location, sequence, FLAG_TYPE);
       const lscaleInfo = queryFlag(controller, location, sequence, FLAG_LSCALE);
       const rscaleInfo = queryFlag(controller, location, sequence, FLAG_RSCALE);
 
@@ -758,8 +763,9 @@ function buildBoardState(): ServerMessage {
       card.currentRace = raceInfo?.race !== undefined ? Number(raceInfo.race) : undefined;
       card.currentLScale = lscaleInfo?.leftScale !== undefined ? Number(lscaleInfo.leftScale) : undefined;
       card.currentRScale = rscaleInfo?.rightScale !== undefined ? Number(rscaleInfo.rightScale) : undefined;
+      card.currentType = typeInfo?.type !== undefined ? Number(typeInfo.type) : undefined;
 
-      // Base values from card database (level, rank, attribute, race, scales)
+      // Base values from card database (level, rank, attribute, race, scales, type)
       const dbRow = cardDb?.stmt.get(code) as Record<string, number | bigint> | undefined;
       if (dbRow) {
         const rawLevel = Number(dbRow['level']);
@@ -773,6 +779,7 @@ function buildBoardState(): ServerMessage {
         card.baseRace = Number(dbRow['race']);
         card.baseLScale = (rawLevel >> 16) & 0xFF;
         card.baseRScale = (rawLevel >> 24) & 0xFF;
+        card.baseType = cardType;
       } else {
         dlog.warn('No DB row for card — base alteration fields unavailable', { cardCode: code });
       }
@@ -782,22 +789,35 @@ function buildBoardState(): ServerMessage {
         card.isEffectNegated = (Number(statusInfo.status) & STATUS_DISABLED) !== 0;
       }
 
-      // Equip target (AC5)
+      // Linked cards: merge EQUIP_CARD (single ref, equip-spell side) and
+      // TARGET_CARD (multi-ref, persistent effect-target list) into one
+      // wire-format array (AC5 + new persistent-target relations).
+      const links: LinkedCardRef[] = [];
       const ec = equipInfo?.equipCard;
-      if (ec) {
-        if (ec.controller !== undefined && ec.sequence !== undefined) {
-          card.equipTarget = {
-            controller: ec.controller,
-            location: Number(ec.location),
-            sequence: ec.sequence,
-          };
-        } else {
-          dlog.warn('Unexpected EQUIP_CARD format', { equipCard: ec });
-          card.equipTarget = null;
-        }
-      } else {
-        card.equipTarget = null;
+      if (ec && ec.controller !== undefined && ec.sequence !== undefined) {
+        links.push({
+          kind: 'equip',
+          controller: ec.controller,
+          location: Number(ec.location),
+          sequence: ec.sequence,
+        });
+      } else if (ec) {
+        dlog.warn('Unexpected EQUIP_CARD format', { equipCard: ec });
       }
+      const tcs = targetInfo?.targetCards ?? [];
+      for (const tc of tcs) {
+        if (tc.controller === undefined || tc.sequence === undefined) {
+          dlog.warn('Unexpected TARGET_CARD format', { targetCard: tc });
+          continue;
+        }
+        links.push({
+          kind: 'target',
+          controller: tc.controller,
+          location: Number(tc.location),
+          sequence: tc.sequence,
+        });
+      }
+      if (links.length > 0) card.linkedCards = links;
     }
 
     return card;
