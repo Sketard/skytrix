@@ -55,8 +55,16 @@ import { EMPTY_BREAKDOWN } from './solver/solver-types.js';
 const PORT = parseInt(process.env['PORT'] ?? '3001', 10);
 const DATA_DIR = resolve(process.env['DATA_DIR'] ?? join(import.meta.dirname!, '../data'));
 const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
+if (IS_PRODUCTION && !process.env['SPRING_BOOT_API_URL']) {
+  logger.error('SPRING_BOOT_API_URL not set in production — refusing to start (replay persistence would silently fail against localhost)');
+  process.exit(1);
+}
+if (IS_PRODUCTION && !process.env['INTERNAL_API_KEY']) {
+  logger.error('INTERNAL_API_KEY not set in production — refusing to start (internal API auth and replay persistence would fail)');
+  process.exit(1);
+}
 const SPRING_BOOT_API_URL = process.env['SPRING_BOOT_API_URL'] ?? 'http://localhost:8080/api';
-const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? (IS_PRODUCTION ? '' : 'dev-internal-key');
+const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const WS_RATE_LIMIT_WINDOW_MS = 60_000;
 const WS_RATE_LIMIT_MAX = 30;
@@ -3327,12 +3335,8 @@ process.on('unhandledRejection', (reason) => {
 // Start
 // =============================================================================
 
-if (!process.env['INTERNAL_API_KEY']) {
-  if (IS_PRODUCTION) {
-    logger.error('INTERNAL_API_KEY not set in production — internal API auth and replay persistence will fail');
-  } else {
-    logger.warn('INTERNAL_API_KEY not set — using dev default key');
-  }
+if (!IS_PRODUCTION && !process.env['INTERNAL_API_KEY']) {
+  logger.warn('INTERNAL_API_KEY not set — using dev default key');
 }
 
 server.listen(PORT, () => {

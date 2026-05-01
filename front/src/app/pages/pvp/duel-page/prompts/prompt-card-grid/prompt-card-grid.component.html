@@ -26,6 +26,7 @@
             <button class="card-slot"
                     [class.card-slot--selected]="isSelected(entry.originalIndex)"
                     (click)="toggleCard(entry.originalIndex)"
+                    (dblclick)="dblclickCard(entry.originalIndex)"
                     [disabled]="answered && !readOnly"
                     type="button"
                     [attr.aria-label]="entry.card | cardName"

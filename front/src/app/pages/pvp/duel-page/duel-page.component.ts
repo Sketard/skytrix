@@ -841,10 +841,7 @@ export class DuelPageComponent implements OnInit {
     this.openCardActionMenu(event.element, event.actions, prompt.type);
   }
 
-  // [M4 fix] Block zone browser when a blocking prompt (non-IDLECMD/BATTLECMD) is active
   onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number }): void {
-    if (this.hasActivePrompt()) return;
-
     const player = this.logicalState().players[event.playerIndex];
     if (!player) return;
     this._zoneBrowserClickGuard = true;

@@ -114,6 +114,13 @@ export class PromptOptionListComponent implements PromptSubComponent<OptionListP
     this.selectedIndex.set(index);
   }
 
+  /** Double-click on an option = select + confirm in one gesture. */
+  dblclickOption(index: number): void {
+    if (this.answered || this.readOnly) return;
+    this.selectedIndex.set(index);
+    this.confirm();
+  }
+
   confirm(): void {
     const idx = this.selectedIndex();
     if (this.answered || idx === null) return;

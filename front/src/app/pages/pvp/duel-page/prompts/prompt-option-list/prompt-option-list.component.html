@@ -17,6 +17,7 @@
             class="option-item"
             [class.option-item--selected]="selectedIndex() === opt.index"
             (click)="selectOption(opt.index)"
+            (dblclick)="dblclickOption(opt.index)"
             [disabled]="answered"
             [attr.aria-pressed]="selectedIndex() === opt.index"
             type="button">

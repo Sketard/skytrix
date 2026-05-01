@@ -296,6 +296,15 @@ export class PromptCardGridComponent implements PromptSubComponent<CardGridPromp
   isDualAmount(card: CardInfo): boolean { return this.getAmountMin(card) !== this.getAmountMax(card); }
   getSelectedAmount(index: number): number { return this.selectedCardAmounts().get(index) ?? 1; }
 
+  /** Double-click on a single-choice card prompt = select + confirm in one gesture. */
+  dblclickCard(index: number): void {
+    if (this.answered || this.readOnly) return;
+    if (this.isMultiSelect || this.isToggleMode) return;
+    if (this.promptData?.type === 'SELECT_SUM' || this.promptData?.type === 'SELECT_TRIBUTE') return;
+    if (!this.isSelected(index)) this.toggleCard(index);
+    if (this.isConfirmEnabled) this.confirm();
+  }
+
   toggleCard(index: number): void {
     if (this.answered) return;
 
