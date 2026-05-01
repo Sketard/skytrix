@@ -213,4 +213,35 @@ export interface ArchetypeExpertise {
   // host a bridge in its target archetype's file (where it terminates).
   bridges?: readonly BridgeSubroute[];
   sourceNotes?: string;
+  /** Phase 5 of prompt-resolver-refactor (2026-05-01): per-card,
+   *  per-prompt-type override hints consumed by CardExpertiseOracle.
+   *  Key: stringified sourceCardId (e.g. "67322708"). Each value is an
+   *  object whose keys are PromptType strings — the value is an
+   *  ExpertiseHint with policy + provenance metadata. Forward-compatible:
+   *  loader warns (does not reject) when metadata fields are missing,
+   *  per refactor design doc Q4. */
+  decisionHints?: Readonly<Record<string, Readonly<Record<string, ExpertiseHint>>>>;
+}
+
+/** Phase 5 — schema for one (cardId, promptType) override hint. The
+ *  `policy` controls how the hint is converted to an OcgResponse. The
+ *  `_*` fields are data lineage / provenance: a hint can be authored
+ *  manually today, validated by a Path β subagent later, and replaced
+ *  by an ML-extracted value — same runtime path, only metadata changes. */
+export interface ExpertiseHint {
+  /** How to derive the response. See CardExpertiseOracle for the
+   *  per-policy mapping. Unknown policies are logged and ignored. */
+  policy: 'max' | 'min' | 'first' | 'last' | 'yes' | 'no'
+    | 'preferred' | 'all' | 'face-down' | 'face-up-attack' | 'face-up-defense';
+  /** Optional disambiguation context (free-text, no semantic effect). */
+  context?: string;
+  /** Used by `policy: 'preferred'` only — list of cardIds in priority
+   *  order. The oracle picks the first matching cardId from the legal
+   *  pool. Falls back to `legal[0]` if none match. */
+  preferredCardIds?: readonly number[];
+  /** Provenance metadata. */
+  _source?: 'manual' | 'path-beta-subagent' | 'tier-3-policy' | 'default-mechanical';
+  _confidence?: 'observed' | 'inferred' | 'guessed';
+  _authored?: string;  // ISO date e.g. '2026-05-15'
+  _rationale?: string;
 }

@@ -210,6 +210,11 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   // Expertise always lives on the inner RouteAwareRanker, even when
   // GraphGuidedRanker wraps it — the graph wrapper is expertise-agnostic.
   routeAwareRanker.setArchetypeExpertise(filteredExpertise);
+  // Phase 5 of prompt-resolver-refactor — feed the same deck-filtered
+  // expertise into the adapter so CardExpertiseOracle can consume it on
+  // every DecisionContext. No-op pass-through until decisionHints fields are
+  // populated (Phase 7).
+  adapter.setArchetypeExpertise(filteredExpertise);
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {

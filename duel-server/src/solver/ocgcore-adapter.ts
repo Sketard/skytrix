@@ -135,6 +135,8 @@ import { time as instrumentTime } from './solver-instrumentation.js';
 import { PromptResolver, type DecisionContext } from './prompt-resolver.js';
 import { MechanicalDefaultOracle } from './mechanical-default-oracle.js';
 import { BranchingOracle, OpponentBranchingOracle, type BranchingDelegate } from './branching-oracles.js';
+import { CardExpertiseOracle } from './card-expertise-oracle.js';
+import type { ArchetypeExpertise } from './strategic-grammar.js';
 
 // =============================================================================
 // Internal Handle State
@@ -285,6 +287,19 @@ export class OCGCoreAdapter implements GameOracle {
    *  Lazy-initialized on first use to avoid construction cost when disabled. */
   private dfsResolver: PromptResolver | null = null;
 
+  /** Phase 5 of prompt-resolver-refactor — deck-filtered archetype
+   *  expertise injected on every DecisionContext for CardExpertiseOracle.
+   *  Set by `setArchetypeExpertise()` from solver-worker.ts (mirrors the
+   *  RouteAwareRanker / InterruptionScorer pattern). When empty/null,
+   *  CardExpertiseOracle passes through (no decisionHints to match). */
+  private currentExpertise: readonly ArchetypeExpertise[] | null = null;
+
+  /** Phase 5 — set the deck-filtered expertise list. Called by the worker
+   *  AFTER the deck is known, before the first solve(). */
+  setArchetypeExpertise(list: readonly ArchetypeExpertise[]): void {
+    this.currentExpertise = list;
+  }
+
   private getOrBuildDfsResolver(): PromptResolver {
     if (this.dfsResolver) return this.dfsResolver;
     const delegate: BranchingDelegate = {
@@ -307,7 +322,10 @@ export class OCGCoreAdapter implements GameOracle {
         return this.tryInteractiveMechanical(msg, promptType, internal!);
       },
     };
+    // Phase 5 — chain composition adds CardExpertiseOracle at the head.
+    // Pass-through when currentExpertise is empty or no decisionHints match.
     this.dfsResolver = new PromptResolver([
+      new CardExpertiseOracle(),
       new OpponentBranchingOracle(delegate),
       new BranchingOracle(delegate),
       new MechanicalDefaultOracle(),
@@ -857,6 +875,12 @@ export class OCGCoreAdapter implements GameOracle {
 
         if (useResolver && promptType) {
           const resolver = this.getOrBuildDfsResolver();
+          // Phase 5 — best-effort sourceCardId from the OCG message. Phase 6
+          // produces a coverage matrix per OcgMessageType; until then, only
+          // prompts where `code` is reliably populated will fire CardExpertise.
+          const sourceCardId = typeof msgAny['code'] === 'number'
+            ? (msgAny['code'] as number)
+            : undefined;
           const ctx: DecisionContext = {
             promptType,
             msg: msgAny,
@@ -864,6 +888,8 @@ export class OCGCoreAdapter implements GameOracle {
             player: ((msgAny['player'] as number) === OPPONENT ? 1 : 0),
             exposeMultiPickMechanical: this.exposeMultiPickMechanical,
             config: internal.config,
+            expertise: this.currentExpertise ?? undefined,
+            sourceCardId,
           };
           this.dfsBranchingInternal = internal;
           let result;

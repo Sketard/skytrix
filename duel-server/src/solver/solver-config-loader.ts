@@ -491,6 +491,49 @@ function validateArchetypeExpertise(raw: unknown, filename: string): ArchetypeEx
   requireArray<unknown>('goals');
   requireArray<unknown>('routes');
 
+  // Phase 5 — decisionHints (optional, forward-compatible). Refactor design
+  // doc Q4: warn (don't reject) on missing metadata so the format can evolve
+  // from manual → path-beta-subagent → tier-3-policy without breaking the
+  // loader. Hard fail only on structural errors (wrong keys / missing policy).
+  if (r.decisionHints !== undefined) {
+    if (!r.decisionHints || typeof r.decisionHints !== 'object') {
+      console.error(`[Solver] archetype-expertise/${filename}: field 'decisionHints' must be an object`);
+      process.exit(1);
+    }
+    const allowedPolicies = new Set([
+      'max', 'min', 'first', 'last', 'yes', 'no',
+      'preferred', 'all', 'face-down', 'face-up-attack', 'face-up-defense',
+    ]);
+    let missingMeta = 0;
+    for (const [cidStr, perPrompt] of Object.entries(r.decisionHints as Record<string, unknown>)) {
+      if (!/^\d+$/.test(cidStr)) {
+        console.error(`[Solver] archetype-expertise/${filename}: decisionHints key '${cidStr}' must be decimal cardId`);
+        process.exit(1);
+      }
+      if (!perPrompt || typeof perPrompt !== 'object') {
+        console.error(`[Solver] archetype-expertise/${filename}: decisionHints['${cidStr}'] must be an object`);
+        process.exit(1);
+      }
+      for (const [promptType, hint] of Object.entries(perPrompt as Record<string, unknown>)) {
+        if (!hint || typeof hint !== 'object') {
+          console.error(`[Solver] archetype-expertise/${filename}: decisionHints['${cidStr}']['${promptType}'] must be an object`);
+          process.exit(1);
+        }
+        const h = hint as Record<string, unknown>;
+        if (typeof h.policy !== 'string' || !allowedPolicies.has(h.policy)) {
+          console.error(`[Solver] archetype-expertise/${filename}: decisionHints['${cidStr}']['${promptType}'].policy must be one of ${[...allowedPolicies].join('|')} (got '${String(h.policy)}')`);
+          process.exit(1);
+        }
+        if (h._source === undefined || h._confidence === undefined || h._authored === undefined) {
+          missingMeta++;
+        }
+      }
+    }
+    if (missingMeta > 0) {
+      console.warn(`[Solver] archetype-expertise/${filename}: ${missingMeta} decisionHints entry/entries missing _source/_confidence/_authored metadata (warning, not error — see refactor design doc Q4)`);
+    }
+  }
+
   return raw as ArchetypeExpertise;
 }
 

@@ -15,6 +15,7 @@
 
 import type { Action, DuelConfig, PromptType } from './solver-types.js';
 import type { PlanStep, RawTrajectoryStep, TargetSpec } from './plan-replay-types.js';
+import type { ArchetypeExpertise } from './strategic-grammar.js';
 import { solverAssert } from './solver-assert.js';
 
 // =============================================================================
@@ -135,6 +136,18 @@ export interface DecisionContext {
    *  uses planIdx-1; β-3 uses rawIdx-1). Set by PlanStepOracle / RawTrajectoryOracle
    *  on consumption. */
   lastConsumedStepIndex?: { value: number | null };
+
+  // ---- Phase 5 — CardExpertiseOracle inputs ----
+  /** Loaded archetype expertise(s) — typically the deck-matched subset. The
+   *  CardExpertiseOracle scans `expertise[].decisionHints[sourceCardId]
+   *  [promptType]` for a matching override. Falls through to a pass result
+   *  when nothing matches. */
+  expertise?: readonly ArchetypeExpertise[];
+  /** Phase 6 plumbing target — the cardId of the card whose effect emitted
+   *  the prompt. Phase 5 reads it best-effort from `msg.code` (where
+   *  available) so the oracle can fire on a small subset of prompts; the
+   *  full coverage matrix arrives in Phase 6. */
+  sourceCardId?: number;
 
   // ---- Config ----
   config?: DuelConfig;

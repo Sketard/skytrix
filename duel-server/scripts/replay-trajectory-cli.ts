@@ -93,6 +93,8 @@ import {
   RawTrajectoryOracle,
   EndPhasePolicyOracle,
 } from '../src/solver/plan-replay-oracles.js';
+import { CardExpertiseOracle } from '../src/solver/card-expertise-oracle.js';
+import { loadArchetypeExpertise, filterExpertiseByDeck } from '../src/solver/solver-config-loader.js';
 
 // =============================================================================
 // CLI
@@ -464,13 +466,23 @@ async function main(): Promise<void> {
   // plan-replay (β-1) and raw-replay (β-3) modes. Both modes use the same
   // chain (the oracles self-gate on ctx.caller); a single resolver reduces
   // construction cost. Active only when SOLVER_USE_PROMPT_RESOLVER=1.
+  // Phase 5 — CardExpertiseOracle prepended (pass-through when no
+  // decisionHints loaded; verbatim of the DFS chain composition shape).
   const cliResolver = new PromptResolver([
+    new CardExpertiseOracle(),
     new PlanStepOracle(),
     new PlanTargetOracle(),
     new RawTrajectoryOracle(),
     new EndPhasePolicyOracle(),
     new MechanicalDefaultOracle(),
   ]);
+
+  // Phase 5 — load deck-filtered expertise for CardExpertiseOracle. When the
+  // archetype-expertise/ directory has no decisionHints fields (Phase 5 ships
+  // with empty hints), this is a no-op pass-through. Filter by deck name so
+  // we only apply hints from the matching archetype file.
+  const allExpertise = loadArchetypeExpertise(DATA_DIR);
+  const cliExpertise = filterExpertiseByDeck(allExpertise, hand.deck);
   const SUB_PROMPT_PICKABLE = new Set([
     'SELECT_CARD', 'SELECT_OPTION', 'SELECT_PLACE', 'SELECT_UNSELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_POSITION',
     // SELECT_YESNO + SELECT_EFFECTYN are pickable so plans can override the
@@ -579,6 +591,12 @@ async function main(): Promise<void> {
           player: 0,
           legal,
           getName,
+          // Phase 5 — CardExpertiseOracle inputs. Pass-through when
+          // decisionHints absent (which is the case until Phase 7 populates).
+          expertise: cliExpertise,
+          // sourceCardId stays undefined here — the CLI doesn't have direct
+          // access to the OCG msg's `code` field. Phase 6 plumbs it through
+          // when the adapter exposes it on the Action's metadata.
           planSteps: rawMode ? undefined : planSteps,
           planIdx: rawMode ? undefined : planIdxBox,
           rawSteps: rawMode ? rawSteps : undefined,
