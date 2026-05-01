@@ -1,0 +1,403 @@
+{
+  "archetype": "ryzeal",
+  "displayName": "Ryzeal",
+  "version": 1,
+
+  "_rolesNote": "roleMap covers the 12 Ryzeal cards (6 Lv4 monsters, 2 Rank-4 Xyz finishers, 4 Spell/Trap). All Ryzeal Lv4 SS clauses lock the player into Rank-4 Xyz summons for the turn. Detonator + Duo Drive are the canonical endboard Xyz bodies.",
+
+  "roleMap": {
+    "34022970": ["starter", "tutor"],
+    "8633261": ["starter", "extender"],
+    "72238166": ["extender", "recursion"],
+    "61116514": ["material"],
+    "84433129": ["enabler", "extender"],
+    "35844557": ["extender", "tutor"],
+    "34909328": ["finisher", "interruption"],
+    "7511613": ["finisher", "tutor"],
+    "6798031": ["interruption", "recycler"],
+    "53276089": ["enabler"],
+    "33787730": ["enabler"],
+    "60394026": ["recursion", "enabler"]
+  },
+
+  "keyCards": [34022970, 8633261, 72238166, 84433129, 35844557, 34909328, 7511613, 6798031, 60394026, 33787730],
+
+  "goals": [
+    {
+      "id": "ryzeal-canonical-endboard",
+      "name": "Detonator + Duo Drive + Cross canonical",
+      "description": "Fixture-expected Ryzeal endboard: both Rank-4 Xyz finishers on the field + Ryzeal Cross set. Detonator is the quick-effect destroy interruption; Duo Drive is the ATK-swing + hand-pump (draw 2 Ryzeal cards). Cross is the monster-effect-negate trap. Together = 2 interruptions + continuous ATK pressure + card advantage.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 34909328 },
+          "position": "faceup-atk",
+          "note": "Ryzeal Detonator (Rank 4 Xyz)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 7511613 },
+          "position": "faceup-atk",
+          "note": "Ryzeal Duo Drive (Rank 4 Xyz)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 6798031 },
+          "position": "facedown",
+          "note": "Ryzeal Cross (set)"
+        }
+      ],
+      "optional": [
+        {
+          "zone": "monster",
+          "card": { "kind": "role", "role": "recursion" },
+          "note": "Node Ryzeal for GY-recycle loop"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "destruction": 1,
+          "typedNegate": 1
+        }
+      },
+      "baselineScore": 12,
+      "successors": [
+        {
+          "to": "ryzeal-mitsurugi-hybrid-apex",
+          "viaBridge": "feral-imps-mikoto-ritual-tutor",
+          "note": "Phase B (2026-04-21): when the Ryzeal canonical endboard is reached AND the deck contains Feral Imps + Habakiri + Saji + Mitsurugi Ritual, the 2-Lv4 → Mitsurugi ritual body bridge promotes this waypoint into the hybrid apex. The waypoint has already proven ≥4 Lv4 materials flowed through the Ryzeal engine; an additional 2 Lv4 for Feral Imps is realistic when extenders (Node recursion, Plugin, Star detach) are present in the starting hand."
+        }
+      ]
+    },
+    {
+      "id": "ryzeal-xyz-tower-partial",
+      "name": "2 Rank-4 Ryzeal Xyz",
+      "description": "Both Xyz finishers (Detonator + Duo Drive) present, no trap set. Strong disruption even without Cross — Detonator handles 1 field destroy, Duo Drive handles hand pump.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 34909328 },
+          "position": "faceup-atk",
+          "note": "Detonator"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 7511613 },
+          "position": "faceup-atk",
+          "note": "Duo Drive"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "destruction": 1
+        }
+      },
+      "baselineScore": 8
+    },
+    {
+      "id": "ryzeal-detonator-solo",
+      "name": "Detonator alone",
+      "description": "Just Ryzeal Detonator on the field — sole quick-effect interruption. Fallback endboard when the combo was short-circuited by handtraps.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 34909328 },
+          "position": "faceup-atk",
+          "note": "Detonator"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "destruction": 1
+        }
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "ryzeal-duo-drive-solo",
+      "name": "Duo Drive alone",
+      "description": "Just Ryzeal Duo Drive on the field — no interruption but +2 draw on activation (immediate card advantage).",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 7511613 },
+          "position": "faceup-atk",
+          "note": "Duo Drive"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "ryzeal-any-xyz-partial",
+      "name": "Any Ryzeal Xyz on field",
+      "description": "Gradient signal for DFS: any Ryzeal Rank-4 Xyz summoned (Detonator OR Duo Drive).",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [34909328, 7511613] },
+          "position": "faceup-atk",
+          "note": "Any Ryzeal Xyz"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    },
+    {
+      "id": "ryzeal-cross-set-partial",
+      "name": "Ryzeal Cross set",
+      "description": "Gradient: Cross set as backrow, waiting for opp-turn negate window.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 6798031 },
+          "position": "facedown",
+          "note": "Cross (set)"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    },
+    {
+      "id": "ryzeal-tachyon-committed",
+      "name": "Seventh Tachyon activated (Xyz-lock engaged)",
+      "description": "Bridge signal (Lever 3 2026-04-21): Seventh Tachyon in GY means it was activated — reveals a Number 101-107 Xyz, searches Lv-matching Type/Attribute monster (typically Sword Ryzeal Lv4 LIGHT Pyro in this deck's ED). Locks into Xyz-only SS rest of turn — commits the game plan to Rank-4 tower. Strong progress signal the Ryzeal engine has engaged via the Number-Xyz pathway rather than direct Lv4 starter chain.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "specific", "cardId": 7477101 },
+          "note": "Seventh Tachyon used (in GY after resolution)"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "ryzeal-bonfire-fired",
+      "name": "Bonfire used (Pyro search)",
+      "description": "Progress signal: Bonfire in GY = searched Lv4-or-lower Pyro (Ice Ryzeal in this deck). Confirms the Ryzeal engine has at least 1 searchable starter unlocked — a distinct entry point vs. drawing the starter naturally.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "specific", "cardId": 85106525 },
+          "note": "Bonfire used"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    }
+  ],
+
+  "routes": [
+    {
+      "id": "ice-sword-full-xyz-tower",
+      "name": "Ice NS → Sword SS → Xyz Detonator → Xyz Duo Drive (2-Xyz tower)",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 8633261 },
+          "location": "hand",
+          "minCount": 1
+        },
+        {
+          "selector": { "kind": "specific", "cardId": 35844557 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 8633261 },
+          "note": "NS Ice Ryzeal — triggers on-NS: SS a Ryzeal (non-Ice) from deck"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 35844557 },
+          "note": "SS Sword Ryzeal — from hand via Ryzeal-in-field condition, OR from deck via Ice on-NS"
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 35844557 },
+          "target": { "kind": "role", "role": "extender" },
+          "note": "Sword on-NS/SS: search LIGHT Pyro (any Ryzeal extender)"
+        },
+        {
+          "action": "xyzSummon",
+          "subject": { "kind": "specific", "cardId": 34909328 },
+          "note": "Xyz Summon Detonator using 2 Lv4 Ryzeal materials"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "role", "role": "extender" },
+          "note": "SS 3rd/4th Ryzeal (searched / recycled via Node / Plugin) for 2nd Xyz materials"
+        },
+        {
+          "action": "xyzSummon",
+          "subject": { "kind": "specific", "cardId": 7511613 },
+          "note": "Xyz Summon Duo Drive using remaining 2 Lv4 Ryzeal materials"
+        },
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 7511613 },
+          "note": "Duo Drive main-phase effect: detach 2 materials → draw 2 Ryzeal cards from deck (target Star + Cross)"
+        }
+      ],
+      "goalId": "ryzeal-canonical-endboard"
+    },
+    {
+      "id": "ice-ns-extender",
+      "name": "Ice NS → SS Ryzeal from deck → Xyz material",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 8633261 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 8633261 },
+          "note": "NS Ice Ryzeal (Lv4); on-NS: SS 1 Ryzeal from deck (target Sword/Node/Star per context)"
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "role", "role": "extender" },
+          "note": "SS extender Ryzeal from deck"
+        },
+        {
+          "action": "xyzSummon",
+          "subject": { "kind": "specific", "cardId": 34909328 },
+          "note": "Xyz Summon Detonator using the 2 Ryzeal Lv4 as materials"
+        }
+      ],
+      "goalId": "ryzeal-any-xyz-partial"
+    },
+    {
+      "id": "sword-conditional-ss-search",
+      "name": "Sword SS (conditional) → search LIGHT Pyro",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 35844557 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 35844557 },
+          "note": "Sword Ryzeal SS from hand (requires Ryzeal in field/GY as a condition). Locks into Rank-4 Xyz."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 35844557 },
+          "target": { "kind": "role", "role": "extender" },
+          "note": "Sword on-NS/SS: add 1 LIGHT Pyro from deck to hand (typically another Ryzeal)"
+        }
+      ],
+      "goalId": "ryzeal-any-xyz-partial"
+    },
+    {
+      "id": "ext-solo-opener",
+      "name": "Ext NS (solo field) → search FIRE Thunder",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 34022970 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 34022970 },
+          "note": "NS Ext Ryzeal; on-NS (solo field or Lv/Rank 4 only): search 1 FIRE Thunder from deck"
+        }
+      ],
+      "goalId": "ryzeal-any-xyz-partial"
+    },
+    {
+      "id": "star-ss-set-cross",
+      "name": "Star SS (detach from Xyz) → Set Ryzeal Cross",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 84433129 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 84433129 },
+          "note": "Star Ryzeal SS by detaching 1 Xyz material (needs prior Xyz on field). Locks into Rank-4 Xyz."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 6798031 },
+          "note": "Star on-SS: Set Ryzeal Cross from deck (canonical endboard trap)"
+        }
+      ],
+      "goalId": "ryzeal-cross-set-partial"
+    },
+    {
+      "id": "duo-drive-hand-pump",
+      "name": "Duo Drive → detach 2 → draw 2 Ryzeal",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 7511613 },
+          "location": "field",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 7511613 },
+          "note": "Duo Drive main-phase: detach 2 materials from any monster(s) you control; add 2 Ryzeal cards (different names) from deck to hand. Hand pump that refills combo resources."
+        }
+      ],
+      "goalId": "ryzeal-canonical-endboard"
+    }
+  ],
+
+  "synergies": [
+    {
+      "cards": [8633261, 35844557],
+      "effect": "Ice + Sword = canonical 2-card Rank-4 opener. Ice NS → SS Sword from deck (or vice versa if Sword SS conditions met) → Xyz Summon. Most consistent baseline combo."
+    },
+    {
+      "cards": [34909328, 7511613],
+      "effect": "Detonator + Duo Drive = endboard 2-card tower. Both have on-SS attach-from-GY (regenerates their own Xyz materials) so subsequent turns remain stocked."
+    },
+    {
+      "cards": [72238166, 7511613],
+      "effect": "Node Ryzeal recycles Ryzeal from GY (defense position, effects negated — acts as pure material). Combined with Duo Drive's on-SS attach, this extends Rank-4 material pool across turns."
+    },
+    {
+      "cards": [84433129, 6798031],
+      "effect": "Star Ryzeal's on-SS Set-from-deck is the cleanest way to get Cross onto the backrow without using a Normal Summon or spell activation slot."
+    },
+    {
+      "cards": [60394026, 34909328],
+      "effect": "Plugin recycles banished/GY Xyz monsters back to the field. Combined with Detonator's destruction-by-detach, Plugin extends the removal engine by bringing back detached Detonators from GY."
+    },
+    {
+      "cards": [61116514],
+      "effect": "Palm Ryzeal is a trap card for this expertise: its hard summon condition (shuffle a Ryzeal from hand/GY INTO the deck) trades card advantage for a body. Avoid as starter — use only as a late-turn follow-up or to recycle a bricked piece."
+    }
+  ],
+
+  "sourceNotes": "v1 (2026-04-21) — written from cards.cdb oracle text. 12 Ryzeal cards mapped. 6 goals: canonical 3-card endboard, 2-Xyz tower, solo Detonator/Duo Drive fallbacks, partial gradients for any Xyz or Cross-set alone. 5 routes covering Ice-opener, Sword-conditional, Ext-solo, Star-set, Duo-Drive hand-pump. Palm Ryzeal flagged as anti-pattern (negative-tempo summon condition). Ryzeal's 'lock into Rank 4 Xyz' is encoded implicitly by goal design (targets specifically Detonator/Duo Drive, both Rank 4)."
+}

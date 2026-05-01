@@ -1,0 +1,144 @@
+{
+  "cardId": 97268402,
+  "name": "Effect Veiler",
+  "sourceFile": "official/c97268402.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "condition": {
+        "name": "s.condition",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "1-tp"
+              ]
+            },
+            {
+              "kind": "gameState",
+              "method": "IsMainPhase"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "cost": {
+        "inline": "Cost.SelfToGrave",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfToGrave",
+          "kind": "send-to-grave",
+          "params": {}
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "disabled"
+              }
+            },
+            {
+              "kind": "type",
+              "value": "TYPE_EFFECT"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_FACEUP"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-related-chain",
+            "method": "NegateRelatedChain",
+            "target": "tc",
+            "argHints": [
+              "RESET_TURN_SET"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "value": "RESET_TURN_SET",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 4,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

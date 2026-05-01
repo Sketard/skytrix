@@ -1,7 +1,7 @@
 import { isDevMode } from '@angular/core';
 
 /**
- * Unified assertion for duel-critical invariants.
+ * Unified assertion for dev-critical invariants.
  * Dev mode: throws. Prod: logs a warning (visible in devtools / error reporting).
  */
 export function duelAssert(condition: boolean, site: string, msg: string): void {

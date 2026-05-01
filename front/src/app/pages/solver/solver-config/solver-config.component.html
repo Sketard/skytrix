@@ -1,0 +1,152 @@
+<section class="solver-config-panel" [class.locked]="isLocked()">
+  @if (!hasEnoughCards()) {
+    <p class="error-message">{{ 'solver.config.notEnoughCards' | translate }}</p>
+  } @else {
+    <div class="hand-selector">
+      <div class="hand-header">
+        <span class="hand-count">{{ 'solver.config.selected' | translate:{ count: totalSelected() } }}</span>
+        @if (totalSelected() > 0) {
+          <button mat-icon-button
+            [attr.aria-label]="'solver.config.clear' | translate"
+            (click)="clearSelection()"
+            [disabled]="isLocked()">
+            <mat-icon fontIcon="clear_all"></mat-icon>
+          </button>
+        }
+      </div>
+
+      <div class="card-grid">
+        @for (card of deduplicatedCards(); track card.cardId) {
+          <button class="card-thumb"
+            [class.selected]="selectedCount(card.cardId) > 0"
+            [disabled]="isLocked()"
+            [attr.aria-label]="card.name + ' — ' + selectedCount(card.cardId) + '/' + card.maxCopies + ' selected'"
+            (click)="onCardClick(card)">
+            <img [src]="card.imageUrl"
+              [alt]="card.name"
+              (error)="onImgError($event)" />
+            <span class="card-badge">
+              @if (selectedCount(card.cardId) > 0) {
+                &times;{{ selectedCount(card.cardId) }}/{{ card.maxCopies }}
+              } @else {
+                &times;{{ card.maxCopies }}
+              }
+            </span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="controls">
+      <button mat-stroked-button
+        (click)="fillRandom()"
+        [disabled]="isLocked() || totalSelected() >= 5 || deduplicatedCards().length === 0">
+        {{ 'solver.config.fillRandom' | translate }}
+      </button>
+
+      <div class="toggle-group">
+        <span class="toggle-label">{{ 'solver.config.speed' | translate }}</span>
+        <mat-button-toggle-group [value]="speed()" (change)="speed.set($event.value)" [disabled]="isLocked()">
+          <mat-button-toggle value="fast">{{ 'solver.config.speedFast' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="optimal">{{ 'solver.config.speedOptimal' | translate }}</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="toggle-group">
+        <span class="toggle-label">{{ 'solver.config.algorithm' | translate }}</span>
+        <mat-button-toggle-group [value]="algorithm()" (change)="algorithm.set($event.value)" [disabled]="isLocked()">
+          <mat-button-toggle value="dfs">{{ 'solver.config.algorithmDfs' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="mcts">{{ 'solver.config.algorithmMcts' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="auto">{{ 'solver.config.algorithmAuto' | translate }}</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="toggle-group">
+        <span class="toggle-label">{{ 'solver.config.mode' | translate }}</span>
+        <mat-button-toggle-group [value]="mode()" (change)="onModeChange($event.value)" [disabled]="isLocked()">
+          <mat-button-toggle value="goldfish">{{ 'solver.config.modeGoldfish' | translate }}</mat-button-toggle>
+          <mat-button-toggle value="adversarial"
+            [disabled]="solverService.handtrapsLoadFailed()"
+            [matTooltip]="solverService.handtrapsLoadFailed() ? ('solver.error.handtrapUnavailable' | translate) : ''">
+            {{ 'solver.config.modeAdversarial' | translate }}
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+
+      @if (dfsHint()) {
+        <span class="dfs-hint">{{ 'solver.config.dfsHint' | translate }}</span>
+      }
+
+      @if (mode() === 'adversarial') {
+        <div class="handtrap-section">
+          <span class="toggle-label">{{ 'solver.config.handtraps' | translate }}</span>
+          @if (solverService.handtraps() === null) {
+            <div class="handtrap-loading">
+              <mat-spinner diameter="20"></mat-spinner>
+              <span>{{ 'solver.config.handtrapsLoading' | translate }}</span>
+            </div>
+          } @else if (solverService.handtraps()!.length === 0) {
+            <span class="handtrap-empty">{{ 'solver.config.handtrapsEmpty' | translate }}</span>
+          } @else {
+            <div class="handtrap-list" [class.disabled]="isLocked()">
+              @for (ht of solverService.handtraps()!; track ht.cardId) {
+                <label class="handtrap-item">
+                  <mat-checkbox
+                    [checked]="selectedHandtraps().includes(ht.cardId)"
+                    (change)="onHandtrapToggle(ht.cardId, $event.checked)">
+                  </mat-checkbox>
+                  <img [src]="handtrapImageUrl(ht.cardId)"
+                    [alt]="ht.cardName"
+                    loading="lazy"
+                    width="32" height="46"
+                    class="handtrap-thumb"
+                    (error)="onImgError($event)" />
+                  <span class="handtrap-name">{{ ht.cardName }}</span>
+                </label>
+              }
+            </div>
+          }
+        </div>
+        @if (deckSwitchAdversarialHint()) {
+          <span class="dfs-hint">{{ 'solver.config.deckSwitchAdversarialHint' | translate }}</span>
+        }
+      }
+
+      <button mat-button class="advanced-toggle" (click)="showAdvanced.set(!showAdvanced())">
+        {{ 'solver.config.advancedOptions' | translate }}
+        <mat-icon [fontIcon]="showAdvanced() ? 'expand_less' : 'expand_more'"></mat-icon>
+      </button>
+      @if (showAdvanced()) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'solver.config.deckSeed' | translate }}</mat-label>
+          <input #seedInput matInput
+            placeholder="e.g. 123456,789012"
+            [value]="deckSeed()"
+            (input)="deckSeed.set(seedInput.value)"
+            [disabled]="isLocked()"
+            [matTooltip]="'solver.config.deckSeedTooltip' | translate">
+        </mat-form-field>
+        @if (!deckSeedValid() && deckSeed()) {
+          <span class="seed-error">{{ 'solver.config.deckSeedInvalid' | translate }}</span>
+        }
+      }
+
+      <div class="solve-actions">
+        <button mat-raised-button color="accent"
+          [disabled]="!canQuickSolve()"
+          [matTooltip]="mode() === 'adversarial' && selectedHandtraps().length === 0 ? ('solver.config.selectHandtrap' | translate) : ''"
+          (click)="quickSolve()">
+          {{ 'solver.config.quickSolve' | translate }}
+        </button>
+
+        <button mat-raised-button color="accent"
+          [disabled]="!canSolve()"
+          [matTooltip]="!canSolve() ? (solveTooltip() | translate) : ''"
+          aria-keyshortcuts="Control+Enter"
+          (click)="onSolve()">
+          {{ 'solver.config.solve' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+</section>

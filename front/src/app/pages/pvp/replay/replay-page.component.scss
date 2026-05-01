@@ -57,6 +57,8 @@
     }
 
     app-pvp-board-container {
+      position: relative;
+      isolation: isolate;
       flex: 1;
       min-height: 0;
       z-index: z.$z-pvp-board;

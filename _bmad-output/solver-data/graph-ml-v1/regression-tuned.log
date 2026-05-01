@@ -1,0 +1,197 @@
+[evaluate] pool size: 14
+[evaluate-par] fixtures: 15  budget=30000ms  node-budget=200  label='m1-regression-tuned'
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] OCGCore v11.0 initialized
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[Solver] solver-config.json loaded and validated
+[Solver] solver-config.json loaded and validated
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] solver-config.json loaded and validated
+[Solver] OCGCore v11.0 initialized
+[Solver] OCGCore v11.0 initialized
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=5318639
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=94445733
+  [ddd-pendulum-opener] (ddd-wcq-top4)  score=2  expl=7  latent=5  matched=0/5  nodes=32  depth=19  az=0%  t2=0%  walk=29593ms  term=timeout
+  [ryzeal-mitsurugi-opener] (ryzeal-mitsurugi-hk-top8)  score=2  expl=8  latent=6  matched=0/5  nodes=25  depth=15  az=0%  t2=0%  walk=29951ms  term=timeout
+  [radiant-typhoon-opener] (radiant-typhoon-ygoprodeck-2026)  score=2  expl=3  latent=1  matched=0/3  nodes=41  depth=18  az=0%  t2=60%  walk=25783ms  term=timeout
+  [branded-dracotail-opener] (branded-dracotail-bainbridge-2nd)  score=30.642857142857142  expl=30.642857142857142  latent=0  matched=3/8  nodes=44  depth=22  az=0%  t2=0%  walk=29755ms  term=timeout
+  [kashtira-azamina-opener] (kashtira-azamina-verquin-wcq-top8)  score=8  expl=8  latent=0  matched=1/4  nodes=19  depth=15  az=0%  t2=0%  walk=25670ms  term=timeout
+  [horus-crystron-opener] (horus-crystron-santiago-wcq-top4)  score=1  expl=1  latent=0  matched=0/4  nodes=30  depth=16  az=0%  t2=0%  walk=27181ms  term=timeout
+  [dinomorphia-opener] (dinomorphia-696904)  score=1  expl=1  latent=0  matched=0/3  nodes=45  depth=21  az=0%  t2=0%  walk=27321ms  term=timeout
+  [spright-opener] (spright-greenville-wcq-top8)  score=8  expl=8  latent=0  matched=1/4  nodes=42  depth=20  az=0%  t2=50%  walk=26722ms  term=timeout
+  [snake-eye-yummy-opener] (snake-eye-yummy-sarcophagus-hollywood-wcq)  score=8  expl=9.584962500721156  latent=1.584962500721156  matched=0/7  nodes=24  depth=13  az=0%  t2=0%  walk=29231ms  term=timeout
+  [tearlaments-opener] (tearlaments-2026-fafnirymd)  score=9  expl=9  latent=0  matched=0/4  nodes=24  depth=15  az=0%  t2=0%  walk=27084ms  term=timeout
+  [floowandereeze-opener] (floowandereeze-2026)  score=2  expl=3.584962500721156  latent=1.584962500721156  matched=0/4  nodes=43  depth=21  az=0%  t2=0%  walk=30003ms  term=timeout
+  [labrynth-opener] (labrynth-2026)  score=9  expl=9  latent=0  matched=1/4  nodes=43  depth=21  az=0%  t2=0%  walk=27167ms  term=timeout
+  [stun-runick-opener] (stun-runick-melbourne-top8)  score=0  expl=0  latent=0  matched=0/4  nodes=24  depth=15  az=0%  t2=0%  walk=28157ms  term=timeout
+  [nekroz-ryzeal-opener] (nekroz-ryzeal-jan2026-tcg-1st)  score=1  expl=1  latent=0  matched=0/4  nodes=26  depth=17  az=0%  t2=0%  walk=27043ms  term=timeout
+  [branded-dracotail-opener-mirrorjade-line] (branded-dracotail-bainbridge-2nd)  score=58.64285714285714  expl=60.22781964357829  latent=1.584962500721156  matched=1/6  nodes=1497  depth=71  az=0%  t2=52.2%  walk=25600ms  term=timeout
+
+[evaluate-par] ═══ AGGREGATE ═══
+  cumulative matched:          7/69
+  cumulative score:            142.28571428571428
+  cumulative explorationScore: 159.04060178787776
+  fixtures:                    15
+
+[evaluate] wrote C:\Users\Axel\Desktop\code\skytrix\_bmad-output\solver-data\graph-ml-v1\regression-tuned.json
+
+[evaluate] ═══ COMPARISON vs ../_bmad-output/solver-data/graph-ml-v1/regression-untuned.json ═══
+  prev label: 'm1-regression-untuned'  (2026-04-24T22:14:19.406Z)
+  curr label: 'm1-regression-tuned'  (2026-04-24T22:15:34.942Z)
+  cumulative matched:           11 → 7  (Δ-4)
+  cumulative score:             186.85714285714286 → 142.28571428571428  (Δ-44.571428571428584)
+  cumulative explorationScore:  205.61203035930632 → 159.04060178787776  (Δ-46.57)
+
+  CORRECTIONS (1):
+    ~ branded-dracotail-opener-mirrorjade-line: matched 2→1 (Δ-1)  score 56.64285714285714→58.64285714285714 (Δ+2.00)  [correction: stricter endboard]
+
+  STABLE (11):
+    = ddd-pendulum-opener: matched 0→0 (Δ+0)  score 2→2 (Δ+0.00)
+    = radiant-typhoon-opener: matched 0→0 (Δ+0)  score 2→2 (Δ+0.00)
+    = branded-dracotail-opener: matched 3→3 (Δ+0)  score 30.642857142857142→30.642857142857142 (Δ+0.00)
+    = kashtira-azamina-opener: matched 1→1 (Δ+0)  score 8→8 (Δ+0.00)
+    = dinomorphia-opener: matched 0→0 (Δ+0)  score 1→1 (Δ+0.00)
+    = spright-opener: matched 1→1 (Δ+0)  score 8→8 (Δ+0.00)
+    = tearlaments-opener: matched 0→0 (Δ+0)  score 10→9 (Δ-1.00)
+    = floowandereeze-opener: matched 0→0 (Δ+0)  score 2→2 (Δ+0.00)
+    = labrynth-opener: matched 1→1 (Δ+0)  score 9→9 (Δ+0.00)
+    = stun-runick-opener: matched 0→0 (Δ+0)  score 0→0 (Δ+0.00)
+    = nekroz-ryzeal-opener: matched 0→0 (Δ+0)  score 1→1 (Δ+0.00)
+
+  REGRESSIONS (3):
+    ✗ ryzeal-mitsurugi-opener: matched 1→0 (Δ-1)  score 33→2 (Δ-31.00)
+    ✗ horus-crystron-opener: matched 1→0 (Δ-1)  score 8→1 (Δ-7.00)
+    ✗ snake-eye-yummy-opener: matched 1→0 (Δ-1)  score 15.571428571428571→8 (Δ-7.57)
+
+[evaluate] FAIL: 3 regression(s) detected

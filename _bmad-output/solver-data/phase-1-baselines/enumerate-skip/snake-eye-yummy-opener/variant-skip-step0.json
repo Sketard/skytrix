@@ -1,0 +1,57 @@
+{
+  "plan": [
+    {
+      "cardName": "Salamangreat Almiraj",
+      "verb": "summon-procedure",
+      "targets": [
+        {
+          "promptHint": "Almiraj material = Snake-Eye Ash",
+          "cardName": "Snake-Eye Ash"
+        }
+      ]
+    },
+    {
+      "cardName": "Divine Temple of the Snake-Eye",
+      "verb": "activate",
+      "targets": [
+        {
+          "promptHint": "Divine Temple YESNO = YES (place Snake-Eye monster as Cont Spell)",
+          "responseIndex": 1
+        },
+        {
+          "promptHint": "Place Flamberge from deck as Cont Spell (matched cardId 48452496)",
+          "cardName": "Snake-Eyes Flamberge Dragon"
+        }
+      ]
+    },
+    {
+      "cardName": "Silhouhatte Rabbit",
+      "verb": "summon-procedure",
+      "targets": [
+        {
+          "promptHint": "Material 1 = Almiraj",
+          "cardName": "Salamangreat Almiraj"
+        },
+        {
+          "promptHint": "Material 2 = Poplar",
+          "cardName": "Snake-Eyes Poplar"
+        },
+        {
+          "promptHint": "Silhouhatte set-trap target = Angel Statue Azurune",
+          "cardName": "Angel Statue"
+        }
+      ],
+      "chainTargets": [
+        {
+          "promptHint": "Chain: Silhouhatte set-trap trigger",
+          "cardName": "Silhouhatte Rabbit"
+        },
+        {
+          "promptHint": "Chain: Poplar GY trigger after Synchro material send",
+          "cardName": "Snake-Eyes Poplar"
+        }
+      ]
+    }
+  ],
+  "endTurn": true
+}

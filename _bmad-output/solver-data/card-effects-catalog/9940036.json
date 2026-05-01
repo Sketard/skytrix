@@ -1,0 +1,325 @@
+{
+  "cardId": 9940036,
+  "name": "Mereologic Aggregator",
+  "sourceFile": "official/c9940036.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,9,2,nil,nil,Xyz.InfiniteMats)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "extras": [
+          "Xyz.InfiniteMats"
+        ],
+        "notes": [
+          "Rank 9"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOGRAVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.tgcond",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "xyzSummoned"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.tgtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToGrave"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOGRAVE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_EXTRA"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.tgop",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToGrave"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOGRAVE"
+            ]
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "g",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.atchtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "monster"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_LEAVE_GRAVE",
+              "g",
+              "# g",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.atchop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "detach-xyz-material",
+            "method": "RemoveOverlayCard",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "ct",
+              "ct",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "attach-xyz-material",
+            "method": "Overlay",
+            "target": "c",
+            "argHints": [
+              "tg"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY",
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "descriptionStringId": "2",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,2}"
+      },
+      "target": {
+        "name": "s.distg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "onField"
+            },
+            {
+              "kind": "raw",
+              "source": "c:IsNegatable()"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_NEGATE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-related-chain",
+            "method": "NegateRelatedChain",
+            "target": "tc",
+            "argHints": [
+              "RESET_TURN_SET"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "value": "RESET_TURN_SET",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_TRAPMONSTER",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 7,
+    "fullyDecoded": 7,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

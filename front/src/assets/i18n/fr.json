@@ -456,7 +456,122 @@
     "dragActivated": "Glisser activé",
     "refreshRooms": "Rafraîchir la liste des rooms",
     "quickDuelDebug": "Duel rapide - mode debug",
-    "createRoom": "Créer une room"
+    "createRoom": "Créer une room",
+    "solveDeck": "Résoudre le deck {{name}}"
+  },
+  "solver": {
+    "pageTitle": "Solveur",
+    "desktopRequired": "Le solveur requiert un navigateur desktop (1024px minimum)",
+    "backToDecks": "Retour aux decks",
+    "config": {
+      "title": "Configuration",
+      "selected": "{{count}} / 5 max sélectionnées",
+      "fillRandom": "Remplir aléatoirement",
+      "clear": "Réinitialiser la sélection",
+      "mode": "Mode",
+      "modeGoldfish": "Goldfish",
+      "speed": "Vitesse",
+      "speedFast": "Rapide",
+      "speedOptimal": "Optimal",
+      "algorithm": "Algorithme",
+      "algorithmDfs": "DFS",
+      "algorithmMcts": "MCTS",
+      "algorithmAuto": "Auto",
+      "solve": "Résoudre",
+      "quickSolve": "Résolution rapide",
+      "notEnoughCards": "Pas assez de cartes pour former une main",
+      "modeAdversarial": "Adversarial",
+      "handtraps": "Handtraps",
+      "handtrapsLoading": "Chargement des handtraps...",
+      "handtrapsEmpty": "Aucun handtrap disponible",
+      "dfsHint": "DFS ne supporte pas le mode adversarial — basculé sur Auto",
+      "selectHandtrap": "Sélectionnez au moins 1 handtrap pour le mode adversarial",
+      "deckSwitchAdversarialHint": "Deck changé — vérifiez votre sélection de handtraps",
+      "deckSeed": "Seed du deck",
+      "deckSeedTooltip": "Reproduction exacte pour DFS sans effets aléatoires. Approximatif si le combo implique des recherches, mélanges ou lancers de pièces. MCTS est toujours approximatif.",
+      "deckSeedInvalid": "Format attendu : deux entiers séparés par une virgule",
+      "advancedOptions": "Options avancées"
+    },
+    "progress": {
+      "exploring": "Exploration des lignes de combo...",
+      "stalled": "Résolution d'un effet complexe...",
+      "nodesExplored": "{{count}} lignes de combo explorées",
+      "bestScore": "Meilleur score d'interruption : {{score}}",
+      "elapsed": "Temps écoulé : {{time}}",
+      "cancel": "Annuler"
+    },
+    "uncollapse": "Ouvrir la configuration",
+    "loading": "Chargement...",
+    "result": {
+      "interruptions": "interruptions",
+      "interruptionSingular": "interruption",
+      "interruptionScoreLabel": "Score d'interruption :",
+      "interruptionScoreHint": "Valeur pure de disruption end-board (tags pondérés + heuristique fallback). Ne contient PAS les bonus latent combo-progress (ceux-ci guident l'exploration DFS uniquement — voir breakdown).",
+      "partial": "Résultat partiel",
+      "fallbackHint": "Certaines cartes n'ont pas de tags d'interruption — le score est estimé",
+      "consumedBadge": {
+        "text": "utilisés",
+        "tooltip": "Cette carte a déjà utilisé {{consumed}} de ses {{total}} effets une-fois-par-tour ce tour"
+      },
+      "brick": {
+        "title": "Aucun combo viable",
+        "message": "Cette main n'a aucun chemin vers une interruption, même sans opposition.",
+        "suggestion": "Essayez une main différente"
+      },
+      "tree": {
+        "pruned": "... et {{count}} autres branches",
+        "truncated": "Sous-arbre tronqué pour la taille"
+      },
+      "worstCase": "Pire cas",
+      "noResilientLine": "Aucune ligne résiliente trouvée",
+      "noResilientLineMessage": "Toutes les lignes de combo sont brisées par les pièges de main sélectionnés.",
+      "bestScoreRef": "Meilleur score d'interruption : {{score}}",
+      "worstCaseAria": "Résilience pire cas : {{minimax}}",
+      "fastAdversarialHint": "Le mode Fast explore moins de branches de combo. Utilisez Optimal pour une recherche minimax plus approfondie.",
+      "alternativeCountBadge": "{{count}} options",
+      "alternativeCountTooltip": "L'adversaire a choisi cette activation parmi {{count}} options légales à cette fenêtre de chaîne"
+    },
+    "error": {
+      "deckNotFound": "Deck introuvable",
+      "accessDenied": "Accès refusé à ce deck",
+      "connectionFailed": "Connexion au serveur échouée",
+      "handtrapUnavailable": "Données handtrap indisponibles — vérifiez la connexion serveur",
+      "resultEvicted": "Le résultat du solve précédent a expiré pendant la reconnexion — veuillez le relancer"
+    },
+    "history": {
+      "button": "Historique",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "minimax": "Minimax",
+      "partial": "Partiel",
+      "justNow": "A l'instant",
+      "minutesAgo": "il y a {{n}}m",
+      "hoursAgo": "il y a {{n}}h"
+    },
+    "export": {
+      "export": "Exporter",
+      "copied": "Résultat copié dans le presse-papiers",
+      "failed": "Échec de la copie dans le presse-papiers"
+    },
+    "pin": {
+      "pin": "Épingler le résultat",
+      "unpin": "Retirer",
+      "pinned": "Épinglé",
+      "hand": "Main",
+      "endBoard": "Plateau final",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "pinLimit": "Nombre maximum d'épingles atteint (4)"
+    },
+    "verify": {
+      "verify": "Vérifier",
+      "verified": "Vérifié",
+      "failed": "Échec de la vérification",
+      "prngWarning": "La vérification peut échouer pour les combos impliquant des effets de recherche ou de mélange (ex : ROTA, Branded Fusion envoi depuis le deck) — le PRNG interne d'OCGCore peut produire un ordre de deck différent après la recherche. Cela n'invalide pas le résultat original.",
+      "verifying": "Vérification de la ligne recommandée...",
+      "verifiedAria": "Résultat vérifié",
+      "failedAria": "Échec de la vérification"
+    }
   },
   "replay": {
     "matchHistory": {

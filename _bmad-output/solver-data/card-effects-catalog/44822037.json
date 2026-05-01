@@ -1,0 +1,167 @@
+{
+  "cardId": 44822037,
+  "name": "Angel Statue - Azurune",
+  "sourceFile": "official/c44822037.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "target": {
+        "name": "s.target",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "e:GetHandler()",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.activate",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon-step",
+            "method": "SpecialSummonStep",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "true",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1",
+              "true"
+            ]
+          },
+          {
+            "kind": "special-summon-complete",
+            "method": "SpecialSummonComplete"
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EVENT_SPSUMMON",
+            "types": [
+              "EFFECT_TYPE_QUICK_O"
+            ],
+            "categories": [
+              "CATEGORY_DISABLE_SUMMON+CATEGORY_DESTROY"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_BATTLE_DESTROYED"
+      ],
+      "descriptionStringId": "1",
+      "target": {
+        "name": "s.bttg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "bc:IsRelateToBattle()"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "bc",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.btop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "bc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 4,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

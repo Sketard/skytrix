@@ -1,0 +1,252 @@
+{
+  "cardId": 66975205,
+  "name": "Yummyusment☆Mignon",
+  "sourceFile": "official/c66975205.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_YUMMY"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ]
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_FZONE",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "0"
+      },
+      "target": {
+        "inline": "aux.TargetBoolFunction(Card.IsSetCard,SET_YUMMY)",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.TargetBoolFunction",
+          "kind": "aux-helper"
+        }
+      },
+      "value": {
+        "name": "s.atkval",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "500*Duel.GetMatchingGroupCount(s.atkfilter,0,LOCATION_MZONE,LOCATION_MZONE,nil)"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_FZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.IsExistingMatchingCard(aux.FaceupFilter(Card.IsLink,1),tp,LOCATION_MZONE,0,1,nil) end",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.IsExistingMatchingCard(aux.FaceupFilter(Card.IsLink,1),tp,LOCATION_MZONE,0,1,nil)"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "level",
+              "value": 1
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.tdtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToDeck"
+                },
+                {
+                  "kind": "ableToExtra"
+                }
+              ]
+            },
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TODECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "g+c",
+              "3",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.tdop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "tg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

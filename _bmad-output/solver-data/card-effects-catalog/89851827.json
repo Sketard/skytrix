@@ -1,0 +1,246 @@
+{
+  "cardId": 89851827,
+  "name": "Secreterion Dragon",
+  "sourceFile": "official/c89851827.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,aux.FilterBoolFunctionEx(Card.IsRace,RACE_DRAGON),aux.FilterBoolFunctionEx(Card.IsRace,RACE_SPELLCASTER))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACE_DRAGON"
+              }
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsRace",
+                "value": "RACE_SPELLCASTER"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_MZONE",
+      "value": {
+        "inline": "function(e) return -100*Duel.GetFieldGroupCount(e:GetHandlerPlayer(),LOCATION_REMOVED,0) end",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "- 100*Duel.GetFieldGroupCount(e:GetHandlerPlayer(),LOCATION_REMOVED,0)"
+            }
+          ],
+          "complete": false
+        }
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_PLAYER_TARGET"
+      ],
+      "events": [
+        "EFFECT_CANNOT_ACTIVATE"
+      ],
+      "range": "LOCATION_MZONE",
+      "targetRange": {
+        "self": "0",
+        "opponent": "1"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsFusionSummoned() end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "value": {
+        "name": "s.actlimval",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "rc:IsSpecialSummoned()"
+            },
+            {
+              "kind": "raw",
+              "source": "rc:IsFaceup()"
+            },
+            {
+              "kind": "raw",
+              "source": "rc:IsRace(RACE_DRAGON|RACE_SPELLCASTER)"
+            },
+            {
+              "kind": "raw",
+              "source": "rc:IsLocation(LOCATION_MZONE)"
+            }
+          ],
+          "complete": false
+        }
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.sptdtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "race",
+              "value": "RACE_DRAGON|RACE_SPELLCASTER"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "canBeSpecialSummoned"
+                },
+                {
+                  "kind": "ableToDeck"
+                }
+              ]
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "tg",
+              "1",
+              "tp",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TODECK",
+              "tg",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.sptdop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "sg",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "send-to-deck",
+            "method": "SendtoDeck",
+            "target": "dg",
+            "argHints": [
+              "nil",
+              "SEQ_DECKBOTTOM",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

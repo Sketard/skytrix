@@ -1,0 +1,134 @@
+{
+  "cardId": 42141493,
+  "name": "Mulcharmy Fuwalos",
+  "sourceFile": "official/c42141493.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_MULCHARMY"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DRAW",
+        "CATEGORY_TODECK"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_HAND",
+      "condition": {
+        "inline": "function(e,tp) return Duel.GetFieldGroupCount(tp,LOCATION_ONFIELD,0)==0 end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetFieldGroupCount",
+              "args": [
+                "tp",
+                "LOCATION_ONFIELD",
+                "0"
+              ],
+              "op": "==",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "cost": {
+        "name": "s.effcost",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "discardable"
+            },
+            {
+              "kind": "gameState",
+              "method": "GetCustomActivityCount",
+              "args": [
+                "id",
+                "tp",
+                "ACTIVITY_CHAIN"
+              ],
+              "op": "<",
+              "value": "2"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "c",
+            "argHints": [
+              "REASON_COST|REASON_DISCARD"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
+      },
+      "target": {
+        "name": "s.efftg",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "true"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "operation": {
+        "name": "s.effop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e2",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

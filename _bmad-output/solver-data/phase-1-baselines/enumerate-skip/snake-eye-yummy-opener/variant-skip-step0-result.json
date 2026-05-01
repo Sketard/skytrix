@@ -1,0 +1,120 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "expectedBoardSize": 7,
+  "matched": 0,
+  "matchedCardIds": [],
+  "missingCardIds": [
+    93192592,
+    48452496,
+    1528054,
+    29369059,
+    44822037,
+    65741786,
+    53639887
+  ],
+  "score": 0,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 0,
+    "targetedNegate": 0,
+    "floodgate": 0,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 0,
+    "moveToSt": 0,
+    "bounce": 0,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 0,
+    "fallbackPoints": 0,
+    "latentPoints": 0,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 0,
+    "explorationScore": 0
+  },
+  "stoppedReason": "divergence",
+  "stoppedAtPlanStep": 0,
+  "divergence": {
+    "step": 0,
+    "promptType": "SELECT_IDLECMD",
+    "expected": "Salamangreat Almiraj (summon-procedure)",
+    "legalActionsAtPrompt": [
+      {
+        "responseIndex": 0,
+        "cardId": 9674034,
+        "cardName": "Snake-Eye Ash",
+        "verb": "normal-summon",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 1,
+        "cardId": 90241276,
+        "cardName": "Snake-Eyes Poplar",
+        "verb": "normal-summon",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 2,
+        "cardId": 9674034,
+        "cardName": "Snake-Eye Ash",
+        "verb": "set-monster",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 3,
+        "cardId": 90241276,
+        "cardName": "Snake-Eyes Poplar",
+        "verb": "set-monster",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 4,
+        "cardId": 66975205,
+        "cardName": "Yummyusment☆Mignon",
+        "verb": "set-st",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 5,
+        "cardId": 35269904,
+        "cardName": "Triple Tactics Thrust",
+        "verb": "set-st",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 6,
+        "cardId": 25311006,
+        "cardName": "Triple Tactics Talent",
+        "verb": "set-st",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 7,
+        "cardId": 66975205,
+        "cardName": "Yummyusment☆Mignon",
+        "verb": "activate",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 8,
+        "cardId": 0,
+        "cardName": "(pass)",
+        "verb": "end-phase"
+      }
+    ],
+    "reason": "No legal action matches \"Salamangreat Almiraj\" verb=summon-procedure at this prompt. Plan step 0 of 3."
+  },
+  "replayLog": [],
+  "finalBoardSelf": [],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 1,
+  "finalPhase": "MAIN1"
+}

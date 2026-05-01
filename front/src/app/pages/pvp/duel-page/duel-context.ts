@@ -1,6 +1,6 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { duelAssert } from './duel-assert';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
  * Component-level context for the animation pipeline.
@@ -51,6 +51,19 @@ export class DuelContext {
 
   scaledDuration(base: number, min = 0): number {
     return Math.max(min, Math.round(base * this._speedMultiplier()));
+  }
+
+  /**
+   * Safety-timeout scaling for guards that wrap async animation work
+   * (LOCK_SAFETY_TIMEOUT_MS, REPLAY_BUFFER_SAFETY_TIMEOUT_MS, etc.).
+   * Divides by `speedMultiplier` so slow-playback modes don't clip ongoing
+   * animations, then adds a 50% margin to absorb GC / layout hiccups on
+   * loaded hardware. A device running fast at 1x keeps a comfortable guard
+   * (+50%); slow playback at 0.5x doubles the guard.
+   */
+  safetyTimeout(baseMs: number): number {
+    const mult = this._speedMultiplier() || 1;
+    return Math.round((baseMs / mult) * 1.5);
   }
 
   /**

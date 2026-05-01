@@ -1,0 +1,9 @@
+{
+  "fixtureId": "stun-runick-opener",
+  "deck": "stun-runick-melbourne-top8",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 0,
+  "cardsTouched": [],
+  "byEdgeId": {}
+}

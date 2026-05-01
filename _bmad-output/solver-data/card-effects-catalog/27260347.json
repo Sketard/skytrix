@@ -1,0 +1,229 @@
+{
+  "cardId": 27260347,
+  "name": "Snake-Eyes Diabellstar",
+  "sourceFile": "official/c27260347.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [
+    27260347
+  ],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_ATTACK_ANNOUNCE"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.btplcon",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "bc0==e:GetHandler()"
+            },
+            {
+              "kind": "raw",
+              "source": "s.checkzones(bc0,bc1)"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "operation": {
+        "name": "s.btplop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "c:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "c:IsMonsterCard()"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_CHANGE_TYPE",
+            "value": "TYPE_SPELL|TYPE_CONTINUOUS",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD&~ RESET_TURN_SET"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_LEAVE_GRAVE",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_IGNITION"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [],
+      "descriptionStringId": "1",
+      "range": "LOCATION_SZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsContinuousSpell() end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "continuousSpell"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.gypltg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attribute",
+              "value": "ATTRIBUTE_FIRE"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "forbidden"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TARGET"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_LEAVE_GRAVE",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.gyplop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "c",
+            "argHints": [
+              "tp",
+              "c:GetOwner()",
+              "LOCATION_SZONE",
+              "POS_FACEUP",
+              "c:IsMonsterCard()"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

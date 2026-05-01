@@ -1,0 +1,2095 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "deck": "branded-dracotail-bainbridge-2nd",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 415,
+  "cardsTouched": [
+    38811586,
+    44362883,
+    51409648,
+    55273560,
+    68468459,
+    70534340,
+    73819701,
+    84477320,
+    87746184
+  ],
+  "byEdgeId": {
+    "44362883.e1->10966439.e2a": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->10966439.e2b": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->1498449.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->1528054.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->18176525.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->18176525.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->18176525.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->19899073.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->29301450.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->30581601.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->31425736.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->31425736.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->31603289.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->33760966.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->34022970.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->34022970.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->3410461.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->34909328.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->35844557.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->35844557.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->40543231.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->40543231.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->40543231.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->44482554.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->45663742.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->45663742.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->5088741.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->5088741.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->58071334.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->65741786.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->67098897.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->68468459.e1a": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->68468459.e1b": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->68810435.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->68810435.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->70534340.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->70871153.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->72578374.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->7375867.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->73819701.e2a": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->73819701.e2b": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->73898890.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->75003700.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->75003700.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->75003700.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->7511613.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->76666602.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->81846453.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->81846453.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->82782870.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->82782870.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->82782870.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->84433129.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->84477320.e1a": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->84477320.e1b": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->84477320.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->8633261.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->87746184.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->90241276.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->90241276.e3": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->93192592.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->9674034.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->9674034.e2": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->9940036.e1": {
+      "hits": 11,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701.e1->73819701.e2a": {
+      "hits": 18,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701.e1->73819701.e2b": {
+      "hits": 18,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320.e1a->75003700.e1": {
+      "hits": 8,
+      "cumulativeContribution": -199.0227474374816,
+      "weight": -0.24877843429685198
+    },
+    "84477320.e1a->75003700.e2": {
+      "hits": 8,
+      "cumulativeContribution": 163.79154442914185,
+      "weight": 0.20473943053642735
+    },
+    "84477320.e1b->75003700.e1": {
+      "hits": 8,
+      "cumulativeContribution": -462.02304684416964,
+      "weight": -0.577528808555212
+    },
+    "84477320.e1b->75003700.e2": {
+      "hits": 8,
+      "cumulativeContribution": -238.24506861128228,
+      "weight": -0.29780633576410287
+    },
+    "55273560.e2->10966439.e2a": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->10966439.e2b": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->1528054.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->18176525.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->18176525.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->18176525.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->19899073.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->29301450.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->30581601.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->31425736.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->31425736.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->31603289.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->34022970.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->34022970.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->3410461.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->34909328.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->35844557.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->35844557.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->40543231.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->40543231.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->40543231.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->45663742.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->45663742.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->5088741.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->58071334.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->67098897.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68468459.e1a": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68468459.e1b": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68810435.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68810435.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->73819701.e2a": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->73819701.e2b": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->73898890.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->75003700.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->75003700.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->7511613.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->76666602.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->81846453.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->82782870.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->82782870.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->82782870.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->84433129.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->84477320.e1a": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->84477320.e1b": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->8633261.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->90241276.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->90241276.e3": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->93192592.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->9674034.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->9674034.e2": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->9940036.e1": {
+      "hits": 4,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e3->90241276.e1": {
+      "hits": 4,
+      "cumulativeContribution": 81.65649217620188,
+      "weight": 0.2041412304405047
+    },
+    "68468459.e1a->1498449.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->44482554.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->5088741.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->65741786.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->70871153.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->7375867.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->75003700.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->81846453.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1a->84477320.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->1498449.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->44482554.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->5088741.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->65741786.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->70871153.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->7375867.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->75003700.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->81846453.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "68468459.e1b->84477320.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10045474.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10966439.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10966439.e2a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10966439.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->11398059.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->1269512.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->13048472.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->13332685.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->13332685.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->14532163.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->14558127.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->1498449.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->1528054.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->17954937.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->17954937.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18144506.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18176525.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18176525.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18176525.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->19899073.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->19899073.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->19899073.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->20295753.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->20665527.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->20665527.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->2295440.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->23434538.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->24094653.e_fusion": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->24224830.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->24299458.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->27204311.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->27260347.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->2772337.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->2772337.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->29301450.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->29301450.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->30581601.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31425736.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31425736.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31603289.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31603289.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->32548318.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->33760966.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->33760966.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->34022970.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->34022970.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->34909328.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->35269904.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->35844557.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->35844557.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->38811586.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->38811586.e4": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40543231.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40543231.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40543231.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40673853.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->41999284.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->42125140.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->42141493.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44146295.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44146295.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44362883.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44482554.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44482554.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44822037.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44822037.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45171524.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45663742.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45663742.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45663742.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45852939.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->48452496.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->48452496.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->49678559.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->5088741.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->5088741.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->53639887.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->53639887.e4": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->5431722.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55273560.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55273560.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55397172.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55397172.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->59438930.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->60303245.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->61399402.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->61399402.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->6153210.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->65681983.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->65741786.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->66975205.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->67098897.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->6798031.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->68468459.e1a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->68468459.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->68810435.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->69932023.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70534340.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70538272.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70538272.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70871153.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70871153.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->72238166.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->72578374.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7375867.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7375867.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73819701.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73819701.e2a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73819701.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73898890.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7477101.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->75003700.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->75003700.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7511613.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->76666602.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->78397661.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79606837.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79606837.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79755671.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79755671.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->80208225.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->81560239.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8165596.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8165596.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->81846453.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8267140.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->82782870.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->82782870.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->82782870.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->84211599.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->84477320.e1a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->84477320.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->85106525.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8633261.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->87746184.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->87746184.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->89851827.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->90241276.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->90241276.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->90241276.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93192592.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93192592.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93360904.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93360904.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->94145021.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->95515789.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->95515789.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->95515789.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9674034.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9674034.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9674034.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->97268402.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9940036.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->10966439.e2a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->10966439.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->1528054.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->18176525.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->18176525.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->18176525.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->19899073.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->29301450.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->30581601.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->31425736.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->31425736.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->31603289.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->34022970.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->34022970.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->3410461.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->34909328.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->35844557.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->35844557.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->40543231.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->40543231.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->40543231.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->44146295.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->45663742.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->45663742.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->5088741.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->58071334.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->67098897.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68468459.e1a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68468459.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68810435.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68810435.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->72578374.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->73819701.e2a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->73819701.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->73898890.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->75003700.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->75003700.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->7511613.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->76666602.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->81846453.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->82782870.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->82782870.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->82782870.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->84433129.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->84477320.e1a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->84477320.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->8633261.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->90241276.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->90241276.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->93192592.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->9674034.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->9674034.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->9940036.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->1498449.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->44482554.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->5088741.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->65741786.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->70871153.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->7375867.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->75003700.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->81846453.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->84477320.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e3->10966439.e2a": {
+      "hits": 1,
+      "cumulativeContribution": -70.28833116222174,
+      "weight": -0.7028833116222174
+    },
+    "38811586.e3->10966439.e2b": {
+      "hits": 1,
+      "cumulativeContribution": -35.99237488437891,
+      "weight": -0.35992374884378914
+    },
+    "38811586.e3->1528054.e2": {
+      "hits": 1,
+      "cumulativeContribution": -112.87994649699212,
+      "weight": -1.1287994649699211
+    },
+    "38811586.e3->18176525.e1": {
+      "hits": 1,
+      "cumulativeContribution": 33.82747460593141,
+      "weight": 0.33827474605931407
+    },
+    "38811586.e3->18176525.e2": {
+      "hits": 1,
+      "cumulativeContribution": -62.570766409034185,
+      "weight": -0.6257076640903418
+    },
+    "38811586.e3->18176525.e3": {
+      "hits": 1,
+      "cumulativeContribution": 41.69801173710612,
+      "weight": 0.4169801173710612
+    },
+    "38811586.e3->19899073.e1": {
+      "hits": 1,
+      "cumulativeContribution": -49.46885442240463,
+      "weight": -0.4946885442240463
+    },
+    "38811586.e3->29301450.e1": {
+      "hits": 1,
+      "cumulativeContribution": -44.99862651149139,
+      "weight": -0.44998626511491385
+    },
+    "38811586.e3->30581601.e1": {
+      "hits": 1,
+      "cumulativeContribution": 14.622756578827142,
+      "weight": 0.14622756578827142
+    },
+    "38811586.e3->31425736.e2": {
+      "hits": 1,
+      "cumulativeContribution": 98.96998648156523,
+      "weight": 0.9896998648156523
+    },
+    "38811586.e3->31425736.e3": {
+      "hits": 1,
+      "cumulativeContribution": 90.21711726647283,
+      "weight": 0.9021711726647282
+    },
+    "38811586.e3->31603289.e1": {
+      "hits": 1,
+      "cumulativeContribution": -70.09394475866507,
+      "weight": -0.7009394475866507
+    },
+    "38811586.e3->34022970.e2": {
+      "hits": 1,
+      "cumulativeContribution": 21.221666989389227,
+      "weight": 0.2122166698938923
+    },
+    "38811586.e3->34022970.e3": {
+      "hits": 1,
+      "cumulativeContribution": 21.97130627918954,
+      "weight": 0.21971306279189542
+    },
+    "38811586.e3->3410461.e1": {
+      "hits": 1,
+      "cumulativeContribution": -100.78521115752288,
+      "weight": -1.0078521115752288
+    },
+    "38811586.e3->34909328.e2": {
+      "hits": 1,
+      "cumulativeContribution": -27.935572770680327,
+      "weight": -0.2793557277068033
+    },
+    "38811586.e3->35844557.e2": {
+      "hits": 1,
+      "cumulativeContribution": 37.72560161899505,
+      "weight": 0.37725601618995047
+    },
+    "38811586.e3->35844557.e3": {
+      "hits": 1,
+      "cumulativeContribution": 44.704696233795104,
+      "weight": 0.44704696233795105
+    },
+    "38811586.e3->40543231.e1": {
+      "hits": 1,
+      "cumulativeContribution": -15.625200713629395,
+      "weight": -0.15625200713629395
+    },
+    "38811586.e3->40543231.e2": {
+      "hits": 1,
+      "cumulativeContribution": 31.146298634508746,
+      "weight": 0.31146298634508746
+    },
+    "38811586.e3->40543231.e3": {
+      "hits": 1,
+      "cumulativeContribution": 67.39849109491578,
+      "weight": 0.6739849109491578
+    },
+    "38811586.e3->45663742.e1": {
+      "hits": 1,
+      "cumulativeContribution": -46.92647201628636,
+      "weight": -0.46926472016286364
+    },
+    "38811586.e3->45663742.e2": {
+      "hits": 1,
+      "cumulativeContribution": -0.03999154190659007,
+      "weight": -0.0003999154190659007
+    },
+    "38811586.e3->5088741.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0.6413630184198855,
+      "weight": 0.006413630184198855
+    },
+    "38811586.e3->58071334.e1": {
+      "hits": 1,
+      "cumulativeContribution": 135.1768254307756,
+      "weight": 1.351768254307756
+    },
+    "38811586.e3->67098897.e1": {
+      "hits": 1,
+      "cumulativeContribution": -53.74543130327356,
+      "weight": -0.5374543130327356
+    },
+    "38811586.e3->68468459.e1a": {
+      "hits": 1,
+      "cumulativeContribution": -76.5021124020279,
+      "weight": -0.765021124020279
+    },
+    "38811586.e3->68468459.e1b": {
+      "hits": 1,
+      "cumulativeContribution": -79.40768362833961,
+      "weight": -0.7940768362833961
+    },
+    "38811586.e3->68810435.e2": {
+      "hits": 1,
+      "cumulativeContribution": -78.159945216129,
+      "weight": -0.78159945216129
+    },
+    "38811586.e3->68810435.e3": {
+      "hits": 1,
+      "cumulativeContribution": 112.47557182822356,
+      "weight": 1.1247557182822356
+    },
+    "38811586.e3->73819701.e2a": {
+      "hits": 1,
+      "cumulativeContribution": -7.376915039467891,
+      "weight": -0.0737691503946789
+    },
+    "38811586.e3->73819701.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 25.284967545753545,
+      "weight": 0.25284967545753545
+    },
+    "38811586.e3->73898890.e1": {
+      "hits": 1,
+      "cumulativeContribution": 41.677857883232804,
+      "weight": 0.41677857883232805
+    },
+    "38811586.e3->75003700.e1": {
+      "hits": 1,
+      "cumulativeContribution": 66.76108627235861,
+      "weight": 0.6676108627235862
+    },
+    "38811586.e3->75003700.e2": {
+      "hits": 1,
+      "cumulativeContribution": 148.11999227113844,
+      "weight": 1.4811999227113843
+    },
+    "38811586.e3->7511613.e2": {
+      "hits": 1,
+      "cumulativeContribution": 12.717003462671098,
+      "weight": 0.12717003462671098
+    },
+    "38811586.e3->76666602.e2": {
+      "hits": 1,
+      "cumulativeContribution": 59.10435244436367,
+      "weight": 0.5910435244436367
+    },
+    "38811586.e3->81846453.e1": {
+      "hits": 1,
+      "cumulativeContribution": 36.768910565684756,
+      "weight": 0.36768910565684754
+    },
+    "38811586.e3->82782870.e1": {
+      "hits": 1,
+      "cumulativeContribution": -12.607632898156618,
+      "weight": -0.12607632898156618
+    },
+    "38811586.e3->82782870.e2": {
+      "hits": 1,
+      "cumulativeContribution": 125.8106084618862,
+      "weight": 1.258106084618862
+    },
+    "38811586.e3->82782870.e3": {
+      "hits": 1,
+      "cumulativeContribution": 134.91871616604624,
+      "weight": 1.3491871616604623
+    },
+    "38811586.e3->84433129.e2": {
+      "hits": 1,
+      "cumulativeContribution": -64.27875743010235,
+      "weight": -0.6427875743010235
+    },
+    "38811586.e3->84477320.e1a": {
+      "hits": 1,
+      "cumulativeContribution": -127.02274877608819,
+      "weight": -1.270227487760882
+    },
+    "38811586.e3->84477320.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 82.87834389719677,
+      "weight": 0.8287834389719677
+    },
+    "38811586.e3->8633261.e2": {
+      "hits": 1,
+      "cumulativeContribution": 70.91886187220443,
+      "weight": 0.7091886187220443
+    },
+    "38811586.e3->90241276.e2": {
+      "hits": 1,
+      "cumulativeContribution": -110.37403141010151,
+      "weight": -1.1037403141010151
+    },
+    "38811586.e3->90241276.e3": {
+      "hits": 1,
+      "cumulativeContribution": 50.120583206510005,
+      "weight": 0.5012058320651
+    },
+    "38811586.e3->93192592.e1": {
+      "hits": 1,
+      "cumulativeContribution": 128.19679427829388,
+      "weight": 1.281967942782939
+    },
+    "38811586.e3->9674034.e1": {
+      "hits": 1,
+      "cumulativeContribution": -28.573335813583732,
+      "weight": -0.28573335813583733
+    },
+    "38811586.e3->9674034.e2": {
+      "hits": 1,
+      "cumulativeContribution": 193.44202207496411,
+      "weight": 1.9344202207496413
+    },
+    "38811586.e3->9940036.e1": {
+      "hits": 1,
+      "cumulativeContribution": 71.12845170857747,
+      "weight": 0.7112845170857747
+    },
+    "87746184.e1->1498449.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->44482554.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->5088741.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->65741786.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->70871153.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->7375867.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->75003700.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->81846453.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->84477320.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    }
+  }
+}

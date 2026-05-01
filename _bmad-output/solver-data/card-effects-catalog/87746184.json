@@ -1,0 +1,245 @@
+{
+  "cardId": 87746184,
+  "name": "Albion the Branded Dragon",
+  "sourceFile": "official/c87746184.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [
+    87746184
+  ],
+  "listedSeries": [
+    "SET_BRANDED"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,CARD_ALBAZ,aux.FilterBoolFunctionEx(Card.IsAttribute,ATTRIBUTE_LIGHT))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "fallen-of-albaz",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "code",
+                    "value": 68468459
+                  }
+                ],
+                "complete": true
+              }
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsAttribute",
+                "value": "ATTRIBUTE_LIGHT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsFusionSummoned() end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "fusionSummoned"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "inline": "Fusion.SummonEffTG(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffTG",
+          "kind": "fusion-summon-target",
+          "params": {
+            "note": "Fusion summon target; material requirements declared by AddProcMix on the same card"
+          }
+        }
+      },
+      "operation": {
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TOHAND",
+        "CATEGORY_SEARCH",
+        "CATEGORY_SET"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_PHASE+PHASE_END"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "name": "s.thsetcon",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "c:GetTurnID()==Duel.GetTurnCount()"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "reason",
+                "value": "REASON_RETURN"
+              }
+            }
+          ],
+          "complete": false
+        }
+      },
+      "target": {
+        "name": "s.thsettg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_BRANDED"
+            },
+            {
+              "kind": "spellTrap"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ssetable"
+                }
+              ]
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.thsetop",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_BRANDED"
+            },
+            {
+              "kind": "spellTrap"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "ableToHand"
+                },
+                {
+                  "kind": "ssetable"
+                }
+              ]
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "aux.Stringid(id,2)"
+            ]
+          },
+          {
+            "kind": "spell-trap-set",
+            "method": "SSet",
+            "target": "tp",
+            "argHints": [
+              "sc"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

@@ -1,0 +1,105 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "description": "Auto-converted from branded-dracotail-opener.raw-replay.json — 16 adapter-level steps (decision summary of 118 raw responses)",
+  "sourceRawReplayPath": "../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json",
+  "format": "adapter-summary-v1",
+  "_warning": "NOT replayable via scripts/replay-trajectory.ts — solver init differs from PvP init (deck residue order drift). Human-readable summary only.",
+  "steps": [
+    {
+      "responseIndex": 8,
+      "cardId": 73819701,
+      "cardName": "Fallen of the White Dragon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 73819701,
+      "cardName": "Fallen of the White Dragon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 55273560,
+      "cardName": "Incredible Ecclesia, the Virtuous",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 75003700,
+      "cardName": "Dracotail Lukias",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 75003700,
+      "cardName": "Dracotail Lukias",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 4,
+      "cardId": 44482554,
+      "cardName": "Dracotail Pan",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 55273560,
+      "cardName": "Incredible Ecclesia, the Virtuous",
+      "actionDescription": "Add to hand"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 73819701,
+      "cardName": "Fallen of the White Dragon",
+      "actionDescription": ""
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 30271097,
+      "cardName": "The Fallen & The Virtuous",
+      "actionDescription": "Activate 1 of these effects"
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": ""
+    }
+  ]
+}

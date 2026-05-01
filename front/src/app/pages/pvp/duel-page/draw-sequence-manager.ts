@@ -7,6 +7,8 @@ import { CardTravelService, type TravelOptions } from './card-travel.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
+import type { ZoneLock } from './rendered-board-state.service';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
  * Manages draw sequences: initial parallel draw, mid-game draws,
@@ -37,6 +39,17 @@ export class DrawSequenceManager {
   private _drawTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _onQueueResume: (() => void) | null = null;
 
+  /**
+   * Batch slot bookkeeping for replayBuffer() — one entry per player with
+   * pending MOVE→HAND events. Keeps distinct fan-positioned slots alive for
+   * the whole replay so each tutor lands at its own slot (not the same last
+   * slot repeatedly) and floats stay rotated with the fan curve.
+   */
+  private _handBatch: [
+    { slotCount: number; nextOffset: number } | null,
+    { slotCount: number; nextOffset: number } | null,
+  ] = [null, null];
+
   readonly handExpansionSlots = signal<[number, number]>([0, 0]);
 
   // --- Public queries ---
@@ -53,6 +66,63 @@ export class DrawSequenceManager {
   /** Register the callback to resume the orchestrator's queue loop after draws complete. */
   initQueueResumeCallback(onResume: () => void): void {
     this._onQueueResume = onResume;
+  }
+
+  // --- Hand batch (replayBuffer tutor sequencing) ---
+
+  /**
+   * Reserve `slotCount` distinct expansion slots in HAND for an upcoming
+   * tutor-reveal replay sequence. Each subsequent `consumeHandBatchSlot(p)`
+   * call returns the DOM index of the next unused slot — so tutor1 lands at
+   * slot 0, tutor2 at slot 1, etc., each with its own fan-positioned rotation.
+   * Pair with `endHandBatch(p)` at batch-end.
+   */
+  beginHandBatch(relPlayer: 0 | 1, slotCount: number): void {
+    if (slotCount <= 0) return;
+    // Invariant: hand batches from `replayBuffer` and the initial/mid-game
+    // draw loop manage the same `handExpansionSlots` signal. Their time
+    // windows don't overlap in practice (initial draw fires at duel start,
+    // buffer replay fires during chain resolve), but a future refactor
+    // could break this assumption — fail loud in dev.
+    duelAssert(
+      this._drawsInFlight.size === 0,
+      'beginHandBatch',
+      `overlaps with ${this._drawsInFlight.size} in-flight draw sequence(s) — handExpansionSlots would double-book`,
+    );
+    this._handBatch[relPlayer] = { slotCount, nextOffset: 0 };
+    this.handExpansionSlots.update(c => {
+      const next: [number, number] = [...c];
+      next[relPlayer] += slotCount;
+      return next;
+    });
+  }
+
+  /** Release all slots reserved by `beginHandBatch` for this player. */
+  endHandBatch(relPlayer: 0 | 1): void {
+    const batch = this._handBatch[relPlayer];
+    if (!batch) return;
+    this._handBatch[relPlayer] = null;
+    this.handExpansionSlots.update(c => {
+      const next: [number, number] = [...c];
+      next[relPlayer] = Math.max(0, next[relPlayer] - batch.slotCount);
+      return next;
+    });
+  }
+
+  /**
+   * Returns the DOM index of the next unused slot for the current batch, or
+   * `undefined` when no batch is active. The index is
+   * `renderedHandCount + offset` so the slot element can be selected via
+   * `resolveHandTarget` with a numeric index.
+   */
+  consumeHandBatchSlot(relPlayer: 0 | 1): number | undefined {
+    const batch = this._handBatch[relPlayer];
+    if (!batch) return undefined;
+    const existingCards = this.rbs.renderedState().players[relPlayer].zones
+      .find(z => z.zoneId === 'HAND')?.cards.length ?? 0;
+    const idx = existingCards + batch.nextOffset;
+    batch.nextOffset++;
+    return idx;
   }
 
   // --- Draw event processing ---
@@ -214,7 +284,7 @@ export class DrawSequenceManager {
         : this.cardTravelService.toAbsoluteUrl('assets/images/card_back.jpg');
       await this.travelToHand(srcKey, relPlayer, cardImage, {
         duration: travelDuration, showBack: true, flipDuringTravel: isOwn && !!card,
-      }, opts.keepFloats ? i : undefined);
+      }, opts.keepFloats ? i : undefined, undefined, card || undefined);
       if (!opts.keepFloats) this.cardTravelService.clearLandedTravels();
     }
 
@@ -267,6 +337,13 @@ export class DrawSequenceManager {
    * Animate a card traveling to the hand zone.
    * @param targetIndex When provided, targets a specific expansion slot (batch mode,
    *   slots managed by caller). When omitted, adds/removes a slot per card (default).
+   * @param externalHandLock Caller-owned HAND lock (typically a pre-lock consumed
+   *   from `preLockQueuedSources`). When provided, it is reused as the animation
+   *   lock instead of being released-then-reacquired — avoids a commitZone(HAND)
+   *   flash between the outer release and the inner lockZone.
+   * @param cardCode Optional cardCode tag stored on the landed float's dataset.
+   *   Used by `processShuffleEvent` to match N landed floats to their
+   *   post-shuffle DOM positions in multi-tutor scenarios.
    */
   async travelToHand(
     src: string | HTMLElement,
@@ -274,9 +351,11 @@ export class DrawSequenceManager {
     cardImage: string,
     options: TravelOptions,
     targetIndex?: number,
+    externalHandLock?: ZoneLock,
+    cardCode?: number,
   ): Promise<void> {
     const dstKey = `HAND-${relPlayer}`;
-    const handLock = this.rbs.lockZone(dstKey);
+    const handLock = externalHandLock ?? this.rbs.lockZone(dstKey);
     const manageSlotsLocally = targetIndex === undefined;
 
     if (manageSlotsLocally) {
@@ -289,14 +368,18 @@ export class DrawSequenceManager {
 
     let success = false;
     try {
-      if (manageSlotsLocally) {
-        await new Promise<void>(resolve =>
-          afterNextRender(() => resolve(), { injector: this.injector })
-        );
-      }
+      // Always wait one render cycle so the slot just added (manageSlotsLocally
+      // mode) OR the pre-reserved batch slots (targetIndex mode, managed by
+      // beginHandBatch) are in the DOM before resolving the target. When
+      // Angular has nothing to flush this is effectively a microtask.
+      await new Promise<void>(resolve =>
+        afterNextRender(() => resolve(), { injector: this.injector })
+      );
 
       const target = this.resolveHandTarget(dstKey, targetIndex ?? 'last');
-      await this.cardTravelService.travel(src, target, cardImage, { ...options, dstZoneKey: dstKey });
+      await this.cardTravelService.travel(src, target, cardImage, {
+        ...options, dstZoneKey: dstKey, cardCode,
+      });
       success = true;
     } finally {
       if (manageSlotsLocally) {
@@ -374,7 +457,15 @@ export class DrawSequenceManager {
 
   private resumeQueueIfSafe(): void {
     if (!this.chainManager.hasActiveReplayTimeouts && this._onQueueResume) {
-      this._onQueueResume();
+      // Defer to next microtask. When this is called from a synchronously-
+      // resolving .finally() inside an 'async'-returning event handler (e.g.
+      // MSG_CONFIRM_CARDS for a non-HAND card where confirmCardsInHand's loop
+      // only hits `continue`), the orchestrator's _processAnimationQueueInner
+      // .finally has not yet cleared _isProcessing, so processAnimationQueue()
+      // would no-op on the `_isProcessing` guard. queueMicrotask lets the
+      // inner finally run first.
+      const resume = this._onQueueResume;
+      queueMicrotask(() => resume());
     }
   }
 
@@ -417,17 +508,20 @@ export class DrawSequenceManager {
       return;
     }
 
-    // Capture the landed float — it represents a newly added card (e.g. search).
-    // Stabilize its position so we can animate it during the shuffle.
-    const landedFloat = this.cardTravelService.getLastLandedFloat() as HTMLDivElement | null;
-    let floatRect: DOMRect | null = null;
-    this.logger.log(DuelLogCategory.SHUFFLE, 'landedFloat=%s', !!landedFloat);
-    // Preserve baseRotateZ so the float keeps facing its owner during shuffle.
+    // Capture ALL landed HAND floats — each represents a newly added card
+    // (search / tutor). Stabilize their positions so they can each animate
+    // independently to their post-shuffle DOM slot.
+    const handPrefix = `HAND-${relPlayer}`;
+    const landedFloats = this.cardTravelService.getLandedFloatsByDstPrefix(handPrefix);
     const baseRZ = this.ctx.cardBaseRotateCSS(relPlayer);
-    if (landedFloat) {
-      floatRect = this.cardTravelService.stabilizeFloat(landedFloat, baseRZ);
-      this.logger.log(DuelLogCategory.SHUFFLE, 'floatRect=%o attached=%s', { left: floatRect.left, top: floatRect.top, w: floatRect.width, h: floatRect.height }, landedFloat.isConnected);
+    const floatByCode = new Map<string, { el: HTMLDivElement; rect: DOMRect }[]>();
+    for (const el of landedFloats) {
+      const rect = this.cardTravelService.stabilizeFloat(el, baseRZ);
+      const code = el.dataset['cardCode'] ?? '';
+      if (!floatByCode.has(code)) floatByCode.set(code, []);
+      floatByCode.get(code)!.push({ el, rect });
     }
+    this.logger.log(DuelLogCategory.SHUFFLE, 'landedFloats=%d codes=%o', landedFloats.length, [...floatByCode.keys()]);
 
     const breathingRoom = this.ctx.scaledDuration(100, 50);
 
@@ -451,7 +545,7 @@ export class DrawSequenceManager {
       });
 
       // Force-sync ALL state — clears any stacked locks from move/travel
-      // so the rendered hand includes the newly added card.
+      // so the rendered hand includes the newly added cards.
       this.rbs.commitAll();
 
       await new Promise<void>(resolve =>
@@ -461,7 +555,7 @@ export class DrawSequenceManager {
       const flipDuration = this.ctx.scaledDuration(400, 200);
       const newCardEls = handZone.querySelectorAll<HTMLElement>('.hand-card:not(.hand-card--expansion)');
       const animations: Animation[] = [];
-      let newCardEl: HTMLElement | null = null;
+      const floatAssignments: Array<{ float: HTMLDivElement; rect: DOMRect; targetEl: HTMLElement }> = [];
 
       newCardEls.forEach(el => {
         const code = el.dataset['cardCode'] ?? '';
@@ -477,19 +571,30 @@ export class DrawSequenceManager {
             { transform: `translate(${dx}px, ${dy}px)`, composite: 'add' },
             { transform: 'translate(0, 0)', composite: 'add' },
           ], { duration: flipDuration, easing: 'ease-out' }));
-        } else if (floatRect && !newCardEl) {
-          // New card (no old position): hide it while the float slides to this spot
-          newCardEl = el;
-          el.style.visibility = 'hidden';
+        } else {
+          // Newly added card: prefer a float tagged with the same cardCode.
+          // Falls back to any unused float so shuffle still hides the pop-in
+          // (covers the face-down / opponent-perspective case where the float
+          // wasn't tagged because we didn't know the code at travel time).
+          let float = floatByCode.get(code)?.shift();
+          if (!float) {
+            for (const [, floats] of floatByCode) {
+              if (floats.length > 0) { float = floats.shift(); break; }
+            }
+          }
+          if (float) {
+            floatAssignments.push({ float: float.el, rect: float.rect, targetEl: el });
+            el.style.visibility = 'hidden';
+          }
         }
       });
 
-      // Slide the float from its current position to the new card's final position
-      if (landedFloat && newCardEl && floatRect) {
-        const targetRect = (newCardEl as HTMLElement).getBoundingClientRect();
-        const dx = targetRect.left + targetRect.width / 2 - (floatRect.left + floatRect.width / 2);
-        const dy = targetRect.top + targetRect.height / 2 - (floatRect.top + floatRect.height / 2);
-        animations.push(landedFloat.animate([
+      // Slide each assigned float from its captured position to its target slot.
+      for (const { float, rect, targetEl } of floatAssignments) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const dx = targetRect.left + targetRect.width / 2 - (rect.left + rect.width / 2);
+        const dy = targetRect.top + targetRect.height / 2 - (rect.top + rect.height / 2);
+        animations.push(float.animate([
           { transform: `translate(0, 0) ${baseRZ}` },
           { transform: `translate(${dx}px, ${dy}px) ${baseRZ}` },
         ], { duration: flipDuration, easing: 'ease-out', fill: 'forwards' }));
@@ -499,8 +604,8 @@ export class DrawSequenceManager {
         await Promise.all(animations.map(a => a.finished));
       }
 
-      // Reveal the real card, remove the float
-      if (newCardEl) (newCardEl as HTMLElement).style.visibility = '';
+      // Reveal the real cards, remove the floats
+      for (const { targetEl } of floatAssignments) targetEl.style.visibility = '';
       this.cardTravelService.clearLandedByDstPrefix('HAND');
     } catch (e) {
       this.logger.warn('Shuffle phase failed — committing state', e);
@@ -509,32 +614,18 @@ export class DrawSequenceManager {
     }
   }
 
-  processConfirmCardsEvent(msg: ConfirmCardsMsg): number | 'async' {
+  processConfirmCardsEvent(msg: ConfirmCardsMsg): number | Promise<void> {
     if (!this.ctx.isBoardActive() || this.ctx.reducedMotion() || msg.cards.length === 0) return 0;
 
-    const totalMs = msg.cards.length * (this.ctx.scaledDuration(600, 300) + this.ctx.scaledDuration(300, 150));
-    let settled = false;
-    const done = () => {
-      if (settled) return;
-      settled = true;
-      this.resumeQueueIfSafe();
-    };
-    const guardId = setTimeout(() => {
-      this.logger.warn('Confirm-cards sequence timed out — forcing queue continue');
-      done();
-    }, totalMs + 2000);
-    this._drawTimeouts.push(guardId);
-
-    this.confirmCardsInHand(msg.cards).finally(() => {
-      clearTimeout(guardId);
-      // queueMicrotask ensures done() runs AFTER _processAnimationQueueInner.finally
-      // (_isProcessing=false). Without this, if confirmCardsInHand resolves synchronously
-      // (all popLandedFloat=false), done() fires first and processAnimationQueue() bails
-      // on _isProcessing=true — leaving _isAnimating=true and blocking the next prompt.
-      queueMicrotask(() => done());
-    });
+    // Return a Promise (not 'async') so the orchestrator awaits the reveal
+    // before dequeuing the next entry. Returning 'async' without an in-flight
+    // flag (like _drawsInFlight) causes the rescue path in
+    // processAnimationQueue.finally to relaunch the queue immediately — the
+    // next event (e.g. a discard MSG_MOVE buffered by the chain replay) would
+    // start animating mid-reveal. The Promise.race guard in the orchestrator
+    // (LOCK_SAFETY_TIMEOUT_MS) prevents hangs if confirmCardsInHand stalls.
     this.ctx.announceEvent('Cards revealed', msg.player);
-    return 'async';
+    return this.confirmCardsInHand(msg.cards);
   }
 
   async confirmCardsInHand(cards: readonly { cardCode: number; player: number; sequence: number }[]): Promise<void> {
@@ -544,7 +635,13 @@ export class DrawSequenceManager {
     let animatedCount = 0;
 
     for (const card of cards) {
-      const floatEl = this.cardTravelService.popLandedFloat('HAND');
+      // Prefer matching float by cardCode so an interleaved per-card CONFIRM
+      // reveals the correct ghost — otherwise FIFO re-pops a previously
+      // returned float and the reveal plays on the wrong card. Fallback
+      // without cardCode covers face-down / opponent-perspective floats that
+      // weren't tagged at travel time.
+      let floatEl = this.cardTravelService.popLandedFloat('HAND', card.cardCode);
+      if (!floatEl) floatEl = this.cardTravelService.popLandedFloat('HAND');
       this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — popLandedFloat=%s cardCode=%d', !!floatEl, card.cardCode);
       if (!floatEl) continue;
       animatedCount++;

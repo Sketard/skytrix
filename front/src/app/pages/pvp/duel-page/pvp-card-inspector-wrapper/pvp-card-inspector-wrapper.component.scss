@@ -5,7 +5,10 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: z.$z-pvp-animation-overlay;
+  // Sit above hand rows (50) so a hover preview for a field card isn't
+  // visually obscured by the player's own hand. Still below card-action-menu
+  // (70) and chain overlay (950).
+  z-index: z.$z-pvp-card-inspector;
 }
 
 .inspector-compact {

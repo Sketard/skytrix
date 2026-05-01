@@ -1,0 +1,21 @@
+{
+  "_comment": "Smoke-v0 — valide l'infrastructure tune-weights end-to-end. 2 candidats sur 1 fixture à nb=100. Doit finir en <5min wall-clock. Pas pour du tuning réel — juste prouver que override + runEvaluation + JSONL + ranking fonctionnent.",
+
+  "axes": {
+    "structural.F1_W": [2, 4]
+  },
+
+  "fixtureFilter": [
+    "radiant-typhoon-opener"
+  ],
+
+  "nodeBudget": 100,
+  "budgetMs": 3600000,
+
+  "fitness": "cumulativeScore",
+  "tiebreak": "cumulativeMatched",
+
+  "outputPath": "data/tuning-runs/smoke-v0.jsonl",
+  "topK": 2,
+  "label": "smoke-v0"
+}

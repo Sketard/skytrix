@@ -1,0 +1,1356 @@
+{
+  "_meta": {
+    "timestamp": "2026-04-18T12:16:32.515Z",
+    "budgetMs": 60000,
+    "fixtureCount": 15,
+    "note": "W1 empirical measurement — peak-only. Answers INVESTIGATION REQUIRED flags in solver-structural-weights-extension-plan.md."
+  },
+  "fixtures": [
+    {
+      "fixtureId": "ddd-pendulum-opener",
+      "deckName": "ddd-wcq-top4",
+      "matched": 2,
+      "matchedTotal": 5,
+      "interruptionScore": 27,
+      "explorationScore": 34,
+      "weightedScore": 27,
+      "latentPoints": 7,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 2,
+        "gyCount": 2,
+        "banishCount": 1,
+        "extraFaceDown": 12,
+        "extraFaceUp": 2,
+        "mzoneFaceUp": 2,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [
+        {
+          "cardId": 46593546,
+          "zone": "M2",
+          "baseLevel": 10,
+          "lscale": 10,
+          "rscale": 10
+        }
+      ],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 44852429,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        },
+        {
+          "cardId": 46593546,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 10
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 3
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 0,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 1,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "ryzeal-mitsurugi-opener",
+      "deckName": "ryzeal-mitsurugi-hk-top8",
+      "matched": 2,
+      "matchedTotal": 6,
+      "interruptionScore": 35,
+      "explorationScore": 42.584962500721154,
+      "weightedScore": 32,
+      "latentPoints": 7.584962500721156,
+      "structural": {
+        "f1": 0,
+        "f2": 6,
+        "f3": 1.584962500721156,
+        "sum_uncapped": 7.584962500721156,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 2,
+        "gyCount": 3,
+        "banishCount": 0,
+        "extraFaceDown": 12,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 5,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 35844557,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        },
+        {
+          "cardId": 8633261,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        },
+        {
+          "cardId": 66011101,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 4
+        },
+        {
+          "cardId": 90590303,
+          "zone": "M4",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 4
+        },
+        {
+          "cardId": 34909328,
+          "zone": "M5",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 4
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 0
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 2,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 1,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "radiant-typhoon-opener",
+      "deckName": "radiant-typhoon-ygoprodeck-2026",
+      "matched": 2,
+      "matchedTotal": 3,
+      "interruptionScore": 33,
+      "explorationScore": 34.584962500721154,
+      "weightedScore": 30,
+      "latentPoints": 1.584962500721156,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 1.584962500721156,
+        "sum_uncapped": 1.584962500721156,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 1,
+        "gyCount": 1,
+        "banishCount": 0,
+        "extraFaceDown": 13,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 5,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 54143349,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 3
+        },
+        {
+          "cardId": 16922142,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 6
+        },
+        {
+          "cardId": 80538047,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 3
+        },
+        {
+          "cardId": 71068247,
+          "zone": "M4",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 3
+        },
+        {
+          "cardId": 71166481,
+          "zone": "M5",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 3
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 0
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 3,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "branded-dracotail-opener",
+      "deckName": "branded-dracotail-bainbridge-2nd",
+      "matched": 2,
+      "matchedTotal": 6,
+      "interruptionScore": 41,
+      "explorationScore": 41,
+      "weightedScore": 40,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 0,
+        "gyCount": 8,
+        "banishCount": 0,
+        "extraFaceDown": 12,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 3,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 89851827,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        },
+        {
+          "cardId": 51409648,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        },
+        {
+          "cardId": 95515789,
+          "zone": "M4",
+          "isTuner": true,
+          "isExtraDeck": false,
+          "level": 4
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 2
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 1,
+          "nonTuners": 0,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 5,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "kashtira-azamina-opener",
+      "deckName": "kashtira-azamina-verquin-wcq-top8",
+      "matched": 1,
+      "matchedTotal": 4,
+      "interruptionScore": 21,
+      "explorationScore": 21,
+      "weightedScore": 20,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 1,
+        "gyCount": 2,
+        "banishCount": 1,
+        "extraFaceDown": 14,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 2,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 97631303,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 1
+        },
+        {
+          "cardId": 37818794,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 3
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": 71832012
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 1,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "horus-crystron-opener",
+      "deckName": "horus-crystron-santiago-wcq-top4",
+      "matched": 2,
+      "matchedTotal": 4,
+      "interruptionScore": 14,
+      "explorationScore": 15.584962500721156,
+      "weightedScore": 10,
+      "latentPoints": 1.584962500721156,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 1.584962500721156,
+        "sum_uncapped": 1.584962500721156,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 0,
+        "gyCount": 3,
+        "banishCount": 0,
+        "extraFaceDown": 14,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 5,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 14558127,
+          "zone": "M1",
+          "isTuner": true,
+          "isExtraDeck": false,
+          "level": 3
+        },
+        {
+          "cardId": 3422200,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 5
+        },
+        {
+          "cardId": 84941194,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 8
+        },
+        {
+          "cardId": 47330808,
+          "zone": "M4",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 8
+        },
+        {
+          "cardId": 8165596,
+          "zone": "M5",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 0
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 1,
+          "nonTuners": 3,
+          "pairs": 3
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "dinomorphia-opener",
+      "deckName": "dinomorphia-696904",
+      "matched": 0,
+      "matchedTotal": 3,
+      "interruptionScore": 1,
+      "explorationScore": 1,
+      "weightedScore": 0,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 4,
+        "gyCount": 0,
+        "banishCount": 0,
+        "extraFaceDown": 15,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 1,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 92133240,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 4
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 1,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 3,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "spright-opener",
+      "deckName": "spright-greenville-wcq-top8",
+      "matched": 2,
+      "matchedTotal": 4,
+      "interruptionScore": 19,
+      "explorationScore": 20.584962500721154,
+      "weightedScore": 16,
+      "latentPoints": 1.584962500721156,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 1.584962500721156,
+        "sum_uncapped": 1.584962500721156,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 3,
+        "gyCount": 1,
+        "banishCount": 0,
+        "extraFaceDown": 12,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 5,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 76145933,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 2
+        },
+        {
+          "cardId": 75922381,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 2
+        },
+        {
+          "cardId": 54498517,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 2
+        },
+        {
+          "cardId": 54498517,
+          "zone": "M4",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 2
+        },
+        {
+          "cardId": 32453837,
+          "zone": "M5",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 2
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 0
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 2,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 2,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "snake-eye-yummy-opener",
+      "deckName": "snake-eye-yummy-sarcophagus-hollywood-wcq",
+      "matched": 1,
+      "matchedTotal": 4,
+      "interruptionScore": 8,
+      "explorationScore": 8,
+      "weightedScore": 8,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 4,
+        "gyCount": 3,
+        "banishCount": 0,
+        "extraFaceDown": 15,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 1,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 48452496,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 8
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 4
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 1,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 3,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "tearlaments-opener",
+      "deckName": "tearlaments-2026-fafnirymd",
+      "matched": 0,
+      "matchedTotal": 4,
+      "interruptionScore": 18,
+      "explorationScore": 19.584962500721154,
+      "weightedScore": 14,
+      "latentPoints": 1.584962500721156,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 1.584962500721156,
+        "sum_uncapped": 1.584962500721156,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 0,
+        "gyCount": 8,
+        "banishCount": 1,
+        "extraFaceDown": 13,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 5,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 73956664,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        },
+        {
+          "cardId": 572850,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        },
+        {
+          "cardId": 46640168,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 6
+        },
+        {
+          "cardId": 60764609,
+          "zone": "M4",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 6
+        },
+        {
+          "cardId": 79559912,
+          "zone": "M5",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 6
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 0
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 3,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 5,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "floowandereeze-opener",
+      "deckName": "floowandereeze-2026",
+      "matched": 2,
+      "matchedTotal": 4,
+      "interruptionScore": 12,
+      "explorationScore": 12,
+      "weightedScore": 12,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 2,
+        "gyCount": 1,
+        "banishCount": 3,
+        "extraFaceDown": 15,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 1,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 80611581,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 10
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 4
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": 28126717
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 1,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 1,
+        "F14_handLeftoverRaw": 1,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "labrynth-opener",
+      "deckName": "labrynth-2026",
+      "matched": 1,
+      "matchedTotal": 4,
+      "interruptionScore": 9,
+      "explorationScore": 9,
+      "weightedScore": 8,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 0,
+        "gyCount": 3,
+        "banishCount": 0,
+        "extraFaceDown": 14,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 2,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 22850702,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 10
+        },
+        {
+          "cardId": 1225009,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 3
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 1,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "stun-runick-opener",
+      "deckName": "stun-runick-melbourne-top8",
+      "matched": 0,
+      "matchedTotal": 4,
+      "interruptionScore": 0,
+      "explorationScore": 0,
+      "weightedScore": 0,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 5,
+        "gyCount": 0,
+        "banishCount": 0,
+        "extraFaceDown": 15,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 0,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 5
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 0,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 4,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "nekroz-ryzeal-opener",
+      "deckName": "nekroz-ryzeal-jan2026-tcg-1st",
+      "matched": 1,
+      "matchedTotal": 4,
+      "interruptionScore": 30,
+      "explorationScore": 35.584962500721154,
+      "weightedScore": 27,
+      "latentPoints": 5.584962500721156,
+      "structural": {
+        "f1": 4,
+        "f2": 0,
+        "f3": 1.584962500721156,
+        "sum_uncapped": 5.584962500721156,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 2,
+        "gyCount": 3,
+        "banishCount": 0,
+        "extraFaceDown": 12,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 5,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 87003671,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        },
+        {
+          "cardId": 89463537,
+          "zone": "M2",
+          "isTuner": false,
+          "isExtraDeck": false,
+          "level": 4
+        },
+        {
+          "cardId": 7511613,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 4
+        },
+        {
+          "cardId": 55285840,
+          "zone": "M4",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 4
+        },
+        {
+          "cardId": 6983839,
+          "zone": "M5",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 4
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 0
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 0,
+          "nonTuners": 2,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 0,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 1,
+        "F_EMZ_penaltyCandidate": false
+      }
+    },
+    {
+      "fixtureId": "branded-dracotail-opener-mirrorjade-line",
+      "deckName": "branded-dracotail-bainbridge-2nd",
+      "matched": 3,
+      "matchedTotal": 6,
+      "interruptionScore": 32,
+      "explorationScore": 32,
+      "weightedScore": 30,
+      "latentPoints": 0,
+      "structural": {
+        "f1": 0,
+        "f2": 0,
+        "f3": 0,
+        "sum_uncapped": 0,
+        "globalCap": 15,
+        "clipped": false
+      },
+      "zones": {
+        "handSize": 0,
+        "gyCount": 8,
+        "banishCount": 0,
+        "extraFaceDown": 12,
+        "extraFaceUp": 0,
+        "mzoneFaceUp": 3,
+        "szoneFaceUp": 0
+      },
+      "pendulumOnField": [],
+      "xyzOverlays": [],
+      "linkMonstersOnField": [],
+      "mzoneMonsters": [
+        {
+          "cardId": 89851827,
+          "zone": "M1",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        },
+        {
+          "cardId": 38811586,
+          "zone": "M3",
+          "isTuner": false,
+          "isExtraDeck": true,
+          "level": 8
+        },
+        {
+          "cardId": 95515789,
+          "zone": "M4",
+          "isTuner": true,
+          "isExtraDeck": false,
+          "level": 4
+        }
+      ],
+      "emzOccupancy": {
+        "EMZ_L": {
+          "occupied": false,
+          "category": null
+        },
+        "EMZ_R": {
+          "occupied": false,
+          "category": null
+        },
+        "mzFreeCount": 2
+      },
+      "fieldSpell": {
+        "present": false,
+        "cardId": null
+      },
+      "simulated": {
+        "F5_scaleSetup": {
+          "present": false,
+          "pairs": []
+        },
+        "F6_synchro": {
+          "tuners": 1,
+          "nonTuners": 0,
+          "pairs": 0
+        },
+        "F8_fieldSpellActive": false,
+        "F10_totalOverlays": 0,
+        "F11_totalLinkRating": 0,
+        "F12_gyLoadingRaw": 5,
+        "F13_banishLoadingRaw": 0,
+        "F14_handLeftoverRaw": 0,
+        "F_EMZ_penaltyCandidate": false
+      }
+    }
+  ],
+  "aggregates": {
+    "f1f2f3_sumDistribution": {
+      "min": 0,
+      "p50": 0,
+      "p75": 1.584962500721156,
+      "p90": 1.584962500721156,
+      "max": 7.584962500721156,
+      "countAboveGlobalCap": 0,
+      "totalCount": 15
+    },
+    "pendulumFixtureCount": 1,
+    "xyzWithOverlays": 0,
+    "linkOnFieldCount": 0,
+    "emzOccupiedByNonLinkWithFreeMZ": 0,
+    "fieldSpellFixtureCount": 0,
+    "gyCountDistribution": {
+      "min": 0,
+      "p50": 3,
+      "p75": 3,
+      "p90": 8,
+      "max": 8
+    },
+    "banishCountDistribution": {
+      "min": 0,
+      "p50": 0,
+      "p75": 0,
+      "p90": 1,
+      "max": 3
+    },
+    "handSizeDistribution": {
+      "min": 0,
+      "p50": 2,
+      "p75": 2,
+      "p90": 4,
+      "max": 5
+    },
+    "perFeatureActivation": {
+      "F5_scaleSetup": 0,
+      "F6_anySynchroPair": 1,
+      "F8_fieldSpell": 0,
+      "F10_anyOverlay": 0,
+      "F11_anyLink": 0,
+      "F12_anyGyLoading": 3,
+      "F13_anyBanishLoading": 1,
+      "F14_anyHandLeftover": 8,
+      "F_EMZ_penaltyCandidate": 0,
+      "structuralClipped": 0
+    }
+  }
+}

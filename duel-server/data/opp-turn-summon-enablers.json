@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "purpose": "Phase D V1 latent interruption enabler registry. Each entry describes a card that, while present in a specific zone, can trigger an Extra Deck Summon during the opponent's turn — converting an on-summon-trigger tag on the target into a realized interruption.",
+    "scope": "V1 only — Masquerena (Link-2 path) + Super Polymerization (Fusion path). Phase E (dedicated combo-enabler work) will extend with Ultra Polymerization, Predaplant Verte Anaconda (Super Poly tutor), Formula Synchron (Accel Synchro), Rank-Up-Magic spells, and archetype-locked enablers (Branded Fusion at quick-play timing, etc.).",
+    "createdAt": "2026-04-17",
+    "schemaVersion": 1
+  },
+  "enablers": {
+    "65741786": {
+      "cardName": "I:P Masquerena",
+      "summonCategory": "LINK",
+      "ratingRange": [2, 2],
+      "activeFromZones": ["M1", "M2", "M3", "M4", "M5", "EMZ_L", "EMZ_R"],
+      "consumesSelfAsMaterial": true,
+      "notes": "Quick Effect on opp turn: Link Summon a Link-2 using 2 materials Masquerena controls (including herself). Masquerena is consumed as material → her zone frees up for the Link-2 to land in. Slot-check must therefore treat Masquerena-in-EMZ as a free slot for Phase D target summon.",
+      "_validated": false
+    },
+    "48130397": {
+      "cardName": "Super Polymerization",
+      "summonCategory": "FUSION",
+      "ratingRange": [1, 99],
+      "activeFromZones": ["HAND", "S1", "S2", "S3", "S4", "S5"],
+      "consumesSelfAsMaterial": false,
+      "resourceCost": "hand-discard-1",
+      "notes": "Quick-Play Spell: discard 1 card, Fusion Summon using monsters from either field as materials. Under MR5 (April 2020), Fusion summons from ED can land in any empty player MZ (EMZ_L, EMZ_R, or M1..M5) — the EMZ-or-linked restriction applies only to Link monsters (and Pendulum from face-up ED). Slot-check accepts any of the 7 player-side monster zones being empty.",
+      "_validated": false
+    }
+  }
+}

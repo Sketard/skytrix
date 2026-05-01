@@ -1,0 +1,83 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "basePlan": "C:\\Users\\Axel\\Desktop\\code\\skytrix\\duel-server\\data\\path-beta-poc\\snake-eye-yummy-opener\\beta1v2-yesno-best-plan.json",
+  "comboDepth": 1,
+  "candidateSteps": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "baseline": {
+    "matched": 4,
+    "expectedBoardSize": 7,
+    "score": 33,
+    "stoppedReason": "completed",
+    "finalBoardSize": 5
+  },
+  "variantsCount": 4,
+  "improvedCount": 0,
+  "tiedCount": 1,
+  "variants": [
+    {
+      "skippedStepIndices": [
+        1
+      ],
+      "skippedSteps": [
+        "Salamangreat Almiraj (summon-procedure)"
+      ],
+      "matched": 4,
+      "expectedBoardSize": 7,
+      "score": 24,
+      "stoppedReason": "completed",
+      "finalBoardSize": 5,
+      "matchedDelta": 0,
+      "scoreDelta": -9
+    },
+    {
+      "skippedStepIndices": [
+        2
+      ],
+      "skippedSteps": [
+        "Divine Temple of the Snake-Eye (activate)"
+      ],
+      "matched": 2,
+      "expectedBoardSize": 7,
+      "score": 25,
+      "stoppedReason": "completed",
+      "finalBoardSize": 3,
+      "matchedDelta": -2,
+      "scoreDelta": -8
+    },
+    {
+      "skippedStepIndices": [
+        3
+      ],
+      "skippedSteps": [
+        "Silhouhatte Rabbit (summon-procedure)"
+      ],
+      "matched": 2,
+      "expectedBoardSize": 7,
+      "score": 18,
+      "stoppedReason": "completed",
+      "finalBoardSize": 4,
+      "matchedDelta": -2,
+      "scoreDelta": -15
+    },
+    {
+      "skippedStepIndices": [
+        0
+      ],
+      "skippedSteps": [
+        "Snake-Eye Ash (normal-summon)"
+      ],
+      "matched": 0,
+      "expectedBoardSize": 7,
+      "score": 0,
+      "stoppedReason": "divergence",
+      "finalBoardSize": 0,
+      "matchedDelta": -4,
+      "scoreDelta": -33
+    }
+  ]
+}

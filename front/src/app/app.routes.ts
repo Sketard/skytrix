@@ -15,6 +15,11 @@ export const routes: Routes = [
   { path: 'decks', component: DeckPageComponent, canActivate: [AuthService] },
   { path: 'decks/builder', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'decks/:id/simulator', component: SimulatorPageComponent, canActivate: [AuthService] },
+  {
+    path: 'decks/:id/solver',
+    loadComponent: () => import('./pages/solver/solver-page/solver-page.component').then(m => m.SolverPageComponent),
+    canActivate: [AuthService],
+  },
   { path: 'decks/:id', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'search', component: CardSearchPageComponent, canActivate: [AuthService] },
   { path: 'parameters', component: ParameterPageComponent, canActivate: [AuthService, adminGuard] },

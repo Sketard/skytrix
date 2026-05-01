@@ -63,6 +63,17 @@ Key rules:
    triggers `advanceStep()` which calls `updateLogical()` with a future
    state. Committing first uses the correct current state.
 
+4. **`boardStateAfter` per-event snapshot** (BOARD_CHANGING events during
+   `chainResolving` only — see ws-protocol.ts). Attached server-side in
+   both replay precompute (`duel-worker.ts:runReplayPreComputation`) and
+   live PvP (`duel-worker.ts:runDuelLoop`). `AnimationOrchestratorService.
+   processEvent()` calls `rbs.updateLogical(event.boardStateAfter)` BEFORE
+   dispatching the event so buffer replay progressively updates logical
+   state per event instead of jumping to the chain's final state at commit.
+   Field is optional: `filterMessage` sanitizes the snapshot per-player
+   (opponent hand/deck hidden unless omniscient) to prevent info leak.
+   PvP/Replay parity: same code path on both sides.
+
 ### Chain State Machine Rules
 
 1. **`isResolving`** is set at MSG_CHAIN_SOLVING and cleared at
@@ -75,11 +86,14 @@ Key rules:
    animation. Between consecutive chains in the same turn, resets via
    CHAIN_END.
 
-3. **Queue collapse** (> threshold events) is disabled when a queue
-   directive (`'kind' in entry`) or an explicit chain event
-   (`MSG_CHAIN_SOLVING`, `MSG_CHAIN_SOLVED`, `MSG_CHAIN_END`) is in the
-   queue — chain events need the async overlay contract, and directives
-   have no `.type` property.
+3. **Queue collapse** — LP-only predicate. Triggers only when **every**
+   queued entry is a LP-class event (`MSG_DAMAGE`, `MSG_PAY_LPCOST`,
+   `MSG_RECOVER`) since `applyInstantAnimation()` only knows how to fold
+   those. Visual events (MSG_MOVE, MSG_DRAW, MSG_CONFIRM_CARDS,
+   MSG_FLIP_SUMMONING, etc.) MUST NOT be collapsed — dropping them would
+   silently skip the animation while the zone still syncs via
+   `commitUnlocked()`. Chain events + directives are naturally excluded
+   (not LP-class).
 
 4. **Replay stagger guard** — draw sequence resume and `confirmCardsInHand`
    check `hasActiveReplayTimeouts` before calling `processAnimationQueue()`.
@@ -151,12 +165,100 @@ branches this is a no-op (already consumed by `buildMoveContext`). For
 MSG_DRAW it cleans up the HAND pre-lock that `launchInitialDraw` replaces
 with its own `earlyLocks`.
 
+**EXCEPTION — buffered events**: when `chainManager.isResolving` and the
+event type is in `BOARD_CHANGING_EVENTS`, `processEvent` returns 0 after
+`bufferIfResolving()` without running the branch. The orchestrator's
+`releasePreLocksForKeys` is skipped in this case — the pre-locks stay
+alive in the map and are consumed later when `replayBuffer()` replays
+the buffered events via group directives. `MSG_CHAIN_END`'s
+`releaseAllPreLocks()` is the safety net for unreplayed pre-locks.
+
 Initial draws lock both HAND zones synchronously before the first `await`.
 DECK is NOT locked (locking before first BOARD_STATE freezes `deckCount=0`
 from `EMPTY_DUEL_STATE`, hiding the pile). Inner locks ref-count; outer
 early locks commit in `finally`. Pre-locks run AFTER `syncAfterBoardState()`
 — safe because `syncAfterBoardState` only calls `syncPileCounts()` when
 the queue has events, never `syncRendered()`.
+
+### Pre-lock Handle Ownership
+
+1. **`travelToHand(src, relPlayer, cardImage, options, targetIndex?,
+   externalHandLock?, cardCode?)`** — HAND-destination branches
+   (`bounceToHand`, `pileToHand`, `fallback→HAND`) MUST pass
+   `mc.preDstLock` as `externalHandLock` instead of releasing it.
+   `travelToHand` reuses the pre-lock as its `handLock`, avoiding a
+   release+relock race that would drop HAND ref-count to 0 and flash
+   `commitZone(HAND)` between the two. The `cardCode` tag is stored on
+   the float's dataset so `confirmCardsInHand` / `processShuffleEvent`
+   can match floats to reveals even when multiple tutor events carry
+   identical cardCodes (LIFO match: see `popLandedFloat(prefix, cardCode)`).
+
+2. **`commitAndClearFloat(dstLock, dstKey)`** (non-HAND branches) —
+   MUST be the tail call in each branch. Commits the dstLock and THEN
+   clears landed floats at `dstKey` **only if the zone is actually
+   unlocked** (`!lockedZoneKeys().includes(dstKey)`). For multi-event
+   groups sharing a destination (Link materials → GY, mass destroy,
+   multi-tribute), intermediate commits only decrement the ref-count;
+   keeping the floats visible during the travel window gives the user
+   a progressive overlay instead of each ghost vanishing mid-travel.
+   Only the final commit (ref=0 → `commitZone`) clears the accumulated
+   floats in one sweep.
+
+### Hand Batch Slot Reservation (`replayBuffer` only)
+
+When a buffer replay contains MSG_MOVE events with `toLocation === HAND`,
+`AnimationOrchestratorService.replayBuffer` calls
+`DrawSequenceManager.beginHandBatch(relPlayer, count)` before building
+the queue directives. This reserves `count` distinct expansion slots
+upfront (via `handExpansionSlots` signal). Each MOVE→HAND branch calls
+`consumeHandBatchSlot(relPlayer)` to get a monotonic slot index and
+passes it as `travelToHand`'s `targetIndex` — so tutor1 lands at slot
+0, tutor2 at slot 1, each keeping the fan's per-index rotation. Released
+at `batch-end` directive via `endHandBatch(relPlayer)`. Session HAND
+locks (`sessionHandLocks`) are acquired in parallel for any player
+with a MOVE **touching** HAND (src OR dst) so rendered HAND stays at
+its pre-chain state across the whole batch replay; the per-event
+`rbs.updateLogical(boardStateAfter)` hook progresses logical state
+without triggering commitZone until batch-end.
+
+## Buffer Replay Batch Construction
+
+`AnimationOrchestratorService.replayBuffer()` drains
+`chainManager._bufferedBoardEvents` and builds a `QueueEntry[]` batch
+prepended to the main animation queue. The batch builder runs THREE
+sequential passes on the buffer before queue emission:
+
+1. **`interleaveConfirmsWithMoves(buffer)`** — splits aggregated
+   `MSG_CONFIRM_CARDS` into per-card single-card CONFIRMs inlined
+   immediately after each matching MOVE→HAND (match by `cardCode` +
+   `player` + `card.location === HAND`). Unmatched cards (e.g., GY
+   reveal, face-down) stay in a reduced CONFIRM at the original
+   position. Produces the `tutor → reveal → tutor → reveal` flow.
+   Uses a WeakSet to track consumed moves by reference, so splice
+   index shifts across multiple CONFIRMs don't invalidate matching.
+
+2. **Session HAND lock + `beginHandBatch`** — for every affected
+   `relPlayer` (derived from MOVE-touching-HAND events in the
+   interleaved buffer), acquire a `lockZone('HAND-N')` held for the
+   whole batch + reserve expansion slots. Keeps rendered HAND at the
+   pre-chain state throughout, and gives each tutor a distinct
+   fan-positioned slot. Released in the `batch-end` resolve callback.
+
+3. **Group category boundary flush** — the batch-building loop flushes
+   the pending group when the next zone event's category differs from
+   the last. Category = `'overlay'` (MSG_MOVE with `fromLocation ===
+   OVERLAY`) vs `'other'`. Splits XYZ destroy patterns
+   `[detach1, detach2, destroy_monster]` into two groups with a barrier
+   between them, so overlay materials finish their slide-out + travel
+   before the monster's `preDestroyEffect` captures a srcEl that still
+   holds them.
+
+Final shape:
+`[group(..), barrier]+ | confirm | lp | ... , batch-end, await-signal`
+
+The `await-signal` pauses the main queue until the chain overlay
+component sets `chainOverlayReady=true` — coordinates chain resolve
+pulse → effect animations → next link resolve.
 
 ## syncAfterBoardState Sync Tiers
 
@@ -209,6 +311,18 @@ both players are committed correctly.
    (SELECT_*, WAITING_RESPONSE, MSG_CHAIN_END, MSG_CHAIN_SOLVING, etc.).
    `flushState` skips these empty states to avoid phantom bullets.
 
+4. **Per-event `boardStateAfter` snapshot** — `runReplayPreComputation`
+   tracks a `chainResolving` flag (set at MSG_CHAIN_SOLVING, cleared at
+   MSG_CHAIN_SOLVED) and attaches `buildBoardState().data` as
+   `boardStateAfter` on each filtered event whose type is in
+   `LIVE_BOARD_CHANGING_EVENT_TYPES` during resolving. Payload growth
+   is ~50-150 KB gzipped per duel (snapshots are highly redundant).
+   Same shared Set is used by `runDuelLoop` (live PvP) so both modes
+   attach snapshots identically. Z-index-style note: snapshots reflect
+   ocgcore state at `buildBoardState()` call time (post-batch if
+   multiple events fire in one `duelProcess` call) — strictly better
+   than no snapshot, but not truly per-event within a single batch.
+
 ## Duel Assertion Pattern
 
 Use `duelAssert(condition, site, msg)` (`duel-assert.ts`) for all
@@ -223,3 +337,25 @@ All animation timing magic numbers live in `animation-constants.ts`:
 `CHAIN_POLL_MAX_DELAY_MS`, `QUEUE_COLLAPSE_THRESHOLD`, `QUEUE_COLLAPSE_KEEP`,
 `REPLAY_BUFFER_SAFETY_TIMEOUT_MS`. New timing values MUST be added there
 instead of inlined as literals.
+
+## Solver Interruption Tags Generation
+
+`duel-server/data/interruption-tags.json` is the single source of truth for
+which cards count as end-board interruptions and how they score. Adding new
+cards (or revalidating existing entries) goes through an AI-assisted prompt
+persisted at `_bmad-output/solver-data/interruption-tag-generation-prompt.md`.
+
+To add cards: invoke Claude Code with the cardIds, ask it to read the prompt
+file, fetch oracle text from `https://db.ygoprodeck.com/api/v7/cardinfo.php?id={cardId}`
+via WebFetch, and produce schema-compliant JSON entries. The new entries are
+inserted into `interruption-tags.json` with `_validated: false`. A human must
+review and flip `_validated: true` for top-meta cards.
+
+The schema accepts `sharedOpt`, `totalUsesPerTurn`, per-effect `trigger`, and
+audit metadata (`_generatedBy`, `_oracleVersion`, `_validated`). Existing
+entries without these fields still load — the loader is forward-compatible.
+
+The `trigger` field is critical: the solver's OPT-aware scoring uses it to
+disambiguate which effect of a multi-effect card was activated at a given
+prompt context. Missing or wrong triggers fall back to index 0 with a runtime
+warning.

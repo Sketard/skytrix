@@ -1,0 +1,50 @@
+{
+  "fixtureId": "ryzeal-mitsurugi-opener",
+  "description": "Habakiri + Ice + Sword Ryzeal + Prayers + Fuwalos → Futsu + Photon Lord + Detonator + Duo Drive + Cross set + Great Purification set",
+  "_source": "_bmad-output/planning-artifacts/research/mitsurugi-ryzeal-combo-reference.md § 2 CARD COMBO",
+  "_note": "Canonical path hint: ordered list of cardIds consumed by the DFS at each decision point where the cardId matches an option. Pointer advances on match, stays put on non-match (= DFS explores that prompt freely). Not every OCGCore prompt is pinned — just the key decisions that determine the combo line.",
+
+  "_v1_note": "v1 assumed Habakiri could self-SS (pointer[1]=13332685). The recording showed Habakiri's SS-from-deck options don't include Habakiri itself (self-exclusion). v2 corrects pointer[1] to Futsu (55397172). Prayers ritual dropped from the path since Futsu can't be re-summoned (only 1 in deck, Prayers ritual-targets from hand/GY which is empty of ritual monsters).",
+
+  "_v2_note": "v2 still wrong. Debug of DFS with canonicalPath revealed Habakiri's SS-from-deck effect excludes RITUAL MONSTERS from the pool — options at the SELECT_CARD after NS Habakiri are [Saji, Kusanagi, Aramasa] only (the 3 non-ritual Mitsurugi effect monsters). So neither Habakiri copies nor Futsu/Murakumo are SSable by Habakiri's effect. Additionally, re-reading Habakiri's full text: the SS-from-deck effect is a HAND EFFECT (reveal in hand; SS from deck; tribute 1 monster), NOT an on-NS trigger. So step 2 must activate Habakiri's hand effect (not NS), keeping Habakiri in hand after the resolution.",
+
+  "_v3_note": "v3 authored 2026-04-18 after (a) querying cards.cdb directly for full mechanics + (b) running a vanilla DFS probe at nb=400 which produced score=35 / 29-step line / matched≈2/6 where DFS picks Prayers FIRST (tribute Habakiri from hand via Prayers cost; Habakiri on-Tribute searches Great Purification; resolves into Sword NS / Ice SS / Dugares / Bagooska / Detonator — Futsu never ritual-summoned). v3 redirect strategy: pin only the FIRST 3 decisions to steer DFS into Habakiri-hand-eff-first path (reveal Habakiri → SS Saji → Saji searches Mitsurugi Ritual 81560239), then leave downstream exploration free. If score climbs vs. baseline 35, extend the pin to include NS Habakiri + ritual activation + Futsu target. Corrections vs v2: (1) Prayers (45171524) is a QUICKPLAY spell, NOT a ritual spell; its tribute can be paid from hand OR field. (2) Futsu is Lv 8, NOT Lv 7 — ritual tribute total must be 8. (3) Mitsurugi Ritual (81560239) has 1 copy in the deck; Kusanagi can recycle it from GY. (4) There is a second ritual spell 'Mitsurugi Mirror' (49721684) with broader tribute scope (levels ≥ target) and a self-recycle clause when a key Mitsurugi is tributed. (5) Saji searches Mitsurugi SPELL/TRAP only (not monster). Aramasa searches monster. Kusanagi recycles from GY. So searching Mitsurugi Ritual from deck requires Saji (or Habakiri/Futsu/Murakumo on-Tribute which search any Mitsurugi card).",
+
+  "_status": "v3 minimal-redirect — 3-pin hint shipping at score=49 (+14 vs vanilla 35). DFS now activates Habakiri hand-eff first → SS Saji → Saji searches Mitsurugi Ritual. Downstream is free exploration. Completes with ritual-summoned Murakumo (not Futsu), Bagooska, Great Purification set, partial Ryzeal engine (Ice SS). Not a 6/6 match, but the structural redirect is validated.",
+
+  "_v4_attempt_note": "v4 tried adding Futsu pin as 4th entry (55397172). Score DROPPED to 19 / 45 steps — DFS ritual-summons Futsu correctly, then ACTIVATES MITSURUGI MIRROR (49721684, the 2nd ritual spell) and tributes Futsu to RS Habakiri from GY.",
+
+  "_v5_attempt_note": "v5 tried 5-pin: Futsu + Great Purification (to block Mirror search). Score still 19 / 36 steps. Purification pin fires correctly but terminal matched=2/6 (Futsu+Purification) — other 4 pieces absent because DFS picked Utopic Ray Lancer (3-mat generic) consuming all 3 Lv4 monsters.",
+
+  "_v6_attempt_note": "v6 tried 6-pin with Duo Drive pin inserted before Futsu (to redirect Xyz). Score DROPPED to 16 / 26 steps at nb=400. Duo Drive pin fires but DFS terminates before ritual phase (budget exhaustion). Re-ran at nb=800 and nb=1600 — same score=16. At nb=800, DFS abandons Habakiri branch entirely and reverts to Prayers-first (score=16 is the vanilla-like fallback). The pin sequence created constraint interactions where the Habakiri branch's best-reachable score dropped below Prayers-first, flipping the DFS preference.",
+
+  "_iteration_ceiling_finding": "Naive pin escalation does NOT monotonically improve score. The scorer rewards structural proxies (F1 ritual, F2 tutor, F3 ED pool) which can favor the v3-3pin terminal (Bagooska + ritual-summoned Murakumo + Purification + partial Ryzeal) over a 'better-looking' 6/6 plan that's incompletely executed due to budget limits. Reaching 6/6 requires either: (a) smarter hint grammar (soft pins / anti-pins / conditional pins), (b) direct matched-% reward in the scorer, or (c) a full-trajectory behavior-cloning approach rather than sparse pins. The canonicalPath mechanism as currently implemented hits a CEILING at minimal-redirect hints.",
+
+  "_v7_attempt_note": "v7 tests anti-pin mechanism (Phase 5-lite option 2, 2026-04-18). Same 3-pin canonical path as v3, now with bannedCardIds=[49721684 Mitsurugi Mirror] to block the Mirror→Futsu-tribute regression observed in v4. Result: score=49 (no change from v3). Expected: Mirror ban is a no-op with 3-pin since Mirror wasn't used in the v3 line anyway. v7 only proves the mechanism fires without regression.",
+
+  "_v8_attempt_note": "v8 = 4-pin (add Futsu=55397172 as 4th pin) + Mirror ban. This is the real v4-regression test: in v4 (no ban), the DFS ritual-summoned Futsu then activated Mirror to tribute Futsu for RS Habakiri from GY, dropping score to 19. Result: nb=400 score=21 (DFS flipped back to Prayers-branch, Habakiri-branch couldn't finish within budget); nb=800 score=30 with Habakiri-branch mainPath (pins firing, Futsu on field, Purification set). Still < v3's 49. Anti-pin mechanism WORKS (Mirror removed from pool) but the ceiling is not Mirror — it's scorer bias: structural scoring rewards Murakumo terminal (v3 line) more than Futsu terminal (v8 line) even though Futsu is the fixture-expected card. Mirror ban + Futsu pin trades a scorer-preferred terminal for a fixture-preferred one, and the scorer dominates DFS selection.",
+
+  "_v7_v8_conclusion": "Anti-pin infrastructure shipped and validated. Ceiling for THIS fixture is scorer structural-proxy bias (option 3 territory), not DFS exploration constraints. Anti-pins remain useful as a precision tool (e.g., if a DIFFERENT scorer-exploiting card surfaced in another fixture), but Mitsurugi's specific blocker is upstream of the search. Recommend moving to option 3 (direct matched-% reward in InterruptionScorer) for Mitsurugi breakthrough, OR moving to option 4 (full-trajectory behavior cloning) and treating v3's matched=2/6 as the best authorable canonical without scorer changes.",
+
+  "canonicalPath": [
+    13332685,
+    18176525,
+    81560239
+  ],
+
+  "_bannedCardIds_candidates": [49721684, 1269512],
+  "_bannedCardIds_note": "Currently unset (3-pin v3 baseline doesn't need them). Anti-pin candidates identified for future extension: 49721684 Mitsurugi Mirror (tributes Futsu), 1269512 Utopic Ray Lancer (consumes all 3 Lv4 when pinned via Futsu). Enable by adding one/both to `bannedCardIds` alongside extended pins.",
+
+  "_pathAnnotations": [
+    "Habakiri hand-eff (SELECT_IDLECMD rIdx=8): reveal Habakiri in hand instead of activating Prayers (vanilla DFS choice)",
+    "SS target from Habakiri hand-eff (SELECT_CARD rIdx=0): pick Saji (18176525) from [Saji/Kusanagi/Aramasa]",
+    "Saji search target (SELECT_CARD rIdx=3): pick Mitsurugi Ritual (81560239) from deck Mitsurugi Spell/Trap pool"
+  ],
+
+  "_nextIterationIdeas": [
+    "The canonicalPath pin mechanism ceiling was empirically reached at 3 pins — adding pins 4-6 all regressed score (v4=19, v5=19, v6=16 at nb≤1600).",
+    "To break past the ceiling, consider implementing 'soft pins' (prefer cardId X but fall through if absent) or 'anti-pins' (never pick cardId Y). These would allow the hint to steer without over-constraining branches.",
+    "Alternative: add a direct matched-% reward to the scorer. Currently the scorer rewards structural proxies (F1/F2/F3) that don't perfectly correlate with matched-against-expected-board.",
+    "Alternative: abandon the incremental-pin approach for the full-trajectory behavior cloning originally planned in Phase 5-lite Phase 2 — feed a hand-authored FULL trajectory (via a different mechanism than canonicalPath, e.g., a replay-forcing mode) and train a policy on it."
+  ]
+}

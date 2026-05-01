@@ -1,0 +1,615 @@
+{
+  "fixtureId": "ryzeal-mitsurugi-opener",
+  "expectedBoardSize": 5,
+  "matched": 5,
+  "matchedCardIds": [
+    34909328,
+    7511613,
+    55397172,
+    6798031,
+    17954937
+  ],
+  "missingCardIds": [],
+  "score": 40,
+  "scoreBreakdown": {
+    "omniNegate": 1,
+    "typedNegate": 1,
+    "targetedNegate": 0,
+    "floodgate": 0,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 1,
+    "moveToSt": 0,
+    "bounce": 0,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 30,
+    "fallbackPoints": 2,
+    "latentPoints": 8,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 32,
+    "explorationScore": 40
+  },
+  "stoppedReason": "divergence",
+  "stoppedAtPlanStep": 50,
+  "divergence": {
+    "step": 59,
+    "promptType": "SELECT_IDLECMD",
+    "expected": " (responseIndex=0 cardId=0)",
+    "legalActionsAtPrompt": [
+      {
+        "responseIndex": 0,
+        "cardId": 1269512,
+        "cardName": "Full Armored Utopic Ray Lancer",
+        "verb": "summon-procedure",
+        "sourceZone": "EXTRA"
+      },
+      {
+        "responseIndex": 1,
+        "cardId": 1269512,
+        "cardName": "Full Armored Utopic Ray Lancer",
+        "verb": "summon-procedure",
+        "sourceZone": "EXTRA"
+      },
+      {
+        "responseIndex": 2,
+        "cardId": 45852939,
+        "cardName": "Eclipse Twins",
+        "verb": "summon-procedure",
+        "sourceZone": "EXTRA"
+      },
+      {
+        "responseIndex": 3,
+        "cardId": 45171524,
+        "cardName": "Mitsurugi Prayers",
+        "verb": "set-st",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 4,
+        "cardId": 6798031,
+        "cardName": "Ryzeal Cross",
+        "verb": "activate",
+        "sourceZone": "FIELD"
+      },
+      {
+        "responseIndex": 5,
+        "cardId": 45171524,
+        "cardName": "Mitsurugi Prayers",
+        "verb": "activate",
+        "sourceZone": "HAND"
+      },
+      {
+        "responseIndex": 6,
+        "cardId": 7511613,
+        "cardName": "Ryzeal Duo Drive",
+        "verb": "activate",
+        "sourceZone": "M3"
+      },
+      {
+        "responseIndex": 7,
+        "cardId": 0,
+        "cardName": "(pass)",
+        "verb": "end-phase"
+      }
+    ],
+    "reason": "Raw trajectory step 50 of 54: no legal action at SELECT_IDLECMD matches responseIndex=0 cardId=0. Trajectory has drifted from engine state at a strategic decision."
+  },
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 0
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 1
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ame no Habakiri no Mitsurugi (activate) [raw]",
+      "appliedCardId": 13332685,
+      "appliedResponseIndex": 8,
+      "planStepIndex": 2
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 3
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_CARD",
+      "applied": "Mitsurugi no Mikoto, Saji [raw]",
+      "appliedCardId": 18176525,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 4
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_CARD",
+      "applied": "Mitsurugi no Mikoto, Saji [raw]",
+      "appliedCardId": 18176525,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 5
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Mitsurugi no Mikoto, Saji [raw]",
+      "appliedCardId": 18176525,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 6
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 7
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_CARD",
+      "applied": "Mitsurugi Ritual [raw]",
+      "appliedCardId": 81560239,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 8
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 9
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Mitsurugi Ritual (activate) [raw]",
+      "appliedCardId": 81560239,
+      "appliedResponseIndex": 11,
+      "planStepIndex": 10
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_OPTION",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 11
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 12
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_CARD",
+      "applied": "Futsu no Mitama no Mitsurugi [raw]",
+      "appliedCardId": 55397172,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 13
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Ame no Habakiri no Mitsurugi [raw]",
+      "appliedCardId": 13332685,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 14
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 15
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_CARD",
+      "applied": "Mitsurugi Great Purification [raw]",
+      "appliedCardId": 17954937,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 16
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 17
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ice Ryzeal (normal-summon) [raw]",
+      "appliedCardId": 8633261,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 18
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 19
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Ice Ryzeal [raw]",
+      "appliedCardId": 8633261,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 20
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 21
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_CARD",
+      "applied": "Star Ryzeal [raw]",
+      "appliedCardId": 84433129,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 22
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Star Ryzeal [raw]",
+      "appliedCardId": 84433129,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 23
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 24
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_CARD",
+      "applied": "Ryzeal Cross [raw]",
+      "appliedCardId": 6798031,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 25
+    },
+    {
+      "step": 28,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 26
+    },
+    {
+      "step": 29,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Sword Ryzeal (summon-procedure) [raw]",
+      "appliedCardId": 35844557,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 27
+    },
+    {
+      "step": 30,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 31,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 28
+    },
+    {
+      "step": 32,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Sword Ryzeal [raw]",
+      "appliedCardId": 35844557,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 29
+    },
+    {
+      "step": 33,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 30
+    },
+    {
+      "step": 34,
+      "promptType": "SELECT_CARD",
+      "applied": "Ext Ryzeal [raw]",
+      "appliedCardId": 34022970,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 31
+    },
+    {
+      "step": 35,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 32
+    },
+    {
+      "step": 36,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ryzeal Detonator (summon-procedure) [raw]",
+      "appliedCardId": 34909328,
+      "appliedResponseIndex": 7,
+      "planStepIndex": 33
+    },
+    {
+      "step": 37,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Ice Ryzeal [raw]",
+      "appliedCardId": 8633261,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 34
+    },
+    {
+      "step": 38,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Star Ryzeal [raw]",
+      "appliedCardId": 84433129,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 35
+    },
+    {
+      "step": 39,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 36
+    },
+    {
+      "step": 40,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 41,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 37
+    },
+    {
+      "step": 42,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Ryzeal Detonator [raw]",
+      "appliedCardId": 34909328,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 38
+    },
+    {
+      "step": 43,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 39
+    },
+    {
+      "step": 44,
+      "promptType": "SELECT_CARD",
+      "applied": "Ame no Habakiri no Mitsurugi [raw]",
+      "appliedCardId": 13332685,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 40
+    },
+    {
+      "step": 45,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 41
+    },
+    {
+      "step": 46,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Mitsurugi Great Purification (set-st) [raw]",
+      "appliedCardId": 17954937,
+      "appliedResponseIndex": 4,
+      "planStepIndex": 42
+    },
+    {
+      "step": 47,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 43
+    },
+    {
+      "step": 48,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ext Ryzeal (summon-procedure) [raw]",
+      "appliedCardId": 34022970,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 44
+    },
+    {
+      "step": 49,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Code Igniter [raw]",
+      "appliedCardId": 5088741,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 45
+    },
+    {
+      "step": 50,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 51,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 46
+    },
+    {
+      "step": 52,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 47
+    },
+    {
+      "step": 53,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Ryzeal Duo Drive (summon-procedure) [raw]",
+      "appliedCardId": 7511613,
+      "appliedResponseIndex": 6,
+      "planStepIndex": 48
+    },
+    {
+      "step": 54,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Ext Ryzeal [auto]",
+      "appliedCardId": 34022970,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 55,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Sword Ryzeal [auto]",
+      "appliedCardId": 35844557,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 56,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 49
+    },
+    {
+      "step": 57,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 58,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "M1",
+      "cardName": "Futsu no Mitama no Mitsurugi",
+      "cardId": 55397172,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M2",
+      "cardName": "Ryzeal Detonator",
+      "cardId": 34909328,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "M3",
+      "cardName": "Ryzeal Duo Drive",
+      "cardId": 7511613,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "Mitsurugi Great Purification",
+      "cardId": 17954937,
+      "position": "facedown"
+    },
+    {
+      "zone": "FIELD",
+      "cardName": "Ryzeal Cross",
+      "cardId": 6798031,
+      "position": "facedown"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 1,
+  "finalPhase": "MAIN1"
+}

@@ -1,0 +1,801 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "deck": "snake-eye-yummy-sarcophagus-hollywood-wcq",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 157,
+  "cardsTouched": [
+    9674034,
+    25311006,
+    35269904,
+    66975205,
+    90241276
+  ],
+  "byEdgeId": {
+    "9674034._alt-ss-cost->58071334.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._alt-ss-cost->84433129.e2": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->11398059._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->1269512._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->1528054.e2": {
+      "hits": 14,
+      "cumulativeContribution": 770.2930268085282,
+      "weight": 0.5502093048632345
+    },
+    "9674034._material->20665527._summon": {
+      "hits": 14,
+      "cumulativeContribution": -2880.3497967279714,
+      "weight": -2.0573927119485513
+    },
+    "9674034._material->2772337._summon": {
+      "hits": 14,
+      "cumulativeContribution": -50.052388213422546,
+      "weight": -0.03575170586673039
+    },
+    "9674034._material->29301450.e1": {
+      "hits": 14,
+      "cumulativeContribution": 238.9709858920451,
+      "weight": 0.17069356135146072
+    },
+    "9674034._material->31603289.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->32530043._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->40673853._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->41999284._summon": {
+      "hits": 14,
+      "cumulativeContribution": -916.2886343208028,
+      "weight": -0.6544918816577164
+    },
+    "9674034._material->42125140._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->45852939._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->5088741.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->51409648._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->58071334.e1": {
+      "hits": 14,
+      "cumulativeContribution": -1157.0778965676693,
+      "weight": -0.8264842118340496
+    },
+    "9674034._material->60303245._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->61399402._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->65741786._summon": {
+      "hits": 14,
+      "cumulativeContribution": 2193.68224478873,
+      "weight": 1.566915889134807
+    },
+    "9674034._material->66011101._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->67098897.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->73898890.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->7511613.e2": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->76666602.e2": {
+      "hits": 14,
+      "cumulativeContribution": -1052.9726411154554,
+      "weight": -0.752123315082468
+    },
+    "9674034._material->78397661._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->79606837._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->79755671._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->8165596._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->81846453.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->90590303._summon": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->93192592.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034._material->9940036.e1": {
+      "hits": 14,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "9674034.e1->90241276.e1": {
+      "hits": 14,
+      "cumulativeContribution": -2188.635217896739,
+      "weight": -1.5633108699262424
+    },
+    "9674034.e2->90241276.e1": {
+      "hits": 14,
+      "cumulativeContribution": 5417.5144416014255,
+      "weight": 3.869653172572447
+    },
+    "9674034.e3->45663742.e1": {
+      "hits": 14,
+      "cumulativeContribution": -647.0341553621405,
+      "weight": -0.4621672538301004
+    },
+    "9674034.e3->45663742.e2": {
+      "hits": 14,
+      "cumulativeContribution": -1212.330910802296,
+      "weight": -0.8659506505730689
+    },
+    "9674034.e3->58071334.e1": {
+      "hits": 14,
+      "cumulativeContribution": 1973.611325369285,
+      "weight": 1.4097223752637749
+    },
+    "9674034.e3->90241276.e2": {
+      "hits": 14,
+      "cumulativeContribution": 1745.070191418408,
+      "weight": 1.246478708156006
+    },
+    "9674034.e3->90241276.e3": {
+      "hits": 14,
+      "cumulativeContribution": 2489.0097826530246,
+      "weight": 1.777864130466446
+    },
+    "90241276._alt-ss-cost->58071334.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._alt-ss-cost->84433129.e2": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->11398059._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->1269512._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->1528054.e2": {
+      "hits": 12,
+      "cumulativeContribution": -100.76949054439469,
+      "weight": -0.08397457545366224
+    },
+    "90241276._material->20665527._summon": {
+      "hits": 12,
+      "cumulativeContribution": -859.6213389269248,
+      "weight": -0.7163511157724374
+    },
+    "90241276._material->2772337._summon": {
+      "hits": 12,
+      "cumulativeContribution": -158.30255932761858,
+      "weight": -0.1319187994396821
+    },
+    "90241276._material->29301450.e1": {
+      "hits": 12,
+      "cumulativeContribution": 594.0061313898169,
+      "weight": 0.4950051094915141
+    },
+    "90241276._material->31603289.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->32530043._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->40673853._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->41999284._summon": {
+      "hits": 12,
+      "cumulativeContribution": -1140.8502752443403,
+      "weight": -0.9507085627036168
+    },
+    "90241276._material->42125140._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->45852939._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->5088741.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->51409648._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->58071334.e1": {
+      "hits": 12,
+      "cumulativeContribution": 505.10481449566925,
+      "weight": 0.4209206787463911
+    },
+    "90241276._material->60303245._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->61399402._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->65741786._summon": {
+      "hits": 12,
+      "cumulativeContribution": 718.7447045898383,
+      "weight": 0.5989539204915317
+    },
+    "90241276._material->66011101._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->67098897.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->73898890.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->7511613.e2": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->76666602.e2": {
+      "hits": 12,
+      "cumulativeContribution": 76.42213429034545,
+      "weight": 0.06368511190862121
+    },
+    "90241276._material->78397661._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->79606837._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->79755671._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->8165596._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->81846453.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->90590303._summon": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->93192592.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276._material->9940036.e1": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276.e1->90241276.e2": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "90241276.e1->90241276.e3": {
+      "hits": 12,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._alt-ss-cost->84433129.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->11398059._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->1269512._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->31603289.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->32530043._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->40673853._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->42125140._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->45852939._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->5088741.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->51409648._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->60303245._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->61399402._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->65741786._summon": {
+      "hits": 6,
+      "cumulativeContribution": -682.5966094509013,
+      "weight": -1.1376610157515021
+    },
+    "66975205._material->66011101._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->67098897.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->73898890.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->7511613.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->78397661._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->79606837._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->79755671._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->8165596._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->81846453.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->90590303._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->93192592.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205._material->9940036.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "66975205.e2->10966439.e2a": {
+      "hits": 6,
+      "cumulativeContribution": 1027.6338388422462,
+      "weight": 1.7127230647370768
+    },
+    "66975205.e2->10966439.e2b": {
+      "hits": 6,
+      "cumulativeContribution": 1430.136826194328,
+      "weight": 2.3835613769905466
+    },
+    "66975205.e2->30581601.e1": {
+      "hits": 6,
+      "cumulativeContribution": 1073.4986122065582,
+      "weight": 1.7891643536775967
+    },
+    "66975205.e2->31425736.e2": {
+      "hits": 6,
+      "cumulativeContribution": -1031.3688441854506,
+      "weight": -1.7189480736424176
+    },
+    "66975205.e2->31425736.e3": {
+      "hits": 6,
+      "cumulativeContribution": 1378.6003360233578,
+      "weight": 2.297667226705596
+    },
+    "66975205.e2->68810435.e2": {
+      "hits": 6,
+      "cumulativeContribution": 499.1239684927536,
+      "weight": 0.831873280821256
+    },
+    "66975205.e2->68810435.e3": {
+      "hits": 6,
+      "cumulativeContribution": 174.15798075391237,
+      "weight": 0.2902633012565206
+    },
+    "35269904._alt-ss-cost->84433129.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->11398059._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->1269512._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->31603289.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->32530043._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->40673853._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->42125140._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->45852939._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->5088741.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->51409648._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->60303245._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->61399402._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->65741786._summon": {
+      "hits": 6,
+      "cumulativeContribution": -449.8923944625779,
+      "weight": -0.7498206574376299
+    },
+    "35269904._material->66011101._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->67098897.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->73898890.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->7511613.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->78397661._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->79606837._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->79755671._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->8165596._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->81846453.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->90590303._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->93192592.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "35269904._material->9940036.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._alt-ss-cost->84433129.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->11398059._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->1269512._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->31603289.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->32530043._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->40673853._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->42125140._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->45852939._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->5088741.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->51409648._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->60303245._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->61399402._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->65741786._summon": {
+      "hits": 6,
+      "cumulativeContribution": -108.20520689344492,
+      "weight": -0.1803420114890749
+    },
+    "25311006._material->66011101._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->67098897.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->73898890.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->7511613.e2": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->78397661._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->79606837._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->79755671._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->8165596._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->81846453.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->90590303._summon": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->93192592.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "25311006._material->9940036.e1": {
+      "hits": 6,
+      "cumulativeContribution": 0,
+      "weight": 0
+    }
+  }
+}

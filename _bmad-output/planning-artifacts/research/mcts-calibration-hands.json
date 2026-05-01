@@ -1,0 +1,150 @@
+{
+  "_meta": {
+    "purpose": "MCTS UCB1 constant calibration fixtures (Story 1.7 AC)",
+    "createdAt": "2026-04-09",
+    "decks": {
+      "branded-despia": {
+        "source": "ygoprodeck.com — Branded Despia, 22nd Place @ DFW Regionals 2026 (294 players)",
+        "url": "https://ygoprodeck.com/deck/branded-despia-22nd-place-dfw-regionals-2026-703725",
+        "format": "TCG April 2026",
+        "validatedAgainstCardDb": true
+      },
+      "snake-eye-fire-king": {
+        "source": "ygoprodeck.com — Snake-Eye Fire King (March 2026)",
+        "url": "https://ygoprodeck.com/deck/snake-eye-fire-king-march-2026-masterduel-699814",
+        "format": "Master Duel March 2026",
+        "validatedAgainstCardDb": true
+      }
+    },
+    "usage": "Loaded by duel-server/scripts/calibrate-mcts.ts. Each entry runs 10 MCTS solves at C ∈ {0.7, 1.0, 1.414, 2.0, 2.5}. Output saved alongside in mcts-calibration-results-{date}.json."
+  },
+  "decks": {
+    "branded-despia": {
+      "main": [
+        73819701, 73819701,
+        68468459,
+        62962630, 62962630, 62962630,
+        25451383, 25451383,
+        95515789, 95515789,
+        45883110, 45883110,
+        55273560, 55273560,
+        60303688,
+        19096726, 19096726,
+        19304410, 19304410,
+        82489470,
+        42141493, 42141493, 42141493,
+        44362883, 44362883,
+        29948294, 29948294, 29948294,
+        82738008, 82738008,
+        34995106,
+        36637374, 36637374, 36637374,
+        24299458, 24299458, 24299458,
+        48130397, 48130397, 48130397,
+        75500286,
+        30271097, 30271097, 30271097,
+        17751597
+      ],
+      "extra": [
+        3410461,
+        87746184, 87746184,
+        38811586,
+        18666161,
+        24915933, 24915933,
+        70534340,
+        44146295,
+        51409648,
+        76666602, 76666602,
+        41373230,
+        78397661,
+        74586817
+      ]
+    },
+    "snake-eye-fire-king": {
+      "main": [
+        27204311,
+        48452496,
+        27260347,
+        23015896,
+        66431519, 66431519, 66431519,
+        2526224, 2526224, 2526224,
+        72270339, 72270339, 72270339,
+        18621798,
+        44455560, 44455560, 44455560,
+        42141493,
+        14558127, 14558127, 14558127,
+        23434538,
+        45663742, 45663742,
+        9674034,
+        90241276,
+        90681088, 90681088, 90681088,
+        65305978,
+        53639887,
+        57554544,
+        85106525,
+        89023486,
+        24224830,
+        59388357,
+        65681983,
+        91703676,
+        22283204,
+        80845034,
+        40366667, 40366667, 40366667,
+        10045474
+      ],
+      "extra": [
+        37818794,
+        59400890,
+        73082255,
+        64182380,
+        57134592,
+        2772337,
+        20665527,
+        45112597,
+        61245672,
+        8264361,
+        48815792,
+        87871125,
+        29301450,
+        65741786,
+        41999284
+      ]
+    }
+  },
+  "hands": [
+    {
+      "id": "branded-fusion-opener",
+      "deck": "branded-despia",
+      "description": "Standard Branded Fusion combo opener: Branded Fusion + Aluber search + Albion extender + Albaz fusion target + Mulcharmy interaction",
+      "hand": [44362883, 62962630, 25451383, 68468459, 42141493],
+      "deckSeed": "12345,67890"
+    },
+    {
+      "id": "branded-tri-brigade",
+      "deck": "branded-despia",
+      "description": "Tri-Brigade engine: Branded Opening searcher + Mercourier + Springans Kitt + Golden Swordsoul + Branded Fusion follow-up",
+      "hand": [36637374, 19096726, 19304410, 82489470, 44362883],
+      "deckSeed": "23456,78901"
+    },
+    {
+      "id": "snake-eye-ash-opener",
+      "deck": "snake-eye-fire-king",
+      "description": "Standard Snake-Eye Ash opener: Snake-Eye Ash + Diabellstar + Snake-Eye Oak extender + Bonfire searcher + Original Sinful Spoils",
+      "hand": [9674034, 72270339, 45663742, 85106525, 89023486],
+      "deckSeed": "34567,89012"
+    },
+    {
+      "id": "snake-eye-fire-king-opener",
+      "deck": "snake-eye-fire-king",
+      "description": "Fire King-leaning opener: Fire King Island field setup + Sacred Garunix + Kirin searcher + Legendary Ponix + Snake-Eye Ash hybrid bridge",
+      "hand": [57554544, 66431519, 2526224, 90681088, 9674034],
+      "deckSeed": "45678,90123"
+    },
+    {
+      "id": "snake-eye-diabellstar-hybrid",
+      "deck": "snake-eye-fire-king",
+      "description": "Diabellstar hybrid combo: Snake-Eyes Diabellstar + Snake-Eye Oak + Fire King Avatar Arvata + Bonfire + WANTED searcher",
+      "hand": [27260347, 45663742, 18621798, 85106525, 80845034],
+      "deckSeed": "56789,1234"
+    }
+  ]
+}

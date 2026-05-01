@@ -21,7 +21,7 @@
   overflow: hidden;
 }
 
-// === Hand Rows (outside perspective) ===
+// === Hand Rows ===
 // Opponent hand: 50% hidden above viewport edge
 .hand-opponent {
   position: absolute;
@@ -58,7 +58,15 @@
 }
 
 // === Board Container ===
+// `position: relative` + `isolation: isolate` is required for `z-index` to take
+// effect AND to create a proper stacking context. Without them, z-index is
+// silently ignored by the browser (non-positioned element) and any descendant
+// with its own z-index (zone-card--targeted:5, chain-badge:10, central-badges:70)
+// is compared globally against hand rows (z:50) — which would let a field badge
+// pop above the hand. Isolation clamps all field descendants to z<board<hand.
 app-pvp-board-container {
+  position: relative;
+  isolation: isolate;
   flex: 1;
   min-height: 0;
   z-index: z.$z-pvp-board;

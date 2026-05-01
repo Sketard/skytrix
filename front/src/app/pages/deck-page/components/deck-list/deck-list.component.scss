@@ -1,4 +1,5 @@
 @use 'responsive' as *;
+@use 'z-layers' as z;
 
 .deckPage {
   display: grid;
@@ -17,11 +18,27 @@
   &-deck {
     position: relative;
 
+    &-solve {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      z-index: z.$z-deck-card-action;
+      cursor: pointer;
+      color: var(--accent-primary);
+      transition: opacity 150ms ease;
+
+      @media (hover: hover) {
+        opacity: 0;
+      }
+
+      @include touch-target-min;
+    }
+
     &-remove {
       position: absolute;
       top: 4px;
       right: 4px;
-      z-index: 1005;
+      z-index: z.$z-deck-card-action;
       cursor: pointer;
       color: var(--danger);
       transition: opacity 150ms ease;
@@ -33,6 +50,7 @@
       @include touch-target-min;
     }
 
+    &:hover &-solve,
     &:hover &-remove {
       opacity: 1;
     }

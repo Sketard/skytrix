@@ -1,0 +1,21 @@
+<div class="progress-panel">
+  <mat-spinner [diameter]="48"></mat-spinner>
+
+  <p class="progress-message">
+    {{ (isVerifying() ? 'solver.verify.verifying' : progress()?.stalled ? 'solver.progress.stalled' : 'solver.progress.exploring') | translate }}
+  </p>
+
+  @if (progress(); as p) {
+    <div class="progress-stats">
+      <span>{{ 'solver.progress.nodesExplored' | translate:{ count: p.nodesExplored } }}</span>
+      <span [class.score-highlight]="scoreHighlighted()">
+        {{ 'solver.progress.bestScore' | translate:{ score: p.bestScore } }}
+      </span>
+      <span>{{ 'solver.progress.elapsed' | translate:{ time: elapsedFormatted() } }}</span>
+    </div>
+  }
+
+  <button mat-raised-button color="warn" (click)="cancel.emit()">
+    {{ 'solver.progress.cancel' | translate }}
+  </button>
+</div>

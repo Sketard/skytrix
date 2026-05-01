@@ -1,6 +1,18 @@
 import { Injectable, signal } from '@angular/core';
-import type { SharedCardInspectorData } from '../../../core/model/shared-card-data';
+import type { CardLiveOverlay, SharedCardInspectorData } from '../../../core/model/shared-card-data';
+import type { CardOnField } from '../duel-ws.types';
+import { diffTypeBitmask } from '../pvp-alteration.utils';
 import { CardDataCacheService, CARD_BACK_PLACEHOLDER, UNKNOWN_CARD_PLACEHOLDER } from './card-data-cache.service';
+
+function buildLiveOverlay(card: CardOnField | null | undefined): CardLiveOverlay | undefined {
+  if (!card) return undefined;
+  const typeDiff = diffTypeBitmask(card.currentType, card.baseType);
+  if (typeDiff.added.length === 0 && typeDiff.removed.length === 0) return undefined;
+  return {
+    addedTypeLabels: typeDiff.added,
+    removedTypeLabels: typeDiff.removed,
+  };
+}
 
 /**
  * Manages card inspection state: loading card data with generation-based
@@ -27,7 +39,11 @@ export class CardInspectionService {
     this.cardDataCache = cardDataCache;
   }
 
-  async inspectByCode(cardCode: number, forceExpanded = false): Promise<void> {
+  async inspectByCode(
+    cardCode: number,
+    forceExpanded = false,
+    liveCard?: CardOnField | null,
+  ): Promise<void> {
     this.inspectorForceExpanded.set(forceExpanded);
     const gen = ++this.inspectGeneration;
 
@@ -37,9 +53,9 @@ export class CardInspectionService {
     }
 
     const data = await this.cardDataCache.getCardData(cardCode);
-    if (this.inspectGeneration === gen) {
-      this.inspectedCard.set(data);
-    }
+    if (this.inspectGeneration !== gen || !data) return;
+    const liveOverlay = buildLiveOverlay(liveCard);
+    this.inspectedCard.set(liveOverlay ? { ...data, liveOverlay } : data);
   }
 
   showUnknownCard(): void {

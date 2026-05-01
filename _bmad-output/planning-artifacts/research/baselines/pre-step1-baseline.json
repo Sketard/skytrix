@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "timestamp": "2026-04-16T17:18:58.432Z",
+    "budgetMs": 60000,
+    "scorerVersion": "pre-step1",
+    "_v5_note": "PRE-v5 baseline. `score` = explorationScore (weighted + fallbackPoints + latentPoints). Post-v5 baselines report interruptionScore instead — do NOT direct-compare `score` across the v5 boundary."
+  },
+  "fixtures": {
+    "ddd-pendulum-opener": {
+      "score": 34,
+      "matched": 2,
+      "matchedTotal": 5,
+      "matchedCardIds": [
+        46593546,
+        44852429
+      ],
+      "missingCardIds": [
+        79559912,
+        30998403,
+        91781484
+      ],
+      "terminationReason": "depth_cap",
+      "nodesExplored": 936,
+      "maxDepthReached": 50,
+      "actionsZeroPct": 18.6,
+      "turn2Pct": 34.1,
+      "wallMs": 51043
+    },
+    "ryzeal-mitsurugi-opener": {
+      "score": 35,
+      "matched": 2,
+      "matchedTotal": 6,
+      "matchedCardIds": [
+        34909328,
+        17954937
+      ],
+      "missingCardIds": [
+        7511613,
+        55397172,
+        8165596,
+        6798031
+      ],
+      "terminationReason": "timeout",
+      "nodesExplored": 886,
+      "maxDepthReached": 35,
+      "actionsZeroPct": 62.1,
+      "turn2Pct": 13.2,
+      "wallMs": 51047
+    },
+    "radiant-typhoon-opener": {
+      "score": 33,
+      "matched": 2,
+      "matchedTotal": 3,
+      "matchedCardIds": [
+        71068247,
+        53813120
+      ],
+      "missingCardIds": [
+        49105782
+      ],
+      "terminationReason": "timeout",
+      "nodesExplored": 983,
+      "maxDepthReached": 46,
+      "actionsZeroPct": 45.6,
+      "turn2Pct": 23,
+      "wallMs": 51045
+    },
+    "branded-dracotail-opener": {
+      "score": 41,
+      "matched": 2,
+      "matchedTotal": 6,
+      "matchedCardIds": [
+        5431722,
+        80208225
+      ],
+      "missingCardIds": [
+        33760966,
+        78397661,
+        69932023,
+        1498449
+      ],
+      "terminationReason": "timeout",
+      "nodesExplored": 854,
+      "maxDepthReached": 52,
+      "actionsZeroPct": 0,
+      "turn2Pct": 69,
+      "wallMs": 51070
+    },
+    "branded-dracotail-opener-mirrorjade-line": {
+      "score": 32,
+      "matched": 3,
+      "matchedTotal": 6,
+      "matchedCardIds": [
+        38811586,
+        5431722,
+        80208225
+      ],
+      "missingCardIds": [
+        44146295,
+        69932023,
+        1498449
+      ],
+      "terminationReason": "timeout",
+      "nodesExplored": 885,
+      "maxDepthReached": 45,
+      "actionsZeroPct": 0,
+      "turn2Pct": 65,
+      "wallMs": 51065
+    }
+  },
+  "aggregate": {
+    "cumulativeMatched": 11,
+    "cumulativeMatchedTotal": 26,
+    "cumulativeScore": 175,
+    "fixtureCount": 5
+  }
+}

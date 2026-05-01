@@ -1,0 +1,105 @@
+@if (!isDesktop()) {
+  <div class="solver-desktop-only">
+    <p>{{ 'solver.desktopRequired' | translate }}</p>
+    <a mat-button routerLink="/decks">{{ 'solver.backToDecks' | translate }}</a>
+  </div>
+} @else {
+  <div class="solver-layout">
+    <div class="solver-config" [class.collapsed]="collapsed()">
+      @if (solverState() === 'loading') {
+        <mat-spinner diameter="40"></mat-spinner>
+      }
+      @if (deck(); as d) {
+        <app-solver-config
+          [deck]="d"
+          [solverState]="solverState()"
+          (solve)="onSolve($event)" />
+      }
+    </div>
+
+    @if (collapsed()) {
+      <div class="solver-collapsed-bar">
+        <button mat-icon-button
+          [attr.aria-label]="'solver.uncollapse' | translate"
+          (click)="uncollapse()">
+          <mat-icon fontIcon="tune"></mat-icon>
+        </button>
+      </div>
+    }
+
+    <div class="solver-result">
+      @if (solverState() === 'running') {
+        <app-solver-progress
+          [progress]="solverService.progress()"
+          [isVerifying]="solverService.isVerifying()"
+          (cancel)="onCancel()" />
+      }
+      @if (solverState() === 'complete') {
+        @if (solverService.pinnedResults().length > 0) {
+          <app-pinned-results-bar
+            [pins]="solverService.pinnedResults()"
+            (unpin)="solverService.unpinResult($event)" />
+        }
+        @if (solverService.result(); as r) {
+          <div class="result-actions">
+            <button mat-icon-button
+              [attr.aria-label]="'solver.pin.pin' | translate"
+              [disabled]="!solverService.canPin()"
+              [matTooltip]="solverService.canPin() ? ('solver.pin.pin' | translate) : ('solver.pin.pinLimit' | translate)"
+              (click)="solverService.pinResult()">
+              <mat-icon fontIcon="push_pin"></mat-icon>
+            </button>
+            <button mat-icon-button
+              [attr.aria-label]="'solver.export.export' | translate"
+              [matTooltip]="'solver.export.export' | translate"
+              (click)="solverService.exportResult()">
+              <mat-icon fontIcon="content_copy"></mat-icon>
+            </button>
+            @if (r.adversarialTimings?.length) {
+              <button mat-stroked-button
+                [attr.aria-label]="'solver.verify.verify' | translate"
+                [matTooltip]="'solver.verify.prngWarning' | translate"
+                [disabled]="solverService.isVerifying() || solverState() === 'running' || r.verified === true"
+                (click)="onVerify()">
+                <mat-icon fontIcon="verified"></mat-icon>
+                {{ 'solver.verify.verify' | translate }}
+              </button>
+            }
+            @if (solverService.sessionHistory().length > 0) {
+              <app-solver-history-menu
+                [history]="solverService.sessionHistory()"
+                [currentResult]="solverService.result()"
+                (restore)="solverService.restoreHistoryEntry($event)" />
+            }
+          </div>
+          @if (r.scoreBreakdown.weighted === 0 && !solverService.isPartialResult()) {
+            <app-brick-state-block brickType="pure-brick" />
+          } @else {
+            <app-hero-result-block
+              [result]="r"
+              [isPartial]="solverService.isPartialResult()"
+              [cardImageMap]="cardImageMap()"
+              [solveSpeed]="solverService.lastSolveSpeed()" />
+
+            @if (r.minimax != null && r.minimax === 0 && r.scoreBreakdown.weighted > 0 && !solverService.isPartialResult()) {
+              <app-brick-state-block brickType="no-resilient-line" [bestScore]="r.score" />
+            }
+
+            @if (r.mainPath.length > 0) {
+              <app-breadcrumb-path
+                [mainPath]="r.mainPath"
+                [cardImageMap]="cardImageMap()"
+                [adversarialTimings]="r.adversarialTimings"
+                (chipClick)="onBreadcrumbClick($event)" />
+            }
+
+            <app-decision-tree #decisionTree
+              [tree]="r.tree"
+              [mainPath]="r.mainPath"
+              [cardImageMap]="cardImageMap()" />
+          }
+        }
+      }
+    </div>
+  </div>
+}

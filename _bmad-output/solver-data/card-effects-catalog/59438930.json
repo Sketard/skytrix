@@ -1,0 +1,114 @@
+{
+  "cardId": 59438930,
+  "name": "Ghost Ogre & Snow Rabbit",
+  "sourceFile": "official/c59438930.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "range": "LOCATION_MZONE|LOCATION_HAND",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.condition",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "re:GetHandler():IsOnField()"
+            },
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "re:IsMonsterEffect()"
+                },
+                {
+                  "kind": "raw",
+                  "source": "re:IsSpellTrapEffect() and not re:IsHasType(EFFECT_TYPE_ACTIVATE)"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
+      },
+      "cost": {
+        "inline": "Cost.SelfToGrave",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfToGrave",
+          "kind": "send-to-grave",
+          "params": {}
+        }
+      },
+      "target": {
+        "name": "s.target",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "re:GetHandler():IsDestructable()"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "eg",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.operation",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "eg",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 4,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

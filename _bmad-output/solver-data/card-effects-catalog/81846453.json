@@ -1,0 +1,201 @@
+{
+  "cardId": 81846453,
+  "name": "Martial Metal Marcher",
+  "sourceFile": "official/c81846453.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Synchro",
+      "rawCall": "Synchro.AddProcedure(c,nil,1,1,Synchro.NonTuner(nil),1,99)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "tuner",
+            "min": 1,
+            "max": 1
+          },
+          {
+            "role": "non-tuner",
+            "min": 1,
+            "max": 99,
+            "filter": {
+              "helper": "Synchro.NonTuner",
+              "kind": "synchro-non-tuner-filter",
+              "params": {
+                "innerFilter": "nil"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.spcon",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "synchroSummoned"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "type",
+              "value": "TYPE_TUNER"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "g",
+              "1",
+              "0",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon-step",
+            "method": "SpecialSummonStep",
+            "target": "tc",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP_DEFENSE"
+            ]
+          },
+          {
+            "kind": "special-summon-complete",
+            "method": "SpecialSummonComplete"
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          },
+          {
+            "registeredOn": "tc",
+            "code": "EFFECT_DISABLE_EFFECT",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_BE_MATERIAL"
+      ],
+      "condition": {
+        "name": "s.tncon",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "reason",
+              "value": "REASON_SYNCHRO"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "name": "s.tnop",
+        "opaque": false,
+        "sideEffects": [
+          {
+            "registeredOn": "rc",
+            "code": "EFFECT_ADD_TYPE",
+            "value": "TYPE_TUNER",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

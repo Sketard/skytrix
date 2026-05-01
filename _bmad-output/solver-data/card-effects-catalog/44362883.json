@@ -1,0 +1,97 @@
+{
+  "cardId": 44362883,
+  "name": "Branded Fusion",
+  "sourceFile": "official/c44362883.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "cost": {
+        "name": "s.cost",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetCustomActivityCount",
+              "args": [
+                "id",
+                "tp",
+                "ACTIVITY_SPSUMMON"
+              ],
+              "op": "==",
+              "value": "0"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
+      },
+      "target": {
+        "inline": "aux.FilterBoolFunction(Card.ListsCodeAsMaterial, CARD_ALBAZ)",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.FilterBoolFunction",
+          "kind": "filter-wrap",
+          "params": {
+            "predicate": "ListsCodeAsMaterial",
+            "value": "CARD_ALBAZ"
+          }
+        },
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "listsCodeAsMaterial",
+              "value": "CARD_ALBAZ"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 3,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

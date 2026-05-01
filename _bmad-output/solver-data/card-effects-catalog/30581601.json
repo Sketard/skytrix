@@ -1,0 +1,258 @@
+{
+  "cardId": 30581601,
+  "name": "Yummy★Snatchy",
+  "sourceFile": "official/c30581601.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_YUMMY"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Link",
+      "rawCall": "Link.AddProcedure(c,s.matfilter,1,1)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "simpleFilter": {
+                "predicates": [
+                  {
+                    "kind": "levelBelow",
+                    "value": 4
+                  },
+                  {
+                    "kind": "attribute",
+                    "value": "ATTRIBUTE_LIGHT"
+                  },
+                  {
+                    "kind": "race",
+                    "value": "RACE_BEAST"
+                  }
+                ],
+                "complete": true
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.pltg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "fieldSpell"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "forbidden"
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "name": "s.plop",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "fieldSpell"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "forbidden"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_TOFIELD"
+            ]
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "fc",
+            "argHints": [
+              "REASON_RULE"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "move-to-field",
+            "method": "MoveToField",
+            "target": "sc",
+            "argHints": [
+              "tp",
+              "tp",
+              "LOCATION_FZONE",
+              "POS_FACEUP",
+              "true"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "e1",
+            "argHints": [
+              "tp"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "0"
+      },
+      "condition": {
+        "inline": "function(e,tp) return Duel.IsMainPhase() or (Duel.IsTurnPlayer(1-tp) and Duel.IsBattlePhase()) end",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "gameState",
+                  "method": "IsMainPhase"
+                },
+                {
+                  "kind": "raw",
+                  "source": "Duel.IsTurnPlayer(1-tp) and Duel.IsBattlePhase()"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
+      },
+      "cost": {
+        "inline": "Cost.PayLP(100)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.PayLP",
+          "kind": "pay-lp",
+          "params": {
+            "args": [
+              "100"
+            ]
+          }
+        }
+      },
+      "target": {
+        "name": "s.synchtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "res"
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_EXTRA"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.synchop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 6,
+    "fullyDecoded": 5,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

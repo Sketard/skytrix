@@ -1,0 +1,461 @@
+{
+  "cardId": 79755671,
+  "name": "Dracotail Gulamel",
+  "sourceFile": "official/c79755671.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_DRACOTAIL"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Fusion",
+      "rawCall": "Fusion.AddProcMix(c,true,true,aux.FilterBoolFunctionEx(Card.IsSetCard,SET_DRACOTAIL),aux.FilterBoolFunctionEx(Card.IsLocation,LOCATION_HAND))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsSetCard",
+                "value": "SET_DRACOTAIL"
+              }
+            }
+          },
+          {
+            "role": "material",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "aux.FilterBoolFunctionEx",
+              "kind": "filter-wrap",
+              "params": {
+                "predicate": "IsLocation",
+                "value": "LOCATION_HAND"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_DESTROY"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET"
+      ],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.descon",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "false"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "target": {
+        "name": "s.destg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "onField"
+            },
+            {
+              "kind": "controler",
+              "value": "1-tp"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DESTROY"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DESTROY",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.desop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "tc",
+            "argHints": [
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_REMOVE"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY,EFFECT_FLAG2_CHECK_SIMULTANEOUS"
+      ],
+      "events": [
+        "EVENT_CUSTOM+id"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_GRAVE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.sptg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "GetLocationCount",
+              "args": [
+                "tp",
+                "LOCATION_MZONE"
+              ],
+              "op": ">",
+              "value": "0"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "c",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.spop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "c",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          },
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1",
+              "true"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_LEAVE_FIELD_REDIRECT",
+            "value": "LOCATION_REMOVED",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "properties": [
+              "EFFECT_FLAG_CANNOT_DISABLE+EFFECT_FLAG_CLIENT_HINT"
+            ],
+            "reset": "RESET_EVENT|RESETS_REDIRECT"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "name": "s.regop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "raise-event",
+            "method": "RaiseSingleEvent",
+            "target": "c",
+            "argHints": [
+              "EVENT_CUSTOM+id",
+              "re",
+              "r",
+              "rp",
+              "ep",
+              "ev"
+            ]
+          },
+          {
+            "kind": "register-flag-effect",
+            "method": "RegisterFlagEffect",
+            "target": "c",
+            "argHints": [
+              "id+1",
+              "RESET_EVENT|RESETS_STANDARD|RESET_CHAIN",
+              "0",
+              "1"
+            ]
+          }
+        ]
+      },
+      "clonedTo": [
+        "e4"
+      ]
+    },
+    {
+      "id": "e4",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE",
+        "EVENT_CHAINING"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "reset-flag-effect",
+            "method": "ResetFlagEffect",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "id+1"
+            ]
+          }
+        ]
+      },
+      "clonedFrom": "e3",
+      "clonedTo": [
+        "e5",
+        "e6"
+      ]
+    },
+    {
+      "id": "e5",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE",
+        "EVENT_CHAINING",
+        "EVENT_CHAIN_SOLVED"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "reset-flag-effect",
+            "method": "ResetFlagEffect",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "id+1"
+            ]
+          }
+        ]
+      },
+      "clonedFrom": "e4"
+    },
+    {
+      "id": "e6",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_TO_GRAVE",
+        "EVENT_CHAINING",
+        "EVENT_BREAK_EFFECT"
+      ],
+      "range": "LOCATION_GRAVE",
+      "condition": {
+        "inline": "function() return not Duel.IsPhase(PHASE_DAMAGE) end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsPhase",
+                "args": [
+                  "PHASE_DAMAGE"
+                ]
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "function(e) e:GetHandler():ResetFlagEffect(id+1) end",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "reset-flag-effect",
+            "method": "ResetFlagEffect",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "id+1"
+            ]
+          }
+        ]
+      },
+      "clonedFrom": "e4"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 6,
+    "totalFunctionRefs": 13,
+    "fullyDecoded": 12,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

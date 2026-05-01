@@ -1,0 +1,172 @@
+{
+  "fixtureId": "radiant-typhoon-opener",
+  "deck": "radiant-typhoon-ygoprodeck-2026",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 32,
+  "cardsTouched": [
+    42141493
+  ],
+  "byEdgeId": {
+    "42141493._alt-ss-cost->58071334.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._alt-ss-cost->84433129.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->11398059._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->1269512._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->1528054.e2": {
+      "hits": 10,
+      "cumulativeContribution": -2053.840088363979,
+      "weight": -2.0538400883639785
+    },
+    "42141493._material->20665527._summon": {
+      "hits": 10,
+      "cumulativeContribution": 1900.533403791305,
+      "weight": 1.9005334037913049
+    },
+    "42141493._material->2772337._summon": {
+      "hits": 10,
+      "cumulativeContribution": -391.4475567225509,
+      "weight": -0.39144755672255094
+    },
+    "42141493._material->29301450.e1": {
+      "hits": 10,
+      "cumulativeContribution": -845.5779393376197,
+      "weight": -0.8455779393376196
+    },
+    "42141493._material->31603289.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->32530043._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->40673853._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->42125140._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->45852939._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->5088741.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->51409648._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->60303245._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->61399402._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->65741786._summon": {
+      "hits": 10,
+      "cumulativeContribution": -492.6713560231035,
+      "weight": -0.4926713560231034
+    },
+    "42141493._material->66011101._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->67098897.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->73898890.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->7511613.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->76666602.e2": {
+      "hits": 10,
+      "cumulativeContribution": -11.436705421665428,
+      "weight": -0.011436705421665428
+    },
+    "42141493._material->78397661._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->79606837._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->79755671._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->8165596._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->81846453.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->90590303._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->93192592.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493._material->9940036.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "42141493.e1->44146295.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    }
+  }
+}

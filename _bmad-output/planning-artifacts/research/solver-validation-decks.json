@@ -1,0 +1,1869 @@
+{
+  "_meta": {
+    "purpose": "Solver correctness validation fixtures — competitive decklists for benchmarking combo finding against known meta archetypes",
+    "createdAt": "2026-04-12",
+    "decks": {
+      "ddd-wcq-top4": {
+        "source": "ygoprodeck.com — D/D/D, Top 4 Cali WCQ Regional (John Ramírez Barberi, 2025-12-07)",
+        "url": "https://ygoprodeck.com/deck/d-d-d-674759",
+        "format": "TCG December 2025",
+        "validatedAgainstCardDb": true
+      },
+      "ryzeal-mitsurugi-hk-top8": {
+        "source": "ygoprodeck.com — Mitsurugi Ryzeal, Top 8 Yu-Gi-Oh! Open Tournament Hong Kong 2026 AE (Tu Kai-Hsiang, 2026-03-23)",
+        "url": "https://ygoprodeck.com/deck/mitsurugi-ryzeal-701763",
+        "format": "OCG March 2026",
+        "validatedAgainstCardDb": true
+      },
+      "branded-dracotail-bainbridge-2nd": {
+        "source": "ygoprodeck.com — Branded Dracotail, 2nd Place Bainbridge WCQ Regional",
+        "url": "https://ygoprodeck.com/deck/branded-dracotail-705277",
+        "format": "TCG 2026",
+        "validatedAgainstCardDb": true
+      },
+      "nekroz-ryzeal-jan2026-tcg-1st": {
+        "source": "ygoprodeck.com — 1st Place Undefeated Nekroz Ryzeal (Jan. 2026 TCG Format)",
+        "url": "https://ygoprodeck.com/deck/1st-place-undefeated-nekroz-ryzeal-jan-2026-tcg-format-681035",
+        "format": "TCG January 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 1. Ritual archetype fixture — validates F1 Ritual Unlock Co-Presence generalization beyond Mitsurugi Prayers. Nekroz uses distinct ritual spells (Kaleidoscope, Cycle, Mirror) and distinct ritual monsters (Brionac, Trishula, Unicore, Areadbhair). Ryzeal engine co-presence is incidental (hybrid tournament build); F1 signal isolates on Nekroz-specific ritual metadata. Aliases normalized: Bagooska 90590304→90590303, Harpie's Feather Duster 18144507→18144506."
+      },
+      "labrynth-2026": {
+        "source": "ygoprodeck.com — Labrynth 2026 (competitive Jan 2026 build with Dogmatika engine)",
+        "url": "https://ygoprodeck.com/deck/labrynth-2026-682215",
+        "format": "TCG January 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 2. Control paradigm fixture (trap-heavy Fiend archetype with Dogmatika sub-engine). Diversifies control representation beyond Radiant Typhoon. Aliases normalized: Droll & Lock Bird 94145022→94145021. Note: the modern Fydraulis/Solemn Report/Dominus Spark variant (labrynth-jan-2026-v2-685973) was rejected as those cards are absent from cards.cdb; this older build trades none of its control identity."
+      },
+      "stun-runick-melbourne-top8": {
+        "source": "ygoprodeck.com — Stun Runick (Melbourne WCQ Regional Top 8)",
+        "url": "https://ygoprodeck.com/deck/stun-runick-664328",
+        "format": "TCG 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 2. Stall paradigm fixture — pure Runick (no Sky Striker / Paleo hybrid) with floodgate suite (Rivalry of Warlords, There Can Be Only One, Gozen Match, Synchro Zone). Tests the solver on a non-summoning engine: wins via banishing opponent's deck through Runick quick-play spells. F1/F2/F3 structural value function should mostly NOT fire (no rituals, no tutor chain, no extra-deck material pool beyond Hugin/Munin Link-1 wings). Useful negative control for step 3 ES tuning — confirms structural weights don't hallucinate bonus on an engine-less deck."
+      },
+      "snake-eye-yummy-sarcophagus-hollywood-wcq": {
+        "source": "ygoprodeck.com — Shining Sarcophagus Fiendsmith Snake-Eye Yummy (Hollywood WCQ Regional winner, Jad Andary, 2026-03-22)",
+        "url": "https://ygoprodeck.com/deck/shining-sarcophagus-fiendsmith-snake-eye-yummy-702167",
+        "format": "TCG March 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 3. Iconic 2024-2026 meta combo archetype — Snake-Eye engine with Fiendsmith + Yummy + Shining Sarcophagus sub-engines (multi-engine hybrid is the post-banlist canonical form). High combo density stresses F2 (tutor chain) + F3 (Extra Deck material pool). Aliases normalized: Ash Blossom 14558128→14558127, Harpie's Feather Duster 18144507→18144506."
+      },
+      "tearlaments-2026-fafnirymd": {
+        "source": "ygoprodeck.com — TEARLAMENT 2026! YT:@fafnirymd (2026-02-21)",
+        "url": "https://ygoprodeck.com/deck/tearlament-2026-yt-fafnirymd-693649",
+        "format": "TCG February 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 3. GY-fusion paradigm — Tearlaments win via discard-to-mill that fuses Extra Deck monsters from GY. Distinct from Branded's in-hand ritual-like fusion pattern. Tests F3 Extra Deck Material Pool on mill-driven fusion summons (Kitkallos, Rulkallos, Kaleido-Heart). No side deck (list was published without side). No alias normalization needed."
+      },
+      "floowandereeze-2026": {
+        "source": "ygoprodeck.com — FLOOWANDEREEZE - yes floo is still good without feather storm (2026 build)",
+        "url": "https://ygoprodeck.com/deck/floowandereeze-yes-floo-is-still-good-without-feather-storm-690573",
+        "format": "TCG 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 3. Normal-summon lock paradigm — Floowandereeze banish-normal-summon cards from hand to chain into Robina/Eglen/Toccan searches and end on Empen (spell/trap-activation lock) + Mist Valley Apex Avian (negate). Tests the solver on non-standard summoning (no Special Summon during turn-1 for main plays, all normal-summon via banish effect). Very small side deck (6 cards). No alias normalization needed."
+      },
+      "kashtira-azamina-verquin-wcq-top8": {
+        "source": "ygoprodeck.com — Azamina Kashtira Radiant Typhoon Maliss (Verquin WCQ Regional Top 8, Edouard Tan, 2026-04-04)",
+        "url": "https://ygoprodeck.com/deck/azamina-kashtira-radiant-typhoon-maliss-705415",
+        "format": "TCG April 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 4. Kashtira banish-setup engine fused with Maliss (new 2025-2026 archetype using 'P'/'C'/'Q' indirection cards) + Radiant Typhoon + Azamina Fusion sub-engines. Multi-engine meta hybrid — stresses F2 tutor chain across 4 tutorable engines. Aliases normalized: Monster Reborn 83764719→83764718. Note: Radiant Typhoon engine co-presence means F3 scoring signal partially overlaps with radiant-typhoon-opener fixture — evaluate delta against Kashtira-specific endboard pieces only."
+      },
+      "horus-crystron-santiago-wcq-top4": {
+        "source": "ygoprodeck.com — Horus Crystron (Santiago WCQ Regional Top 4, Guillermo Enrique Rivera Gonzalez, 2026-03-21)",
+        "url": "https://ygoprodeck.com/deck/horus-crystron-702073",
+        "format": "TCG March 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 4. Synchro paradigm — Crystron engine (tuner + non-tuner zombies recurring from GY) climbing into Rank/Link chains with Horus king engine (Imsety/Hapi) via Sarcophagus loop. Cleanly isolates synchro climbing (no other fixture has a synchro primary engine). Aliases normalized: Ash Blossom 14558128→14558127, Foolish Burial 81439174→81439173."
+      },
+      "dinomorphia-696904": {
+        "source": "ygoprodeck.com — When the dinos are dividing their LP (Dinomorphia Solemn Anti, 2026-03-03)",
+        "url": "https://ygoprodeck.com/deck/when-the-dinos-are-dividing-their-lp-696904",
+        "format": "TCG March 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 4. Unique LP-sacrifice rogue paradigm — Dinomorphia pays 50% LP to activate effects, stabilizing at low LP where opponent can't burn out. Different resource-management paradigm (LP as currency) — tests solver robustness to non-standard cost structures. No alias normalization needed."
+      },
+      "spright-greenville-wcq-top8": {
+        "source": "ygoprodeck.com — Spright (Greenville WCQ Regional Top 8, Ivan Villa, 2026-01-10)",
+        "url": "https://ygoprodeck.com/deck/spright-683326",
+        "format": "TCG January 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Added 2026-04-17 for step 2 Phase 4. Level/Rank 2 toolbox paradigm — Spright Blue searches Level 2 monsters, chain Xyz into Gigantic Spright / Toadally Awesome / Number 65. Rogue archetype. Frog extenders (Swap Frog) + Nimble extenders add summoning depth. Aliases normalized: Ash Blossom 14558128→14558127, Foolish Burial 81439174→81439173, Harpie's Feather Duster 18144507→18144506."
+      },
+      "radiant-typhoon-ygoprodeck-2026": {
+        "source": "ygoprodeck.com — Radiant Typhoon, competitive 2026 build (April 2026)",
+        "url": "https://ygoprodeck.com/deck/radiant-typhoon-705676",
+        "format": "TCG April 2026",
+        "validatedAgainstCardDb": true,
+        "notes": "Control deck paradigm — coverage of non-combo endboard (3 cards vs typical 5-6). Opener + endboard validated by user 2026-04-15."
+      }
+    },
+    "usage": "Solver correctness validation. Decklists extracted from ygoprodeck.com HTML (data-card attributes) and validated against duel-server/data/cards.cdb. Alias IDs normalized to canonical IDs (Ash Blossom 14558128→14558127, Harpie's Feather Duster 18144507→18144506). Feed hands to the DFS/MCTS solver and compare computed endBoardCards against expected boards.",
+    "expectedBoards": "Populated per hand with human-confirmed target boards. Each hand entry has an 'expectedBoard' field listing { zone, cardId, cardName } entries that the solver should reproduce. These are curated, not auto-generated — treat as golden references."
+  },
+  "decks": {
+    "ddd-wcq-top4": {
+      "main": [
+        20715411,
+        20715411,
+        20715411,
+        74069667,
+        11609969,
+        11609969,
+        11609969,
+        28406301,
+        28406301,
+        28406301,
+        5997110,
+        42382265,
+        42382265,
+        42382265,
+        72181263,
+        46796664,
+        67322708,
+        72291412,
+        42141493,
+        42141493,
+        42141493,
+        14558127,
+        14558127,
+        14558127,
+        94145021,
+        94145021,
+        46372010,
+        46372010,
+        46372010,
+        32665564,
+        93729896,
+        65681983,
+        54693926,
+        54693926,
+        54693926,
+        24224830,
+        40366667,
+        40366667,
+        40366667,
+        9030160,
+        91781484
+      ],
+      "extra": [
+        71398055,
+        74583607,
+        70576413,
+        44852429,
+        72402069,
+        3758046,
+        79559912,
+        32232538,
+        71612253,
+        46593546,
+        46593546,
+        62541668,
+        9024198,
+        9024198,
+        30998403
+      ],
+      "side": [
+        55063751,
+        55063751,
+        55063751,
+        84192580,
+        84192580,
+        84192580,
+        73642296,
+        73642296,
+        73642296,
+        18144506,
+        25311006,
+        58921041,
+        41420027,
+        37209439,
+        94145021
+      ]
+    },
+    "ryzeal-mitsurugi-hk-top8": {
+      "main": [
+        13332685,
+        13332685,
+        13332685,
+        55397172,
+        19899073,
+        20295753,
+        40543231,
+        82782870,
+        18176525,
+        8633261,
+        8633261,
+        34022970,
+        84433129,
+        35844557,
+        72238166,
+        27204311,
+        14558127,
+        14558127,
+        23434538,
+        23434538,
+        42141493,
+        42141493,
+        42141493,
+        94145021,
+        94145021,
+        94145021,
+        45171524,
+        45171524,
+        45171524,
+        81560239,
+        6798031,
+        7477101,
+        7477101,
+        7477101,
+        85106525,
+        24224830,
+        24224830,
+        65681983,
+        13048472,
+        49721684,
+        17954937
+      ],
+      "extra": [
+        73898890,
+        8165596,
+        9940036,
+        40673853,
+        1269512,
+        66011101,
+        90590303,
+        61399402,
+        32530043,
+        7511613,
+        34909328,
+        11398059,
+        49678559,
+        45852939,
+        5088741
+      ],
+      "side": [
+        84192580,
+        84192580,
+        84192580,
+        18144506,
+        23002292,
+        23002292,
+        40366667,
+        40366667,
+        40366667,
+        41420027,
+        41420027,
+        41420027,
+        84749824,
+        84749824,
+        84749824
+      ]
+    },
+    "radiant-typhoon-ygoprodeck-2026": {
+      "main": [
+        85315450,
+        80538047,
+        80538047,
+        80538047,
+        16922142,
+        16922142,
+        16922142,
+        54143349,
+        54143349,
+        54143349,
+        53927851,
+        27755794,
+        12197223,
+        12197223,
+        12197223,
+        34242278,
+        42141493,
+        42141493,
+        42141493,
+        25940932,
+        67115133,
+        67115133,
+        67115133,
+        20508881,
+        20508881,
+        20508881,
+        5318639,
+        5318639,
+        5318639,
+        24224830,
+        30271097,
+        30271097,
+        30271097,
+        24299458,
+        24299458,
+        24299458,
+        48130397,
+        48130397,
+        48130397,
+        53813120
+      ],
+      "extra": [
+        39341885,
+        39341885,
+        30674956,
+        29301450,
+        90512490,
+        49105782,
+        71068247,
+        71166481,
+        93039339,
+        54757758,
+        11765832,
+        89851827,
+        87746184,
+        87746184,
+        78397661
+      ],
+      "side": [
+        102380,
+        102380,
+        84192580,
+        84192580,
+        84192580,
+        14558127,
+        14558127,
+        14558127,
+        94145021,
+        94145021,
+        27204311,
+        27204311,
+        18144506,
+        14532163,
+        25311006
+      ]
+    },
+    "nekroz-ryzeal-jan2026-tcg-1st": {
+      "main": [
+        84433129,
+        87003671,
+        87003671,
+        87003671,
+        51618973,
+        51618973,
+        51618973,
+        35844557,
+        35844557,
+        72238166,
+        34022970,
+        42141493,
+        42141493,
+        42141493,
+        90307777,
+        14558127,
+        14558127,
+        39468724,
+        52068432,
+        13408726,
+        26674724,
+        26674724,
+        26674724,
+        89463537,
+        99185129,
+        25311006,
+        96729612,
+        96729612,
+        96729612,
+        14735698,
+        51124303,
+        97211663,
+        24224830,
+        24299458,
+        24299458,
+        24299458,
+        50596425,
+        50596425,
+        50596425,
+        6798031
+      ],
+      "extra": [
+        79606837,
+        93039339,
+        9940036,
+        34909328,
+        7511613,
+        45852939,
+        55285840,
+        5088741,
+        6983839,
+        90590303,
+        46772449,
+        581014,
+        66011101,
+        8809344,
+        90809975
+      ],
+      "side": [
+        84192580,
+        84192580,
+        87126721,
+        87126721,
+        21105106,
+        21105106,
+        21105106,
+        14532163,
+        14532163,
+        14532163,
+        18144506,
+        12682213,
+        12682213,
+        12682213,
+        41420027
+      ]
+    },
+    "labrynth-2026": {
+      "main": [
+        81497285,
+        2347656,
+        73355772,
+        73355772,
+        73602965,
+        73602965,
+        73602965,
+        75730490,
+        1225009,
+        60303688,
+        37629703,
+        37629703,
+        37629703,
+        74018812,
+        74018812,
+        74018812,
+        60990740,
+        60990740,
+        60990740,
+        92714517,
+        92714517,
+        92714517,
+        30748475,
+        30748475,
+        31849106,
+        31849106,
+        82956214,
+        82956214,
+        20899496,
+        20899496,
+        10045474,
+        10045474,
+        10045474,
+        16693934,
+        63086455,
+        63086455,
+        49299410,
+        6351147,
+        6351147,
+        80101899,
+        80101899,
+        11429811,
+        11429811,
+        5380979,
+        5380979
+      ],
+      "extra": [
+        41373230,
+        11765832,
+        80532587,
+        22850702,
+        93039339,
+        40673853,
+        66011101,
+        10019086,
+        98127546,
+        8264361,
+        33781156,
+        29301450,
+        71607202,
+        94259633,
+        9940036
+      ],
+      "side": [
+        102380,
+        14558127,
+        14558127,
+        14558127,
+        94145021,
+        94145021,
+        94145021,
+        24224830,
+        65681983,
+        42141493,
+        42141493,
+        42141493,
+        98645731,
+        98645731,
+        98645731
+      ]
+    },
+    "stun-runick-melbourne-top8": {
+      "main": [
+        15397015,
+        15397015,
+        92107604,
+        92107604,
+        94445733,
+        94445733,
+        94445733,
+        68957034,
+        68957034,
+        68957034,
+        31562086,
+        31562086,
+        31562086,
+        30430448,
+        30430448,
+        30430448,
+        67835547,
+        67835547,
+        67835547,
+        66712905,
+        93229151,
+        20618850,
+        35261759,
+        35261759,
+        35261759,
+        20508881,
+        20508881,
+        20508881,
+        33782437,
+        77066768,
+        98645731,
+        98645731,
+        98645731,
+        59750328,
+        73628505,
+        90846359,
+        24207889,
+        53334471,
+        60306277,
+        60306277
+      ],
+      "extra": [
+        74659582,
+        47219274,
+        47219274,
+        47219274,
+        28373620,
+        28373620,
+        28373620,
+        55990317,
+        55990317,
+        55990317,
+        92385016,
+        92385016,
+        93039339,
+        90590303,
+        29301450
+      ],
+      "side": [
+        32181268,
+        16922142,
+        16922142,
+        16922142,
+        10000080,
+        10000080,
+        10000080,
+        1372887,
+        1372887,
+        1372887,
+        5318639,
+        41420027,
+        15693423,
+        15693423,
+        15693423
+      ]
+    },
+    "snake-eye-yummy-sarcophagus-hollywood-wcq": {
+      "main": [
+        9674034,
+        9674034,
+        9674034,
+        90241276,
+        90241276,
+        48452496,
+        45663742,
+        27260347,
+        10966439,
+        10966439,
+        10966439,
+        31425736,
+        31425736,
+        31425736,
+        68810435,
+        14558127,
+        14558127,
+        14558127,
+        97268402,
+        97268402,
+        97268402,
+        42141493,
+        42141493,
+        42141493,
+        73642296,
+        73642296,
+        59438930,
+        59438930,
+        2295440,
+        85106525,
+        53639887,
+        66975205,
+        29369059,
+        93360904,
+        35269904,
+        35269904,
+        25311006,
+        10045474,
+        10045474,
+        10045474,
+        44822037
+      ],
+      "extra": [
+        65741786,
+        29301450,
+        2772337,
+        20665527,
+        58071334,
+        30581601,
+        30581601,
+        31603289,
+        67098897,
+        93192592,
+        1528054,
+        41999284,
+        60303245,
+        79606837,
+        81846453
+      ]
+    },
+    "tearlaments-2026-fafnirymd": {
+      "main": [
+        97651498,
+        40177746,
+        21074344,
+        17266660,
+        17266660,
+        17266660,
+        23434538,
+        37961969,
+        572850,
+        572850,
+        73956664,
+        73956664,
+        73956664,
+        35622739,
+        99937011,
+        28803166,
+        42141493,
+        42141493,
+        42141493,
+        51831560,
+        51831560,
+        51831560,
+        60764609,
+        60764609,
+        2501624,
+        2501624,
+        2501624,
+        32909498,
+        4928565,
+        342673,
+        33878367,
+        98567237,
+        71832012,
+        7394770,
+        7394770,
+        7394770,
+        6767771,
+        6767771,
+        6767771,
+        79791878,
+        60362066,
+        22283204,
+        38436986,
+        7436169,
+        74920585
+      ],
+      "extra": [
+        92731385,
+        46640168,
+        71616908,
+        37818794,
+        84330567,
+        59400890,
+        28226490,
+        79559912,
+        2463794,
+        65741786,
+        27381364,
+        29301450,
+        71818935,
+        49867899,
+        98127546
+      ],
+      "side": []
+    },
+    "floowandereeze-2026": {
+      "main": [
+        18940725,
+        18940725,
+        18940725,
+        54334420,
+        54334420,
+        54334420,
+        80611581,
+        80611581,
+        80433039,
+        80433039,
+        17827173,
+        17827173,
+        53212882,
+        29587993,
+        69327790,
+        73642296,
+        73642296,
+        73642296,
+        91800273,
+        28126717,
+        28126717,
+        69087397,
+        69087397,
+        98645731,
+        98645731,
+        98645731,
+        49238328,
+        49238328,
+        49238328,
+        81674782,
+        81674782,
+        54693926,
+        54693926,
+        54693926,
+        8267140,
+        8267140,
+        8267140,
+        75500286,
+        73628505,
+        24224830,
+        55521751,
+        41215808,
+        41215808,
+        77610503
+      ],
+      "extra": [
+        56410769,
+        56410769,
+        56410769,
+        48608796,
+        48608796,
+        48608796,
+        8491961,
+        8491961,
+        8491961,
+        27240101,
+        38342335,
+        38342335,
+        2857636,
+        2857636,
+        2857636
+      ],
+      "side": [
+        102380,
+        102380,
+        102380,
+        59438930,
+        59438930,
+        59438930
+      ]
+    },
+    "kashtira-azamina-verquin-wcq-top8": {
+      "main": [
+        32061192,
+        69272449,
+        69272449,
+        96676583,
+        96676583,
+        96676583,
+        20938824,
+        20938824,
+        20938824,
+        54143349,
+        54143349,
+        54143349,
+        80538047,
+        80538047,
+        80538047,
+        16922142,
+        85315450,
+        53927851,
+        68304193,
+        68304193,
+        68304193,
+        32909498,
+        32909498,
+        32909498,
+        72270339,
+        72270339,
+        72270339,
+        97631303,
+        68337209,
+        68337209,
+        93453053,
+        67115133,
+        67115133,
+        67115133,
+        20508881,
+        20508881,
+        20508881,
+        5318639,
+        5318639,
+        5318639,
+        69540484,
+        71832012,
+        80845034,
+        80845034,
+        80845034,
+        66328392,
+        20934683,
+        22283204,
+        25311006,
+        83764718,
+        73628505,
+        24224830,
+        24299458,
+        24299458,
+        24299458,
+        28958464,
+        28958464,
+        57111661,
+        94722358,
+        53813120
+      ],
+      "extra": [
+        37818794,
+        59400890,
+        46396218,
+        22110647,
+        39138610,
+        86066372,
+        21848500,
+        68059897,
+        45819647,
+        29301450,
+        65741786,
+        9763474,
+        58699500,
+        50277355,
+        39341885
+      ],
+      "side": [
+        68144894,
+        68144894,
+        91800273,
+        14558127,
+        14558127,
+        14558127,
+        94145021,
+        94145021,
+        14532163,
+        54693926,
+        54693926,
+        54693926,
+        15693423,
+        15693423,
+        15693423
+      ]
+    },
+    "horus-crystron-santiago-wcq-top4": {
+      "main": [
+        25865565,
+        25865565,
+        25865565,
+        3422200,
+        3422200,
+        3422200,
+        83443619,
+        83443619,
+        83443619,
+        29838323,
+        99471856,
+        99471856,
+        99471856,
+        20050865,
+        84941194,
+        84941194,
+        84941194,
+        47330808,
+        94145021,
+        94145021,
+        14558127,
+        14558127,
+        14558127,
+        42141493,
+        42141493,
+        42141493,
+        31552317,
+        31552317,
+        31552317,
+        81439173,
+        16528181,
+        16528181,
+        16528181,
+        24299458,
+        24299458,
+        24299458,
+        10045474,
+        10045474,
+        10045474,
+        53829527
+      ],
+      "extra": [
+        47736165,
+        47736165,
+        13455674,
+        40509732,
+        33158448,
+        33158448,
+        97007933,
+        58069384,
+        58069384,
+        10443957,
+        10443957,
+        8165596,
+        73082255,
+        41739381,
+        29301450
+      ],
+      "side": [
+        46502744,
+        46502744,
+        46502744,
+        84192580,
+        84192580,
+        84192580,
+        25311006,
+        24224830,
+        15693423,
+        15693423,
+        15693423,
+        7811875,
+        7811875,
+        7811875,
+        58921041
+      ]
+    },
+    "dinomorphia-696904": {
+      "main": [
+        92133240,
+        92133240,
+        92133240,
+        38628859,
+        38628859,
+        59750328,
+        98645731,
+        98645731,
+        98645731,
+        52020510,
+        52020510,
+        99414629,
+        78420796,
+        78420796,
+        78420796,
+        26631975,
+        26631975,
+        26631975,
+        7336745,
+        7336745,
+        31044787,
+        31044787,
+        31044787,
+        92428405,
+        92428405,
+        92428405,
+        30748475,
+        30748475,
+        30748475,
+        1637760,
+        1637760,
+        1637760,
+        12682213,
+        12682213,
+        12682213,
+        58921041,
+        41420027,
+        40605147,
+        40605147,
+        40605147
+      ],
+      "extra": [
+        48832775,
+        48832775,
+        92798873,
+        92798873,
+        92798873,
+        74936480,
+        13331639,
+        1516510,
+        41209827,
+        42752141,
+        74294676,
+        30095833,
+        98452268,
+        50954680,
+        59765225
+      ],
+      "side": [
+        10000080,
+        10000080,
+        10000080,
+        14532163,
+        14532163,
+        14532163,
+        15693423,
+        15693423,
+        15693423,
+        90846359,
+        82732705,
+        10813327,
+        10813327,
+        10813327,
+        35103106
+      ]
+    },
+    "spright-greenville-wcq-top8": {
+      "main": [
+        76145933,
+        76145933,
+        76145933,
+        75922381,
+        75922381,
+        2311090,
+        13533678,
+        13533678,
+        13533678,
+        88686573,
+        88686573,
+        68353324,
+        68353324,
+        68353324,
+        9126351,
+        9126351,
+        9126351,
+        2992467,
+        9396662,
+        42141493,
+        42141493,
+        42141493,
+        14558127,
+        14558127,
+        14558127,
+        94145021,
+        94145021,
+        94145021,
+        10963799,
+        15443125,
+        15443125,
+        15443125,
+        43582229,
+        24299458,
+        24299458,
+        24299458,
+        65681983,
+        81439173,
+        24224830,
+        40366667,
+        40366667,
+        40366667,
+        68250822
+      ],
+      "extra": [
+        54498517,
+        54498517,
+        90448279,
+        32453837,
+        3790062,
+        9486959,
+        72167543,
+        54191698,
+        84224627,
+        90809975,
+        72329844,
+        12067160,
+        73309655,
+        65741786,
+        29301450
+      ],
+      "side": [
+        46502744,
+        46502744,
+        46502744,
+        84192580,
+        84192580,
+        18144506,
+        45141013,
+        45141013,
+        45141013,
+        42431833,
+        58921041,
+        41420027,
+        83266092,
+        83266092,
+        83266092
+      ]
+    },
+    "branded-dracotail-bainbridge-2nd": {
+      "main": [
+        75003700,
+        75003700,
+        75003700,
+        1498449,
+        1498449,
+        1498449,
+        84477320,
+        7375867,
+        70871153,
+        44482554,
+        73819701,
+        73819701,
+        68468459,
+        95515789,
+        55273560,
+        42141493,
+        42141493,
+        42141493,
+        97268402,
+        97268402,
+        14558127,
+        14558127,
+        14558127,
+        73642296,
+        73642296,
+        94145021,
+        27204311,
+        27204311,
+        6153210,
+        32548318,
+        32548318,
+        32548318,
+        44362883,
+        44362883,
+        30271097,
+        30271097,
+        24224830,
+        80208225,
+        69932023,
+        5431722
+      ],
+      "extra": [
+        33760966,
+        33760966,
+        79755671,
+        42125140,
+        89851827,
+        87746184,
+        44146295,
+        38811586,
+        70534340,
+        3410461,
+        51409648,
+        76666602,
+        72578374,
+        70538272,
+        78397661
+      ],
+      "side": [
+        32909498,
+        32909498,
+        84192580,
+        84192580,
+        94145021,
+        18144506,
+        14532163,
+        14532163,
+        24299458,
+        24299458,
+        24299458,
+        25311006,
+        85442146,
+        82732705,
+        41373230
+      ]
+    }
+  },
+  "hands": [
+    {
+      "id": "ddd-pendulum-opener",
+      "deck": "ddd-wcq-top4",
+      "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Canonical 1-card Gate combo produces the FULL endboard: Deus Machinex+1 contract, Wave High King Caesar, Cursed King Siegfried, Sky King Zeus Ragnarok, Headhunt. See ddd-combo-reference.md.",
+      "hand": [
+        11609969,
+        46796664,
+        42382265,
+        46372010,
+        42141493
+      ],
+      "deckSeed": "11111,22222",
+      "maxDepth": 50,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 46593546,
+          "cardName": "D/D/D Deviser King Deus Machinex",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 79559912,
+          "cardName": "D/D/D Wave High King Caesar",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 44852429,
+          "cardName": "D/D/D Cursed King Siegfried",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 30998403,
+          "cardName": "D/D/D Sky King Zeus Ragnarok",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 91781484,
+          "cardName": "D/D/D Headhunt",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "ryzeal-mitsurugi-opener",
+      "deck": "ryzeal-mitsurugi-hk-top8",
+      "description": "Mitsurugi+Ryzeal opener (HK Top 8 Mar 2026, Tu Kai-Hsiang): Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [mitsurugi-ryzeal-combo-reference.md](mitsurugi-ryzeal-combo-reference.md). Hand and endboard kept as-is from pre-existing fixture (already user-validated in step 1 calibration cycle). Realistic hybrid 2-engine 1+2-card opener: Habakiri starter + 2 Ryzeal extenders + Mitsurugi Prayers ritual spell + 1 handtrap. Canonical 6-piece endboard (Rank 4 Detonator + Rank 4 Duo Drive + Futsu no Mitama ritual + Rank 8 Photon Lord + Ryzeal Cross set + Great Purification trap set) matches research-documented Hong Kong Top 8 finish pattern. Structural sanity checks pass: no consumed-piece conflicts, no intermediate set traps, no side-deck contamination. Step 1 structural value function delta: score 35 → 42.58 (+7.58 from F1 Ritual + F2 Tutor + F3 ED Pool features).",
+      "hand": [
+        13332685,
+        8633261,
+        35844557,
+        45171524,
+        42141493
+      ],
+      "deckSeed": "33333,44444",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 34909328,
+          "cardName": "Ryzeal Detonator",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 7511613,
+          "cardName": "Ryzeal Duo Drive",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 55397172,
+          "cardName": "Futsu no Mitama no Mitsurugi",
+          "position": "attack"
+        },
+        {
+          "zone": "FIELD",
+          "cardId": 6798031,
+          "cardName": "Ryzeal Cross",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification",
+          "position": "set"
+        }
+      ],
+      "_expectedBoardNote": "Revised 2026-04-18: removed Number 90 Galaxy-Eyes Photon Lord (8165596). Combo analysis showed Photon Lord (Rank 8, needs 2 Lv8 simultaneously) is not reachable from this hand without 3+ ritual-summon events, which exceeds the deck's available resources (2 ritual spells × 2 effects each / turn, but search bottlenecks limit effective RS to 2). Target reduced to 5/5 canonical board (Ryzeal Detonator + Ryzeal Duo Drive + Futsu + Cross set + Purification set).",
+      "_seedFrozen": true
+    },
+    {
+      "id": "radiant-typhoon-opener",
+      "deck": "radiant-typhoon-ygoprodeck-2026",
+      "description": "Radiant Typhoon opener (validated 2026-04-15, re-validated 2026-04-17): Eldam + Chant + Krosea + Vision + Mulcharmy Fuwalos. Ground-truthed against [radiant-typhoon-combo-reference.md](radiant-typhoon-combo-reference.md). Hand and expectedBoard KEPT from user's original validation — all 3 pieces match the canonical 2026 Radiant Typhoon control endboard (Totem Bird Rank 3 Xyz + Hraesvelgr Link-3 + Mandate Continuous Trap). Control deck paradigm — 3-card endboard (vs 5-6 for combo decks). Control paradigm gold standard for step 3 ES tuning — 3-piece endboard demonstrates high per-card disruption value vs combo's wider pile. Methodology v2 position fields already applied (attack/attack/set).",
+      "hand": [
+        54143349,
+        67115133,
+        16922142,
+        20508881,
+        42141493
+      ],
+      "deckSeed": "99999,10101",
+      "maxDepth": 60,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 71068247,
+          "cardName": "Totem Bird",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 49105782,
+          "cardName": "Hraesvelgr, the Desperate Doom Eagle",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 53813120,
+          "cardName": "Radiant Typhoon Mandate",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "branded-dracotail-opener",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail Arthalion+Dark Dragon+Secreterion line — auto-generated from PvP replay 2e4445ae-9359-4b93-aa7e-461a8d4e179f (2026-04-19, 118 steps, turnCount=2, captured 8-piece endboard). Hand: Dracotail Lukias (75003700) + Fallen of the White Dragon (73819701) + Dracotail Phryxul (84477320) + The Fallen & The Virtuous (30271097) + Branded Fusion (44362883). Note: Blazing Cartesia not in opening hand — the 'minimalist' line uses Fallen of the White Dragon's on-SS to fetch Incredible Ecclesia (Lv4 Tuner, Synchro material), then Ecclesia and the Dark Dragon's banish-self effect fetches Blazing Cartesia from Deck (mentions Fallen of Albaz). Cartesia then Fusion-summons Secreterion using Urgula (searched by Lukias NS) + Lukias, triggering Urgula/Lukias on-fusion-material sets. Urgula GY-eff recycles Lukias to hand → Rahu Dracotail fuses Lukias+Mululu → Arthalion. Arthalion on-fusion returns Fallen of the White Dragon to hand. Secreterion GY-eff revives Mululu (shuffles Lukias or Phyrxul back). Albion EP-eff sets The Fallen & The Virtuous. Dark Dragon returns from banishment at EP. Combo plan: [branded-dracotail-combo-plan-2026-04-19.md](branded-dracotail-combo-plan-2026-04-19.md) (plan targeted 7/8; replay produces 8 because Blazing Cartesia survives as Fusion activator, not material). Raw-replay trajectory: [branded-dracotail-opener.raw-replay.json](branded-dracotail-opener.raw-replay.json).",
+      "hand": [
+        75003700,
+        73819701,
+        84477320,
+        30271097,
+        44362883
+      ],
+      "deckSeed": "3510667737223306533,13278052914564331778",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 30271097,
+          "cardName": "The Fallen & The Virtuous",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "kashtira-azamina-opener",
+      "deck": "kashtira-azamina-verquin-wcq-top8",
+      "description": "Kashtira Azamina Radiant Typhoon Maliss opener (Verquin WCQ Top 8 Apr 2026, Edouard Tan): Kashtira Fenrir + Pressured Planet Wraitsoth + WANTED + Diabellstar + Magicians' Souls. Ground-truthed 2026-04-17 against [kashtira-azamina-combo-reference.md](kashtira-azamina-combo-reference.md). Multi-engine Verquin hand — Kashtira engine primed (Fenrir + Wraitsoth), Azamina pivot primed (WANTED + Diabellstar), Magicians' Souls for +2 draw ramp. This deck intentionally carries no handtraps in main — the realistic Verquin opener is 5 engine cards. Canonical endboard for this hybrid: Azamina Ilia Silvia (primary omni-negate Fusion) + Accesscode Talker (Link-4 finisher) + Mecha Phantom Beast Dracossack (Rank 7 Xyz via 2x Kashtira Lvl 7) + WANTED trap set. Kashtira Arise-Heart/Shangri-Ira are NOT in this deck's extra — this is NOT a pure Kashtira build; the engine uses Kashtira bodies as XYZ material for Dracossack instead of Kashtira Rank 7 Xyz bosses.",
+      "hand": [
+        32909498,
+        71832012,
+        80845034,
+        72270339,
+        97631303
+      ],
+      "deckSeed": "11235,81321",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 46396218,
+          "cardName": "Azamina Ilia Silvia",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 86066372,
+          "cardName": "Accesscode Talker",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 22110647,
+          "cardName": "Mecha Phantom Beast Dracossack",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80845034,
+          "cardName": "WANTED: Seeker of Sinful Spoils",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "horus-crystron-opener",
+      "deck": "horus-crystron-santiago-wcq-top4",
+      "description": "Horus Crystron opener (Santiago WCQ Top 4 Mar 2026, Guillermo Enrique Rivera Gonzalez): Crystron Sulfefnir + Imsety Glory of Horus + King's Sarcophagus + Ash Blossom + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [horus-crystron-combo-reference.md](horus-crystron-combo-reference.md). Hand corrected: previous version had both Sulfefnir AND Sulfador in hand (over-loaded Crystron engine), new version uses single Sulfefnir starter that chains into Sulfador from deck via Inclusion. Only fixture in suite with a primary synchro engine — preserves synchro paradigm coverage for step 3. Corrected expectedBoard: Eleskeletus removed (Link-2 consumed as Crystron Synchro material, not terminal); Cyber Dragon Infinity added as Rank 8 terminal via Imsety + Hapi Xyz chain. Note: Infinity + Imsety co-presence flagged in reference doc — if smoke reveals structural infeasibility, swap Imsety for Eleskeletus.",
+      "hand": [
+        3422200,
+        84941194,
+        16528181,
+        14558127,
+        42141493
+      ],
+      "deckSeed": "31415,92653",
+      "maxDepth": 70,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 13455674,
+          "cardName": "Crystron Quariongandrax",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 10443957,
+          "cardName": "Cyber Dragon Infinity",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 84941194,
+          "cardName": "Imsety, Glory of Horus",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 16528181,
+          "cardName": "King's Sarcophagus"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "dinomorphia-opener",
+      "deck": "dinomorphia-696904",
+      "description": "Dinomorphia opener (Mar 2026 'When the dinos are dividing their LP' build): Dinomorphia Therizia + Dinomorphia Frenzy + Card of Demise + Pot of Duality + Iron Thunder. Ground-truthed 2026-04-17 against [dinomorphia-combo-reference.md](dinomorphia-combo-reference.md). LP-sacrifice paradigm — compact 5-card opener where Therizia starts the fusion chain and Card of Demise provides +3 turn-1 card advantage. Canonical endboard is MINIMALIST by design (Rexterm alone + 2 set traps, NOT 2 fusion bosses simultaneously). Kentregina is CONSUMED as Rexterm's fusion material in the canonical chain, so listing both was structurally wrong in the previous fixture.",
+      "hand": [
+        92133240,
+        78420796,
+        59750328,
+        98645731,
+        12682213
+      ],
+      "deckSeed": "27182,81828",
+      "maxDepth": 40,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 92798873,
+          "cardName": "Dinomorphia Rexterm",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 26631975,
+          "cardName": "Dinomorphia Domain",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 7336745,
+          "cardName": "Dinomorphia Intact",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "spright-opener",
+      "deck": "spright-greenville-wcq-top8",
+      "description": "Spright opener (Greenville WCQ Top 8 Jan 2026, Ivan Villa): Spright Blue + Swap Frog + Spright Starter + Ash Blossom + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [spright-combo-reference.md](spright-combo-reference.md). Hand corrected from 4-Spright-starters + Nimble (over-loaded) to 1 Spright starter + 1 Frog extender + 1 engine spell + 2 handtraps (realistic tournament hand). Swap Frog is the dedicated Lvl 2 Aqua extender required to reach Toadally Awesome (Rank 2 WATER Aqua Xyz). Level/Rank 2 toolbox paradigm: Blue searches Starter → Starter SS Jet from deck → Blue+Jet Rank 2 into Gigantic → Gigantic SS Swap Frog → Swap Frog + Jet into Toadally. Expected endboard kept identical to pre-validation (already canonically correct): Spright Red + Carrot + Gigantic + Toadally, dual-negate + toolbox setup.",
+      "hand": [
+        76145933,
+        9126351,
+        15443125,
+        14558127,
+        42141493
+      ],
+      "deckSeed": "13579,24680",
+      "maxDepth": 60,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 75922381,
+          "cardName": "Spright Red",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 2311090,
+          "cardName": "Spright Carrot",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 54498517,
+          "cardName": "Gigantic Spright",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 90809975,
+          "cardName": "Toadally Awesome",
+          "position": "attack"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "snake-eye-yummy-opener",
+      "deck": "snake-eye-yummy-sarcophagus-hollywood-wcq",
+      "description": "Snake-Eye Yummy 9-interruption combo opener — Ash 1-card (post-P3 replay, full combo)",
+      "hand": [
+        66975205,
+        9674034,
+        35269904,
+        90241276,
+        25311006
+      ],
+      "deckSeed": "12301164246358577464,15489252968079702587",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 93192592,
+          "cardName": "Lollipo★Yummy Way",
+          "position": "defense"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 48452496,
+          "cardName": "Snake-Eyes Flamberge Dragon",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 1528054,
+          "cardName": "Silhouhatte Rabbit",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 29369059,
+          "cardName": "Yummy☆Surprise",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 44822037,
+          "cardName": "Angel Statue - Azurune",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 65741786,
+          "cardName": "I:P Masquerena",
+          "position": "set"
+        },
+        {
+          "zone": "FIELD",
+          "cardId": 53639887,
+          "cardName": "Divine Temple of the Snake-Eye",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "tearlaments-opener",
+      "deck": "tearlaments-2026-fafnirymd",
+      "description": "Tearlaments opener (Feb 2026 fafnirymd build): Tearlaments Reinoheart + Tearlaments Scheiren + Fabled Lurrie + Fiendsmith Engraver + Mulcharmy Fuwalos. Ground-truthed 2026-04-17 against [tearlaments-combo-reference.md](tearlaments-combo-reference.md). Hand corrected from 4-Tearlaments-over-loaded to 2-Tearlaments-core + Fiendsmith engine + handtrap (realistic tournament hand). GY-fusion paradigm: Reinoheart mills Scheiren → Scheiren SS + mills 3 → multiple Tearlaments in GY → Fusion chain into Kitkallos → second Fusion into Kaleido-Heart via Scream recycle → Fiendsmith engine via Engraver+Lurrie discards. Corrected expectedBoard: Kitkallos + Kaleido-Heart + Fiendsmith's Requiem + S:P Little Knight. Rulkallos removed (typically consumed as Kaleido-Heart material, not terminal). Scream set removed (it's a field spell active in FIELD zone not set trap). Paradigm caveat for step 3: GY-fusion shows high az% because engine self-terminates quickly once Fusions land — worth cross-paradigm scoring normalization research.",
+      "hand": [
+        73956664,
+        572850,
+        97651498,
+        60764609,
+        42141493
+      ],
+      "deckSeed": "78787,89898",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 92731385,
+          "cardName": "Tearlaments Kitkallos",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 28226490,
+          "cardName": "Tearlaments Kaleido-Heart",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 2463794,
+          "cardName": "Fiendsmith's Requiem",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 29301450,
+          "cardName": "S:P Little Knight",
+          "position": "attack"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "floowandereeze-opener",
+      "deck": "floowandereeze-2026",
+      "description": "Floowandereeze opener (2026 build): Floowandereeze & Robina + Floowandereeze and the Magnificent Map + Floowandereeze & Eglen + Floowandereeze & Toccan + Ghost Belle. Ground-truthed 2026-04-17 against [floowandereeze-combo-reference.md](floowandereeze-combo-reference.md). Hand and endboard KEPT — already match canonical 1-card Robina opener + Empen/Apex Avian/Nightingale/Map end pattern. Normal-summon lock paradigm: banish cards from hand as tribute to normal-summon Flo Lvl 1 birds, chain searches, Tribute Summon Lvl 8/10 finishers. Position fields (methodology v2): Empen + Apex Avian + Nightingale in attack (ATK-position is canonical for offensive boss placement); Map has no position (field spell zone).",
+      "hand": [
+        18940725,
+        28126717,
+        54334420,
+        17827173,
+        73642296
+      ],
+      "deckSeed": "90909,10101",
+      "maxDepth": 60,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 80611581,
+          "cardName": "Floowandereeze & Empen",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 29587993,
+          "cardName": "Mist Valley Apex Avian",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 48608796,
+          "cardName": "Lyrilusc - Assembled Nightingale",
+          "position": "attack"
+        },
+        {
+          "zone": "FIELD",
+          "cardId": 28126717,
+          "cardName": "Floowandereeze and the Magnificent Map"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "labrynth-opener",
+      "deck": "labrynth-2026",
+      "description": "Labrynth opener (Jan 2026 TCG): Labrynth Stovie Torbie + Welcome Labrynth + Arias the Labrynth Butler + Arianna the Labrynth Servant + Infinite Impermanence. Ground-truthed 2026-04-17 against [labrynth-combo-reference.md](labrynth-combo-reference.md). Hand KEPT as-is after probe experiment (2026-04-17): attempted realism refinement to [Stovie + 2 engine traps + Rollback + Imperm] dropped score 8→6, depth 31→17, matched 2/4→0/4 (t2 jumped 40.5%→77.3% indicating engine-stall). Diagnosis: Labrynth's Big Welcome Labrynth trap has a bounce-SS clause that RE-TRIGGERS Labrynth monster effects when owned monsters are bounced. Multiple Labrynth monsters in hand (Arias + Arianna + Stovie) form a CHAIN of triggers when bounced by Big Welcome, NOT redundancy. The original 3-Labrynth-monster hand is the realistic engine-dense opener. Endboard kept: Lady Labrynth + 3 set traps (Welcome + Big Welcome + Transaction Rollback).",
+      "hand": [
+        74018812,
+        5380979,
+        73602965,
+        1225009,
+        10045474
+      ],
+      "deckSeed": "12121,23232",
+      "maxDepth": 60,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 81497285,
+          "cardName": "Lady Labrynth of the Silver Castle",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 92714517,
+          "cardName": "Big Welcome Labrynth",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5380979,
+          "cardName": "Welcome Labrynth",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 6351147,
+          "cardName": "Transaction Rollback",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "stun-runick-opener",
+      "deck": "stun-runick-melbourne-top8",
+      "description": "Stun Runick opener (Melbourne WCQ Top 8): Runick Fountain + Runick Destruction + Runick Flashing Fire + Runick Tip + Pot of Duality. Ground-truthed 2026-04-17 against [stun-runick-combo-reference.md](stun-runick-combo-reference.md). Hand KEPT as-is after validation probe — this is a realistic Stun Runick engine-heavy opener (3 Runick Quick-Plays enable multiple Link-1 SS + Fountain recycling engine). Experimentally validated: swapping out Runick Tip (31562086) drops structural score 12→0, confirming Tip's F2 tutor-chain contribution is critical to the Runick engine's scoring footprint. Stall/non-summoning paradigm: no Ritual/Fusion/Synchro/Xyz/Link bosses beyond Link-1 Runick Wings. Turn-1 goal: Fountain active + Runick Quick-Play SS multiple Link-1s + Runick spells set for opp-turn. Extended expectedBoard to 4 pieces (added Rivalry of Warlords as realistic floodgate if drawn from deck via engine). CRITICAL caveat for step 3 ES tuning: structural score is intentionally LOW (F1=0, F2 = Tip chain only, F3 = Link-1 Wings only) — this is paradigm-correct floor, not solver weakness.",
+      "hand": [
+        92107604,
+        94445733,
+        68957034,
+        31562086,
+        98645731
+      ],
+      "deckSeed": "34343,45454",
+      "maxDepth": 50,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 55990317,
+          "cardName": "Hugin the Runick Wings",
+          "position": "attack"
+        },
+        {
+          "zone": "FIELD",
+          "cardId": 92107604,
+          "cardName": "Runick Fountain"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 90846359,
+          "cardName": "Rivalry of Warlords",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 30430448,
+          "cardName": "Runick Freezing Curses",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "nekroz-ryzeal-opener",
+      "deck": "nekroz-ryzeal-jan2026-tcg-1st",
+      "description": "Nekroz Ryzeal opener (Jan 2026 TCG 1st Place Undefeated): Emilia (Dance Priestess) + Avance (Swordsman) + Preparation of Rites + Mulcharmy Fuwalos + Ash Blossom. Ground-truthed 2026-04-17 against [nekroz-ryzeal-combo-reference.md](nekroz-ryzeal-combo-reference.md). Hand matches the canonical 2026 Nekroz Ryzeal core 2-card combo per YGOrganization CDP (Emilia + Avance = Level 4 Nekroz pair). Corrected expectedBoard: Herald of the Arc Light REMOVED (it's consumed as Kaleidoscope's Extra-Deck ritual tribute → GY, not on-field at end). Added Nekroz of Trishula (terminal ritual boss with 3-card banish) + Ryzeal Detonator (terminal Rank 4 finisher) in place. Fixture was originally added in step 2 Phase 1 to validate F1 Ritual Unlock Co-Presence generalization on Nekroz's distinct ritual spells (Kaleidoscope/Cycle/Mirror/Divinemirror) — F1 generalization confirmed via score=46.58 pre-validation smoke.",
+      "hand": [
+        87003671,
+        51618973,
+        96729612,
+        42141493,
+        14558127
+      ],
+      "deckSeed": "70707,80808",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 7511613,
+          "cardName": "Ryzeal Duo Drive",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 34909328,
+          "cardName": "Ryzeal Detonator",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 52068432,
+          "cardName": "Nekroz of Trishula",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 51124303,
+          "cardName": "Nekroz Kaleidoscope",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true
+    },
+    {
+      "id": "branded-dracotail-opener-mirrorjade-line",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener (Mirrorjade line, user-added 2026-04-14, re-validated 2026-04-17): SAME opening hand as branded-dracotail-opener. Ground-truthed against [branded-dracotail-combo-reference.md](branded-dracotail-combo-reference.md). Tests the alternate canonical Branded-primary endboard: Branded Fusion → Lubellion → Mirrorjade + Albion Sanctifire atop, with Dracotail trap package SZONE + Faimena kept HAND. Multi-line fixture pairing: `matched` on EITHER this fixture OR branded-dracotail-opener indicates canonical reach — the solver explores both lines from the same opener via Branded Fusion's split targets. Methodology v2 position fields already applied.",
+      "hand": [
+        1498449,
+        75003700,
+        73819701,
+        44362883,
+        95515789
+      ],
+      "deckSeed": "55555,66666",
+      "maxDepth": 100,
+      "preferredIntermediates": [
+        7375867,
+        55273560
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting",
+          "position": "set"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "_seedFrozen": true
+    }
+  ]
+}

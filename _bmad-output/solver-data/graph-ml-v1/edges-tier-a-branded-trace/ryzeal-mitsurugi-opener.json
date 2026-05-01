@@ -1,0 +1,149 @@
+{
+  "fixtureId": "ryzeal-mitsurugi-opener",
+  "deck": "ryzeal-mitsurugi-hk-top8",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 27,
+  "cardsTouched": [
+    8633261,
+    13332685,
+    45171524
+  ],
+  "byEdgeId": {
+    "45171524.e1->18176525.e1": {
+      "hits": 10,
+      "cumulativeContribution": -1203.3762365841258,
+      "weight": -1.2033762365841256
+    },
+    "45171524.e1->18176525.e2": {
+      "hits": 10,
+      "cumulativeContribution": -1557.3030909850902,
+      "weight": -1.5573030909850907
+    },
+    "45171524.e1->18176525.e3": {
+      "hits": 10,
+      "cumulativeContribution": 216.23656397891975,
+      "weight": 0.21623656397891972
+    },
+    "45171524.e1->19899073.e1": {
+      "hits": 10,
+      "cumulativeContribution": 670.6756791042357,
+      "weight": 0.6706756791042354
+    },
+    "45171524.e1->40543231.e1": {
+      "hits": 10,
+      "cumulativeContribution": -497.7075935783558,
+      "weight": -0.49770759357835587
+    },
+    "45171524.e1->40543231.e2": {
+      "hits": 10,
+      "cumulativeContribution": 478.2263345515835,
+      "weight": 0.47822633455158353
+    },
+    "45171524.e1->40543231.e3": {
+      "hits": 10,
+      "cumulativeContribution": -1065.6488742154422,
+      "weight": -1.0656488742154422
+    },
+    "45171524.e1->82782870.e1": {
+      "hits": 10,
+      "cumulativeContribution": 1107.7577996284426,
+      "weight": 1.1077577996284427
+    },
+    "45171524.e1->82782870.e2": {
+      "hits": 10,
+      "cumulativeContribution": 16.690502922793616,
+      "weight": 0.016690502922793615
+    },
+    "45171524.e1->82782870.e3": {
+      "hits": 10,
+      "cumulativeContribution": -275.431118360737,
+      "weight": -0.275431118360737
+    },
+    "8633261.e2->34022970.e2": {
+      "hits": 6,
+      "cumulativeContribution": 82.6245203791485,
+      "weight": 0.13770753396524751
+    },
+    "8633261.e2->34022970.e3": {
+      "hits": 6,
+      "cumulativeContribution": -355.23438442445564,
+      "weight": -0.5920573073740928
+    },
+    "8633261.e2->34909328.e2": {
+      "hits": 6,
+      "cumulativeContribution": 947.9409382405208,
+      "weight": 1.579901563734201
+    },
+    "8633261.e2->35844557.e2": {
+      "hits": 6,
+      "cumulativeContribution": 44.59998432379775,
+      "weight": 0.07433330720632958
+    },
+    "8633261.e2->35844557.e3": {
+      "hits": 6,
+      "cumulativeContribution": 0.058801618683113066,
+      "weight": 0.00009800269780518844
+    },
+    "8633261.e2->7511613.e2": {
+      "hits": 6,
+      "cumulativeContribution": -132.25316141505985,
+      "weight": -0.22042193569176644
+    },
+    "8633261.e2->84433129.e2": {
+      "hits": 6,
+      "cumulativeContribution": -654.6882559043166,
+      "weight": -1.0911470931738612
+    },
+    "13332685.e2->18176525.e1": {
+      "hits": 2,
+      "cumulativeContribution": -159.15973484141716,
+      "weight": -0.7957986742070858
+    },
+    "13332685.e2->18176525.e2": {
+      "hits": 2,
+      "cumulativeContribution": -19.820631364162043,
+      "weight": -0.09910315682081022
+    },
+    "13332685.e2->18176525.e3": {
+      "hits": 2,
+      "cumulativeContribution": 14.140103529553446,
+      "weight": 0.07070051764776723
+    },
+    "13332685.e2->19899073.e1": {
+      "hits": 2,
+      "cumulativeContribution": 38.13770218228619,
+      "weight": 0.19068851091143096
+    },
+    "13332685.e2->40543231.e1": {
+      "hits": 2,
+      "cumulativeContribution": -11.350722249535188,
+      "weight": -0.056753611247675945
+    },
+    "13332685.e2->40543231.e2": {
+      "hits": 2,
+      "cumulativeContribution": 74.64892783761934,
+      "weight": 0.3732446391880967
+    },
+    "13332685.e2->40543231.e3": {
+      "hits": 2,
+      "cumulativeContribution": -10.65226919021956,
+      "weight": -0.0532613459510978
+    },
+    "13332685.e2->82782870.e1": {
+      "hits": 2,
+      "cumulativeContribution": 198.4727378926429,
+      "weight": 0.9923636894632145
+    },
+    "13332685.e2->82782870.e2": {
+      "hits": 2,
+      "cumulativeContribution": 147.32786221824895,
+      "weight": 0.7366393110912448
+    },
+    "13332685.e2->82782870.e3": {
+      "hits": 2,
+      "cumulativeContribution": -241.35145716834558,
+      "weight": -1.206757285841728
+    }
+  }
+}

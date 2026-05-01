@@ -1,0 +1,186 @@
+{
+  "cardId": 1269512,
+  "name": "Full Armored Utopic Ray Lancer",
+  "sourceFile": "official/c1269512.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,3,s.ovfilter,aux.Stringid(id,0),3,s.xyzop)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 3,
+            "max": 3
+          }
+        ],
+        "extras": [
+          "s.ovfilter",
+          "aux.Stringid(id,0)",
+          "3",
+          "s.xyzop"
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_UPDATE_ATTACK"
+      ],
+      "range": "LOCATION_MZONE",
+      "targetRange": {
+        "self": "0",
+        "opponent": "LOCATION_MZONE"
+      },
+      "value": {
+        "inline": "-500",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_DISABLE"
+      ],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_PHASE|PHASE_BATTLE_START"
+      ],
+      "descriptionStringId": "0",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.distg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            },
+            {
+              "kind": "negatable"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_DISABLE",
+              "nil",
+              "1",
+              "1-tp",
+              "LOCATION_MZONE"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            },
+            {
+              "kind": "negatable"
+            }
+          ],
+          "complete": true
+        }
+      }
+    },
+    {
+      "id": "e3",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_BATTLE_DESTROYING"
+      ],
+      "descriptionStringId": "1",
+      "condition": {
+        "name": "s.exatkcon",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "Duel.GetAttacker()==c"
+            },
+            {
+              "kind": "canBeBattleTarget"
+            },
+            {
+              "kind": "raw",
+              "source": "aux.bdocon(e,tp,eg,ep,ev,re,r,rp)"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "cost": {
+        "inline": "Cost.DetachFromSelf(1,1,nil)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.DetachFromSelf",
+          "kind": "detach-material",
+          "params": {
+            "args": [
+              "1",
+              "1",
+              "nil"
+            ]
+          }
+        }
+      },
+      "operation": {
+        "inline": "function() Duel.ChainAttack() end",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "chain-attack",
+            "method": "ChainAttack"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 5,
+    "fullyDecoded": 4,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

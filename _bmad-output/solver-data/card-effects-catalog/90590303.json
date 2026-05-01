@@ -1,0 +1,261 @@
+{
+  "cardId": 90590303,
+  "name": "Number 41: Bagooska the Terribly Tired Tapir",
+  "sourceFile": "official/c90590303.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [
+    {
+      "kind": "Xyz",
+      "rawCall": "Xyz.AddProcedure(c,nil,4,2)",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "material",
+            "min": 2,
+            "max": 2
+          }
+        ],
+        "notes": [
+          "Rank 4"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EVENT_PHASE|PHASE_STANDBY"
+      ],
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "name": "s.mtcon",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "IsTurnPlayer",
+              "args": [
+                "tp"
+              ]
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "name": "s.mtop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "detach-xyz-material",
+            "method": "RemoveOverlayCard",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "tp",
+              "1",
+              "1",
+              "REASON_COST"
+            ]
+          },
+          {
+            "kind": "destroy",
+            "method": "Destroy",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "REASON_COST"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_CANNOT_BE_EFFECT_TARGET"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.tgcon",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "value": {
+        "inline": "aux.tgoval",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.tgoval",
+          "kind": "aux-helper"
+        }
+      },
+      "clonedTo": [
+        "e3"
+      ]
+    },
+    {
+      "id": "e3",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_SINGLE_RANGE"
+      ],
+      "events": [
+        "EFFECT_CANNOT_BE_EFFECT_TARGET",
+        "EFFECT_INDESTRUCTABLE_EFFECT"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.tgcon",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "attackPos"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "value": {
+        "name": "s.indval",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "tp~=e:GetHandlerPlayer()"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "clonedFrom": "e2"
+    },
+    {
+      "id": "e4",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_SET_POSITION"
+      ],
+      "range": "LOCATION_MZONE",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "LOCATION_MZONE"
+      },
+      "condition": {
+        "name": "s.poscon",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "defensePos"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.postg",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "faceup"
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "value": {
+        "inline": "POS_FACEUP_DEFENSE",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e5",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAIN_SOLVING"
+      ],
+      "range": "LOCATION_MZONE",
+      "condition": {
+        "name": "s.discon",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "defensePos"
+            },
+            {
+              "kind": "raw",
+              "source": "pos&POS_DEFENSE~=0"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "operation": {
+        "name": "s.disop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "negate-effect",
+            "method": "NegateEffect",
+            "target": "ev"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 5,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 7,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

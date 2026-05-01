@@ -1,0 +1,69 @@
+{
+  "cardId": 32548318,
+  "name": "Rahu Dracotail",
+  "sourceFile": "official/c32548318.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_DRACOTAIL"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "inline": "aux.FilterBoolFunction(Card.IsSetCard, SET_DRACOTAIL)",
+        "opaque": false,
+        "resolved": {
+          "helper": "aux.FilterBoolFunction",
+          "kind": "filter-wrap",
+          "params": {
+            "predicate": "IsSetCard",
+            "value": "SET_DRACOTAIL"
+          }
+        },
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_DRACOTAIL"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "Fusion.SummonEffOP(params)",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

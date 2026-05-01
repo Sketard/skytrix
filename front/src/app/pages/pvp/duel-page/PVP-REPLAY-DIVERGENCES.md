@@ -50,6 +50,12 @@ un via WebSocket. En PVP, si des messages arrivent avec du délai entre eux :
 - `duel-connection.ts:368-375` : `onmessage` → `handleMessage()` un par un
 - `move-animation-router.ts:166-200` : `preLockQueuedSources` — snapshot de la queue
 
+**Mitigation partielle** : `preLockQueuedSources` est re-exécuté à chaque itération de
+la queue loop (line 429 au début, line 538 après processEvent). Un event arrivant
+pendant un `await` sera pré-locké à l'itération suivante avant tout `commitUnlocked`.
+Le résidu théorique (event arrivé entre `commitUnlocked` et son propre processing) est
+borné par les locks acquis synchrones dans chaque branche.
+
 ---
 
 ## MEDIUM — Comportement différent
@@ -114,6 +120,40 @@ moment du check peut différer entre les deux modes.
   `setAnimating(false)` → `advanceStep()` est l'analogue replay du WebSocket `onmessage`.
 - [x] **#3 Timing sync vs async** : accepté comme risque résiduel. Pre-lock est
   "best effort" — le vrai garde-fou est le `dstLock` synchrone dans chaque branche.
+  **Parité partielle acquise via `boardStateAfter`** (commit 92adc7e4) : le serveur
+  attache une snapshot post-event aux events BOARD_CHANGING en phase resolving dans
+  LES DEUX modes (live + precompute) ; `processEvent` appelle
+  `rbs.updateLogical(boardStateAfter)` avant dispatch → logical state avance au même
+  grain des deux côtés.
 - [x] **#4 `isBoardActive`** : accepté — PVP-only par nature (déconnexion réseau).
 - [x] **#5 Chain state** : s'aligne automatiquement avec la résolution de #1.
 - [x] **#6 Prompt timing** : accepté — inhérent à la nature du replay.
+
+---
+
+## MEDIUM+ — Nouveaux points documentés (commit 92adc7e4)
+
+### 9. Queue collapse — drop silencieux d'events visuels
+
+Avant fix : le prédicat "pas de chain event" autorisait la collapse sur TOUT type
+d'event. Mais `applyInstantAnimation()` ne traite que LP/chain. MSG_MOVE,
+MSG_CONFIRM_CARDS, etc. étaient **silencieusement droppés** en combo long.
+
+**Fichiers** :
+- `animation-orchestrator.service.ts:418-431` — collapse loop
+- `animation-orchestrator.service.ts:974-987` — applyInstantAnimation
+
+**Résolution** : prédicat inversé en "TOUS les events sont LP-class". Les bursts LP
+pathologiques restent collapsés, les events visuels jamais. Voir CLAUDE.md → Chain
+State Machine Rules → Queue collapse.
+
+### 10. Buffer replay — séquence d'animations multi-event
+
+Nouveaux invariants documentés dans CLAUDE.md → Buffer Replay Batch Construction :
+- Interleave CONFIRM_CARDS par card pour flow tutor→reveal→tutor.
+- Session HAND lock + beginHandBatch pour fan positions distincts.
+- Category boundary flush pour XYZ detach → destroy.
+- commitAndClearFloat conditionnel (garde float tant que zone lockée).
+
+S'appliquent aux DEUX modes puisque le buffer est alimenté par `chainManager.
+bufferIfResolving` et drainé par `replayBuffer` identiquement.

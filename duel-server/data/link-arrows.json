@@ -1,0 +1,3480 @@
+{
+  "146746": {
+    "name": "Double Headed Anger Knuckle",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "298846": {
+    "name": "Trickstar Colchica",
+    "arrows": [
+      "B"
+    ]
+  },
+  "739444": {
+    "name": "Vorticular Drumgon",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "952523": {
+    "name": "Traptrix Cularia",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "1322368": {
+    "name": "SPYRAL Double Helix",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "1340142": {
+    "name": "Varar, Vaalmonican Concord",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "1482001": {
+    "name": "Clara & Rushka, the Ventriloduo",
+    "arrows": [
+      "T"
+    ]
+  },
+  "1487805": {
+    "name": "Cosmic Slicer Zer'oll",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "1508649": {
+    "name": "Altergeist Hexstia",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "1528054": {
+    "name": "Silhouhatte Rabbit",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "1735088": {
+    "name": "Wind-Up Zenmaintenance",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "1861629": {
+    "name": "Decode Talker",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "1861630": {
+    "name": "Decode Talker",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "1861631": {
+    "name": "Decode Talker",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "1948619": {
+    "name": "Xtra HERO Wonder Driver",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "2220237": {
+    "name": "Secure Gardna",
+    "arrows": [
+      "R"
+    ]
+  },
+  "2368215": {
+    "name": "Abyss Actor - Hyper Director",
+    "arrows": [
+      "B"
+    ]
+  },
+  "2411269": {
+    "name": "Agave Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "2463794": {
+    "name": "Fiendsmith's Requiem",
+    "arrows": [
+      "B"
+    ]
+  },
+  "2645637": {
+    "name": "Yuki-Onna, the Absolute Zero Mayakashi",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "2725599": {
+    "name": "Rescue-ACE Arbitrator",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "2772337": {
+    "name": "Promethean Princess, Bestower of Flames",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "2815176": {
+    "name": "Zebufera, Vaalmonican Hallow Heathen",
+    "arrows": [
+      "BR"
+    ]
+  },
+  "2834264": {
+    "name": "Beetrooper Armor Horn",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "2857636": {
+    "name": "Knightmare Phoenix",
+    "arrows": [
+      "R",
+      "T"
+    ]
+  },
+  "3134857": {
+    "name": "Orcustrion",
+    "arrows": [
+      "BL",
+      "B",
+      "T",
+      "TR"
+    ]
+  },
+  "3287359": {
+    "name": "Magical Musket Mastermind Caspar",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "3356494": {
+    "name": "Galaxy-Eyes Solflare Dragon",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "3507053": {
+    "name": "Appliancer Dryer Drake",
+    "arrows": [
+      "TR"
+    ]
+  },
+  "3679218": {
+    "name": "Knightmare Mermaid",
+    "arrows": [
+      "B"
+    ]
+  },
+  "3792766": {
+    "name": "Trickstar Delfiendium",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "3957130": {
+    "name": "Trisborrel Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "L"
+    ]
+  },
+  "3987233": {
+    "name": "Missus Radiant",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "4280258": {
+    "name": "Apollousa, Bow of the Goddess",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "4280259": {
+    "name": "Apollousa, Bow of the Goddess",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "4478086": {
+    "name": "Clock Spartoi",
+    "arrows": [
+      "B",
+      "BR"
+    ]
+  },
+  "4709881": {
+    "name": "Auram the World Chalice Blademaster",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "4729591": {
+    "name": "Appliancer Kappa Scale",
+    "arrows": [
+      "T"
+    ]
+  },
+  "4731783": {
+    "name": "A Bao A Qu, the Lightless Shadow",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "4914353": {
+    "name": "Space Insulator",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "5043010": {
+    "name": "Firewall Dragon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "5043011": {
+    "name": "Firewall Dragon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "5043012": {
+    "name": "Firewall Dragon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "5043013": {
+    "name": "Firewall Dragon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "5329790": {
+    "name": "Protocol Gardna",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "5402805": {
+    "name": "Berserker of the Tenyi",
+    "arrows": [
+      "BR",
+      "T",
+      "TR"
+    ]
+  },
+  "5524387": {
+    "name": "Marincess Marbled Rock",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "5821478": {
+    "name": "Topologic Bomber Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "6260560": {
+    "name": "Laevateinn the Burning Blade",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "6622715": {
+    "name": "Encode Talker",
+    "arrows": [
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "6636319": {
+    "name": "Evil★Twin Ki-sikil Deal",
+    "arrows": [
+      "R"
+    ]
+  },
+  "6821579": {
+    "name": "R.B. VALCan Booster",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "6908161": {
+    "name": "Ragnaraika Chain Coils",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "R"
+    ]
+  },
+  "7382007": {
+    "name": "Gouki Sheik Ogre",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "7480763": {
+    "name": "Artifact Dagda",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "7778726": {
+    "name": "Hip Hoshiningen",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "7984540": {
+    "name": "Sunavalon Daphne",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "8173184": {
+    "name": "Repair Genex Controller",
+    "arrows": [
+      "L"
+    ]
+  },
+  "8264361": {
+    "name": "Dharc the Dark Charmer, Gloomy",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "8491308": {
+    "name": "Sky Striker Ace - Hayate",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "8491309": {
+    "name": "Sky Striker Ace - Hayate",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "8602351": {
+    "name": "Reptilianne Echidna",
+    "arrows": [
+      "BR",
+      "L"
+    ]
+  },
+  "8728498": {
+    "name": "Donner, Dagger Fur Hire",
+    "arrows": [
+      "B",
+      "BR"
+    ]
+  },
+  "8802510": {
+    "name": "PSY-Framelord Lambda",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "9024198": {
+    "name": "D/D/D Abyss King Gilgamesh",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "9205573": {
+    "name": "Evil★Twin Ki-sikil",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "9205574": {
+    "name": "Evil★Twin Ki-sikil",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "9617996": {
+    "name": "Crusadia Regulex",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "9763474": {
+    "name": "Haggard Lizardose",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "9839945": {
+    "name": "Lyna the Light Charmer, Lustrous",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "10019086": {
+    "name": "Tri-Brigade Arms Bucephalus II",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "10547580": {
+    "name": "Ancient Gear Ballista",
+    "arrows": [
+      "BL",
+      "R"
+    ]
+  },
+  "10552026": {
+    "name": "Gouki Heel Ogre",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "10669138": {
+    "name": "Five-Headed Link Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "11516241": {
+    "name": "Gouki The Powerload Ogre",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "R"
+    ]
+  },
+  "11674673": {
+    "name": "Cyberse Witch",
+    "arrows": [
+      "BL",
+      "B"
+    ]
+  },
+  "11738489": {
+    "name": "The Arrival Cyberse @Ignister",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "11969228": {
+    "name": "Dragunity Knight - Romulus",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "12023931": {
+    "name": "Booster Dragon",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "12067160": {
+    "name": "Gorgon of Zilofthonia",
+    "arrows": [
+      "TL",
+      "T",
+      "TR"
+    ]
+  },
+  "12081875": {
+    "name": "Thunder Dragon Thunderstormech",
+    "arrows": [
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "12421694": {
+    "name": "Sky Striker Ace - Kaina",
+    "arrows": [
+      "BR"
+    ]
+  },
+  "12450071": {
+    "name": "Proxy F Magician",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "13117073": {
+    "name": "Barricadeborg Blocker",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "13143275": {
+    "name": "Guardragon Pisty",
+    "arrows": [
+      "R"
+    ]
+  },
+  "13452889": {
+    "name": "Vector Scare Archfiend",
+    "arrows": [
+      "BL",
+      "R",
+      "T"
+    ]
+  },
+  "13536606": {
+    "name": "V-LAN Hydra",
+    "arrows": [
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "14365823": {
+    "name": "Trickstar Divaridis",
+    "arrows": [
+      "BL",
+      "B"
+    ]
+  },
+  "14812471": {
+    "name": "Salamangreat Balelynx",
+    "arrows": [
+      "B"
+    ]
+  },
+  "15627227": {
+    "name": "Overburst Dragon",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "15844566": {
+    "name": "Powercode Talker",
+    "arrows": [
+      "BL",
+      "L",
+      "R"
+    ]
+  },
+  "17217034": {
+    "name": "Combination Maneuver - Engage Zero",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "17382973": {
+    "name": "Prank-Kids Dodo-Doodle-Doo",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "17739335": {
+    "name": "Zerrziel, Ruler of the Evil Eyed",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "19324993": {
+    "name": "Xtra HERO Infernal Devicer",
+    "arrows": [
+      "BL",
+      "B"
+    ]
+  },
+  "20265095": {
+    "name": "Brotherhood of the Fire Fist - Peacock",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "20515672": {
+    "name": "S-Force Nightchaser",
+    "arrows": [
+      "B"
+    ]
+  },
+  "20665527": {
+    "name": "Amphibious Swarmship Amblowhale",
+    "arrows": [
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "20714553": {
+    "name": "Endymion, the Crescent Magistus",
+    "arrows": [
+      "BR",
+      "L"
+    ]
+  },
+  "20934852": {
+    "name": "Marincess Aqua Argonaut",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "21200905": {
+    "name": "Aromaseraphy Jasmine",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "21637210": {
+    "name": "Firewall Dragon Singularity",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "TL",
+      "T",
+      "TR"
+    ]
+  },
+  "21848500": {
+    "name": "Maliss <Q> Hearts Crypter",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "21887175": {
+    "name": "Mekk-Knight Crusadia Avramax",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "21903613": {
+    "name": "Sylvan Dancepione",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "22125101": {
+    "name": "Beyond the Pendulum",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "22423493": {
+    "name": "Qliphort Genius",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "22510667": {
+    "name": "Gouki The Solid Ogre",
+    "arrows": [
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "22593417": {
+    "name": "Topologic Gumblar Dragon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "22862454": {
+    "name": "Proxy Dragon",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "22953211": {
+    "name": "Bellcat Fighter",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "23530726": {
+    "name": "Surgical Striker - S.P.E.C.T.R.A.",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "23545031": {
+    "name": "Mermail Abyssalacia",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "23656668": {
+    "name": "Gravity Controller",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "23689428": {
+    "name": "Infinitrack Goliath",
+    "arrows": [
+      "BR"
+    ]
+  },
+  "23732205": {
+    "name": "Dillingerous Dragon",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "23790299": {
+    "name": "Altergeist Memorygant",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "23935886": {
+    "name": "Draco Masters of the Tenyi",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "23971061": {
+    "name": "Doublebyte Dragon",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "24094258": {
+    "name": "Heavymetalfoes Electrumite",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "24151924": {
+    "name": "G Golem Invalid Dolmen",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "24269961": {
+    "name": "Unchained Soul Lord of Yama",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "24361622": {
+    "name": "Hieratic Seal of the Heavenly Spheres",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "24484270": {
+    "name": "Gem-Knight Phantom Quartz",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "24487411": {
+    "name": "Detonate Deleter",
+    "arrows": [
+      "BL",
+      "L",
+      "R"
+    ]
+  },
+  "24842059": {
+    "name": "Linguriboh",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "24882256": {
+    "name": "Fire Phoenix @Ignister",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "25072579": {
+    "name": "Prototype Sky Striker Ace - Amatsu",
+    "arrows": [
+      "B"
+    ]
+  },
+  "25577965": {
+    "name": "Flametongue the Blazing Magical Blade",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "25725326": {
+    "name": "Prank-Kids Meow-Meow-Mu",
+    "arrows": [
+      "B"
+    ]
+  },
+  "25919316": {
+    "name": "Pitknight Filly",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "26692769": {
+    "name": "The Phantom Knights of Rusty Bardiche",
+    "arrows": [
+      "BL",
+      "BR",
+      "R"
+    ]
+  },
+  "26847978": {
+    "name": "Tri-Brigade Ferrijit the Barren Blossom",
+    "arrows": [
+      "BL",
+      "L"
+    ]
+  },
+  "27381364": {
+    "name": "Spright Elf",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "28168628": {
+    "name": "Rock of the Vanquisher",
+    "arrows": [
+      "B"
+    ]
+  },
+  "28168762": {
+    "name": "Sunvine Gardna",
+    "arrows": [
+      "T"
+    ]
+  },
+  "28776350": {
+    "name": "Akashic Magician",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "29296344": {
+    "name": "Quadborrel Dragon",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "29301450": {
+    "name": "S:P Little Knight",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "29301451": {
+    "name": "S:P Little Knight",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "29357687": {
+    "name": "Gorgon, Empress of the Evil Eyed",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "29479265": {
+    "name": "Unchained Abomination",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "30010480": {
+    "name": "Gouki Thunder Ogre",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "30064423": {
+    "name": "Topologic Blaster Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "TL",
+      "T",
+      "TR"
+    ]
+  },
+  "30118200": {
+    "name": "Appliancer Vacculephant",
+    "arrows": [
+      "TR"
+    ]
+  },
+  "30163008": {
+    "name": "Ra'ten, the Heavenly General",
+    "arrows": [
+      "BL",
+      "BR",
+      "TL"
+    ]
+  },
+  "30194529": {
+    "name": "Ningirsu the World Chalice Warrior",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "30286474": {
+    "name": "Gouki The Master Ogre",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "30342076": {
+    "name": "Link Decoder",
+    "arrows": [
+      "B"
+    ]
+  },
+  "30581601": {
+    "name": "Yummy★Snatchy",
+    "arrows": [
+      "B"
+    ]
+  },
+  "30674956": {
+    "name": "Wynn the Wind Charmer, Verdant",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "30691817": {
+    "name": "Marincess Sea Angel",
+    "arrows": [
+      "L"
+    ]
+  },
+  "30741503": {
+    "name": "Galatea, the Orcust Automaton",
+    "arrows": [
+      "BL",
+      "TR"
+    ]
+  },
+  "30822527": {
+    "name": "Decode Talker Extended",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "30989084": {
+    "name": "Aromalilith Rosemary",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "30998403": {
+    "name": "D/D/D Sky King Zeus Ragnarok",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "31226177": {
+    "name": "Imduk the World Chalice Dragon",
+    "arrows": [
+      "T"
+    ]
+  },
+  "31313405": {
+    "name": "Salamangreat Pyro Phoenix",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "31833038": {
+    "name": "Borreload Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "31833039": {
+    "name": "Borreload Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "31897444": {
+    "name": "Defender of the Labyrinth",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "32216688": {
+    "name": "R.B. The Brute Blues",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "32448765": {
+    "name": "Trickstar Holly Angel",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "32448766": {
+    "name": "Trickstar Holly Angel",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "32519092": {
+    "name": "Monk of the Tenyi",
+    "arrows": [
+      "B"
+    ]
+  },
+  "32617464": {
+    "name": "Tri-Gate Wizard",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "32986898": {
+    "name": "Steel Star Regulator",
+    "arrows": [
+      "BL",
+      "BR",
+      "TL"
+    ]
+  },
+  "32991300": {
+    "name": "Fiendsmith's Agnumday",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "32995276": {
+    "name": "Link Disciple",
+    "arrows": [
+      "B"
+    ]
+  },
+  "33781156": {
+    "name": "Tri-Brigade Arms Mouser",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "33897356": {
+    "name": "Shootingcode Talker",
+    "arrows": [
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "33918636": {
+    "name": "Superheavy Samurai Scarecrow",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "34031284": {
+    "name": "Ojama Emperor",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "34446231": {
+    "name": "Infernoid Flood",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "34472920": {
+    "name": "Honeybot",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "34755994": {
+    "name": "Artemis, the Magistus Moon Maiden",
+    "arrows": [
+      "T"
+    ]
+  },
+  "34974462": {
+    "name": "Bloom Harmonist the Melodious Composer",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "34989413": {
+    "name": "Reprodocus",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "35306215": {
+    "name": "Condemned Darklord",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "35334193": {
+    "name": "S-Force Justify",
+    "arrows": [
+      "TL",
+      "T",
+      "TR"
+    ]
+  },
+  "35606858": {
+    "name": "Masterking Archfiend",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "35871958": {
+    "name": "Ghostrick Festival",
+    "arrows": [
+      "B"
+    ]
+  },
+  "36114945": {
+    "name": "Yuki-Onna, the Icicle Mayakashi",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "36346532": {
+    "name": "Paleozoic Cambroraster",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "36429703": {
+    "name": "Raidraptor - Wise Strix",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "36609518": {
+    "name": "Evil★Twin Lil-la",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "36609519": {
+    "name": "Evil★Twin Lil-la",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "36768783": {
+    "name": "Armillyre, the Starleader Dragon",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37129797": {
+    "name": "Vampire Sucker",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37337327": {
+    "name": "Junk Connector",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37354507": {
+    "name": "Ninja Grandmaster Saizo",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37414347": {
+    "name": "F.A. Shining Star GT",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37683441": {
+    "name": "Trickstar Noble Angel",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37880706": {
+    "name": "Duelittle Chimera",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "37972500": {
+    "name": "GranSolfachord Musecia",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "38030232": {
+    "name": "Tenyi Spirit - Sahasrara",
+    "arrows": [
+      "B",
+      "BR",
+      "T",
+      "TR"
+    ]
+  },
+  "38229962": {
+    "name": "Giant Beetrooper Invincible Atlas",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "38342335": {
+    "name": "Knightmare Unicorn",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "38342336": {
+    "name": "Knightmare Unicorn",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "38406364": {
+    "name": "Some Summer Summoner",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "38502358": {
+    "name": "Mekk-Knight Spectrum Supreme",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "38745241": {
+    "name": "Madolche Mini Meowcaroons",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "39064822": {
+    "name": "Knightmare Goblin",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "39138610": {
+    "name": "Allied Code Talker @Ignister",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "39341885": {
+    "name": "Radiant Typhoon Varuroon, the Marine Eidolon",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "39528955": {
+    "name": "Crusadia Spatha",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "39752820": {
+    "name": "Lib the World Key Blademaster",
+    "arrows": [
+      "BL",
+      "L"
+    ]
+  },
+  "39767432": {
+    "name": "Sorcerer of Sebek",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "39880350": {
+    "name": "Sunavalon Dryades",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "39998992": {
+    "name": "X-Krawler Synaphysis",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "40216089": {
+    "name": "Platinum Gadget",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "40669071": {
+    "name": "Excode Talker",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "41248270": {
+    "name": "Traffic Ghost",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "41302052": {
+    "name": "Trickstar Bella Madonna",
+    "arrows": [
+      "BL",
+      "B",
+      "R",
+      "T"
+    ]
+  },
+  "41463181": {
+    "name": "Salamangreat Heatleo",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "41463182": {
+    "name": "Salamangreat Heatleo",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "41739381": {
+    "name": "Clockwork Knight",
+    "arrows": [
+      "L"
+    ]
+  },
+  "41999284": {
+    "name": "Linkuriboh",
+    "arrows": [
+      "B"
+    ]
+  },
+  "42021064": {
+    "name": "Dogurad, the Stonetrooper",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "42097666": {
+    "name": "Spirit with Eyes of Blue",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "42307760": {
+    "name": "Ragnaraika Stag Sovereign",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "43129357": {
+    "name": "Ragnaraika Skeletal Soldier",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "43735670": {
+    "name": "Marincess Blue Slug",
+    "arrows": [
+      "B"
+    ]
+  },
+  "43886072": {
+    "name": "Prank-Kids Bow-Wow-Bark",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "44097050": {
+    "name": "Mecha Phantom Beast Auroradon",
+    "arrows": [
+      "B",
+      "BR",
+      "L"
+    ]
+  },
+  "44376395": {
+    "name": "ASHLAN U1000",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "44478599": {
+    "name": "Sunavalon Melias",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "45002991": {
+    "name": "Crusadia Equimax",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "45112597": {
+    "name": "Worldsea Dragon Zealantis",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "45462149": {
+    "name": "Code Talker Inverted",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "45819647": {
+    "name": "Selene, Queen of the Master Magicians",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "46241344": {
+    "name": "Brotherhood of the Fire Fist - Eagle",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "46724542": {
+    "name": "Cyber Dragon Sieger",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "46935289": {
+    "name": "Herald of Mirage Lights",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "46947713": {
+    "name": "Transcode Talker",
+    "arrows": [
+      "B",
+      "R",
+      "T"
+    ]
+  },
+  "47158777": {
+    "name": "Protector Whelp of the Destruction Swordsman",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "47163170": {
+    "name": "Tri-Brigade Bearbrumm the Rampant Rampager",
+    "arrows": [
+      "BR",
+      "L"
+    ]
+  },
+  "47363932": {
+    "name": "Scrap Wyvern",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "47404795": {
+    "name": "Abyss Actor - Super Producer",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "47759571": {
+    "name": "Pitknight Earlie",
+    "arrows": [
+      "R",
+      "TR"
+    ]
+  },
+  "47910940": {
+    "name": "Marincess Great Bubble Reef",
+    "arrows": [
+      "BL",
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "47946130": {
+    "name": "Gouki The Giant Ogre",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "48068378": {
+    "name": "Link Devotee",
+    "arrows": [
+      "T"
+    ]
+  },
+  "48183890": {
+    "name": "Traptrix Atypus",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "48589580": {
+    "name": "Celestial Knightlord Parshath",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "48736598": {
+    "name": "Codebreaker Virus Berserker",
+    "arrows": [
+      "B",
+      "R",
+      "T"
+    ]
+  },
+  "48815792": {
+    "name": "Hiita the Fire Charmer, Ablaze",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "48835607": {
+    "name": "Galatea-I, the Orcust Automaton",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "49105782": {
+    "name": "Hraesvelgr, the Desperate Doom Eagle",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "49202162": {
+    "name": "Black Luster Soldier - Soldier of Chaos",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "49451215": {
+    "name": "Ukanomitsune-no-Onari",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "49725936": {
+    "name": "Triple Burst Dragon",
+    "arrows": [
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "49847524": {
+    "name": "Flame Administrator",
+    "arrows": [
+      "BR",
+      "L"
+    ]
+  },
+  "49867899": {
+    "name": "Fiendsmith's Sequence",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "50277355": {
+    "name": "Cross-Sheep",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "50546029": {
+    "name": "G Golem Dignified Trilithon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "50588353": {
+    "name": "Crystron Halqifibrax",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "50669347": {
+    "name": "Nephthys, the Sacred Preserver",
+    "arrows": [
+      "B",
+      "BR"
+    ]
+  },
+  "50750868": {
+    "name": "T.G. Trident Launcher",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "50756327": {
+    "name": "Crowley, the First Propheseer",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "51011872": {
+    "name": "Trickstar Crimson Heart",
+    "arrows": [
+      "BL",
+      "R"
+    ]
+  },
+  "51476410": {
+    "name": "Clock Lizard",
+    "arrows": [
+      "BL",
+      "B"
+    ]
+  },
+  "52119435": {
+    "name": "Geonator Transverser",
+    "arrows": [
+      "BL",
+      "TR"
+    ]
+  },
+  "52331012": {
+    "name": "Tri-Brigade Rugal the Silver Sheller",
+    "arrows": [
+      "B",
+      "BR",
+      "R"
+    ]
+  },
+  "52615248": {
+    "name": "Progleo",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "52698008": {
+    "name": "Cyberse Wicckid",
+    "arrows": [
+      "B",
+      "BR"
+    ]
+  },
+  "53413628": {
+    "name": "Code Talker",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "53776969": {
+    "name": "Scareclaw Light-Heart",
+    "arrows": [
+      "L"
+    ]
+  },
+  "54178659": {
+    "name": "The Weather Painter Rainbow",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "54635100": {
+    "name": "Linkerbell",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "56741506": {
+    "name": "Sky Striker Ace - Azalea Temperance",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "56818742": {
+    "name": "Transcendosaurus Exaraptor",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "57134592": {
+    "name": "Salamangreat Raging Phoenix",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "57282724": {
+    "name": "World Gears of Theurlogical Demiurgy",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "58004362": {
+    "name": "Xtra HERO Cross Crusader",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "58036229": {
+    "name": "Protectcode Talker",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "58699500": {
+    "name": "Cherubini, Ebon Angel of the Burning Abyss",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "58811192": {
+    "name": "Ritual Beast Ulti-Kimunfalcos",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "58884063": {
+    "name": "Gold Pride - Nytro Blaster",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "59120809": {
+    "name": "Scareclaw Tri-Heart",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "59537380": {
+    "name": "Guardragon Agarpain",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "59644128": {
+    "name": "Gouki Jet Ogre",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "59859086": {
+    "name": "Splash Mage",
+    "arrows": [
+      "BR",
+      "TR"
+    ]
+  },
+  "59934749": {
+    "name": "Isolde, Two Tales of the Noble Knights",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "60025883": {
+    "name": "Duel Link Dragon, the Duel Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "60279710": {
+    "name": "Cyberse Enchanter",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "60292055": {
+    "name": "Elphase",
+    "arrows": [
+      "R",
+      "T"
+    ]
+  },
+  "60303245": {
+    "name": "Salamangreat Almiraj",
+    "arrows": [
+      "BR"
+    ]
+  },
+  "61245672": {
+    "name": "Decode Talker Heatsoul",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "61470213": {
+    "name": "Altergeist Adminia",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "61665245": {
+    "name": "Summon Sorceress",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "61668670": {
+    "name": "G Golem Crystal Heart",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "61728808": {
+    "name": "Heavymetalfoes Amalgam",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "61888819": {
+    "name": "Steelswarm Origin",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "62000467": {
+    "name": "Gladiator Beast Dragases",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "63013339": {
+    "name": "Sky Striker Ace - Camellia",
+    "arrows": [
+      "BL",
+      "TR"
+    ]
+  },
+  "63288573": {
+    "name": "Sky Striker Ace - Kagari",
+    "arrows": [
+      "TL"
+    ]
+  },
+  "63288574": {
+    "name": "Sky Striker Ace - Kagari",
+    "arrows": [
+      "TL"
+    ]
+  },
+  "63503850": {
+    "name": "Brute Enforcer",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "63813056": {
+    "name": "Xtra HERO Dread Decimator",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "64211118": {
+    "name": "Firewall Dragon Darkfluid - Neo Tempest Terahertz",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "64454614": {
+    "name": "Arcana Extra Joker",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "64514892": {
+    "name": "Fire Fighting Daruma Doll",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "64966519": {
+    "name": "Dispatchparazzi",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "65170459": {
+    "name": "Mistar Boy",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "65285459": {
+    "name": "Sunavalon Dryanome",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "65330383": {
+    "name": "Knightmare Gryphon",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "65400671": {
+    "name": "Crystron Halqifibrax Prism",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "65563871": {
+    "name": "Sunvine Healer",
+    "arrows": [
+      "T"
+    ]
+  },
+  "65711558": {
+    "name": "Ancient Warriors Oath - Double Dragon Lords",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "65741786": {
+    "name": "I:P Masquerena",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "65741787": {
+    "name": "I:P Masquerena",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "65741789": {
+    "name": "I:P Masquerena",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "66015185": {
+    "name": "Twin Triangle Dragon",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "66023650": {
+    "name": "Folgo, Justice Fur Hire",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "66226132": {
+    "name": "Trackblack",
+    "arrows": [
+      "BR",
+      "TL"
+    ]
+  },
+  "66384688": {
+    "name": "Majespecter Orthrus - Nue",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "66393507": {
+    "name": "X-Krawler Neurogos",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "66403530": {
+    "name": "Topologic Zeroboros",
+    "arrows": [
+      "BL",
+      "BR",
+      "TL",
+      "TR"
+    ]
+  },
+  "66452432": {
+    "name": "Borrelshroud Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "66736884": {
+    "name": "Keel, Shipwright Fur Hire",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "66863374": {
+    "name": "Test Panther",
+    "arrows": [
+      "BL",
+      "B"
+    ]
+  },
+  "66870733": {
+    "name": "Yuki-Onna, the Ice Mayakashi",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "67073561": {
+    "name": "Baba Barber",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "67231737": {
+    "name": "Link Bumper",
+    "arrows": [
+      "L",
+      "T"
+    ]
+  },
+  "67288539": {
+    "name": "Borrelcode Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "67598234": {
+    "name": "Gaia Saber, the Lightning Shadow",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "67647362": {
+    "name": "Blackbeard, the Plunder Patroll Captain",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "67680512": {
+    "name": "Unchained Soul of Rage",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "67712104": {
+    "name": "Marincess Crystal Heart",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "68059897": {
+    "name": "Maliss <Q> Red Ransom",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "68295149": {
+    "name": "Linkmail Archfiend",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "TL"
+    ]
+  },
+  "68934651": {
+    "name": "Firewall Dragon Darkfluid",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "68987122": {
+    "name": "Borrelguard Dragon",
+    "arrows": [
+      "B",
+      "BR",
+      "R",
+      "T"
+    ]
+  },
+  "69073023": {
+    "name": "Infinitrack Fortress Megaclops",
+    "arrows": [
+      "BL",
+      "BR",
+      "R"
+    ]
+  },
+  "69121954": {
+    "name": "Dinowrestler Terra Parkourio",
+    "arrows": [
+      "L",
+      "T"
+    ]
+  },
+  "69176851": {
+    "name": "Miasma Necromancer",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "69385019": {
+    "name": "Mermail King - Neptabyss",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "70369116": {
+    "name": "Predaplant Verte Anaconda",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "70514456": {
+    "name": "Ragnaraika Mantis Monk",
+    "arrows": [
+      "B",
+      "BR",
+      "L"
+    ]
+  },
+  "70522875": {
+    "name": "Dragunity Lord - Georgius",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "70709488": {
+    "name": "Shinobi Insect Hagakuremino",
+    "arrows": [
+      "B",
+      "TL"
+    ]
+  },
+  "70875686": {
+    "name": "Prank-Kids Rip-Roarin-Roaster",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "71095768": {
+    "name": "Bujinki Ahashima",
+    "arrows": [
+      "BR",
+      "T"
+    ]
+  },
+  "71384012": {
+    "name": "Wee Witch's Apprentice",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "71607202": {
+    "name": "Muckraker From the Underworld",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "71791814": {
+    "name": "Magical Musketeer Max",
+    "arrows": [
+      "B"
+    ]
+  },
+  "71818935": {
+    "name": "Moon of the Closed Heaven",
+    "arrows": [
+      "T",
+      "TR"
+    ]
+  },
+  "72006609": {
+    "name": "Mekk-Knight of the Morning Star",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "72218246": {
+    "name": "Crossrose Dragon",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "72228247": {
+    "name": "Crusadia Magius",
+    "arrows": [
+      "B"
+    ]
+  },
+  "72246674": {
+    "name": "Gladiator Beast Dareios",
+    "arrows": [
+      "B",
+      "BR"
+    ]
+  },
+  "72329844": {
+    "name": "Spright Sprind",
+    "arrows": [
+      "BL",
+      "TR"
+    ]
+  },
+  "72330894": {
+    "name": "Simorgh, Bird of Sovereignty",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "72336818": {
+    "name": "Pentestag",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "72529749": {
+    "name": "Topologic Trisbaena",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "72813401": {
+    "name": "Hi-Speedroid Rubber Band Shooter",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "72860663": {
+    "name": "Vampire Fascinator",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "73309655": {
+    "name": "Eria the Water Charmer, Gentle",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "73341839": {
+    "name": "Miniborrel Dragon",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "73345237": {
+    "name": "Benghalancer the Resurgent",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "73539069": {
+    "name": "Striker Dragon",
+    "arrows": [
+      "L"
+    ]
+  },
+  "73639099": {
+    "name": "Traptrix Sera",
+    "arrows": [
+      "B"
+    ]
+  },
+  "73898890": {
+    "name": "Dyna Mondo",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "74139959": {
+    "name": "Cosmic Tree Irmistil",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "L",
+      "TL"
+    ]
+  },
+  "74163487": {
+    "name": "Restoration Point Guard",
+    "arrows": [
+      "BL",
+      "L"
+    ]
+  },
+  "74567889": {
+    "name": "Dark Infant @Ignister",
+    "arrows": [
+      "L"
+    ]
+  },
+  "74752631": {
+    "name": "Battle Shogun of the Six Samurai",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "74820316": {
+    "name": "Enlilgirsu, the Orcust Mekk-Knight",
+    "arrows": [
+      "BL",
+      "L",
+      "R",
+      "TR"
+    ]
+  },
+  "74937659": {
+    "name": "Subterror Behemoth Fiendess",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "74974229": {
+    "name": "Alien Shocktrooper M-Frame",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "74997493": {
+    "name": "Saryuja Skull Dread",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "75119040": {
+    "name": "Tindangle Acute Cerberus",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "75147529": {
+    "name": "Sky Striker Ace - Zeke",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "75352507": {
+    "name": "Ragnaraika Selene Snapper",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "75452921": {
+    "name": "Knightmare Cerberus",
+    "arrows": [
+      "L",
+      "T"
+    ]
+  },
+  "76072561": {
+    "name": "Sky Striker Ace = Zero",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "76145142": {
+    "name": "Longirsu, the Orcust Orchestrator",
+    "arrows": [
+      "BR",
+      "TL",
+      "T"
+    ]
+  },
+  "76232522": {
+    "name": "Recovery Sorcerer",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "76685519": {
+    "name": "Altergeist Kidolga",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "76821171": {
+    "name": "Duralume, Vaalmonican Heathen Hallow",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "77058170": {
+    "name": "Underclock Taker",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "77102944": {
+    "name": "Appliancer Laundry Dragon",
+    "arrows": [
+      "T"
+    ]
+  },
+  "77307161": {
+    "name": "Trickstar Bloom",
+    "arrows": [
+      "B"
+    ]
+  },
+  "77610772": {
+    "name": "Ib the World Chalice Priestess",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "77637979": {
+    "name": "LANphorhynchus",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "77967790": {
+    "name": "Dinowrestler King T Wrextle",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "78225596": {
+    "name": "Appliancer Celtopus",
+    "arrows": [
+      "BL",
+      "B"
+    ]
+  },
+  "78437364": {
+    "name": "Gouki The Great Ogre",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "78437365": {
+    "name": "Gouki The Great Ogre",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "78917791": {
+    "name": "Shaman of the Tenyi",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "79016563": {
+    "name": "Binary Sorceress",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "79130389": {
+    "name": "Marincess Coral Anemone",
+    "arrows": [
+      "B",
+      "L"
+    ]
+  },
+  "79266769": {
+    "name": "Darkness Metal, the Dragon of Dark Steel",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "80071619": {
+    "name": "R.B. Shepherd's Crook",
+    "arrows": [
+      "B",
+      "BR",
+      "L"
+    ]
+  },
+  "80088625": {
+    "name": "Binary Blader",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "81769387": {
+    "name": "Appliancer Propelion",
+    "arrows": [
+      "T"
+    ]
+  },
+  "82184400": {
+    "name": "Abyss Keeper",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "82566662": {
+    "name": "Taotie Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "83152482": {
+    "name": "Union Carrier",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "84121193": {
+    "name": "Codebreaker Virus Swordsman",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "84271823": {
+    "name": "Puzzlomino, the Drop-n-Deleter",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "84521924": {
+    "name": "GranSolfachord Coolia",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "84546257": {
+    "name": "Marincess Coral Triangle",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "85216896": {
+    "name": "Zefra Metaltron",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "85243784": {
+    "name": "Linkross",
+    "arrows": [
+      "B"
+    ]
+  },
+  "85289965": {
+    "name": "Borrelsword Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "85289966": {
+    "name": "Borrelsword Dragon",
+    "arrows": [
+      "BL",
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "85696777": {
+    "name": "Harpie Conductor",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "86066372": {
+    "name": "Accesscode Talker",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "86066373": {
+    "name": "Accesscode Talker",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "86148577": {
+    "name": "Guardragon Elpy",
+    "arrows": [
+      "L"
+    ]
+  },
+  "86750474": {
+    "name": "Trickstar Foxglove Witch",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "86926989": {
+    "name": "Shiranui Skillsaga Supremacy",
+    "arrows": [
+      "B",
+      "L",
+      "T"
+    ]
+  },
+  "86938484": {
+    "name": "Shaddoll Construct",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "87054946": {
+    "name": "Nephthys, the Sacred Flame",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "87871125": {
+    "name": "Salamangreat Sunlight Wolf",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "88000953": {
+    "name": "Rasterliger",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "88093706": {
+    "name": "Update Jammer",
+    "arrows": [
+      "L",
+      "T"
+    ]
+  },
+  "88406570": {
+    "name": "Gouki Destroy Ogre",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "89238128": {
+    "name": "Cyberse Accelerator",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "90207654": {
+    "name": "Gullveig of the Nordic Ascendant",
+    "arrows": [
+      "BL"
+    ]
+  },
+  "90290572": {
+    "name": "Protector of The Agents - Moon",
+    "arrows": [
+      "BR",
+      "R"
+    ]
+  },
+  "90512490": {
+    "name": "Greatfly",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "90673288": {
+    "name": "Sky Striker Ace - Shizuku",
+    "arrows": [
+      "TR"
+    ]
+  },
+  "90673289": {
+    "name": "Sky Striker Ace - Shizuku",
+    "arrows": [
+      "TR"
+    ]
+  },
+  "91140491": {
+    "name": "Seraphim Papillion",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "91336701": {
+    "name": "Day-Breaker the Shining Magical Warrior",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "91420202": {
+    "name": "Avendread Savior",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "91557476": {
+    "name": "Sunvine Thrasher",
+    "arrows": [
+      "B"
+    ]
+  },
+  "92362073": {
+    "name": "Galaxy Satellite Dragon",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "92770064": {
+    "name": "Sunavalon Dryatrentiay",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "92781606": {
+    "name": "X-Krawler Qualiark",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "92812851": {
+    "name": "Exceed the Pendulum",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "93084621": {
+    "name": "Unchained Soul of Anguish",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "93503294": {
+    "name": "Altergeist Primebanshee",
+    "arrows": [
+      "B",
+      "BR",
+      "R"
+    ]
+  },
+  "93672138": {
+    "name": "Evil★Twin's Trouble Sunny",
+    "arrows": [
+      "B",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "93896655": {
+    "name": "Sunavalon Dryas",
+    "arrows": [
+      "B"
+    ]
+  },
+  "94207108": {
+    "name": "Marincess Wonder Heart",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  },
+  "94259633": {
+    "name": "Relinquished Anima",
+    "arrows": [
+      "T"
+    ]
+  },
+  "94626871": {
+    "name": "Trickstar Black Catbat",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "95372220": {
+    "name": "Flash Charge Dragon",
+    "arrows": [
+      "TL",
+      "T",
+      "TR"
+    ]
+  },
+  "95454996": {
+    "name": "Maliss <Q> White Binder",
+    "arrows": [
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "95493471": {
+    "name": "Neo Super Quantal Mech King Blaster Magna",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "95515058": {
+    "name": "Gouki The Blade Ogre",
+    "arrows": [
+      "BL",
+      "B",
+      "T"
+    ]
+  },
+  "95515518": {
+    "name": "The Weather Painter Moonbow",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "95784714": {
+    "name": "Flying Mary, the Wandering Ghost Ship",
+    "arrows": [
+      "L",
+      "R"
+    ]
+  },
+  "95937545": {
+    "name": "Golden Allure Queen",
+    "arrows": [
+      "B",
+      "L",
+      "R"
+    ]
+  },
+  "96113307": {
+    "name": "Ritual Beast Ulti-Reirautari",
+    "arrows": [
+      "BL",
+      "B",
+      "BR",
+      "T"
+    ]
+  },
+  "96150936": {
+    "name": "Madolche Fresh Sistart",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "96380700": {
+    "name": "Talkback Lancer",
+    "arrows": [
+      "B"
+    ]
+  },
+  "97053215": {
+    "name": "G Golem Stubborn Menhir",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "97273514": {
+    "name": "Inzektor Picofalena",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "97383507": {
+    "name": "Dark Templar @Ignister",
+    "arrows": [
+      "BL",
+      "B",
+      "BR"
+    ]
+  },
+  "97520532": {
+    "name": "Gimmick Puppet Chimera Doll",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "97661969": {
+    "name": "Aussa the Earth Charmer, Immovable",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "97677329": {
+    "name": "Backup Supervisor",
+    "arrows": [
+      "B",
+      "R"
+    ]
+  },
+  "97864322": {
+    "name": "Emperor Charles the Great",
+    "arrows": [
+      "B"
+    ]
+  },
+  "97973962": {
+    "name": "Aleister the Invoker of Madness",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "98095162": {
+    "name": "Curious, the Lightsworn Dominion",
+    "arrows": [
+      "BL",
+      "BR",
+      "T"
+    ]
+  },
+  "98127546": {
+    "name": "Underworld Goddess of the Closed World",
+    "arrows": [
+      "B",
+      "BR",
+      "R",
+      "T",
+      "TR"
+    ]
+  },
+  "98462037": {
+    "name": "Sky Striker Ace - Azalea",
+    "arrows": [
+      "BR",
+      "TL"
+    ]
+  },
+  "98630720": {
+    "name": "Borrelend Dragon",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R",
+      "T"
+    ]
+  },
+  "98642179": {
+    "name": "Ferocious Flame Swordsman",
+    "arrows": [
+      "BL",
+      "L"
+    ]
+  },
+  "98978921": {
+    "name": "Link Spider",
+    "arrows": [
+      "B"
+    ]
+  },
+  "99011763": {
+    "name": "Beat Cop from the Underworld",
+    "arrows": [
+      "BL",
+      "BR"
+    ]
+  },
+  "99111753": {
+    "name": "Security Dragon",
+    "arrows": [
+      "B",
+      "T"
+    ]
+  },
+  "99726621": {
+    "name": "Tri-Brigade Shuraig the Ominous Omen",
+    "arrows": [
+      "BL",
+      "BR",
+      "L",
+      "R"
+    ]
+  }
+}

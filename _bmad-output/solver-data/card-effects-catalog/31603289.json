@@ -1,0 +1,423 @@
+{
+  "cardId": 31603289,
+  "name": "Cupsy★Yummy Way",
+  "sourceFile": "official/c31603289.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_YUMMY"
+  ],
+  "summonProcedures": [
+    {
+      "kind": "Synchro",
+      "rawCall": "Synchro.AddProcedure(c,nil,1,1,Synchro.NonTuner(aux.NOT(Card.IsLinkMonster)),1,1,aux.FilterBoolFunction(Card.IsLink,1))",
+      "opaque": false,
+      "decoded": {
+        "slots": [
+          {
+            "role": "tuner",
+            "min": 1,
+            "max": 1
+          },
+          {
+            "role": "non-tuner",
+            "min": 1,
+            "max": 1,
+            "filter": {
+              "helper": "Synchro.NonTuner",
+              "kind": "synchro-non-tuner-filter",
+              "params": {
+                "innerFilter": "aux.NOT(Card.IsLinkMonster)"
+              }
+            }
+          }
+        ],
+        "extras": [
+          "aux.FilterBoolFunction(Card.IsLink,1)"
+        ]
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "e0a",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_IGNORE_IMMUNE"
+      ],
+      "events": [
+        "EFFECT_SYNCHRO_LEVEL"
+      ],
+      "range": "LOCATION_EXTRA",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "LOCATION_MZONE"
+      },
+      "target": {
+        "inline": "function(e,c) return c:IsLink(1) end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "link",
+              "value": 1
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "value": {
+        "inline": "function(e,sc) return sc:IsSetCard(SET_YUMMY) and 1 or -1 end",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "sc:IsSetCard(SET_YUMMY) and 1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "- 1"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
+      },
+      "clonedTo": [
+        "e0b"
+      ]
+    },
+    {
+      "id": "e0b",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_IGNORE_IMMUNE"
+      ],
+      "events": [
+        "EFFECT_SYNCHRO_LEVEL",
+        "EFFECT_CANNOT_BE_SYNCHRO_MATERIAL"
+      ],
+      "range": "LOCATION_EXTRA",
+      "targetRange": {
+        "self": "LOCATION_MZONE",
+        "opponent": "LOCATION_MZONE"
+      },
+      "target": {
+        "inline": "function(e,c) return c:IsLink(1) end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "link",
+              "value": 1
+            }
+          ],
+          "complete": true
+        },
+        "opaque": false
+      },
+      "value": {
+        "inline": "function(e,sc) return sc and not sc:IsSetCard(SET_YUMMY) end",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "raw",
+                "source": "sc:IsSetCard(SET_YUMMY)"
+              }
+            }
+          ],
+          "complete": false
+        }
+      },
+      "clonedFrom": "e0a"
+    },
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_SEARCH",
+        "CATEGORY_TOHAND",
+        "CATEGORY_HANDES"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function(e) return e:GetHandler():IsSynchroSummoned() end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "synchroSummoned"
+            }
+          ],
+          "complete": true
+        }
+      },
+      "target": {
+        "name": "s.thtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "nil",
+              "2",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_HANDES",
+              "nil",
+              "0",
+              "tp",
+              "1"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.thop",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "monster"
+            },
+            {
+              "kind": "ableToHand"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "g",
+            "argHints": [
+              "nil",
+              "REASON_EFFECT"
+            ]
+          },
+          {
+            "kind": "confirm",
+            "method": "ConfirmCards",
+            "target": "1-tp",
+            "argHints": [
+              "g"
+            ]
+          },
+          {
+            "kind": "shuffle-hand",
+            "method": "ShuffleHand",
+            "target": "tp"
+          },
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_DISCARD"
+            ]
+          },
+          {
+            "kind": "break-effect",
+            "method": "BreakEffect"
+          },
+          {
+            "kind": "send-to-grave",
+            "method": "SendtoGrave",
+            "target": "dg",
+            "argHints": [
+              "REASON_DISCARD|REASON_EFFECT"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_QUICK_O"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_CHAINING"
+      ],
+      "descriptionStringId": "1",
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "condition": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp) return rp==1-tp end",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "rp==1-tp"
+            }
+          ],
+          "complete": false
+        }
+      },
+      "cost": {
+        "inline": "Cost.SelfToExtra",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.SelfToExtra",
+          "kind": "return-to-extra",
+          "params": {}
+        }
+      },
+      "target": {
+        "name": "s.gysptg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_GRAVE"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.gyspop",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_YUMMY"
+            },
+            {
+              "kind": "canBeSpecialSummoned"
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_SPSUMMON"
+            ]
+          },
+          {
+            "kind": "special-summon",
+            "method": "SpecialSummon",
+            "target": "g",
+            "argHints": [
+              "0",
+              "tp",
+              "tp",
+              "false",
+              "false",
+              "POS_FACEUP"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 9,
+    "fullyDecoded": 8,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

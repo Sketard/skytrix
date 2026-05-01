@@ -1,0 +1,157 @@
+{
+  "cardId": 68468459,
+  "name": "Fallen of Albaz",
+  "sourceFile": "official/c68468459.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1a",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function() return not Duel.IsDamageStep() end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "cost": {
+        "inline": "Cost.Discard()",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.Discard",
+          "kind": "discard",
+          "params": {}
+        }
+      },
+      "target": {
+        "inline": "Fusion.SummonEffTG(table.unpack(params))",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffTG",
+          "kind": "fusion-summon-target",
+          "params": {
+            "note": "Fusion summon target; material requirements declared by AddProcMix on the same card"
+          }
+        }
+      },
+      "operation": {
+        "inline": "Fusion.SummonEffOP(table.unpack(params))",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
+      },
+      "clonedTo": [
+        "e1b"
+      ]
+    },
+    {
+      "id": "e1b",
+      "categories": [
+        "CATEGORY_SPECIAL_SUMMON",
+        "CATEGORY_FUSION_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "condition": {
+        "inline": "function() return not Duel.IsDamageStep() end",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "gameState",
+                "method": "IsDamageStep"
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "cost": {
+        "inline": "Cost.Discard()",
+        "opaque": false,
+        "resolved": {
+          "helper": "Cost.Discard",
+          "kind": "discard",
+          "params": {}
+        }
+      },
+      "target": {
+        "inline": "Fusion.SummonEffTG(table.unpack(params))",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffTG",
+          "kind": "fusion-summon-target",
+          "params": {
+            "note": "Fusion summon target; material requirements declared by AddProcMix on the same card"
+          }
+        }
+      },
+      "operation": {
+        "inline": "Fusion.SummonEffOP(table.unpack(params))",
+        "opaque": false,
+        "resolved": {
+          "helper": "Fusion.SummonEffOP",
+          "kind": "fusion-summon-operation"
+        }
+      },
+      "clonedFrom": "e1a"
+    }
+  ],
+  "coverage": {
+    "totalEffects": 2,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 8,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

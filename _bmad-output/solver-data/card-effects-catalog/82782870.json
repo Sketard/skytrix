@@ -1,0 +1,363 @@
+{
+  "cardId": 82782870,
+  "name": "Mitsurugi no Mikoto, Kusanagi",
+  "sourceFile": "official/c82782870.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [
+    82782870
+  ],
+  "listedSeries": [
+    "SET_MITSURUGI"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.thtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_MITSURUGI"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToHand"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.thop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      },
+      "clonedTo": [
+        "e2",
+        "e3"
+      ]
+    },
+    {
+      "id": "e2",
+      "categories": [
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.thtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_MITSURUGI"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToHand"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.thop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      },
+      "clonedFrom": "e1"
+    },
+    {
+      "id": "e3",
+      "categories": [
+        "CATEGORY_TOHAND"
+      ],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_TRIGGER_O"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CARD_TARGET",
+        "EFFECT_FLAG_DELAY"
+      ],
+      "events": [
+        "EVENT_SUMMON_SUCCESS",
+        "EVENT_RELEASE"
+      ],
+      "descriptionStringId": "0",
+      "countLimit": {
+        "count": 1,
+        "key": "id"
+      },
+      "target": {
+        "name": "s.thtg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "setCard",
+              "value": "SET_MITSURUGI"
+            },
+            {
+              "kind": "faceup"
+            },
+            {
+              "kind": "ableToHand"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "code",
+                "value": "self"
+              }
+            }
+          ],
+          "complete": true
+        },
+        "actions": [
+          {
+            "kind": "hint",
+            "method": "Hint",
+            "target": "HINT_SELECTMSG",
+            "argHints": [
+              "tp",
+              "HINTMSG_ATOHAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_TOHAND",
+              "g",
+              "1",
+              "tp",
+              "0"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.thop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "send-to-hand",
+            "method": "SendtoHand",
+            "target": "tc",
+            "argHints": [
+              "tp",
+              "REASON_EFFECT"
+            ]
+          }
+        ]
+      },
+      "clonedFrom": "e1"
+    },
+    {
+      "id": "e4",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_FIELD",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EFFECT_DESTROY_REPLACE"
+      ],
+      "range": "LOCATION_MZONE",
+      "countLimit": {
+        "count": 1,
+        "key": "{id,1}"
+      },
+      "target": {
+        "name": "s.reptg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "gameState",
+              "method": "eg:IsExists",
+              "args": [
+                "s.repfilter",
+                "1",
+                "c",
+                "tp"
+              ]
+            },
+            {
+              "kind": "releasableByEffect"
+            },
+            {
+              "kind": "not",
+              "inner": {
+                "kind": "hasFlag",
+                "value": "STATUS:STATUS_DESTROY_CONFIRMED"
+              }
+            }
+          ],
+          "complete": true
+        }
+      },
+      "operation": {
+        "inline": "function(e,tp,eg,ep,ev,re,r,rp) Duel.Release(e:GetHandler(),REASON_EFFECT|REASON_REPLACE) end",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "tribute",
+            "method": "Release",
+            "target": "e:GetHandler()",
+            "argHints": [
+              "REASON_EFFECT|REASON_REPLACE"
+            ]
+          }
+        ]
+      },
+      "value": {
+        "inline": "function(e,c) return s.repfilter(c,e:GetHandlerPlayer()) end",
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "raw",
+              "source": "s.repfilter(c,e:GetHandlerPlayer())"
+            }
+          ],
+          "complete": false
+        },
+        "opaque": true
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 4,
+    "totalFunctionRefs": 8,
+    "fullyDecoded": 8,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

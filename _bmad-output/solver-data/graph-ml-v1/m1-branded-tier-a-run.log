@@ -1,0 +1,71 @@
+[train] fixture=branded-dracotail-opener tier=A generations=50 μ=5 λ=10 budget=4000ms seed=42
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 8 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[train] edges: total=926 active(tier=A)=267
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=78397661
+[train] baseline (weights=0): fitness=44.068 matched=0/8 goalMatch=43.79 nodes=287
+[train] gen=1 best=55.167 mean=50.028 std=4.685 σ=0.500 succ=100%
+[train] gen=2 best=55.183 mean=55.168 std=0.011 σ=0.500 succ=100%
+[train] gen=3 best=55.183 mean=55.176 std=0.006 σ=0.500 succ=67%
+[train] gen=4 best=55.187 mean=55.184 std=0.003 σ=0.500 succ=75%
+[train] gen=5 best=55.187 mean=55.186 std=0.002 σ=0.610 succ=60%
+[train] gen=6 best=55.187 mean=55.186 std=0.002 σ=0.744 succ=40%
+[train] gen=7 best=55.187 mean=55.186 std=0.002 σ=0.744 succ=20%
+[train] gen=8 best=55.187 mean=55.186 std=0.001 σ=0.744 succ=20%
+[train] gen=9 best=55.187 mean=55.186 std=0.001 σ=0.610 succ=0%
+[train] gen=10 best=55.190 mean=55.188 std=0.002 σ=0.610 succ=20%
+[train] checkpoint → C:\Users\Axel\Desktop\code\skytrix\duel-server\data\trained-weights\checkpoints\A-2026-04-24T21-41-13-749Z.json
+[train] gen=11 best=55.190 mean=55.189 std=0.002 σ=0.610 succ=20%
+[train] gen=12 best=55.192 mean=55.190 std=0.002 σ=0.744 succ=40%
+[train] gen=13 best=55.192 mean=55.191 std=0.001 σ=0.908 succ=40%
+[train] gen=14 best=55.193 mean=55.192 std=0.001 σ=1.108 succ=60%
+[train] gen=15 best=55.193 mean=55.192 std=0.001 σ=1.352 succ=40%
+[train] gen=16 best=55.193 mean=55.192 std=0.001 σ=1.649 succ=40%
+[train] gen=17 best=55.193 mean=55.192 std=0.001 σ=1.649 succ=20%
+[train] gen=18 best=55.193 mean=55.192 std=0.001 σ=1.649 succ=20%
+[train] gen=19 best=55.193 mean=55.192 std=0.001 σ=1.352 succ=0%
+[train] gen=20 best=55.193 mean=55.192 std=0.001 σ=1.109 succ=0%
+[train] gen=21 best=55.193 mean=55.192 std=0.001 σ=0.909 succ=0%
+[train] gen=22 best=55.193 mean=55.192 std=0.001 σ=0.746 succ=0%
+[train] gen=23 best=55.193 mean=55.192 std=0.001 σ=0.611 succ=0%
+[train] gen=24 best=55.193 mean=55.192 std=0.001 σ=0.501 succ=0%
+[train] gen=25 best=55.193 mean=55.192 std=0.001 σ=0.411 succ=0%
+[train] gen=26 best=55.193 mean=55.192 std=0.001 σ=0.337 succ=0%
+[train] gen=27 best=55.193 mean=55.192 std=0.001 σ=0.276 succ=0%
+[train] gen=28 best=55.193 mean=55.192 std=0.001 σ=0.227 succ=0%
+[train] gen=29 best=55.193 mean=55.192 std=0.001 σ=0.186 succ=0%
+[train] gen=30 best=55.193 mean=55.192 std=0.001 σ=0.152 succ=0%
+[train] gen=31 best=55.193 mean=55.192 std=0.001 σ=0.125 succ=0%
+[train] gen=32 best=55.194 mean=55.193 std=0.001 σ=0.125 succ=20%
+[train] gen=33 best=55.194 mean=55.193 std=0.001 σ=0.125 succ=20%
+[train] gen=34 best=55.194 mean=55.193 std=0.001 σ=0.125 succ=20%
+[train] gen=35 best=55.194 mean=55.193 std=0.001 σ=0.125 succ=20%
+[train] gen=36 best=55.194 mean=55.193 std=0.001 σ=0.125 succ=20%
+[train] gen=37 best=55.194 mean=55.193 std=0.001 σ=0.102 succ=0%
+[train] gen=38 best=55.194 mean=55.193 std=0.001 σ=0.084 succ=0%
+[train] gen=39 best=55.194 mean=55.193 std=0.001 σ=0.069 succ=0%
+[train] gen=40 best=55.194 mean=55.193 std=0.001 σ=0.057 succ=0%
+[train] gen=41 best=55.194 mean=55.193 std=0.001 σ=0.046 succ=0%
+[train] gen=42 best=55.194 mean=55.193 std=0.001 σ=0.038 succ=0%
+[train] gen=43 best=55.194 mean=55.193 std=0.001 σ=0.031 succ=0%
+[train] gen=44 best=55.194 mean=55.193 std=0.001 σ=0.026 succ=0%
+[train] gen=45 best=55.194 mean=55.193 std=0.001 σ=0.021 succ=0%
+[train] gen=46 best=55.194 mean=55.193 std=0.001 σ=0.017 succ=0%
+[train] gen=47 best=55.194 mean=55.193 std=0.001 σ=0.014 succ=0%
+[train] gen=48 best=55.194 mean=55.193 std=0.001 σ=0.012 succ=0%
+[train] gen=49 best=55.194 mean=55.193 std=0.001 σ=0.009 succ=0%
+[train] gen=50 best=55.194 mean=55.193 std=0.001 σ=0.008 succ=0%
+[train] final weights → C:\Users\Axel\Desktop\code\skytrix\duel-server\data\trained-weights\tier-a-latest.json
+[train] re-eval: fitness=55.178 matched=0/8 goalMatch=54.86 nodes=330 term=timeout
+[train] Δ vs baseline: fitness +11.110 | goalMatch +11.07 | matched 0→0 (baseline 0)
+[train] csv → ../_bmad-output/solver-data/graph-ml-v1/metrics-m1-branded-tier-a.csv

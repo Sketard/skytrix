@@ -1,0 +1,206 @@
+[evaluate] pool size: 1
+[evaluate-par] fixtures: 15  budget=30000ms  node-budget=200  label='v4-scale-50'
+[Scripts] Startup script not found: proc_compat.lua
+[Solver] solver-config.json loaded and validated
+[Solver] interruption-weights.json loaded and validated (15 types)
+[Solver] interruption-tags.json loaded and validated (160 cards)
+[Solver] handtraps.json loaded and validated (5 entries)
+[Solver] structural-weights.json loaded and validated
+[Solver] structural-tutor-cards.json loaded (5 entries)
+[Solver] archetype-expertise loaded (4 files)
+[Solver] grammar graph validated (1 successor, 9 bridges)
+[Solver] All interruption-tags cardIds verified against card pool
+[Solver] OCGCore v11.0 initialized
+[ScriptReader] Not found: c0.lua
+[Solver] WASM Memory captured (16908288 bytes) — snapshot fork enabled
+[Solver] WASM smoke test passed (snapshot: available, ENABLED)
+[graph-weights-loader] loaded 926 edge weights (tier=A, generations=8, bestFitness=22.976)
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[Solver] WARN: SELECT_CHAIN action missing description, cardId=5318639
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+[ScriptReader] Not found: c0.lua
+[ScriptReader] Not found: proc_unofficial.lua
+[ScriptReader] Not found: c43096270.lua
+  [ddd-pendulum-opener] (ddd-wcq-top4)  score=17  expl=26  latent=9  matched=1/5  nodes=1296  depth=50  az=0%  t2=22.2%  walk=11187ms  term=depth_cap
+  [ryzeal-mitsurugi-opener] (ryzeal-mitsurugi-hk-top8)  score=58.5  expl=60.5  latent=2  matched=3/5  nodes=1490  depth=73  az=1.4%  t2=27%  walk=14898ms  term=timeout
+  [radiant-typhoon-opener] (radiant-typhoon-ygoprodeck-2026)  score=21  expl=21  latent=0  matched=2/3  nodes=1906  depth=60  az=0%  t2=23.6%  walk=16238ms  term=depth_cap
+  [branded-dracotail-opener] (branded-dracotail-bainbridge-2nd)  score=74.28571428571428  expl=74.28571428571428  latent=0  matched=4/8  nodes=2141  depth=63  az=0%  t2=45.8%  walk=19108ms  term=timeout
+  [kashtira-azamina-opener] (kashtira-azamina-verquin-wcq-top8)  score=24  expl=24  latent=0  matched=1/4  nodes=1210  depth=72  az=0%  t2=44.8%  walk=11621ms  term=timeout
+  [horus-crystron-opener] (horus-crystron-santiago-wcq-top4)  score=10  expl=11  latent=1  matched=1/4  nodes=1091  depth=50  az=0%  t2=30.5%  walk=9367ms  term=completed
+  [dinomorphia-opener] (dinomorphia-696904)  score=1  expl=1  latent=0  matched=0/3  nodes=1476  depth=27  az=0%  t2=34.6%  walk=12196ms  term=timeout
+  [spright-opener] (spright-greenville-wcq-top8)  score=9  expl=9  latent=0  matched=0/4  nodes=1318  depth=33  az=0%  t2=48.5%  walk=12778ms  term=timeout
+  [snake-eye-yummy-opener] (snake-eye-yummy-sarcophagus-hollywood-wcq)  score=31.80952380952381  expl=31.80952380952381  latent=0  matched=2/7  nodes=2254  depth=75  az=1%  t2=59.4%  walk=19113ms  term=depth_cap
+  [tearlaments-opener] (tearlaments-2026-fafnirymd)  score=17  expl=17  latent=0  matched=1/4  nodes=1137  depth=70  az=0%  t2=31.2%  walk=10699ms  term=timeout
+  [floowandereeze-opener] (floowandereeze-2026)  score=14  expl=15.584962500721156  latent=1.584962500721156  matched=2/4  nodes=1894  depth=59  az=0%  t2=24%  walk=16857ms  term=timeout
+  [labrynth-opener] (labrynth-2026)  score=9  expl=9  latent=0  matched=1/4  nodes=984  depth=31  az=0%  t2=53.1%  walk=10415ms  term=timeout
+  [stun-runick-opener] (stun-runick-melbourne-top8)  score=13  expl=13  latent=0  matched=1/4  nodes=1540  depth=50  az=0%  t2=35.3%  walk=15022ms  term=depth_cap
+  [nekroz-ryzeal-opener] (nekroz-ryzeal-jan2026-tcg-1st)  score=1  expl=5  latent=4  matched=0/4  nodes=970  depth=28  az=10.6%  t2=39.2%  walk=8244ms  term=completed
+  [branded-dracotail-opener-mirrorjade-line] (branded-dracotail-bainbridge-2nd)  score=62.214285714285715  expl=62.214285714285715  latent=0  matched=2/6  nodes=2587  depth=68  az=0%  t2=60.8%  walk=24832ms  term=timeout
+
+[evaluate-par] ═══ AGGREGATE ═══
+  cumulative matched:          21/69
+  cumulative score:            362.8095238095238
+  cumulative explorationScore: 380.39448631024493
+  fixtures:                    15
+
+[evaluate] wrote C:\Users\Axel\Desktop\code\skytrix\_bmad-output\solver-data\graph-ml-v1\v4-scale-50.json
+
+[evaluate] ═══ COMPARISON vs ../_bmad-output/solver-data/graph-ml-v1/noise-untuned-seq-r1.json ═══
+  prev label: 'noise-untuned-seq-r1'  (2026-04-25T06:56:02.300Z)
+  curr label: 'v4-scale-50'  (2026-04-25T07:31:06.542Z)
+  cumulative matched:           20 → 21  (Δ+1)
+  cumulative score:             364.16666666666663 → 362.8095238095238  (Δ-1.3571428571428328)
+  cumulative explorationScore:  381.33659166810895 → 380.39448631024493  (Δ-0.94)
+
+  IMPROVEMENTS (2):
+    ✓ branded-dracotail-opener: matched 4→4 (Δ+0)  score 71.78571428571428→74.28571428571428 (Δ+2.50)
+    ✓ snake-eye-yummy-opener: matched 1→2 (Δ+1)  score 23.238095238095237→31.80952380952381 (Δ+8.57)
+
+  STABLE (12):
+    = ddd-pendulum-opener: matched 1→1 (Δ+0)  score 17→17 (Δ+0.00)
+    = radiant-typhoon-opener: matched 2→2 (Δ+0)  score 21→21 (Δ+0.00)
+    = kashtira-azamina-opener: matched 1→1 (Δ+0)  score 24→24 (Δ+0.00)
+    = horus-crystron-opener: matched 1→1 (Δ+0)  score 10→10 (Δ+0.00)
+    = dinomorphia-opener: matched 0→0 (Δ+0)  score 1→1 (Δ+0.00)
+    = spright-opener: matched 0→0 (Δ+0)  score 9→9 (Δ+0.00)
+    = tearlaments-opener: matched 1→1 (Δ+0)  score 17→17 (Δ+0.00)
+    = floowandereeze-opener: matched 2→2 (Δ+0)  score 14→14 (Δ+0.00)
+    = labrynth-opener: matched 1→1 (Δ+0)  score 9→9 (Δ+0.00)
+    = stun-runick-opener: matched 1→1 (Δ+0)  score 13→13 (Δ+0.00)
+    = nekroz-ryzeal-opener: matched 0→0 (Δ+0)  score 1→1 (Δ+0.00)
+    = branded-dracotail-opener-mirrorjade-line: matched 2→2 (Δ+0)  score 63.64285714285714→62.214285714285715 (Δ-1.43)
+
+  REGRESSIONS (1):
+    ✗ ryzeal-mitsurugi-opener: matched 3→3 (Δ+0)  score 69.5→58.5 (Δ-11.00)  [score-only: -15.8%]
+
+[evaluate] FAIL: 1 regression(s) detected

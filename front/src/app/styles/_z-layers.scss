@@ -17,6 +17,7 @@ $z-donut-overlay: 500;
 $z-navbar-header: 1000;
 $z-drag-preview: 1000;
 $z-inspector-mobile: 1001;
+$z-deck-card-action: 1005;
 $z-drawer-backdrop: 1050;
 $z-inspector-click: 1050;
 $z-drawer: 1100;
@@ -31,6 +32,7 @@ $z-pvp-animation-overlay: 5;
 $z-pvp-opponent-thinking: 40;
 $z-pvp-hand: 50;
 $z-pvp-mini-toolbar: 55;
+$z-pvp-card-inspector: 58; // above hand (50) so field-card previews aren't obscured by own hand
 $z-pvp-debug-panel: 58;
 $z-pvp-floating-instruction: 60;
 $z-pvp-phase-announcement: 62;

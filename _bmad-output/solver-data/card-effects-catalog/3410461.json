@@ -1,0 +1,118 @@
+{
+  "cardId": 3410461,
+  "name": "Alba-Lenatus the Abyss Dragon",
+  "sourceFile": "official/c3410461.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [
+    "SET_FUSION"
+  ],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e0",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE",
+        "EFFECT_FLAG_UNCOPYABLE"
+      ],
+      "events": [
+        "EFFECT_CANNOT_BE_FUSION_MATERIAL"
+      ],
+      "value": {
+        "inline": "1",
+        "opaque": true
+      }
+    },
+    {
+      "id": "e1",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_SPSUMMON_SUCCESS"
+      ],
+      "operation": {
+        "name": "s.atkop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EFFECT_EXTRA_ATTACK_MONSTER",
+            "value": "c:GetMaterialCount()-1",
+            "types": [
+              "EFFECT_TYPE_SINGLE"
+            ],
+            "reset": "RESET_EVENT|RESETS_STANDARD_DISABLE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "categories": [],
+      "types": [
+        "EFFECT_TYPE_SINGLE",
+        "EFFECT_TYPE_CONTINUOUS"
+      ],
+      "properties": [
+        "EFFECT_FLAG_CANNOT_DISABLE"
+      ],
+      "events": [
+        "EVENT_TO_GRAVE"
+      ],
+      "operation": {
+        "name": "s.regop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "register-effect",
+            "method": "RegisterEffect",
+            "target": "c",
+            "argHints": [
+              "e1"
+            ]
+          }
+        ],
+        "sideEffects": [
+          {
+            "registeredOn": "c",
+            "code": "EVENT_PHASE+PHASE_END",
+            "types": [
+              "EFFECT_TYPE_FIELD+EFFECT_TYPE_TRIGGER_O"
+            ],
+            "categories": [
+              "CATEGORY_TOHAND+CATEGORY_SEARCH"
+            ],
+            "reset": "RESETS_STANDARD_PHASE_END"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 3,
+    "totalFunctionRefs": 2,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 0,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

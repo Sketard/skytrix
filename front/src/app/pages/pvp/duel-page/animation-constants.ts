@@ -18,3 +18,10 @@ export const QUEUE_COLLAPSE_KEEP = 3;
 
 /** Safety timeout (ms) for replayBuffer batch-end resolution. */
 export const REPLAY_BUFFER_SAFETY_TIMEOUT_MS = 10_000;
+
+/**
+ * Stagger delay (ms) between events inside a `group` queue directive during
+ * buffer replay. Small offset gives consecutive ghosts a visible lead-in
+ * without serializing the whole group. Single-event groups ignore it.
+ */
+export const GROUP_STAGGER_MS = 50;

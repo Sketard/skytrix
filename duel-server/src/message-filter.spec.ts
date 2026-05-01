@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { filterMessage } from './message-filter.js';
 import { LOCATION, POSITION } from './ws-protocol.js';
-import type { ServerMessage, BoardStatePayload, BoardZone, CardOnField, Position } from './ws-protocol.js';
+import type { ServerMessage, Player, BoardStatePayload, PlayerBoardState, BoardZone, CardOnField, Position } from './ws-protocol.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

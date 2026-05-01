@@ -1,0 +1,32 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "description": "Force Cartesia → Secreterion fusion path (vs current DFS preference for Cartesia → Arthalion direct). Targets the missing 3-card cluster: Cartesia + Secreterion + Mululu (revived via Secreterion GY-eff).",
+  "_source": "_bmad-output/solver-data/branded-dracotail-combo-plan-2026-04-19.md (user-dictated 8-piece line)",
+  "_note": "Pointer advances on match (cardId), stays on non-match. Minimal redirect — only the key decisions that bias DFS toward the Cartesia-fusion-Secreterion branch.",
+
+  "_v1_strategy": "4-pin minimal: Fallen-WD mill, Lukias NS, Urgula search target, Cartesia Fusion. Result: 4/8 (no change vs baseline). Baseline already finds Cartesia→Secreterion. The plateau is the FOLLOW-UP Rahu→Arthalion line + Secreterion GY-eff revival.",
+
+  "_v2_strategy": "Extend pins through the post-Secreterion phase: Urgula GY-eff recycle Lukias → activate Rahu Spell → Arthalion fusion → Secreterion GY-eff revive Mululu. Result: 4/8 (no change). Trace via record-trajectory revealed pin pointer stuck at [1]=Lukias because DFS picked Branded Fusion (44362883) instead of Lukias NS, consuming Lukias as material.",
+
+  "_v3_strategy": "Add bannedCardIds to remove the scorer-preferred shortcut. Branded Fusion is unused in the user-dictated minimalist line (per combo plan). Banning 44362883 forces DFS to NS Lukias instead.",
+
+  "_v3_result": "score=71.79 matched=4/8. SAME as baseline / v1 / v2. Even at deep-search budget (60s, 2000 nodes, depth=50) the result is identical. The pin mechanism works (record-trajectory shows pinned mainPath at score=28) but evaluate-structural picks the BEST alternative across DFS tree, which is the scorer-preferred 4-piece terminal regardless of pinning.",
+
+  "_conclusion_2026_04_26": "Plateau confirmed = scorer structural-proxy bias, NOT exploration constraint. Same root cause as ryzeal-mitsurugi v8 (`_iteration_ceiling_finding` in that hint). The InterruptionScorer values the 4-piece Cartesia→Secreterion terminal at 71.79 and prunes deeper exploration toward 7-8 piece terminals because intermediate scores don't justify the depth. Option A (canonical-path hint) cannot break this plateau on branded-dracotail. Next levers per ryzeal precedent: (a) add direct matched% reward to InterruptionScorer (architectural change — scorer becomes goal-aware), (b) feed expectedBoard cards as implicit ComboGoals (lighter change but still scorer modification), (c) full-trajectory behavior cloning (Phase 5-lite per `solver-ml-strategic-direction` memo).",
+
+  "canonicalPath": [
+    73819701,
+    75003700,
+    70871153,
+    95515789,
+    70871153,
+    75003700,
+    32548318,
+    89851827,
+    7375867
+  ],
+
+  "bannedCardIds": [
+    44362883
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "_comment": "Phase 3.0 C4 exemple — coarse grid sweep sur 5 fixtures représentatives à nb=200. Phase D V1 retired 2026-04-18 (probe confirmed never fires at peak) — latentDiscount axis removed. Audit-sweep-coverage should run before launch.",
+
+  "axes": {
+    "structural.F1_W": [2, 3, 4],
+    "structural.F2_W": [0.5, 1, 2],
+    "structural.globalCap": [10, 15, 20]
+  },
+
+  "fixtureFilter": [
+    "ryzeal-mitsurugi-opener",
+    "branded-dracotail-opener",
+    "radiant-typhoon-opener",
+    "branded-dracotail-opener-mirrorjade-line",
+    "labrynth-opener"
+  ],
+
+  "nodeBudget": 200,
+  "budgetMs": 3600000,
+
+  "fitness": "cumulativeMatched",
+  "tiebreak": "cumulativeScore",
+
+  "baselinePath": "../_bmad-output/planning-artifacts/research/baselines/post-phase-d-baseline.json",
+  "noRegressionPerFixture": true,
+
+  "outputPath": "data/tuning-runs/coarse-v1.jsonl",
+  "topK": 5,
+  "label": "coarse-v1"
+}

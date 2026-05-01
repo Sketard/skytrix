@@ -177,10 +177,10 @@ _These define the concrete pass/fail criteria for the emotional goals above._
 | `mat-button-toggle` | Mode (Goldfish/Adversarial), Speed (Fast/Optimal) |
 | `mat-checkbox` | Handtrap selection |
 | `mat-chip` | Breadcrumb main path steps |
-| `mat-progress-bar` | Solve progress |
+| `mat-progress-spinner` | Solve progress |
 | `mat-card` | Pinned result snapshots |
 | `mat-icon` | Interruption type badges, expand/collapse |
-| `mat-tooltip` | Card art hover annotations |
+| `mat-tooltip` | Fallback scoring hints (short text) |
 | `CdkTree` + `CdkTreeNode` | Decision tree (flat mode) |
 
 **Custom components (not in Material):**
@@ -249,7 +249,7 @@ The shift: from "I play to test" to "I read to decide". The solver replaces manu
 - Routes to `/decks/:id/solver`. Deck pre-loaded. Config panel ready.
 
 **2. Configuration:**
-- Hand selector: compact card art grid of deck cards, click-to-toggle, counter "3/5 selected". "Fill random" button completes the hand to 5 with random cards from remaining deck (local random, no server involved). Supports partial fix: select 1-3 key cards, fill the rest randomly.
+- Hand selector: compact card art grid of deck cards, click-to-toggle, counter "3 / 5 max selected". Solve enabled with 1–5 cards. "Fill random" button completes the hand to 5 with random cards from remaining deck (local random, no server involved). Supports partial fix: select 1-3 key cards, fill the rest randomly or solve immediately with fewer cards.
 - Mode toggle: Goldfish / Adversarial (button toggle group)
 - Speed toggle: Fast / Optimal (button toggle group)
 - Handtrap checkboxes: visible only when Adversarial selected. 5 predefined handtraps with card art + name.
@@ -263,7 +263,7 @@ The shift: from "I play to test" to "I read to decide". The solver replaces manu
 
 **4. Result (the defining experience):**
 - **Result transition:** Hero block (score + end board) renders immediately upon SOLVER_RESULT. Breadcrumb and tree render 200-300ms after, below the fold. No reveal animation, no post-solve spinner. The answer is there, instantly.
-- **Hero block (top):** Global score (large typography) + breakdown text ("3 interruptions: 2 omni-negate, 1 destruction").
+- **Hero block (top):** Global score in `mat-headline-4` ("35 — 3 interruptions") + interruption breakdown as `mat-chip` components below (one chip per type, e.g., "omni-negate ×2", "destruction ×1"), grouped by 5 color families.
 - **End board (below score):** Card art thumbnails of final field cards with interruption type badge overlays.
 - **Breadcrumb (below end board):** Card art vignette timeline of main path. Hover/click reveals full annotation per step.
 - **Minimax score (adversarial only):** Worst-case resilience score displayed alongside global score.
@@ -319,20 +319,18 @@ Colors implemented as SCSS variables in `src/app/styles/` (e.g., `$solver-chip-n
 
 ### Spacing & Layout Foundation
 
-**Layout: Sidebar left + result area (validated by comparative analysis matrix — score 4.45/5 vs alternatives).**
+**Layout: Full-viewport with horizontal collapsible config panel (replay pattern). Maximizes horizontal space for decision tree indentation.**
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│  Config Panel (left sidebar, 280px fixed)              │
+│  Config Panel (top, horizontal, full width)             │
 │  ┌───────────────────────────────────────────────────┐ │
-│  │ Hand Selector (card grid)                         │ │
-│  │ Mode / Speed toggles                              │ │
-│  │ Handtrap checkboxes                               │ │
-│  │ [Solve] button                                    │ │
+│  │ Hand Selector (card grid) | Mode/Speed toggles    │ │
+│  │ Handtrap checkboxes | [Solve] button              │ │
 │  └───────────────────────────────────────────────────┘ │
-│  (sidebar scrolls internally if content > viewport)    │
+│  (collapses after first solve, uncollapse on config)    │
 │                                                         │
-│  Result Area (main content, fluid width)                │
+│  Result Area (full width, below config)                 │
 │  ┌───────────────────────────────────────────────────┐ │
 │  │ Pinned Results Bar (horizontal, max 4, unpin btn) │ │
 │  │ Hero + End Board (fused, layout-adaptive):        │ │
@@ -346,8 +344,7 @@ Colors implemented as SCSS variables in `src/app/styles/` (e.g., `$solver-chip-n
 ```
 
 **Key layout decisions:**
-- Sidebar fixed 280px, no collapse for MVP. Collapse → Phase 2 if needed.
-- Sidebar scrolls internally if config content exceeds viewport height.
+- Config panel horizontal at top, full width. Collapses after first solve completes (transport bar pattern). When collapsed, a visible toggle button (`mat-icon-button` with `tune` icon) remains in the collapsed bar — clicking it transitions state to 'configuring' and uncollapses the panel. Required for keyboard accessibility (hidden controls cannot be interacted with).
 - Hero + end board fused into one compact block. Score left, end board cards right. Layout-adaptive: goldfish = 1 line, adversarial = 2 lines (score + minimax first, end board second).
 - Pinned results bar horizontal above result area. Max 4 pins. Each pin card has unpin button.
 - Breadcrumb: `mat-chip-listbox` with card art embedded + `mat-icon chevron_right` between chips. `overflow-x: auto` + `white-space: nowrap`. Horizontal scroll if > 8 steps, never wraps to multi-line. Visually distinct from tree below (horizontal chips vs vertical indented list).
@@ -378,19 +375,20 @@ Single design direction explored and refined.
 ### Key Design Decisions Consolidated
 
 **Layout:**
-- Sidebar fixed 280px, no collapse MVP. Solve button sticky bottom.
+- Full-viewport, config panel horizontal at top, collapses after first solve (replay/transport bar pattern). Collapsed bar retains a `tune` toggle button to uncollapse (keyboard accessibility).
 - Hero + end board fused (goldfish: 1 line, adversarial: 2 lines)
-- Pinned bar horizontal above result area, max 4, scoped per deck
-- Breadcrumb: `mat-chip` + `chevron_right`, horizontal scroll, never wraps. `mat-tooltip` for annotations.
+- Pinned bar horizontal above result area, max 4, visible across decks (each pin shows deck name)
+- Breadcrumb: `mat-chip` + `chevron_right`, horizontal scroll, never wraps. CDK Overlay (`CdkConnectedOverlay`) for multi-line annotations (combo annotations can exceed 150+ chars — `mat-tooltip` truncates).
 - Tree: CDK flat, Lichess-style collapse. Main path expanded + root children collapsed at load (~10-15 lines max). No zoom MVP.
 
 **Hand Selector:**
 - Deduplicated grid: 1 card art per unique card, ×N counter, multi-select (click = +1 copy). Main deck only (no extra deck).
-- Fill Random: completes to 5 from remaining cards (local random)
+- Fill Random: completes to 5 from remaining cards (local random). Solve also works with 1–4 cards.
 - Quick Solve: Fill Random + Solve in one click
 
 **Result Display:**
 - Score + interruption count on hero line ("35 — 3 interruptions")
+- **Fallback scoring indicator:** When any end board card uses the fallback heuristic (untagged, scored as 1 base point per face-up monster), the hero line appends a `mat-icon` `info_outline` with `mat-tooltip`: "Some cards lack interruption tags — score is estimated." End board cards scored via fallback show a dashed border instead of solid, distinguishing them from tagged cards with precise badges.
 - End board cards with badges bottom-right ("omni-negate ×1"), semi-transparent background
 - 5 chip color families (Negate/Removal/Control/Disable/Hand), text label carries precise type
 - Score delta on root-level alternative branches ("+3" / "-5 vs main")
@@ -398,8 +396,8 @@ Single design direction explored and refined.
 - Two brick states: `pure-brick` vs `no-resilient-line` with distinct messages
 
 **Pins:**
-- Snapshot includes: score, end board cards, hand cards (5), config, minimax
-- Scoped per deck (hidden on deck switch, restored on return)
+- Snapshot includes: score, end board cards, hand cards (1–5), config, minimax, **deck name**, deckSeed
+- Flat list visible across decks, each pin card shows its deck name. Max 4 pins. No hide/restore logic on deck switch.
 
 **Config Panel:**
 - Mode toggle (Goldfish/Adversarial), Speed toggle (Fast/Optimal)
@@ -512,8 +510,8 @@ flowchart TD
 ```
 
 **Key UX moments:**
-- Pin captures the full context (score + hand + end board + config)
-- Pins from Build A are hidden when on Build B (scoped per deck) — but the user remembers the numbers
+- Pin captures the full context (score + hand + end board + config + deck name + deckSeed)
+- All pins remain visible across deck switches (flat list with deck name on each card) — Build A's pin is visible while viewing Build B's result for mental comparison.
 - Config persistence carries mode/speed/handtraps across decks — only hand resets
 - Decision is data-driven, not gut feeling
 
@@ -551,10 +549,12 @@ flowchart TD
 | `mat-button-toggle` | Mode, Speed, Algorithm | J1, J2, J3 |
 | `mat-checkbox` | Handtrap selection | J2 |
 | `mat-chip` / `mat-chip-listbox` | Breadcrumb steps, interruption breakdown chips | All |
-| `mat-progress-bar` | Solve progress | All |
+| `mat-progress-spinner` | Solve progress | All |
 | `mat-card` | Pinned result snapshots | J3 |
 | `mat-icon` | Expand/collapse, chevrons, pin, block, shield | All |
-| `mat-tooltip` | Breadcrumb annotations, card art hover enlargement | All |
+| `CdkConnectedOverlay` | Breadcrumb annotations (multi-line text, can exceed 150+ chars) | All |
+| `mat-tooltip` | Fallback scoring hints (short text) | All |
+| `CdkConnectedOverlay` | Card art hover enlargement (120×175px image popup) | All |
 | `CdkTree` + `CdkTreeNode` | Decision tree (flat mode) | All |
 
 **Coverage: ~70% of UI needs covered by Material.** No new dependencies required.
@@ -567,9 +567,9 @@ flowchart TD
 
 **Purpose:** Select test hand cards from the deck
 **Content:** Deduplicated card art grid showing each unique main deck card with ×N copy counter. Main deck only (no extra deck).
-**Actions:** Click card = select/deselect 1 copy (multi-click for multiple copies of same card). "Fill Random" completes to 5. "Quick Solve" = Fill Random + auto-launch.
+**Actions:** Click card = select/deselect 1 copy (multi-click for multiple copies of same card). "Fill Random" completes to 5. "Quick Solve" = Fill Random + auto-launch. Solve enabled with 1–5 cards.
 **States:**
-- `idle` — no cards selected, counter "0/5", Solve disabled
+- `idle` — no cards selected, counter "0 / 5 max", Solve disabled
 - `partial` — 1-4 cards selected, Solve disabled
 - `complete` — 5/5 selected, Solve enabled
 - `locked` — during solve, clicks disabled
@@ -582,7 +582,7 @@ flowchart TD
 
 **Purpose:** Display the primary solve answer: score + end board
 **Content:** Score number + interruption count, breakdown chips (5 color families), end board card arts with interruption badges (type ×uses, corner bottom-right), minimax score (adversarial), pin button
-**Actions:** Pin button calls `solverService.pinResult()`. Card art hover shows enlarged artwork (120×175px via `mat-tooltip`).
+**Actions:** Pin button calls `solverService.pinResult()`. Card art hover shows enlarged artwork (120×175px via CDK Overlay — `mat-tooltip` only renders text strings and cannot display images).
 **States:**
 - `goldfish` — single line: score left, end board right
 - `adversarial` — two lines: score + minimax first, end board second
@@ -593,7 +593,7 @@ flowchart TD
 
 **Purpose:** Linear narration of the recommended combo line
 **Content:** Sequence of mat-chips with embedded card art thumbnail (32×46px) + short action label, connected by `chevron_right` icons
-**Actions:** Hover chip = `mat-tooltip` with full annotation. Click chip = `output<SolverAction>()` emitted to parent, which scrolls `DecisionTreeView` to corresponding node via `viewChild`.
+**Actions:** Hover chip = CDK Overlay (`CdkConnectedOverlay`) with full multi-line annotation (combo annotations can exceed 150+ chars — `mat-tooltip` only renders short text strings). Click chip = `output<SolverAction>()` emitted to parent, which scrolls `DecisionTreeView` to corresponding node via `viewChild`.
 **States:**
 - `default` — horizontal scroll, `white-space: nowrap`, never wraps
 - `overflow` — fade-out on right edge when content exceeds viewport
@@ -635,13 +635,13 @@ flowchart TD
 #### 7. PinnedResultsBar *(injects SolverService)*
 
 **Purpose:** Horizontal bar showing pinned solve snapshots for comparison
-**Content:** Max 4 pinned cards, each showing: score, mini hand cards (5), mini end board cards, mode label, unpin button
+**Content:** Max 4 pinned cards, each showing: score, mini hand cards (1–5), mini end board cards, mode label, unpin button
 **Actions:** Unpin button calls `solverService.unpinResult(index)`.
 **States:**
-- `empty` — bar hidden (no pins for current deck)
+- `empty` — bar hidden (no pins in session)
 - `populated` — 1-4 pin cards visible
 
-**Implementation:** Standalone, OnPush. Injects `SolverService`, reads `pinnedResults()` signal. Scoped per deck.
+**Implementation:** Standalone, OnPush. Injects `SolverService`, reads `pinnedResults()` signal. Visible across decks (flat list, each pin shows deck name).
 
 ### Component Implementation Strategy
 
@@ -671,15 +671,15 @@ All custom components follow existing skytrix patterns:
 
 **Rules:**
 - Maximum 1 primary button visible at any time. Solve OR Cancel, never both.
-- Solve button is always in the sidebar, sticky bottom. Cancel replaces it during solve.
-- Quick Solve is primary but smaller — secondary placement in sidebar, above Solve.
+- Solve button is in the config panel. Cancel replaces it during solve.
+- Quick Solve is primary but smaller — secondary placement in config panel, next to Solve.
 - Disabled state: Solve disabled when < 5 cards selected OR during rate limit cooldown (2s). Simple disabled, no micro-timer — the button was just used, temporary inactivity is self-explanatory.
 
 ### Feedback Patterns
 
 | State | Visual Treatment | Solver Usage |
 |---|---|---|
-| **Loading** | `mat-progress-bar` indeterminate + contextual message + live stats | Solve in progress |
+| **Loading** | `mat-progress-spinner` indeterminate + contextual message + live stats | Solve in progress |
 | **Success** | Hero block renders immediately, no toast/snackbar | Solve complete with result |
 | **Partial result** | Hero block + "Partial result" `mat-chip` outline badge next to score | Solve cancelled or timed out with best-so-far |
 | **Empty result** | Icon + title + subtitle + suggestion (BrickStateBlock) | Brick / No resilient line |
@@ -695,19 +695,20 @@ All custom components follow existing skytrix patterns:
 ### State Machine
 
 ```
-idle → configuring → running → complete
-                        ↓         ↓
-                     cancelled   configuring (new solve)
-                     ↓      ↓
-           (partial) →  complete
-           (no partial) → configuring
-                        ↓
-                      error → configuring
+loading → idle → configuring → running → complete
+                                  ↓         ↓
+                               cancelled   configuring (new solve)
+                               ↓      ↓
+                     (partial) →  complete
+                     (no partial) → configuring
+                                  ↓
+                                error → configuring
 ```
 
 **States:**
+- `loading` — deck is being fetched from the route param `:id`. Displays a centered `mat-progress-spinner` (same pattern as existing deck loading). Transitions to `idle` once the deck is loaded. If deck fetch fails, transitions to `error`.
 - `idle` — first visit, no config. Transition to `configuring` on first interaction.
-- `configuring` — hand selected (complete or partial). Solve enabled only when 5/5.
+- `configuring` — hand selected (complete or partial). Solve enabled when 1–5 cards selected.
 - `running` — solve in progress. Config locked. Only action: Cancel or Escape.
 - `cancelled` — transitional. If `partialTree` exists → `complete` with partial badge. If not → `configuring`.
 - `complete` — result displayed. Config unlocked. User can adjust and re-solve.
@@ -722,7 +723,7 @@ idle → configuring → running → complete
 - **Single-page, no routing transitions** — all solver states on the same page. State transitions within the view.
 - **Entry: Deck page → Solver** — `/decks/:id` "Solve" button → `/decks/:id/solver`. Deck pre-loaded.
 - **Exit: Browser back** — returns to deck page. No confirmation dialog.
-- **Deck switch** — hand resets, mode/speed/handtraps preserved, pins hidden (scoped per deck).
+- **Deck switch** — hand resets, mode/speed/handtraps preserved, pins remain visible across decks (flat list with deck name on each card).
 
 ### Keyboard Shortcuts
 
@@ -740,7 +741,7 @@ idle → configuring → running → complete
 | Interaction | Behavior | Where |
 |---|---|---|
 | Click card art | Select/deselect (hand grid) OR expand tree node | HandSelectorGrid, DecisionTreeView |
-| Hover card art | Enlarged popup 120×175px via `mat-tooltip` | BreadcrumbPath, DecisionTreeView, HeroResultBlock, PinnedResultsBar |
+| Hover card art | Enlarged popup 120×175px via CDK Overlay (`CdkConnectedOverlay`) | BreadcrumbPath, DecisionTreeView, HeroResultBlock, PinnedResultsBar |
 | Hover breadcrumb chip | Full annotation tooltip | BreadcrumbPath |
 | Click breadcrumb chip | Scroll tree to corresponding node | BreadcrumbPath → parent → DecisionTreeView |
 
@@ -771,9 +772,9 @@ idle → configuring → running → complete
 
 | Breakpoint | Layout Behavior |
 |---|---|
-| ≥ 1920px (large desktop) | Sidebar 280px + full result area. Comfortable space for tree. |
-| 1366px - 1919px (laptop) | Sidebar 280px + result area ~1080px. Tree indentation fits 5+ levels. |
-| 1024px - 1365px (small laptop) | Sidebar 280px + result area ~740px. Tree usable but tight at deep levels. |
+| ≥ 1920px (large desktop) | Full-width result area. Comfortable space for tree at all depths. |
+| 1366px - 1919px (laptop) | Full-width result area ~1300px. Tree indentation fits 5+ levels. |
+| 1024px - 1365px (small laptop) | Full-width result area ~960px. Tree usable at 4-5 levels. |
 | < 1024px | **Not supported for MVP.** Display message: "Solver requires a desktop browser (1024px minimum)." |
 
 **No tablet or mobile layout.** Mobile adaptation (Phase 2+) would require a fundamentally different UI — tree replaced by step-by-step view, sidebar replaced by bottom sheet.
@@ -793,7 +794,7 @@ idle → configuring → running → complete
 | Requirement | Implementation |
 |---|---|
 | **Focus indicators** | Angular Material default focus rings. No custom styles. |
-| **Screen reader: score** | `aria-label="Score: 35, 3 interruptions: 2 omni-negate, 1 destruction"` on hero block |
+| **Screen reader: score** | `aria-label="Score: 35, 3 interruptions"` on hero block. Chip breakdown provides per-type detail via individual chip labels. |
 | **Screen reader: tree** | CDK Tree provides `role="tree"`, `role="treeitem"`, `aria-expanded`. Each node: `aria-label` with action + score. |
 | **Screen reader: hand selector** | Each card: `aria-label="Branded Fusion, 3 copies, 1 selected"`. Counter: `aria-live="polite"`. |
 | **Screen reader: progress** | `aria-live="polite"` on live stats region. Updates announced at 5s intervals. |

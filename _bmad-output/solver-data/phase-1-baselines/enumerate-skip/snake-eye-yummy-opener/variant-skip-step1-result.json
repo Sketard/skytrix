@@ -1,0 +1,324 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "expectedBoardSize": 7,
+  "matched": 4,
+  "matchedCardIds": [
+    48452496,
+    1528054,
+    44822037,
+    53639887
+  ],
+  "missingCardIds": [
+    93192592,
+    29369059,
+    65741786
+  ],
+  "score": 24,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 1,
+    "targetedNegate": 0,
+    "floodgate": 0,
+    "controlChange": 1,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 0,
+    "flipFacedown": 0,
+    "destruction": 1,
+    "moveToSt": 0,
+    "bounce": 0,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 24,
+    "fallbackPoints": 0,
+    "latentPoints": 0,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 24,
+    "explorationScore": 24
+  },
+  "stoppedReason": "completed",
+  "stoppedAtPlanStep": null,
+  "divergence": null,
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Snake-Eye Ash (normal-summon) [plan]",
+      "appliedCardId": 9674034,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 0
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Snake-Eye Ash [auto]",
+      "appliedCardId": 9674034,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_CARD",
+      "applied": "Snake-Eyes Poplar [target]",
+      "appliedCardId": 90241276,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Snake-Eyes Poplar (activate) [target]",
+      "appliedCardId": 90241276,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Snake-Eyes Poplar [auto]",
+      "appliedCardId": 90241276,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_CARD",
+      "applied": "Divine Temple of the Snake-Eye [target]",
+      "appliedCardId": 53639887,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Divine Temple of the Snake-Eye (activate) [plan]",
+      "appliedCardId": 53639887,
+      "appliedResponseIndex": 11,
+      "planStepIndex": 1
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_YESNO",
+      "applied": "(pass) [target]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_CARD",
+      "applied": "Snake-Eyes Flamberge Dragon [target]",
+      "appliedCardId": 48452496,
+      "appliedResponseIndex": 2,
+      "planStepIndex": null
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Silhouhatte Rabbit (summon-procedure) [plan]",
+      "appliedCardId": 1528054,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 2
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Snake-Eye Ash [auto]",
+      "appliedCardId": 9674034,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Snake-Eyes Poplar [auto]",
+      "appliedCardId": 90241276,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Silhouhatte Rabbit (activate) [target]",
+      "appliedCardId": 1528054,
+      "appliedResponseIndex": 1,
+      "planStepIndex": null
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Snake-Eyes Poplar (activate) [target]",
+      "appliedCardId": 90241276,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_CARD",
+      "applied": "Snake-Eyes Poplar [auto]",
+      "appliedCardId": 90241276,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_CARD",
+      "applied": "Angel Statue - Azurune [auto]",
+      "appliedCardId": 44822037,
+      "appliedResponseIndex": 0,
+      "planStepIndex": null
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    },
+    {
+      "step": 28,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "(pass) (end-phase) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 5,
+      "planStepIndex": null
+    },
+    {
+      "step": 29,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "EMZ_L",
+      "cardName": "Silhouhatte Rabbit",
+      "cardId": 1528054,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "Snake-Eyes Flamberge Dragon",
+      "cardId": 48452496,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S2",
+      "cardName": "Snake-Eyes Poplar",
+      "cardId": 90241276,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S3",
+      "cardName": "Angel Statue - Azurune",
+      "cardId": 44822037,
+      "position": "facedown"
+    },
+    {
+      "zone": "FIELD",
+      "cardName": "Divine Temple of the Snake-Eye",
+      "cardId": 53639887,
+      "position": "faceup-atk"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 2,
+  "finalPhase": "DRAW"
+}

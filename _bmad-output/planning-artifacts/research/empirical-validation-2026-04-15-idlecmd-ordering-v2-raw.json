@@ -1,0 +1,3444 @@
+{
+  "date": "2026-04-14T21:47:11.977Z",
+  "speed": "optimal",
+  "timeLimitMs": 60000,
+  "maxDepth": "ddd-pendulum-opener=50, ryzeal-mitsurugi-opener=75, branded-dracotail-opener=100, branded-dracotail-opener-mirrorjade-line=100",
+  "instrumentationEnabled": true,
+  "solverConfigFile": {
+    "poolSize": 6,
+    "maxDepth": 50,
+    "timeBudgetFastMs": 5000,
+    "timeBudgetOptimalMs": 60000,
+    "progressThrottleMs": 200,
+    "treePruningTopX": 10,
+    "maxResultNodes": 500,
+    "transpositionMaxEntries": 25000,
+    "memoryBudgetMb": 512,
+    "bfComplexityThreshold": 25,
+    "rateLimitIntervalMs": 2000,
+    "maxHandtraps": 5,
+    "ucb1C": 1,
+    "rolloutEpsilon": 0.1,
+    "verificationBudgetRatio": 0.15,
+    "stalledWarningMs": 3000,
+    "maxSolverConnections": 10,
+    "backpropPolicy": "max"
+  },
+  "fixtures": [
+    {
+      "handId": "ddd-pendulum-opener",
+      "deck": "ddd-wcq-top4",
+      "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Expected to establish a Pendulum Scale and summon D/D/D boss monster(s) via Gryphon/Scale Surveyor.",
+      "handCards": [
+        {
+          "cardId": 11609969,
+          "cardName": "#11609969"
+        },
+        {
+          "cardId": 46796664,
+          "cardName": "#46796664"
+        },
+        {
+          "cardId": 42382265,
+          "cardName": "#42382265"
+        },
+        {
+          "cardId": 46372010,
+          "cardName": "#46372010"
+        },
+        {
+          "cardId": 42141493,
+          "cardName": "#42141493"
+        }
+      ],
+      "speed": "optimal",
+      "timeLimitMs": 60000,
+      "score": 3,
+      "mainPathLength": 37,
+      "nodesExplored": 966,
+      "maxDepthReached": 50,
+      "maxDepthConfig": 50,
+      "averageBranchingFactor": 2.0096685082872927,
+      "maxBranchingFactor": 15,
+      "terminationReason": "depth_cap",
+      "truncated": true,
+      "elapsedMs": 51091,
+      "depthHistogram": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        11,
+        10,
+        20,
+        30,
+        28,
+        45,
+        35,
+        45,
+        48,
+        40,
+        33,
+        27,
+        24,
+        22,
+        20,
+        14,
+        18,
+        14,
+        19,
+        13,
+        15,
+        21,
+        29,
+        19,
+        17,
+        18,
+        10,
+        10,
+        12,
+        5,
+        12,
+        13,
+        14,
+        20,
+        37,
+        28,
+        47,
+        62,
+        47
+      ],
+      "diagnostic": {
+        "terminalReasons": {
+          "actionsZero": 88,
+          "depthCap": 44,
+          "loopDetected": 17,
+          "treeSizeLimit": 0,
+          "abortOrNodeLimit": 0,
+          "budgetCutoff": 0,
+          "ttHit": 129,
+          "turn2": 110
+        },
+        "bestTurn1Score": 27,
+        "suggestedMaxDepth": 50,
+        "promptTypeCounts": {
+          "SELECT_CHAIN": 436,
+          "SELECT_IDLECMD": 205,
+          "SELECT_EFFECTYN": 21,
+          "SELECT_OPTION": 1,
+          "SELECT_CARD": 61
+        },
+        "bfByDepthSum": [
+          2,
+          2,
+          15,
+          1,
+          2,
+          1,
+          1,
+          4,
+          1,
+          7,
+          2,
+          12,
+          10,
+          20,
+          37,
+          38,
+          61,
+          60,
+          69,
+          77,
+          68,
+          87,
+          49,
+          24,
+          47,
+          38,
+          14,
+          21,
+          28,
+          33,
+          15,
+          15,
+          33,
+          43,
+          23,
+          33,
+          25,
+          11,
+          15,
+          14,
+          5,
+          25,
+          13,
+          14,
+          20,
+          82,
+          28,
+          52,
+          111,
+          47,
+          0
+        ],
+        "bfByDepthCount": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          10,
+          10,
+          18,
+          26,
+          28,
+          33,
+          33,
+          39,
+          39,
+          29,
+          19,
+          21,
+          21,
+          15,
+          8,
+          11,
+          14,
+          10,
+          9,
+          13,
+          15,
+          19,
+          19,
+          17,
+          11,
+          6,
+          10,
+          8,
+          5,
+          5,
+          9,
+          13,
+          14,
+          20,
+          24,
+          28,
+          40,
+          41,
+          0
+        ],
+        "actionsZeroByDepth": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          4,
+          0,
+          4,
+          6,
+          0,
+          4,
+          4,
+          2,
+          2,
+          4,
+          2,
+          2,
+          0,
+          4,
+          0,
+          0,
+          0,
+          5,
+          0,
+          0,
+          5,
+          0,
+          0,
+          4,
+          0,
+          2,
+          0,
+          0,
+          0,
+          9,
+          0,
+          6,
+          19,
+          0
+        ],
+        "actionsZeroSamples": [
+          {
+            "depth": 22,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 1
+          },
+          {
+            "depth": 22,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 1
+          },
+          {
+            "depth": 19,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 2
+          },
+          {
+            "depth": 19,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 2
+          },
+          {
+            "depth": 20,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 2
+          },
+          {
+            "depth": 20,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 2
+          },
+          {
+            "depth": 17,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 3
+          },
+          {
+            "depth": 17,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 3
+          },
+          {
+            "depth": 22,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 1
+          },
+          {
+            "depth": 22,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 1
+          }
+        ]
+      },
+      "scoreBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 3,
+        "total": 3
+      },
+      "transpositionHits": 129,
+      "transpositionMisses": 59,
+      "transpositionStores": 59,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 965,
+        "forkMsTotal": 46285.102,
+        "forkMsMean": 47.963836269430054,
+        "forkMsMax": 73.232,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 837
+          },
+          {
+            "label": "50ms+",
+            "count": 128
+          }
+        ],
+        "applies": 965,
+        "applyMsTotal": 7.189,
+        "applyMsMean": 0.007449740932642487,
+        "scores": 1098,
+        "scoreMsTotal": 9.953,
+        "scoreMsMean": 0.009064663023679417
+      },
+      "forkPctOfWall": 90.5934548159167,
+      "applyPctOfWall": 0.014070971403965472,
+      "scorePctOfWall": 0.01948092619052279,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 11609969,
+          "cardName": "D/D Savant Kepler"
+        },
+        {
+          "cardId": 46796664,
+          "cardName": "D/D Savant Copernicus"
+        },
+        {
+          "cardId": 42382265,
+          "cardName": "D/D Scale Surveyor"
+        },
+        {
+          "cardId": 46372010,
+          "cardName": "Dark Contract with the Gate"
+        },
+        {
+          "cardId": 42141493,
+          "cardName": "Mulcharmy Fuwalos"
+        }
+      ],
+      "deltaScore": 3,
+      "deltaBreakdown": {
+        "fallbackPoints": 3,
+        "total": 3
+      },
+      "actualBoard": [
+        {
+          "zone": "M1",
+          "cardId": 44852429,
+          "cardName": "D/D/D Cursed King Siegfried",
+          "isFallback": false
+        },
+        {
+          "zone": "M2",
+          "cardId": 46593546,
+          "cardName": "D/D/D Deviser King Deus Machinex",
+          "isFallback": false
+        }
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 79559912,
+          "cardName": "D/D/D Wave High King Caesar"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 72402069,
+          "cardName": "D/D/D Super Doom King Bright Armageddon"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 30998403,
+          "cardName": "D/D/D Sky King Zeus Ragnarok"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 44852429,
+          "cardName": "D/D/D Cursed King Siegfried"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 91781484,
+          "cardName": "D/D/D Headhunt"
+        }
+      ],
+      "matched": [
+        {
+          "zone": "MZONE",
+          "cardId": 44852429,
+          "cardName": "D/D/D Cursed King Siegfried"
+        }
+      ],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 79559912,
+          "cardName": "D/D/D Wave High King Caesar",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 72402069,
+          "cardName": "D/D/D Super Doom King Bright Armageddon",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 30998403,
+          "cardName": "D/D/D Sky King Zeus Ragnarok",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 91781484,
+          "cardName": "D/D/D Headhunt",
+          "tagged": true
+        }
+      ],
+      "extra": [
+        {
+          "zone": "M2",
+          "cardId": 46593546,
+          "cardName": "D/D/D Deviser King Deus Machinex",
+          "tagged": true
+        }
+      ],
+      "missingTaggedCount": 4,
+      "missingUntaggedCount": 0,
+      "expectedAtBaseline": [],
+      "expectedEarned": [
+        {
+          "zone": "MZONE",
+          "cardId": 44852429,
+          "cardName": "D/D/D Cursed King Siegfried"
+        }
+      ],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 79559912,
+          "cardName": "D/D/D Wave High King Caesar"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 72402069,
+          "cardName": "D/D/D Super Doom King Bright Armageddon"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 30998403,
+          "cardName": "D/D/D Sky King Zeus Ragnarok"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 91781484,
+          "cardName": "D/D/D Headhunt"
+        }
+      ],
+      "mainPathActions": [
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 11609969,
+          "cardName": "D/D Savant Kepler"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 11609969,
+          "cardName": "D/D Savant Kepler"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 9030160,
+          "cardName": "Dark Contract with the Eternal Darkness"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 9030160,
+          "cardName": "Dark Contract with the Eternal Darkness"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 2,
+          "cardId": 42382265,
+          "cardName": "D/D Scale Surveyor"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 42382265,
+          "cardName": "D/D Scale Surveyor"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 4,
+          "cardId": 46372010,
+          "cardName": "Dark Contract with the Gate"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 3,
+          "cardId": 46372010,
+          "cardName": "Dark Contract with the Gate"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 3,
+          "cardId": 20715411,
+          "cardName": "D/D/D Zero Doom Queen Machinex"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 2,
+          "cardId": 20715411,
+          "cardName": "D/D/D Zero Doom Queen Machinex"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 32665564,
+          "cardName": "Dark Contract with the Zero King"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 2,
+          "cardId": 32665564,
+          "cardName": "Dark Contract with the Zero King"
+        }
+      ]
+    },
+    {
+      "handId": "ryzeal-mitsurugi-opener",
+      "deck": "ryzeal-mitsurugi-hk-top8",
+      "description": "Mitsurugi+Ryzeal opener: Ame no Habakiri no Mitsurugi + Ice Ryzeal + Sword Ryzeal + Mitsurugi Prayers + Mulcharmy Fuwalos. Expected to set up Rank 4 Xyz plus Mitsurugi control shell.",
+      "handCards": [
+        {
+          "cardId": 13332685,
+          "cardName": "#13332685"
+        },
+        {
+          "cardId": 8633261,
+          "cardName": "#8633261"
+        },
+        {
+          "cardId": 35844557,
+          "cardName": "#35844557"
+        },
+        {
+          "cardId": 45171524,
+          "cardName": "#45171524"
+        },
+        {
+          "cardId": 42141493,
+          "cardName": "#42141493"
+        }
+      ],
+      "speed": "optimal",
+      "timeLimitMs": 60000,
+      "score": 30,
+      "mainPathLength": 30,
+      "nodesExplored": 944,
+      "maxDepthReached": 30,
+      "maxDepthConfig": 75,
+      "averageBranchingFactor": 3.558194774346793,
+      "maxBranchingFactor": 16,
+      "terminationReason": "timeout",
+      "truncated": true,
+      "elapsedMs": 51043,
+      "depthHistogram": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        5,
+        5,
+        9,
+        63,
+        31,
+        83,
+        65,
+        92,
+        176,
+        146,
+        129,
+        27,
+        95,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "diagnostic": {
+        "terminalReasons": {
+          "actionsZero": 442,
+          "depthCap": 0,
+          "loopDetected": 0,
+          "treeSizeLimit": 0,
+          "abortOrNodeLimit": 0,
+          "budgetCutoff": 1,
+          "ttHit": 59,
+          "turn2": 81
+        },
+        "bestTurn1Score": 30,
+        "suggestedMaxDepth": 60,
+        "promptTypeCounts": {
+          "SELECT_CHAIN": 226,
+          "SELECT_IDLECMD": 113,
+          "SELECT_EFFECTYN": 41,
+          "SELECT_CARD": 2,
+          "SELECT_YESNO": 13,
+          "SELECT_OPTION": 26
+        },
+        "bfByDepthSum": [
+          3,
+          3,
+          12,
+          1,
+          2,
+          2,
+          3,
+          2,
+          14,
+          1,
+          2,
+          2,
+          3,
+          2,
+          16,
+          1,
+          2,
+          14,
+          5,
+          10,
+          63,
+          33,
+          83,
+          65,
+          156,
+          272,
+          294,
+          174,
+          123,
+          135,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bfByDepthCount": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          5,
+          5,
+          9,
+          23,
+          27,
+          38,
+          65,
+          84,
+          66,
+          39,
+          27,
+          15,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroByDepth": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          40,
+          0,
+          40,
+          0,
+          8,
+          92,
+          85,
+          80,
+          12,
+          85,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroSamples": [
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 21,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 4
+          },
+          {
+            "depth": 23,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 3
+          },
+          {
+            "depth": 23,
+            "phase": "MAIN1",
+            "turn": 1,
+            "lp0": 8000,
+            "lp1": 8000,
+            "handSize": 3
+          }
+        ]
+      },
+      "scoreBreakdown": {
+        "omniNegate": 1,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 1,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 26,
+        "fallbackPoints": 4,
+        "total": 30
+      },
+      "transpositionHits": 59,
+      "transpositionMisses": 54,
+      "transpositionStores": 54,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 943,
+        "forkMsTotal": 46436.109,
+        "forkMsMean": 49.242957582184516,
+        "forkMsMax": 54.241,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 795
+          },
+          {
+            "label": "50ms+",
+            "count": 148
+          }
+        ],
+        "applies": 943,
+        "applyMsTotal": 5.308,
+        "applyMsMean": 0.0056288441145281014,
+        "scores": 1387,
+        "scoreMsTotal": 6.183,
+        "scoreMsMean": 0.004457822638788753
+      },
+      "forkPctOfWall": 90.97449013576787,
+      "applyPctOfWall": 0.010399075289461825,
+      "scorePctOfWall": 0.0121133162235762,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 13332685,
+          "cardName": "Ame no Habakiri no Mitsurugi"
+        },
+        {
+          "cardId": 8633261,
+          "cardName": "Ice Ryzeal"
+        },
+        {
+          "cardId": 35844557,
+          "cardName": "Sword Ryzeal"
+        },
+        {
+          "cardId": 45171524,
+          "cardName": "Mitsurugi Prayers"
+        },
+        {
+          "cardId": 42141493,
+          "cardName": "Mulcharmy Fuwalos"
+        }
+      ],
+      "deltaScore": 30,
+      "deltaBreakdown": {
+        "omniNegate": 1,
+        "floodgate": 1,
+        "weighted": 26,
+        "fallbackPoints": 4,
+        "total": 30
+      },
+      "actualBoard": [
+        {
+          "zone": "M1",
+          "cardId": 8633261,
+          "cardName": "Ice Ryzeal",
+          "isFallback": true
+        },
+        {
+          "zone": "M2",
+          "cardId": 72238166,
+          "cardName": "Node Ryzeal",
+          "isFallback": true
+        },
+        {
+          "zone": "M3",
+          "cardId": 35844557,
+          "cardName": "Sword Ryzeal",
+          "isFallback": true
+        },
+        {
+          "zone": "M4",
+          "cardId": 1269512,
+          "cardName": "Full Armored Utopic Ray Lancer",
+          "isFallback": true
+        },
+        {
+          "zone": "M5",
+          "cardId": 90590303,
+          "cardName": "Number 41: Bagooska the Terribly Tired Tapir",
+          "isFallback": false
+        },
+        {
+          "zone": "HAND",
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification",
+          "isFallback": false
+        }
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 34909328,
+          "cardName": "Ryzeal Detonator"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 7511613,
+          "cardName": "Ryzeal Duo Drive"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 55397172,
+          "cardName": "Futsu no Mitama no Mitsurugi"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 8165596,
+          "cardName": "Number 90: Galaxy-Eyes Photon Lord"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 6798031,
+          "cardName": "Ryzeal Cross"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification"
+        }
+      ],
+      "matched": [],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 34909328,
+          "cardName": "Ryzeal Detonator",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 7511613,
+          "cardName": "Ryzeal Duo Drive",
+          "tagged": false
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 55397172,
+          "cardName": "Futsu no Mitama no Mitsurugi",
+          "tagged": false
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 8165596,
+          "cardName": "Number 90: Galaxy-Eyes Photon Lord",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 6798031,
+          "cardName": "Ryzeal Cross",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification",
+          "tagged": true
+        }
+      ],
+      "extra": [
+        {
+          "zone": "M1",
+          "cardId": 8633261,
+          "cardName": "Ice Ryzeal",
+          "tagged": false
+        },
+        {
+          "zone": "M2",
+          "cardId": 72238166,
+          "cardName": "Node Ryzeal",
+          "tagged": false
+        },
+        {
+          "zone": "M3",
+          "cardId": 35844557,
+          "cardName": "Sword Ryzeal",
+          "tagged": false
+        },
+        {
+          "zone": "M4",
+          "cardId": 1269512,
+          "cardName": "Full Armored Utopic Ray Lancer",
+          "tagged": false
+        },
+        {
+          "zone": "M5",
+          "cardId": 90590303,
+          "cardName": "Number 41: Bagooska the Terribly Tired Tapir",
+          "tagged": true
+        },
+        {
+          "zone": "HAND",
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification",
+          "tagged": true
+        }
+      ],
+      "missingTaggedCount": 4,
+      "missingUntaggedCount": 2,
+      "expectedAtBaseline": [],
+      "expectedEarned": [],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 34909328,
+          "cardName": "Ryzeal Detonator"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 7511613,
+          "cardName": "Ryzeal Duo Drive"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 55397172,
+          "cardName": "Futsu no Mitama no Mitsurugi"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 8165596,
+          "cardName": "Number 90: Galaxy-Eyes Photon Lord"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 6798031,
+          "cardName": "Ryzeal Cross"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification"
+        }
+      ],
+      "mainPathActions": [
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 8633261,
+          "cardName": "Ice Ryzeal"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 8633261,
+          "cardName": "Ice Ryzeal"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 72238166,
+          "cardName": "Node Ryzeal"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 35844557,
+          "cardName": "Sword Ryzeal"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 35844557,
+          "cardName": "Sword Ryzeal"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 34022970,
+          "cardName": "Ext Ryzeal"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 1269512,
+          "cardName": "Full Armored Utopic Ray Lancer"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 90590303,
+          "cardName": "Number 41: Bagooska the Terribly Tired Tapir"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 9,
+          "cardId": 45171524,
+          "cardName": "Mitsurugi Prayers"
+        },
+        {
+          "respIdx": 1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 13332685,
+          "cardName": "Ame no Habakiri no Mitsurugi"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 8,
+          "cardId": 17954937,
+          "cardName": "Mitsurugi Great Purification"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 66011101,
+          "cardName": "Number 60: Dugares the Timeless"
+        }
+      ]
+    },
+    {
+      "handId": "branded-dracotail-opener",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener (Arthalion line): Dracotail Faimena + Dracotail Lukias + Fallen of the White Dragon + Branded Fusion + Blazing Cartesia. Expected to execute the Lukias-search-Mululu combo through Faimena fusion into Arthalion, chain-set Dracotail Flame/Horn/Sting via Lukias/Mululu GY-fusion-material triggers, then use Fallen of the White Dragon to special summon Ecclesia and the Dark Dragon. Pan was swapped out for Fallen of the White Dragon in the 2026-04-13 fixture audit — Pan needs a tribute and is dead in an opening hand.",
+      "handCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "#1498449"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "#75003700"
+        },
+        {
+          "cardId": 73819701,
+          "cardName": "#73819701"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "#44362883"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "#95515789"
+        }
+      ],
+      "speed": "optimal",
+      "timeLimitMs": 60000,
+      "score": 44,
+      "mainPathLength": 47,
+      "nodesExplored": 862,
+      "maxDepthReached": 51,
+      "maxDepthConfig": 100,
+      "averageBranchingFactor": 1.4179566563467492,
+      "maxBranchingFactor": 11,
+      "terminationReason": "timeout",
+      "truncated": true,
+      "elapsedMs": 51066,
+      "depthHistogram": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        3,
+        3,
+        5,
+        6,
+        9,
+        11,
+        17,
+        9,
+        9,
+        1,
+        1,
+        3,
+        5,
+        5,
+        18,
+        31,
+        55,
+        55,
+        74,
+        106,
+        99,
+        85,
+        60,
+        83,
+        48,
+        35,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "diagnostic": {
+        "terminalReasons": {
+          "actionsZero": 0,
+          "depthCap": 0,
+          "loopDetected": 2,
+          "treeSizeLimit": 0,
+          "abortOrNodeLimit": 0,
+          "budgetCutoff": 1,
+          "ttHit": 41,
+          "turn2": 216
+        },
+        "bestTurn1Score": 39,
+        "suggestedMaxDepth": 100,
+        "promptTypeCounts": {
+          "SELECT_IDLECMD": 128,
+          "SELECT_CHAIN": 359,
+          "SELECT_EFFECTYN": 104,
+          "SELECT_CARD": 37,
+          "SELECT_YESNO": 18
+        },
+        "bfByDepthSum": [
+          11,
+          1,
+          2,
+          2,
+          6,
+          2,
+          5,
+          2,
+          4,
+          1,
+          2,
+          1,
+          1,
+          3,
+          1,
+          6,
+          1,
+          2,
+          1,
+          2,
+          2,
+          1,
+          1,
+          2,
+          1,
+          6,
+          3,
+          6,
+          6,
+          9,
+          12,
+          17,
+          11,
+          10,
+          1,
+          4,
+          3,
+          5,
+          5,
+          18,
+          32,
+          57,
+          55,
+          75,
+          106,
+          99,
+          85,
+          60,
+          84,
+          48,
+          36,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bfByDepthCount": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          3,
+          3,
+          3,
+          6,
+          9,
+          11,
+          11,
+          9,
+          1,
+          1,
+          1,
+          3,
+          5,
+          5,
+          17,
+          31,
+          53,
+          55,
+          59,
+          69,
+          85,
+          48,
+          48,
+          48,
+          36,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroByDepth": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroSamples": []
+      },
+      "scoreBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 2,
+        "targetedNegate": 0,
+        "floodgate": 1,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 2,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 44,
+        "fallbackPoints": 0,
+        "total": 44
+      },
+      "transpositionHits": 41,
+      "transpositionMisses": 85,
+      "transpositionStores": 85,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 861,
+        "forkMsTotal": 46927.338,
+        "forkMsMean": 54.50329616724739,
+        "forkMsMax": 59.599,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 24
+          },
+          {
+            "label": "50ms+",
+            "count": 837
+          }
+        ],
+        "applies": 861,
+        "applyMsTotal": 5.147,
+        "applyMsMean": 0.005977932636469222,
+        "scores": 863,
+        "scoreMsTotal": 6.644,
+        "scoreMsMean": 0.007698725376593279
+      },
+      "forkPctOfWall": 91.89546469275056,
+      "applyPctOfWall": 0.010079113304351232,
+      "scorePctOfWall": 0.013010613715583756,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "cardId": 73819701,
+          "cardName": "Fallen of the White Dragon"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        }
+      ],
+      "deltaScore": 44,
+      "deltaBreakdown": {
+        "typedNegate": 2,
+        "floodgate": 1,
+        "bounce": 2,
+        "weighted": 44,
+        "total": 44
+      },
+      "actualBoard": [
+        {
+          "zone": "M1",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "isFallback": false
+        },
+        {
+          "zone": "M3",
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon",
+          "isFallback": false
+        },
+        {
+          "zone": "M4",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "isFallback": true
+        }
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "matched": [],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion",
+          "tagged": true
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting",
+          "tagged": true
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena",
+          "tagged": false
+        }
+      ],
+      "extra": [
+        {
+          "zone": "M1",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "M3",
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "M4",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "tagged": false
+        }
+      ],
+      "missingTaggedCount": 5,
+      "missingUntaggedCount": 1,
+      "expectedAtBaseline": [],
+      "expectedEarned": [],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 33760966,
+          "cardName": "Dracotail Arthalion"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 78397661,
+          "cardName": "Ecclesia and the Dark Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "mainPathActions": [
+        {
+          "respIdx": 0,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 2,
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon"
+        },
+        {
+          "respIdx": 1,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 32548318,
+          "cardName": "Rahu Dracotail"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 51409648,
+          "cardName": "Rindbrumm the Striking Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        }
+      ]
+    },
+    {
+      "handId": "branded-dracotail-opener-mirrorjade-line",
+      "deck": "branded-dracotail-bainbridge-2nd",
+      "description": "Branded Dracotail opener (Mirrorjade line): same opening hand as branded-dracotail-opener, but expected to execute the alternate canonical line where Branded Fusion produces Lubellion → Mirrorjade the Iceblade Dragon instead of chain-setting the Dracotail trap package. Added 2026-04-14 after Phase A #3 SELECT_CARD exploratory revealed the solver naturally finds this variant via Lukias→Mululu→Branded Fusion→Lubellion→Mirrorjade→Devours the Dogma. Both lines are valid meta Branded Dracotail endboards; `matched` on EITHER fixture indicates canonical reach.",
+      "handCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "#1498449"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "#75003700"
+        },
+        {
+          "cardId": 73819701,
+          "cardName": "#73819701"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "#44362883"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "#95515789"
+        }
+      ],
+      "speed": "optimal",
+      "timeLimitMs": 60000,
+      "score": 41,
+      "mainPathLength": 41,
+      "nodesExplored": 941,
+      "maxDepthReached": 44,
+      "maxDepthConfig": 100,
+      "averageBranchingFactor": 1.4073550212164074,
+      "maxBranchingFactor": 11,
+      "terminationReason": "timeout",
+      "truncated": true,
+      "elapsedMs": 51024,
+      "depthHistogram": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        4,
+        6,
+        5,
+        9,
+        8,
+        13,
+        20,
+        20,
+        27,
+        33,
+        49,
+        50,
+        49,
+        58,
+        64,
+        59,
+        71,
+        70,
+        52,
+        52,
+        52,
+        48,
+        44,
+        36,
+        16,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "diagnostic": {
+        "terminalReasons": {
+          "actionsZero": 0,
+          "depthCap": 0,
+          "loopDetected": 0,
+          "treeSizeLimit": 0,
+          "abortOrNodeLimit": 0,
+          "budgetCutoff": 0,
+          "ttHit": 31,
+          "turn2": 234
+        },
+        "bestTurn1Score": 30,
+        "suggestedMaxDepth": 100,
+        "promptTypeCounts": {
+          "SELECT_IDLECMD": 62,
+          "SELECT_CHAIN": 439,
+          "SELECT_EFFECTYN": 64,
+          "SELECT_CARD": 105,
+          "SELECT_OPTION": 37
+        },
+        "bfByDepthSum": [
+          11,
+          1,
+          2,
+          2,
+          6,
+          2,
+          5,
+          2,
+          4,
+          1,
+          2,
+          1,
+          1,
+          3,
+          1,
+          6,
+          3,
+          5,
+          7,
+          4,
+          7,
+          5,
+          9,
+          9,
+          14,
+          20,
+          28,
+          29,
+          33,
+          49,
+          52,
+          49,
+          58,
+          64,
+          59,
+          71,
+          70,
+          52,
+          52,
+          52,
+          48,
+          44,
+          36,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "bfByDepthCount": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          3,
+          4,
+          5,
+          5,
+          7,
+          8,
+          13,
+          17,
+          19,
+          21,
+          31,
+          47,
+          37,
+          33,
+          48,
+          58,
+          47,
+          46,
+          48,
+          36,
+          38,
+          36,
+          30,
+          32,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroByDepth": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "actionsZeroSamples": []
+      },
+      "scoreBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 2,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 3,
+        "moveToSt": 0,
+        "bounce": 1,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 40,
+        "fallbackPoints": 1,
+        "total": 41
+      },
+      "transpositionHits": 31,
+      "transpositionMisses": 31,
+      "transpositionStores": 31,
+      "instrumentation": {
+        "enabled": true,
+        "forks": 940,
+        "forkMsTotal": 46629.618,
+        "forkMsMean": 49.605976595744686,
+        "forkMsMax": 55.892,
+        "forkHist": [
+          {
+            "label": "<1ms",
+            "count": 0
+          },
+          {
+            "label": "1-5ms",
+            "count": 0
+          },
+          {
+            "label": "5-10ms",
+            "count": 0
+          },
+          {
+            "label": "10-20ms",
+            "count": 0
+          },
+          {
+            "label": "20-50ms",
+            "count": 734
+          },
+          {
+            "label": "50ms+",
+            "count": 206
+          }
+        ],
+        "applies": 940,
+        "applyMsTotal": 3.674,
+        "applyMsMean": 0.0039085106382978725,
+        "scores": 941,
+        "scoreMsTotal": 8.423,
+        "scoreMsMean": 0.008951115834218915
+      },
+      "forkPctOfWall": 91.38761759172155,
+      "applyPctOfWall": 0.007200533082470994,
+      "scorePctOfWall": 0.01650791784258388,
+      "baselineScore": 0,
+      "baselineBreakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 0,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 0,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 0,
+        "fallbackPoints": 0,
+        "total": 0
+      },
+      "baselineBoard": [],
+      "baselineHandCards": [
+        {
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "cardId": 73819701,
+          "cardName": "Fallen of the White Dragon"
+        },
+        {
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        }
+      ],
+      "deltaScore": 41,
+      "deltaBreakdown": {
+        "banish": 2,
+        "destruction": 3,
+        "bounce": 1,
+        "weighted": 40,
+        "fallbackPoints": 1,
+        "total": 41
+      },
+      "actualBoard": [
+        {
+          "zone": "M1",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "isFallback": false
+        },
+        {
+          "zone": "M3",
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon",
+          "isFallback": true
+        },
+        {
+          "zone": "M4",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "isFallback": true
+        }
+      ],
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "matched": [
+        {
+          "zone": "MZONE",
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon"
+        }
+      ],
+      "missing": [
+        {
+          "zone": "MZONE",
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn",
+          "tagged": true
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting",
+          "tagged": true
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena",
+          "tagged": false
+        }
+      ],
+      "extra": [
+        {
+          "zone": "M1",
+          "cardId": 89851827,
+          "cardName": "Secreterion Dragon",
+          "tagged": true
+        },
+        {
+          "zone": "M4",
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous",
+          "tagged": false
+        }
+      ],
+      "missingTaggedCount": 4,
+      "missingUntaggedCount": 1,
+      "expectedAtBaseline": [],
+      "expectedEarned": [
+        {
+          "zone": "MZONE",
+          "cardId": 38811586,
+          "cardName": "Albion the Sanctifire Dragon"
+        }
+      ],
+      "expectedStillMissing": [
+        {
+          "zone": "MZONE",
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 5431722,
+          "cardName": "Dracotail Flame"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 69932023,
+          "cardName": "Dracotail Horn"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 80208225,
+          "cardName": "Dracotail Sting"
+        },
+        {
+          "zone": "HAND",
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        }
+      ],
+      "mainPathActions": [
+        {
+          "respIdx": 0,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 75003700,
+          "cardName": "Dracotail Lukias"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 2,
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 1498449,
+          "cardName": "Dracotail Faimena"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 7375867,
+          "cardName": "Dracotail Mululu"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 44362883,
+          "cardName": "Branded Fusion"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 4,
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon"
+        },
+        {
+          "respIdx": 0,
+          "cardId": 76666602,
+          "cardName": "The Dragon that Devours the Dogma"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 44146295,
+          "cardName": "Mirrorjade the Iceblade Dragon"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 95515789,
+          "cardName": "Blazing Cartesia, the Virtuous"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 1,
+          "cardId": 76666602,
+          "cardName": "The Dragon that Devours the Dogma"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        },
+        {
+          "respIdx": 0,
+          "cardId": 30271097,
+          "cardName": "The Fallen & The Virtuous"
+        },
+        {
+          "respIdx": -1,
+          "cardId": 0,
+          "cardName": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "cardId": 81560239,
+  "name": "Mitsurugi Ritual",
+  "sourceFile": "official/c81560239.lua",
+  "parserVersion": "v7-gate-strip",
+  "parsedAt": "2026-04-25",
+  "listedNames": [],
+  "listedSeries": [],
+  "summonProcedures": [],
+  "effects": [
+    {
+      "id": "e1",
+      "categories": [
+        "CATEGORY_RELEASE",
+        "CATEGORY_SPECIAL_SUMMON"
+      ],
+      "types": [
+        "EFFECT_TYPE_ACTIVATE"
+      ],
+      "properties": [],
+      "events": [
+        "EVENT_FREE_CHAIN"
+      ],
+      "descriptionStringId": "0",
+      "cost": {
+        "name": "s.effcost",
+        "opaque": true,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "b1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "b2"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        }
+      },
+      "target": {
+        "name": "s.efftg",
+        "opaque": false,
+        "simpleFilter": {
+          "predicates": [
+            {
+              "kind": "or",
+              "predicates": [
+                {
+                  "kind": "raw",
+                  "source": "b1"
+                },
+                {
+                  "kind": "raw",
+                  "source": "b2"
+                }
+              ]
+            }
+          ],
+          "complete": false
+        },
+        "actions": [
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_DECK"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_RELEASE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND|LOCATION_MZONE"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_SPECIAL_SUMMON",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND"
+            ]
+          },
+          {
+            "kind": "declare-operation",
+            "method": "SetOperationInfo",
+            "target": "0",
+            "argHints": [
+              "CATEGORY_RELEASE",
+              "nil",
+              "1",
+              "tp",
+              "LOCATION_HAND|LOCATION_MZONE|LOCATION_DECK"
+            ]
+          }
+        ]
+      },
+      "operation": {
+        "name": "s.effop",
+        "opaque": false,
+        "actions": [
+          {
+            "kind": "ritual-summon-operation",
+            "method": "Ritual.Operation",
+            "argHints": [
+              "params1"
+            ]
+          },
+          {
+            "kind": "ritual-summon-operation",
+            "method": "Ritual.Operation",
+            "argHints": [
+              "params2"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "totalEffects": 1,
+    "totalFunctionRefs": 3,
+    "fullyDecoded": 2,
+    "partiallyDecoded": 1,
+    "opaqueUndecoded": 0
+  },
+  "warnings": []
+}

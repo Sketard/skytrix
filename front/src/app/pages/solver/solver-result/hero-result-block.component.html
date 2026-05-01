@@ -1,0 +1,85 @@
+<div class="hero-container"
+  [class.hero-adversarial]="isAdversarial()"
+  [attr.aria-label]="ariaLabel()">
+
+  <div class="score-section">
+    <div class="score-line">
+      <span class="mat-headline-4"
+        [matTooltip]="'solver.result.interruptionScoreHint' | translate">{{ 'solver.result.interruptionScoreLabel' | translate }} {{ result().score }} — {{ totalInterruptions() }} {{ 'solver.result.interruptions' | translate }}</span>
+      @if (isPartial()) {
+        <mat-chip class="partial-badge" highlighted>{{ 'solver.result.partial' | translate }}</mat-chip>
+      }
+      @if (verifiedStatus() === 'verified') {
+        <mat-chip class="verified-chip">{{ 'solver.verify.verified' | translate }}</mat-chip>
+      }
+      @if (verifiedStatus() === 'failed') {
+        <mat-chip class="verified-chip failed">{{ 'solver.verify.failed' | translate }}</mat-chip>
+      }
+      @if (hasFallbackCards()) {
+        <mat-icon class="fallback-icon"
+          fontIcon="info_outline"
+          [matTooltip]="'solver.result.fallbackHint' | translate"></mat-icon>
+      }
+      @if (showMinimax()) {
+        <span class="minimax-label mat-body-2">{{ 'solver.result.worstCase' | translate }}: {{ result().minimax }}</span>
+      }
+      @if (fastAdversarialHint()) {
+        <mat-icon class="fast-hint-icon"
+          fontIcon="speed"
+          [matTooltip]="'solver.result.fastAdversarialHint' | translate"></mat-icon>
+      }
+    </div>
+
+    <div class="chips-row">
+      @for (chip of interruptionChips(); track chip.label) {
+        <mat-chip
+          [style.--mdc-chip-elevated-container-color]="chip.color"
+          [style.--mdc-chip-label-text-color]="chip.isAmber ? '#121212' : '#fff'">
+          {{ chip.label }} ×{{ chip.count }}
+        </mat-chip>
+      }
+    </div>
+  </div>
+
+  @if (endBoardDisplay().length > 0) {
+    <div class="end-board-section">
+      @for (card of endBoardDisplay(); track $index) {
+        <div class="end-board-card"
+          [class.fallback]="card.isFallback"
+          (mouseenter)="onCardEnter(card)"
+          (mouseleave)="onCardLeave()"
+          cdkOverlayOrigin
+          #cardOrigin="cdkOverlayOrigin">
+          <img [src]="card.imageUrl"
+            [alt]="card.cardName"
+            (error)="onCardImgError($event)"
+            loading="lazy" />
+          @if (card.badgeLabel) {
+            <div class="card-badge">{{ card.badgeLabel }}</div>
+          }
+          @if (card.consumedUses && card.totalUses) {
+            <div class="card-consumed-badge"
+              [matTooltip]="'solver.result.consumedBadge.tooltip' | translate:{ consumed: card.consumedUses, total: card.totalUses }">
+              {{ card.consumedUses }}/{{ card.totalUses }} {{ 'solver.result.consumedBadge.text' | translate }}
+            </div>
+          }
+
+          <ng-template cdkConnectedOverlay
+            [cdkConnectedOverlayOrigin]="cardOrigin"
+            [cdkConnectedOverlayOpen]="hoverCard() === card"
+            [cdkConnectedOverlayOffsetY]="-10"
+            cdkConnectedOverlayPanelClass="hero-card-popup">
+            <div class="card-popup"
+              (mouseenter)="onPopupEnter()"
+              (mouseleave)="onCardLeave()">
+              <img [src]="card.imageUrl"
+                [alt]="card.cardName"
+                (error)="onCardImgError($event)" />
+              <span class="card-popup-name">{{ card.cardName }}</span>
+            </div>
+          </ng-template>
+        </div>
+      }
+    </div>
+  }
+</div>

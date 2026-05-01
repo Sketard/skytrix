@@ -1,0 +1,635 @@
+{
+  "fixtureId": "radiant-typhoon-opener",
+  "expectedBoardSize": 3,
+  "matched": 3,
+  "matchedCardIds": [
+    71068247,
+    49105782,
+    53813120
+  ],
+  "missingCardIds": [],
+  "score": 27,
+  "scoreBreakdown": {
+    "omniNegate": 0,
+    "typedNegate": 2,
+    "targetedNegate": 0,
+    "floodgate": 0,
+    "controlChange": 0,
+    "banish": 0,
+    "banishFacedown": 0,
+    "attach": 0,
+    "spin": 1,
+    "flipFacedown": 0,
+    "destruction": 0,
+    "moveToSt": 0,
+    "bounce": 0,
+    "handRip": 0,
+    "sendToGy": 0,
+    "weighted": 27,
+    "fallbackPoints": 0,
+    "latentPoints": 0,
+    "goalMatchPoints": 0,
+    "implicitGoalPoints": 0,
+    "interruptionScore": 27,
+    "explorationScore": 27
+  },
+  "stoppedReason": "completed",
+  "stoppedAtPlanStep": null,
+  "divergence": null,
+  "replayLog": [
+    {
+      "step": 0,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 0
+    },
+    {
+      "step": 1,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 1
+    },
+    {
+      "step": 2,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Radiant Typhoon Eldam (summon-procedure) [raw]",
+      "appliedCardId": 54143349,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 2
+    },
+    {
+      "step": 3,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 3
+    },
+    {
+      "step": 4,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Radiant Typhoon Eldam [raw]",
+      "appliedCardId": 54143349,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 4
+    },
+    {
+      "step": 5,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 5
+    },
+    {
+      "step": 6,
+      "promptType": "SELECT_CARD",
+      "applied": "Radiant Typhoon Swen [raw]",
+      "appliedCardId": 80538047,
+      "appliedResponseIndex": 7,
+      "planStepIndex": 6
+    },
+    {
+      "step": 7,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 7
+    },
+    {
+      "step": 8,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Radiant Typhoon Swen (summon-procedure) [raw]",
+      "appliedCardId": 80538047,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 8
+    },
+    {
+      "step": 9,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 9
+    },
+    {
+      "step": 10,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 10
+    },
+    {
+      "step": 11,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Radiant Typhoon Swen [raw]",
+      "appliedCardId": 80538047,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 11
+    },
+    {
+      "step": 12,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 12
+    },
+    {
+      "step": 13,
+      "promptType": "SELECT_CARD",
+      "applied": "Radiant Typhoon Chant [raw]",
+      "appliedCardId": 67115133,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 13
+    },
+    {
+      "step": 14,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 14
+    },
+    {
+      "step": 15,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Totem Bird (summon-procedure) [raw]",
+      "appliedCardId": 71068247,
+      "appliedResponseIndex": 7,
+      "planStepIndex": 15
+    },
+    {
+      "step": 16,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Eldam [raw]",
+      "appliedCardId": 54143349,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 16
+    },
+    {
+      "step": 17,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Swen [raw]",
+      "appliedCardId": 80538047,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 17
+    },
+    {
+      "step": 18,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 18
+    },
+    {
+      "step": 19,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 19
+    },
+    {
+      "step": 20,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Radiant Typhoon Chant (activate) [raw]",
+      "appliedCardId": 67115133,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 20
+    },
+    {
+      "step": 21,
+      "promptType": "SELECT_OPTION",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 21
+    },
+    {
+      "step": 22,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 22
+    },
+    {
+      "step": 23,
+      "promptType": "SELECT_CARD",
+      "applied": "Radiant Typhoon Meghala [raw]",
+      "appliedCardId": 27755794,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 23
+    },
+    {
+      "step": 24,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Radiant Typhoon Krosea (activate) [raw]",
+      "appliedCardId": 16922142,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 24
+    },
+    {
+      "step": 25,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 25
+    },
+    {
+      "step": 26,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 26
+    },
+    {
+      "step": 27,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Radiant Typhoon Krosea [raw]",
+      "appliedCardId": 16922142,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 27
+    },
+    {
+      "step": 28,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 28
+    },
+    {
+      "step": 29,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Ascendance [raw]",
+      "appliedCardId": 25940932,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 29
+    },
+    {
+      "step": 30,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Mystical Space Typhoon [raw]",
+      "appliedCardId": 5318639,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 30
+    },
+    {
+      "step": 31,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 31
+    },
+    {
+      "step": 32,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Radiant Typhoon Meghala (summon-procedure) [raw]",
+      "appliedCardId": 27755794,
+      "appliedResponseIndex": 4,
+      "planStepIndex": 32
+    },
+    {
+      "step": 33,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 33
+    },
+    {
+      "step": 34,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 34
+    },
+    {
+      "step": 35,
+      "promptType": "SELECT_CHAIN",
+      "applied": "Radiant Typhoon Ascendance (activate) [raw]",
+      "appliedCardId": 25940932,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 35
+    },
+    {
+      "step": 36,
+      "promptType": "SELECT_OPTION",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 36
+    },
+    {
+      "step": 37,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 37
+    },
+    {
+      "step": 38,
+      "promptType": "SELECT_CARD",
+      "applied": "Mystical Space Typhoon [raw]",
+      "appliedCardId": 5318639,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 38
+    },
+    {
+      "step": 39,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Radiant Typhoon Meghala [raw]",
+      "appliedCardId": 27755794,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 39
+    },
+    {
+      "step": 40,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 40
+    },
+    {
+      "step": 41,
+      "promptType": "SELECT_CARD",
+      "applied": "Radiant Typhoon Varuroon, the Vibrant Vortex [raw]",
+      "appliedCardId": 53927851,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 41
+    },
+    {
+      "step": 42,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 42
+    },
+    {
+      "step": 43,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 43
+    },
+    {
+      "step": 44,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Radiant Typhoon Varuroon, the Marine Eidolon (summon-procedure) [raw]",
+      "appliedCardId": 39341885,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 44
+    },
+    {
+      "step": 45,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Krosea [raw]",
+      "appliedCardId": 16922142,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 45
+    },
+    {
+      "step": 46,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Meghala [raw]",
+      "appliedCardId": 27755794,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 46
+    },
+    {
+      "step": 47,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 47
+    },
+    {
+      "step": 48,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 48
+    },
+    {
+      "step": 49,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Radiant Typhoon Varuroon, the Marine Eidolon [raw]",
+      "appliedCardId": 39341885,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 49
+    },
+    {
+      "step": 50,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 50
+    },
+    {
+      "step": 51,
+      "promptType": "SELECT_CARD",
+      "applied": "Mystical Space Typhoon [raw]",
+      "appliedCardId": 5318639,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 51
+    },
+    {
+      "step": 52,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 52
+    },
+    {
+      "step": 53,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Radiant Typhoon Vision (activate) [raw]",
+      "appliedCardId": 20508881,
+      "appliedResponseIndex": 11,
+      "planStepIndex": 53
+    },
+    {
+      "step": 54,
+      "promptType": "SELECT_OPTION",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 54
+    },
+    {
+      "step": 55,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 55
+    },
+    {
+      "step": 56,
+      "promptType": "SELECT_CARD",
+      "applied": "Mystical Space Typhoon [raw]",
+      "appliedCardId": 5318639,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 56
+    },
+    {
+      "step": 57,
+      "promptType": "SELECT_EFFECTYN",
+      "applied": "Radiant Typhoon Varuroon, the Marine Eidolon [raw]",
+      "appliedCardId": 39341885,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 57
+    },
+    {
+      "step": 58,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 58
+    },
+    {
+      "step": 59,
+      "promptType": "SELECT_CARD",
+      "applied": "Radiant Typhoon Mandate [raw]",
+      "appliedCardId": 53813120,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 59
+    },
+    {
+      "step": 60,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 60
+    },
+    {
+      "step": 61,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "Hraesvelgr, the Desperate Doom Eagle (summon-procedure) [raw]",
+      "appliedCardId": 49105782,
+      "appliedResponseIndex": 5,
+      "planStepIndex": 61
+    },
+    {
+      "step": 62,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Varuroon, the Marine Eidolon [raw]",
+      "appliedCardId": 39341885,
+      "appliedResponseIndex": 2,
+      "planStepIndex": 62
+    },
+    {
+      "step": 63,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "Radiant Typhoon Varuroon, the Vibrant Vortex [raw]",
+      "appliedCardId": 53927851,
+      "appliedResponseIndex": 1,
+      "planStepIndex": 63
+    },
+    {
+      "step": 64,
+      "promptType": "SELECT_UNSELECT_CARD",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 3,
+      "planStepIndex": 64
+    },
+    {
+      "step": 65,
+      "promptType": "SELECT_PLACE",
+      "applied": "(pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 0,
+      "planStepIndex": 65
+    },
+    {
+      "step": 66,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 66
+    },
+    {
+      "step": 67,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 67
+    },
+    {
+      "step": 68,
+      "promptType": "SELECT_IDLECMD",
+      "applied": "(pass) (end-phase) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": 15,
+      "planStepIndex": 68
+    },
+    {
+      "step": 69,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [raw]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": 69
+    },
+    {
+      "step": 70,
+      "promptType": "SELECT_CHAIN",
+      "applied": "(pass) (pass) [auto-end-phase]",
+      "appliedCardId": 0,
+      "appliedResponseIndex": -1,
+      "planStepIndex": null
+    }
+  ],
+  "finalBoardSelf": [
+    {
+      "zone": "M1",
+      "cardName": "Totem Bird",
+      "cardId": 71068247,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "EMZ_L",
+      "cardName": "Hraesvelgr, the Desperate Doom Eagle",
+      "cardId": 49105782,
+      "position": "faceup-atk"
+    },
+    {
+      "zone": "S1",
+      "cardName": "Radiant Typhoon Mandate",
+      "cardId": 53813120,
+      "position": "faceup-atk"
+    }
+  ],
+  "finalLifePoints": {
+    "self": 8000,
+    "opp": 8000
+  },
+  "finalTurn": 2,
+  "finalPhase": "DRAW"
+}

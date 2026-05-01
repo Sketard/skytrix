@@ -24,6 +24,7 @@ import { filterMessage } from './message-filter.js';
 import type {
   ServerMessage,
   BoardStateMsg,
+  BoardStatePayload,
   Player,
   Phase,
   CardInfo,
@@ -31,11 +32,12 @@ import type {
   PlayerBoardState,
   BoardZone,
   CardOnField,
+  LinkedCardRef,
   Position,
   PreComputedState,
   DecisionMoment,
 } from './ws-protocol.js';
-import { LOCATION, POSITION } from './ws-protocol.js';
+import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from './ws-protocol.js';
 import type { ZoneId } from './ws-protocol.js';
 import { join } from 'node:path';
 
@@ -564,7 +566,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return {
         type: 'SELECT_TRIBUTE', player: msg.player as Player,
         min: msg.min, max: msg.max,
-        cards: msg.selects.map(c => ({ ...toCardInfo(c), amount: c.release_param })),
+        cards: msg.selects.map(c => ({ ...toCardInfo(c), releaseParam: c.release_param })),
         cancelable: msg.can_cancel,
       };
 
@@ -675,8 +677,21 @@ function updateState(msg: OcgMessage): void {
 // BOARD_STATE Builder
 // =============================================================================
 
+let buildBoardStateCumulativeMs = 0;
+let buildBoardStateCallCount = 0;
+
+export function getBuildBoardStatePerfStats(): { calls: number; cumulativeMs: number; avgMs: number } {
+  return {
+    calls: buildBoardStateCallCount,
+    cumulativeMs: Math.round(buildBoardStateCumulativeMs * 100) / 100,
+    avgMs: buildBoardStateCallCount > 0 ? Math.round((buildBoardStateCumulativeMs / buildBoardStateCallCount) * 100) / 100 : 0,
+  };
+}
+
 function buildBoardState(): ServerMessage {
   if (!core || !duel) throw new Error('No active duel');
+
+  const perfStart = performance.now();
 
   const fieldState = core.duelQueryField(duel);
   // WASM bug workaround: combining multiple OcgQueryFlags in a single query
@@ -695,6 +710,8 @@ function buildBoardState(): ServerMessage {
   const FLAG_RACE = OcgQueryFlags.RACE as number;
   const FLAG_STATUS = OcgQueryFlags.STATUS as number;
   const FLAG_EQUIP = OcgQueryFlags.EQUIP_CARD as number;
+  const FLAG_TARGET = OcgQueryFlags.TARGET_CARD as number;
+  const FLAG_TYPE = OcgQueryFlags.TYPE as number;
   const FLAG_LSCALE = OcgQueryFlags.LSCALE as number;
   const FLAG_RSCALE = OcgQueryFlags.RSCALE as number;
 
@@ -730,6 +747,8 @@ function buildBoardState(): ServerMessage {
       const raceInfo = queryFlag(controller, location, sequence, FLAG_RACE);
       const statusInfo = queryFlag(controller, location, sequence, FLAG_STATUS);
       const equipInfo = queryFlag(controller, location, sequence, FLAG_EQUIP);
+      const targetInfo = queryFlag(controller, location, sequence, FLAG_TARGET);
+      const typeInfo = queryFlag(controller, location, sequence, FLAG_TYPE);
       const lscaleInfo = queryFlag(controller, location, sequence, FLAG_LSCALE);
       const rscaleInfo = queryFlag(controller, location, sequence, FLAG_RSCALE);
 
@@ -744,8 +763,9 @@ function buildBoardState(): ServerMessage {
       card.currentRace = raceInfo?.race !== undefined ? Number(raceInfo.race) : undefined;
       card.currentLScale = lscaleInfo?.leftScale !== undefined ? Number(lscaleInfo.leftScale) : undefined;
       card.currentRScale = rscaleInfo?.rightScale !== undefined ? Number(rscaleInfo.rightScale) : undefined;
+      card.currentType = typeInfo?.type !== undefined ? Number(typeInfo.type) : undefined;
 
-      // Base values from card database (level, rank, attribute, race, scales)
+      // Base values from card database (level, rank, attribute, race, scales, type)
       const dbRow = cardDb?.stmt.get(code) as Record<string, number | bigint> | undefined;
       if (dbRow) {
         const rawLevel = Number(dbRow['level']);
@@ -759,6 +779,7 @@ function buildBoardState(): ServerMessage {
         card.baseRace = Number(dbRow['race']);
         card.baseLScale = (rawLevel >> 16) & 0xFF;
         card.baseRScale = (rawLevel >> 24) & 0xFF;
+        card.baseType = cardType;
       } else {
         dlog.warn('No DB row for card — base alteration fields unavailable', { cardCode: code });
       }
@@ -768,22 +789,35 @@ function buildBoardState(): ServerMessage {
         card.isEffectNegated = (Number(statusInfo.status) & STATUS_DISABLED) !== 0;
       }
 
-      // Equip target (AC5)
+      // Linked cards: merge EQUIP_CARD (single ref, equip-spell side) and
+      // TARGET_CARD (multi-ref, persistent effect-target list) into one
+      // wire-format array (AC5 + new persistent-target relations).
+      const links: LinkedCardRef[] = [];
       const ec = equipInfo?.equipCard;
-      if (ec) {
-        if (ec.controller !== undefined && ec.sequence !== undefined) {
-          card.equipTarget = {
-            controller: ec.controller,
-            location: Number(ec.location),
-            sequence: ec.sequence,
-          };
-        } else {
-          dlog.warn('Unexpected EQUIP_CARD format', { equipCard: ec });
-          card.equipTarget = null;
-        }
-      } else {
-        card.equipTarget = null;
+      if (ec && ec.controller !== undefined && ec.sequence !== undefined) {
+        links.push({
+          kind: 'equip',
+          controller: ec.controller,
+          location: Number(ec.location),
+          sequence: ec.sequence,
+        });
+      } else if (ec) {
+        dlog.warn('Unexpected EQUIP_CARD format', { equipCard: ec });
       }
+      const tcs = targetInfo?.targetCards ?? [];
+      for (const tc of tcs) {
+        if (tc.controller === undefined || tc.sequence === undefined) {
+          dlog.warn('Unexpected TARGET_CARD format', { targetCard: tc });
+          continue;
+        }
+        links.push({
+          kind: 'target',
+          controller: tc.controller,
+          location: Number(tc.location),
+          sequence: tc.sequence,
+        });
+      }
+      if (links.length > 0) card.linkedCards = links;
     }
 
     return card;
@@ -863,10 +897,21 @@ function buildBoardState(): ServerMessage {
     return { lp: lp[controller], deckCount: fp.deck_size, extraCount: fp.extra_size, zones };
   }
 
-  return {
+  const msg: ServerMessage = {
     type: 'BOARD_STATE',
     data: { turnPlayer, turnCount, phase, players: [buildPlayerState(0), buildPlayerState(1)] },
   };
+
+  // Perf tracking: buildBoardState is hot during chain-resolving replays
+  // (one call per BOARD_CHANGING event with a `boardStateAfter` snapshot).
+  // WASM `duelQuery` has a known bug preventing multi-flag combination, so
+  // each face-up field card requires ~12 individual queries. Tracking avg
+  // lets us spot regressions if future zones expand; optimization path is
+  // blocked on the WASM bug fix (see `buildBoardState` comments above).
+  buildBoardStateCumulativeMs += performance.now() - perfStart;
+  buildBoardStateCallCount++;
+
+  return msg;
 }
 
 // =============================================================================
@@ -970,6 +1015,12 @@ function emitReplayData(): void {
 function runDuelLoop(): void {
   if (!core || !duel) return;
 
+  // Mirror of the replay precompute's chain-resolving tracker. Board-changing
+  // events emitted between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED get a
+  // `boardStateAfter` snapshot attached so the live-play client can sync
+  // logical state per event (same mechanism as replay) — PvP↔Replay parity.
+  let chainResolving = false;
+
   while (true) {
     let skipRpsAutoResponded = false;
 
@@ -1035,6 +1086,19 @@ function runDuelLoop(): void {
         if (dto.type === 'MSG_MOVE') {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });
           hasCostMoves = true;
+        }
+        // Track chain-resolving window for per-event board snapshots.
+        if (dto.type === 'MSG_CHAIN_SOLVING') chainResolving = true;
+        else if (dto.type === 'MSG_CHAIN_SOLVED') chainResolving = false;
+        // Attach a post-event board snapshot to BOARD_CHANGING events fired
+        // during the resolving window. Lets the client's `processEvent` hook
+        // `rbs.updateLogical(boardStateAfter)` progress logical state per
+        // event, matching the replay precompute behavior. Cost is one
+        // `buildBoardState()` per BOARD_CHANGING event during resolving
+        // (~10-50ms each, bounded by chain length).
+        if (chainResolving && BOARD_CHANGING_EVENT_TYPES.has(dto.type)) {
+          (dto as { boardStateAfter?: BoardStatePayload }).boardStateAfter =
+            (buildBoardState() as BoardStateMsg).data;
         }
         // Emit intermediate BOARD_STATE before chain resolution starts so the client
         // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
@@ -1421,6 +1485,11 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
   let lastConfirmedCards: CardInfo[] | null = null;
   let hasWinOrDraw = false;
   let activeChainIndex: number | null = null; // Track current chain link depth
+  // Set to true while we're between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED —
+  // mirrors `ChainResolutionManager.isResolving` on the client. Board-changing
+  // events emitted during this window get a `boardStateAfter` snapshot so the
+  // client's buffer replay can progressively sync logical state per event.
+  let chainResolving = false;
   const MAX_ITERATIONS = 100_000; // CPU-spin guard — well above any real duel
   let iterations = 0;
 
@@ -1493,6 +1562,22 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
       if (translated) {
         const filtered = filterMessage(translated, 0 as Player, true); // omniscient
         if (filtered) {
+          // Track chain-resolving window (MSG_CHAIN_SOLVING..MSG_CHAIN_SOLVED) so
+          // board-changing events in that window get a `boardStateAfter` snapshot.
+          if (filtered.type === 'MSG_CHAIN_SOLVING') chainResolving = true;
+          else if (filtered.type === 'MSG_CHAIN_SOLVED') chainResolving = false;
+
+          // Attach a post-event board snapshot to BOARD_CHANGING events inside
+          // the resolving window. Client's `replayBuffer` uses it to progress
+          // logical state across events instead of jumping to the final chain
+          // state at commit. The snapshot reflects ocgcore state at the moment
+          // of capture (post-batch if multiple events fire in one `duelProcess`
+          // call); still strictly better than no snapshot at all.
+          if (chainResolving && BOARD_CHANGING_EVENT_TYPES.has(filtered.type)) {
+            const snapshot = (buildBoardState() as BoardStateMsg).data;
+            (filtered as { boardStateAfter?: BoardStatePayload }).boardStateAfter = snapshot;
+          }
+
           // Track hint/confirmedCards accumulators (metadata, not pushed to events)
           if (filtered.type === 'MSG_HINT') {
             lastHint = { hintType: filtered.hintType, value: filtered.value, cardName: filtered.cardName, hintAction: filtered.hintAction };
@@ -1616,7 +1701,11 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
         return;
       }
 
-      dlog.log('Pre-computation complete', { turns: currentTurn + 1, responsesConsumed: responseIndex });
+      dlog.log('Pre-computation complete', {
+        turns: currentTurn + 1,
+        responsesConsumed: responseIndex,
+        buildBoardStatePerf: getBuildBoardStatePerfStats(),
+      });
       port.postMessage({ type: 'WORKER_REPLAY_COMPLETE', duelId });
       cleanup();
       return;

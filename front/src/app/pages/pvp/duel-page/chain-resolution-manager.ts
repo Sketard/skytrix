@@ -1,7 +1,8 @@
 import { effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import type { GameEvent } from '../types';
 import type { ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
-import { duelAssert } from './duel-assert';
+import { BOARD_CHANGING_EVENT_TYPES } from '../duel-ws.types';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 
 /**
@@ -25,16 +26,18 @@ export class ChainResolutionManager {
   private _chainSolvedCount = 0;
   private _waitingForOverlay = false;
   private _insideChainResolution = false;
+  private _drainingBuffer = false;
   private _bufferedBoardEvents: GameEvent[] = [];
   private _replayTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _deferredSolvingEvent: GameEvent | null = null;
   private _bannerTimeouts: ReturnType<typeof setTimeout>[] = [];
 
-  static readonly BOARD_CHANGING_EVENTS = new Set([
-    'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST', 'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
-    'MSG_SHUFFLE_HAND', 'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK',
-    'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP', 'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
-  ]);
+  /**
+   * Re-exported for legacy call sites (`ChainResolutionManager.BOARD_CHANGING_EVENTS`).
+   * New code should import `BOARD_CHANGING_EVENT_TYPES` directly from
+   * `duel-ws.types` — single source of truth shared with the server.
+   */
+  static readonly BOARD_CHANGING_EVENTS = BOARD_CHANGING_EVENT_TYPES;
 
   // --- State queries ---
   get isResolving(): boolean { return this._insideChainResolution; }
@@ -43,6 +46,16 @@ export class ChainResolutionManager {
   get deferredSolvingEvent(): GameEvent | null { return this._deferredSolvingEvent; }
   get hasActiveReplayTimeouts(): boolean { return this._replayTimeouts.length > 0; }
   get hasBufferedEvents(): boolean { return this._bufferedBoardEvents.length > 0; }
+  get isDraining(): boolean { return this._drainingBuffer; }
+  /**
+   * True iff a board-changing event arriving now should be buffered.
+   * Equivalent to "chain is resolving server-side AND we are not currently
+   * draining the buffer for animation". Decouples engine state from
+   * animation-pipeline state — without this, mid-chain pre-replay events
+   * passed through `processEvent` get re-buffered into the same buffer they
+   * were just drained from, causing an infinite loop.
+   */
+  get shouldBufferDuringChain(): boolean { return this._insideChainResolution && !this._drainingBuffer; }
 
   // --- Event handlers ---
 
@@ -110,7 +123,7 @@ export class ChainResolutionManager {
 
   /** Buffer a board-changing event during chain resolution. Returns true if buffered. */
   bufferIfResolving(event: GameEvent): boolean {
-    if (this._insideChainResolution && ChainResolutionManager.BOARD_CHANGING_EVENTS.has(event.type)) {
+    if (this.shouldBufferDuringChain && ChainResolutionManager.BOARD_CHANGING_EVENTS.has(event.type)) {
       this._bufferedBoardEvents.push(event);
       return true;
     }
@@ -127,6 +140,16 @@ export class ChainResolutionManager {
     this._replayTimeouts = [];
     return buffer;
   }
+
+  /**
+   * Mark the start of a buffer drain. While set, `bufferIfResolving` returns
+   * false even if `_insideChainResolution` is still true — this prevents
+   * events that are being replayed from the buffer from re-entering the same
+   * buffer (infinite loop on mid-chain pre-replay).
+   */
+  beginDrain(): void { this._drainingBuffer = true; }
+  /** Mark the end of a buffer drain. Must be paired with `beginDrain`. */
+  endDrain(): void { this._drainingBuffer = false; }
 
   /** Track a replay stagger timeout. */
   addReplayTimeout(t: ReturnType<typeof setTimeout>): void {
@@ -172,6 +195,7 @@ export class ChainResolutionManager {
   reset(): void {
     this._waitingForOverlay = false;
     this._insideChainResolution = false;
+    this._drainingBuffer = false;
     this._bufferedBoardEvents = [];
     this._replayTimeouts.forEach(t => clearTimeout(t));
     this._replayTimeouts = [];

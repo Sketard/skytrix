@@ -456,7 +456,122 @@
     "dragActivated": "Drag activated",
     "refreshRooms": "Refresh room list",
     "quickDuelDebug": "Quick duel - debug mode",
-    "createRoom": "Create a room"
+    "createRoom": "Create a room",
+    "solveDeck": "Solve deck {{name}}"
+  },
+  "solver": {
+    "pageTitle": "Solver",
+    "desktopRequired": "Solver requires a desktop browser (1024px minimum)",
+    "backToDecks": "Back to decks",
+    "config": {
+      "title": "Configuration",
+      "selected": "{{count}} / 5 max selected",
+      "fillRandom": "Fill Random",
+      "clear": "Clear selection",
+      "mode": "Mode",
+      "modeGoldfish": "Goldfish",
+      "speed": "Speed",
+      "speedFast": "Fast",
+      "speedOptimal": "Optimal",
+      "algorithm": "Algorithm",
+      "algorithmDfs": "DFS",
+      "algorithmMcts": "MCTS",
+      "algorithmAuto": "Auto",
+      "solve": "Solve",
+      "quickSolve": "Quick Solve",
+      "notEnoughCards": "Not enough cards to form a hand",
+      "modeAdversarial": "Adversarial",
+      "handtraps": "Handtraps",
+      "handtrapsLoading": "Loading handtraps...",
+      "handtrapsEmpty": "No handtraps available",
+      "dfsHint": "DFS does not support adversarial — switched to Auto",
+      "selectHandtrap": "Select at least 1 handtrap for adversarial mode",
+      "deckSwitchAdversarialHint": "Deck changed — review your handtrap selection",
+      "deckSeed": "Deck Seed",
+      "deckSeedTooltip": "Exact reproduction for DFS without random effects. Approximate if the combo involves searches, shuffles, or coin flips. MCTS is always approximate.",
+      "deckSeedInvalid": "Expected format: two integers separated by comma",
+      "advancedOptions": "Advanced options"
+    },
+    "progress": {
+      "exploring": "Exploring combo lines...",
+      "stalled": "Resolving complex effect...",
+      "nodesExplored": "{{count}} combo lines explored",
+      "bestScore": "Best interruption score: {{score}}",
+      "elapsed": "Elapsed: {{time}}",
+      "cancel": "Cancel"
+    },
+    "uncollapse": "Open configuration",
+    "loading": "Loading...",
+    "result": {
+      "interruptions": "interruptions",
+      "interruptionSingular": "interruption",
+      "interruptionScoreLabel": "Interruption score:",
+      "interruptionScoreHint": "Pure end-board disruption value (weighted tags + fallback heuristic). Does NOT include latent combo-progress bonuses (those guide DFS exploration only — see breakdown).",
+      "partial": "Partial result",
+      "fallbackHint": "Some cards lack interruption tags — score is estimated",
+      "consumedBadge": {
+        "text": "used",
+        "tooltip": "This card has used {{consumed}} of its {{total}} once-per-turn effects this turn"
+      },
+      "brick": {
+        "title": "No viable combo",
+        "message": "This hand has no path to an interruption even uncontested.",
+        "suggestion": "Try a different hand"
+      },
+      "tree": {
+        "pruned": "... and {{count}} other branches",
+        "truncated": "Subtree cut for size"
+      },
+      "worstCase": "Worst-case",
+      "noResilientLine": "No resilient line found",
+      "noResilientLineMessage": "All combo paths are broken by the selected handtraps.",
+      "bestScoreRef": "Best interruption score: {{score}}",
+      "worstCaseAria": "Worst-case resilience: {{minimax}}",
+      "fastAdversarialHint": "Fast mode explores fewer combo branches. Use Optimal for a more thorough minimax search.",
+      "alternativeCountBadge": "{{count}} options",
+      "alternativeCountTooltip": "Opponent chose this activation among {{count}} legal options at this chain window"
+    },
+    "error": {
+      "deckNotFound": "Deck not found",
+      "accessDenied": "Access denied for this deck",
+      "connectionFailed": "Server connection failed",
+      "handtrapUnavailable": "Handtrap data unavailable — check server connection",
+      "resultEvicted": "Previous solve result expired during reconnection — please run it again"
+    },
+    "history": {
+      "button": "History",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "minimax": "Minimax",
+      "partial": "Partial",
+      "justNow": "Just now",
+      "minutesAgo": "{{n}}m ago",
+      "hoursAgo": "{{n}}h ago"
+    },
+    "export": {
+      "export": "Export",
+      "copied": "Result copied to clipboard",
+      "failed": "Failed to copy to clipboard"
+    },
+    "pin": {
+      "pin": "Pin result",
+      "unpin": "Unpin",
+      "pinned": "Pinned",
+      "hand": "Hand",
+      "endBoard": "End board",
+      "goldfish": "Goldfish",
+      "adversarial": "Adversarial",
+      "pinLimit": "Maximum pins reached (4)"
+    },
+    "verify": {
+      "verify": "Verify",
+      "verified": "Verified",
+      "failed": "Verification failed",
+      "prngWarning": "Verification may fail for combos involving search or shuffle effects (e.g., ROTA, Branded Fusion send-from-deck) — OCGCore's internal PRNG may produce different post-search deck orders. This does not invalidate the original result.",
+      "verifying": "Verifying recommended line...",
+      "verifiedAria": "Result verified",
+      "failedAria": "Verification failed"
+    }
   },
   "replay": {
     "matchHistory": {

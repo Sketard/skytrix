@@ -1,0 +1,2486 @@
+{
+  "1174075": {
+    "cardName": "Drytron Mu Beta Fafnir",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "1508649": {
+    "cardName": "Altergeist Hexstia",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "1528054": {
+    "cardName": "Silhouhatte Rabbit",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "When card in S/T zone is SS to Monster Zone: destroy 1 opp Spell/Trap"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "1861629": {
+    "cardName": "Decode Talker",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "2311090": {
+    "cardName": "Spright Carrot",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Tribute Lv/Rk/Lk 2 mon: negate opp Spell/Trap effect"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "2347656": {
+    "cardName": "Lovely Labrynth of the Silver Castle",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "2772337": {
+    "cardName": "Promethean Princess, Bestower of Flames",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY-only: destruction fires \"while this card is in your GY\""
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "2857636": {
+    "cardName": "Knightmare Phoenix",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via I:P Masquerena — Phase D pending (scores 0 today)."
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "2956282": {
+    "cardName": "Naturia Barkion",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 3,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "4280258": {
+    "cardName": "Apollousa, Bow of the Goddess",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 4,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "5041348": {
+    "cardName": "Draco Berserker of the Tenyi",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "5043010": {
+    "cardName": "Firewall Dragon",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "5431722": {
+    "cardName": "Dracotail Flame",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Negate a face-up Spell effects until end of turn"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "5821478": {
+    "cardName": "Topologic Bomber Dragon",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "6247535": {
+    "cardName": "Borreload eXcharge Dragon",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "6798031": {
+    "cardName": "Ryzeal Cross",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Negate resolved opponent monster effect via Ryzeal Xyz"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "6855503": {
+    "cardName": "Masquerade the Blazing Dragon",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "6983839": {
+    "cardName": "Tornado Dragon",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 2,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "7336745": {
+    "cardName": "Dinomorphia Intact",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Pay half LP: negate monster effect activation + destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "7480763": {
+    "cardName": "Artifact Dagda",
+    "effects": [
+      {
+        "type": "moveToSt",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "8165596": {
+    "cardName": "Number 90: Galaxy-Eyes Photon Lord",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Detach material; negate monster effect"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "9464441": {
+    "cardName": "Adamancipator Risen - Dragite",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "9753964": {
+    "cardName": "Hot Red Dragon Archfiend Abyss",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "9940036": {
+    "cardName": "Mereologic Aggregator",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "10019086": {
+    "cardName": "Tri-Brigade Arms Bucephalus II",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "10443957": {
+    "cardName": "Cyber Dragon Infinity",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "attach",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "10963799": {
+    "cardName": "Barrier Statue of the Torrent",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "11321089": {
+    "cardName": "Guardian Chimera",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via Super Polymerization — Phase D pending."
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "11738489": {
+    "cardName": "The Arrival Cyberse @Ignister",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "12018201": {
+    "cardName": "Lavalval Exlord",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "13117073": {
+    "cardName": "Barricadeborg Blocker",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "13455674": {
+    "cardName": "Crystron Quariongandrax",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On-Synchro-Summon: banish opp monsters from field/GY up to # materials (persistent removal)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "13974207": {
+    "cardName": "Denko Sekka",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "14812471": {
+    "cardName": "Salamangreat Balelynx",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "15397015": {
+    "cardName": "Inspector Boarder",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "15939229": {
+    "cardName": "D/D/D Duo-Dawn King Kali Yuga",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "17954937": {
+    "cardName": "Mitsurugi Great Purification",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Tribute 1 Lvl5+ Reptile; negate card/effect and destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "18666161": {
+    "cardName": "Despian Proskenion",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      },
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "19740112": {
+    "cardName": "Barrier Statue of the Drought",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "19899073": {
+    "cardName": "Ame no Murakumo no Mitsurugi",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On SS: destroy all opponent monsters"
+      },
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Quick: opponent discards 1 or activation is negated"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
+  "20292186": {
+    "cardName": "Artifact Scythe",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "20934852": {
+    "cardName": "Marincess Aqua Argonaut",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "21044178": {
+    "cardName": "Abyss Dweller",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "21123811": {
+    "cardName": "Cosmic Blazar Dragon",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "21368273": {
+    "cardName": "Mannadium Trisukta",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "21377582": {
+    "cardName": "Master Peace, the True Dracoslaying King",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      },
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "21887175": {
+    "cardName": "Mekk-Knight Crusadia Avramax",
+    "effects": [
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "22110647": {
+    "cardName": "Mecha Phantom Beast Dracossack",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "description": "Tribute Mecha Phantom Beast to destroy 1 card on field"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "22850702": {
+    "cardName": "Chaos Angel",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "24434049": {
+    "cardName": "Epurrely Plump",
+    "effects": [
+      {
+        "type": "attach",
+        "usesPerTurn": 3,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "24915933": {
+    "cardName": "Granguignol the Dusk Dragon",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "26692769": {
+    "cardName": "The Phantom Knights of Rusty Bardiche",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "26973555": {
+    "cardName": "Number F0: Utopic Draco Future",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "27381364": {
+    "cardName": "Spright Elf",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "27548199": {
+    "cardName": "Borreload Savage Dragon",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "27552504": {
+    "cardName": "Beatrice, Lady of the Eternal",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 2,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "28226490": {
+    "cardName": "Tearlaments Kaleido-Heart",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On SS or Aqua to GY: shuffle 1 opp card into deck"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "29301450": {
+    "cardName": "S:P Little Knight",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "29369059": {
+    "cardName": "Yummy☆Surprise",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "description": "Bounce 2 own LIGHT Beasts + 2 opp cards to hand"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "29479265": {
+    "cardName": "Unchained Abomination",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 2,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "29587993": {
+    "cardName": "Mist Valley Apex Avian",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Bounce 1 Mist Valley card: negate any activation + destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "30271097": {
+    "cardName": "The Fallen & The Virtuous",
+    "sharedOpt": true,
+    "totalUsesPerTurn": 1,
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Send Albaz-mention Fusion from Extra to GY, destroy 1 face-up card on field"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-14",
+    "_validated": false
+  },
+  "30430448": {
+    "cardName": "Runick Freezing Curses",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Negate opp Effect Monster effects until end of turn (skip own Battle Phase)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "30998403": {
+    "cardName": "D/D/D Sky King Zeus Ragnarok",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Negate opponent monster effect from hand"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "31833038": {
+    "cardName": "Borreload Dragon",
+    "effects": [
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "32181268": {
+    "cardName": "Amano-Iwato",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "33158448": {
+    "cardName": "F.A. Dawn Dragster",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "33198837": {
+    "cardName": "Naturia Beast",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 3,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "33746252": {
+    "cardName": "Majesty's Fiend",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "33760966": {
+    "cardName": "Dracotail Arthalion",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On Fusion Summon: bounce opponent monsters to hand Latent via Super Polymerization — Phase D pending.",
+        "activeZones": [
+          "EXTRA"
+        ]
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "34909328": {
+    "cardName": "Ryzeal Detonator",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Detach material; destroy 1 card on the field"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "35952884": {
+    "cardName": "Shooting Quasar Dragon",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "37495766": {
+    "cardName": "Rescue-ACE Turbulence",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "37818794": {
+    "cardName": "Red-Eyes Dark Dragoon",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "41209827": {
+    "cardName": "Starving Venom Fusion Dragon",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via Super Polymerization — Phase D pending."
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "41855169": {
+    "cardName": "Jowgen the Spiritualist",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      },
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "41999284": {
+    "cardName": "Linkuriboh",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "42009836": {
+    "cardName": "Fossil Dyna Pachycephalo",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "42752141": {
+    "cardName": "Evolzar Dolkka",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 2,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "44146295": {
+    "cardName": "Mirrorjade the Iceblade Dragon",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Quick effect from field: when opp banishes a card, target 1 card opp controls; banish it."
+      },
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY trigger: when sent to GY by opp's card effect, target 1 card opp controls; destroy it."
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "44508094": {
+    "cardName": "Stardust Dragon",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "44665365": {
+    "cardName": "Herald of Perfection",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 3,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "44822037": {
+    "cardName": "Angel Statue - Azurune",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "Send Cont. Trap mon to GY: negate opp Special Summon + destroy"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "44852429": {
+    "cardName": "D/D/D Cursed King Siegfried",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Negate face-up Spell/Trap effects until next Standby"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "45819647": {
+    "cardName": "Selene, Queen of the Master Magicians",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "46145256": {
+    "cardName": "Barrier Statue of the Heavens",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "46396218": {
+    "cardName": "Azamina Ilia Silvia",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Tribute self to negate any opp activation"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "46593546": {
+    "cardName": "D/D/D Deviser King Deus Machinex",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "attach",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "47084486": {
+    "cardName": "Vanity's Fiend",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "47910940": {
+    "cardName": "Marincess Great Bubble Reef",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "47961808": {
+    "cardName": "Barrier Statue of the Inferno",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "48452496": {
+    "cardName": "Snake-Eyes Flamberge Dragon",
+    "effects": [
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "48546368": {
+    "cardName": "Herald of Ultimateness",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 3,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "48626373": {
+    "cardName": "Kashtira Arise-Heart",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "banishFacedown",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      },
+      {
+        "type": "attach",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "48739166": {
+    "cardName": "Number 101: Silent Honor ARK",
+    "effects": [
+      {
+        "type": "attach",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "48832775": {
+    "cardName": "Dinomorphia Kentregina",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "48905153": {
+    "cardName": "Zoodiac Drident",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "49105782": {
+    "cardName": "Hraesvelgr, the Desperate Doom Eagle",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Target 1 monster in opponent's GY; shuffle it into the Deck"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
+  "50954680": {
+    "cardName": "Crystal Wing Synchro Dragon",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "51409648": {
+    "cardName": "Rindbrumm the Striking Dragon",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Negate Fusion/Synchro/Xyz/Link monster effect, optional bounce"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-14",
+    "_validated": false
+  },
+  "52068432": {
+    "cardName": "Nekroz of Trishula",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "activeZones": [
+          "HAND"
+        ],
+        "description": "Discard from hand: negate activation that targets a Nekroz mon"
+      },
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "On Ritual Summon: banish 3 opp cards (1 hand+field+GY each)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "52331012": {
+    "cardName": "Tri-Brigade Rugal the Silver Sheller",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY-only: sendToGy trigger fires \"If this card is sent to the GY\""
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "53262004": {
+    "cardName": "Odd-Eyes Vortex Dragon",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "53813120": {
+    "cardName": "Radiant Typhoon Mandate",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "When Mystical Space Typhoon is activated: target 1 face-up opponent card; negate its effects (conditional on MST trigger)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
+  "54498517": {
+    "cardName": "Gigantic Spright",
+    "effects": [
+      {
+        "type": "attach",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "54757758": {
+    "cardName": "Mudragon of the Swamp",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "55285840": {
+    "cardName": "Time Thief Redoer",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      },
+      {
+        "type": "attach",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "59509952": {
+    "cardName": "Archlord Kristya",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "59822133": {
+    "cardName": "Blue-Eyes Spirit Dragon",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "60303245": {
+    "cardName": "Salamangreat Almiraj",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "60461804": {
+    "cardName": "Destiny HERO - Destroyer Phoenix Enforcer",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "62592805": {
+    "cardName": "Epurrely Noir",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "63436931": {
+    "cardName": "Crimson Dragon",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "63504681": {
+    "cardName": "Number 86: Heroic Champion - Rhongomyniad",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "63767246": {
+    "cardName": "Number 38: Hope Harbinger Dragon Titanic Galaxy",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "65330383": {
+    "cardName": "Knightmare Gryphon",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "65741786": {
+    "cardName": "I:P Masquerena",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "66403530": {
+    "cardName": "Topologic Zeroboros",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "68431965": {
+    "cardName": "Shooting Riser Dragon",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "69073023": {
+    "cardName": "Infinitrack Fortress Megaclops",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "69248256": {
+    "cardName": "Swordsoul Grandmaster - Chixiao",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "69680031": {
+    "cardName": "Dogmatika Fleurdelis, the Knighted",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "69932023": {
+    "cardName": "Dracotail Horn",
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Return 1 Attack Position monster to hand/Extra"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "69946549": {
+    "cardName": "Predaplant Dragostapelia",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "70369116": {
+    "cardName": "Predaplant Verte Anaconda",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "70534340": {
+    "cardName": "Lubellion the Searing Dragon",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "71068247": {
+    "cardName": "Totem Bird",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Detach 2 materials; negate Spell/Trap activation and destroy it"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
+  "71166481": {
+    "cardName": "Number 75: Bamboozling Gossip Shadow",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Detach 2 materials; opponent monster effect becomes 'both players draw 1 card' (modal negate)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-15",
+    "_validated": false
+  },
+  "71564252": {
+    "cardName": "Thunder King Rai-Oh",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      },
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "72272462": {
+    "cardName": "Despian Quaeritis",
+    "effects": [
+      {
+        "type": "flipFacedown",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "72402069": {
+    "cardName": "D/D/D Super Doom King Bright Armageddon",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "Negate opponent monster effects on other summon"
+      },
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "description": "Pendulum effect: destroy opponent monsters on attack"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "72529749": {
+    "cardName": "Topologic Trisbaena",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "72634965": {
+    "cardName": "Vanity's Ruler",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "73356503": {
+    "cardName": "Barrier Statue of the Stormwinds",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "73542331": {
+    "cardName": "Kashtira Shangri-Ira",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      },
+      {
+        "type": "banishFacedown",
+        "usesPerTurn": 3,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "74294676": {
+    "cardName": "Evolzar Laggia",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "74586817": {
+    "cardName": "PSY-Framelord Omega",
+    "effects": [
+      {
+        "type": "handRip",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "75286621": {
+    "cardName": "Invoked Mechaba",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "75452921": {
+    "cardName": "Knightmare Cerberus",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger",
+        "activeZones": [
+          "EXTRA"
+        ],
+        "description": "Latent via I:P Masquerena — Phase D pending (scores 0 today)."
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "75922381": {
+    "cardName": "Spright Red",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Tribute Lv/Rk/Lk 2 mon: negate opp monster effect"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "78397661": {
+    "cardName": "Ecclesia and the Dark Dragon",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "description": "From GY: shuffle a card on the field into the deck GY-only: spin fires \"If this card is in your GY\"",
+        "activeZones": [
+          "GY"
+        ]
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "79559912": {
+    "cardName": "D/D/D Wave High King Caesar",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick",
+        "description": "Negate card/effect that summons a monster"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "79606837": {
+    "cardName": "Herald of the Arc Light",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "80208225": {
+    "cardName": "Dracotail Sting",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "chain",
+        "description": "Banish 1 monster and/or 1 S/T from opponent GY"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "80611581": {
+    "cardName": "Floowandereeze & Empen",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "81497285": {
+    "cardName": "Lady Labrynth of the Silver Castle",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "81846453": {
+    "cardName": "Martial Metal Marcher",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "83531441": {
+    "cardName": "Dante, Traveler of the Burning Abyss",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "84330567": {
+    "cardName": "Tearlaments Rulkallos",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "84478195": {
+    "cardName": "Barrier Statue of the Abyss",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "84815190": {
+    "cardName": "Baronne de Fleur",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      },
+      {
+        "type": "destruction",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "85289965": {
+    "cardName": "Borrelsword Dragon",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "86066372": {
+    "cardName": "Accesscode Talker",
+    "effects": [
+      {
+        "type": "destruction",
+        "usesPerTurn": 4,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "86221741": {
+    "cardName": "Raidraptor - Ultimate Falcon",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "88000953": {
+    "cardName": "Rasterliger",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "88581108": {
+    "cardName": "True King of All Calamities",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "89851827": {
+    "cardName": "Secreterion Dragon",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous",
+        "description": "Opponent cannot activate effects of Special Summoned Dragon/Spellcaster monsters"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-14",
+    "_validated": false
+  },
+  "90448279": {
+    "cardName": "Divine Arsenal AA-ZEUS - Sky Thunder",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 2,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "90590303": {
+    "cardName": "Number 41: Bagooska the Terribly Tired Tapir",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "90809975": {
+    "cardName": "Toadally Awesome",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      },
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "90846359": {
+    "cardName": "Rivalry of Warlords",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous",
+        "description": "Each player can only control 1 Type of monster"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "91781484": {
+    "cardName": "D/D/D Headhunt",
+    "effects": [
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "description": "Take control of opponent monster until next End Phase"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-13",
+    "_validated": false
+  },
+  "92519087": {
+    "cardName": "Virtual World Kyubi - Shenshen",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "92714517": {
+    "cardName": "Big Welcome Labrynth",
+    "sharedOpt": true,
+    "totalUsesPerTurn": 1,
+    "effects": [
+      {
+        "type": "bounce",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "Banish from GY: bounce 1 opp card (if Lv8+ Fiend on field)"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-7",
+    "_oracleVersion": "2026-04-26",
+    "_validated": false
+  },
+  "92731385": {
+    "cardName": "Tearlaments Kitkallos",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main",
+        "activeZones": [
+          "GY"
+        ],
+        "description": "GY-only: sendToGy (mill-5) fires \"If this card is sent to the GY by card effect\""
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "92798873": {
+    "cardName": "Dinomorphia Rexterm",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "93039339": {
+    "cardName": "Super Starslayer TY-PHON - Sky Crisis",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "94977269": {
+    "cardName": "El Shaddoll Winda",
+    "effects": [
+      {
+        "type": "floodgate",
+        "usesPerTurn": 1,
+        "trigger": "continuous"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "96633955": {
+    "cardName": "Swordsoul Supreme Sovereign - Chengying",
+    "effects": [
+      {
+        "type": "banish",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "97973962": {
+    "cardName": "Aleister the Invoker of Madness",
+    "effects": [
+      {
+        "type": "typedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "98049934": {
+    "cardName": "Epurrely Beauty",
+    "effects": [
+      {
+        "type": "targetedNegate",
+        "usesPerTurn": 1,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "98095162": {
+    "cardName": "Curious, the Lightsworn Dominion",
+    "effects": [
+      {
+        "type": "sendToGy",
+        "usesPerTurn": 1,
+        "trigger": "main"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "98127546": {
+    "cardName": "Underworld Goddess of the Closed World",
+    "sharedOpt": false,
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      },
+      {
+        "type": "controlChange",
+        "usesPerTurn": 1,
+        "trigger": "quick"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "98506199": {
+    "cardName": "Wind Pegasus @Ignister",
+    "effects": [
+      {
+        "type": "spin",
+        "usesPerTurn": 1,
+        "trigger": "trigger"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  },
+  "99916754": {
+    "cardName": "Naturia Exterio",
+    "effects": [
+      {
+        "type": "omniNegate",
+        "usesPerTurn": 3,
+        "trigger": "chain"
+      }
+    ],
+    "_generatedBy": "claude-opus-4-6",
+    "_oracleVersion": "2026-04-09",
+    "_validated": false
+  }
+}

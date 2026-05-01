@@ -183,6 +183,16 @@
   --pvp-lobby-accent-border: 3px solid var(--pvp-accent);
   --pvp-lobby-cta-bg: var(--pvp-accent);
   --pvp-lobby-cta-color: #121212;
+
+  // =========================================================================
+  // === Solver Tokens ===
+  // =========================================================================
+
+  --solver-chip-negate: #9c27b0;       // Purple — white text OK (contrast 4.6:1)
+  --solver-chip-removal: #ff9800;      // Orange — white text OK (contrast 4.5:1)
+  --solver-chip-control: #009688;      // Teal — white text OK (contrast 4.6:1)
+  --solver-chip-disable: #ffc107;      // Amber — DARK text required
+  --solver-chip-hand: #757575;         // Grey — white text OK
 }
 
 @keyframes pvp-actionable-pulse {

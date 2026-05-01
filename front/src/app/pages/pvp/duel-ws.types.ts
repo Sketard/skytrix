@@ -1,8 +1,9 @@
 // =============================================================================
-// ws-protocol.ts — Skytrix PvP WebSocket Protocol DTOs
+// ws-protocol.ts — Skytrix PvP & Solver WebSocket Protocol DTOs
 // Zero internal imports — this file is copied verbatim to Angular
 // Manual copy: duel-server/src/ws-protocol.ts <-> front/src/app/pages/pvp/duel-ws.types.ts
 // Update BOTH files in the same commit
+// Solver types (SOLVER_*) added in Story 1.4 — canonical type definitions in solver-types.ts
 // =============================================================================
 
 // =============================================================================
@@ -64,6 +65,25 @@ export type ZoneId =
 // Board State Sub-Types (BOARD_STATE / STATE_SYNC)
 // =============================================================================
 
+/**
+ * Persistent link from one card on the field to another, exposed via the
+ * server's BOARD_STATE so the client can render visual ties (highlights,
+ * arrows) between linked cards. Two sources today, merged here:
+ *
+ *  - `'equip'`: an Equip Spell pointing at the monster it equips (from the
+ *    spell side; OCGCore exposes this via `OcgQueryFlags.EQUIP_CARD`).
+ *  - `'target'`: a persistent effect-target relation (Number 39 Utopia ↔ its
+ *    chased materials, Chaos Hunter ↔ banished tracking, "until end phase"
+ *    targets, the equipped monster's view of which spells equip it, etc.;
+ *    OCGCore exposes this via `OcgQueryFlags.TARGET_CARD`).
+ */
+export interface LinkedCardRef {
+  kind: 'equip' | 'target';
+  controller: 0 | 1;
+  location: number;
+  sequence: number;
+}
+
 export interface CardOnField {
   cardCode: number | null;
   name: string | null;
@@ -86,9 +106,19 @@ export interface CardOnField {
   currentRScale?: number;
   baseLScale?: number;
   baseRScale?: number;
+  /**
+   * Live `OcgType` bitmask — what the card *currently* is on the field,
+   * including type alterations (Effect/Tuner/Synchro/Xyz/Link/Pendulum/
+   * Flip/etc. flags that effects can grant or remove). Distinct from
+   * `baseType` (the printed type from the card DB).
+   */
+  currentType?: number;
+  /** Printed `OcgType` bitmask from the card DB. */
+  baseType?: number;
   isLink?: boolean;
   isEffectNegated?: boolean;
-  equipTarget?: { controller: 0 | 1; location: number; sequence: number } | null;
+  /** Persistent links to other cards (equip + effect-target relations). */
+  linkedCards?: LinkedCardRef[];
 }
 
 export interface BoardZone {
@@ -123,6 +153,12 @@ export interface CardInfo {
   position?: number;
   description?: string;
   amount?: number;
+  /**
+   * Tribute "release_param" value for SELECT_TRIBUTE entries — encodes the
+   * effective tribute count this card provides (some cards count as 2 toward
+   * a tribute summon's total). Absent for other prompt types.
+   */
+  releaseParam?: number;
 }
 
 export interface PlaceOption {
@@ -130,6 +166,25 @@ export interface PlaceOption {
   location: CardLocation;
   sequence: number;
 }
+
+/**
+ * Message types whose logical effect on board state warrants a
+ * `boardStateAfter` snapshot when emitted during a chain-resolving window,
+ * AND which the client's `ChainResolutionManager` buffers+replays via the
+ * chain overlay contract.
+ *
+ * Single source of truth shared between server (`duel-worker.ts` live duel
+ * loop + replay precompute) and client (`chain-resolution-manager.ts`
+ * buffering). Keep the contents in strict sync with any consumer that
+ * reasons about "which events affect the board state during resolution".
+ */
+export const BOARD_CHANGING_EVENT_TYPES: ReadonlySet<string> = new Set([
+  'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
+  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET',
+  'MSG_SHUFFLE_HAND', 'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK',
+  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
+  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
+]);
 
 // =============================================================================
 // Server -> Client: Game Messages (19)
@@ -153,30 +208,42 @@ export interface MoveMsg {
   toPosition: Position;
   isToken: boolean;
   reason: number;
+  /**
+   * Board-state snapshot captured immediately AFTER this event was applied
+   * server-side. Populated by the replay precompute for BOARD_CHANGING events
+   * that fire during `chainPhase === 'resolving'`, so the client's buffer
+   * replay can progressively update logical state per event instead of
+   * jumping to the chain's final state at commit. Absent in live PvP.
+   */
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface DrawMsg {
   type: 'MSG_DRAW';
   player: Player;
   cards: (number | null)[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface DamageMsg {
   type: 'MSG_DAMAGE';
   player: Player;
   amount: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface RecoverMsg {
   type: 'MSG_RECOVER';
   player: Player;
   amount: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface PayLpCostMsg {
   type: 'MSG_PAY_LPCOST';
   player: Player;
   amount: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ChainingMsg {
@@ -222,17 +289,20 @@ export interface ConfirmCardsMsg {
   type: 'MSG_CONFIRM_CARDS';
   player: Player;
   cards: CardInfo[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ShuffleHandMsg {
   type: 'MSG_SHUFFLE_HAND';
   player: Player;
   cards: (number | null)[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ShuffleDeckMsg {
   type: 'MSG_SHUFFLE_DECK';
   player: Player;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface FlipSummoningMsg {
@@ -243,6 +313,7 @@ export interface FlipSummoningMsg {
   location: CardLocation;
   sequence: number;
   position: Position;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ChangePosMsg {
@@ -254,6 +325,7 @@ export interface ChangePosMsg {
   sequence: number;
   previousPosition: Position;
   currentPosition: Position;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface SetMsg {
@@ -264,6 +336,7 @@ export interface SetMsg {
   location: CardLocation;
   sequence: number;
   position: Position;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface SwapMsg {
@@ -299,12 +372,14 @@ export interface TossCoinMsg {
   type: 'MSG_TOSS_COIN';
   player: Player;
   results: boolean[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface TossDiceMsg {
   type: 'MSG_TOSS_DICE';
   player: Player;
   results: number[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface EquipMsg {
@@ -315,6 +390,7 @@ export interface EquipMsg {
   targetPlayer: Player;
   targetLocation: CardLocation;
   targetSequence: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface AddCounterMsg {
@@ -324,6 +400,7 @@ export interface AddCounterMsg {
   location: CardLocation;
   sequence: number;
   count: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface RemoveCounterMsg {
@@ -333,16 +410,19 @@ export interface RemoveCounterMsg {
   location: CardLocation;
   sequence: number;
   count: number;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface ShuffleSetCardMsg {
   type: 'MSG_SHUFFLE_SET_CARD';
   cards: { fromPlayer: Player; fromSequence: number; toPlayer: Player; toSequence: number; location: CardLocation }[];
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface SwapGraveDeckMsg {
   type: 'MSG_SWAP_GRAVE_DECK';
   player: Player;
+  boardStateAfter?: BoardStatePayload;
 }
 
 export interface WinMsg {
@@ -853,6 +933,193 @@ export interface ReplayErrorMsg {
 }
 
 // =============================================================================
+// Solver Message Types (8 constants) — Story 1.4
+// Canonical type definitions live in solver-types.ts; these are lightweight
+// inline mirrors so ws-protocol.ts stays zero-import.
+// =============================================================================
+
+export const SOLVER_START = 'SOLVER_START' as const;
+export const SOLVER_CANCEL = 'SOLVER_CANCEL' as const;
+export const SOLVER_INIT = 'SOLVER_INIT' as const;
+export const SOLVER_PROGRESS = 'SOLVER_PROGRESS' as const;
+export const SOLVER_RESULT = 'SOLVER_RESULT' as const;
+export const SOLVER_CANCELLED = 'SOLVER_CANCELLED' as const;
+export const SOLVER_ERROR = 'SOLVER_ERROR' as const;
+export const SOLVER_HANDTRAPS = 'SOLVER_HANDTRAPS' as const;
+
+// --- Solver Payload Sub-Types (inlined from solver-types.ts) ---
+
+export interface SolverWsAction {
+  responseIndex: number;
+  cardId: number;
+  cardName: string;
+  actionDescription: string;
+}
+
+export interface SolverWsScoreBreakdown {
+  omniNegate: number;
+  typedNegate: number;
+  targetedNegate: number;
+  floodgate: number;
+  controlChange: number;
+  banish: number;
+  banishFacedown: number;
+  attach: number;
+  spin: number;
+  flipFacedown: number;
+  destruction: number;
+  moveToSt: number;
+  bounce: number;
+  handRip: number;
+  sendToGy: number;
+  /** Tag-only score (excludes fallback heuristic). Brick detection uses this. */
+  weighted: number;
+  /** Fallback heuristic bonus (untagged face-up monsters). */
+  fallbackPoints: number;
+  /** Latent combo-progress bonus (Phase 2.3 Dark Contract hardcode, Step 1
+   *  F1/F2/F3 structural, Phase D enabler×target). */
+  latentPoints?: number;
+  /** User-facing end-board grade = weighted + fallbackPoints (methodology v5). */
+  interruptionScore?: number;
+  /** DFS guidance signal = interruptionScore + latentPoints (methodology v5). */
+  explorationScore?: number;
+}
+
+export interface SolverWsDecisionNode {
+  action: SolverWsAction;
+  annotation: string;
+  score: number;
+  scoreBreakdown?: SolverWsScoreBreakdown;
+  confidence: number;
+  children: SolverWsDecisionNode[];
+  isTerminal: boolean;
+  handtrapLabel?: string;
+  prunedChildren?: number;
+  truncated?: boolean;
+}
+
+export interface SolverWsStats {
+  nodesExplored: number;
+  elapsed: number;
+  algorithm: string;
+  algorithmUsed: string;
+  maxDepthReached: number;
+  averageBranchingFactor: number;
+  maxBranchingFactor: number;
+  transpositionHits?: number;
+  transpositionMisses?: number;
+  transpositionStores?: number;
+  transpositionEvictions?: number;
+  transpositionStaleHits?: number;
+  deckSeed: string;
+  verifyDivergence?: string;
+  budgetMs: number;
+  truncated: boolean;
+  terminationReason: 'completed' | 'timeout' | 'depth_cap' | 'failures' | 'aborted';
+  depthHistogram: number[];
+}
+
+export interface SolverWsHandtrapConfig {
+  cardId: number;
+  cardName: string;
+}
+
+export interface SolverWsAdversarialTiming {
+  stepIndex: number;
+  handtrapCardId: number;
+  handtrapCardName: string;
+  responseIndex: number;
+}
+
+export interface SolverWsEndBoardCard {
+  cardId: number;
+  cardName: string;
+  position: 'faceup-atk' | 'faceup-def' | 'facedown-def' | 'facedown';
+  zone: string;
+  effects: { type: string; usesPerTurn: number }[];
+  isFallback: boolean;
+  /** Number of OPT effects consumed by this card during the current turn. */
+  consumedUses?: number;
+}
+
+export type SolverWsError =
+  | 'DECK_NOT_FOUND'
+  | 'DECK_ACCESS_DENIED'
+  | 'WASM_INIT_FAILED'
+  | 'RATE_LIMITED'
+  | 'MEMORY_LIMIT'
+  | 'INTERNAL_ERROR';
+
+// --- Solver: Client → Server (3) ---
+
+export interface SolverStartMessage {
+  type: typeof SOLVER_START;
+  /** Spring Boot deck ID. Server fetches the composition via JWT — never
+   *  trust a client-supplied deck array. C2 fix from Epic 1 review. */
+  deckId: string;
+  hand: number[];
+  mode: 'goldfish' | 'adversarial';
+  speed: 'fast' | 'optimal';
+  algorithm?: 'dfs' | 'mcts' | 'auto';
+  handtraps?: SolverWsHandtrapConfig[];
+  deckSeed?: string;
+  verifyPath?: SolverWsAction[];
+  verifyTimings?: SolverWsAdversarialTiming[];
+  verifyExpectedScore?: number;
+}
+
+export interface SolverCancelMessage {
+  type: typeof SOLVER_CANCEL;
+}
+
+export interface SolverInitMessage {
+  type: typeof SOLVER_INIT;
+}
+
+// --- Solver: Server → Client (5) ---
+
+export interface SolverProgressMessage {
+  type: typeof SOLVER_PROGRESS;
+  nodesExplored: number;
+  bestScore: number;
+  elapsed: number;
+  highComplexity?: boolean;
+  /** Set when no node-advancement has been observed for stalledWarningMs. */
+  stalled?: boolean;
+}
+
+export interface SolverResultMessage {
+  type: typeof SOLVER_RESULT;
+  tree: SolverWsDecisionNode;
+  mainPath: SolverWsAction[];
+  score: number;
+  scoreBreakdown: SolverWsScoreBreakdown;
+  endBoardCards?: SolverWsEndBoardCard[];
+  minimax?: number;
+  adversarialTimings?: SolverWsAdversarialTiming[];
+  stats: SolverWsStats;
+  verified?: boolean;
+  isVerifyResult?: boolean;
+}
+
+export interface SolverCancelledMessage {
+  type: typeof SOLVER_CANCELLED;
+  partialTree?: SolverWsDecisionNode;
+  stats: SolverWsStats;
+}
+
+export interface SolverErrorMessage {
+  type: typeof SOLVER_ERROR;
+  error: SolverWsError;
+  message: string;
+}
+
+export interface SolverHandtrapsMessage {
+  type: typeof SOLVER_HANDTRAPS;
+  handtraps: SolverWsHandtrapConfig[];
+}
+
+// =============================================================================
 // Union Type Exports
 // =============================================================================
 
@@ -932,7 +1199,13 @@ export type ServerMessage =
   | ReplayBoardStatesMsg
   | ReplayMetadataMsg
   | ReplayErrorMsg
-  | ReplayForkReadyMsg;
+  | ReplayForkReadyMsg
+  // Solver messages (5)
+  | SolverProgressMessage
+  | SolverResultMessage
+  | SolverCancelledMessage
+  | SolverErrorMessage
+  | SolverHandtrapsMessage;
 
 export type ClientMessage =
   | PlayerResponseMsg
@@ -945,4 +1218,8 @@ export type ClientMessage =
   | ReplayLoadMsg
   | ReplayForkMsg
   | ReplayForkContinueMsg
-  | ReplayForkCancelMsg;
+  | ReplayForkCancelMsg
+  // Solver messages (3)
+  | SolverStartMessage
+  | SolverCancelMessage
+  | SolverInitMessage;

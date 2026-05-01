@@ -7,6 +7,23 @@ export interface SharedCardData {
   readonly imageUrlFull?: string;
 }
 
+/**
+ * Live alteration overlay for a card on the field — populated only when the
+ * inspector is invoked from a PvP/replay context with access to the
+ * `CardOnField` snapshot. `null`/absent in non-PvP contexts (deck builder,
+ * search page) where the inspector reads only static DB data.
+ *
+ * Pre-computed on the way in (by the page-level service that owns access to
+ * the wire-format types) so the generic inspector component can stay
+ * agnostic of `OcgType` bit semantics.
+ */
+export interface CardLiveOverlay {
+  /** Type-flag labels granted by an active effect (e.g. `'TUNER'`, `'EFFECT'`). */
+  readonly addedTypeLabels?: ReadonlyArray<string>;
+  /** Type-flag labels removed by an active effect. */
+  readonly removedTypeLabels?: ReadonlyArray<string>;
+}
+
 export interface SharedCardInspectorData extends SharedCardData {
   readonly isMonster: boolean;
   readonly attribute?: string;
@@ -21,6 +38,7 @@ export interface SharedCardInspectorData extends SharedCardData {
   readonly description: string;
   readonly images: ReadonlyArray<CardImageDTO>;
   readonly selectedImageId?: number;
+  readonly liveOverlay?: CardLiveOverlay;
 }
 
 export function resolveCardImage(cd: CardDetail, selectedImageId?: number): CardImageDTO | undefined {

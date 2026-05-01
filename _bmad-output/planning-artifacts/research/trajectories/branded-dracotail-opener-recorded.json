@@ -1,0 +1,215 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "description": "Force Cartesia → Secreterion fusion path (vs current DFS preference for Cartesia → Arthalion direct). Targets the missing 3-card cluster: Cartesia + Secreterion + Mululu (revived via Secreterion GY-eff).",
+  "canonicalPathHint": [
+    73819701,
+    75003700,
+    70871153,
+    95515789,
+    70871153,
+    75003700,
+    32548318,
+    89851827,
+    7375867
+  ],
+  "steps": [
+    {
+      "responseIndex": 1,
+      "cardId": 73819701,
+      "cardName": "Fallen of the White Dragon",
+      "actionDescription": "SELECT_IDLECMD response 1 (Fallen of the White Dragon)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 73819701,
+      "cardName": "Fallen of the White Dragon",
+      "actionDescription": "SELECT_EFFECTYN response 1 (Fallen of the White Dragon)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 55273560,
+      "cardName": "Incredible Ecclesia, the Virtuous",
+      "actionDescription": "SELECT_CARD response 0 (Incredible Ecclesia, the Virtuous)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 1,
+      "cardId": 30271097,
+      "cardName": "The Fallen & The Virtuous",
+      "actionDescription": "SELECT_IDLECMD response 1 (The Fallen & The Virtuous)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 78397661,
+      "cardName": "Ecclesia and the Dark Dragon",
+      "actionDescription": "SELECT_IDLECMD response 0 (Ecclesia and the Dark Dragon)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 44362883,
+      "cardName": "Branded Fusion",
+      "actionDescription": "SELECT_IDLECMD response 0 (Branded Fusion)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 78397661,
+      "cardName": "Ecclesia and the Dark Dragon",
+      "actionDescription": "SELECT_IDLECMD response 0 (Ecclesia and the Dark Dragon)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 2,
+      "cardId": 95515789,
+      "cardName": "Blazing Cartesia, the Virtuous",
+      "actionDescription": "SELECT_CARD response 2 (Blazing Cartesia, the Virtuous)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 95515789,
+      "cardName": "Blazing Cartesia, the Virtuous",
+      "actionDescription": "SELECT_IDLECMD response 0 (Blazing Cartesia, the Virtuous)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 33760966,
+      "cardName": "Dracotail Arthalion",
+      "actionDescription": "SELECT_CARD response 0 (Dracotail Arthalion)"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 75003700,
+      "cardName": "Dracotail Lukias",
+      "actionDescription": "SELECT_CHAIN response 0 (Dracotail Lukias)"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 84477320,
+      "cardName": "Dracotail Phryxul",
+      "actionDescription": "SELECT_CHAIN response 0 (Dracotail Phryxul)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 5,
+      "cardId": 5431722,
+      "cardName": "Dracotail Flame",
+      "actionDescription": "SELECT_CARD response 5 (Dracotail Flame)"
+    },
+    {
+      "responseIndex": 4,
+      "cardId": 6153210,
+      "cardName": "Ketu Dracotail",
+      "actionDescription": "SELECT_CARD response 4 (Ketu Dracotail)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 6153210,
+      "cardName": "Ketu Dracotail",
+      "actionDescription": "SELECT_IDLECMD response 0 (Ketu Dracotail)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 1498449,
+      "cardName": "Dracotail Faimena",
+      "actionDescription": "SELECT_CARD response 0 (Dracotail Faimena)"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 1498449,
+      "cardName": "Dracotail Faimena",
+      "actionDescription": "SELECT_CHAIN response 0 (Dracotail Faimena)"
+    },
+    {
+      "responseIndex": -1,
+      "cardId": 0,
+      "cardName": "",
+      "actionDescription": "SELECT_CHAIN response -1 ()"
+    },
+    {
+      "responseIndex": 0,
+      "cardId": 89851827,
+      "cardName": "Secreterion Dragon",
+      "actionDescription": "SELECT_CARD response 0 (Secreterion Dragon)"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+<div class="breadcrumb-container" role="navigation" [attr.aria-label]="'Combo path'">
+  @for (crumb of breadcrumbs(); track $index; let last = $last, i = $index) {
+    <div class="breadcrumb-chip"
+      [class.handtrap-chip]="crumb.isHandtrap"
+      (click)="chipClick.emit(crumb.action)"
+      (mouseenter)="onChipEnter(i)"
+      (mouseleave)="onChipLeave()"
+      cdkOverlayOrigin
+      #chipOrigin="cdkOverlayOrigin">
+      <img class="chip-art" [src]="crumb.imageUrl"
+        [alt]="crumb.action.cardName"
+        (error)="onImgError($event)"
+        loading="lazy" />
+      <mat-chip>{{ crumb.action.cardName }}</mat-chip>
+    </div>
+
+    <ng-template cdkConnectedOverlay
+      [cdkConnectedOverlayOrigin]="chipOrigin"
+      [cdkConnectedOverlayOpen]="hoverChipIndex() === i"
+      [cdkConnectedOverlayOffsetY]="8"
+      cdkConnectedOverlayPanelClass="breadcrumb-annotation-popup">
+      <div class="breadcrumb-popup"
+        (mouseenter)="onPopupEnter()"
+        (mouseleave)="onChipLeave()">
+        <img class="popup-card-art" [src]="crumb.imageUrl"
+          [alt]="crumb.action.cardName"
+          (error)="onImgError($event)" />
+        <span class="popup-annotation">{{ crumb.action.actionDescription }}</span>
+      </div>
+    </ng-template>
+
+    @if (!last) {
+      <mat-icon fontIcon="chevron_right" class="breadcrumb-chevron"></mat-icon>
+    }
+  }
+</div>

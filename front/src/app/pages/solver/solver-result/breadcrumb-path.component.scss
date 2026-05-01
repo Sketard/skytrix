@@ -1,0 +1,66 @@
+.breadcrumb-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 8px 0;
+  mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+}
+
+.breadcrumb-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chip-art {
+  width: 32px;
+  height: 46px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.handtrap-chip {
+  border: 1px dashed var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-variant, rgba(128, 128, 128, 0.08));
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.breadcrumb-chevron {
+  font-size: 18px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.breadcrumb-popup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 4px;
+  max-width: 320px;
+}
+
+.popup-card-art {
+  width: 120px;
+  height: 175px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.popup-annotation {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  white-space: normal;
+  text-align: center;
+  padding: 0 4px 4px;
+}

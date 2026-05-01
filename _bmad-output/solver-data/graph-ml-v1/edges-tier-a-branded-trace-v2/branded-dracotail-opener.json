@@ -1,0 +1,3492 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "deck": "branded-dracotail-bainbridge-2nd",
+  "scale": 100,
+  "weightsTier": "A",
+  "edgesEvaluated": 694,
+  "cardsTouched": [
+    3410461,
+    30271097,
+    38811586,
+    44362883,
+    51409648,
+    55273560,
+    70534340,
+    73819701,
+    75003700,
+    84477320,
+    87746184
+  ],
+  "byEdgeId": {
+    "44362883._alt-ss-cost->84433129.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->11398059._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->1269512._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->31603289.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->32530043._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->40673853._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->42125140._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->45852939._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->5088741.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->51409648._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->60303245._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->61399402._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->65741786._summon": {
+      "hits": 10,
+      "cumulativeContribution": -848.9388646193277,
+      "weight": -0.8489388646193277
+    },
+    "44362883._material->66011101._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->67098897.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->73898890.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->7511613.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->78397661._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->79606837._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->79755671._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->8165596._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->81846453.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->90590303._summon": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->93192592.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883._material->9940036.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->1498449.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->44482554.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->5088741.e3": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->65741786.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->68468459.e1a": {
+      "hits": 10,
+      "cumulativeContribution": -753.3376115665941,
+      "weight": -0.753337611566594
+    },
+    "44362883.e1->68468459.e1b": {
+      "hits": 10,
+      "cumulativeContribution": 2283.1490735207585,
+      "weight": 2.2831490735207582
+    },
+    "44362883.e1->70871153.e1": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->7375867.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->75003700.e3": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->81846453.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "44362883.e1->84477320.e2": {
+      "hits": 10,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._alt-ss-cost->58071334.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._alt-ss-cost->84433129.e2": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->11398059._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->1269512._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->1528054.e2": {
+      "hits": 27,
+      "cumulativeContribution": -3013.575498856842,
+      "weight": -1.1161390736506818
+    },
+    "73819701._material->20665527._summon": {
+      "hits": 27,
+      "cumulativeContribution": -1426.541611314198,
+      "weight": -0.5283487449311846
+    },
+    "73819701._material->2772337._summon": {
+      "hits": 27,
+      "cumulativeContribution": -3145.70632943716,
+      "weight": -1.1650764183100595
+    },
+    "73819701._material->29301450.e1": {
+      "hits": 27,
+      "cumulativeContribution": -3447.2215663169054,
+      "weight": -1.2767487282655212
+    },
+    "73819701._material->31603289.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->32530043._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->40673853._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->42125140._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->45852939._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->5088741.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->51409648._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->60303245._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->61399402._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->65741786._summon": {
+      "hits": 27,
+      "cumulativeContribution": 2152.6267003620405,
+      "weight": 0.7972691482822374
+    },
+    "73819701._material->66011101._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->67098897.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->70534340.e1": {
+      "hits": 27,
+      "cumulativeContribution": 3347.182640420236,
+      "weight": 1.2396972742297179
+    },
+    "73819701._material->72578374.e1": {
+      "hits": 27,
+      "cumulativeContribution": -10758.955061886138,
+      "weight": -3.984798171068938
+    },
+    "73819701._material->73898890.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->7511613.e2": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->76666602.e2": {
+      "hits": 27,
+      "cumulativeContribution": -2055.7304242662676,
+      "weight": -0.7613816386171364
+    },
+    "73819701._material->78397661._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->79606837._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->79755671._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->8165596._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->81846453.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->89851827._summon": {
+      "hits": 27,
+      "cumulativeContribution": 2391.360858041089,
+      "weight": 0.885689206681885
+    },
+    "73819701._material->90590303._summon": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->93192592.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701._material->9940036.e1": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701.e1->73819701.e2a": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "73819701.e1->73819701.e2b": {
+      "hits": 27,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._alt-ss-cost->58071334.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._alt-ss-cost->84433129.e2": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->11398059._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->1269512._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->1528054.e2": {
+      "hits": 16,
+      "cumulativeContribution": 778.3603470367967,
+      "weight": 0.48647521689799805
+    },
+    "75003700._material->20665527._summon": {
+      "hits": 16,
+      "cumulativeContribution": -1299.389292499845,
+      "weight": -0.812118307812403
+    },
+    "75003700._material->2772337._summon": {
+      "hits": 16,
+      "cumulativeContribution": -1648.4652595040761,
+      "weight": -1.0302907871900477
+    },
+    "75003700._material->29301450.e1": {
+      "hits": 16,
+      "cumulativeContribution": -1982.8671204814373,
+      "weight": -1.2392919503008977
+    },
+    "75003700._material->31603289.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->32530043._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->40673853._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->42125140._summon": {
+      "hits": 16,
+      "cumulativeContribution": -181.17380189957834,
+      "weight": -0.11323362618723642
+    },
+    "75003700._material->45852939._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->5088741.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->51409648._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->60303245._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->61399402._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->65741786._summon": {
+      "hits": 16,
+      "cumulativeContribution": 18.208367249814835,
+      "weight": 0.011380229531134267
+    },
+    "75003700._material->66011101._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->67098897.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->73898890.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->7511613.e2": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->76666602.e2": {
+      "hits": 16,
+      "cumulativeContribution": 1755.0122707354903,
+      "weight": 1.0968826692096816
+    },
+    "75003700._material->78397661._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->79606837._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->79755671._summon": {
+      "hits": 16,
+      "cumulativeContribution": -3467.7430300690544,
+      "weight": -2.167339393793159
+    },
+    "75003700._material->8165596._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->81846453.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->89851827._summon": {
+      "hits": 16,
+      "cumulativeContribution": -316.1406526813292,
+      "weight": -0.19758790792583075
+    },
+    "75003700._material->90590303._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->93192592.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "75003700._material->9940036.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._alt-ss-cost->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->11398059._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->1269512._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->32530043._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->40673853._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->42125140._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->45852939._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->51409648._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->60303245._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->61399402._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->65741786._summon": {
+      "hits": 2,
+      "cumulativeContribution": 453.53323018336897,
+      "weight": 2.267666150916845
+    },
+    "30271097._material->66011101._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->67098897.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->78397661._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->79606837._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->79755671._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->8165596._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->90590303._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "30271097._material->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._alt-ss-cost->58071334.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._alt-ss-cost->84433129.e2": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->11398059._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->1269512._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->1528054.e2": {
+      "hits": 16,
+      "cumulativeContribution": 228.61487917498255,
+      "weight": 0.14288429948436415
+    },
+    "84477320._material->20665527._summon": {
+      "hits": 16,
+      "cumulativeContribution": -997.8187661231058,
+      "weight": -0.6236367288269409
+    },
+    "84477320._material->2772337._summon": {
+      "hits": 16,
+      "cumulativeContribution": 1117.252395762262,
+      "weight": 0.6982827473514139
+    },
+    "84477320._material->29301450.e1": {
+      "hits": 16,
+      "cumulativeContribution": 487.3079600658032,
+      "weight": 0.3045674750411271
+    },
+    "84477320._material->31603289.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->32530043._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->38811586._summon": {
+      "hits": 16,
+      "cumulativeContribution": 2602.2141291138178,
+      "weight": 1.6263838306961362
+    },
+    "84477320._material->40673853._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->42125140._summon": {
+      "hits": 16,
+      "cumulativeContribution": 173.4596294174675,
+      "weight": 0.10841226838591715
+    },
+    "84477320._material->45852939._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->49678559._summon": {
+      "hits": 16,
+      "cumulativeContribution": -4383.793561203695,
+      "weight": -2.7398709757523094
+    },
+    "84477320._material->5088741.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->51409648._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->60303245._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->61399402._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->65741786._summon": {
+      "hits": 16,
+      "cumulativeContribution": 699.9439395543051,
+      "weight": 0.4374649622214408
+    },
+    "84477320._material->66011101._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->67098897.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->73898890.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->7511613.e2": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->76666602.e2": {
+      "hits": 16,
+      "cumulativeContribution": -3176.9905630094554,
+      "weight": -1.985619101880909
+    },
+    "84477320._material->78397661._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->79606837._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->79755671._summon": {
+      "hits": 16,
+      "cumulativeContribution": -2902.054369902188,
+      "weight": -1.8137839811888674
+    },
+    "84477320._material->8165596._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->81846453.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->87746184.e1": {
+      "hits": 16,
+      "cumulativeContribution": -1605.1747126652629,
+      "weight": -1.0032341954157895
+    },
+    "84477320._material->89851827._summon": {
+      "hits": 16,
+      "cumulativeContribution": 4885.39235818252,
+      "weight": 3.0533702238640745
+    },
+    "84477320._material->90590303._summon": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->93192592.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320._material->9940036.e1": {
+      "hits": 16,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "84477320.e1a->75003700.e1": {
+      "hits": 16,
+      "cumulativeContribution": 2629.8575967793995,
+      "weight": 1.6436609979871244
+    },
+    "84477320.e1a->75003700.e2": {
+      "hits": 16,
+      "cumulativeContribution": -2646.5451689686884,
+      "weight": -1.65409073060543
+    },
+    "84477320.e1b->75003700.e1": {
+      "hits": 16,
+      "cumulativeContribution": -1890.1025206267213,
+      "weight": -1.1813140753917004
+    },
+    "84477320.e1b->75003700.e2": {
+      "hits": 16,
+      "cumulativeContribution": 392.03803526911815,
+      "weight": 0.24502377204319886
+    },
+    "51409648._alt-ss-cost->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._alt-ss-cost->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->11398059._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->1269512._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->1528054.e2": {
+      "hits": 2,
+      "cumulativeContribution": -182.4536780723503,
+      "weight": -0.9122683903617516
+    },
+    "51409648._material->20665527._summon": {
+      "hits": 2,
+      "cumulativeContribution": -118.33508516215414,
+      "weight": -0.5916754258107707
+    },
+    "51409648._material->2772337._summon": {
+      "hits": 2,
+      "cumulativeContribution": 97.16734613263162,
+      "weight": 0.4858367306631581
+    },
+    "51409648._material->29301450.e1": {
+      "hits": 2,
+      "cumulativeContribution": -112.97505781232093,
+      "weight": -0.5648752890616047
+    },
+    "51409648._material->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->32530043._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->40673853._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->42125140._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->44146295._summon": {
+      "hits": 2,
+      "cumulativeContribution": 379.7695319466717,
+      "weight": 1.8988476597333586
+    },
+    "51409648._material->45852939._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->60303245._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->61399402._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->65741786._summon": {
+      "hits": 2,
+      "cumulativeContribution": -179.38768458533846,
+      "weight": -0.8969384229266923
+    },
+    "51409648._material->66011101._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->67098897.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->70534340.e1": {
+      "hits": 2,
+      "cumulativeContribution": -56.18779825587988,
+      "weight": -0.2809389912793994
+    },
+    "51409648._material->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": -172.24250344099116,
+      "weight": -0.8612125172049558
+    },
+    "51409648._material->78397661._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->79606837._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->79755671._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->8165596._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->90590303._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648._material->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10045474.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10966439.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10966439.e2a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->10966439.e2b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->11398059.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->1269512.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->13048472.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->13332685.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->13332685.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->14532163.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->14558127.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->1498449.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->1528054.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->17954937.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->17954937.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18144506.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18176525.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18176525.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->18176525.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->19899073.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->19899073.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->19899073.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->20295753.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->20665527.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->20665527.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->2295440.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->23434538.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->24094653.e_fusion": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->24224830.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->24299458.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->27204311.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->27260347.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->2772337.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->2772337.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->29301450.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->29301450.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->30581601.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31425736.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31425736.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->31603289.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->32548318.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->33760966.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->33760966.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->34022970.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->34022970.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->34909328.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->35269904.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->35844557.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->35844557.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->38811586.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->38811586.e4": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40543231.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40543231.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40543231.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->40673853.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->41999284.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->42125140.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->42141493.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44146295.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44146295.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44362883.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44482554.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44482554.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44822037.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->44822037.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45171524.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45663742.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45663742.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45663742.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->45852939.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->48452496.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->48452496.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->49678559.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->5088741.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->53639887.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->53639887.e4": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->5431722.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55273560.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55273560.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55397172.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->55397172.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->59438930.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->60303245.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->61399402.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->61399402.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->6153210.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->65681983.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->65741786.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->66975205.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->67098897.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->6798031.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->68468459.e1a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->68468459.e1b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->68810435.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->69932023.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70534340.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70538272.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70538272.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70871153.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->70871153.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->72238166.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->72578374.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7375867.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7375867.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73819701.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73819701.e2a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73819701.e2b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->73898890.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7477101.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->75003700.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->75003700.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->7511613.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->76666602.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->78397661.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79606837.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79606837.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79755671.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->79755671.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->80208225.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->81439173.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->81560239.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8165596.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8165596.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8267140.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->82782870.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->82782870.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->82782870.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->84211599.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->84477320.e1a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->84477320.e1b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->85106525.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->8633261.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->87746184.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->87746184.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->89851827.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->90241276.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->90241276.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->90241276.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93192592.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93360904.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->93360904.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->94145021.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->95515789.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->95515789.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->95515789.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9674034.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9674034.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9674034.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->97268402.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e1->9940036.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->10966439.e2a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->10966439.e2b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->18176525.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->18176525.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->18176525.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->19899073.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->30581601.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->31425736.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->31425736.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->34022970.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->34022970.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->3410461.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->34909328.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->35844557.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->35844557.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->40543231.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->40543231.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->40543231.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->44146295.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->45663742.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->45663742.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68468459.e1a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68468459.e1b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68810435.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->68810435.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->72578374.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->73819701.e2a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->73819701.e2b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->75003700.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->75003700.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->82782870.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->82782870.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->82782870.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->84477320.e1a": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->84477320.e1b": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->8633261.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->90241276.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->90241276.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->9674034.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "51409648.e2->9674034.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._alt-ss-cost->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._alt-ss-cost->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->11398059._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->1269512._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->1528054.e2": {
+      "hits": 2,
+      "cumulativeContribution": 155.92240492378636,
+      "weight": 0.7796120246189318
+    },
+    "3410461._material->20665527._summon": {
+      "hits": 2,
+      "cumulativeContribution": -203.33379937253758,
+      "weight": -1.0166689968626879
+    },
+    "3410461._material->2772337._summon": {
+      "hits": 2,
+      "cumulativeContribution": -189.08169879135704,
+      "weight": -0.9454084939567852
+    },
+    "3410461._material->29301450.e1": {
+      "hits": 2,
+      "cumulativeContribution": -202.15672141767476,
+      "weight": -1.0107836070883738
+    },
+    "3410461._material->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->32530043._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->40673853._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->42125140._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->44146295._summon": {
+      "hits": 2,
+      "cumulativeContribution": -349.6104565282824,
+      "weight": -1.748052282641412
+    },
+    "3410461._material->45852939._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->51409648._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->60303245._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->61399402._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->65741786._summon": {
+      "hits": 2,
+      "cumulativeContribution": -205.74648594834645,
+      "weight": -1.0287324297417322
+    },
+    "3410461._material->66011101._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->67098897.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->70534340.e1": {
+      "hits": 2,
+      "cumulativeContribution": 676.6972753219184,
+      "weight": 3.383486376609592
+    },
+    "3410461._material->70538272._summon": {
+      "hits": 2,
+      "cumulativeContribution": -26.527915742033016,
+      "weight": -0.13263957871016507
+    },
+    "3410461._material->72578374.e1": {
+      "hits": 2,
+      "cumulativeContribution": 37.54789868382842,
+      "weight": 0.1877394934191421
+    },
+    "3410461._material->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": 347.2184753237958,
+      "weight": 1.736092376618979
+    },
+    "3410461._material->78397661._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->79606837._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->79755671._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->8165596._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->89851827._summon": {
+      "hits": 2,
+      "cumulativeContribution": 756.0716891617258,
+      "weight": 3.780358445808629
+    },
+    "3410461._material->90590303._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "3410461._material->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._alt-ss-cost->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._alt-ss-cost->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->11398059._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->1269512._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->1528054.e2": {
+      "hits": 2,
+      "cumulativeContribution": 97.22613950996049,
+      "weight": 0.4861306975498025
+    },
+    "70534340._material->20665527._summon": {
+      "hits": 2,
+      "cumulativeContribution": 72.78310551805585,
+      "weight": 0.36391552759027923
+    },
+    "70534340._material->2772337._summon": {
+      "hits": 2,
+      "cumulativeContribution": 320.43882500879903,
+      "weight": 1.602194125043995
+    },
+    "70534340._material->29301450.e1": {
+      "hits": 2,
+      "cumulativeContribution": -248.9273525065193,
+      "weight": -1.2446367625325965
+    },
+    "70534340._material->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->32530043._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->40673853._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->42125140._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->44146295._summon": {
+      "hits": 2,
+      "cumulativeContribution": -476.706893023014,
+      "weight": -2.38353446511507
+    },
+    "70534340._material->45852939._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->49678559._summon": {
+      "hits": 2,
+      "cumulativeContribution": -355.23145091099803,
+      "weight": -1.7761572545549902
+    },
+    "70534340._material->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->51409648._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->60303245._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->61399402._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->65741786._summon": {
+      "hits": 2,
+      "cumulativeContribution": -51.971729667287605,
+      "weight": -0.259858648336438
+    },
+    "70534340._material->66011101._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->67098897.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->70538272._summon": {
+      "hits": 2,
+      "cumulativeContribution": -892.9609646217095,
+      "weight": -4.4648048231085475
+    },
+    "70534340._material->72578374.e1": {
+      "hits": 2,
+      "cumulativeContribution": -599.2018167361234,
+      "weight": -2.996009083680617
+    },
+    "70534340._material->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": -86.0301243012085,
+      "weight": -0.4301506215060425
+    },
+    "70534340._material->78397661._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->79606837._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->79755671._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->8165596._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->87746184.e1": {
+      "hits": 2,
+      "cumulativeContribution": 489.69070225999974,
+      "weight": 2.4484535112999986
+    },
+    "70534340._material->89851827._summon": {
+      "hits": 2,
+      "cumulativeContribution": -45.240336615691774,
+      "weight": -0.22620168307845887
+    },
+    "70534340._material->90590303._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340._material->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->1498449.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->44482554.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->5088741.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->65741786.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->70871153.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->7375867.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->75003700.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->81846453.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "70534340.e1->84477320.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._alt-ss-cost->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._alt-ss-cost->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->11398059._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->1269512._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->1528054.e2": {
+      "hits": 2,
+      "cumulativeContribution": 193.5762420893795,
+      "weight": 0.9678812104468975
+    },
+    "38811586._material->20665527._summon": {
+      "hits": 2,
+      "cumulativeContribution": 268.54209201736734,
+      "weight": 1.3427104600868367
+    },
+    "38811586._material->2772337._summon": {
+      "hits": 2,
+      "cumulativeContribution": 91.18820564276415,
+      "weight": 0.4559410282138207
+    },
+    "38811586._material->29301450.e1": {
+      "hits": 2,
+      "cumulativeContribution": -133.93833847586174,
+      "weight": -0.6696916923793087
+    },
+    "38811586._material->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->32530043._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->40673853._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->42125140._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->44146295._summon": {
+      "hits": 2,
+      "cumulativeContribution": 73.20977031965754,
+      "weight": 0.36604885159828765
+    },
+    "38811586._material->45852939._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->49678559._summon": {
+      "hits": 2,
+      "cumulativeContribution": 123.96656378577187,
+      "weight": 0.6198328189288593
+    },
+    "38811586._material->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->51409648._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->60303245._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->61399402._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->65741786._summon": {
+      "hits": 2,
+      "cumulativeContribution": -518.2827876066868,
+      "weight": -2.5914139380334342
+    },
+    "38811586._material->66011101._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->67098897.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->70538272._summon": {
+      "hits": 2,
+      "cumulativeContribution": 376.76517388551656,
+      "weight": 1.8838258694275827
+    },
+    "38811586._material->72578374.e1": {
+      "hits": 2,
+      "cumulativeContribution": 123.35269542361256,
+      "weight": 0.6167634771180628
+    },
+    "38811586._material->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": 121.26714525026094,
+      "weight": 0.6063357262513047
+    },
+    "38811586._material->78397661._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->79606837._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->79755671._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->8165596._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->87746184.e1": {
+      "hits": 2,
+      "cumulativeContribution": -230.83067459909518,
+      "weight": -1.1541533729954758
+    },
+    "38811586._material->89851827._summon": {
+      "hits": 2,
+      "cumulativeContribution": 111.90100526575083,
+      "weight": 0.5595050263287541
+    },
+    "38811586._material->90590303._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586._material->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e3->10966439.e2a": {
+      "hits": 2,
+      "cumulativeContribution": 443.92169831314874,
+      "weight": 2.2196084915657437
+    },
+    "38811586.e3->10966439.e2b": {
+      "hits": 2,
+      "cumulativeContribution": -564.1144613098415,
+      "weight": -2.8205723065492077
+    },
+    "38811586.e3->18176525.e1": {
+      "hits": 2,
+      "cumulativeContribution": -252.97642768535277,
+      "weight": -1.264882138426764
+    },
+    "38811586.e3->18176525.e2": {
+      "hits": 2,
+      "cumulativeContribution": -131.7728948745167,
+      "weight": -0.6588644743725836
+    },
+    "38811586.e3->18176525.e3": {
+      "hits": 2,
+      "cumulativeContribution": 599.0620663306407,
+      "weight": 2.9953103316532035
+    },
+    "38811586.e3->19899073.e1": {
+      "hits": 2,
+      "cumulativeContribution": 355.18617296700614,
+      "weight": 1.7759308648350307
+    },
+    "38811586.e3->30581601.e1": {
+      "hits": 2,
+      "cumulativeContribution": -128.04383260679705,
+      "weight": -0.6402191630339853
+    },
+    "38811586.e3->31425736.e2": {
+      "hits": 2,
+      "cumulativeContribution": -1347.6242792038183,
+      "weight": -6.738121396019092
+    },
+    "38811586.e3->31425736.e3": {
+      "hits": 2,
+      "cumulativeContribution": 251.4844514461388,
+      "weight": 1.257422257230694
+    },
+    "38811586.e3->34022970.e2": {
+      "hits": 2,
+      "cumulativeContribution": -65.9820515771223,
+      "weight": -0.3299102578856115
+    },
+    "38811586.e3->34022970.e3": {
+      "hits": 2,
+      "cumulativeContribution": -111.12670008042438,
+      "weight": -0.5556335004021219
+    },
+    "38811586.e3->3410461.e1": {
+      "hits": 2,
+      "cumulativeContribution": 206.89682526840616,
+      "weight": 1.0344841263420308
+    },
+    "38811586.e3->34909328.e2": {
+      "hits": 2,
+      "cumulativeContribution": 459.6898675836745,
+      "weight": 2.2984493379183726
+    },
+    "38811586.e3->35844557.e2": {
+      "hits": 2,
+      "cumulativeContribution": 388.1393378911824,
+      "weight": 1.940696689455912
+    },
+    "38811586.e3->35844557.e3": {
+      "hits": 2,
+      "cumulativeContribution": 64.14482971265062,
+      "weight": 0.3207241485632531
+    },
+    "38811586.e3->40543231.e1": {
+      "hits": 2,
+      "cumulativeContribution": 131.87344710550042,
+      "weight": 0.6593672355275021
+    },
+    "38811586.e3->40543231.e2": {
+      "hits": 2,
+      "cumulativeContribution": 15.879598546432463,
+      "weight": 0.07939799273216232
+    },
+    "38811586.e3->40543231.e3": {
+      "hits": 2,
+      "cumulativeContribution": 271.31414047904485,
+      "weight": 1.3565707023952243
+    },
+    "38811586.e3->45663742.e1": {
+      "hits": 2,
+      "cumulativeContribution": 650.3296412297412,
+      "weight": 3.2516482061487064
+    },
+    "38811586.e3->45663742.e2": {
+      "hits": 2,
+      "cumulativeContribution": 289.9559681570572,
+      "weight": 1.449779840785286
+    },
+    "38811586.e3->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": -402.9460101757067,
+      "weight": -2.0147300508785335
+    },
+    "38811586.e3->68468459.e1a": {
+      "hits": 2,
+      "cumulativeContribution": -281.8540943185955,
+      "weight": -1.4092704715929776
+    },
+    "38811586.e3->68468459.e1b": {
+      "hits": 2,
+      "cumulativeContribution": -610.3132668657004,
+      "weight": -3.051566334328502
+    },
+    "38811586.e3->68810435.e2": {
+      "hits": 2,
+      "cumulativeContribution": 203.19248431454068,
+      "weight": 1.0159624215727034
+    },
+    "38811586.e3->68810435.e3": {
+      "hits": 2,
+      "cumulativeContribution": -236.6633316251065,
+      "weight": -1.1833166581255326
+    },
+    "38811586.e3->73819701.e2a": {
+      "hits": 2,
+      "cumulativeContribution": 267.34720718835405,
+      "weight": 1.3367360359417704
+    },
+    "38811586.e3->73819701.e2b": {
+      "hits": 2,
+      "cumulativeContribution": -123.99298377509102,
+      "weight": -0.6199649188754551
+    },
+    "38811586.e3->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": -207.79458181405536,
+      "weight": -1.0389729090702768
+    },
+    "38811586.e3->75003700.e1": {
+      "hits": 2,
+      "cumulativeContribution": -108.53055378529217,
+      "weight": -0.5426527689264609
+    },
+    "38811586.e3->75003700.e2": {
+      "hits": 2,
+      "cumulativeContribution": -318.53708179427986,
+      "weight": -1.5926854089713993
+    },
+    "38811586.e3->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": -201.32968991046644,
+      "weight": -1.0066484495523322
+    },
+    "38811586.e3->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": -43.1508563118316,
+      "weight": -0.21575428155915802
+    },
+    "38811586.e3->82782870.e1": {
+      "hits": 2,
+      "cumulativeContribution": 83.8568539254799,
+      "weight": 0.41928426962739945
+    },
+    "38811586.e3->82782870.e2": {
+      "hits": 2,
+      "cumulativeContribution": 240.21982984591216,
+      "weight": 1.2010991492295608
+    },
+    "38811586.e3->82782870.e3": {
+      "hits": 2,
+      "cumulativeContribution": 241.0748376882148,
+      "weight": 1.205374188441074
+    },
+    "38811586.e3->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": -612.5831188262769,
+      "weight": -3.0629155941313844
+    },
+    "38811586.e3->84477320.e1a": {
+      "hits": 2,
+      "cumulativeContribution": 587.4654581161383,
+      "weight": 2.9373272905806913
+    },
+    "38811586.e3->84477320.e1b": {
+      "hits": 2,
+      "cumulativeContribution": 46.92464769415925,
+      "weight": 0.23462323847079625
+    },
+    "38811586.e3->8633261.e2": {
+      "hits": 2,
+      "cumulativeContribution": 334.70454292203556,
+      "weight": 1.6735227146101779
+    },
+    "38811586.e3->90241276.e2": {
+      "hits": 2,
+      "cumulativeContribution": -482.4198723091327,
+      "weight": -2.4120993615456636
+    },
+    "38811586.e3->90241276.e3": {
+      "hits": 2,
+      "cumulativeContribution": 132.256076897215,
+      "weight": 0.661280384486075
+    },
+    "38811586.e3->9674034.e1": {
+      "hits": 2,
+      "cumulativeContribution": -5.333061812290868,
+      "weight": -0.02666530906145434
+    },
+    "38811586.e3->9674034.e2": {
+      "hits": 2,
+      "cumulativeContribution": -5.385809161026606,
+      "weight": -0.026929045805133032
+    },
+    "38811586.e4->13332685.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e4->18176525.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e4->19899073.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e4->40543231.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e4->44146295.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e4->55397172.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "38811586.e4->82782870.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._alt-ss-cost->58071334.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._alt-ss-cost->84433129.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->11398059._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->1269512._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->1528054.e2": {
+      "hits": 2,
+      "cumulativeContribution": -255.95765478357163,
+      "weight": -1.279788273917858
+    },
+    "87746184._material->20665527._summon": {
+      "hits": 2,
+      "cumulativeContribution": 397.0969373252811,
+      "weight": 1.9854846866264055
+    },
+    "87746184._material->2772337._summon": {
+      "hits": 2,
+      "cumulativeContribution": 344.5711541017072,
+      "weight": 1.7228557705085359
+    },
+    "87746184._material->29301450.e1": {
+      "hits": 2,
+      "cumulativeContribution": 263.2287730742968,
+      "weight": 1.3161438653714839
+    },
+    "87746184._material->31603289.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->32530043._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->40673853._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->42125140._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->44146295._summon": {
+      "hits": 2,
+      "cumulativeContribution": -82.9193083066243,
+      "weight": -0.41459654153312153
+    },
+    "87746184._material->45852939._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->5088741.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->51409648._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->60303245._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->61399402._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->65741786._summon": {
+      "hits": 2,
+      "cumulativeContribution": 211.77299589370602,
+      "weight": 1.05886497946853
+    },
+    "87746184._material->66011101._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->67098897.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->70534340.e1": {
+      "hits": 2,
+      "cumulativeContribution": -58.131927751740186,
+      "weight": -0.29065963875870093
+    },
+    "87746184._material->70538272._summon": {
+      "hits": 2,
+      "cumulativeContribution": -71.59365143030942,
+      "weight": -0.3579682571515471
+    },
+    "87746184._material->72578374.e1": {
+      "hits": 2,
+      "cumulativeContribution": -188.95050395606137,
+      "weight": -0.9447525197803068
+    },
+    "87746184._material->73898890.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->7511613.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->76666602.e2": {
+      "hits": 2,
+      "cumulativeContribution": -791.057249293321,
+      "weight": -3.955286246466605
+    },
+    "87746184._material->78397661._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->79606837._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->79755671._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->8165596._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->81846453.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->89851827._summon": {
+      "hits": 2,
+      "cumulativeContribution": -206.73446127918277,
+      "weight": -1.033672306395914
+    },
+    "87746184._material->90590303._summon": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->93192592.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184._material->9940036.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->1498449.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->44482554.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->5088741.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->65741786.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->70871153.e1": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->7375867.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->75003700.e3": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->81846453.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "87746184.e1->84477320.e2": {
+      "hits": 2,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._alt-ss-cost->58071334.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._alt-ss-cost->84433129.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->11398059._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->1269512._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->1528054.e2": {
+      "hits": 1,
+      "cumulativeContribution": -321.5970150427221,
+      "weight": -3.215970150427221
+    },
+    "55273560._material->20665527._summon": {
+      "hits": 1,
+      "cumulativeContribution": -65.72783154585194,
+      "weight": -0.6572783154585194
+    },
+    "55273560._material->2772337._summon": {
+      "hits": 1,
+      "cumulativeContribution": -68.60796442063459,
+      "weight": -0.6860796442063458
+    },
+    "55273560._material->29301450.e1": {
+      "hits": 1,
+      "cumulativeContribution": 132.35459237399863,
+      "weight": 1.3235459237399863
+    },
+    "55273560._material->31603289.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->32530043._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->38811586._summon": {
+      "hits": 1,
+      "cumulativeContribution": -11.427943550208848,
+      "weight": -0.11427943550208848
+    },
+    "55273560._material->40673853._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->42125140._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->45852939._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->49678559._summon": {
+      "hits": 1,
+      "cumulativeContribution": -26.708309271101736,
+      "weight": -0.2670830927110174
+    },
+    "55273560._material->5088741.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->51409648._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->60303245._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->61399402._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->65741786._summon": {
+      "hits": 1,
+      "cumulativeContribution": -155.63894849178232,
+      "weight": -1.5563894849178233
+    },
+    "55273560._material->66011101._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->67098897.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->73898890.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->7511613.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->76666602.e2": {
+      "hits": 1,
+      "cumulativeContribution": 111.75138520027497,
+      "weight": 1.1175138520027497
+    },
+    "55273560._material->78397661._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->79606837._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->79755671._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->8165596._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->81846453.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->87746184.e1": {
+      "hits": 1,
+      "cumulativeContribution": -41.945976211811654,
+      "weight": -0.41945976211811653
+    },
+    "55273560._material->89851827._summon": {
+      "hits": 1,
+      "cumulativeContribution": 412.08972768628786,
+      "weight": 4.120897276862879
+    },
+    "55273560._material->90590303._summon": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->93192592.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560._material->9940036.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->10966439.e2a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->10966439.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->18176525.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->18176525.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->18176525.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->19899073.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->30581601.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->31425736.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->31425736.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->34022970.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->34022970.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->3410461.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->34909328.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->35844557.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->35844557.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->40543231.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->40543231.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->40543231.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->45663742.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->45663742.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->58071334.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68468459.e1a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68468459.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68810435.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->68810435.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->73819701.e2a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->73819701.e2b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->73898890.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->75003700.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->75003700.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->7511613.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->76666602.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->82782870.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->82782870.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->82782870.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->84433129.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->84477320.e1a": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->84477320.e1b": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->8633261.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->90241276.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->90241276.e3": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->9674034.e1": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e2->9674034.e2": {
+      "hits": 1,
+      "cumulativeContribution": 0,
+      "weight": 0
+    },
+    "55273560.e3->44146295.e2": {
+      "hits": 1,
+      "cumulativeContribution": 53.905619355101095,
+      "weight": 0.539056193551011
+    },
+    "55273560.e3->90241276.e1": {
+      "hits": 1,
+      "cumulativeContribution": 39.55770979347963,
+      "weight": 0.39557709793479634
+    }
+  }
+}

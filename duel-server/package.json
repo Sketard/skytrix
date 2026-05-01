@@ -18,15 +18,20 @@
   "license": "AGPL-3.0-only",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "@types/luaparse": "^0.2.13",
     "@types/node": "^25.3.0",
     "@types/ws": "^8.18.0",
+    "luaparse": "^0.3.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@n1xx1/ocgcore-wasm": "npm:@jsr/n1xx1__ocgcore-wasm@^0.1.1",
     "better-sqlite3": "^12.6.2",
-    "ws": "^8.19.0"
+    "piscina": "^5.1.4",
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
   }
 }

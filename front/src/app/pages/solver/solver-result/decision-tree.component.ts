@@ -1,0 +1,275 @@
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  signal,
+} from '@angular/core';
+import { FlatTreeControl } from '@angular/cdk/tree';
+import { CdkTreeModule } from '@angular/cdk/tree';
+import { CdkConnectedOverlay, CdkOverlayOrigin } from '@angular/cdk/overlay';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslatePipe } from '@ngx-translate/core';
+
+import type { DecisionNode, SolverAction } from '../../../core/model/solver.model';
+import { duelAssert } from '../../../core/utilities/duel-assert';
+import { onCardImgError } from './card-image-fallback';
+import { createHoverPopupController } from './hover-popup.controller';
+import {
+  CHIP_COLOR_MAP,
+  AMBER_COLOR,
+  DISPLAY_LABELS,
+  EFFECT_WEIGHT_ORDER,
+} from './interruption-display';
+
+// =============================================================================
+// Flat Tree Node
+// =============================================================================
+
+interface BreakdownChip {
+  label: string;
+  count: number;
+  color: string;
+  isAmber: boolean;
+}
+
+interface FlatTreeNode {
+  id: number;
+  node: DecisionNode;
+  level: number;
+  expandable: boolean;
+  isMainPath: boolean;
+  scoreDelta: string;
+  imageUrl: string;
+  handtrapLabel?: string;
+  alternativeCount?: number;
+  breakdownChips?: BreakdownChip[];
+  isPrunedPlaceholder?: boolean;
+  prunedCount?: number;
+}
+
+@Component({
+  selector: 'app-decision-tree',
+  standalone: true,
+  imports: [CdkTreeModule, CdkConnectedOverlay, CdkOverlayOrigin, MatIconModule, MatButtonModule, MatChipsModule, MatTooltipModule, TranslatePipe],
+  templateUrl: './decision-tree.component.html',
+  styleUrl: './decision-tree.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class DecisionTreeComponent {
+  private readonly elementRef = inject(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly tree = input.required<DecisionNode>();
+  readonly mainPath = input.required<SolverAction[]>();
+  readonly cardImageMap = input.required<Map<number, string>>();
+
+  readonly treeControl = new FlatTreeControl<FlatTreeNode>(
+    node => node.level,
+    node => node.expandable,
+  );
+
+  readonly trackByNode = (_: number, node: FlatTreeNode) => node.id;
+
+  readonly visibleNodes = signal<FlatTreeNode[]>([]);
+  private expandedSet = new Set<DecisionNode>();
+
+  private readonly hoverCtrl = createHoverPopupController<number>(this.destroyRef);
+  readonly hoverNodeId = this.hoverCtrl.hoverKey;
+
+  readonly mainPathScore = computed(() => this.tree().children[0]?.score ?? this.tree().score);
+
+  readonly isPrunedNode = (_: number, node: FlatTreeNode) => !!node.isPrunedPlaceholder;
+
+  constructor() {
+    effect(() => {
+      const root = this.tree();
+      // Validate children sorted by score desc (dev-mode guard)
+      if (root.children.length > 1) {
+        duelAssert(
+          root.children[0].score >= root.children[root.children.length - 1].score,
+          'decision-tree',
+          'children not sorted by score desc',
+        );
+      }
+      this.expandedSet.clear();
+      this.expandMainPath(root);
+      this.rebuildVisibleNodes();
+    });
+  }
+
+  toggleNode(node: FlatTreeNode): void {
+    if (this.expandedSet.has(node.node)) {
+      this.expandedSet.delete(node.node);
+    } else {
+      this.expandedSet.add(node.node);
+    }
+    this.rebuildVisibleNodes();
+  }
+
+  isExpanded(node: FlatTreeNode): boolean {
+    return this.expandedSet.has(node.node);
+  }
+
+  scrollToAction(action: SolverAction): void {
+    // Walk main-path chain (first-child recursion) to find matching node
+    const root = this.tree();
+    const ancestors: DecisionNode[] = [];
+    let current = root;
+
+    while (current.children.length > 0) {
+      const child = current.children[0];
+      ancestors.push(child);
+      if (child.action && child.action.cardId === action.cardId && child.action.responseIndex === action.responseIndex) {
+        break;
+      }
+      current = child;
+    }
+
+    // Expand all ancestors
+    for (const node of ancestors) {
+      if (node.children.length > 0) {
+        this.expandedSet.add(node);
+      }
+    }
+    this.rebuildVisibleNodes();
+
+    // Find the target node id
+    const targetNode = this.visibleNodes().find(
+      n => !n.isPrunedPlaceholder && n.node.action?.cardId === action.cardId && n.node.action?.responseIndex === action.responseIndex && n.isMainPath,
+    );
+    if (!targetNode) return;
+
+    afterNextRender(() => {
+      const el = this.elementRef.nativeElement.querySelector(`[data-node-id="${targetNode.id}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, { injector: this.injector });
+  }
+
+  onNodeCardEnter(node: FlatTreeNode): void {
+    this.hoverCtrl.enter(node.id);
+  }
+
+  onNodeCardLeave(): void {
+    this.hoverCtrl.leave();
+  }
+
+  onPopupEnter(): void {
+    this.hoverCtrl.popupEnter();
+  }
+
+  onImgError = onCardImgError;
+
+  rebuildVisibleNodes(): void {
+    this.visibleNodes.set(this.getVisibleNodes(this.tree()));
+  }
+
+  // =========================================================================
+  // Private
+  // =========================================================================
+
+  private expandMainPath(root: DecisionNode): void {
+    // Walk the first-child chain (main path) and expand each node
+    let current = root;
+    while (current.children.length > 0) {
+      this.expandedSet.add(current);
+      current = current.children[0]; // first child = main path
+    }
+  }
+
+  private getVisibleNodes(root: DecisionNode): FlatTreeNode[] {
+    const imgMap = this.cardImageMap();
+    const mainScore = root.children[0]?.score ?? root.score;
+    const nodes: FlatTreeNode[] = [];
+
+    // Skip root itself — start from root.children at level 0
+    for (const child of root.children) {
+      this.flattenNode(child, 0, true, child === root.children[0], mainScore, imgMap, nodes);
+    }
+
+    return nodes;
+  }
+
+  private flattenNode(
+    node: DecisionNode,
+    level: number,
+    isFirstChild: boolean,
+    parentIsMainPath: boolean,
+    mainScore: number,
+    imgMap: Map<number, string>,
+    out: FlatTreeNode[],
+  ): void {
+    const isMainPath = parentIsMainPath && isFirstChild;
+    const expandable = node.children.length > 0;
+
+    // Score delta: only for level 0 non-main-path nodes (root alternatives)
+    let scoreDelta = '';
+    if (level === 0 && !isMainPath) {
+      const delta = node.score - mainScore;
+      scoreDelta = delta >= 0 ? `+${delta}` : `${delta} vs main`;
+    }
+
+    // Build breakdown chips for terminal nodes with scoreBreakdown
+    let breakdownChips: BreakdownChip[] | undefined;
+    if (node.isTerminal && node.scoreBreakdown) {
+      const bd = node.scoreBreakdown;
+      const chips: BreakdownChip[] = [];
+      for (const key of EFFECT_WEIGHT_ORDER) {
+        const count = (bd as unknown as Record<string, number>)[key];
+        if (count > 0) {
+          const color = CHIP_COLOR_MAP[key] ?? 'var(--solver-chip-hand)';
+          chips.push({ label: DISPLAY_LABELS[key] ?? key, count, color, isAmber: color === AMBER_COLOR });
+        }
+      }
+      if (chips.length > 0) breakdownChips = chips;
+    }
+
+    const flatNode: FlatTreeNode = {
+      id: out.length,
+      node,
+      level,
+      expandable,
+      isMainPath,
+      scoreDelta,
+      imageUrl: node.handtrapLabel
+        ? `/api/documents/small/code/${node.action!.cardId}`
+        : imgMap.get(node.action?.cardId) ?? 'assets/images/card_back.jpg',
+      handtrapLabel: node.handtrapLabel,
+      alternativeCount: node.alternativeCount,
+      breakdownChips,
+    };
+    out.push(flatNode);
+
+    // Only descend if expanded
+    if (expandable && this.expandedSet.has(node)) {
+      for (let i = 0; i < node.children.length; i++) {
+        this.flattenNode(node.children[i], level + 1, i === 0, isMainPath, mainScore, imgMap, out);
+      }
+
+      // Pruned placeholder
+      if (node.prunedChildren && node.prunedChildren > 0) {
+        out.push({
+          id: out.length,
+          node, // parent reference (not rendered)
+          level: level + 1,
+          expandable: false,
+          isMainPath: false,
+          scoreDelta: '',
+          imageUrl: '',
+          isPrunedPlaceholder: true,
+          prunedCount: node.prunedChildren,
+        });
+      }
+    }
+  }
+}
