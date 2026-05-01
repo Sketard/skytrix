@@ -92,3 +92,25 @@ SOLVER_DUMP_MSGS=1 npx tsx scripts/capture-phase-1-baselines.ts \
 ```
 
 The full instrumentation block was committed temporarily during the audit (commit history) and then removed. Re-add as needed for future re-validation (e.g., after an OCGCore version bump).
+
+---
+
+## Audit A — `actionHistory` lookback as fallback (REJECTED)
+
+**Hypothesis tested:** for prompts where `extractSourceCardIdFromMsg` returns undefined (73% of prompts), can we use `actionHistory.findLast(a => a._isEffectActivation).cardId` as the sourceCardId? If yes, this would lift global coverage from 26.6% to ~95%.
+
+**Setup:** Added `SOLVER_DUMP_LOOKBACK=1` instrumentation logging both the extracted source AND the lookback candidate for every prompt across the 6 baselines (538 prompts). Then validated lookback against extract on the 2 ground-truth prompt types (SELECT_EFFECTYN + SELECT_POSITION, both 100% reliable from `msg.code`).
+
+**Result:**
+- Lookback presence: 95% of prompts (only `histLen=0` early-game prompts have no lookback candidate).
+- Lookback agreement vs ground truth on SELECT_EFFECTYN: **4/18 matched, 14/18 mismatched** (22%).
+- Lookback agreement vs ground truth on SELECT_POSITION: **6/32 matched, 26/32 mismatched** (19%).
+
+**Conclusion:** The lookback signal is **majority-wrong** even where we can verify it. Several failure modes contribute:
+- `_isEffectActivation` is set on chain link selections (SELECT_CHAIN), SELECT_EFFECTYN yes, and IDLECMD activates — but NOT on normal-summons. So a SELECT_PLACE issued by Lukias's on-summon search doesn't have Lukias as the most-recent `_isEffectActivation` action.
+- `actionHistory` contains every applied action including opponent goldfish responses and mechanical defaults; `findLast` reaches back too far.
+- SELECT_IDLECMD lookbacks are pure noise (an IDLECMD prompt has no source card; lookback returns the previous turn's last activation).
+
+**Decision:** lookback is NOT integrated into `extractSourceCardIdFromMsg`. Authoring `decisionHints` based on a 22%-correct signal would produce silent misfires (wrong card's hint applied to another card's prompt). The 100%-reliable subset (SELECT_EFFECTYN/SELECT_YESNO/SELECT_POSITION via `msg.code` / `msg.description`) is sufficient for Phase 7's audited fixtures.
+
+**Future work:** an MSG_HINT / MSG_CHAINING event-stream investigation (Audit B, ~3-4h) might surface a more reliable per-prompt source — OCGCore likely emits these context events between SELECT_* messages. Not blocking Phase 7.
