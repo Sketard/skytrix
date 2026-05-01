@@ -989,8 +989,28 @@ export class OCGCoreAdapter implements GameOracle {
         // SELECT_PLACE for SS, etc.). With CHAIN_END reset relaxed (only
         // NEW_TURN/NEW_PHASE reset), coverage reaches 93.3% across the
         // audit corpus — see Phase 6 matrix doc.
-        internal.lastPromptSourceCardId = extractSourceCardIdFromMsg(msgAny)
+        // Audit C: targeted-lookback fallback for SELECT_PLACE following a
+        // summon/ss action — covers the ~7 remaining SELECT_PLACE gaps
+        // where MSG_SUMMONING fires AFTER the SELECT_PLACE (engine quirk).
+        // Restricted to summon-class actions only (vs Audit A's broader
+        // _isEffectActivation lookback which was 22% reliable).
+        let resolvedSource = extractSourceCardIdFromMsg(msgAny)
           ?? internal.eventStreamSourceCardId;
+        if (resolvedSource === undefined && promptType === 'SELECT_PLACE') {
+          for (let i = internal.actionHistory.length - 1; i >= 0; i--) {
+            const a = internal.actionHistory[i];
+            const tag = a.actionTag;
+            if (tag === 'summon' || tag === 'ss' || tag === 'psummon' || tag === 'mset') {
+              if (a.cardId > 0) {
+                resolvedSource = a.cardId;
+                break;
+              }
+            }
+            // Stop searching after going past 5 actions (avoid stale source).
+            if (internal.actionHistory.length - i > 5) break;
+          }
+        }
+        internal.lastPromptSourceCardId = resolvedSource;
 
 
         // Phase 3 of prompt-resolver-refactor: route through PromptResolver

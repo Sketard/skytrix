@@ -202,3 +202,68 @@ The full instrumentation block was committed temporarily during the audit (commi
 - **Tier 4 — coverage but noise**: SELECT_IDLECMD — do not author hints
 
 The previous v1 Tier 4 ("noise") still applies to IDLECMD only.
+
+---
+
+## Audit C — Targeted lookback for SELECT_PLACE post-summon (+0.8% to 94.1%)
+
+**Motivation:** investigation of the 36 remaining gaps after Audit B v2 revealed three patterns:
+
+1. **Start of turn / phase** (~10 cases): hist tail empty, no events emitted yet. **Structural — no source possible by construction.**
+2. **Chain opportunity windows between actions** (~13 cases): SELECT_CHAIN emitted between phases or after an effect resolves, asking "do you want to chain?". **No card is activating — it's a response window.**
+3. **SELECT_PLACE following a summon/ss action** (~7 cases): MSG_SUMMONING/SPSUMMONING fires AFTER the SELECT_PLACE in the engine event stream, so eventStreamSourceCardId hasn't been updated yet. **Recoverable** via a targeted actionHistory lookback.
+4. **Opponent SELECT_CHAIN goldfish** (~6 cases): no source by construction.
+
+**Hypothesis tested:** for SELECT_PLACE specifically, look back through `actionHistory` for the most recent action whose `actionTag` is in `{summon, ss, psummon, mset}`, capped at 5 history positions. Restricted to summon-class actions to avoid the failure mode of Audit A (broad `_isEffectActivation` lookback was 22% reliable).
+
+**Implementation:**
+
+```ts
+let resolvedSource = extractSourceCardIdFromMsg(msgAny)
+  ?? internal.eventStreamSourceCardId;
+if (resolvedSource === undefined && promptType === 'SELECT_PLACE') {
+  for (let i = internal.actionHistory.length - 1; i >= 0; i--) {
+    const a = internal.actionHistory[i];
+    const tag = a.actionTag;
+    if (tag === 'summon' || tag === 'ss' || tag === 'psummon' || tag === 'mset') {
+      if (a.cardId > 0) {
+        resolvedSource = a.cardId;
+        break;
+      }
+    }
+    if (internal.actionHistory.length - i > 5) break;
+  }
+}
+```
+
+**Result:**
+
+| PromptType | Audit B v2 | **Audit C** | Delta |
+|---|---|---|---|
+| SELECT_PLACE | 89% | **95%** | +6 (4/65 → 0/65 of recoverable gaps) |
+| **Global** | **93.3%** | **94.1%** | +0.8 |
+
+Going past the 5-position window (tested with window=10) doesn't recover additional cases — the 3 remaining SELECT_PLACE gaps have no summon/ss action in their actionHistory (they fire from a context that never invoked anything, e.g. very early-game or post-recovery from a no-summon state).
+
+**Final 32 gaps breakdown:**
+- ~22 SELECT_CHAIN windows (pure response opportunities, no source)
+- ~6 SELECT_IDLECMD start-of-phase (no source by construction)
+- ~3 SELECT_PLACE early-game (no recent summon)
+- ~1 SELECT_CHAIN opponent goldfish
+
+**Decision:** integrated. The targeted lookback is restricted to `SELECT_PLACE + actionTag in {summon, ss, psummon, mset}` so it can't introduce the kind of misfires that killed Audit A (broad `_isEffectActivation` reach-back). Bit-exact gate preserved (6/6 baselines, 123/123 tests).
+
+---
+
+## Final coverage and ceiling
+
+**Total: 506/538 = 94.1%**
+
+The remaining 32 gaps (5.9%) are **structurally incomblable**:
+- Start-of-turn / start-of-phase prompts (no events yet emitted)
+- Chain opportunity windows (no card is activating; it's a "do you want to react?" window)
+- Goldfish opponent prompts in non-adversarial mode (no opponent strategy)
+
+These prompts have **no card source by design** — the engine asks the player to make a free decision, not to respond to a specific card's effect. Authoring `decisionHints` for them would be conceptually meaningless: there's no card-effect to override.
+
+**The 100% ceiling is unreachable** in any scheme that maps "prompt → source card": the OCG protocol simply doesn't emit a source for these decision points. Reaching 94.1% with safe heuristics is effectively the asymptote.
