@@ -495,6 +495,11 @@ export async function runFixture(
   scorer.setArchetypeExpertise(filteredExpertise);
   scorer.setDeckContents(deckCardIds);
   ranker.setArchetypeExpertise(filteredExpertise);
+  // Phase 7 of prompt-resolver-refactor (2026-05-01) — feed the deck-filtered
+  // expertise into the adapter so CardExpertiseOracle can consume it on every
+  // DecisionContext. Mirrors solver-worker.ts:217. Without this the eval
+  // harness would never see decisionHints-driven overrides.
+  adapter.setArchetypeExpertise(filteredExpertise);
 
   // Phase A scorer fix (2026-04-26) — env-gated implicit ComboGoals from the
   // fixture's `expectedBoard`. Each card present on the terminal field
