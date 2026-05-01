@@ -458,7 +458,13 @@
 .xyz-material-stack {
   --_stack-dir: 1;
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 59 / 86;
+  transform: translateX(-50%);
   z-index: -1;
   pointer-events: none;
 
