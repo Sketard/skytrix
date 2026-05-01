@@ -80,6 +80,33 @@ function countActivatableHandCardIds(actions: readonly Action[]): number {
   return ids.size;
 }
 
+/** Phase 6 of prompt-resolver-refactor — extract the cardId of the card
+ *  whose effect emitted this prompt, where reliable. Coverage matrix
+ *  documented in _bmad-output/solver-data/phase-6-coverage-matrix-2026-05-01.md.
+ *  Returns undefined when no reliable source is available — CardExpertiseOracle
+ *  passes through in that case.
+ *
+ *  - SELECT_EFFECTYN, SELECT_POSITION: msg.code is the source card (100% in
+ *    audit corpus).
+ *  - SELECT_YESNO: msg.description is a bigint encoded as `(cardCode << 20)
+ *    | strIndex` — decode the upper bits (100% in audit corpus, n=2).
+ *  - All other prompts: no single reliable source. SELECT_CHAIN has a per-link
+ *    source via `selects[i].description` but no whole-prompt source; that
+ *    surface lives on each enumerated Action (responseIndex maps to a link).
+ *  - Unhandled prompts default to undefined. */
+export function extractSourceCardIdFromMsg(msg: Record<string, unknown>): number | undefined {
+  const codeVal = msg['code'];
+  if (typeof codeVal === 'number' && codeVal !== 0) {
+    return codeVal;
+  }
+  const descRaw = msg['description'];
+  if (typeof descRaw === 'bigint') {
+    const cardCode = Number(descRaw >> 20n);
+    if (cardCode > 0) return cardCode;
+  }
+  return undefined;
+}
+
 /** Phase B (graph-ml-v2) — map adapter's internal `actionTag` strings to
  *  the YGO-vocabulary `ActionVerb` enum. The adapter already classifies
  *  enumerated SELECT_* options into `actionTag` ('summon', 'ss', 'mset',
@@ -181,6 +208,12 @@ interface InternalHandle {
    *  prompts so the FieldState only carries the value when it's truly fresh.
    *  Surfaces via `FieldState.activatableHandCardCount`. */
   lastIdlecmdActivatableHandCount?: number;
+  /** Phase 6 of prompt-resolver-refactor — sourceCardId of the card whose
+   *  effect emitted the most recent prompt. Populated by runUntilPlayerPrompt
+   *  via extractSourceCardIdFromMsg. Read by external callers (CLI replay)
+   *  via getLastPromptSourceCardId. undefined when no reliable source for
+   *  this prompt type (see Phase 6 coverage matrix). */
+  lastPromptSourceCardId?: number;
   /** Phase B (graph-ml-v2) axis E (tempo / commitment) — per-turn cumulative
    *  counters tracking action density. Reset on every NEW_TURN. Surface via
    *  FieldState's matching optional fields. All condition-free, history-
@@ -298,6 +331,17 @@ export class OCGCoreAdapter implements GameOracle {
    *  AFTER the deck is known, before the first solve(). */
   setArchetypeExpertise(list: readonly ArchetypeExpertise[]): void {
     this.currentExpertise = list;
+  }
+
+  /** Phase 6 — return the sourceCardId of the most recent prompt yielded
+   *  by `getLegalActions(handle)`. Returns undefined when no reliable source
+   *  is available for this prompt type (see coverage matrix). Used by the
+   *  CLI replay to populate `DecisionContext.sourceCardId` for
+   *  CardExpertiseOracle. */
+  getLastPromptSourceCardId(handle: DuelHandle): number | undefined {
+    const internal = this.findInternal(handle);
+    if (!internal) return undefined;
+    return internal.lastPromptSourceCardId;
   }
 
   private getOrBuildDfsResolver(): PromptResolver {
@@ -866,6 +910,14 @@ export class OCGCoreAdapter implements GameOracle {
         const promptType = MESSAGE_TO_PROMPT[selectMsg.type];
         const msgAny = selectMsg as unknown as Record<string, unknown>;
 
+        // Phase 6 — sourceCardId surface. Set on the InternalHandle so
+        // external callers (e.g. CLI replay) can read it via
+        // getLastPromptSourceCardId AFTER getLegalActions returns. Stored on
+        // both the resolver and legacy paths so the value is consistent
+        // regardless of SOLVER_USE_PROMPT_RESOLVER state.
+        internal.lastPromptSourceCardId = extractSourceCardIdFromMsg(msgAny);
+
+
         // Phase 3 of prompt-resolver-refactor: route through PromptResolver
         // when the env flag is set. Default OFF; bit-exact gate compares
         // _bmad-output/solver-data/phase-1-baselines/ between flag-OFF and
@@ -875,12 +927,9 @@ export class OCGCoreAdapter implements GameOracle {
 
         if (useResolver && promptType) {
           const resolver = this.getOrBuildDfsResolver();
-          // Phase 5 — best-effort sourceCardId from the OCG message. Phase 6
-          // produces a coverage matrix per OcgMessageType; until then, only
-          // prompts where `code` is reliably populated will fire CardExpertise.
-          const sourceCardId = typeof msgAny['code'] === 'number'
-            ? (msgAny['code'] as number)
-            : undefined;
+          // sourceCardId: read from internal.lastPromptSourceCardId, set
+          // unconditionally above (Phase 6 plumbing).
+          const sourceCardId = internal.lastPromptSourceCardId;
           const ctx: DecisionContext = {
             promptType,
             msg: msgAny,

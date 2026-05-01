@@ -594,9 +594,11 @@ async function main(): Promise<void> {
           // Phase 5 — CardExpertiseOracle inputs. Pass-through when
           // decisionHints absent (which is the case until Phase 7 populates).
           expertise: cliExpertise,
-          // sourceCardId stays undefined here — the CLI doesn't have direct
-          // access to the OCG msg's `code` field. Phase 6 plumbs it through
-          // when the adapter exposes it on the Action's metadata.
+          // Phase 6 — read sourceCardId from the adapter (extracted from the
+          // OCG msg per the coverage matrix; undefined when no reliable
+          // source for this prompt type). 100% coverage on SELECT_EFFECTYN,
+          // SELECT_POSITION, SELECT_YESNO; 0-31% elsewhere.
+          sourceCardId: adapter.getLastPromptSourceCardId(handle),
           planSteps: rawMode ? undefined : planSteps,
           planIdx: rawMode ? undefined : planIdxBox,
           rawSteps: rawMode ? rawSteps : undefined,
