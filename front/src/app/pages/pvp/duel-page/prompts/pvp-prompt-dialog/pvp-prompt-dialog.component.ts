@@ -8,6 +8,7 @@ import {
   EnvironmentInjector,
   HostListener,
   inject,
+  Injector,
   input,
   AfterViewInit,
   OnDestroy,
@@ -56,6 +57,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private readonly wsService = inject(DuelWebSocketService);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly envInjector = inject(EnvironmentInjector);
+  private readonly injector = inject(Injector);
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
@@ -167,7 +169,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     for (const type of [...Object.values(PROMPT_COMPONENT_MAP), PromptActionListReadonlyComponent]) {
       if (seen.has(type)) continue;
       seen.add(type);
-      createComponent(type, { environmentInjector: this.envInjector }).destroy();
+      createComponent(type, { environmentInjector: this.envInjector, elementInjector: this.injector }).destroy();
     }
 
     if (this.pendingAttach) {
