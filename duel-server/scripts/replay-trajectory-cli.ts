@@ -84,7 +84,15 @@ import {
   STATE_DIM,
   ACTION_DIM,
 } from '../src/solver/state-feature-extractor.js';
-import type { Action, DuelConfig, FieldState, ZoneId } from '../src/solver/solver-types.js';
+import type { Action, DuelConfig, FieldState, ZoneId, PromptType } from '../src/solver/solver-types.js';
+import { PromptResolver, type DecisionContext } from '../src/solver/prompt-resolver.js';
+import { MechanicalDefaultOracle } from '../src/solver/mechanical-default-oracle.js';
+import {
+  PlanStepOracle,
+  PlanTargetOracle,
+  RawTrajectoryOracle,
+  EndPhasePolicyOracle,
+} from '../src/solver/plan-replay-oracles.js';
 
 // =============================================================================
 // CLI
@@ -451,6 +459,18 @@ async function main(): Promise<void> {
   let endPhaseAttempts = 0;
   let aggressiveActions = 0;
   const MAX_END_PHASE_ATTEMPTS = 50;
+
+  // Phase 4 of prompt-resolver-refactor — pre-built resolver for the CLI's
+  // plan-replay (β-1) and raw-replay (β-3) modes. Both modes use the same
+  // chain (the oracles self-gate on ctx.caller); a single resolver reduces
+  // construction cost. Active only when SOLVER_USE_PROMPT_RESOLVER=1.
+  const cliResolver = new PromptResolver([
+    new PlanStepOracle(),
+    new PlanTargetOracle(),
+    new RawTrajectoryOracle(),
+    new EndPhasePolicyOracle(),
+    new MechanicalDefaultOracle(),
+  ]);
   const SUB_PROMPT_PICKABLE = new Set([
     'SELECT_CARD', 'SELECT_OPTION', 'SELECT_PLACE', 'SELECT_UNSELECT_CARD', 'SELECT_TRIBUTE', 'SELECT_SUM', 'SELECT_POSITION',
     // SELECT_YESNO + SELECT_EFFECTYN are pickable so plans can override the
@@ -519,7 +539,106 @@ async function main(): Promise<void> {
       let planStepIndex: number | null = null;
       let pickSource: 'plan' | 'raw' | 'target' | 'auto' | 'auto-end-phase' = 'auto';
 
-      if (rawMode) {
+      // Phase 4 of prompt-resolver-refactor: route through PromptResolver
+      // when SOLVER_USE_PROMPT_RESOLVER=1. Default OFF; flag flip planned in
+      // Phase 5+ after baseline-soak. The resolver chain composition is:
+      //   β-1: [PlanStepOracle, PlanTargetOracle, EndPhasePolicyOracle, MechanicalDefault]
+      //   β-3: [RawTrajectoryOracle, EndPhasePolicyOracle, MechanicalDefault]
+      const useResolver = process.env.SOLVER_USE_PROMPT_RESOLVER === '1'
+        || process.env.SOLVER_USE_PROMPT_RESOLVER === 'true';
+
+      if (useResolver) {
+        // endTurn=false + plan/raw exhausted at SELECT_IDLECMD → break
+        // (legacy CLI:611 / 577). The resolver chain wouldn't break here on
+        // its own (Mechanical would auto-respond), so we short-circuit before
+        // resolving.
+        const exhaustedAtIdlecmd = promptType === 'SELECT_IDLECMD'
+          && (rawMode ? rawIdx >= rawSteps.length : planIdx >= planSteps.length);
+        if (exhaustedAtIdlecmd && !endTurn) {
+          break;
+        }
+
+        // Box mutable counters for the resolver context.
+        const planIdxBox = { value: planIdx };
+        const rawIdxBox = { value: rawIdx };
+        const endPhaseAttemptsBox = { value: endPhaseAttempts };
+        const aggressiveActionsBox = { value: aggressiveActions };
+        const lastPickSourceBox: { value: 'plan' | 'raw' | 'target' | 'auto' | 'auto-end-phase' } = { value: 'auto' };
+        const lastCommittedBox: { value: number | null } = { value: lastCommittedPlanStepIndex };
+        const lastConsumedBox: { value: number | null } = { value: null };
+
+        const ctx: DecisionContext = {
+          promptType: promptType as PromptType,
+          msg: {},  // CLI doesn't have direct access to the OCG msg; oracles
+                    // use legal+ctx fields instead. MechanicalDefaultOracle
+                    // would need msg.type if it ever fires here, but in the
+                    // CLI chain composition it's only reached via fall-through
+                    // from sub-prompts, where PlanTarget/EndPhase already
+                    // produce a chosen Action.
+          caller: rawMode ? 'plan-β3' : 'plan-β1',
+          player: 0,
+          legal,
+          getName,
+          planSteps: rawMode ? undefined : planSteps,
+          planIdx: rawMode ? undefined : planIdxBox,
+          rawSteps: rawMode ? rawSteps : undefined,
+          rawIdx: rawMode ? rawIdxBox : undefined,
+          pendingTargets,
+          pendingChainTargets,
+          endTurn,
+          continueMode: args.continueMode,
+          maxAggressiveActions: args.maxAggressiveActions,
+          endPhaseAttempts: endPhaseAttemptsBox,
+          aggressiveActions: aggressiveActionsBox,
+          stepCount,
+          lastPickSource: lastPickSourceBox,
+          lastCommittedPlanStepIndex: lastCommittedBox,
+          lastConsumedStepIndex: lastConsumedBox,
+        };
+
+        const result = cliResolver.resolve(ctx);
+
+        // Sync mutated state back to local CLI state.
+        planIdx = planIdxBox.value;
+        rawIdx = rawIdxBox.value;
+        endPhaseAttempts = endPhaseAttemptsBox.value;
+        aggressiveActions = aggressiveActionsBox.value;
+        lastCommittedPlanStepIndex = lastCommittedBox.value;
+
+        if (result.kind === 'divergence') {
+          divergence = result.info;
+          stoppedAtPlanStep = rawMode ? rawIdx : planIdx;
+          stoppedReason = 'divergence';
+          break;
+        }
+        if (result.kind === 'response') {
+          // The oracles set chosenAction; CLI uses it for replayLog/corpus/trace.
+          chosen = result.chosenAction ?? null;
+          if (!chosen) {
+            stoppedReason = 'ceiling';
+            errorMessage = `resolver returned response without chosenAction at step ${stepCount} promptType=${promptType}`;
+            break;
+          }
+          pickSource = lastPickSourceBox.value;
+          if (lastConsumedBox.value !== null) {
+            planStepIndex = lastConsumedBox.value;
+          }
+          // EndPhasePolicyOracle ceiling — verbatim of legacy CLI:603-607 / 540-543.
+          if (endPhaseAttempts > MAX_END_PHASE_ATTEMPTS) {
+            stoppedReason = 'ceiling';
+            errorMessage = rawMode
+              ? 'End-phase loop exceeded ceiling (raw mode)'
+              : 'End-phase loop exceeded ceiling';
+            break;
+          }
+        } else {
+          // 'branches' is impossible in this CLI chain composition (no oracle
+          // emits branches in plan-replay). Defensive fallthrough.
+          stoppedReason = 'ceiling';
+          errorMessage = `unexpected resolver result kind=${(result as { kind: string }).kind} at step ${stepCount}`;
+          break;
+        }
+      } else if (rawMode) {
         // ---- Raw trajectory mode (β-3) -------------------------------------
         if (rawIdx < rawSteps.length) {
           const step = rawSteps[rawIdx];

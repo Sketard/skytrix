@@ -14,6 +14,7 @@
 // =============================================================================
 
 import type { Action, DuelConfig, PromptType } from './solver-types.js';
+import type { PlanStep, RawTrajectoryStep, TargetSpec } from './plan-replay-types.js';
 import { solverAssert } from './solver-assert.js';
 
 // =============================================================================
@@ -21,9 +22,13 @@ import { solverAssert } from './solver-assert.js';
 // =============================================================================
 
 /** Result of a single oracle's decide() call. The chain walks oracles in order
- *  until one returns a non-pass result. */
+ *  until one returns a non-pass result. The optional `chosenAction` field on
+ *  'response' is set by oracles that pick a specific Action from `ctx.legal`
+ *  (Plan/Raw/EndPhase): the CLI consumer needs the picked Action object for
+ *  replayLog + corpus dump + trace, beyond just the OcgResponse payload.
+ *  Adapter-side callers (DFS) ignore `chosenAction`. */
 export type OracleResult =
-  | { kind: 'response'; response: unknown }
+  | { kind: 'response'; response: unknown; chosenAction?: Action }
   | { kind: 'branches'; actions: Action[] }
   | { kind: 'divergence'; info: DivergenceInfo }
   | { kind: 'pass' };
@@ -32,7 +37,7 @@ export type OracleResult =
  *  source oracle attached for telemetry/forensics. The terminal MechanicalDefault
  *  oracle MUST always answer; the chain throws if it doesn't. */
 export type ResolveResult =
-  | { kind: 'response'; response: unknown; source: string }
+  | { kind: 'response'; response: unknown; chosenAction?: Action; source: string }
   | { kind: 'branches'; actions: Action[]; source: string }
   | { kind: 'divergence'; info: DivergenceInfo; source: string };
 
@@ -79,6 +84,58 @@ export interface DecisionContext {
    *  OCGCoreAdapter.exposeMultiPickMechanical. */
   exposeMultiPickMechanical?: boolean;
 
+  // ---- Plan-replay state (Phase 4) ----
+  /** β-1 plan steps. Set by the CLI when caller='plan-β1'. The PlanStepOracle
+   *  reads `planSteps[planIdx.value]` and increments `planIdx.value` on match. */
+  planSteps?: readonly PlanStep[];
+  planIdx?: { value: number };
+  /** β-3 raw trajectory steps. Set by the CLI when caller='plan-β3'. The
+   *  RawTrajectoryOracle matches `rawSteps[rawIdx.value]` exactly on
+   *  responseIndex+cardId. */
+  rawSteps?: readonly RawTrajectoryStep[];
+  rawIdx?: { value: number };
+  /** Pending sub-prompt target queues. Loaded by PlanStepOracle on a SELECT_IDLECMD
+   *  match (from `step.targets` and `step.chainTargets`); consumed FIFO by
+   *  PlanTargetOracle on the matching sub-prompt. The arrays are mutated in place
+   *  via `.shift()` and `.length=0`. */
+  pendingTargets?: TargetSpec[];
+  pendingChainTargets?: TargetSpec[];
+  /** Available legal Action[] at the current prompt — required by oracles that
+   *  match against the legal pool (Plan/Raw/EndPhase). Boxed once per prompt
+   *  by the caller before resolve(). */
+  legal?: readonly Action[];
+  /** Caller-provided cardName resolver (used by PlanTargetOracle's substring
+   *  match when an action lacks `cardName`). The CLI wires its cards.cdb cache
+   *  here. */
+  getName?: (cardId: number) => string;
+  /** Plan/raw exhaustion behavior toggle (from PlanFile.endTurn). When true,
+   *  EndPhasePolicyOracle takes over after plan/raw is exhausted; when false,
+   *  the CLI breaks out of its loop instead. */
+  endTurn?: boolean;
+  /** Continuation policy at end-phase. 'aggressive' enables the productive-verb
+   *  cascade (β-1 only); 'end-phase' picks end-phase immediately. */
+  continueMode?: 'end-phase' | 'aggressive';
+  maxAggressiveActions?: number;
+  /** End-phase counters — boxed for mutation. */
+  endPhaseAttempts?: { value: number };
+  aggressiveActions?: { value: number };
+  /** Step counter at the time of the prompt — used to shape divergence info. */
+  stepCount?: number;
+  /** Source pickSource attribution attached to the response result. The
+   *  oracle that produces the response sets this so the caller's replayLog +
+   *  trace can record where each pick came from. Side-channel because
+   *  ResolveResult.kind='response' has no `source-detail` field; the caller
+   *  reads `ctx.lastPickSource` after resolve(). */
+  lastPickSource?: { value: 'plan' | 'raw' | 'target' | 'auto' | 'auto-end-phase' };
+  /** β-1 only: index of the most recently committed plan step at SELECT_IDLECMD.
+   *  Stamped on corpus rows so a sub-prompt SELECT_CARD can be linked back to
+   *  its parent IDLECMD plan step. Boxed for mutation by PlanStepOracle. */
+  lastCommittedPlanStepIndex?: { value: number | null };
+  /** Most recently consumed plan/raw step index for replayLog stamping (β-1
+   *  uses planIdx-1; β-3 uses rawIdx-1). Set by PlanStepOracle / RawTrajectoryOracle
+   *  on consumption. */
+  lastConsumedStepIndex?: { value: number | null };
+
   // ---- Config ----
   config?: DuelConfig;
 }
@@ -113,7 +170,7 @@ export class PromptResolver {
       const out = oracle.decide(ctx);
       if (out.kind === 'pass') continue;
       if (out.kind === 'response') {
-        return { kind: 'response', response: out.response, source: oracle.name };
+        return { kind: 'response', response: out.response, chosenAction: out.chosenAction, source: oracle.name };
       }
       if (out.kind === 'branches') {
         return { kind: 'branches', actions: out.actions, source: oracle.name };
