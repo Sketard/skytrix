@@ -116,27 +116,6 @@ const patches = [
     to:    's===E.ALIAS&&o===4)t.alias=e.u32();else if(s===E.TYPE&&o===4)t.type=e.u32();else if(s===E.LEVEL',
   },
 
-  // ── P7: Add missing TARGET_CARD branch to query parser ──
-  // OcgQueryFlags.TARGET_CARD (32768) is declared in the bundle's d.ts as
-  // `targetCards: OcgCardQueryInfoCard[]` — list of persistent effect-target
-  // links on this card (Equip Spell targets accessed from the equipped side,
-  // Number 39 Utopia material chases, Chaos Hunter banished tracking, etc.).
-  // Distinct from EQUIP_CARD (single ref, only set on the equipping spell)
-  // and OVERLAY_CARD (Xyz materials as raw u32 codes).
-  //
-  // C++ writes `u32 count + count × {u8 controller, u8 location, u32 sequence,
-  // u32 position}` (verified against edo9300/ygopro-core card.cpp::get_infos
-  // QUERY_TARGET_CARD branch). The 10-byte per-card layout matches the
-  // existing `p(e)` helper used by EQUIP_CARD/REASON_CARD.
-  //
-  // Insert after the OVERLAY_CARD branch.
-  {
-    file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
-    label: 'TARGET_CARD parser — add missing branch',
-    from:  's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];let r=e.u32();for(let S=0;S<r;S++)t.overlayCards.push(e.u32())}',
-    to:    's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];let r=e.u32();for(let S=0;S<r;S++)t.overlayCards.push(e.u32())}else if(s===E.TARGET_CARD&&o>=4){t.targetCards=[];let r=e.u32();for(let S=0;S<r;S++)t.targetCards.push(p(e))}',
-  },
-
   // ── P5: Fix OVERLAY_CARD query parser — wrong flag tag matched ──
   // The parser branches on `s === E.TARGET_CARD` but assigns to `t.overlayCards`
   // and decodes the buffer as `u32 count + u32×count code`. Per the bundle's
@@ -153,11 +132,36 @@ const patches = [
   // Fix: rewire the existing parser branch to match OVERLAY_CARD instead of
   // TARGET_CARD. We don't decode TARGET_CARD anywhere in the codebase, so
   // dropping that (already-broken) path is harmless.
+  //
+  // P5 MUST run before P7: P7's anchor matches the post-P5 form
+  // (`s===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];...`). On a fresh install
+  // P5 must rewrite the flag tag first so P7's anchor exists.
   {
     file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
     label: 'OVERLAY_CARD parser — match OVERLAY_CARD, not TARGET_CARD',
     from:  's===E.TARGET_CARD&&o>=4){t.overlayCards=[];',
     to:    's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];',
+  },
+
+  // ── P7: Add missing TARGET_CARD branch to query parser ──
+  // OcgQueryFlags.TARGET_CARD (32768) is declared in the bundle's d.ts as
+  // `targetCards: OcgCardQueryInfoCard[]` — list of persistent effect-target
+  // links on this card (Equip Spell targets accessed from the equipped side,
+  // Number 39 Utopia material chases, Chaos Hunter banished tracking, etc.).
+  // Distinct from EQUIP_CARD (single ref, only set on the equipping spell)
+  // and OVERLAY_CARD (Xyz materials as raw u32 codes).
+  //
+  // C++ writes `u32 count + count × {u8 controller, u8 location, u32 sequence,
+  // u32 position}` (verified against edo9300/ygopro-core card.cpp::get_infos
+  // QUERY_TARGET_CARD branch). The 10-byte per-card layout matches the
+  // existing `p(e)` helper used by EQUIP_CARD/REASON_CARD.
+  //
+  // Insert after the OVERLAY_CARD branch (depends on P5 rewrite).
+  {
+    file: 'node_modules/@n1xx1/ocgcore-wasm/dist/index.js',
+    label: 'TARGET_CARD parser — add missing branch',
+    from:  's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];let r=e.u32();for(let S=0;S<r;S++)t.overlayCards.push(e.u32())}',
+    to:    's===E.OVERLAY_CARD&&o>=4){t.overlayCards=[];let r=e.u32();for(let S=0;S<r;S++)t.overlayCards.push(e.u32())}else if(s===E.TARGET_CARD&&o>=4){t.targetCards=[];let r=e.u32();for(let S=0;S<r;S++)t.targetCards.push(p(e))}',
   },
 
   // ── P8: Fix SORT_CARD response encoder (spurious length prefix) ──
