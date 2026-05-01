@@ -55,7 +55,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly hasOpponent = computed(() => this.duelState().players[1] != null);
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.onEquipLeave());
+    this.destroyRef.onDestroy(() => this.onLinkedLeave());
 
     // Dynamic rebuild: re-query zone elements when opponent field first renders
     effect(() => {
@@ -472,7 +472,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
 
   private linkedHoverLines: HTMLDivElement[] = [];
 
-  onEquipHover(zoneKey: string): void {
+  onLinkedHover(zoneKey: string): void {
     const linked = this.linkedZoneMap().get(zoneKey);
     if (linked?.length) {
       this.linkedHighlightedZones.set(new Set(linked));
@@ -487,7 +487,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     }
   }
 
-  onEquipLeave(): void {
+  onLinkedLeave(): void {
     if (this.linkedHighlightedZones().size > 0) {
       this.linkedHighlightedZones.set(new Set());
     }

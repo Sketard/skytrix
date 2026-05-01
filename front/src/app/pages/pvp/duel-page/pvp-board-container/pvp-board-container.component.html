@@ -120,8 +120,8 @@
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-1-flip')"
                [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-1-activate')"
                [attr.aria-label]="isFaceUp(zone.card.position) ? buildAriaLabel(zone.card) : 'Face-down card'"
-               (mouseenter)="onEquipHover(zone.zoneId + '-1')"
-               (mouseleave)="onEquipLeave()"
+               (mouseenter)="onLinkedHover(zone.zoneId + '-1')"
+               (mouseleave)="onLinkedLeave()"
                (click)="onCardInspect(zone.card)">
             @if (zone.card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
@@ -216,8 +216,8 @@
                [class.pvp-anim-flip]="animatingEmzKeys().has(emz.zoneId + '-flip')"
                [class.pvp-anim-activate]="animatingEmzKeys().has(emz.zoneId + '-activate')"
                [attr.aria-label]="isFaceUp(card.position) ? buildAriaLabel(card) : 'Face-down card'"
-               (mouseenter)="onEquipHover(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
-               (mouseleave)="onEquipLeave()"
+               (mouseenter)="onLinkedHover(emz.zoneId + '-' + (emz.isOpponent ? '1' : '0'))"
+               (mouseleave)="onLinkedLeave()"
                (click)="onEmzCardClick($event, emz.zoneId, card)">
             @if (card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="card.overlayMaterials.length >= 3 ? 3 : card.overlayMaterials.length">
@@ -374,8 +374,8 @@
                [class.pvp-anim-flip]="animatingZoneKeys().has(zone.zoneId + '-0-flip')"
                [class.pvp-anim-activate]="animatingZoneKeys().has(zone.zoneId + '-0-activate')"
                [attr.aria-label]="isFaceUp(zone.card.position) ? buildAriaLabel(zone.card) : 'Face-down card'"
-               (mouseenter)="onEquipHover(zone.zoneId + '-0')"
-               (mouseleave)="onEquipLeave()"
+               (mouseenter)="onLinkedHover(zone.zoneId + '-0')"
+               (mouseleave)="onLinkedLeave()"
                (click)="onZoneCardClick($event, zone)">
             @if (zone.card.overlayMaterials.length > 0) {
               <div class="xyz-material-stack" [attr.data-count]="zone.card.overlayMaterials.length >= 3 ? 3 : zone.card.overlayMaterials.length">
