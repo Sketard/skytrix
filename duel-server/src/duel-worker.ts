@@ -624,16 +624,18 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       if (skipRpsFlag) return null;
       return { type: 'RPS_CHOICE', player: msg.player as Player };
 
-    case OcgMessageType.HAND_RES:
+    case OcgMessageType.HAND_RES: {
       if (skipRpsFlag) return null;
+      // OCGCore RPS values: 1=scissors, 2=rock, 3=paper. Client format: 0=rock, 1=paper, 2=scissors.
+      const OCGCORE_TO_CLIENT: Record<number, number> = { 1: 2, 2: 0, 3: 1 };
+      const handRes = msg as unknown as { res1: number; res2: number; winner: number };
       return {
         type: 'RPS_RESULT',
-        player1Choice: (msg as unknown as { res1: number }).res1,
-        player2Choice: (msg as unknown as { res2: number }).res2,
-        winner: (msg as unknown as { winner: number }).winner === 2
-          ? null
-          : (msg as unknown as { winner: number }).winner as Player,
+        player1Choice: OCGCORE_TO_CLIENT[handRes.res1] ?? handRes.res1,
+        player2Choice: OCGCORE_TO_CLIENT[handRes.res2] ?? handRes.res2,
+        winner: handRes.winner === 2 ? null : (handRes.winner as Player),
       };
+    }
 
     case OcgMessageType.RETRY:
       dlog.warn('OCGCore sent RETRY — previous response was invalid');
@@ -966,8 +968,11 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
       const idx = lastAnnounceNumberOptions.indexOf(val);
       return { type: 19, value: idx >= 0 ? idx : val };
     }
-    case 'RPS_CHOICE':
-      return { type: 20, value: (data['choice'] as number) + 1 }; // Client sends 0-2, OCGCore expects 1-3
+    case 'RPS_CHOICE': {
+      // Client sends 0=rock, 1=paper, 2=scissors. OCGCore expects 1=scissors, 2=rock, 3=paper.
+      const CLIENT_TO_OCGCORE = [2, 3, 1] as const;
+      return { type: 20, value: CLIENT_TO_OCGCORE[data['choice'] as number] };
+    }
     default:
       dlog.error('Unknown promptType', { promptType });
       return null;

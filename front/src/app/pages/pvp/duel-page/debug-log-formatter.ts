@@ -25,7 +25,7 @@ export interface DebugPanelEntry {
 
 const SEP = ' \u00b7 '; // middle dot separator
 
-const RPS_LABELS: Record<number, string> = { 1: 'Scissors', 2: 'Rock', 3: 'Paper' };
+const RPS_LABELS: Record<number, string> = { 0: 'Rock', 1: 'Paper', 2: 'Scissors' };
 
 const IDLE_ACTION_LABELS: Record<number, string> = {
   [IDLE_ACTION.SUMMON]: 'Normal Summon',
