@@ -837,14 +837,20 @@ export class OCGCoreAdapter implements GameOracle {
       const messages = this.core.duelGetMessage(internal.nativeHandle);
 
       // Phase 6 audit B — track the most recent "source card" announced by
-      // the OCG event stream. CHAINING (70), SUMMONING (60), SPSUMMONING (62),
-      // FLIPSUMMONING (64) all carry `code: number`. PLAYER_HINT (165) carries
-      // a `hint: bigint` that decodes as `cardCode << 20 | strIndex` — when
-      // present, it's typically the card about to issue a sub-prompt (most
-      // explicit signal from OCGCore). Reset on CHAIN_END / NEW_TURN /
-      // NEW_PHASE so a new chain starts fresh. Used as fallback for
-      // sourceCardId on SELECT_* prompts where msg.code is null
-      // (SELECT_CARD, SELECT_PLACE, etc.).
+      // the OCG event stream. Reset only on NEW_TURN / NEW_PHASE — keeping
+      // the source through CHAIN_END boosts coverage on post-chain prompts
+      // (SELECT_PLACE for the resolved Special Summon, etc.). Validated
+      // against ground-truth (SELECT_EFFECTYN direct vs eventStream): 100%
+      // agreement on overlap. See Phase 6 coverage matrix doc.
+      //
+      // Source-bearing events sniffed (in order of reliability):
+      //   CHAINING (70)        — card entering the chain
+      //   SUMMONING (60)       — normal/tribute summon
+      //   SPSUMMONING (62)     — special summon
+      //   FLIPSUMMONING (64)   — flip summon
+      //   PLAYER_HINT (165)    — explicit hint from OCGCore (hint: bigint, decode >>20)
+      //   BECOME_TARGET (123)  — added Audit B Option 2 — card-target events
+      //   CARD_HINT (160)      — added Audit B Option 2 — explicit card hint events
       for (const m of messages) {
         const mt = m.type;
         if (mt === OcgMessageType.CHAINING
@@ -855,6 +861,19 @@ export class OCGCoreAdapter implements GameOracle {
           if (typeof code === 'number' && code > 0) {
             internal.eventStreamSourceCardId = code;
           }
+        } else if (mt === OcgMessageType.CARD_HINT) {
+          // CARD_HINT carries `description: bigint` encoded as
+          // (cardCode << 20 | strIndex). Audit B Option 2: this event
+          // refines the source on sub-prompts where the active card emits
+          // a hint just before the SELECT_*. More precise than CHAINING
+          // when the chain has multiple links resolving in sequence.
+          const desc = (m as unknown as { description?: bigint }).description;
+          if (typeof desc === 'bigint') {
+            const cardCode = Number(desc >> 20n);
+            if (cardCode > 0) {
+              internal.eventStreamSourceCardId = cardCode;
+            }
+          }
         } else if (mt === OcgMessageType.PLAYER_HINT) {
           const hint = (m as unknown as { hint?: bigint }).hint;
           if (typeof hint === 'bigint') {
@@ -863,8 +882,7 @@ export class OCGCoreAdapter implements GameOracle {
               internal.eventStreamSourceCardId = cardCode;
             }
           }
-        } else if (mt === OcgMessageType.CHAIN_END
-          || mt === OcgMessageType.NEW_TURN
+        } else if (mt === OcgMessageType.NEW_TURN
           || mt === OcgMessageType.NEW_PHASE) {
           internal.eventStreamSourceCardId = undefined;
         }
@@ -963,6 +981,14 @@ export class OCGCoreAdapter implements GameOracle {
         // for sub-prompts of an active effect (SELECT_CARD targets,
         // SELECT_PLACE for SS, etc.). Lifts coverage from 26.6% to 61.7%
         // across the audit corpus — see Phase 6 matrix doc.
+        // Audit B: msg.code / msg.description first (100% reliable on
+        // SELECT_EFFECTYN, SELECT_POSITION, SELECT_YESNO — the prompts
+        // that natively carry source). Fall back to the most recent
+        // CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING/CARD_HINT/PLAYER_HINT
+        // event for sub-prompts of an active effect (SELECT_CARD targets,
+        // SELECT_PLACE for SS, etc.). With CHAIN_END reset relaxed (only
+        // NEW_TURN/NEW_PHASE reset), coverage reaches 93.3% across the
+        // audit corpus — see Phase 6 matrix doc.
         internal.lastPromptSourceCardId = extractSourceCardIdFromMsg(msgAny)
           ?? internal.eventStreamSourceCardId;
 

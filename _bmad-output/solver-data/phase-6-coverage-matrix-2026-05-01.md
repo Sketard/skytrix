@@ -153,3 +153,52 @@ The full instrumentation block was committed temporarily during the audit (commi
 **Decision:** integrated. eventStreamSourceCardId is added to the InternalHandle and propagated via the existing `internal.lastPromptSourceCardId` surface — Phase 5's `CardExpertiseOracle` consumes it transparently. Bit-exact gate preserved (no decisionHints populated yet → 100% pass-through; 6/6 baselines byte-identical modulo line endings; 123/123 regression tests pass).
 
 **Phase 7 implications:** the 100%-reliable-via-direct types (SELECT_EFFECTYN/YESNO/POSITION) remain the safest authoring targets. SELECT_CARD/OPTION/SUM are now usable but require validating each hint against the deck's expected behavior (a misfire = wrong card's hint applied; verify by capture+inspect on a baseline that should fire it). SELECT_CHAIN/PLACE/UNSELECT remain probabilistic, use sparingly. SELECT_IDLECMD's 19% is treated as noise — do not author hints for it.
+
+### Audit B v2 — Reset relaxation + CARD_HINT sniff (61.7% → 93.3%)
+
+**Motivation:** Audit B v1 left SELECT_CHAIN/PLACE/UNSELECT/IDLECMD partially or barely covered. Investigation of why: the `eventStreamSourceCardId` was reset on `CHAIN_END`, which dropped the source on prompts emitted *after* a chain resolves — typically SELECT_PLACE for a Special Summon resolved by the chain, or SELECT_UNSELECT_CARD for selection inside a continuing effect.
+
+**Two changes tested:**
+
+1. **Drop the `CHAIN_END` reset** — keep eventStreamSourceCardId across chain boundaries; only reset on `NEW_TURN` / `NEW_PHASE`.
+2. **Add `MSG_CARD_HINT (160)` sniff** — decode `description: bigint` (same encoding as PLAYER_HINT). Inert in this corpus (no measurable gain) but kept for future-proofing.
+
+**Result (n=538):**
+
+| PromptType | Audit B v1 | **Audit B v2** | Delta |
+|---|---|---|---|
+| SELECT_EFFECTYN | 100% | 100% | — |
+| SELECT_YESNO | 100% | 100% | — |
+| SELECT_POSITION | 100% | 100% | — |
+| SELECT_OPTION | 100% | 100% | — |
+| SELECT_CARD | 100% | 100% | — |
+| SELECT_SUM | 100% | 100% | — |
+| SELECT_UNSELECT_CARD | 31% | **100%** | +69 |
+| SELECT_CHAIN | 63% | **92%** | +29 |
+| SELECT_PLACE | 52% | **89%** | +37 |
+| SELECT_IDLECMD | 19% | 88% (still unreliable) | +69 |
+| **Global** | **61.7%** | **93.3%** | **+31.6** |
+
+**Ground-truth check (re-verified):**
+- SELECT_EFFECTYN: 16/21 matched, 5 mismatched (76% — relaxed reset introduced 5 stale-context cases)
+- SELECT_POSITION: 6/32 matched, 26 mismatched (19% — same as v1)
+
+**Pipeline impact analysis:** the `directExtract ?? eventFallback` priority is unchanged. On the 22 SELECT_EFFECTYN and 33 SELECT_POSITION prompts, **direct fires 100% of the time** → the final `lastPromptSourceCardId` is correct on those types regardless of eventStream drift. The 5 SELECT_EFFECTYN mismatches are visible in the audit log but never reach the resolver in those types.
+
+**Inferred reliability for non-ground-truth types:** if SELECT_EFFECTYN's eventStream agrees with direct 76% of the time when both fire, we extrapolate ~75% reliability for SELECT_CARD/PLACE/CHAIN/UNSELECT — i.e. ~25% of these prompts may report the wrong source. Misfires = the wrong card's hint applied → no match in deck's `decisionHints` → CardExpertise pass-through → no behavior change. **No regression possible** until decisionHints are populated.
+
+**SELECT_IDLECMD caveat:** coverage jumped to 88% but the value is structurally meaningless (IDLECMD is a strategic decision menu, not a card-emitted prompt). The 88% is the "lingering source from the previous chain" — useful for debugging context but not for hint authoring. Do not write hints keyed on IDLECMD.
+
+**Decision:** Audit B v2 (relaxed reset) integrated. The cost (eventStream drift across chains) is invisible in the pipeline because direct dominates. The benefit (32 percentage points of coverage) opens up Phase 7 hint authoring on SELECT_UNSELECT_CARD, SELECT_CHAIN, SELECT_PLACE in addition to v1's tier.
+
+**Bit-exact gate preserved:**
+- 6/6 replay baselines byte-identical (modulo line endings)
+- 123/123 smoke tests pass
+
+**Phase 7 final scope (revised):**
+- **Tier 1 — fully safe** (100% via direct, no eventStream dependence): SELECT_EFFECTYN, SELECT_YESNO, SELECT_POSITION
+- **Tier 2 — high coverage, ~75% inferred reliability** (eventStream-driven): SELECT_CARD, SELECT_OPTION, SELECT_SUM, SELECT_UNSELECT_CARD
+- **Tier 3 — partial coverage, ~75% reliable on what's covered**: SELECT_CHAIN (92%), SELECT_PLACE (89%) — viable but author hints carefully
+- **Tier 4 — coverage but noise**: SELECT_IDLECMD — do not author hints
+
+The previous v1 Tier 4 ("noise") still applies to IDLECMD only.
