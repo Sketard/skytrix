@@ -214,6 +214,12 @@ interface InternalHandle {
    *  via getLastPromptSourceCardId. undefined when no reliable source for
    *  this prompt type (see Phase 6 coverage matrix). */
   lastPromptSourceCardId?: number;
+  /** Phase 6 audit B — most recent card source announced by the OCG event
+   *  stream (CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING events all carry
+   *  `code: number`). Used as fallback for `lastPromptSourceCardId` when
+   *  the SELECT_* msg itself has no `code` field (SELECT_CARD, SELECT_PLACE,
+   *  etc.). Reset on CHAIN_END / NEW_TURN / NEW_PHASE. */
+  eventStreamSourceCardId?: number;
   /** Phase B (graph-ml-v2) axis E (tempo / commitment) — per-turn cumulative
    *  counters tracking action density. Reset on every NEW_TURN. Surface via
    *  FieldState's matching optional fields. All condition-free, history-
@@ -830,6 +836,41 @@ export class OCGCoreAdapter implements GameOracle {
       const status = this.core.duelProcess(internal.nativeHandle);
       const messages = this.core.duelGetMessage(internal.nativeHandle);
 
+      // Phase 6 audit B — track the most recent "source card" announced by
+      // the OCG event stream. CHAINING (70), SUMMONING (60), SPSUMMONING (62),
+      // FLIPSUMMONING (64) all carry `code: number`. PLAYER_HINT (165) carries
+      // a `hint: bigint` that decodes as `cardCode << 20 | strIndex` — when
+      // present, it's typically the card about to issue a sub-prompt (most
+      // explicit signal from OCGCore). Reset on CHAIN_END / NEW_TURN /
+      // NEW_PHASE so a new chain starts fresh. Used as fallback for
+      // sourceCardId on SELECT_* prompts where msg.code is null
+      // (SELECT_CARD, SELECT_PLACE, etc.).
+      for (const m of messages) {
+        const mt = m.type;
+        if (mt === OcgMessageType.CHAINING
+          || mt === OcgMessageType.SUMMONING
+          || mt === OcgMessageType.SPSUMMONING
+          || mt === OcgMessageType.FLIPSUMMONING) {
+          const code = (m as unknown as { code?: number }).code;
+          if (typeof code === 'number' && code > 0) {
+            internal.eventStreamSourceCardId = code;
+          }
+        } else if (mt === OcgMessageType.PLAYER_HINT) {
+          const hint = (m as unknown as { hint?: bigint }).hint;
+          if (typeof hint === 'bigint') {
+            const cardCode = Number(hint >> 20n);
+            if (cardCode > 0) {
+              internal.eventStreamSourceCardId = cardCode;
+            }
+          }
+        } else if (mt === OcgMessageType.CHAIN_END
+          || mt === OcgMessageType.NEW_TURN
+          || mt === OcgMessageType.NEW_PHASE) {
+          internal.eventStreamSourceCardId = undefined;
+        }
+      }
+
+
       // Track turn/phase from messages
       for (const m of messages) {
         if (m.type === OcgMessageType.NEW_TURN) {
@@ -915,7 +956,15 @@ export class OCGCoreAdapter implements GameOracle {
         // getLastPromptSourceCardId AFTER getLegalActions returns. Stored on
         // both the resolver and legacy paths so the value is consistent
         // regardless of SOLVER_USE_PROMPT_RESOLVER state.
-        internal.lastPromptSourceCardId = extractSourceCardIdFromMsg(msgAny);
+        // Audit B: msg.code / msg.description first (100% reliable on
+        // SELECT_EFFECTYN, SELECT_POSITION, SELECT_YESNO — the prompts
+        // that natively carry source). Fall back to the most recent
+        // CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING/PLAYER_HINT event
+        // for sub-prompts of an active effect (SELECT_CARD targets,
+        // SELECT_PLACE for SS, etc.). Lifts coverage from 26.6% to 61.7%
+        // across the audit corpus — see Phase 6 matrix doc.
+        internal.lastPromptSourceCardId = extractSourceCardIdFromMsg(msgAny)
+          ?? internal.eventStreamSourceCardId;
 
 
         // Phase 3 of prompt-resolver-refactor: route through PromptResolver
@@ -1939,6 +1988,8 @@ export class OCGCoreAdapter implements GameOracle {
       activationLog: cloneActivationLog(parent.activationLog),
       normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
       lastIdlecmdActivatableHandCount: parent.lastIdlecmdActivatableHandCount,
+      lastPromptSourceCardId: parent.lastPromptSourceCardId,
+      eventStreamSourceCardId: parent.eventStreamSourceCardId,
       specialSummonsThisTurn: [parent.specialSummonsThisTurn[0], parent.specialSummonsThisTurn[1]],
       chainResolutionsThisTurn: parent.chainResolutionsThisTurn,
       cardsDrawnThisTurn: [parent.cardsDrawnThisTurn[0], parent.cardsDrawnThisTurn[1]],
@@ -2030,6 +2081,8 @@ export class OCGCoreAdapter implements GameOracle {
       // the parent's already-tracked state is the correct snapshot.
       normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
       lastIdlecmdActivatableHandCount: parent.lastIdlecmdActivatableHandCount,
+      lastPromptSourceCardId: parent.lastPromptSourceCardId,
+      eventStreamSourceCardId: parent.eventStreamSourceCardId,
       specialSummonsThisTurn: [parent.specialSummonsThisTurn[0], parent.specialSummonsThisTurn[1]],
       chainResolutionsThisTurn: parent.chainResolutionsThisTurn,
       cardsDrawnThisTurn: [parent.cardsDrawnThisTurn[0], parent.cardsDrawnThisTurn[1]],

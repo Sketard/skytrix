@@ -114,3 +114,42 @@ The full instrumentation block was committed temporarily during the audit (commi
 **Decision:** lookback is NOT integrated into `extractSourceCardIdFromMsg`. Authoring `decisionHints` based on a 22%-correct signal would produce silent misfires (wrong card's hint applied to another card's prompt). The 100%-reliable subset (SELECT_EFFECTYN/SELECT_YESNO/SELECT_POSITION via `msg.code` / `msg.description`) is sufficient for Phase 7's audited fixtures.
 
 **Future work:** an MSG_HINT / MSG_CHAINING event-stream investigation (Audit B, ~3-4h) might surface a more reliable per-prompt source — OCGCore likely emits these context events between SELECT_* messages. Not blocking Phase 7.
+
+---
+
+## Audit B — Event-stream sniffing (CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING/PLAYER_HINT) — ACCEPTED
+
+**Hypothesis tested:** OCGCore emits non-SELECT messages between prompts that announce the source card more reliably than the SELECT_* msg itself. Specifically `MSG_CHAINING (70)`, `MSG_SUMMONING (60)`, `MSG_SPSUMMONING (62)`, `MSG_FLIPSUMMONING (64)` all carry `code: number`; `MSG_PLAYER_HINT (165)` carries a `hint: bigint` decodable as `cardCode << 20`.
+
+**Setup:** Track the most recent source card announced by these events as `internal.eventStreamSourceCardId`. Reset on `CHAIN_END / NEW_TURN / NEW_PHASE`. Use as fallback in `extractSourceCardIdFromMsg` when the SELECT_* msg has no `code` field.
+
+**Result (n=538):**
+
+| PromptType | Audit A coverage | **Audit B coverage** |
+|---|---|---|
+| SELECT_EFFECTYN | 100% | 100% (unchanged — direct already 100%) |
+| SELECT_YESNO | 100% | 100% (unchanged) |
+| SELECT_POSITION | 100% | 100% (unchanged) |
+| SELECT_OPTION | 0% | **100%** |
+| SELECT_CARD | 0% | **100%** |
+| SELECT_SUM | 0% | **100%** |
+| SELECT_CHAIN | 31% | **63%** |
+| SELECT_PLACE | 0% | **52%** |
+| SELECT_UNSELECT_CARD | 0% | **31%** |
+| SELECT_IDLECMD | 0% | 19% (unreliable — IDLECMD has no source) |
+| **Global** | **26.6%** | **61.7%** |
+
+**Ground-truth check (where direct AND eventStream are both populated):**
+- SELECT_EFFECTYN: **10/10 matched** (100% — eventStream is consistent with direct)
+- SELECT_POSITION: **6/22 matched, 16/22 mismatched** (eventStream points to the chain-source, but POSITION asks about the card just summoned, which is different)
+
+**Implication:** the `directExtract ?? eventFallback` priority is correct: when direct is available it always wins (and it's always right by construction). The eventStream fallback only fires when direct is null — i.e. on SELECT_CARD/PLACE/CHAIN/etc. sub-prompts where it represents a sensible "currently active effect's source".
+
+**Sample sanity check** (cross-referenced against the branded β-1 plan):
+- SELECT_CARD with eventStream=75003700 (Fallen of the White Dragon) → matches plan step 2's effect activating
+- SELECT_CARD with eventStream=73819701 (Dracotail Lukias) → matches plan step 1's on-summon search
+- SELECT_CARD with eventStream=95515789 (Branded Fusion) → matches Branded Fusion materials prompt
+
+**Decision:** integrated. eventStreamSourceCardId is added to the InternalHandle and propagated via the existing `internal.lastPromptSourceCardId` surface — Phase 5's `CardExpertiseOracle` consumes it transparently. Bit-exact gate preserved (no decisionHints populated yet → 100% pass-through; 6/6 baselines byte-identical modulo line endings; 123/123 regression tests pass).
+
+**Phase 7 implications:** the 100%-reliable-via-direct types (SELECT_EFFECTYN/YESNO/POSITION) remain the safest authoring targets. SELECT_CARD/OPTION/SUM are now usable but require validating each hint against the deck's expected behavior (a misfire = wrong card's hint applied; verify by capture+inspect on a baseline that should fire it). SELECT_CHAIN/PLACE/UNSELECT remain probabilistic, use sparingly. SELECT_IDLECMD's 19% is treated as noise — do not author hints for it.
