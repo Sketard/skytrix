@@ -28,10 +28,10 @@
       @if (c.liveOverlay && (c.liveOverlay.addedTypeLabels?.length || c.liveOverlay.removedTypeLabels?.length)) {
         <div class="card-type-alterations">
           @for (label of c.liveOverlay.addedTypeLabels ?? []; track label) {
-            <span class="type-alteration type-alteration--added">+{{ label }}</span>
+            <span class="type-alteration type-alteration--added">+{{ 'card_type.' + label | translate }}</span>
           }
           @for (label of c.liveOverlay.removedTypeLabels ?? []; track label) {
-            <span class="type-alteration type-alteration--removed">−{{ label }}</span>
+            <span class="type-alteration type-alteration--removed">−{{ 'card_type.' + label | translate }}</span>
           }
         </div>
       }
