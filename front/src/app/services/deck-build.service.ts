@@ -83,6 +83,11 @@ export class DeckBuildService extends SearchServiceCore {
     this._isDirty.set(true);
   }
 
+  public sortByType() {
+    this.deckState.update(deck => deck.sortByType());
+    this._isDirty.set(true);
+  }
+
   public addImage(card: CardDetail) {
     this.deckState.update(deck => deck.addImage(card));
     this._isDirty.set(true);

@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 
 import static com.skytrix.model.enums.Language.EN;
 import static com.skytrix.model.enums.Language.FR;
+import static com.skytrix.utils.CoreUtils.getNullSafe;
 import static com.skytrix.utils.CoreUtils.mapToList;
 import static java.lang.Thread.sleep;
 
@@ -106,6 +107,38 @@ public class YugiproApiService {
                 if (!Objects.equals(value.getLevel(), enCard.getLevel())) { value.setLevel(enCard.getLevel()); changed = true; }
                 if (!Objects.equals(value.getScale(), enCard.getScale())) { value.setScale(enCard.getScale()); changed = true; }
                 if (!Objects.equals(value.getLinkval(), enCard.getLinkval())) { value.setLinkval(enCard.getLinkval()); changed = true; }
+                // Update sets: add any new ones from API
+                var apiSets = getNullSafe(enCard.getSets());
+                if (!apiSets.isEmpty()) {
+                    var existingKeys = value.getSets().stream()
+                        .map(s -> s.getCode() + ":" + s.getRarityCode())
+                        .collect(Collectors.toSet());
+                    var newSets = apiSets.stream()
+                        .filter(s -> !existingKeys.contains(s.getCode() + ":" + s.getRarityCode()))
+                        .map(cardMapper::toCardSet)
+                        .toList();
+                    if (!newSets.isEmpty()) {
+                        newSets.forEach(value::addSet);
+                        changed = true;
+                    }
+                }
+
+                // Update images: add any new alternate arts from API
+                var apiImages = getNullSafe(enCard.getImages());
+                if (!apiImages.isEmpty()) {
+                    var existingImageIds = value.getImages().stream()
+                        .map(CardImage::getImageId)
+                        .collect(Collectors.toSet());
+                    var newImages = apiImages.stream()
+                        .filter(img -> !existingImageIds.contains(img.getId()))
+                        .map(cardMapper::toCardImage)
+                        .toList();
+                    if (!newImages.isEmpty()) {
+                        newImages.forEach(value::addImage);
+                        changed = true;
+                    }
+                }
+
                 // Update translations (upsert)
                 value.addTranslation(enCard, EN);
                 if (changed) {

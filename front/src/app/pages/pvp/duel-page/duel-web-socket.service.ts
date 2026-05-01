@@ -102,6 +102,10 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this._activeConnection().sendActivityPing();
   }
 
+  sendAnimationsDone(): void {
+    this._activeConnection().sendAnimationsDone();
+  }
+
   dequeueAnimation(): QueueEntry | null {
     return this._activeConnection().dequeueAnimation();
   }

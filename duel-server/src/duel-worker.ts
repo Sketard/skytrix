@@ -66,6 +66,7 @@ let systemStrings: Map<number, string> = new Map();
 let skipRpsFlag = false;
 let skipShuffleFlag = false;
 let lastAnnounceNumberOptions: number[] = [];
+let lastResponsePlayerIndex: 0 | 1 = 0;
 
 // Replay capture state
 let capturedResponses: CapturedResponse[] = [];
@@ -562,7 +563,6 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     }
 
     case OcgMessageType.SELECT_TRIBUTE:
-      dlog.debug('SELECT_TRIBUTE', { selects: msg.selects.length, min: msg.min, max: msg.max, cancelable: msg.can_cancel });
       return {
         type: 'SELECT_TRIBUTE', player: msg.player as Player,
         min: msg.min, max: msg.max,
@@ -1059,7 +1059,6 @@ function runDuelLoop(): void {
 
       // RETRY: OCGCore rejected the previous response — flag for re-prompt
       if (msg.type === OcgMessageType.RETRY) {
-        dlog.warn('RETRY received — OCGCore rejected previous response');
         hasRetry = true;
         continue;
       }
@@ -1118,7 +1117,7 @@ function runDuelLoop(): void {
 
     // RETRY recovery: tell the server to re-send the cached prompt
     if (hasRetry && status === OcgProcessResult.WAITING) {
-      port.postMessage({ type: 'WORKER_RETRY', duelId });
+      port.postMessage({ type: 'WORKER_RETRY', duelId, playerIndex: lastResponsePlayerIndex });
     }
 
     if (status === OcgProcessResult.END) {
@@ -1920,8 +1919,8 @@ port.on('message', (msg: MainToWorkerMessage) => {
       dlog.error('Received PLAYER_RESPONSE but no active duel');
       return;
     }
+    lastResponsePlayerIndex = msg.playerIndex;
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
-    dlog.debug('transformResponse', { promptType: msg.promptType });
     if (response) {
       if (forkMode) {
         core!.duelSetResponse(duel, response as never);

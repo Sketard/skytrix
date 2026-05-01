@@ -4,6 +4,7 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  inject,
   OnInit,
   signal,
 } from '@angular/core';
@@ -11,7 +12,7 @@ import { PromptSubComponent } from '../prompt.types';
 import { HintContext } from '../../../types';
 import { POSITION, SelectPositionMsg } from '../../../duel-ws.types';
 import { TranslatePipe } from '@ngx-translate/core';
-import { getCardImageUrlByCode } from '../../../pvp-card.utils';
+import { DuelCardArtService } from '../../duel-card-art.service';
 
 interface PositionOption {
   index: number;
@@ -30,6 +31,8 @@ interface PositionOption {
   imports: [TranslatePipe],
 })
 export class PromptPositionSelectComponent implements PromptSubComponent<SelectPositionMsg>, OnInit {
+  private readonly artService = inject(DuelCardArtService);
+
   promptData: SelectPositionMsg | null = null;
   hintContext: HintContext | null = null;
   response = new EventEmitter<unknown>();
@@ -52,7 +55,7 @@ export class PromptPositionSelectComponent implements PromptSubComponent<SelectP
 
   get options(): PositionOption[] {
     if (!this.promptData) return [];
-    const cardUrl = getCardImageUrlByCode(this.promptData.cardCode);
+    const cardUrl = this.artService.resolveUrl(this.promptData.cardCode);
     const backUrl = 'assets/images/card_back.jpg';
 
     return this.promptData.positions.map((pos, i) => {

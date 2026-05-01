@@ -29,5 +29,9 @@
         [inputLabel]="'cardFilters.attribute'">
       </app-toggle-icon-filter>
     </div>
+    <div class="cardFilters-filter">
+      <app-card-set-search-filter [form]="localForm.controls.cardSetFilter">
+      </app-card-set-search-filter>
+    </div>
   </div>
 }

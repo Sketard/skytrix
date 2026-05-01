@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, effect, ElementRef, inject, input, output, signal } from '@angular/core';
 import { CardOnField, ZoneId } from '../../duel-ws.types';
-import { getCardImageUrlByCode } from '../../pvp-card.utils';
+import { DuelCardArtService } from '../duel-card-art.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { setupClickOutsideListener } from '../click-outside.utils';
 
@@ -30,6 +30,7 @@ const ZONE_ICON_PATHS: Partial<Record<ZoneId, string>> = {
 export class PvpZoneBrowserOverlayComponent {
   private readonly el = inject(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly artService = inject(DuelCardArtService);
 
   readonly zoneId = input.required<ZoneId>();
   readonly cards = input<CardOnField[]>([]);
@@ -43,7 +44,7 @@ export class PvpZoneBrowserOverlayComponent {
   readonly isClosing = signal(false);
   readonly expanded = signal(false);
 
-  readonly getCardImageUrlByCode = getCardImageUrlByCode;
+  readonly getCardImageUrlByCode = (code: number | null) => this.artService.resolveUrl(code);
 
   private removeOutsideListener: () => void;
   private closeTimeout: ReturnType<typeof setTimeout> | null = null;

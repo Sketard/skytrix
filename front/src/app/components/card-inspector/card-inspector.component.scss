@@ -329,6 +329,40 @@
   }
 }
 
+// Zoomable image cursor
+.inspector-image--zoomable {
+  cursor: zoom-in;
+}
+
+// Full-screen image lightbox
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+
+  &__img {
+    max-width: min(420px, 90vw);
+    max-height: 90dvh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    cursor: default;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+
+    @media (max-width: 480px) {
+      max-width: 95vw;
+      max-height: 85dvh;
+      border-radius: 4px;
+    }
+  }
+}
+
 // Reduced motion support
 @media (prefers-reduced-motion: reduce) {
   :host {

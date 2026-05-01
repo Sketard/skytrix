@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, OnInit, signal, TemplateRef, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, OnInit, signal, TemplateRef, untracked, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -15,7 +15,8 @@ import { DuelTabGuardService } from './duel-tab-guard.service';
 import { EMPTY_STRING_SET } from '../types';
 import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectCardMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
 import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
-import { buildFaceDownZoneKeys, getCardImageUrlByCode } from '../pvp-card.utils';
+import { buildFaceDownZoneKeys } from '../pvp-card.utils';
+import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey, getZonePillCards } from '../pvp-zone.utils';
 import { CardDataCacheService } from './card-data-cache.service';
 import { PvpBoardContainerComponent } from './pvp-board-container/pvp-board-container.component';
@@ -68,6 +69,7 @@ import { environment } from '../../../../environments/environment';
     AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
+    DuelCardArtService,
     { provide: ANIMATION_DATA_SOURCE, useExisting: DuelWebSocketService },
   ],
   imports: [
@@ -169,13 +171,29 @@ export class DuelPageComponent implements OnInit {
   // Delegate animation signals to service
   readonly isAnimating = this.animationService.isAnimating;
   readonly animatingZone = this.animationService.animatingZone;
+
+  // Notify server when animations complete so it can start the turn timer.
+  // Fires on every (pendingPrompt, isAnimating) change: sends immediately if
+  // not animating, or defers until the queue drains.
+  private readonly _animationsDoneEffect = effect(() => {
+    const prompt = this.wsService.pendingPrompt();
+    const animating = this.isAnimating();
+    if (prompt && !animating) {
+      untracked(() => this.wsService.sendAnimationsDone());
+    }
+  });
   private readonly lpTracker = inject(LpAnimationTracker);
   readonly animatingLpPlayer = this.lpTracker.animatingLpPlayer;
 
   // Delegate card inspection signals to service
+  private readonly artService = inject(DuelCardArtService);
+
   readonly inspectedCard = this.cardInspection.inspectedCard;
   readonly inspectorForceExpanded = this.cardInspection.inspectorForceExpanded;
-  readonly getCardImageUrl = getCardImageUrlByCode;
+
+  getCardImageUrl(cardCode: number | null): string {
+    return this.artService.resolveUrl(cardCode);
+  }
 
   // Zone highlight (Pattern A — SELECT_PLACE / SELECT_DISFIELD)
   // Story 4.2 — All prompt-dependent computeds use visiblePrompt (drain coordination)
@@ -515,7 +533,9 @@ export class DuelPageComponent implements OnInit {
         this.router.navigate(['/pvp']);
       } else {
         const restoredPlayer = (stored?.activePlayer as 0 | 1 | undefined) ?? 0;
-        try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, wsToken2, activePlayer: restoredPlayer })); } catch {}
+        const decklistId = (history.state?.decklistId as number | undefined) ?? (stored?.decklistId as number | undefined) ?? null;
+        this.roomService.decklistId = decklistId;
+        try { sessionStorage.setItem(soloTokensKey, JSON.stringify({ wsToken1, wsToken2, activePlayer: restoredPlayer, decklistId })); } catch {}
         this.tabGuard.init(code);
         this.tabGuard.broadcast();
         this.orchestrator.init(wsToken1, wsToken2);

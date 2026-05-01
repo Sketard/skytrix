@@ -18,6 +18,7 @@ export const BOTH_DISCONNECTED_CLEANUP_MS = 4 * 60 * 60 * 1000; // 4 hours
 export const STATE_SYNC_RATE_LIMIT_MS = 5_000;
 export const REPLAY_WORKER_WATCHDOG_MS = 30_000;
 export const REPLAY_CACHE_TTL_MS = 600_000; // 10 min
+export const ANIMATIONS_DONE_TIMEOUT_MS = 30_000; // safety: start timer even if client never sends ANIMATIONS_DONE
 export const MAX_REPLAY_WORKERS = 3;
 
 // =============================================================================
@@ -132,6 +133,7 @@ export interface WorkerError {
 export interface WorkerRetry {
   type: 'WORKER_RETRY';
   duelId: string;
+  playerIndex: 0 | 1;
 }
 
 export interface CapturedResponse {
@@ -245,6 +247,9 @@ export interface TimerContext {
   intervalRef: ReturnType<typeof setInterval> | null;
   lastTickMs: number;
   turnCount: number;
+  /** Player awaiting ANIMATIONS_DONE before the timer starts. null = timer starts immediately. */
+  pendingPlayer: Player | null;
+  pendingTimeout: ReturnType<typeof setTimeout> | null;
 }
 
 export interface DuelSession {

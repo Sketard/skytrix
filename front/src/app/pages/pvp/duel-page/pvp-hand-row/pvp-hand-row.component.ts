@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, HostListener, inject, input, output, signal } from '@angular/core';
 import { CardOnField } from '../../duel-ws.types';
-import { getCardImageUrlByCode } from '../../pvp-card.utils';
+import { DuelCardArtService } from '../duel-card-art.service';
 
 @Component({
   selector: 'app-pvp-hand-row',
@@ -13,6 +13,7 @@ export class PvpHandRowComponent {
   private static readonly EXPANSION_MARKER = {} as CardOnField;
   private readonly el = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly artService = inject(DuelCardArtService);
   readonly hoveredIndex = signal<number | null>(null);
   readonly selectedIndex = signal<number | null>(null);
   private readonly isSmallViewport = signal(false);
@@ -98,7 +99,7 @@ export class PvpHandRowComponent {
     return `rotate(${angle}deg) translateY(${y}px)`;
   }
 
-  readonly getCardImageUrlByCode = getCardImageUrlByCode;
+  readonly getCardImageUrlByCode = (code: number | null) => this.artService.resolveUrl(code);
 
   isPlayerSide(): boolean {
     return this.side() === 'player';

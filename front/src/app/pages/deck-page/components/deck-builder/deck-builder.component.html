@@ -92,6 +92,10 @@
               <mat-icon>cloud_upload</mat-icon>
               <span>{{ 'deckBuilder.import' | translate }}</span>
             </button>
+            <button mat-menu-item [disabled]="deckBuildService.deckEmpty()" (click)="sortByType()">
+              <mat-icon>sort</mat-icon>
+              <span>{{ 'deckBuilder.sortByType' | translate }}</span>
+            </button>
             <button mat-menu-item (click)="toggleTestHand()">
               <mat-icon>back_hand</mat-icon>
               <span>{{ 'deckBuilder.testHand' | translate }}</span>

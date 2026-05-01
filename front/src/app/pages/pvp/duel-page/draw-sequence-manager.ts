@@ -632,6 +632,7 @@ export class DrawSequenceManager {
     const flipDuration = this.ctx.scaledDuration(300, 150);
     const highlightDuration = this.ctx.scaledDuration(600, 300);
     const holdDuration = this.ctx.scaledDuration(200, 100);
+    let animatedCount = 0;
 
     for (const card of cards) {
       // Prefer matching float by cardCode so an interleaved per-card CONFIRM
@@ -643,6 +644,7 @@ export class DrawSequenceManager {
       if (!floatEl) floatEl = this.cardTravelService.popLandedFloat('HAND');
       this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — popLandedFloat=%s cardCode=%d', !!floatEl, card.cardCode);
       if (!floatEl) continue;
+      animatedCount++;
 
       const relPlayer = this.ctx.relativePlayer(card.player);
 
@@ -676,6 +678,7 @@ export class DrawSequenceManager {
 
       this.cardTravelService.returnToLanded(floatEl as HTMLDivElement);
     }
+    this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — done: animated=%d/%d', animatedCount, cards.length);
   }
 
 }

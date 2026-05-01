@@ -265,6 +265,8 @@
       "revealedCards": "Revealed cards",
       "noValidTargets": "No valid targets",
       "sumProgress": "{{selected}} / {{target}} needed",
+      "sumConfirm": "Summon",
+      "sumAddMore": "Add material",
       "selectCounters": "Select counters",
       "searchCardName": "Search card name...",
       "searching": "Searching...",
@@ -354,6 +356,7 @@
     "exportStandard": "Standard export",
     "exportCardmarket": "Cardmarket export",
     "import": "Import",
+    "sortByType": "Sort by type",
     "testHand": "Test hand",
     "simulator": "Simulator",
     "pvpDuel": "PvP Duel",
@@ -398,7 +401,8 @@
     "cardType": "Card type",
     "attribute": "Attribute",
     "min": "Min.",
-    "max": "Max."
+    "max": "Max.",
+    "cardSet": "Card set"
   },
   "cardInspector": {
     "owned": "Owned"

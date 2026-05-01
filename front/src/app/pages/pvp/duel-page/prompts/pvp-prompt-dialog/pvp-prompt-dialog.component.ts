@@ -273,8 +273,24 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     if ('excludedCards' in instance) {
       (instance as unknown as { excludedCards: unknown[] }).excludedCards = this.wsService.lastSelectedCards;
     }
+    const allConfirmed = this.confirmedCards() ?? this.wsService.lastConfirmedCards;
     if ('revealedCards' in instance) {
-      (instance as unknown as { revealedCards: unknown[] }).revealedCards = (this.confirmedCards() ?? this.wsService.lastConfirmedCards).filter(isExcavatedCard);
+      // For prompts that select from a revealed hand (e.g. Aqua Dolphin), show the
+      // non-selectable confirmed cards (spells/traps) in the read-only panel.
+      // Fall back to excavated-only for prompts with no selectable card overlap.
+      const selectableKeys = new Set(
+        ('cards' in prompt ? (prompt as { cards: CardInfo[] }).cards : [])
+          .map((c: CardInfo) => `${c.location}-${c.player}-${c.sequence}`)
+      );
+      const nonSelectable = allConfirmed.filter(c =>
+        !selectableKeys.has(`${c.location}-${c.player}-${c.sequence}`)
+      );
+      (instance as unknown as { revealedCards: unknown[] }).revealedCards =
+        nonSelectable.length > 0 ? nonSelectable : allConfirmed.filter(isExcavatedCard);
+    }
+    if ('confirmedCardKeys' in instance) {
+      (instance as unknown as { confirmedCardKeys: Set<string> }).confirmedCardKeys =
+        new Set(allConfirmed.map(c => `${c.location}-${c.player}-${c.sequence}`));
     }
     if ('ownPlayerIndex' in instance) {
       (instance as unknown as { ownPlayerIndex: number }).ownPlayerIndex = this.ownPlayerIndex();

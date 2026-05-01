@@ -2,7 +2,7 @@ import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal
 import type { DuelState, GameEvent } from '../types';
 import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg, CardInfo } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
-import { getCardImageUrlByCode } from '../pvp-card.utils';
+import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
 import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, GROUP_STAGGER_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
@@ -48,6 +48,7 @@ export class AnimationOrchestratorService {
   readonly moveRouter = inject(MoveAnimationRouter);
   private readonly battleTracker = inject(BattleAnimationTracker);
   private readonly toastService = inject(DuelToastService);
+  private readonly artService = inject(DuelCardArtService);
 
   // --- Public read-only signals ---
   private readonly _isAnimating = signal(false);
@@ -87,6 +88,8 @@ export class AnimationOrchestratorService {
   private _pollCount = 0;
   /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
   private _isProcessing = false;
+  /** Set while inline replayBuffer is dispatching buffered events, so processEvent skips re-buffering. */
+  private _isReplayingBuffer = false;
   /** Active await-signal effect (cleaned up on destroy/resetForSwitch). */
   private _awaitSignalEffect: EffectRef | null = null;
 
@@ -357,6 +360,7 @@ export class AnimationOrchestratorService {
     if (inlineFromLoop) {
       batch.push({ kind: 'batch-end', resolve: releaseSessionLocks });
       this.trace('batchEnqueue', { bufferLen: buffer.length, directives: batch.filter(e => 'kind' in e).length, inline: true });
+      this._isReplayingBuffer = true;
       this.dataSource.prependToQueue(batch);
       this.chainManager.clearWaiting();
       return Promise.resolve();
@@ -828,8 +832,10 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
 
   private processEvent(event: GameEvent): number | 'async' | Promise<void> {
-    // Buffer board-changing events during chain resolution
-    if (this.chainManager.bufferIfResolving(event)) {
+    // Buffer board-changing events during chain resolution, unless we are
+    // currently dispatching an inline buffer replay — in that case events
+    // must play through rather than be re-buffered (which would loop forever).
+    if (!this._isReplayingBuffer && this.chainManager.bufferIfResolving(event)) {
       const moveInfo = event.type === 'MSG_MOVE' ? ` card=${(event as MoveMsg).cardCode} reason=${(event as MoveMsg).reason}` : '';
       this.logger.log(DuelLogCategory.CHAIN, 'Buffering %s during chain resolution%s', event.type, moveInfo);
       return 0;
@@ -1041,8 +1047,8 @@ export class AnimationOrchestratorService {
     const rel2 = this.ctx.relativePlayer(msg.card2.player);
     const key1 = locationToZoneKey(msg.card1.location, msg.card1.sequence, rel1);
     const key2 = locationToZoneKey(msg.card2.location, msg.card2.sequence, rel2);
-    const img1 = this.cardTravelService.toAbsoluteUrl(getCardImageUrlByCode(msg.card1.cardCode));
-    const img2 = this.cardTravelService.toAbsoluteUrl(getCardImageUrlByCode(msg.card2.cardCode));
+    const img1 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card1.cardCode));
+    const img2 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card2.cardCode));
     const duration = this.ctx.scaledDuration(400, 200);
 
     const lock1 = this.rbs.lockZone(key1);

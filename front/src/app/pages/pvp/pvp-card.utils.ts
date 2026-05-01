@@ -44,13 +44,16 @@ export function getCardImageUrlByCode(cardCode: number | null): string {
  * Preload card images into the browser cache so subsequent `<img [src]>`
  * bindings display instantly. Returns a promise that resolves when all
  * images have loaded (or failed). Shared between PvP and replay.
+ *
+ * @param artMap Optional map of cardCode → smallUrl for custom art selections.
+ *   When provided, the mapped URL is used instead of the default API URL.
  */
-export function preloadCardImages(codes: readonly number[]): Promise<void[]> {
+export function preloadCardImages(codes: readonly number[], artMap?: Map<number, string>): Promise<void[]> {
   const promises = codes.map(code => new Promise<void>(resolve => {
     const img = new Image();
     img.onload = () => resolve();
     img.onerror = () => resolve();
-    img.src = getCardImageUrlByCode(code);
+    img.src = artMap?.get(code) ?? getCardImageUrlByCode(code);
   }));
   return Promise.all(promises);
 }

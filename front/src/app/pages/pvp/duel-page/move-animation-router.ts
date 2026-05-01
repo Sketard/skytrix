@@ -3,7 +3,7 @@ import type { GameEvent } from '../types';
 import type { MoveMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
-import { getCardImageUrlByCode } from '../pvp-card.utils';
+import { DuelCardArtService } from './duel-card-art.service';
 import { ANIMATION_DATA_SOURCE, type QueueEntry } from './animation-data-source';
 import { CardTravelService } from './card-travel.service';
 import { DrawSequenceManager } from './draw-sequence-manager';
@@ -54,6 +54,7 @@ export class MoveAnimationRouter {
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger);
   private readonly drawManager = inject(DrawSequenceManager);
+  private readonly artService = inject(DuelCardArtService);
 
   private get rbs() { return this.dataSource.renderedBoardState; }
 
@@ -293,7 +294,7 @@ export class MoveAnimationRouter {
       && (msg.toPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
     const baseRotateZ = this.ctx.cardBaseRotation(relPlayer);
     const travelDuration = this.ctx.scaledDuration(400, 200);
-    const cardImage = this.cardTravelService.toAbsoluteUrl(getCardImageUrlByCode(resolvedCardCode));
+    const cardImage = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(resolvedCardCode));
 
     const src: string | HTMLElement = from === LOCATION.HAND
       ? this.drawManager.resolveHandTarget(srcKey, msg.fromSequence)

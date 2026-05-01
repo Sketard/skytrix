@@ -90,6 +90,17 @@
   }
 </ng-template>
 
+@if (lightboxOpen()) {
+  @if (card(); as c) {
+    <div class="image-lightbox" (click)="closeLightbox()" role="dialog" [attr.aria-label]="c | cardName">
+      <img [src]="currentImageUrlFull()"
+           [alt]="c | cardName"
+           class="image-lightbox__img"
+           (error)="$any($event.target).src='assets/images/card_back.jpg'" />
+    </div>
+  }
+}
+
 @if (mode() === 'click') {
   <!-- Click mode: full-screen backdrop + centered panel -->
   @if (isVisible()) {
@@ -98,7 +109,8 @@
         <div class="inspector-panel" (click)="$event.stopPropagation()">
           <img [src]="currentImageUrlFull()"
                [alt]="c | cardName"
-               class="inspector-image"
+               class="inspector-image inspector-image--zoomable"
+               (click)="openLightbox(); $event.stopPropagation()"
                (error)="$any($event.target).src='assets/images/card_back.jpg'" />
           <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
           <ng-container *ngTemplateOutlet="cardDetails; context: { $implicit: c }"></ng-container>
@@ -115,7 +127,8 @@
         <div class="inspector-left">
           <img [src]="currentImageUrl()"
                [alt]="c | cardName"
-               class="inspector-image"
+               class="inspector-image inspector-image--zoomable"
+               (click)="openLightbox()"
                (error)="$any($event.target).src='assets/images/card_back.jpg'" />
           <ng-container *ngTemplateOutlet="artSwitcher"></ng-container>
           <ng-content></ng-content>

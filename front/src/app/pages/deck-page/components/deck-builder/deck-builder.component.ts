@@ -384,6 +384,10 @@ export class DeckBuilderComponent implements OnDestroy {
     }
   }
 
+  public sortByType() {
+    this.deckBuildService.sortByType();
+  }
+
   public toggleTestHand() {
     this.deckBuildService.toggleHandTestOpened();
   }

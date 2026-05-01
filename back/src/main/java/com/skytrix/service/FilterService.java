@@ -9,9 +9,12 @@ import jakarta.persistence.criteria.Root;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import static org.springframework.util.StringUtils.hasText;
 
 import com.skytrix.model.dto.card.CardFilterDTO;
+import com.skytrix.model.dto.card.CardSetFilterDTO;
 import com.skytrix.model.entity.Card;
+import com.skytrix.model.entity.CardSet;
 import com.skytrix.security.AuthService;
 
 @Service
@@ -81,13 +84,13 @@ public class FilterService {
             var cardSetFilter = filterDTO.getCardSetFilter();
             if (cardSetFilter != null && cardSetFilter.isNotEmpty()) {
                 var setJoin = root.join("sets", JoinType.INNER);
-                if (cardSetFilter.getCardSetCode() != null) {
+                if (hasText(cardSetFilter.getCardSetCode())) {
                     predicate = criteriaBuilder.and(predicate, criteriaBuilder.like(setJoin.get("code"), "%" + cardSetFilter.getCardSetCode() + "%"));
                 }
-                if (cardSetFilter.getCardSetName() != null) {
+                if (hasText(cardSetFilter.getCardSetName())) {
                     predicate = criteriaBuilder.and(predicate, criteriaBuilder.like(setJoin.get("name"), "%" + cardSetFilter.getCardSetName() + "%"));
                 }
-                if (cardSetFilter.getCardRarityCode() != null) {
+                if (hasText(cardSetFilter.getCardRarityCode())) {
                     predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(setJoin.get("rarityCode"), cardSetFilter.getCardRarityCode()));
                 }
             }
@@ -103,6 +106,24 @@ public class FilterService {
                         "%" + filterName.toLowerCase() + "%");
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.or(likeName, likeDescription));
             }
+            return predicate;
+        };
+    }
+
+    public Specification<CardSet> cardSetSpecification(CardSetFilterDTO filter) {
+        return (Root<CardSet> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
+            Predicate predicate = cb.conjunction();
+
+            if (filter.getCardSetName() != null && !filter.getCardSetName().isEmpty()) {
+                predicate = cb.and(predicate, cb.like(cb.lower(root.get("name")), "%" + filter.getCardSetName().toLowerCase() + "%"));
+            }
+            if (filter.getCardSetCode() != null && !filter.getCardSetCode().isEmpty()) {
+                predicate = cb.and(predicate, cb.like(cb.lower(root.get("code")), "%" + filter.getCardSetCode().toLowerCase() + "%"));
+            }
+            if (filter.getCardRarityCode() != null && !filter.getCardRarityCode().isEmpty()) {
+                predicate = cb.and(predicate, cb.equal(root.get("rarityCode"), filter.getCardRarityCode()));
+            }
+
             return predicate;
         };
     }

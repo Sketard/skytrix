@@ -4,6 +4,7 @@ import { MultiselectAutocompleteFilterComponent } from './components/multiselect
 import { StringListToAutocompleteObjectPipe } from '../../core/pipes/string-array-to-short-resource-array.pipe';
 import { ToObservablePipe } from '../../core/pipes/to-observable.pipe';
 import { ToggleIconFilterComponent } from './components/toggle-icon-filter/toggle-icon-filter.component';
+import { CardSetSearchFilterComponent } from './components/card-set-search-filter/card-set-search-filter.component';
 import { CardType } from '../../core/enums/card-type.enum';
 import { CardAttribute } from '../../core/enums/card-attribute';
 import { SearchServiceCore } from '../../services/search-service-core.service';
@@ -20,6 +21,7 @@ import { Subject } from 'rxjs';
     StringListToAutocompleteObjectPipe,
     ToObservablePipe,
     ToggleIconFilterComponent,
+    CardSetSearchFilterComponent,
   ],
   templateUrl: './card-filters.component.html',
   styleUrl: './card-filters.component.scss',
@@ -58,6 +60,7 @@ export class CardFiltersComponent {
             minDef: null,
             maxDef: null,
             attribute: null,
+            cardSetFilter: { cardSetName: '', cardSetCode: '', cardRarityCode: '' },
           }, { emitEvent: false });
         });
       }

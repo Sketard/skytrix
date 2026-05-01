@@ -217,6 +217,10 @@ export class DuelConnection {
     this._inactivityWarning.set(null);
   }
 
+  sendAnimationsDone(): void {
+    this.safeSend({ type: 'ANIMATIONS_DONE' });
+  }
+
   clearRpsResult(): void {
     this._rpsResult.set(null);
   }
