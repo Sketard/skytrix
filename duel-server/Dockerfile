@@ -10,8 +10,10 @@ WORKDIR /app
 COPY scripts/ /scripts/
 
 # Dépendances (postinstall requiert duel-server/scripts/patch-ocgcore-wasm.mjs)
+# P4 patch lit data/scripts_full/proc_workaround.lua → copier avant npm ci
 COPY duel-server/package*.json ./
 COPY duel-server/scripts/ ./scripts/
+COPY duel-server/data/scripts_full/ ./data/scripts_full/
 RUN npm ci
 
 # Source
