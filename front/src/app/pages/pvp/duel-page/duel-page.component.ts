@@ -860,12 +860,12 @@ export class DuelPageComponent implements OnInit {
     await this.cardInspection.inspectByCode(cardCode, forceExpanded);
   }
 
-  async onCardInspectRequest(event: { cardCode: number }): Promise<void> {
-    await this.cardInspection.inspectByCode(event.cardCode);
+  async onCardInspectRequest(event: { cardCode: number; liveCard?: CardOnField }): Promise<void> {
+    await this.cardInspection.inspectByCode(event.cardCode, false, event.liveCard);
   }
 
-  async onLongPressInspect(event: { cardCode: number }): Promise<void> {
-    await this.cardInspection.inspectByCode(event.cardCode, true);
+  async onLongPressInspect(event: { cardCode: number; liveCard?: CardOnField }): Promise<void> {
+    await this.cardInspection.inspectByCode(event.cardCode, true, event.liveCard);
   }
 
   onPreTargetCards(cards: CardInfo[]): void {

@@ -578,9 +578,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onCardInspectRequest(event: { cardCode: number }): Promise<void> {
+  async onCardInspectRequest(event: { cardCode: number; liveCard?: CardOnField }): Promise<void> {
     if (!event.cardCode) return;
-    await this.cardInspection.inspectByCode(event.cardCode);
+    await this.cardInspection.inspectByCode(event.cardCode, false, event.liveCard);
   }
 
   onZonePillRequest(event: { zoneId: ZoneId; playerIndex: number }): void {
