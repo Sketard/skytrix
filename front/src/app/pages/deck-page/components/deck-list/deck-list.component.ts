@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { DeckBuildService } from '../../../../services/deck-build.service';
 import { DeckBoxComponent } from '../../../../components/deck-box/deck-box.component';
 import { CommonModule } from '@angular/common';
@@ -27,14 +26,9 @@ export class DeckListComponent {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotificationService);
   private readonly translate = inject(TranslateService);
-  private readonly router = inject(Router);
 
   constructor() {
     this.deckBuildService.fetchDecks();
-  }
-
-  openSolver(deck: ShortDeck): void {
-    this.router.navigate(['/decks', deck.id, 'solver']);
   }
 
   confirmDelete(deck: ShortDeck) {

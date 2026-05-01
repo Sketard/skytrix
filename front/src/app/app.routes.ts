@@ -7,6 +7,7 @@ import { AuthService } from './services/auth.service';
 import { LoginPageComponent } from './pages/login-page/login-page.component';
 import { SimulatorPageComponent } from './pages/simulator/simulator-page.component';
 import { adminGuard } from './core/guards/admin.guard';
+import { solverDisabledGuard } from './core/guards/solver-disabled.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
@@ -18,7 +19,7 @@ export const routes: Routes = [
   {
     path: 'decks/:id/solver',
     loadComponent: () => import('./pages/solver/solver-page/solver-page.component').then(m => m.SolverPageComponent),
-    canActivate: [AuthService],
+    canActivate: [AuthService, solverDisabledGuard],
   },
   { path: 'decks/:id', component: DeckBuilderComponent, canActivate: [AuthService], canDeactivate: [unsavedChangesGuard] },
   { path: 'search', component: CardSearchPageComponent, canActivate: [AuthService] },

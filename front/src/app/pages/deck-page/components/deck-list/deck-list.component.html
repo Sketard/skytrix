@@ -7,15 +7,6 @@
           <deck-box [deck]="deck"></deck-box>
           <button
             mat-icon-button
-            class="deckPage-deck-solve"
-            [attr.aria-label]="('a11y.solveDeck' | translate:{name: deck.name})"
-            [matTooltip]="'solver.pageTitle' | translate"
-            [disabled]="!deck.id"
-            (click)="openSolver(deck); $event.stopPropagation()">
-            <mat-icon fontIcon="psychology"></mat-icon>
-          </button>
-          <button
-            mat-icon-button
             class="deckPage-deck-remove"
             [attr.aria-label]="('a11y.deleteDeck' | translate:{name: deck.name})"
             (click)="confirmDelete(deck); $event.stopPropagation()">
