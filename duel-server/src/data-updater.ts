@@ -79,6 +79,10 @@ function updateScripts(dataDir: string): { updated: boolean; method: 'pull' | 'c
 
   if (existsSync(gitDir)) {
     console.log('[UpdateData] Pulling latest scripts...');
+    // Discard any local edits to tracked files. ProjectIgnis/CardScripts is
+    // upstream-only — we never author here. Local diffs only appear from
+    // older patch attempts (e.g. retired P4) and would block ff-only pulls.
+    execSync('git checkout -- .', { cwd: scriptsPath, timeout: 30_000, stdio: 'pipe' });
     execSync('git pull --ff-only', { cwd: scriptsPath, timeout: 120_000, stdio: 'pipe' });
     return { updated: true, method: 'pull' };
   }

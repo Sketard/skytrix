@@ -63,41 +63,16 @@ const patches = [
       'e.setUint32(48,t.link_marker??0,!0))',
   },
 
-  // ── P4: Polyfill Duel.GetReasonEffect / Duel.GetReasonPlayer in proc_workaround.lua ──
-  // proc_workaround.lua monkey-patches Duel.Overlay (line 431-457) to add an
-  // EVENT_MOVE raise after Xyz materials are attached. The patch calls
-  // Duel.GetReasonEffect() at the very first line. These functions exist in
-  // upstream edo9300/ygopro-core (libduel.cpp lines 4154/4158) but are NOT
-  // bound in @n1xx1/ocgcore-wasm 0.1.1 — calling them yields nil → crash:
-  //   "[string \"proc_workaround.lua\"]:438: attempt to call a nil value (field 'GetReasonEffect')"
-  //
-  // The crash happens INSIDE the wrapped Duel.Overlay BEFORE the original
-  // C++ Duel.Overlay (oldfunc) is called → xyz_overlay processor never runs
-  // → Xyz materials are never moved off the field → Xyz monster summons
-  // "ghost-style" with 0 overlays.
-  //
-  // Empirical repro (PVP + solver): NS Eldam + NS Swen + Xyz Totem Bird
-  // leaves M1=Eldam, M2=Swen, M3=Totem Bird (overlay=null) instead of
-  // expected M1=∅, M2=∅, M3=Totem Bird (overlay=[Eldam, Swen]).
-  //
-  // The error is silenced by `errorHandler: () => {}` in ocgcore-adapter.ts
-  // (set OCG_DEBUG=1 to surface lua errors to console).
-  //
-  // Polyfill: prepend stub functions returning nil/PLAYER_NONE to
-  // proc_workaround.lua. The wrapped Duel.Overlay then defaults `re=nil` and
-  // `rp=PLAYER_NONE`, calls the original Duel.Overlay, and EVENT_MOVE raises
-  // with no reason effect — same behavior as if no SS was effect-driven.
-  // Worst-case downside: cards that conditionally trigger on EVENT_MOVE +
-  // reason_effect (e.g. Guiding Quem, Despian Luluwalilith) would miss the
-  // re argument — but those triggers were already unreachable in our build
-  // since the wrapper crashed before raising at all. Polyfill is strictly
-  // an improvement.
-  {
-    file: 'data/scripts_full/proc_workaround.lua',
-    label: 'proc_workaround.lua — polyfill GetReasonEffect / GetReasonPlayer',
-    from: '--Utilities to be added to the core',
-    to: '--Utilities to be added to the core\n\n-- POLYFILL: Duel.GetReasonEffect / Duel.GetReasonPlayer\n-- Bound in upstream edo9300/ygopro-core (libduel.cpp 4154/4158) but missing\n-- in @n1xx1/ocgcore-wasm 0.1.1. The Duel.Overlay monkey-patch below (line\n-- ~438) crashes without these. Strip both polyfills if/when the underlying\n-- WASM build adds the bindings (see patch-ocgcore-wasm.mjs P4 for context).\nif not Duel.GetReasonEffect then Duel.GetReasonEffect=function() return nil end end\nif not Duel.GetReasonPlayer then Duel.GetReasonPlayer=function() return PLAYER_NONE end end\n',
-  },
+  // ── P4 retired: Duel.GetReasonEffect / Duel.GetReasonPlayer polyfill ──
+  // Was rewriting data/scripts_full/proc_workaround.lua at install time. That
+  // file lives in a Docker volume in prod and gets re-pulled via the in-app
+  // "update data" button, which silently dropped the polyfill — so any prod
+  // duel after an update would crash inside Card.IsRelateToEffect (e.g.
+  // Fallen of the White Dragon paying its cost without summoning).
+  // Replaced by an inlined polyfill loaded as the first STARTUP_SCRIPTS entry
+  // in src/ocg-scripts.ts (POLYFILL_LUA_SOURCE), which can't be wiped by a
+  // git pull. Strip the polyfill there if/when ocgcore-wasm exposes the
+  // native bindings.
 
   // ── P6: Add missing TYPE branch to query parser ──
   // OcgQueryFlags.TYPE (8) is declared in the bundle's d.ts and corresponds

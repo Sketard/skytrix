@@ -14,6 +14,7 @@ let cachedScriptsHash: string | null = null;
 export function initScriptsHash(scriptDir: string): void {
   if (cachedScriptsHash) return;
   const hash = createHash('sha256');
+  hash.update(POLYFILL_LUA_SOURCE);
   const entries = readdirSync(scriptDir, { recursive: true }) as string[];
   const files = entries.filter(f => f.endsWith('.lua')).sort();
   for (const file of files) {
@@ -52,7 +53,23 @@ export function getOcgcoreVersion(): string {
 // Startup Scripts — 20 Lua files loaded before startDuel()
 // =============================================================================
 
+// Inlined polyfill loaded BEFORE proc_workaround.lua. Stubs Duel.GetReasonEffect
+// and Duel.GetReasonPlayer which are bound in upstream edo9300/ygopro-core
+// (libduel.cpp 4154/4158) but missing in @n1xx1/ocgcore-wasm 0.1.1. Without
+// them, the recent CardScripts wrapper for Card.IsRelateToEffect crashes
+// silently (see proc_workaround.lua line ~29 in current upstream), causing
+// Duel.SpecialSummon to be skipped — e.g. "Fallen of the White Dragon" pays
+// its cost but never special-summons.
+//
+// Inlined (not on disk) so `git pull` of scripts_full can't blow it away.
+// Strip when ocgcore-wasm exposes the native bindings.
+export const POLYFILL_LUA_NAME = '__skytrix_polyfill.lua';
+export const POLYFILL_LUA_SOURCE = `if not Duel.GetReasonEffect then Duel.GetReasonEffect=function() return nil end end
+if not Duel.GetReasonPlayer then Duel.GetReasonPlayer=function() return PLAYER_NONE end end
+`;
+
 export const STARTUP_SCRIPTS = [
+  POLYFILL_LUA_NAME,
   'constant.lua',
   'utility.lua',
   'archetype_setcode_constants.lua',
@@ -95,6 +112,10 @@ export function loadScripts(scriptDir: string): ScriptDB {
   const startupScripts = new Map<string, string>();
 
   for (const name of STARTUP_SCRIPTS) {
+    if (name === POLYFILL_LUA_NAME) {
+      startupScripts.set(name, POLYFILL_LUA_SOURCE);
+      continue;
+    }
     const path = join(scriptDir, name);
     if (existsSync(path)) {
       startupScripts.set(name, readFileSync(path, 'utf-8'));

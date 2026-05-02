@@ -327,6 +327,19 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       return;
     }
 
+    // Solver pool keeps a file handle on cards.cdb open for the lifetime of
+    // each worker — on Windows that blocks the rename in updateData. Destroy
+    // the pool, run the update, then re-init with the fresh data.
+    const previousOrchestrator = solverOrchestrator;
+    solverOrchestrator = null;
+    if (previousOrchestrator) {
+      try {
+        await previousOrchestrator.destroy();
+      } catch (err) {
+        logger.warn('Solver pool destroy failed before update-data', { error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
     try {
       const result = await updateData(DATA_DIR);
       const revalidation = validateData(dbPath, scriptsDir);
@@ -335,6 +348,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     } catch (err) {
       logger.error('UpdateData failed', { error: err instanceof Error ? err.message : String(err) });
       json(res, 500, { error: 'Update failed', detail: err instanceof Error ? err.message : String(err) });
+    } finally {
+      if (dataReady) {
+        try {
+          const solverConfig = loadSolverConfig(DATA_DIR);
+          const orchestrator = new SolverOrchestrator();
+          await orchestrator.init(solverConfig, DATA_DIR);
+          solverOrchestrator = orchestrator;
+        } catch (err) {
+          logger.error('Solver pool re-init failed after update-data — solver disabled until restart', { error: err instanceof Error ? err.message : String(err) });
+        }
+      }
     }
     return;
   }
