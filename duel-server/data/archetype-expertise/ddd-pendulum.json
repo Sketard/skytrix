@@ -1,0 +1,734 @@
+{
+  "archetype": "ddd-pendulum",
+  "displayName": "D/D/D Pendulum",
+  "version": 1,
+
+  "_rolesNote": "Covers the ddd-pendulum-opener fixture: Kepler + Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. The deck is a Pendulum/Fusion/Synchro/Xyz/Link toolbox where the canonical 1-card line is 'Gate -> search Doom Queen Machinex -> scale -> cascade'. Doom Queen Machinex is the central pivot: scaled in PZONE, popped by Zero Contract, returns from ED, and chains into Lance Soldier + Copernicus + Gilgamesh + Solomon + Tell + Genghis fusion + Deus Machinex Xyz + Siegfried + Wave High King Caesar + Sky King Zeus + Headhunt set. Authored from ddd-combo-reference.md (2026-04-16, line 'Dark Contract with the Gate' since Gate is in opener) + path-beta-poc/ddd-pendulum-opener/sprint2-option-b-best-plan.json (3/5 critic ceiling) + raw-replay trajectory ddd-pendulum-replay-eb8c6865.",
+
+  "roleMap": {
+    "11609969": ["starter", "tutor", "enabler"],
+    "46796664": ["starter", "extender", "tutor"],
+    "42382265": ["starter", "extender", "enabler", "recursion"],
+    "46372010": ["starter", "tutor", "enabler"],
+    "42141493": ["interruption"],
+    "20715411": ["starter", "enabler", "extender"],
+    "5997110":  ["starter", "extender", "tutor"],
+    "67322708": ["extender", "material", "recursion"],
+    "72291412": ["material", "extender"],
+    "28406301": ["extender", "tutor", "enabler"],
+    "72181263": ["extender", "enabler"],
+    "74069667": ["extender", "recursion", "enabler"],
+    "9030160":  ["enabler"],
+    "32665564": ["enabler", "extender"],
+    "91781484": ["interruption", "finisher"],
+
+    "14558127": ["interruption"],
+    "94145021": ["interruption"],
+    "24224830": ["interruption"],
+    "65681983": ["interruption"],
+    "40366667": ["interruption"],
+    "39256679": ["material"],
+    "54693926": ["interruption"],
+    "93729896": ["tutor", "enabler"],
+
+    "71398055": ["finisher"],
+    "74583607": ["finisher", "interruption"],
+    "70576413": ["material", "finisher"],
+    "44852429": ["finisher", "interruption"],
+    "72402069": ["finisher", "interruption"],
+    "3758046":  ["finisher"],
+    "79559912": ["finisher", "interruption"],
+    "32232538": ["finisher", "tutor"],
+    "71612253": ["finisher", "tutor"],
+    "46593546": ["finisher", "interruption"],
+    "62541668": ["finisher"],
+    "9024198":  ["finisher", "enabler"],
+    "30998403": ["finisher", "interruption"]
+  },
+
+  "keyCards": [11609969, 46796664, 42382265, 46372010, 20715411, 32665564, 5997110, 67322708, 28406301, 91781484, 46593546, 79559912, 44852429, 30998403],
+
+  "goals": [
+    {
+      "id": "ddd-pendulum-canonical-apex",
+      "name": "Canonical full endboard (Deus Machinex + Wave High Caesar + Siegfried + Zeus Ragnarok + Headhunt set)",
+      "description": "The fixture-expected 5-piece D/D/D endboard from the canonical Gate 1-card combo line. 4 Extra Deck bodies on monster zones (Deus Machinex Xyz, Wave High King Caesar Fusion, Cursed King Siegfried Synchro, Sky King Zeus Ragnarok Link) plus D/D/D Headhunt set. Reached through the canonical sequence: Gate -> Doom Queen Machinex -> Zero Contract pop -> Count Surveyor SS -> Copernicus dump Lance -> Gilgamesh -> Pendulum Summon -> Zeus -> pop Scale Surveyor -> Solomon -> Tell -> Necro Slime fuse Genghis -> Deus Machinex Xyz -> Siegfried Synchro -> High Caesar Link -> set Headhunt.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 46593546 },
+          "position": "faceup-atk",
+          "note": "D/D/D Deviser King Deus Machinex (Xyz, alt-Xyz from 1 D/D/D Fusion material)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 79559912 },
+          "position": "faceup-atk",
+          "note": "D/D/D Wave High King Caesar (Fusion, typedNegate + SS-restriction)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 44852429 },
+          "position": "faceup-atk",
+          "note": "D/D/D Cursed King Siegfried (Synchro, targeted backrow negate)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 30998403 },
+          "position": "faceup-atk",
+          "note": "D/D/D Sky King Zeus Ragnarok (Link-3, omniNegate of monster-effect-in-hand)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 91781484 },
+          "position": "facedown",
+          "note": "D/D/D Headhunt set (targetedNegate + steal trap)"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "typedNegate": 2,
+          "targetedNegate": 2
+        }
+      },
+      "baselineScore": 25
+    },
+    {
+      "id": "ddd-pendulum-4mzone-tower",
+      "name": "4-MZONE finisher tower (no trap)",
+      "description": "All 4 ED finisher bodies present without the trap set. Covers variants where Headhunt is consumed/replaced (e.g., Bright Armageddon swap path) or trap-set step doesn't fire. Strong interruption tower regardless.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 46593546 },
+          "position": "faceup-atk",
+          "note": "Deus Machinex"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 79559912 },
+          "position": "faceup-atk",
+          "note": "Wave High King Caesar"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 44852429 },
+          "position": "faceup-atk",
+          "note": "Cursed King Siegfried"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 30998403 },
+          "position": "faceup-atk",
+          "note": "Sky King Zeus Ragnarok"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "omniNegate": 1,
+          "typedNegate": 2,
+          "targetedNegate": 1
+        }
+      },
+      "baselineScore": 18
+    },
+    {
+      "id": "ddd-pendulum-three-of-four-finishers",
+      "name": "3-of-4 ED finishers face-up (3-piece interruption core)",
+      "description": "Mid-combo waypoint: any 3 distinct finishers from {Deus Machinex, Wave High King Caesar, Cursed King Siegfried, Sky King Zeus Ragnarok} face-up on monster zones. Captures the canonical 3-body intermediate state reached after the 5th-summon (Zeus) but before the 7th+ (Siegfried/High Caesar/Deus Machinex). The β-1 critic plan ceiling lands here at 3/5 matched.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [46593546, 79559912, 44852429, 30998403] },
+          "position": "faceup-atk",
+          "note": "Finisher slot 1 of 3 (Deus Machinex | Wave High Caesar | Siegfried | Zeus Ragnarok)"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [46593546, 79559912, 44852429, 30998403] },
+          "position": "faceup-atk",
+          "note": "Finisher slot 2 of 3"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [46593546, 79559912, 44852429, 30998403] },
+          "position": "faceup-atk",
+          "note": "Finisher slot 3 of 3"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "typedNegate": 1,
+          "targetedNegate": 1
+        }
+      },
+      "baselineScore": 14
+    },
+    {
+      "id": "ddd-pendulum-two-finishers-partial",
+      "name": "2 ED finishers face-up (partial endboard)",
+      "description": "Partial gradient: any 2 distinct finishers from the 4-piece pool. Common mid-combo state after Gilgamesh -> Zeus -> Siegfried Synchro fires but before the Link/Xyz finishing layer. Smooths the DFS reward surface between any-D/D-body and the 3-of-4 waypoint.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [46593546, 79559912, 44852429, 30998403] },
+          "position": "faceup-atk",
+          "note": "Finisher slot 1 of 2"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [46593546, 79559912, 44852429, 30998403] },
+          "position": "faceup-atk",
+          "note": "Finisher slot 2 of 2"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "typedNegate": 1
+        }
+      },
+      "baselineScore": 9
+    },
+    {
+      "id": "ddd-doom-queen-pivot-on-field",
+      "name": "Doom Queen Machinex pivot landed",
+      "description": "Canonical pivot waypoint: D/D/D Zero Doom Queen Machinex face-up on field (Pendulum-summoned back from ED after the Zero Contract pop) OR sitting in either Pendulum scale zone. Per ddd-combo-reference.md the Doom-Queen-as-scale -> Doom-Queen-popped-by-Zero-Contract -> Doom-Queen-returns-from-ED loop is THE central pivot of every full-endboard line. Reaching this state means the 1-card combo successfully ignited; everything else cascades from here.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 20715411 },
+          "position": "faceup-atk",
+          "note": "Doom Queen Machinex on monster zone (post-ED-return Pend Summon)"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 8
+    },
+    {
+      "id": "ddd-doom-queen-scaled",
+      "name": "Doom Queen Machinex scaled in Pendulum zone",
+      "description": "Earlier pivot signal: Doom Queen Machinex placed face-up in PZONE (left or right Spell/Trap as Pendulum scale). This is the scale-Doom-Queen step that fires her PZONE effect to place a Dark Contract from deck (Gate or Zero Contract). Necessary precursor to the pop-and-return loop. Distinguished from `ddd-doom-queen-pivot-on-field` because scale placement is reached first.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 20715411 },
+          "position": "faceup-atk",
+          "note": "Doom Queen Machinex in own PZONE / S-T zone face-up as scale"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 6
+    },
+    {
+      "id": "ddd-zero-contract-active",
+      "name": "Dark Contract with the Zero King active",
+      "description": "Combo-progress signal: Zero Contract face-up in S/T zone. Placed from deck via Doom Queen Machinex's PZONE effect (or Gate's search clause). Its activation is the engine that pops the scaled Doom Queen, SS's a D/D from deck (Count Surveyor or Lance Soldier), and triggers Doom Queen's ED-return clause. Reaching this state means the Doom Queen ignition is armed.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 32665564 },
+          "position": "faceup-atk",
+          "note": "Dark Contract with the Zero King face-up in S/T zone"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 5
+    },
+    {
+      "id": "ddd-pendulum-scales-set",
+      "name": "Pendulum scales set (Kepler + Surveyor)",
+      "description": "Earliest waypoint: at least one Pendulum-scale D/D in each PZONE half (or both placed). Kepler is Scale 10, Scale Surveyor is Scale 9, Copernicus is Scale 1. Setting two distinct scales is the prerequisite for Pendulum Summoning the cycled bodies (Copernicus, Doom Queen Machinex, Count Surveyor) back to the field. Anchors the very first Phase of the combo.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "anyOf", "cardIds": [11609969, 42382265, 46796664, 28406301, 5997110, 20715411, 74069667, 72181263] },
+          "position": "faceup-atk",
+          "note": "Pendulum scale slot 1 (D/D Kepler | Scale Surveyor | Copernicus | Gryphon | Count Surveyor | Doom Queen Mach | Abyss Ragnarok | Orthros)"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "anyOf", "cardIds": [11609969, 42382265, 46796664, 28406301, 5997110, 20715411, 74069667, 72181263] },
+          "position": "faceup-atk",
+          "note": "Pendulum scale slot 2 (different scale value than slot 1 — DFS will naturally pick distinct cards via deck enumeration)"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "ddd-finisher-any-on-field",
+      "name": "Any ED D/D/D finisher on field",
+      "description": "Coarse gradient: any of the 8 main finisher Extra Deck D/D/D bodies face-up on a monster zone. Rewards the DFS for reaching ED at all (Gilgamesh, Solomon, Tell, Clovis, Genghis, Siegfried, Caesar, Zeus, Deus Machinex, Bright Armageddon, Arc Crisis). Smoother gradient than the 2-finisher partial which restricts to the apex-relevant 4.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [9024198, 32232538, 71612253, 70576413, 74583607, 44852429, 79559912, 30998403, 46593546, 72402069, 71398055, 3758046] },
+          "position": "faceup-atk",
+          "note": "Gilgamesh | Solomon | Tell | Clovis | Genghis | Siegfried | High Caesar | Zeus | Deus Machinex | Bright Armageddon | Arc Crisis | Wave Caesar"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "ddd-any-body-on-field",
+      "name": "Any D/D / D/D/D body on field (exploration gradient)",
+      "description": "Finest-grain gradient: any D/D or D/D/D monster face-up on a monster zone. Includes hand starters (Kepler, Copernicus, Scale Surveyor) post-NS or post-Pend-Summon, deck-summoned intermediates (Count Surveyor, Lance Soldier, Gryphon, Orthros), the central Doom Queen Machinex, recursion targets (Abyss Ragnarok), and ED finishers. Lets DFS feel progress the moment ANY D/D body lands, even before the Doom Queen pivot.",
+      "required": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [11609969, 46796664, 42382265, 28406301, 5997110, 67322708, 72181263, 72291412, 20715411, 74069667, 9024198, 32232538, 71612253, 70576413, 74583607, 44852429, 79559912, 30998403, 46593546, 72402069, 71398055, 3758046] },
+          "position": "faceup-atk",
+          "note": "Any D/D/D-family monster face-up"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    },
+    {
+      "id": "ddd-headhunt-set",
+      "name": "Headhunt trap set",
+      "description": "Trap-set partial: D/D/D Headhunt set in S/T zone. The 5th piece of the canonical apex. Reached via Solomon -> Tell -> Tell-fetch-trap path or Gryphon (revived from Abyss Ragnarok) -> search Headhunt -> set. Worth its own gradient since it's a single-step add to any finisher tower.",
+      "required": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 91781484 },
+          "position": "facedown",
+          "note": "Headhunt set"
+        }
+      ],
+      "coverage": {
+        "counts": {
+          "targetedNegate": 1
+        }
+      },
+      "baselineScore": 4
+    },
+    {
+      "id": "ddd-doom-queen-searched-via-gate",
+      "name": "Doom Queen Machinex tutored to hand",
+      "description": "Earliest tutor-chain signal: Doom Queen Machinex in hand (i.e., Gate has resolved its search clause picking Doom Queen). This is the single most critical SELECT_CARD decision in the canonical Gate-1-card combo per the combo-reference doc — getting the right search target gates the entire combo. The β-1 critic plan picks this exact target. Goal awards baseline-score the moment Doom Queen lands in hand (zone=hand).",
+      "required": [
+        {
+          "zone": "hand",
+          "card": { "kind": "specific", "cardId": 20715411 },
+          "note": "Doom Queen Machinex added to hand from deck (via Gate search)"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 3
+    },
+    {
+      "id": "ddd-pendulum-eternal-darkness-side-progress",
+      "name": "Pendulum or trap material consumed (Lance Soldier or Necro Slime in GY)",
+      "description": "Combo-progress signal that the Doom Queen ignition fired through to material setup. Lance Soldier in GY = Copernicus's NS-dump effect resolved (or Lance was used as Synchro/Link material). Necro Slime in GY = a Tell dump fired (sets up the Necro Slime fusion into Genghis on a subsequent step). Either is a strong indicator the mid-combo body chain ran.",
+      "required": [
+        {
+          "zone": "gy",
+          "card": { "kind": "anyOf", "cardIds": [67322708, 72291412] },
+          "note": "Lance Soldier | Necro Slime in GY"
+        }
+      ],
+      "coverage": {
+        "counts": {}
+      },
+      "baselineScore": 2
+    }
+  ],
+
+  "routes": [
+    {
+      "id": "gate-tutor-doom-queen-route",
+      "name": "Activate Gate -> search Doom Queen Machinex -> scale -> Zero Contract cascade",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 46372010 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 46372010 },
+          "note": "Activate Dark Contract with the Gate (Continuous Spell). Place in S/T zone — its on-activate clause adds 1 D/D monster from Deck to hand."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 46372010 },
+          "target": { "kind": "specific", "cardId": 20715411 },
+          "note": "CRITICAL Gate search target (per combo-reference): Doom Queen Machinex (20715411). NOT Kepler (already in hand), NOT Gryphon, NOT Count Surveyor. Doom Queen unlocks the full pendulum-pop cascade."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 20715411 },
+          "note": "Place Doom Queen Machinex in own PZONE as scale (Pendulum effect: place 1 Dark Contract from Deck to S/T zone face-up)"
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 32665564 },
+          "note": "Doom Queen PZONE effect resolves: place Dark Contract with the Zero King face-up from Deck"
+        },
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 32665564 },
+          "target": { "kind": "specific", "cardId": 20715411 },
+          "note": "Activate Zero Contract: destroy own Doom Queen Machinex (in PZONE) -> SS 1 D/D from Deck. Target = Count Surveyor (5997110) per combo-reference, or Lance Soldier (67322708) per critic plan."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 5997110 },
+          "note": "SS Count Surveyor from Deck via Zero Contract. Count Surveyor on-SS: add Copernicus from Deck (Copernicus already in hand here, so DFS may pick alternate D/D — Kepler / Gryphon / Scale Surveyor)."
+        }
+      ],
+      "goalId": "ddd-doom-queen-pivot-on-field"
+    },
+    {
+      "id": "kepler-ns-pendulum-route",
+      "name": "NS Kepler -> set scales (Kepler + Surveyor) -> Pendulum Summon Copernicus",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 11609969 },
+          "location": "hand",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "normalSummon",
+          "subject": { "kind": "specific", "cardId": 11609969 },
+          "note": "NS D/D Savant Kepler (Lv1 DARK Spellcaster, Scale 10). Triggers on-NS: place a Dark Contract from Deck face-up on field."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 11609969 },
+          "target": { "kind": "specific", "cardId": 32665564 },
+          "note": "Kepler on-NS: place Zero Contract on field (alt: Gate or Eternal Darkness). Zero Contract is the highest-value pick because it enables the immediate Doom-Queen-pop loop."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 11609969 },
+          "note": "After Pendulum Summon attempts: place Kepler in left PZONE (Scale 10) — also done via Pendulum-Activate from hand. Kepler-as-scale stays after PSummon."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 42382265 },
+          "note": "Place Scale Surveyor in right PZONE (Scale 9) — Pendulum Summon range becomes 2-9. Enables PSummoning Copernicus (Lv4) and any cycled Lv4+ D/D from ED."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 46796664 },
+          "note": "Pendulum Summon Copernicus. Copernicus on-PSummon: send 1 D/D from Deck to GY. Target = Lance Soldier."
+        }
+      ],
+      "goalId": "ddd-pendulum-scales-set"
+    },
+    {
+      "id": "doom-queen-zero-contract-cascade-route",
+      "name": "Zero Contract pop Doom Queen -> SS Lance Soldier -> Lance pop Gate -> Doom Queen ED-return",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 32665564 },
+          "location": "field",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 32665564 },
+          "target": { "kind": "specific", "cardId": 20715411 },
+          "note": "Zero Contract pop: destroy own Doom Queen Machinex from PZONE/field as cost; SS 1 D/D from Deck."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 67322708 },
+          "note": "SS Lance Soldier from Deck via Zero Contract resolution"
+        },
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 67322708 },
+          "target": { "kind": "specific", "cardId": 46372010 },
+          "note": "Lance Soldier on-field eff: pop Dark Contract with the Gate (cost) — gains a level boost / triggers Doom Queen Mach's ED-return clause when Zero Contract or another Dark Contract destroys."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 20715411 },
+          "note": "Doom Queen Machinex returns from ED to field (ED-return clause: when this card is destroyed by your own card effect, SS from ED)."
+        }
+      ],
+      "goalId": "ddd-doom-queen-pivot-on-field"
+    },
+    {
+      "id": "necro-slime-fusion-genghis-route",
+      "name": "Necro Slime in GY -> banish + GY material -> Fusion Genghis",
+      "starts": [
+        {
+          "selector": { "kind": "specific", "cardId": 72291412 },
+          "location": "gy",
+          "minCount": 1
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 72291412 },
+          "target": { "kind": "specific", "cardId": 74583607 },
+          "note": "Necro Slime GY-eff: banish self + 1 D/D monster from GY (or field) as Fusion materials -> Fusion Summon a D/D/D Fusion from ED."
+        },
+        {
+          "action": "fusionSummon",
+          "subject": { "kind": "specific", "cardId": 74583607 },
+          "note": "Fusion Summon D/D/D Flame King Genghis (or High Caesar 79559912 or Bright Armageddon 72402069 depending on materials available). Genghis is the reliable pick — its on-SS revives a D/D from GY for further extension."
+        }
+      ],
+      "goalId": "ddd-pendulum-two-finishers-partial"
+    }
+  ],
+
+  "synergies": [
+    {
+      "cards": [11609969, 42382265],
+      "effect": "Kepler (Scale 10) + Scale Surveyor (Scale 9) is the canonical 2-card scale pair from the opener. Kepler's NS triggers a Dark Contract place-from-Deck (Zero Contract / Gate / Eternal Darkness). Scale Surveyor's PZONE eff returns a Pendulum D/D to hand for re-Pend-Summon. Together they enable both the initial Pendulum Summon and a re-PSummon of Doom Queen Machinex after she returns from ED."
+    },
+    {
+      "cards": [46372010, 20715411, 32665564],
+      "effect": "The Gate -> Doom Queen -> Zero Contract cascade is the central engine. Gate adds Doom Queen from deck; Doom Queen scaled places Zero Contract from deck; Zero Contract destroys Doom Queen + SS's any D/D from deck (Count Surveyor or Lance Soldier); Doom Queen's destroy-by-own-effect clause SS's her back from ED. Net result: 2 D/D bodies on field + Doom Queen back + a chain of triggers to fuel further Synchro/Xyz/Link summons."
+    },
+    {
+      "cards": [20715411, 32665564, 67322708],
+      "effect": "Doom Queen Machinex + Zero Contract + Lance Soldier loop: Zero Contract pops Doom Queen -> SS Lance from deck -> Lance pops a Dark Contract (Gate) -> Doom Queen returns from ED. Same pop-and-return mechanism as the Count Surveyor variant but with Lance providing a Lv2 body for extra Synchro/Link material."
+    },
+    {
+      "cards": [46796664, 67322708, 72291412],
+      "effect": "Copernicus's Pendulum-Summon trigger sends a D/D from deck to GY. Best targets are Lance Soldier (enabling pop-Dark-Contract -> Doom Queen ED-return) or Necro Slime (enabling later Fusion Summon Genghis from GY). Both are 1-of-1 in the deck, so the choice is committal."
+    },
+    {
+      "cards": [70576413, 30998403, 9024198],
+      "effect": "Link summon ladder: Clovis (Link-2 D/D/D) -> Sky King Zeus Ragnarok (Link-3 D/D/D, omniNegate of monster-effect-in-hand) using Clovis + 2 D/D bodies (Lance + Doom Queen + Copernicus all qualify). Gilgamesh (Xyz Rank 4, 2 Lv4 D/D) is the alternate Xyz pivot used to fetch scales from deck."
+    },
+    {
+      "cards": [72291412, 74583607, 79559912],
+      "effect": "Necro Slime fusion engine: Necro Slime in GY enables Fusion Summon from ED using GY materials. Genghis (Flame King) needs 2 D/D, High Caesar needs 1 D/D + 1 D/D/D. Both are accessible mid-combo from any 2 D/D bodies in GY (Lance, Copernicus, Kepler dropped during chain costs)."
+    },
+    {
+      "cards": [44852429, 67322708, 70576413],
+      "effect": "Cursed King Siegfried Synchro path: Lv8 Synchro (Tuner Lance Soldier Lv2 + non-Tuner Lv6 D/D/D — Clovis Lv6 or Doom Queen Lv6 etc.). Siegfried provides backrow targeted negate, the 3rd of the canonical 4 finishers."
+    },
+    {
+      "cards": [46593546, 74583607],
+      "effect": "Deus Machinex alt-Xyz clause: Deus Machinex (Rank 8 Xyz) accepts 1 D/D/D Fusion monster as material in lieu of Rank 8 Xyz materials. Genghis (Flame King Fusion) is the standard alt-material when no Rank-8 Xyz route is available — preserves Siegfried + Sky King on field rather than consuming them as Xyz materials."
+    }
+  ],
+
+  "bridges": [
+    {
+      "id": "ddd-gate-doom-queen-search-bridge",
+      "name": "Gate -> search Doom Queen Machinex (combo ignition)",
+      "description": "Canonical 1-card ignition for the ddd-pendulum-opener fixture. Activating Dark Contract with the Gate adds a D/D monster from Deck; the canonical pick is Doom Queen Machinex (20715411), which then becomes the central pivot for the rest of the combo. CRITICAL SELECT_CARD decision per ddd-combo-reference.md — picking any other D/D dies the line at step 1.",
+      "requiresDeckPieces": [46372010, 20715411],
+      "produces": [
+        {
+          "zone": "hand",
+          "card": { "kind": "specific", "cardId": 20715411 },
+          "note": "Doom Queen Machinex in hand"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 46372010 },
+          "position": "faceup-atk",
+          "note": "Gate face-up in S/T zone (Continuous Spell)"
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 46372010 },
+          "note": "Activate Dark Contract with the Gate from hand (Continuous Spell)."
+        },
+        {
+          "action": "search",
+          "subject": { "kind": "specific", "cardId": 46372010 },
+          "target": { "kind": "specific", "cardId": 20715411 },
+          "note": "Gate on-activate: add 1 D/D monster from Deck. Target = Doom Queen Machinex."
+        }
+      ]
+    },
+    {
+      "id": "ddd-doom-queen-scale-zero-contract-place-bridge",
+      "name": "Scale Doom Queen -> place Zero Contract from deck",
+      "description": "Phase B step: Doom Queen Machinex placed face-up in PZONE (Pendulum scale). Her PZONE effect places a Dark Contract from Deck face-up in S/T zone — canonical pick is Dark Contract with the Zero King (32665564) since it enables the immediate pop-and-return loop. Zero Contract being placed (not activated) means no Spell Speed 1 timing window is consumed — it can be activated next.",
+      "requiresDeckPieces": [20715411, 32665564],
+      "produces": [
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 20715411 },
+          "position": "faceup-atk",
+          "note": "Doom Queen Machinex face-up in own PZONE as scale"
+        },
+        {
+          "zone": "spellTrap",
+          "card": { "kind": "specific", "cardId": 32665564 },
+          "position": "faceup-atk",
+          "note": "Dark Contract with the Zero King placed face-up from deck (Doom Queen PZONE eff)"
+        }
+      ],
+      "steps": [
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 20715411 },
+          "note": "Place Doom Queen Machinex in own PZONE (Pendulum-activate from hand). Triggers PZONE eff: place 1 Dark Contract from Deck face-up in own S/T zone."
+        },
+        {
+          "action": "set",
+          "subject": { "kind": "specific", "cardId": 32665564 },
+          "note": "Doom Queen PZONE eff resolve: place Dark Contract with the Zero King from Deck face-up."
+        }
+      ]
+    },
+    {
+      "id": "ddd-zero-contract-pop-cascade-bridge",
+      "name": "Zero Contract pop Doom Queen -> SS Count Surveyor / Lance -> Doom Queen ED-return",
+      "description": "Phase C step: the central combo engine. Activate Zero Contract (cost: destroy own Doom Queen Machinex), SS a D/D from deck (Count Surveyor or Lance Soldier), then Doom Queen Machinex returns from ED to field (her destroyed-by-own-effect clause). Net: +2 D/D bodies on field (the SS'd D/D + Doom Queen back) and a fresh pile of triggers (Count Surveyor on-SS / Lance on-SS / Doom Queen on-SS). Precursor of the Pendulum-cycle finishing layer.",
+      "requiresDeckPieces": [32665564, 20715411, 5997110, 67322708],
+      "precursors": ["ddd-doom-queen-scale-zero-contract-place-bridge"],
+      "produces": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [5997110, 67322708] },
+          "position": "faceup-atk",
+          "note": "Count Surveyor or Lance Soldier SS'd from Deck"
+        },
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 20715411 },
+          "position": "faceup-atk",
+          "note": "Doom Queen Machinex back on field from ED"
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 32665564 },
+          "target": { "kind": "specific", "cardId": 20715411 },
+          "note": "Activate Zero Contract; cost = destroy Doom Queen Machinex (in own PZONE)."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "anyOf", "cardIds": [5997110, 67322708] },
+          "note": "Zero Contract resolve: SS 1 D/D from Deck. Pick Count Surveyor (preferred — adds Copernicus / Kepler from deck) or Lance Soldier (alt — Lv2 Tuner for Synchro)."
+        },
+        {
+          "action": "specialSummon",
+          "subject": { "kind": "specific", "cardId": 20715411 },
+          "note": "Doom Queen Machinex destroyed-by-own-effect clause: SS from ED back to field."
+        }
+      ]
+    },
+    {
+      "id": "ddd-clovis-zeus-link-finisher-bridge",
+      "name": "Link Summon ladder -> Clovis -> Sky King Zeus Ragnarok",
+      "description": "Finisher step: Link Summon Clovis (Link-2 D/D/D, materials = 2 D/D) then Link Summon Sky King Zeus Ragnarok (Link-3 D/D/D, materials = Clovis + 2 D/D). Zeus is the omniNegate-of-monster-effect-in-hand finisher. Both are reachable from 3 face-up D/D bodies on field (e.g., Doom Queen + Count Surveyor + Lance Soldier post-Zero-Contract-cascade).",
+      "requiresDeckPieces": [70576413, 30998403],
+      "produces": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 30998403 },
+          "position": "faceup-atk",
+          "note": "Sky King Zeus Ragnarok (Link-3 D/D/D)"
+        }
+      ],
+      "steps": [
+        {
+          "action": "linkSummon",
+          "subject": { "kind": "specific", "cardId": 70576413 },
+          "note": "Link Summon D/D/D First King Clovis (Link-2, 2 D/D materials)."
+        },
+        {
+          "action": "linkSummon",
+          "subject": { "kind": "specific", "cardId": 30998403 },
+          "note": "Link Summon Sky King Zeus Ragnarok (Link-3) using Clovis + 2 more D/D bodies."
+        }
+      ]
+    },
+    {
+      "id": "ddd-necro-slime-fusion-genghis-bridge",
+      "name": "Necro Slime in GY -> Fusion Summon Genghis (or High Caesar)",
+      "description": "Finisher step: Necro Slime's GY-eff banishes self + 1 D/D from GY/field as Fusion materials -> Fusion Summon any D/D/D Fusion from ED. Standard pick is Flame King Genghis (74583607); alt picks include Wave High King Caesar (79559912) and Bright Armageddon (72402069). Necro Slime needs to be in GY first — typically arrives via a Tell dump or Copernicus Pendulum-Summon-trigger dump.",
+      "requiresInitialState": [
+        {
+          "zone": "gy",
+          "card": { "kind": "specific", "cardId": 72291412 },
+          "note": "Necro Slime in GY (sent there via prior dump effect)"
+        }
+      ],
+      "requiresDeckPieces": [72291412, 74583607],
+      "produces": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [74583607, 79559912, 72402069] },
+          "position": "faceup-atk",
+          "note": "Genghis | Wave High Caesar | Bright Armageddon (Fusion-summoned via Necro Slime)"
+        }
+      ],
+      "steps": [
+        {
+          "action": "activate",
+          "subject": { "kind": "specific", "cardId": 72291412 },
+          "note": "Necro Slime GY-eff: banish self + 1 D/D in GY/field as Fusion materials -> Fusion Summon a D/D/D Fusion from ED."
+        },
+        {
+          "action": "fusionSummon",
+          "subject": { "kind": "anyOf", "cardIds": [74583607, 79559912, 72402069] },
+          "note": "Fusion Summon Genghis (or High Caesar / Bright Armageddon depending on materials)."
+        }
+      ]
+    },
+    {
+      "id": "ddd-deus-machinex-alt-xyz-bridge",
+      "name": "Deus Machinex alt-Xyz from D/D/D Fusion material",
+      "description": "Apex finisher: Deus Machinex (Rank 8 Xyz) accepts 1 D/D/D Fusion monster as material in lieu of standard Rank 8 Xyz materials (alt-material clause). Standard pick = Genghis (74583607) when freshly Fusion'd. Preserves Siegfried + Sky King + High Caesar on field as they'd otherwise be consumed as Xyz materials. The β-1 critic plan uses Genghis as the alt-Xyz material to keep Siegfried alive.",
+      "requiresInitialState": [
+        {
+          "zone": "monster",
+          "card": { "kind": "anyOf", "cardIds": [74583607, 79559912, 72402069] },
+          "position": "faceup-atk",
+          "note": "D/D/D Fusion monster on field as alt-Xyz material (Genghis | High Caesar | Bright Armageddon)"
+        }
+      ],
+      "requiresDeckPieces": [46593546],
+      "produces": [
+        {
+          "zone": "monster",
+          "card": { "kind": "specific", "cardId": 46593546 },
+          "position": "faceup-atk",
+          "note": "Deus Machinex Xyz-summoned via alt-material clause"
+        }
+      ],
+      "steps": [
+        {
+          "action": "xyzSummon",
+          "subject": { "kind": "specific", "cardId": 46593546 },
+          "note": "Xyz Summon Deus Machinex using 1 D/D/D Fusion monster as alt-material."
+        }
+      ]
+    }
+  ],
+
+  "sourceNotes": "v1 (2026-05-02) — D/D/D Pendulum archetype-expertise for ddd-pendulum-opener fixture (ddd-wcq-top4 deck). Authored from THREE sources: (1) ddd-combo-reference.md (2026-04-16, line '1 CARD COMBO — Dark Contract with the Gate' since Gate is in the opener hand) for canonical step ordering and SELECT_CARD priorities; (2) duel-server/data/path-beta-poc/ddd-pendulum-opener/sprint2-option-b-best-plan.json for the empirically-validated 3/5 ceiling sequence (critic confirmed); (3) raw-replay trajectory ddd-pendulum-replay-eb8c6865 for full deck identification (cardIds cross-referenced via cards.cdb). 13 goals (1 apex + 12 waypoints with descending baselineScore from 25 -> 2): apex (25) -> 4-MZONE-tower (18) -> 3-of-4-finishers (14) -> 2-finishers (9) -> Doom-Queen-pivot (8) -> Doom-Queen-scaled (6) -> Zero-Contract-active (5) -> Pendulum-scales-set (4) -> Headhunt-set (4) -> finisher-any (3) -> Doom-Queen-searched (3) -> any-D/D-body (2) -> material-consumed (2). 4 routes covering Gate-tutor / Kepler-NS / Doom-Queen-cascade / Necro-Slime-fusion. 6 bridges for the canonical engine: Gate-search / Scale-Doom-Queen / Zero-Contract-pop / Clovis-Zeus-Link / Necro-Genghis-Fusion / Deus-alt-Xyz. NO decisionHints in v1 — Phase 7 mechanism validated multi-deck already; defer hint authoring until baseline lift is measured. Note: combo-reference cardId 71612253 is mislabeled as 'Deus Machinex' but cards.cdb confirms it is D/D/D Marksman King Tell; the actual Deus Machinex in this deck is 46593546 (the only Deus Machinex copy in the ED). Combo-reference cardId 3758046 is mislabeled as 'Wise King Solomon' but cards.cdb confirms it is D/D/D Wave King Caesar; Solomon is 32232538."
+}
