@@ -1432,11 +1432,17 @@ The `replayLog` is a chronological record of every prompt the engine emitted and
 ```
 
 **Field semantics**:
-- `cardName` — case-insensitive substring match against the legal-action's cardName. Multiple legal matches → first picked.
+- `cardName` — case-insensitive **bidirectional** substring match against the legal-action's cardName. The match is `legal.includes(hint) || hint.includes(legal)` — your hint matches if either contains the other as a substring. Multiple legal matches → first picked.
 - `verb` — disambiguates multiple legal actions with the same cardName. Optional. Use when the same card has multiple valid `verbs` at the same prompt.
 - `responseIndex` — raw response index. Bypasses cardName matching. Use only when cardName is ambiguous or absent (e.g., for `pass`).
 - `targets[]` — consumed at SELECT_CARD/PLACE/POSITION/UNSELECT/TRIBUTE/SUM sub-prompts that follow this plan-step's main action, in order, until the next IDLECMD.
 - `chainTargets[]` — consumed at SELECT_CHAIN sub-prompts. Default behavior when absent: pass at every SELECT_CHAIN. Provide a `chainTargets[]` entry to activate a specific Trigger on the chain.
+
+**Substring matching pitfall**: when a target card's name contains another card's name as a substring (e.g., `Welcome Labrynth` is a substring of `Big Welcome Labrynth`), using `cardName: "Welcome"` matches the FIRST legal action whose name contains "Welcome" — possibly the wrong card. Use the **unique discriminator** (e.g., `cardName: "Big Welcome"` to specifically match Big Welcome Labrynth) to avoid silent mis-matches.
+
+**Trigger Effects do NOT need their own IDLECMD `(activate)` plan-step**. Cards with on-Summon, on-SS, on-NS, or on-GY-send Trigger Effects auto-resolve in the post-event Trigger window via SEGOC (§4.7). The plan should only include IDLECMD steps for **player-initiated activations** (Ignition Effects, Spell/Trap activations, Quick Effects you choose to activate). Adding a redundant `(activate)` plan-step for an auto-firing Trigger Effect causes divergence — the engine has already resolved the trigger, so the card no longer surfaces in legal actions at the next IDLECMD.
+
+**Concrete example of the trigger-redundancy trap**: a plan that summons monster X (which has an on-Summon search trigger) and then has a separate plan-step `{cardName: "X", verb: "activate"}` will diverge at that step — X's search trigger already auto-fired in the SEGOC window after the summon, and X cannot be re-activated. Drop the redundant step; the search target goes via the `targets[]` of the summon plan-step (or via `chainTargets[]` if the trigger surfaced on a chain).
 
 ### B.7 Auto-defaults at sub-prompts
 
@@ -1464,6 +1470,8 @@ When a plan-step has no explicit `targets[]` entry for a sub-prompt, the engine 
 1. **ANNOUNCE_NUMBER is NOT overridable in β-1.** The default picks the LAST option in `options[]` (= maximum value offered). For effects like Lance Soldier's level-up (where the canonical line picks a non-max value), this default is wrong and there is no plan-grammar mechanism to override it.
 
 2. **SELECT_EFFECTYN / SELECT_YESNO override exists** via `targets[]`. Default for EFFECTYN is YES (responseIndex 1), default for YESNO is NO (responseIndex 0). Use `{responseIndex: 0}` or `{responseIndex: 1}` explicitly to override.
+
+   **Common silent-failure pattern**: optional revive/SS prompts of the form *"You can target … Special Summon it"* or *"You can pay X; activate"* on Continuous Spells/Traps consistently surface as **SELECT_YESNO with default NO**. If your plan needs the optional clause to fire, you MUST add an override entry. Concrete example — a Continuous Trap with text *"...if you do, you can target 1 monster in your GY; Special Summon it"* surfaces a SELECT_YESNO after the activation; without `targets: [{responseIndex: 1}]`, the auto-default picks NO and the SS clause silently doesn't fire. The plan completes successfully but with one fewer monster on the board than expected. This is the dominant silent-failure mode of plans that "should work" — always check the replayLog for `[auto]` resolutions on SELECT_YESNO when a plan completes with `matched < expected`.
 
 3. **SELECT_PLACE / SELECT_POSITION override is via `responseIndex`**, not by zone name. The `responseIndex` corresponds to the index in `legalActionsAtPrompt`. Inspect the engine's legal list (via `--dump-trace`) to find the right index for the zone you want.
 

@@ -34,6 +34,22 @@ Compose a β-1 plan that maximises `matched` against the fixture's `expectedBoar
 - **No reading of any `.raw-replay.json` file** in `_bmad-output/planning-artifacts/research/trajectories/`. These contain reference solutions and would invalidate the discovery measurement.
 - **No reading of any prior Path β `summary.md`, `critic-*.md`, or `*-best-plan.json`** for the current fixture. You compose your plan from scratch.
 
+## Common pitfalls (pre-armed from prior v2 dispatches)
+
+These are recurring failure modes observed across prior runs. Avoiding them upfront saves attempts:
+
+1. **Trigger Effect redundancy trap** (Annexe B.6): cards with on-Summon, on-NS, on-SS, or on-GY-send Trigger Effects auto-resolve via SEGOC (§4.7) in the post-event window. Do **NOT** add an IDLECMD `(activate)` plan-step for these — the engine has already resolved them, and the plan-step will diverge. Use `targets[]` on the summon plan-step to provide the trigger's search/SS target, or `chainTargets[]` if it surfaces on a chain.
+
+2. **SELECT_YESNO default NO silent failure** (Annexe B.7): optional revive/SS prompts of the form *"You can target ... Special Summon it"* on Continuous Spells/Traps consistently surface as **SELECT_YESNO with default NO**. Without an explicit `targets: [{responseIndex: 1}]` override, the optional clause silently doesn't fire and the plan completes with `matched < expected`. Always check the replayLog for `[auto]` resolutions on SELECT_YESNO when a plan completes below target.
+
+3. **Substring matching pitfall** (Annexe B.6): `cardName` matching is bidirectional substring. `"Welcome"` will match `"Big Welcome Labrynth"` AND `"Welcome Labrynth"` — the first wins, possibly the wrong one. Use unique discriminators (e.g., `"Big Welcome"` to specifically match Big Welcome Labrynth).
+
+4. **Retroactive lock check** (§2.4 / §A.3): `this turn` and `the turn you activate this card` locks apply to the entire current turn including before activation. If the restricted action has already been performed earlier in the turn, the card cannot be activated at all. Common offenders: Branded Fusion (no non-Fusion ED summon), Fusion Spell with similar lock, etc.
+
+5. **Pendulum redirect bypasses GY-triggers** (§6.2): Pendulum Monsters used as Fusion Material redirect to face-up ED, NOT to GY. Triggers requiring `sent to the GY` or `sent to the GY as material for a Fusion Summon` do NOT fire for Pendulum materials.
+
+6. **Xyz overlay state instance reset** (§6.12): attaching a card as overlay material resets all lingering effects keyed to that instance. Detaching is "from attached state to GY", NOT "from the field to GY" — triggers requiring "from the field" do not fire.
+
 ## Mandatory pre-reasoning step — full deck audit
 
 Before forming any combo hypothesis, produce a complete enumeration of summon enablers, tutors, and combo pieces in the deck and hand. Write the result to `data/path-beta-poc/<FIXTURE_ID>/v2-deck-audit.md` with this exact structure:
@@ -133,9 +149,11 @@ While working, maintain a structured reasoning log at `data/path-beta-poc/<FIXTU
 {"event":"verdict","matched":<N>,"score":<N>,"claim":"<ceiling | optimal | partial>","supporting_attempts":[1,2,...],"unverified_assumptions":["<list>"]}
 ```
 
-The `verified` field is critical. **`verified: false` means**: I am applying a rule from my memory or training data, not from the canonical doc. Mark `verified: true` ONLY IF the ruling is explicitly stated in `yugioh-game-rules.md` (cite the section), OR confirmed empirically by `replay-trajectory-cli` returning `stoppedReason=divergence` at the step that proves the rule.
+The `verified` field is critical and **mandatory** on every event that contains a claim, hypothesis, constraint, or elimination. **`verified: false` means**: I am applying a rule from my memory or training data, not from the canonical doc. Mark `verified: true` ONLY IF the ruling is explicitly stated in `yugioh-game-rules.md` (cite the section), OR confirmed empirically by `replay-trajectory-cli` returning `stoppedReason=divergence` at the step that proves the rule.
 
-The CoT log is the post-hoc audit trail. Be thorough — uncertainty markers ("I think", "probably", "according to YGO rules I remember") should always have `verified: false`.
+**Discipline requirement**: every `hypothesis`, `constraint_found`, and `eliminate` event MUST include the `verified` field. Omitting it is a methodology gap and will be flagged in the post-hoc analyzer report. `stall` events should include `verified` on the subagent's diagnosis (true if confirmed by the next attempt's outcome, false if speculative).
+
+The CoT log is the post-hoc audit trail. Be thorough — uncertainty markers ("I think", "probably", "according to YGO rules I remember") should always have `verified: false`. Do not omit `verified` to avoid the question — that signals lack of methodological discipline.
 
 ## Self-criticism gate (before declaring a ceiling)
 
