@@ -83,6 +83,8 @@ import {
   computeFeatureSpecHash,
   STATE_DIM,
   ACTION_DIM,
+  STATE_FEATURE_NAMES,
+  ACTION_FEATURE_NAMES,
 } from '../src/solver/state-feature-extractor.js';
 import type { Action, DuelConfig, FieldState, ZoneId, PromptType } from '../src/solver/solver-types.js';
 import { PromptResolver, type DecisionContext } from '../src/solver/prompt-resolver.js';
@@ -117,6 +119,12 @@ interface Args {
    *  chosen response, and the pick source. Used to gate Phase 3-4 bit-exact
    *  reproduction across the PromptResolver refactor. */
   dumpTrace?: string;
+  /** Value-head pilot trajectory dump path (JSON, NOT JSONL). When set, captures
+   *  per-step state features + action features and the final outcome (matched,
+   *  score, terminationReason). Output format matches the Stage 1 schema produced
+   *  by `evaluate-structural --dump-trajectories`, so corpora from DFS standalone
+   *  and β-1/β-3 plan replays can be merged for V(s) training. */
+  dumpTrajectory?: string;
   /** Continue policy when the plan is exhausted at SELECT_IDLECMD.
    *  - `end-phase` (default): pick end-phase immediately, end the turn.
    *  - `aggressive`: prefer productive actions (summon-procedure, activate,
@@ -136,7 +144,7 @@ function parseArgs(): Args {
   const fixtureId = pick('fixture-id');
   const planFile = pick('plan-file');
   if (!fixtureId || !planFile) {
-    console.error('Usage: --fixture-id=<id> --plan-file=<path> [--out=<path>] [--max-iterations=2000] [--dump-corpus=<path.jsonl>] [--dump-trace=<path.jsonl>]');
+    console.error('Usage: --fixture-id=<id> --plan-file=<path> [--out=<path>] [--max-iterations=2000] [--dump-corpus=<path.jsonl>] [--dump-trace=<path.jsonl>] [--dump-trajectory=<path.json>]');
     process.exit(2);
   }
   const continueModeRaw = pick('continue-mode') ?? 'end-phase';
@@ -151,6 +159,7 @@ function parseArgs(): Args {
     maxIterations: Number(pick('max-iterations') ?? '2000'),
     dumpCorpus: pick('dump-corpus'),
     dumpTrace: pick('dump-trace'),
+    dumpTrajectory: pick('dump-trajectory'),
     continueMode: continueModeRaw,
     maxAggressiveActions: Number(pick('max-aggressive-actions') ?? '40'),
   };
@@ -391,8 +400,11 @@ async function main(): Promise<void> {
     allConfigs.structuralTutorCards,
   );
 
-  // Tier 3 corpus extraction — only when --dump-corpus is set.
-  const featureCtx = args.dumpCorpus ? buildFeatureContext({
+  // Tier 3 corpus extraction (--dump-corpus) and value-head trajectory dump
+  // (--dump-trajectory) both require the feature context. Built once if either
+  // flag is set; null otherwise to avoid the per-card metadata scan cost on
+  // baseline runs.
+  const featureCtx = (args.dumpCorpus || args.dumpTrajectory) ? buildFeatureContext({
     metadata,
     interruptionTags: allConfigs.interruptionTags,
     interruptionWeights: allConfigs.interruptionWeights,
@@ -439,6 +451,20 @@ async function main(): Promise<void> {
   /** Phase 1 baseline trace — populated only when --dump-trace is set. Streamed
    *  to disk on shutdown to keep memory bounded for long replays. */
   const responseTrace: ResponseTraceEntry[] = [];
+  /** Value-head pilot trajectory dump — populated only when --dump-trajectory
+   *  is set. Each entry mirrors the Stage 1 schema produced by
+   *  evaluate-structural --dump-trajectories so corpora can be merged. */
+  interface TrajectoryStepEntry {
+    step: number;
+    promptType: string;
+    responseIndex: number;
+    cardId: number;
+    cardName: string;
+    actionVerb: string | null;
+    stateFeatures: Record<string, number>;
+    actionFeatures: Record<string, number>;
+  }
+  const trajectoryDump: TrajectoryStepEntry[] = [];
   let planIdx = 0;
   let rawIdx = 0;
   /** The plan-step index that most recently committed an IDLECMD action.
@@ -880,6 +906,40 @@ async function main(): Promise<void> {
         });
       }
 
+      // Value-head pilot trajectory capture (must run BEFORE applyAction so
+      // stateFeatures reflect the pre-action state, mirroring Stage 1 helper
+      // dumpTrajectoryToFile in evaluate-structural.ts).
+      if (args.dumpTrajectory && featureCtx) {
+        try {
+          const fs = adapter.getFieldState(handle);
+          const stateVec = extractStateFeatures(fs, featureCtx);
+          const actionVec = extractActionFeatures(chosen, fs, featureCtx);
+          // Mirror the is_self_turn override that NeuralFeatureRanker applies
+          // (extractFeatures sets stateVec[4] from action.team).
+          stateVec[4] = chosen.team === 1 ? 0 : 1;
+          const stateNamed: Record<string, number> = {};
+          for (let j = 0; j < STATE_FEATURE_NAMES.length; j++) {
+            stateNamed[STATE_FEATURE_NAMES[j]] = stateVec[j];
+          }
+          const actionNamed: Record<string, number> = {};
+          for (let j = 0; j < ACTION_FEATURE_NAMES.length; j++) {
+            actionNamed[ACTION_FEATURE_NAMES[j]] = actionVec[j];
+          }
+          trajectoryDump.push({
+            step: stepCount,
+            promptType,
+            responseIndex: chosen.responseIndex,
+            cardId: chosen.cardId,
+            cardName: chosen.cardName || getName(chosen.cardId),
+            actionVerb: chosen.actionVerb ?? null,
+            stateFeatures: stateNamed,
+            actionFeatures: actionNamed,
+          });
+        } catch (e) {
+          console.error(`[trajectory-dump] step ${stepCount} failed:`, (e as Error).message);
+        }
+      }
+
       adapter.applyAction(handle, chosen);
       stepCount++;
 
@@ -964,6 +1024,46 @@ async function main(): Promise<void> {
     const lines = responseTrace.map(e => JSON.stringify(e)).join('\n') + '\n';
     writeFileSync(abs, lines, 'utf-8');
     console.log(`[replay] wrote response trace (${responseTrace.length} prompts) to ${abs}`);
+  }
+
+  if (args.dumpTrajectory) {
+    const abs = resolve(args.dumpTrajectory);
+    mkdirSync(dirname(abs), { recursive: true });
+    const dump = {
+      schemaVersion: 1,
+      fixtureId: args.fixtureId,
+      deckLabel: hand.deck ?? '',
+      // β-1/β-3 plan replays don't run a neural ranker, so weights metadata
+      // is null. featureSpecHash still validates state/action dims match.
+      weightsBasename: null as string | null,
+      weightsHash: null as string | null,
+      weightsArch: null as string | null,
+      featureSpecHash: computeFeatureSpecHash(),
+      evalConfig: {
+        // β-1 replays consume the plan as authority; expertise is irrelevant
+        // (PlanTarget wins via pass-through guard). Mark null to flag this
+        // is not the DFS-standalone evalConfig.
+        expertiseDisabled: null as boolean | null,
+        implicitGoalsWeight: null as number | null,
+        budgetMs: null as number | null,
+        nodeBudget: null as number | null,
+        source: 'replay-trajectory-cli',
+        planFile: args.planFile,
+      },
+      outcome: {
+        score: result.score,
+        matched: result.matched,
+        matchedTotal: result.expectedBoardSize,
+        matchedCardIds: result.matchedCardIds,
+        missingCardIds: result.missingCardIds,
+        nodesExplored: 0,  // not applicable to plan-replay
+        wallMs: 0,
+        terminationReason: result.stoppedReason,
+      },
+      trajectory: trajectoryDump,
+    };
+    writeFileSync(abs, JSON.stringify(dump, null, 2) + '\n', 'utf-8');
+    console.log(`[replay] wrote trajectory dump (${trajectoryDump.length} steps, score=${result.score}, matched=${result.matched}/${result.expectedBoardSize}) to ${abs}`);
   }
 
   const out = JSON.stringify(result, null, 2) + '\n';

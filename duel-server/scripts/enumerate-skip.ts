@@ -58,6 +58,13 @@ interface Args {
   outDir: string;
   comboDepth: number;
   steps?: number[];
+  /** When set (any truthy), each variant replay also produces a trajectory
+   *  dump (state+action features per step, outcome at end) at
+   *  `<out-dir>/variant-skip-<label>-trajectory.json`. The baseline replay
+   *  also dumps to `<out-dir>/_baseline-trajectory.json`. Format matches the
+   *  Stage 1 schema produced by `evaluate-structural --dump-trajectories`,
+   *  so corpora can be merged for value-head training. */
+  dumpTrajectories: boolean;
 }
 
 function parseArgs(): Args {
@@ -69,33 +76,42 @@ function parseArgs(): Args {
   const basePlan = pick('base-plan');
   const outDir = pick('out-dir');
   if (!fixtureId || !basePlan || !outDir) {
-    console.error('Usage: --fixture-id=<id> --base-plan=<path> --out-dir=<path> [--combo-depth=<1|2>] [--steps=<csv>]');
+    console.error('Usage: --fixture-id=<id> --base-plan=<path> --out-dir=<path> [--combo-depth=<1|2>] [--steps=<csv>] [--dump-trajectories]');
     process.exit(2);
   }
   const stepsRaw = pick('steps');
   const steps = stepsRaw ? stepsRaw.split(',').map(s => Number(s.trim())) : undefined;
+  const dumpTrajectories = process.argv.includes('--dump-trajectories');
   return {
     fixtureId,
     basePlan: resolve(basePlan),
     outDir: resolve(outDir),
     comboDepth: Number(pick('combo-depth') ?? '1'),
     steps,
+    dumpTrajectories,
   };
 }
 
-function runReplay(planPath: string, fixtureId: string, resultPath: string): boolean {
+function runReplay(
+  planPath: string,
+  fixtureId: string,
+  resultPath: string,
+  trajectoryPath?: string,
+): boolean {
   // Skip-enumeration uses the default `end-phase` continue-mode. Unlike
   // enumerate-pivot (which truncates and needs aggressive cascade), skip
   // variants keep the rest of the base plan running and we want the natural
   // end-of-plan endboard — aggressive-continue would over-summon and
   // destroy the existing match (e.g. branded baseline 7/8 → 5/8 because
   // aggressive picks demolish the carefully-built fusion stack).
-  const r = spawnSync('npx', [
+  const args = [
     'tsx', 'scripts/replay-trajectory-cli.ts',
     `--fixture-id=${fixtureId}`,
     `--plan-file=${planPath}`,
     `--out=${resultPath}`,
-  ], { stdio: ['ignore', 'pipe', 'pipe'], shell: true });
+  ];
+  if (trajectoryPath) args.push(`--dump-trajectory=${trajectoryPath}`);
+  const r = spawnSync('npx', args, { stdio: ['ignore', 'pipe', 'pipe'], shell: true });
   if (r.status !== 0) {
     process.stderr.write(r.stderr?.toString() ?? '');
     return false;
@@ -156,8 +172,9 @@ function main(): void {
 
   // Step 1 — baseline run (no skip).
   const baselineResultPath = join(args.outDir, '_baseline-result.json');
+  const baselineTrajectoryPath = args.dumpTrajectories ? join(args.outDir, '_baseline-trajectory.json') : undefined;
   console.log('[enum-skip] running baseline (no skip)...');
-  if (!runReplay(args.basePlan, args.fixtureId, baselineResultPath)) {
+  if (!runReplay(args.basePlan, args.fixtureId, baselineResultPath, baselineTrajectoryPath)) {
     console.error('[enum-skip] baseline replay failed');
     process.exit(1);
   }
@@ -190,8 +207,11 @@ function main(): void {
     const skipLabel = combo.map(s => `step${s}`).join('+');
     const variantPath = join(args.outDir, `variant-skip-${skipLabel}.json`);
     const variantResultPath = join(args.outDir, `variant-skip-${skipLabel}-result.json`);
+    const variantTrajectoryPath = args.dumpTrajectories
+      ? join(args.outDir, `variant-skip-${skipLabel}-trajectory.json`)
+      : undefined;
     writeFileSync(variantPath, JSON.stringify(variantPlan, null, 2));
-    runReplay(variantPath, args.fixtureId, variantResultPath);
+    runReplay(variantPath, args.fixtureId, variantResultPath, variantTrajectoryPath);
     const r = readResult(variantResultPath);
     const skippedSteps = combo.map(s => describeStep(basePlan.plan[s]));
     const matchedDelta = r.matched !== null && baseline.matched !== null ? r.matched - baseline.matched : null;
