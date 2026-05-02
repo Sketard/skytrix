@@ -453,7 +453,20 @@ async function main(): Promise<void> {
   const responseTrace: ResponseTraceEntry[] = [];
   /** Value-head pilot trajectory dump — populated only when --dump-trajectory
    *  is set. Each entry mirrors the Stage 1 schema produced by
-   *  evaluate-structural --dump-trajectories so corpora can be merged. */
+   *  evaluate-structural --dump-trajectories so corpora can be merged.
+   *  resourceMetrics added 2026-05-02 for resource-scoring instrumentation:
+   *  cardsOutOfDeck = (initialMainDeckSize + initialExtraDeckSize) -
+   *  (currentDeckSize + currentExtraSize) at the moment this step executes
+   *  (pre-action, same timing as state/action features). */
+  interface ResourceMetrics {
+    cardsOutOfDeck: number;
+    deckSize: number;
+    extraSize: number;
+    handSize: number;
+    gySize: number;
+    banishedSize: number;
+    endboardScoreApprox: number;  // sum of own M/S/EMZ/FIELD card count (proxy)
+  }
   interface TrajectoryStepEntry {
     step: number;
     promptType: string;
@@ -463,8 +476,11 @@ async function main(): Promise<void> {
     actionVerb: string | null;
     stateFeatures: Record<string, number>;
     actionFeatures: Record<string, number>;
+    resourceMetrics?: ResourceMetrics;
   }
   const trajectoryDump: TrajectoryStepEntry[] = [];
+  const initialMainDeckSize = mainDeck.length;
+  const initialExtraSize = deck.extra.length;
   let planIdx = 0;
   let rawIdx = 0;
   /** The plan-step index that most recently committed an IDLECMD action.
@@ -925,6 +941,29 @@ async function main(): Promise<void> {
           for (let j = 0; j < ACTION_FEATURE_NAMES.length; j++) {
             actionNamed[ACTION_FEATURE_NAMES[j]] = actionVec[j];
           }
+          // Resource-scoring instrumentation (2026-05-02). cardsOutOfDeck =
+          // (initial main + extra deck size) - (current DECK + EXTRA size).
+          // Option α per design discussion: strict deck/extra counters only,
+          // no hand contribution (hand is more volatile via discards).
+          const deckSize = fs.zones.DECK?.length ?? 0;
+          const extraSize = fs.zones.EXTRA?.length ?? 0;
+          const handSize = fs.zones.HAND?.length ?? 0;
+          const gySize = fs.zones.GY?.length ?? 0;
+          const banishedSize = fs.zones.BANISHED?.length ?? 0;
+          const cardsOutOfDeck = (initialMainDeckSize + initialExtraSize) - (deckSize + extraSize);
+          // Approximation of endboard score: count own face-up cards in
+          // monster + EMZ + S/T + FIELD zones. This is a cheap proxy used for
+          // the analysis curves; the actual scorer's interruptionScore is
+          // computed at the final terminal only and reported separately in
+          // the outcome block.
+          const ON_FIELD_ZONES_OWN = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD'] as const;
+          let endboardCount = 0;
+          for (const z of ON_FIELD_ZONES_OWN) {
+            for (const c of fs.zones[z] ?? []) {
+              if (c.position !== 'facedown' && c.position !== 'facedown-def') endboardCount++;
+              else if (z === 'FIELD' || z.startsWith('S')) endboardCount++; // facedown S/T or field still count as posed
+            }
+          }
           trajectoryDump.push({
             step: stepCount,
             promptType,
@@ -934,6 +973,15 @@ async function main(): Promise<void> {
             actionVerb: chosen.actionVerb ?? null,
             stateFeatures: stateNamed,
             actionFeatures: actionNamed,
+            resourceMetrics: {
+              cardsOutOfDeck,
+              deckSize,
+              extraSize,
+              handSize,
+              gySize,
+              banishedSize,
+              endboardScoreApprox: endboardCount,
+            },
           });
         } catch (e) {
           console.error(`[trajectory-dump] step ${stepCount} failed:`, (e as Error).message);
@@ -1029,6 +1077,13 @@ async function main(): Promise<void> {
   if (args.dumpTrajectory) {
     const abs = resolve(args.dumpTrajectory);
     mkdirSync(dirname(abs), { recursive: true });
+    // Terminal resource metrics, computed from finalState for analysis.
+    const terminalDeckSize = finalState.zones.DECK?.length ?? 0;
+    const terminalExtraSize = finalState.zones.EXTRA?.length ?? 0;
+    const terminalHandSize = finalState.zones.HAND?.length ?? 0;
+    const terminalGySize = finalState.zones.GY?.length ?? 0;
+    const terminalBanishedSize = finalState.zones.BANISHED?.length ?? 0;
+    const terminalCardsOutOfDeck = (initialMainDeckSize + initialExtraSize) - (terminalDeckSize + terminalExtraSize);
     const dump = {
       schemaVersion: 1,
       fixtureId: args.fixtureId,
@@ -1060,10 +1115,21 @@ async function main(): Promise<void> {
         wallMs: 0,
         terminationReason: result.stoppedReason,
       },
+      // Terminal resource metrics for resource-scoring analysis (2026-05-02).
+      resourceMetricsTerminal: {
+        cardsOutOfDeck: terminalCardsOutOfDeck,
+        deckSize: terminalDeckSize,
+        extraSize: terminalExtraSize,
+        handSize: terminalHandSize,
+        gySize: terminalGySize,
+        banishedSize: terminalBanishedSize,
+        initialMainDeckSize,
+        initialExtraSize,
+      },
       trajectory: trajectoryDump,
     };
     writeFileSync(abs, JSON.stringify(dump, null, 2) + '\n', 'utf-8');
-    console.log(`[replay] wrote trajectory dump (${trajectoryDump.length} steps, score=${result.score}, matched=${result.matched}/${result.expectedBoardSize}) to ${abs}`);
+    console.log(`[replay] wrote trajectory dump (${trajectoryDump.length} steps, score=${result.score}, matched=${result.matched}/${result.expectedBoardSize}, cardsOutOfDeck=${terminalCardsOutOfDeck}) to ${abs}`);
   }
 
   const out = JSON.stringify(result, null, 2) + '\n';

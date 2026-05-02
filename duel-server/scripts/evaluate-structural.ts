@@ -500,6 +500,11 @@ export async function runFixture(
   // DecisionContext. Mirrors solver-worker.ts:217. Without this the eval
   // harness would never see decisionHints-driven overrides.
   adapter.setArchetypeExpertise(filteredExpertise);
+  // Resource scoring (Design D, 2026-05-02) — feed initial deck/extra sizes
+  // into the scorer so it can compute cardsOutOfDeck = (initial - current)
+  // when SOLVER_USE_RESOURCE_SCORING=1. Always called per fixture so a prior
+  // fixture's sizes don't leak. No-op when env flag absent.
+  scorer.setInitialDeckSizes(deck.main.length, deck.extra.length);
 
   // Phase A scorer fix (2026-04-26) — env-gated implicit ComboGoals from the
   // fixture's `expectedBoard`. Each card present on the terminal field

@@ -215,6 +215,9 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   // every DecisionContext. No-op pass-through until decisionHints fields are
   // populated (Phase 7).
   adapter.setArchetypeExpertise(filteredExpertise);
+  // Resource scoring (Design D, 2026-05-02) — feed initial deck/extra sizes
+  // into the scorer. No-op when SOLVER_USE_RESOURCE_SCORING flag absent.
+  scorer.setInitialDeckSizes(task.duelConfig.mainDeck.length, task.duelConfig.extraDeck.length);
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {
