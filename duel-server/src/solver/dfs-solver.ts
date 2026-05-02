@@ -576,6 +576,11 @@ export class DfsSolver implements SolverStrategy {
         // Re-fetch legal actions for the next prompt the engine surfaces.
         // Loop continues if the next prompt is also a single-action
         // SELECT_CHAIN (chain windows often cluster in pairs/triples).
+        // Phase 2 (SELECT_EFFECTYN N=2 → force "yes") was prototyped here
+        // 2026-05-02 and reverted: cum 30/595 vs Option G baseline 31/596,
+        // with stable −1 matched on nekroz-ryzeal-opener (the "no" branch
+        // turned out to be load-bearing for that archetype's combo). See
+        // dfs-compression-phase-2-pilot-2026-05-02.md.
         actions = ctx.oracle.getLegalActions(handle);
       }
     }
