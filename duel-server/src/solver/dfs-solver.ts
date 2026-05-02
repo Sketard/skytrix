@@ -879,6 +879,14 @@ export class DfsSolver implements SolverStrategy {
     // it here is free regardless.
     let ranked = actions;
     if (actions.length > 0 && this.ranker.needsState(actions[0].promptType)) {
+      // Levier B / PathBiasedRanker (2026-05-02) — inject the per-handle
+      // distinctActivations snapshot via the optional `setDistinctActivations`
+      // method when present. Structural-type detection avoids a hard
+      // dependency on PathBiasedRanker; non-path rankers ignore the call.
+      const r = this.ranker as { setDistinctActivations?: (s: ReadonlySet<number> | undefined) => void };
+      if (typeof r.setDistinctActivations === 'function') {
+        r.setDistinctActivations(distinctActivations);
+      }
       ranked = instrumentTime('rank', () => this.ranker.rank(actions, fieldState));
     }
 

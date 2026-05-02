@@ -21,6 +21,7 @@ import { MCTSSolver } from './mcts-solver.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { RouteAwareRanker } from './route-aware-ranker.js';
+import { PathBiasedRanker } from './path-biased-ranker.js';
 import { GraphGuidedRanker } from './graph-guided-ranker.js';
 import { NeuralFeatureRanker } from './neural-ranker.js';
 import { PolicyGuidedRanker } from './policy-guided-ranker.js';
@@ -154,6 +155,18 @@ if (verbPolicyWeights) {
   ranker = pgr;
 }
 
+// Levier B / Path-Biased Ranker (2026-05-02) — outermost ranker decoration.
+// At each rank() call, boosts actions whose cardId is in the
+// archetype-expertise pathCardsSet AND has not yet activated this turn.
+// Provides per-decision bias (vs. terminal-side bonus path scoring NULL on
+// 2026-05-02). Default OFF; composition is no-op until DFS calls
+// `setDistinctActivations()` per node.
+let pathRanker: PathBiasedRanker | undefined;
+if (process.env.SOLVER_USE_PATH_RANKER === '1') {
+  pathRanker = new PathBiasedRanker(ranker);
+  ranker = pathRanker;
+}
+
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
 const minimaxMctsSolver = new MinimaxMctsSolver(scorer, adapter, ranker, allConfigs.solverConfig);
@@ -210,6 +223,12 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   // Expertise always lives on the inner RouteAwareRanker, even when
   // GraphGuidedRanker wraps it — the graph wrapper is expertise-agnostic.
   routeAwareRanker.setArchetypeExpertise(filteredExpertise);
+  // Levier B / PathBiasedRanker (2026-05-02): pre-compute the flattened
+  // pathCardsSet from the deck-filtered expertise. No-op when the flag is
+  // OFF (pathRanker undefined).
+  if (pathRanker) {
+    pathRanker.setArchetypeExpertise(filteredExpertise);
+  }
   // Phase 5 of prompt-resolver-refactor — feed the same deck-filtered
   // expertise into the adapter so CardExpertiseOracle can consume it on
   // every DecisionContext. No-op pass-through until decisionHints fields are

@@ -42,6 +42,7 @@ import { OCGCoreAdapter } from '../src/solver/ocgcore-adapter.js';
 import { InterruptionScorer } from '../src/solver/interruption-scorer.js';
 import { GoldfishChainRanker } from '../src/solver/goldfish-chain-ranker.js';
 import { RouteAwareRanker } from '../src/solver/route-aware-ranker.js';
+import { PathBiasedRanker } from '../src/solver/path-biased-ranker.js';
 import { GraphGuidedRanker, type RankerTrackingDump } from '../src/solver/graph-guided-ranker.js';
 import { loadTunedWeightsIfEnabled } from '../src/solver/graph-weights-loader.js';
 import { NeuralFeatureRanker } from '../src/solver/neural-ranker.js';
@@ -495,6 +496,14 @@ export async function runFixture(
   scorer.setArchetypeExpertise(filteredExpertise);
   scorer.setDeckContents(deckCardIds);
   ranker.setArchetypeExpertise(filteredExpertise);
+  // Levier B / PathBiasedRanker (2026-05-02) — push the deck-filtered
+  // expertise into the path ranker if present. Structural-type detection
+  // mirrors the PolicyGuidedRanker / NeuralFeatureRanker handling above.
+  // No-op when SOLVER_USE_PATH_RANKER flag is OFF (dfsRanker is not a
+  // PathBiasedRanker).
+  if (opts?.dfsRanker instanceof PathBiasedRanker) {
+    opts.dfsRanker.setArchetypeExpertise(filteredExpertise);
+  }
   // Phase 7 of prompt-resolver-refactor (2026-05-01) — feed the deck-filtered
   // expertise into the adapter so CardExpertiseOracle can consume it on every
   // DecisionContext. Mirrors solver-worker.ts:217. Without this the eval
@@ -570,10 +579,15 @@ export async function runFixture(
   // batch. Cheap; idempotent if the pools haven't changed.
   // PolicyGuidedRanker delegates these setters to its inner — calling on the
   // outer wrapper updates both feature contexts.
+  // PathBiasedRanker (Levier B 2026-05-02) also delegates setters to its
+  // inner via `delegateToInner`, so instanceof check covers the wrapped case.
   if (dfsRanker instanceof PolicyGuidedRanker) {
     dfsRanker.setMainDeck(deck.main);
     dfsRanker.setExtraDeck(deck.extra);
   } else if (dfsRanker instanceof NeuralFeatureRanker) {
+    dfsRanker.setMainDeck(deck.main);
+    dfsRanker.setExtraDeck(deck.extra);
+  } else if (dfsRanker instanceof PathBiasedRanker) {
     dfsRanker.setMainDeck(deck.main);
     dfsRanker.setExtraDeck(deck.extra);
   }
@@ -1004,6 +1018,14 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     pgr.setInterruptionWeights(allConfigs.interruptionWeights);
     pgr.setVerbPolicyWeights(verbPolicyWeights);
     dfsRanker = pgr;
+  }
+
+  // Levier B / PathBiasedRanker (2026-05-02) — outermost decoration.
+  // Default OFF; setArchetypeExpertise pushed per-fixture in runFixture.
+  let pathRanker: PathBiasedRanker | undefined;
+  if (process.env.SOLVER_USE_PATH_RANKER === '1') {
+    pathRanker = new PathBiasedRanker(dfsRanker);
+    dfsRanker = pathRanker;
   }
 
   const neuralWeightsBasename = neuralWeights
