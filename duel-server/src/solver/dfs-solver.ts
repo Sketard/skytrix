@@ -204,6 +204,7 @@ export class DfsSolver implements SolverStrategy {
       terminalAbortOrNodeLimit: 0,
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
+      compressedSelectChainNodes: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
       terminalRootChildBudgetCut: 0,
@@ -402,6 +403,7 @@ export class DfsSolver implements SolverStrategy {
             turn2: ctx.terminalTurn2,
             branchBoundCut: ctx.terminalBranchBoundCut,
             rootChildBudgetCut: ctx.terminalRootChildBudgetCut,
+            compressedSelectChain: ctx.compressedSelectChainNodes,
           },
           bestTurn1ExplorationScore: ctx.bestTurn1ExplorationScore,
           // Phase H — authoritative peak field-state snapshot. Probes and
@@ -513,6 +515,76 @@ export class DfsSolver implements SolverStrategy {
 
     // Get legal actions — advances through mechanical/opponent prompts
     let actions = ctx.oracle.getLegalActions(handle);
+
+    // Phase 1 macro-compression (Levier D, 2026-05-02) — collapse runs of
+    // SELECT_CHAIN prompts with a single legal action into a sequence of
+    // direct applyAction calls, without a recursive descent step. A
+    // SELECT_CHAIN with N=1 has one forced response (a (pass) sentinel
+    // when no chain link is available, or a forced trigger that the engine
+    // demands resolved). The DFS would otherwise spend one node per such
+    // prompt to re-emerge with the same field state — pure budget waste.
+    //
+    // Empirical (2026-05-02): on β-1 ddd-canonical (86 prompts), 22 of
+    // the 39 SELECT_CHAIN prompts have N=1 — collapsing them yields a
+    // ~25.6% reduction in effective trajectory length, putting the
+    // canonical depth (~80 prompts) within the canonical 400-node budget.
+    //
+    // Bit-exact safety: applyAction records the response in actionHistory
+    // and responseHistory exactly as a recursive descent would, so
+    // mainPath replay and verifyMainPath stay byte-identical. The only
+    // observable change is `nodesExplored` decreasing (and the new
+    // `compressedSelectChainNodes` counter increasing). Default OFF via
+    // SOLVER_USE_DFS_COMPRESSION; flag-OFF reproduces the prior trace.
+    // Track how many actions we push during compression so the wrapping
+    // try/finally below can pop the same number on exit. Stack discipline
+    // mirrors the parent-side fork+push+recurse+pop pattern (~ line 918).
+    let compressedPushCount = 0;
+    if (process.env.SOLVER_USE_DFS_COMPRESSION === '1') {
+      // Cap to avoid runaway in pathological cases (engine bug, infinite
+      // chain). In practice the bound is ~5 consecutive on β-1 traces.
+      const MAX_COMPRESS_PER_CALL = 32;
+      while (
+        compressedPushCount < MAX_COMPRESS_PER_CALL
+        && actions.length === 1
+        && actions[0].promptType === 'SELECT_CHAIN'
+        // Bans take precedence over compression — if the single action is
+        // banned, fall through to the standard path so the empty-actions
+        // terminal logic fires.
+        && (ctx.bannedCardIds === undefined || !ctx.bannedCardIds.has(actions[0].cardId))
+      ) {
+        const forced = actions[0];
+        // Push BEFORE applyAction so currentActionStack reflects the live
+        // descent path through the compressed prompts. This ensures
+        // `bestTurn1Path` captures the full action sequence required to
+        // replay/verify the mainPath: verifyMainPath replays every action
+        // in order, so missing compressed prompts would diverge at step N.
+        ctx.currentActionStack.push(forced);
+        compressedPushCount++;
+        ctx.oracle.applyAction(handle, forced);
+        ctx.compressedSelectChainNodes++;
+        // Accounting: a compressed prompt still consumes engine cycles
+        // (applyAction → duelSetResponse → engine advance → next prompt
+        // resolution). Counting it in `totalTreeNodes` keeps Phase L's
+        // per-subtree node budget honest — without this, compression
+        // silently doubles or triples the effective per-subtree budget,
+        // and the DFS visits very different branches than the baseline
+        // (we observed mitsurugi regressing −1 matched with the naive
+        // implementation that omitted this increment). `nodesExplored`
+        // is NOT incremented — that is the "decision-points-explored"
+        // count and a compressed prompt has no decision.
+        ctx.totalTreeNodes++;
+        // Re-fetch legal actions for the next prompt the engine surfaces.
+        // Loop continues if the next prompt is also a single-action
+        // SELECT_CHAIN (chain windows often cluster in pairs/triples).
+        actions = ctx.oracle.getLegalActions(handle);
+      }
+    }
+    // Wrap the rest of the body so the compressed-action pushes are
+    // unwound regardless of which return path fires (loop-detect, TT-hit,
+    // turn-2 virtual terminal, branch-bound cut, normal completion). The
+    // pop count exactly matches the push count above. No-op in the
+    // common case (compression disabled or no compressible prompts).
+    try {
 
     // Anti-pin filter (Phase 5-lite Phase 0). When `bannedCardIds` is set,
     // remove any action whose cardId is in the ban set BEFORE canonicalPath
@@ -992,6 +1064,15 @@ export class DfsSolver implements SolverStrategy {
       explorationScore: bestExplorationScore,
       scoreBreakdown: bestBreakdown ?? this.emptyBreakdown(),
     };
+    } finally {
+      // Phase 1 macro-compression unwind — pop exactly the actions
+      // pushed during the SELECT_CHAIN compression at the top of this
+      // body. Symmetric with the parent's fork+push+recurse+pop pattern.
+      // No-op when compressedPushCount === 0 (the common case).
+      for (let i = 0; i < compressedPushCount; i++) {
+        ctx.currentActionStack.pop();
+      }
+    }
   }
 
   // ===========================================================================
@@ -1162,6 +1243,7 @@ export class DfsSolver implements SolverStrategy {
       terminalAbortOrNodeLimit: 0,
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
+      compressedSelectChainNodes: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
       terminalRootChildBudgetCut: 0,
@@ -1430,6 +1512,13 @@ interface DfsContext {
   terminalAbortOrNodeLimit: number;
   terminalBudgetCutoff: number;
   terminalTtHit: number;
+  /** Phase 1 macro-compression (Levier D, 2026-05-02) — count of prompts
+   *  short-circuited by the SELECT_CHAIN N=1 compression in `dfs()` (a
+   *  legal-action set with a single forced response, applied without
+   *  creating a recursive node). Default 0 when SOLVER_USE_DFS_COMPRESSION
+   *  is not '1'. Surfaced in diagnostic stats so eval harnesses can quote
+   *  the realised depth gain. */
+  compressedSelectChainNodes: number;
   /** Constraint 3.2 full: nodes cut off because `fieldState.turn >= 2`.
    *  The solver's search horizon is end of player turn 1; reaching opponent
    *  turn is a virtual terminal. */

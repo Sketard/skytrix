@@ -485,6 +485,7 @@ export interface DfsDiagnostic {
     turn2: number;           // constraint 3.2 full: reached `fieldState.turn >= 2` (beyond search horizon)
     branchBoundCut: number;  // Phase I: upper-bound pruning (ancestor pathTurn1 + remaining-ply gain < bestTurn1)
     rootChildBudgetCut: number; // Phase L: first-level root-child branch exceeded its wall-clock slice without progress
+    compressedSelectChain?: number; // Phase 1 macro-compression (Levier D, 2026-05-02): count of single-action SELECT_CHAIN prompts collapsed via SOLVER_USE_DFS_COMPRESSION
   };
   /** Max explorationScore observed at `turn <= 1` states. Paired with
    *  `bestEndBoardCards` on the solver result. Diverges from
