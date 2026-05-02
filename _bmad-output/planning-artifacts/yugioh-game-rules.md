@@ -1417,6 +1417,8 @@ The `replayLog` is a chronological record of every prompt the engine emitted and
     {
       "cardName": "<substring, case-insensitive>",
       "verb": "activate | normal-summon | set-st | summon-procedure | set-monster | tribute-summon | end-phase",
+      "sourceZone": "<optional zone disambiguator: M1-M5, S1-S5, EMZ_L, EMZ_R, HAND, GY, BANISHED, FZONE, PZONE, or aliases MZONE/SZONE>",
+      "responseIndex": 3,  // optional: pin by raw legal-action index, bypasses cardName/verb/sourceZone matching
       "targets": [
         { "promptHint": "<human description>", "cardName": "<sub-prompt target>" },
         { "promptHint": "...", "cardNames": ["<option-A>", "<option-B>"] },
@@ -1432,11 +1434,19 @@ The `replayLog` is a chronological record of every prompt the engine emitted and
 ```
 
 **Field semantics**:
-- `cardName` — case-insensitive **bidirectional** substring match against the legal-action's cardName. The match is `legal.includes(hint) || hint.includes(legal)` — your hint matches if either contains the other as a substring. Multiple legal matches → first picked.
+- `cardName` — case-insensitive **bidirectional** substring match against the legal-action's cardName. The match is `legal.includes(hint) || hint.includes(legal)` — your hint matches if either contains the other as a substring. Multiple legal matches → first picked. Required unless `responseIndex` is set on the step.
 - `verb` — disambiguates multiple legal actions with the same cardName. Optional. Use when the same card has multiple valid `verbs` at the same prompt.
-- `responseIndex` — raw response index. Bypasses cardName matching. Use only when cardName is ambiguous or absent (e.g., for `pass`).
+- `sourceZone` — disambiguates same-cardName same-verb legal actions that differ by source zone (e.g., King's Sarcophagus copy in HAND vs in S1, both surface as `activate`). Accepts exact zone IDs (M1-M5, S1-S5, EMZ_L, EMZ_R, HAND, GY, BANISHED, FZONE, PZONE) or zone-family aliases: `SZONE` matches S1-S5/FZONE/PZONE; `MZONE` matches M1-M5/EMZ_L/EMZ_R. Optional.
+- `responseIndex` — pin the action by its raw legal-action list index. **Bypasses cardName, verb, and sourceZone matching entirely**. Use when cardName is ambiguous (e.g., for `to_bp` / `to_ep` end-phase actions which have cardId 0) or when no other field disambiguates. When set, all other matching fields on the step are ignored.
 - `targets[]` — consumed at SELECT_CARD/PLACE/POSITION/UNSELECT/TRIBUTE/SUM sub-prompts that follow this plan-step's main action, in order, until the next IDLECMD.
 - `chainTargets[]` — consumed at SELECT_CHAIN sub-prompts. Default behavior when absent: pass at every SELECT_CHAIN. Provide a `chainTargets[]` entry to activate a specific Trigger on the chain.
+
+**Targets sub-prompt grammar**:
+- `{cardName: "X"}` — single target match against ONE prompt (typically `SELECT_CARD` with min=1).
+- `{cardNames: [A, B]}` — single target with **multiple acceptable names**, still matches ONE prompt. The first legal action matching ANY of the listed names is picked. Useful when the engine offers a flexible choice and the plan accepts several alternatives.
+- For multi-pick prompts (`SELECT_CARD` min>1, `SELECT_TRIBUTE`, `SELECT_SUM`, multi-material `SELECT_UNSELECT_CARD`), provide N separate target entries, each matching ONE selection. `cardNames: [...]` is NOT equivalent to N separate entries — it's still one entry with options.
+
+**`responseIndex: -1`** terminates a `SELECT_UNSELECT_CARD` selection (sends `index: null`). Use as the (N+1)th target entry on multi-material Link/Xyz Summons after providing N material entries.
 
 **Substring matching pitfall**: when a target card's name contains another card's name as a substring (e.g., `Welcome Labrynth` is a substring of `Big Welcome Labrynth`), using `cardName: "Welcome"` matches the FIRST legal action whose name contains "Welcome" — possibly the wrong card. Use the **unique discriminator** (e.g., `cardName: "Big Welcome"` to specifically match Big Welcome Labrynth) to avoid silent mis-matches.
 
@@ -1455,7 +1465,7 @@ When a plan-step has no explicit `targets[]` entry for a sub-prompt, the engine 
 | `SELECT_OPTION` | First option | YES | `{responseIndex: N}` |
 | `SELECT_PLACE` | First empty zone (lowest seq) | YES | `{responseIndex: N}` (N is the zone index in the legal list) |
 | `SELECT_POSITION` | Face-up Attack | YES | `{responseIndex: N}` |
-| `SELECT_UNSELECT_CARD` | `index: null` if `can_finish`, else 0 | YES | `{responseIndex: N}` |
+| `SELECT_UNSELECT_CARD` | `index: 0` (NOT null even when `can_finish=true`) | YES | `{responseIndex: -1}` for null/finish, `{responseIndex: N}` for specific pick |
 | `SELECT_TRIBUTE` | First N legal indices | YES | `{cardNames: [...]}` or `{responseIndex: N}` |
 | `SELECT_SUM` | First min legal indices | YES | `{cardNames: [...]}` or `{responseIndex: N}` |
 | `SELECT_CHAIN` | Pass (`responseIndex: -1`) | via `chainTargets[]` | `{cardName: "X"}` to activate a Trigger; absent = pass |
@@ -1478,6 +1488,50 @@ When a plan-step has no explicit `targets[]` entry for a sub-prompt, the engine 
 4. **`targets[]` matching by `cardName`** uses bidirectional substring matching (case-insensitive). When multiple legal actions share the same name (common for SELECT_EFFECTYN where both responseIndex 0 and 1 carry the same cardId), the FIRST match wins — typically responseIndex 0. For yes/no override, ALWAYS use `{responseIndex: ...}` explicitly.
 
 If your plan diverges and `replayLog` shows `[auto]` resolutions for a sub-prompt that mattered (e.g., an `ANNOUNCE_NUMBER` value, a `SELECT_PLACE` zone), the auto-default may have differed from what your plan needed. Read the `replayLog` step where the auto fired and trace the engine's subsequent state. For ANNOUNCE_NUMBER specifically, the override gap is a known limitation — report it as feedback if it blocks your plan.
+
+### B.7.1 SELECT_UNSELECT_CARD `can_finish=true` does NOT auto-terminate
+
+The auto-default for `SELECT_UNSELECT_CARD` picks `index: 0` (the first legal index) even when `can_finish=true`. It does NOT return `null`. Multi-material Link/Xyz Summons that surface as a sequence of `SELECT_UNSELECT_CARD` prompts therefore loop infinitely OR pick wrong materials unless the plan explicitly provides a finish marker.
+
+**Pattern**: when a Link or Xyz Summon needs N materials, provide N+1 target entries. The first N specify the materials by `cardName`; the (N+1)th uses `{responseIndex: -1}` to terminate the selection.
+
+**Example** — Link 2 Summon using 2 specific monsters from field, with explicit finish:
+```jsonc
+{
+  "cardName": "Accesscode Talker",
+  "verb": "summon-procedure",
+  "targets": [
+    { "promptHint": "material 1", "cardName": "I:P Masquerena" },
+    { "promptHint": "material 2", "cardName": "Cross-Sheep" },
+    { "promptHint": "finish", "responseIndex": -1 }
+  ]
+}
+```
+
+### B.7.2 SELECT_OPTION for "no-tribute" Lv7+ summons requires explicit override
+
+Cards like Kashtira Birth that allow the controller to Special Summon a Lv7+ monster without tributes surface a `SELECT_OPTION` after the IDLECMD activation, asking which mode (no-tribute SS vs normal tribute summon). The auto-default picks index 0 (the first option), which is typically the tribute-summon mode → triggers a follow-up `SELECT_TRIBUTE` that loops infinitely if the player has no monsters to tribute.
+
+**Pattern**: when activating a card that grants no-tribute summons, override the SELECT_OPTION with `responseIndex: 1` (or whichever index represents the no-tribute mode). Inspect the legal-action list via `--dump-trace` to confirm.
+
+### B.7.3 S:P Little Knight banish trigger auto-targets first card on field
+
+When S:P Little Knight is summoned, its banish-trigger surfaces a `SELECT_CARD` asking which face-up card to banish. The auto-default picks index 0 — typically the just-summoned monster on field, causing silent self-sabotage (you banish a piece you needed for the endboard).
+
+**Pattern**: explicitly target a GY card or unwanted opponent card via the `targets[]` of the S:P summon plan-step.
+
+### B.7.4 `tribute-summon` verb scope
+
+The `verb: "tribute-summon"` covers ALL Lv5+ Normal-Summon-class actions, including Lv7+ no-tribute SSes granted by effects (e.g., Kashtira Birth's bypass). It is NOT restricted to actual tribute-cost summons. `verb: "normal-summon"` is reserved for Lv1-4 monsters with no tribute cost.
+
+### B.7.5 Continuous Spells with cost-gated effects need TWO activate plan-steps
+
+A Continuous Spell with a "flip-and-then-pay-cost" effect pattern (e.g., Deception of the Sinful Spoils) requires two distinct plan-steps:
+
+1. First `activate` step → flips the card face-up. Effect e0 (the activation itself) resolves.
+2. Second `activate` step → fires effect e1 (the cost-gated ignition).
+
+The reason: the engine treats the first activation (face-up flip) and the secondary cost-paid effect as separate IDLECMD activations, NOT as a chained sub-effect of the first.
 
 ### B.8 Workflow when plan stalls below target
 

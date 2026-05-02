@@ -40,12 +40,26 @@ export function normalizeName(s: string): string {
 
 /** β-1 plan step matcher. Action matches when its normalized name equals OR
  *  bidirectionally substring-contains the step's normalized name; if the step
- *  has a verb, action.actionVerb must equal it exactly. Verbatim of CLI:297-308. */
+ *  has a verb, action.actionVerb must equal it exactly. The `sourceZone`
+ *  field disambiguates same-cardName same-verb actions that differ by source
+ *  zone (e.g., King's Sarcophagus copy in HAND vs S1 — both surface as
+ *  "activate" at IDLECMD but represent distinct actions). Optional. The
+ *  `responseIndex` field bypasses cardName matching entirely — use it when
+ *  cardName is undefined or ambiguous. */
 export function actionMatchesPlanStep(
   action: Action,
-  step: { cardName: string; verb?: string },
+  step: { cardName?: string; verb?: string; sourceZone?: string; responseIndex?: number },
   getName: (id: number) => string,
 ): boolean {
+  // responseIndex bypass: when set, match on responseIndex only, ignoring all
+  // other fields. Avoids the cardName-undefined crash on responseIndex-only
+  // steps and allows pinning a specific legal-action index when cardName
+  // matching is insufficient.
+  if (step.responseIndex !== undefined) {
+    return action.responseIndex === step.responseIndex;
+  }
+  // cardName is required in non-responseIndex mode
+  if (step.cardName === undefined || step.cardName === '') return false;
   const targetName = normalizeName(step.cardName);
   const actionName = normalizeName((action as Action & { cardName?: string }).cardName || getName(action.cardId));
   if (actionName !== targetName) {
@@ -53,6 +67,20 @@ export function actionMatchesPlanStep(
   }
   if (step.verb && step.verb.length > 0) {
     if (action.actionVerb !== step.verb) return false;
+  }
+  // sourceZone disambiguation: when set on the step, action.sourceZone must
+  // equal it. Prefix match for zone families ('SZONE' matches 'S1'..'S5',
+  // 'MZONE' matches 'M1'..'M5'). Non-prefix matches require exact equality.
+  if (step.sourceZone && step.sourceZone.length > 0) {
+    const actSrc = action.sourceZone;
+    if (!actSrc) return false;
+    if (step.sourceZone === 'SZONE') {
+      if (!/^S[1-5]$|^FZONE$|^PZONE$/.test(actSrc)) return false;
+    } else if (step.sourceZone === 'MZONE') {
+      if (!/^M[1-5]$|^EMZ_[LR]$/.test(actSrc)) return false;
+    } else if (actSrc !== step.sourceZone) {
+      return false;
+    }
   }
   return true;
 }

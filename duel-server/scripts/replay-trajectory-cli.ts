@@ -187,8 +187,22 @@ interface TargetSpec {
 }
 
 interface PlanStep {
-  cardName: string;
+  /** Match by card name (case-insensitive bidirectional substring). Optional
+   *  when `responseIndex` is set; required otherwise. */
+  cardName?: string;
   verb?: string;
+  /** Disambiguates same-cardName same-verb legal actions that differ by
+   *  source zone. E.g., King's Sarcophagus copy in HAND vs in S1 both
+   *  surface as `activate` at IDLECMD; setting `sourceZone: "S1"` on the
+   *  plan step pins the field-zone copy. Accepts exact zone IDs (M1-M5,
+   *  S1-S5, EMZ_L, EMZ_R, HAND, GY, BANISHED, FZONE, PZONE) or zone family
+   *  aliases (`MZONE` matches M1-M5/EMZ_*, `SZONE` matches S1-S5/FZONE/PZONE). */
+  sourceZone?: string;
+  /** Bypass cardName/verb matching entirely; pin the action by its raw
+   *  responseIndex in the legal-action list. Use when cardName is ambiguous
+   *  or unavailable (e.g., for `to_bp`/`to_ep` end-phase actions which have
+   *  cardId 0). When set, all other matching fields are ignored. */
+  responseIndex?: number;
   /** Sub-prompt overrides for the resolution chain triggered by this
    *  IDLECMD step. Consumed in order at SELECT_CARD / SELECT_OPTION /
    *  SELECT_UNSELECT_CARD / SELECT_PLACE prompts encountered before the
@@ -334,6 +348,12 @@ function normalizeName(s: string): string {
 }
 
 function actionMatchesPlanStep(action: Action, step: PlanStep, getName: (id: number) => string): boolean {
+  // responseIndex bypass: pin a specific legal-action index, ignoring all
+  // other matching fields. Used when cardName is undefined or ambiguous.
+  if (step.responseIndex !== undefined) {
+    return action.responseIndex === step.responseIndex;
+  }
+  if (step.cardName === undefined || step.cardName === '') return false;
   const targetName = normalizeName(step.cardName);
   const actionName = normalizeName(action.cardName || getName(action.cardId));
   if (actionName !== targetName) {
@@ -342,6 +362,19 @@ function actionMatchesPlanStep(action: Action, step: PlanStep, getName: (id: num
   }
   if (step.verb && step.verb.length > 0) {
     if (action.actionVerb !== step.verb) return false;
+  }
+  // sourceZone disambiguation: when set on the step, action.sourceZone must
+  // match. Supports exact match or zone-family alias ('SZONE', 'MZONE').
+  if (step.sourceZone && step.sourceZone.length > 0) {
+    const actSrc = action.sourceZone;
+    if (!actSrc) return false;
+    if (step.sourceZone === 'SZONE') {
+      if (!/^S[1-5]$|^FZONE$|^PZONE$/.test(actSrc)) return false;
+    } else if (step.sourceZone === 'MZONE') {
+      if (!/^M[1-5]$|^EMZ_[LR]$/.test(actSrc)) return false;
+    } else if (actSrc !== step.sourceZone) {
+      return false;
+    }
   }
   return true;
 }
