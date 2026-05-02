@@ -208,6 +208,15 @@ export interface ArchetypeExpertise {
   goals: readonly ComboGoal[];
   routes: readonly ComboRoute[];
   keyCards: readonly number[];
+  /** Path scoring (Levier 3, 2026-05-02) — cardIds whose effect activations
+   *  during the turn count toward `pathPoints` in `explorationScore` (DFS
+   *  guidance only, NOT user-facing `interruptionScore`). Authored from the
+   *  archetype's β-1 canonical plan: each step's source cardId.
+   *  Rewards the activation journey, not the terminal state — addresses
+   *  myopia where short terminals beat long combos at constant terminal
+   *  cardsOOD (Resource Scoring NULL diagnostic, 2026-05-02). Empty / undefined
+   *  = no path scoring for this archetype. Gated by SOLVER_USE_PATH_SCORING=1. */
+  pathCards?: readonly number[];
   synergies?: readonly SynergyNote[];
   // Phase B (2026-04-21): bridges authored by this archetype. Convention:
   // host a bridge in its target archetype's file (where it terminates).

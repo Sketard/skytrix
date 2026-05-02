@@ -640,6 +640,12 @@ export class OCGCoreAdapter implements GameOracle {
     return internal.activationLog;
   }
 
+  getDistinctActivationCardIds(handle: DuelHandle): ReadonlySet<number> {
+    const internal = this.resolveHandle(handle);
+    // Live Set, ReadonlySet typing on GameOracle prevents mutation.
+    return internal.distinctEffectCardsThisTurn;
+  }
+
   destroyDuel(handle: DuelHandle): void {
     const internal = this.findInternal(handle);
     if (!internal || !internal.isActive) return;

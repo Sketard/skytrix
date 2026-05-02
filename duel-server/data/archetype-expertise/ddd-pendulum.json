@@ -48,6 +48,28 @@
 
   "keyCards": [11609969, 46796664, 42382265, 46372010, 20715411, 32665564, 5997110, 67322708, 28406301, 91781484, 46593546, 79559912, 44852429, 30998403],
 
+  "_pathCardsNote": "Path scoring (Levier 3, 2026-05-02). Authored from beta1v2-best-plan.json (the empirical 3/5 critic ceiling on ddd-pendulum-opener) — every cardId whose effect/summon is referenced as a 'cardName' in the plan steps. Cards listed here count toward `pathPoints` in `explorationScore` (DFS guidance only) when SOLVER_USE_PATH_SCORING=1 and the card has activated >=1 effect this turn. The activation log fed to the scorer comes from `OCGCoreAdapter.distinctEffectCardsThisTurn`, which records every own-side _isEffectActivation (not just tagged interruptions). Summon-only steps (e.g., Gilgamesh Xyz) won't match unless the card has a separate _isEffectActivation event during the turn — which Gilgamesh / Clovis / Siegfried / Deus Machinex actually do via their on-summon clauses, but pure-summon-procedure verbs in the plan don't guarantee it. Coverage is therefore broad-by-design: better to over-include path-cards (some never match, no harm) than under-include (real activations missed).",
+  "pathCards": [
+    11609969,
+    46796664,
+    42382265,
+    46372010,
+    67322708,
+    20715411,
+    32665564,
+    5997110,
+    72291412,
+    70576413,
+    44852429,
+    9024198,
+    74583607,
+    79559912,
+    30998403,
+    32232538,
+    71612253,
+    46593546
+  ],
+
   "goals": [
     {
       "id": "ddd-pendulum-canonical-apex",

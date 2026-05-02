@@ -84,6 +84,10 @@ export class InterruptionScorer {
   private readonly tutorCards: StructuralTutorCards | undefined;
   private archetypeExpertise: readonly ArchetypeExpertise[] = [];
   private deckCardIds: readonly number[] | undefined;
+  // Path scoring (Levier 3, 2026-05-02) — flattened union of pathCards
+  // across all loaded ArchetypeExpertise files. Derived in
+  // setArchetypeExpertise() so per-score lookup is a Set.has() op.
+  private pathCardsSet: ReadonlySet<number> = new Set();
   // Phase A scorer fix (2026-04-26) — fixture's `expectedBoard` injected as
   // implicit goals at eval time. Empty / zero in production runtime.
   private implicitGoals: readonly ImplicitBoardGoal[] = [];
@@ -137,6 +141,18 @@ export class InterruptionScorer {
    *  (default) = no goal-match scoring. */
   setArchetypeExpertise(list: readonly ArchetypeExpertise[]): void {
     this.archetypeExpertise = list;
+    // Path scoring (Levier 3, 2026-05-02): pre-compute the flattened union of
+    // every active expertise's `pathCards`. The scorer's per-terminal
+    // pathPoints lookup is then O(1) per distinct activation, not O(N
+    // expertises × M pathCards). Empty when no archetype declares
+    // pathCards (default).
+    const set = new Set<number>();
+    for (const exp of list) {
+      if (exp.pathCards) {
+        for (const id of exp.pathCards) set.add(id);
+      }
+    }
+    this.pathCardsSet = set;
   }
 
   /** Phase B (2026-04-21): main + extra deck cardIds for the active fixture.
@@ -207,21 +223,24 @@ export class InterruptionScorer {
   score(
     fieldState: FieldState,
     activationLog?: ActivationLog,
+    distinctActivations?: ReadonlySet<number>,
   ): { score: number; scoreBreakdown: ScoreBreakdown } {
-    const { score, scoreBreakdown } = this.scoreWithCards(fieldState, activationLog);
+    const { score, scoreBreakdown } = this.scoreWithCards(fieldState, activationLog, distinctActivations);
     return { score, scoreBreakdown };
   }
 
   scoreWithCards(
     fieldState: FieldState,
     activationLog?: ActivationLog,
+    distinctActivations?: ReadonlySet<number>,
   ): { score: number; scoreBreakdown: ScoreBreakdown; endBoardCards: EndBoardCard[] } {
-    return instrumentTime('score', () => this._scoreWithCardsImpl(fieldState, activationLog));
+    return instrumentTime('score', () => this._scoreWithCardsImpl(fieldState, activationLog, distinctActivations));
   }
 
   private _scoreWithCardsImpl(
     fieldState: FieldState,
     activationLog?: ActivationLog,
+    distinctActivations?: ReadonlySet<number>,
   ): { score: number; scoreBreakdown: ScoreBreakdown; endBoardCards: EndBoardCard[] } {
     const breakdown: ScoreBreakdown = {
       omniNegate: 0, typedNegate: 0, targetedNegate: 0, floodgate: 0,
@@ -229,7 +248,7 @@ export class InterruptionScorer {
       spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
       bounce: 0, handRip: 0, sendToGy: 0,
       weighted: 0, fallbackPoints: 0, latentPoints: 0,
-      goalMatchPoints: 0, implicitGoalPoints: 0,
+      goalMatchPoints: 0, implicitGoalPoints: 0, pathPoints: 0,
       interruptionScore: 0, explorationScore: 0,
     };
 
@@ -416,29 +435,62 @@ export class InterruptionScorer {
       resourcePoints = Math.max(0, cardsOutOfDeck * resourceWeight);
     }
 
-    // Split scoring (methodology v5 + Strategic Grammar v1 + Phase A + Design D).
+    // Path scoring (Levier 3, 2026-05-02) — reward the activation journey
+    // rather than the terminal state. Counts INTO `explorationScore` only
+    // (DFS guidance) NOT `interruptionScore` (user-facing grade), same
+    // discipline as latentPoints and resourcePoints. Bit-exact preserved
+    // when SOLVER_USE_PATH_SCORING is not '1' (pathPoints stays 0).
+    //
+    // Formula:
+    //   pathPoints = W_path × |pathCardsSet ∩ distinctActivations|
+    //
+    // Rationale: the resource-scoring NULL diagnostic (2026-05-02) showed
+    // that scorer-terminal-side bonuses on cardsOutOfDeck are approximately
+    // constant cross-branch at the canonical budget, so they cannot redirect
+    // DFS exploration. Path scoring sidesteps this by depending on the
+    // action history (which path-cards were activated) which DOES vary
+    // sharply between a short terminal (2-3 activations) and a long β-1
+    // canonical line (12-14 activations). The differential per branch is
+    // sized to dominate the typical "sub-optimal gradient" (~30-40 score
+    // units) so the DFS reorders toward longer paths.
+    let pathPoints = 0;
+    if (process.env.SOLVER_USE_PATH_SCORING === '1'
+        && this.pathCardsSet.size > 0
+        && distinctActivations !== undefined && distinctActivations.size > 0) {
+      const W_PATH = Number(process.env.SOLVER_PATH_W ?? '5');
+      let matched = 0;
+      // Iterate the smaller set for O(min) lookup.
+      const [outer, inner] = distinctActivations.size <= this.pathCardsSet.size
+        ? [distinctActivations, this.pathCardsSet]
+        : [this.pathCardsSet, distinctActivations];
+      for (const id of outer) if (inner.has(id)) matched++;
+      pathPoints = W_PATH * matched;
+    }
+
+    // Split scoring (methodology v5 + Strategic Grammar v1 + Phase A + Design D + Levier 3).
     //   interruptionScore = weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints
-    //   explorationScore  = interruptionScore + latentPoints + resourcePoints
+    //   explorationScore  = interruptionScore + latentPoints + resourcePoints + pathPoints
     // interruptionScore is the user-facing grade (DecisionNode.score,
     // reportScore, rubric). explorationScore is the DFS guidance signal
     // (action ordering, TT, α-β floor) and is returned as `score` to
     // preserve the pre-v5 DFS internal contract.
     const interruptionScore = interruptionScorePreResource;
-    const explorationScore = interruptionScore + latentPoints + resourcePoints;
+    const explorationScore = interruptionScore + latentPoints + resourcePoints + pathPoints;
     breakdown.weighted = weighted;
     breakdown.fallbackPoints = fallbackPoints;
     breakdown.latentPoints = latentPoints;
     breakdown.goalMatchPoints = goalMatchPoints;
     breakdown.implicitGoalPoints = implicitGoalPoints;
+    breakdown.pathPoints = pathPoints;
     breakdown.interruptionScore = interruptionScore;
     breakdown.explorationScore = explorationScore;
 
     solverAssert(
       Math.abs(interruptionScore - (weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints)) < 1e-9
-      && Math.abs(explorationScore - (interruptionScore + latentPoints + resourcePoints)) < 1e-9,
+      && Math.abs(explorationScore - (interruptionScore + latentPoints + resourcePoints + pathPoints)) < 1e-9,
       'InterruptionScorer.scoreWithCards',
       'score invariant drift',
-      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints, goalMatchPoints, implicitGoalPoints, resourcePoints },
+      { interruptionScore, explorationScore, weighted, fallbackPoints, latentPoints, goalMatchPoints, implicitGoalPoints, resourcePoints, pathPoints },
     );
 
     return { score: explorationScore, scoreBreakdown: breakdown, endBoardCards };

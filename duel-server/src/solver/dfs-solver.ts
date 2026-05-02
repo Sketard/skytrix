@@ -555,6 +555,10 @@ export class DfsSolver implements SolverStrategy {
     // Story 1.8: also fetch the activation log so OPT-aware scoring and the
     // verification key both see the same per-handle OPT state.
     const activationLog = ctx.oracle.getActivationLog(handle);
+    // Path scoring (Levier 3, 2026-05-02) — distinct cardIds activated
+    // this turn (own-side, untagged-inclusive). Empty Set when no flag /
+    // no expertise pathCards.
+    const distinctActivations = ctx.oracle.getDistinctActivationCardIds(handle);
 
     // Constraint 3.2-light: score every visited state, not just terminals.
     // Without this, `ctx.bestExplorationScore` only captures terminal scores, and
@@ -578,7 +582,7 @@ export class DfsSolver implements SolverStrategy {
     // canonical line then walks past it. This gate freezes capture at the
     // right moment. See synthesis §7.10.4 / §7.10.6.
     // `interim.score` = explorationScore (scorer contract, methodology v5).
-    const interim = this.scorer.scoreWithCards(fieldState, activationLog);
+    const interim = this.scorer.scoreWithCards(fieldState, activationLog, distinctActivations);
     this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn, fieldState);
 
     // Phase F-bis v2: fold the current interim into the ancestor chain
@@ -753,7 +757,7 @@ export class DfsSolver implements SolverStrategy {
           });
         }
       }
-      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
+      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog, distinctActivations);
     }
 
     // Record BF + prompt type now that we know this is a non-terminal node
@@ -948,7 +952,7 @@ export class DfsSolver implements SolverStrategy {
     // If no children were explored (abort + time budget), treat as terminal
     if (children.length === 0) {
       ctx.terminalBudgetCutoff++;
-      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
+      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog, distinctActivations);
     }
 
     // Sort children by explorationScore descending (DFS guidance order)
@@ -989,7 +993,8 @@ export class DfsSolver implements SolverStrategy {
   private makeTerminal(ctx: DfsContext, handle: DuelHandle, depth: number, truncated?: boolean): DfsNodeResult {
     const fieldState = ctx.oracle.getFieldState(handle);
     const activationLog = ctx.oracle.getActivationLog(handle);
-    return this.scoreTerminal(ctx, fieldState, depth, truncated, activationLog);
+    const distinctActivations = ctx.oracle.getDistinctActivationCardIds(handle);
+    return this.scoreTerminal(ctx, fieldState, depth, truncated, activationLog, distinctActivations);
   }
 
   private scoreTerminal(
@@ -998,11 +1003,12 @@ export class DfsSolver implements SolverStrategy {
     _depth: number,
     truncated?: boolean,
     activationLog?: ActivationLog,
+    distinctActivations?: ReadonlySet<number>,
   ): DfsNodeResult {
     // `score` returned by scoreWithCards = explorationScore (preserves pre-v5
     // DFS internal contract). The breakdown carries interruptionScore for
     // downstream user-facing extraction.
-    const { score: explorationScore, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
+    const { score: explorationScore, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog, distinctActivations);
     ctx.totalTreeNodes++;
     this.updateBest(ctx, explorationScore, scoreBreakdown, endBoardCards, fieldState.turn, fieldState);
 

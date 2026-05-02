@@ -300,15 +300,23 @@ export interface ScoreBreakdown {
    *  structural-score short terminal to a longer terminal that reaches
    *  more expectedBoard cards. */
   implicitGoalPoints: number;
+  /** Path scoring (Levier 3, 2026-05-02) — `W_path × |pathCards ∩
+   *  distinctActivations|`. Counts INTO `explorationScore` only (DFS
+   *  guidance), NOT `interruptionScore` (user-facing grade). Same discipline
+   *  as `latentPoints` and `resourcePoints`. Always 0 unless
+   *  `SOLVER_USE_PATH_SCORING=1` AND archetype expertise declares
+   *  `pathCards`. Rewards activation history, addressing scorer-myopia
+   *  where short terminals dominate at constant terminal cardsOOD. */
+  pathPoints: number;
   /** `weighted + fallbackPoints + goalMatchPoints + implicitGoalPoints`.
    *  User-facing end-board grade — consumed by harness `reportScore`,
    *  regression rubric, `DecisionNode.score` display. */
   interruptionScore: number;
-  /** `interruptionScore + latentPoints`. DFS guidance signal — drives action
-   *  ordering, TT storage, α-β floor (`bestTurn1ExplorationScore`), virtual-
-   *  terminal propagation (`pathTurn1ExplorationScore`). Also the value
-   *  returned as `score` from `scoreWithCards()` (preserves pre-v5 DFS
-   *  internal contract). */
+  /** `interruptionScore + latentPoints + resourcePoints + pathPoints`.
+   *  DFS guidance signal — drives action ordering, TT storage, α-β floor
+   *  (`bestTurn1ExplorationScore`), virtual-terminal propagation
+   *  (`pathTurn1ExplorationScore`). Also the value returned as `score`
+   *  from `scoreWithCards()` (preserves pre-v5 DFS internal contract). */
   explorationScore: number;
 }
 
@@ -333,7 +341,7 @@ export const EMPTY_BREAKDOWN: Readonly<ScoreBreakdown> = Object.freeze({
   spin: 0, flipFacedown: 0, destruction: 0, moveToSt: 0,
   bounce: 0, handRip: 0, sendToGy: 0,
   weighted: 0, fallbackPoints: 0, latentPoints: 0,
-  goalMatchPoints: 0, implicitGoalPoints: 0,
+  goalMatchPoints: 0, implicitGoalPoints: 0, pathPoints: 0,
   interruptionScore: 0, explorationScore: 0,
 });
 
