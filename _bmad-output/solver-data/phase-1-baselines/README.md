@@ -86,6 +86,22 @@ None obviously DFS-related, but each introduces new code paths in the adapter th
 
 Before Phase 3 ships, ideally bisect commits 2026-04-27 → 2026-05-01 (~30 commits) to find the change that introduced eval non-determinism, and either revert/fix or accept it as a permanent gate adjustment. **Not blocking for Phase 1 sign-off** — the gate above is workable.
 
+#### Investigation update 2026-05-02 (post-Phase 7)
+
+Bisect attempt revealed:
+
+1. **Noise is NOT a Phase 0-7 regression.** At commit pin `7f2aa406` (Phase 1 baseline capture commit), running canonical-eval at the documented config 3× still flips kashtira-azamina-opener between {1/4 score 34} and {2/4 score 44} — same bimodality as at HEAD `bc3bded7`. The noise was already present when the baseline was captured; the captured run happened to land on the lucky {2/4} side of the flip.
+
+2. **Today's flap fixture is kashtira-azamina-opener, not radiant-typhoon-opener.** README originally named radiant-typhoon as the noisy fixture (matched ∈ {1, 2}). At HEAD, radiant-typhoon is now stable at 2/3 score 38 across 5 isolated runs and 3 full-eval runs. kashtira-azamina is the new flap. Possible the original flap shifted between commits; not investigated.
+
+3. **Cum-matched is consistent across HEAD vs commit pin** (both flap [27, 28]). HEAD shipped Phase 7 commits do NOT regress eval — observed cum 27/27/27 at HEAD vs 27/27/28 at commit pin = same population, sample-of-3 just happens to miss the lucky 28 at HEAD.
+
+4. **Root cause of the flap**: kashtira-azamina-opener has fixture-level `maxDepth: 75` override (vs default 50 in solver-config.json). With `--node-budget=400`, the DFS terminates on `depth_cap` at 309-381 nodes (well under 400 — wall-clock jitter dictates exact count). Whether a {2/4 matched} terminal is reached depends on whether the wall-clock budget allows the deeper branch to be explored before the shallower {1/4} branch hits the depth cap and the run completes. Truly fixing this requires either: (a) relaxing `maxDepth` to deeper than the canonical line for this fixture, or (b) pure node-budget mode (no wall-clock timeout), but option (b) makes runs unpredictably long under CPU contention.
+
+5. **Memo `eval-noise-audit-2026-04-27` claim "σ=0.00" was on a 14-fixture subset** (or possibly an earlier kashtira fixture variant, or pre-fixture-maxDepth-75 override). Re-running at canonical config today reproduces bimodality — the original σ=0.00 measurement is not reproducible at HEAD or at the Phase 1 commit pin.
+
+**Action: not bisectable as a Phase 0-7 regression. Accept the bimodal range [27, 28] as the canonical eval gate going forward** (the Phase 3/4 gate methodology already does this). When Phase B benchmarks ship, they MUST quote both range and median across N≥3 runs to avoid apples-to-oranges single-run comparisons.
+
 ## Decisions snapshot (signed off Phase 0)
 
 - **Snapshot mode**: ON (default since 2026-04-23, no env var needed). Memo `solver-wasm-snapshot-fork-2026-04-23`.
