@@ -969,6 +969,26 @@ export class OCGCoreAdapter implements GameOracle {
       if (status === OcgProcessResult.END) return [];
 
       if (status === OcgProcessResult.WAITING) {
+        // SORT_CARD / SORT_CHAIN: not enumerated as player prompts. Without
+        // this branch, the silent fall-through (`if (!selectMsg) return [];`)
+        // freezes any combo that hits a SORT prompt — the canonical case is
+        // Tearlaments fusion (Havnis/Scheiren GY-fusion clauses end with
+        // `Duel.SortDeckbottom` to let the player order materials placed at
+        // deck-bottom). Auto-respond with `order: null` (engine treats as
+        // default order) so the Fusion Summon completes and the next prompt
+        // surfaces normally. Order rarely matters for combo ground-truth;
+        // surfacing as a player prompt would be over-engineering for Path β.
+        const sortMsg = messages.find((m) =>
+          m.type === OcgMessageType.SORT_CARD || m.type === OcgMessageType.SORT_CHAIN);
+        if (sortMsg) {
+          // Both SORT_CARD and SORT_CHAIN responses use the SORT_CARD response
+          // shape (the binding only declares OcgResponseSortCard). `order: null`
+          // signals "no reordering" to the engine.
+          const resp = { type: 15, order: null } as unknown;
+          this.core.duelSetResponse(internal.nativeHandle, resp as never);
+          internal.responseHistory.push(resp);
+          continue;
+        }
         const selectMsg = messages.find((m) => SELECT_MSG_TYPES.has(m.type));
         if (!selectMsg) return [];
 
