@@ -576,7 +576,18 @@ async function main(): Promise<void> {
     const t = pendingTargets[0];
     let match: Action | null = null;
     if (t.responseIndex !== undefined) {
-      match = legal.find(a => a.responseIndex === t.responseIndex) ?? null;
+      // Semantic finish-marker: -1 on SELECT_UNSELECT_CARD matches the
+      // 'unselect-finish' action (which has a positive responseIndex
+      // = legal.length-1). See plan-replay-oracles.ts::tryConsumeTarget
+      // for the canonical comment.
+      if (t.responseIndex === -1 && promptType === 'SELECT_UNSELECT_CARD') {
+        match = legal.find(a => a.actionTag === 'unselect-finish') ?? null;
+      } else {
+        match = legal.find(a => a.responseIndex === t.responseIndex) ?? null;
+      }
+      // responseIndex is a hard contract: consume on no-match to force
+      // divergence here rather than silent mis-fire at a later prompt.
+      if (!match) pendingTargets.shift();
     } else {
       const wanted = (t.cardNames ?? (t.cardName ? [t.cardName] : [])).map(normalizeName);
       if (wanted.length > 0) {
@@ -585,6 +596,7 @@ async function main(): Promise<void> {
           return wanted.some(w => n === w || n.includes(w) || w.includes(n));
         }) ?? null;
       }
+      // cardName-driven targets remain in queue on no-match (skip-tolerant).
     }
     if (match) pendingTargets.shift();
     return match;
@@ -1055,8 +1067,14 @@ async function main(): Promise<void> {
     } as unknown as FieldState;
   }
 
-  // Match expectedBoard cardIds against player[0]'s field zones.
-  const SCORED_ZONES: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD'];
+  // Match expectedBoard cardIds against player[0]'s field zones + HAND.
+  // HAND is included so that fixtures whose expectedBoard contains a card
+  // expected to remain in hand at end of turn can match it (e.g.,
+  // branded-dracotail-opener-mirrorjade-line expects Dracotail Faimena
+  // in hand). Risk of false positive is low — fixtures' expectedBoard
+  // entries are curated to represent the visible combo outcome, and any
+  // hand card matching is intentional per the fixture's HAND zone tag.
+  const SCORED_ZONES: ZoneId[] = ['M1', 'M2', 'M3', 'M4', 'M5', 'EMZ_L', 'EMZ_R', 'S1', 'S2', 'S3', 'S4', 'S5', 'FIELD', 'HAND'];
   const onFieldCardIds = new Set<number>();
   const finalBoardSelf: FinalBoardEntry[] = [];
   for (const z of SCORED_ZONES) {

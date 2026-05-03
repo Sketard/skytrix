@@ -254,14 +254,47 @@ export class PlanTargetOracle implements DecisionOracle {
 }
 
 /** Consume the next pendingTargets[0] if it matches any legal action. Verbatim
- *  of CLI:466-484. Mutates ctx.pendingTargets via shift() on match. */
+ *  of CLI:466-484. Mutates ctx.pendingTargets via shift() on match.
+ *
+ *  Semantic convention for `responseIndex: -1`:
+ *  - SELECT_CHAIN: pass (the enumerator already exposes the pass action with
+ *    `responseIndex: -1`, so a literal-index match works directly).
+ *  - SELECT_UNSELECT_CARD: finish-selection marker. The enumerator exposes
+ *    finish as a positive responseIndex (= legal.length - 1) with `actionTag
+ *    === 'unselect-finish'`. We special-case `-1` to match that finish action,
+ *    so plans can use the unified `responseIndex: -1` convention across both
+ *    prompt types (consistent with documented Annexe B.7.1 behaviour).
+ *  - All other pickable prompt types: literal-index match (no special case).
+ *
+ *  Mismatch semantics:
+ *  - `responseIndex` no-match → consume the target anyway (do NOT shift onto
+ *    the next prompt) and return null. Reasoning: a literal index is a hard
+ *    contract; if the requested index isn't present, retrying the same target
+ *    on a different prompt-set silently mis-fires (e.g., picks the wrong card
+ *    because that index points to something else there). Force the engine
+ *    to surface a divergence at this prompt instead of mis-consuming later.
+ *  - `cardName`/`cardNames` no-match → leave the target in queue (skip-
+ *    tolerant). Reasoning: substring matching can legitimately fail at a
+ *    prompt the user didn't anticipate (e.g., an interleaved Trigger window);
+ *    falling through to the next pickable prompt is the desired behaviour.
+ */
 function tryConsumeTarget(legal: readonly Action[], ctx: DecisionContext): Action | null {
   if (!ctx.pendingTargets || ctx.pendingTargets.length === 0) return null;
   if (!SUB_PROMPT_PICKABLE.has(ctx.promptType)) return null;
   const t = ctx.pendingTargets[0];
   let match: Action | null = null;
   if (t.responseIndex !== undefined) {
-    match = legal.find(a => a.responseIndex === t.responseIndex) ?? null;
+    if (t.responseIndex === -1 && ctx.promptType === 'SELECT_UNSELECT_CARD') {
+      // Semantic finish-marker for SELECT_UNSELECT_CARD: match the action
+      // tagged 'unselect-finish' (positive index) instead of looking for a
+      // literal -1 (which the enumerator never produces for this prompt type).
+      match = legal.find(a => a.actionTag === 'unselect-finish') ?? null;
+    } else {
+      match = legal.find(a => a.responseIndex === t.responseIndex) ?? null;
+    }
+    // responseIndex is a hard contract: consume the target on no-match too,
+    // forcing a divergence here rather than silent mis-fire at a later prompt.
+    if (!match) ctx.pendingTargets.shift();
   } else {
     const wanted = (t.cardNames ?? (t.cardName ? [t.cardName] : [])).map(normalizeName);
     if (wanted.length > 0) {
@@ -270,6 +303,8 @@ function tryConsumeTarget(legal: readonly Action[], ctx: DecisionContext): Actio
         return wanted.some(w => n === w || n.includes(w) || w.includes(n));
       }) ?? null;
     }
+    // cardName-driven targets remain in queue on no-match (skip-tolerant) —
+    // substring matching can legitimately miss at unanticipated prompts.
   }
   if (match) ctx.pendingTargets.shift();
   return match;
