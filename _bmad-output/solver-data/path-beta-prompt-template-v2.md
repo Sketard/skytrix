@@ -50,6 +50,8 @@ These are recurring failure modes observed across prior runs. Avoiding them upfr
 
 6. **Xyz overlay state instance reset** (§6.12): attaching a card as overlay material resets all lingering effects keyed to that instance. Detaching is "from attached state to GY", NOT "from the field to GY" — triggers requiring "from the field" do not fire.
 
+7. **Auto-respond sub-prompts that `targets[]` cannot reach** (§B.7.6): SELECT_PLACE (trivial single-slot), SELECT_POSITION, ANNOUNCE_NUMBER, and SELECT_TRIBUTE (empty `selects[]`) are auto-resolved by the adapter and never surface in the plan's `targets[]` queue. When the default value is wrong for your line (e.g. Lance Soldier's level-up wants value=2 not max, I:P Masquerena placement needs S5 not auto-default, ED Link 1 needs EMZ_R not EMZ_L), use the top-level `mechanicalOverrides[]` field to pin the right value. Common cases: ANNOUNCE_NUMBER for level-up/cost-pay effects, SELECT_PLACE for arrow-sensitive Link placements (EMZ_L vs EMZ_R, M-zone column choice), SELECT_POSITION for passive-defense walls. Set `SOLVER_DEBUG_OVERRIDES=1` to inspect what `lastIdlecmdDesc` looks like at each prompt site if the override doesn't match.
+
 ## Mandatory pre-reasoning step — full deck audit
 
 Before forming any combo hypothesis, produce a complete enumeration of summon enablers, tutors, and combo pieces in the deck and hand. Write the result to `data/path-beta-poc/<FIXTURE_ID>/v2-deck-audit.md` with this exact structure:
@@ -119,11 +121,27 @@ See Annexe B.6 of the canonical rules document for the full grammar reference. Q
       ]
     }
   ],
-  "endTurn": true
+  "endTurn": true,
+  "mechanicalOverrides": [
+    { "after": "<lastIdlecmdDesc substring>", "promptType": "ANNOUNCE_NUMBER", "value": <int> },
+    { "after": "<...>", "promptType": "SELECT_PLACE", "zone": "M1|...|EMZ_L|EMZ_R|S1|...|FZ" },
+    { "after": "<...>", "promptType": "SELECT_POSITION", "position": "FACEUP_ATTACK|FACEUP_DEFENSE|FACEDOWN_DEFENSE" },
+    { "after": "<...>", "promptType": "SELECT_OPTION", "responseIndex": <int> },
+    { "after": "<...>", "promptType": "SELECT_TRIBUTE", "responseIndex": <int> }
+  ]
 }
 ```
 
-For SELECT_EFFECTYN / SELECT_YESNO override, use `targets[]` with explicit `responseIndex` (0 for NO, 1 for YES). For SELECT_PLACE / SELECT_POSITION override, use `responseIndex` matching the legal-action index in the trace. ANNOUNCE_NUMBER is NOT overridable in β-1 currently — if your plan needs a non-default value, report it as feedback.
+For SELECT_EFFECTYN / SELECT_YESNO override, use `targets[]` with explicit `responseIndex` (0 for NO, 1 for YES).
+
+For **SELECT_PLACE / SELECT_POSITION / ANNOUNCE_NUMBER / SELECT_OPTION / SELECT_TRIBUTE** that are NOT surfaced via `targets[]` (auto-respond by the adapter), use the top-level `mechanicalOverrides[]` field. Each override:
+
+- Matches the `after` substring against the most recent IDLECMD pick description (`"<cardName> <verb>"`, case-insensitive).
+- Fires only between that IDLECMD and the next.
+- Is consumed once. Unconsumed overrides surface as `[override-skipped] never matched` in `replayLog`.
+- Falls back to default when invalid (zone blocked, value not in options[], etc.) — logged as `[override-skipped]`.
+
+See `yugioh-game-rules.md` §B.7.6 for full schema + zone string mapping + caveats. Set `SOLVER_DEBUG_OVERRIDES=1` to dump per-prompt match attempts during debugging.
 
 ## Mandatory CoT capture
 

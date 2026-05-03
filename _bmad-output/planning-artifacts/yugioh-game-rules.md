@@ -1533,6 +1533,60 @@ A Continuous Spell with a "flip-and-then-pay-cost" effect pattern (e.g., Decepti
 
 The reason: the engine treats the first activation (face-up flip) and the secondary cost-paid effect as separate IDLECMD activations, NOT as a chained sub-effect of the first.
 
+### B.7.6 mechanicalOverrides[] — pin specific values on auto-respond sub-prompts
+
+Some sub-prompts are NOT surfaced to the plan via `targets[]`/`chainTargets[]` because they are auto-resolved internally by the adapter. The β-1 v2 grammar exposes these via the optional top-level `mechanicalOverrides[]` field:
+
+- **SELECT_PLACE** (zone string: `M1`-`M5`, `EMZ_L`, `EMZ_R`, `S1`-`S5`, `FZ`)
+- **SELECT_POSITION** (`FACEUP_ATTACK` | `FACEUP_DEFENSE` | `FACEDOWN_DEFENSE`)
+- **ANNOUNCE_NUMBER** (literal `value` — e.g. Lance Soldier level 1-4)
+- **SELECT_OPTION** (`responseIndex` into the option list)
+- **SELECT_TRIBUTE** (`responseIndex` — pins one tribute index; remaining slots fill in OCG order)
+
+#### Schema
+
+```jsonc
+{
+  "plan": [...],
+  "mechanicalOverrides": [
+    {
+      "after": "Lance Soldier activate",          // case-insensitive substring on lastIdlecmdDesc
+      "promptType": "ANNOUNCE_NUMBER",
+      "value": 2
+    },
+    {
+      "after": "I:P Masquerena summon-procedure",
+      "promptType": "SELECT_PLACE",
+      "zone": "S5"
+    }
+  ],
+  "endTurn": true
+}
+```
+
+#### Matching semantics
+
+- **`after`**: substring match (case-insensitive) against `lastIdlecmdDesc`, which is updated to `"<cardName> <verb>"` on every IDLECMD pick. The override fires ONLY between that IDLECMD and the next IDLECMD.
+- **`promptType`**: exact match.
+- **FIFO consumption**: each override is consumed at most once; multiple sharing the same `after` fire in array order.
+- **Skip-on-invalid**: when an override matches but its value is unavailable (zone blocked, value not in options[], etc.), the override is consumed and the adapter falls back to its default. Logged as `[override-skipped]` in `replayLog`.
+- **Soft warning**: unconsumed overrides at end of replay surface as `[override-skipped] never matched (after="...")` in `replayLog` — not a fail.
+
+#### When to use it
+
+Use `mechanicalOverrides[]` when `targets[]`/`chainTargets[]` cannot reach the prompt:
+
+- **ANNOUNCE_NUMBER**: never surfaces to the plan; use override to pin level-up values (D/D Lance Soldier, Pendulum scale picks).
+- **SELECT_POSITION**: rarely surfaces; use override to flip a summon to defense (Sphinx-style passive walls).
+- **SELECT_PLACE**: surfaces only when EMZ available OR 2-4 main zones free. For trivial single-slot SELECT_PLACE (Link 1 to fixed EMZ), use override to pin EMZ_L vs EMZ_R when arrows matter.
+- **SELECT_OPTION**: surfaces but `targets[]` already supports `responseIndex`. The override path is preferred when the choice is mechanical-not-strategic (e.g. summon-from-hand vs summon-from-field for a card with both Lua effect choices).
+- **SELECT_TRIBUTE**: surfaces only when `selects[]` non-empty. Use override to pin the tribute target index.
+
+#### Caveats
+
+- **Late-firing prompts**: when ANNOUNCE_NUMBER fires AFTER the IDLECMD that "caused" it (e.g. during end-phase chain resolution), target the most-recent IDLECMD instead — typically `"end-phase"`.
+- **Debug**: set `SOLVER_DEBUG_OVERRIDES=1` to dump `[overrides-debug] findMatch promptType=... ctx=... queue=N` for every hook call. Confirms the `lastIdlecmdDesc` shape at each prompt site.
+
 ### B.8 Workflow when plan stalls below target
 
 1. Run the plan; observe `matched`, `score`, `stoppedReason`.

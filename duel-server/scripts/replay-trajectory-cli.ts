@@ -66,6 +66,7 @@
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
+import { OcgLocation, OcgPosition } from '@n1xx1/ocgcore-wasm';
 import {
   DATA_DIR,
   loadFixtureFile,
@@ -223,9 +224,86 @@ interface PlanStep {
   chainTargets?: TargetSpec[];
 }
 
+// mechanicalOverrides[] grammar (2026-05-03) — pin specific values on
+// sub-prompts that are otherwise auto-respond / interactive-mechanical:
+//   - ANNOUNCE_NUMBER (literal value, e.g. Lance Soldier level pick)
+//   - SELECT_PLACE (zone string: M1-M5, EMZ_L, EMZ_R, S1-S5, FZ)
+//   - SELECT_POSITION (FACEUP_ATTACK | FACEUP_DEFENSE | FACEDOWN_DEFENSE)
+//   - SELECT_OPTION (responseIndex into the option list)
+//   - SELECT_TRIBUTE (responseIndex into the legal-actions list)
+//
+// Each override is matched by:
+//   - `after`: case-insensitive substring match against the most recent
+//     IDLECMD pick description "<cardName> <verb>" (e.g. "Lance Soldier
+//     activate"). The override fires for prompts that arise BEFORE the next
+//     SELECT_IDLECMD.
+//   - `promptType`: exact match.
+// Consumed once (FIFO queue). When multiple overrides share the same
+// `after`, they are applied in order. Unmatched overrides at end-of-replay
+// emit a soft warning in `replayLog`. Invalid overrides (unknown zone,
+// out-of-range value) emit a runtime warning and fall back to default.
+//
+// Note: SELECT_OPTION is technically EXPLORATORY (surfaces in legal[]) so
+// the CLI handles it before `tryConsumeTarget`. The other 4 prompt types
+// are intercepted by an adapter-side hook (see
+// `OCGCoreAdapter.setMechanicalOverrideHook`).
+type MechanicalOverridePromptType =
+  | 'ANNOUNCE_NUMBER'
+  | 'SELECT_PLACE'
+  | 'SELECT_POSITION'
+  | 'SELECT_OPTION'
+  | 'SELECT_TRIBUTE';
+
+interface MechanicalOverrideBase {
+  after: string;
+  promptType: MechanicalOverridePromptType;
+  /** Optional human note (no semantic effect). */
+  note?: string;
+}
+
+interface MechanicalOverrideAnnounceNumber extends MechanicalOverrideBase {
+  promptType: 'ANNOUNCE_NUMBER';
+  /** Literal announced value (e.g. 2 for level 2). The adapter looks it up
+   *  in the prompt's `options[]` array and returns the matching index. */
+  value: number;
+}
+
+interface MechanicalOverrideSelectPlace extends MechanicalOverrideBase {
+  promptType: 'SELECT_PLACE';
+  /** Zone string. Mapped to (location, sequence). Must be in the prompt's
+   *  available-places list — otherwise warn + fall back. */
+  zone: 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'EMZ_L' | 'EMZ_R' | 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'FZ';
+}
+
+interface MechanicalOverrideSelectPosition extends MechanicalOverrideBase {
+  promptType: 'SELECT_POSITION';
+  position: 'FACEUP_ATTACK' | 'FACEUP_DEFENSE' | 'FACEDOWN_DEFENSE';
+}
+
+interface MechanicalOverrideSelectOption extends MechanicalOverrideBase {
+  promptType: 'SELECT_OPTION';
+  /** Index into the option list (0-based). */
+  responseIndex: number;
+}
+
+interface MechanicalOverrideSelectTribute extends MechanicalOverrideBase {
+  promptType: 'SELECT_TRIBUTE';
+  /** Index into the legal-actions list when surfaced as multi-pick, or
+   *  index into the auto-respond's first-N indicies when not. */
+  responseIndex: number;
+}
+
+type MechanicalOverride =
+  | MechanicalOverrideAnnounceNumber
+  | MechanicalOverrideSelectPlace
+  | MechanicalOverrideSelectPosition
+  | MechanicalOverrideSelectOption
+  | MechanicalOverrideSelectTribute;
+
 interface PlanFile {
   plan: PlanStep[];
   endTurn?: boolean;
+  mechanicalOverrides?: MechanicalOverride[];
 }
 
 // Raw trajectory input (β-3).
@@ -345,6 +423,94 @@ function normalizeName(s: string): string {
     .replace(/[“”„‟"]/g, '"')   // smart double quotes
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+// =============================================================================
+// mechanicalOverrides[] helpers (2026-05-03)
+// =============================================================================
+
+/** Map zone string → OCG (location, sequence). Centralized so the same shape
+ *  is used in `validateMechanicalOverrides` (membership check) and the hook
+ *  (response construction). FZ uses sequence 0 (single field-spell zone per
+ *  side). EMZ_L/EMZ_R map to MZONE seq 5/6 per `decodeFieldMask` layout. */
+const ZONE_STRING_TO_PLACE: Record<string, { location: number; sequence: number }> = {
+  M1: { location: OcgLocation.MZONE, sequence: 0 },
+  M2: { location: OcgLocation.MZONE, sequence: 1 },
+  M3: { location: OcgLocation.MZONE, sequence: 2 },
+  M4: { location: OcgLocation.MZONE, sequence: 3 },
+  M5: { location: OcgLocation.MZONE, sequence: 4 },
+  EMZ_L: { location: OcgLocation.MZONE, sequence: 5 },
+  EMZ_R: { location: OcgLocation.MZONE, sequence: 6 },
+  S1: { location: OcgLocation.SZONE, sequence: 0 },
+  S2: { location: OcgLocation.SZONE, sequence: 1 },
+  S3: { location: OcgLocation.SZONE, sequence: 2 },
+  S4: { location: OcgLocation.SZONE, sequence: 3 },
+  S5: { location: OcgLocation.SZONE, sequence: 4 },
+  FZ: { location: OcgLocation.FZONE, sequence: 0 },
+};
+
+const POSITION_STRING_TO_VALUE: Record<string, number> = {
+  FACEUP_ATTACK: OcgPosition.FACEUP_ATTACK,
+  FACEUP_DEFENSE: OcgPosition.FACEUP_DEFENSE,
+  FACEDOWN_DEFENSE: OcgPosition.FACEDOWN_DEFENSE,
+};
+
+const VALID_OVERRIDE_PROMPT_TYPES = new Set<string>([
+  'ANNOUNCE_NUMBER', 'SELECT_PLACE', 'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE',
+]);
+
+/** Runtime validation for `mechanicalOverrides[]`. Filters out invalid
+ *  entries with explicit warnings — the replay continues with whatever
+ *  passes validation. Each prompt type has its own required field set. */
+function validateMechanicalOverrides(raw: unknown[]): MechanicalOverride[] {
+  const out: MechanicalOverride[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const entry = raw[i] as Record<string, unknown>;
+    if (!entry || typeof entry !== 'object') {
+      console.warn(`[mechanical-overrides] entry ${i} is not an object — skipped`);
+      continue;
+    }
+    if (typeof entry.after !== 'string' || entry.after.length === 0) {
+      console.warn(`[mechanical-overrides] entry ${i} missing/invalid 'after' — skipped`);
+      continue;
+    }
+    if (typeof entry.promptType !== 'string' || !VALID_OVERRIDE_PROMPT_TYPES.has(entry.promptType)) {
+      console.warn(`[mechanical-overrides] entry ${i} unknown promptType=${String(entry.promptType)} — skipped (allowed: ${Array.from(VALID_OVERRIDE_PROMPT_TYPES).join(', ')})`);
+      continue;
+    }
+    const promptType = entry.promptType as MechanicalOverridePromptType;
+    if (promptType === 'ANNOUNCE_NUMBER') {
+      if (typeof entry.value !== 'number' || !Number.isFinite(entry.value)) {
+        console.warn(`[mechanical-overrides] entry ${i} (ANNOUNCE_NUMBER) requires numeric 'value' — skipped`);
+        continue;
+      }
+      out.push({ after: entry.after, promptType, value: entry.value, note: typeof entry.note === 'string' ? entry.note : undefined });
+    } else if (promptType === 'SELECT_PLACE') {
+      if (typeof entry.zone !== 'string' || !(entry.zone in ZONE_STRING_TO_PLACE)) {
+        console.warn(`[mechanical-overrides] entry ${i} (SELECT_PLACE) unknown zone=${String(entry.zone)} — skipped (valid: ${Object.keys(ZONE_STRING_TO_PLACE).join(', ')})`);
+        continue;
+      }
+      out.push({ after: entry.after, promptType, zone: entry.zone as MechanicalOverrideSelectPlace['zone'], note: typeof entry.note === 'string' ? entry.note : undefined });
+    } else if (promptType === 'SELECT_POSITION') {
+      if (typeof entry.position !== 'string' || !(entry.position in POSITION_STRING_TO_VALUE)) {
+        console.warn(`[mechanical-overrides] entry ${i} (SELECT_POSITION) unknown position=${String(entry.position)} — skipped (valid: ${Object.keys(POSITION_STRING_TO_VALUE).join(', ')})`);
+        continue;
+      }
+      out.push({ after: entry.after, promptType, position: entry.position as MechanicalOverrideSelectPosition['position'], note: typeof entry.note === 'string' ? entry.note : undefined });
+    } else if (promptType === 'SELECT_OPTION' || promptType === 'SELECT_TRIBUTE') {
+      if (typeof entry.responseIndex !== 'number' || !Number.isFinite(entry.responseIndex)) {
+        console.warn(`[mechanical-overrides] entry ${i} (${promptType}) requires numeric 'responseIndex' — skipped`);
+        continue;
+      }
+      out.push({
+        after: entry.after,
+        promptType,
+        responseIndex: entry.responseIndex,
+        note: typeof entry.note === 'string' ? entry.note : undefined,
+      } as MechanicalOverride);
+    }
+  }
+  return out;
 }
 
 function actionMatchesPlanStep(action: Action, step: PlanStep, getName: (id: number) => string): boolean {
@@ -527,6 +693,20 @@ async function main(): Promise<void> {
   /** Pending chain-trigger overrides for the active plan step, consumed in
    *  order at SELECT_CHAIN prompts. */
   let pendingChainTargets: TargetSpec[] = [];
+  /** mechanicalOverrides[] queue (2026-05-03). Loaded once from the plan
+   *  file. Each entry is consumed at most once when its (after, promptType)
+   *  matches the active context. Unmatched entries at end-of-replay surface
+   *  as soft warnings in `replayLog`. */
+  const mechanicalOverridesAll: MechanicalOverride[] = !rawMode
+    ? validateMechanicalOverrides((inputRaw as PlanFile).mechanicalOverrides ?? [])
+    : [];
+  /** Mutable cursor for the override queue. Entries are spliced out of this
+   *  array on consumption — preserves FIFO across multiple matching `after`. */
+  const mechanicalOverrides: MechanicalOverride[] = mechanicalOverridesAll.slice();
+  /** Tracks the most recent "<cardName> <verb>" string from an IDLECMD pick.
+   *  Empty until the first IDLECMD action is committed. Used by the override
+   *  hook to match against `after`. */
+  let lastIdlecmdDesc = '';
   let stoppedReason: ReplayResult['stoppedReason'] = 'completed';
   let divergence: DivergenceInfo | null = null;
   let stoppedAtPlanStep: number | null = null;
@@ -623,6 +803,260 @@ async function main(): Promise<void> {
     }
     if (match) pendingChainTargets.shift();
     return match;
+  }
+
+  /** Buffered tags appended to `replayLog` describing override
+   *  applications and skips. Flushed inline so users see them per-step. */
+  type OverrideLogEntry = {
+    kind: 'override-applied' | 'override-skipped';
+    promptType: string;
+    detail: string;
+    afterContext: string;
+  };
+  const overrideLog: OverrideLogEntry[] = [];
+
+  /** Locate the first queued override that matches the current context.
+   *  Returns the array index for splicing (consume) — or -1. Match rule:
+   *  `lastIdlecmdDesc` includes (case-insensitively) the override's `after`
+   *  AND `promptType` matches exactly. The first matching index wins (FIFO
+   *  semantics within the same `after`). */
+  function findMatchingOverrideIdx(promptType: string): number {
+    if (mechanicalOverrides.length === 0) return -1;
+    const ctx = lastIdlecmdDesc.toLowerCase();
+    if (process.env.SOLVER_DEBUG_OVERRIDES === '1') {
+      console.error(`[overrides-debug] findMatch promptType=${promptType} ctx="${ctx}" queue=${mechanicalOverrides.length}`);
+    }
+    if (!ctx) return -1;
+    for (let i = 0; i < mechanicalOverrides.length; i++) {
+      const ov = mechanicalOverrides[i];
+      if (ov.promptType !== promptType) continue;
+      if (ctx.includes(ov.after.toLowerCase())) return i;
+    }
+    return -1;
+  }
+
+  /** Adapter-side hook: maps a queued override to a duelSetResponse-shaped
+   *  object for ANNOUNCE_NUMBER / SELECT_PLACE / SELECT_POSITION /
+   *  SELECT_TRIBUTE. Returns null when no override matches OR when the
+   *  override is invalid against the prompt's options (zone unavailable,
+   *  value not in `options[]`, etc.) — the adapter falls back to its
+   *  default in that case and we log the skip. SELECT_OPTION is intercepted
+   *  on the CLI side instead (legal-actions enumeration). */
+  function consumeOverrideForAdapterPrompt(
+    promptType: PromptType,
+    msg: Record<string, unknown>,
+  ): unknown | null {
+    if (promptType !== 'ANNOUNCE_NUMBER'
+      && promptType !== 'SELECT_PLACE'
+      && promptType !== 'SELECT_POSITION'
+      && promptType !== 'SELECT_TRIBUTE') {
+      return null;
+    }
+    const idx = findMatchingOverrideIdx(promptType);
+    if (idx === -1) return null;
+    const ov = mechanicalOverrides[idx];
+    const afterContext = lastIdlecmdDesc;
+
+    if (ov.promptType === 'ANNOUNCE_NUMBER') {
+      const opts = ((msg['options'] as Array<bigint | number> | undefined) ?? [])
+        .map(v => Number(v));
+      const valueIdx = opts.findIndex(v => v === ov.value);
+      if (valueIdx === -1) {
+        overrideLog.push({
+          kind: 'override-skipped',
+          promptType,
+          detail: `value=${ov.value} not in options=[${opts.join(',')}] — fall back to default`,
+          afterContext,
+        });
+        // Consume even on skip — the user pinned a specific intent that
+        // the engine didn't accept; queueing it longer would mis-fire on a
+        // later prompt. Same hard-contract behavior as `targets[].responseIndex`.
+        mechanicalOverrides.splice(idx, 1);
+        return null;
+      }
+      overrideLog.push({
+        kind: 'override-applied',
+        promptType,
+        detail: `ANNOUNCE_NUMBER → value=${ov.value} (idx=${valueIdx})`,
+        afterContext,
+      });
+      mechanicalOverrides.splice(idx, 1);
+      return { type: 19, value: valueIdx };
+    }
+
+    if (ov.promptType === 'SELECT_PLACE') {
+      const place = ZONE_STRING_TO_PLACE[ov.zone];
+      const mask = (msg['field_mask'] as number) ?? 0;
+      const count = (msg['count'] as number) ?? 1;
+      // Verify the requested zone is actually available (bit unset = free).
+      // Per-decodeFieldMask, place.player is implicit — overrides target the
+      // CLI's own side (player 0). Bit layout: p*16 + (seq | 8+seq | 13).
+      const player = 0;
+      let bit: number;
+      if (place.location === OcgLocation.MZONE) bit = player * 16 + place.sequence;
+      else if (place.location === OcgLocation.SZONE) bit = player * 16 + 8 + place.sequence;
+      else if (place.location === OcgLocation.FZONE) bit = player * 16 + 13;
+      else {
+        overrideLog.push({
+          kind: 'override-skipped',
+          promptType,
+          detail: `internal: unsupported location=${place.location}`,
+          afterContext,
+        });
+        mechanicalOverrides.splice(idx, 1);
+        return null;
+      }
+      if ((mask & (1 << bit)) !== 0) {
+        overrideLog.push({
+          kind: 'override-skipped',
+          promptType,
+          detail: `zone=${ov.zone} blocked (bit ${bit} set in field_mask=0x${mask.toString(16)}) — fall back to default`,
+          afterContext,
+        });
+        mechanicalOverrides.splice(idx, 1);
+        return null;
+      }
+      // Build response: SELECT_PLACE expects `count` places. Override pins
+      // the FIRST slot; if the prompt requires count > 1, the remaining
+      // slots are filled by `decodeFieldMask` order skipping the picked.
+      const places: { player: number; location: number; sequence: number }[] = [
+        { player, location: place.location, sequence: place.sequence },
+      ];
+      if (count > 1) {
+        // Reuse decodeFieldMask logic inline — but mask out the bit we
+        // already chose to avoid duplicate. We don't have decodeFieldMask
+        // imported here, so do a minimal inline iteration.
+        for (let p = 0; p < 2 && places.length < count; p++) {
+          for (let seq = 0; seq < 7 && places.length < count; seq++) {
+            const b = p * 16 + seq;
+            if (b === bit && p === player) continue;
+            if (!(mask & (1 << b))) places.push({ player: p, location: OcgLocation.MZONE, sequence: seq });
+          }
+          for (let seq = 0; seq < 5 && places.length < count; seq++) {
+            const b = p * 16 + 8 + seq;
+            if (b === bit && p === player) continue;
+            if (!(mask & (1 << b))) places.push({ player: p, location: OcgLocation.SZONE, sequence: seq });
+          }
+          if (places.length < count) {
+            const b = p * 16 + 13;
+            if (!(b === bit && p === player) && !(mask & (1 << b))) {
+              places.push({ player: p, location: OcgLocation.FZONE, sequence: 0 });
+            }
+          }
+        }
+      }
+      overrideLog.push({
+        kind: 'override-applied',
+        promptType,
+        detail: `SELECT_PLACE → ${ov.zone}`,
+        afterContext,
+      });
+      mechanicalOverrides.splice(idx, 1);
+      return { type: 10, places };
+    }
+
+    if (ov.promptType === 'SELECT_POSITION') {
+      const pos = POSITION_STRING_TO_VALUE[ov.position];
+      // Verify the position is allowed (msg.positions is a bitmask of
+      // allowed OcgPosition values for the selected card; if it's not set,
+      // we trust the override).
+      const allowedMask = msg['positions'] as number | undefined;
+      if (allowedMask !== undefined && (allowedMask & pos) === 0) {
+        overrideLog.push({
+          kind: 'override-skipped',
+          promptType,
+          detail: `position=${ov.position} not in allowed mask=0x${allowedMask.toString(16)} — fall back to default`,
+          afterContext,
+        });
+        mechanicalOverrides.splice(idx, 1);
+        return null;
+      }
+      overrideLog.push({
+        kind: 'override-applied',
+        promptType,
+        detail: `SELECT_POSITION → ${ov.position}`,
+        afterContext,
+      });
+      mechanicalOverrides.splice(idx, 1);
+      return { type: 11, position: pos };
+    }
+
+    if (ov.promptType === 'SELECT_TRIBUTE') {
+      // Auto-respond's default tribute response is `{type:12, indicies:[0..min-1]}`.
+      // Our override pins ONE alternative starting index. We construct
+      // [responseIndex, responseIndex+1, ..., responseIndex+min-1] modulo
+      // the cards list. If the user wants finer-grained multi-pick control,
+      // they should drive the prompt via `exposeMultiPickMechanical = true`
+      // + `targets[]` (which surfaces it as legal actions). This single-
+      // index override covers the common case (pin which monster gets
+      // tributed when the default first-N order picks the wrong one).
+      const min = (msg['min'] as number) ?? 1;
+      const cards = ((msg['selects'] ?? msg['cards']) as unknown[] | undefined) ?? [];
+      if (ov.responseIndex < 0 || ov.responseIndex >= cards.length) {
+        overrideLog.push({
+          kind: 'override-skipped',
+          promptType,
+          detail: `responseIndex=${ov.responseIndex} out of range (cards=${cards.length}) — fall back to default`,
+          afterContext,
+        });
+        mechanicalOverrides.splice(idx, 1);
+        return null;
+      }
+      const indicies = [ov.responseIndex];
+      for (let i = 0; i < cards.length && indicies.length < min; i++) {
+        if (i !== ov.responseIndex) indicies.push(i);
+      }
+      overrideLog.push({
+        kind: 'override-applied',
+        promptType,
+        detail: `SELECT_TRIBUTE → indicies=[${indicies.join(',')}] (pinned ${ov.responseIndex})`,
+        afterContext,
+      });
+      mechanicalOverrides.splice(idx, 1);
+      return { type: 12, indicies };
+    }
+
+    return null;
+  }
+
+  /** CLI-side override consumption for SELECT_OPTION. Returns the matching
+   *  legal Action or null. Unlike the adapter hook, this works on the
+   *  enumerated legal-actions list. Consumed on success. */
+  function tryConsumeMechanicalOverrideOption(legal: Action[], promptType: string): Action | null {
+    if (promptType !== 'SELECT_OPTION') return null;
+    const idx = findMatchingOverrideIdx(promptType);
+    if (idx === -1) return null;
+    const ov = mechanicalOverrides[idx];
+    if (ov.promptType !== 'SELECT_OPTION') return null;
+    const match = legal.find(a => a.responseIndex === ov.responseIndex);
+    if (!match) {
+      overrideLog.push({
+        kind: 'override-skipped',
+        promptType,
+        detail: `responseIndex=${ov.responseIndex} not in legal[${legal.length}] — fall back to default`,
+        afterContext: lastIdlecmdDesc,
+      });
+      mechanicalOverrides.splice(idx, 1);
+      return null;
+    }
+    overrideLog.push({
+      kind: 'override-applied',
+      promptType,
+      detail: `SELECT_OPTION → responseIndex=${ov.responseIndex}`,
+      afterContext: lastIdlecmdDesc,
+    });
+    mechanicalOverrides.splice(idx, 1);
+    return match;
+  }
+
+  // Install the adapter-side hook (mechanicalOverrides[] grammar). Hook
+  // returns null when no override matches → adapter falls through to its
+  // default behavior (interactive / autoRespondMechanical), preserving
+  // bit-exact backward compat for plans without overrides.
+  if (mechanicalOverridesAll.length > 0) {
+    adapter.setMechanicalOverrideHook((promptType, msg) => {
+      return consumeOverrideForAdapterPrompt(promptType, msg);
+    });
   }
 
   try {
@@ -885,12 +1319,22 @@ async function main(): Promise<void> {
               pickSource = 'auto';
             }
           } else {
-            chosen = tryConsumeTarget(legal, promptType);
+            // mechanicalOverrides[] check for SELECT_OPTION (the only
+            // EXPLORATORY override that needs CLI-side handling — others
+            // route through the adapter hook). Consulted BEFORE
+            // tryConsumeTarget to give override priority over the legacy
+            // `targets[]` fallback.
+            chosen = tryConsumeMechanicalOverrideOption(legal, promptType);
             if (chosen) {
               pickSource = 'target';
             } else {
-              chosen = legal[0];
-              pickSource = 'auto';
+              chosen = tryConsumeTarget(legal, promptType);
+              if (chosen) {
+                pickSource = 'target';
+              } else {
+                chosen = legal[0];
+                pickSource = 'auto';
+              }
             }
           }
         }
@@ -946,6 +1390,23 @@ async function main(): Promise<void> {
         }
       }
 
+      // Drain any override log entries fired during the preceding
+      // getLegalActions call (adapter-side hook) — they belong BEFORE the
+      // current step's pick because they were applied while advancing past
+      // intermediate auto-respond prompts. The CLI-side SELECT_OPTION
+      // override (if any) is also drained here.
+      while (overrideLog.length > 0) {
+        const ev = overrideLog.shift()!;
+        replayLog.push({
+          step: stepCount,
+          promptType: ev.promptType,
+          applied: `[${ev.kind}] ${ev.detail} (after="${ev.afterContext}")`,
+          appliedCardId: 0,
+          appliedResponseIndex: -1,
+          planStepIndex: null,
+        });
+      }
+
       const cardName = chosen.cardName || getName(chosen.cardId);
       const verbTag = chosen.actionVerb ? ` (${chosen.actionVerb})` : '';
       replayLog.push({
@@ -956,6 +1417,16 @@ async function main(): Promise<void> {
         appliedResponseIndex: chosen.responseIndex,
         planStepIndex,
       });
+
+      // mechanicalOverrides[] context tracking — refresh `lastIdlecmdDesc`
+      // on every IDLECMD pick so subsequent overrides match against the
+      // most recent `<cardName> <verb>` action description. Use cleaned-up
+      // " "-joined form (no brackets, no [pickSource] tag).
+      if (promptType === 'SELECT_IDLECMD') {
+        lastIdlecmdDesc = chosen.actionVerb
+          ? `${cardName} ${chosen.actionVerb}`
+          : cardName;
+      }
 
       if (args.dumpTrace) {
         responseTrace.push({
@@ -1095,6 +1566,36 @@ async function main(): Promise<void> {
   const missingCardIds = expectedCardIds.filter(id => !onFieldCardIds.has(id));
 
   const { score, scoreBreakdown } = scorer.score(finalState);
+
+  // mechanicalOverrides[] — surface unconsumed entries as soft warnings.
+  // They reach this branch when their `after` substring never matched any
+  // `lastIdlecmdDesc` during the replay (typo, plan re-ordering, etc.).
+  if (mechanicalOverrides.length > 0) {
+    for (const ov of mechanicalOverrides) {
+      replayLog.push({
+        step: stepCount,
+        promptType: ov.promptType,
+        applied: `[override-skipped] never matched (after="${ov.after}")`,
+        appliedCardId: 0,
+        appliedResponseIndex: -1,
+        planStepIndex: null,
+      });
+    }
+    console.warn(`[replay] ${mechanicalOverrides.length} mechanicalOverrides[] entries never matched — see replayLog for details`);
+  }
+  // Drain any straggler overrideLog entries (e.g., applied during the
+  // engine's tail end-phase resolution after the main loop terminated).
+  while (overrideLog.length > 0) {
+    const ev = overrideLog.shift()!;
+    replayLog.push({
+      step: stepCount,
+      promptType: ev.promptType,
+      applied: `[${ev.kind}] ${ev.detail} (after="${ev.afterContext}")`,
+      appliedCardId: 0,
+      appliedResponseIndex: -1,
+      planStepIndex: null,
+    });
+  }
 
   const result: ReplayResult = {
     fixtureId: args.fixtureId,

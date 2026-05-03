@@ -318,6 +318,35 @@ export class OCGCoreAdapter implements GameOracle {
    *  trees the DFS can't rank. Only set to true by `scripts/trace-assist.ts`. */
   exposeMultiPickMechanical = false;
 
+  /** mechanicalOverrides[] grammar (2026-05-03). When set via
+   *  `setMechanicalOverrideHook`, runUntilPlayerPrompt consults the hook
+   *  BEFORE `tryInteractiveMechanical` / `autoRespondMechanical` for player-0
+   *  mechanical (non-EXPLORATORY) prompts. The hook receives the prompt type
+   *  + raw OCG msg and may return a duelSetResponse-compatible response
+   *  object to bypass the default behavior, or `null` to fall through to the
+   *  legacy auto-respond path.
+   *
+   *  Used by `replay-trajectory-cli.ts` to support the β-1 v2 plan grammar's
+   *  `mechanicalOverrides[]` field (pin SELECT_PLACE / SELECT_POSITION /
+   *  SELECT_TRIBUTE / ANNOUNCE_NUMBER). The DFS solver does NOT install a
+   *  hook — production behavior is unchanged when the field is undefined.
+   *
+   *  Bypasses BOTH `tryInteractiveMechanical` (when `exposeMultiPickMechanical`
+   *  would have surfaced the prompt as actions) AND `autoRespondMechanical`
+   *  (the default fallback). EXPLORATORY prompts (SELECT_OPTION, SELECT_CHAIN,
+   *  etc.) are NOT routed here — the CLI handles those via its own override
+   *  pre-check before `tryConsumeTarget`. */
+  private mechanicalOverrideHook: ((promptType: PromptType, msg: Record<string, unknown>) => unknown | null) | null = null;
+
+  /** Install a mechanical override hook (mechanicalOverrides[] grammar). Pass
+   *  `null` to clear. The hook is consulted on every player-0 mechanical
+   *  prompt that would otherwise be auto-resolved. */
+  setMechanicalOverrideHook(
+    hook: ((promptType: PromptType, msg: Record<string, unknown>) => unknown | null) | null,
+  ): void {
+    this.mechanicalOverrideHook = hook;
+  }
+
   /** Phase 3 of prompt-resolver-refactor (2026-05-01). When env
    *  `SOLVER_USE_PROMPT_RESOLVER=1` is set, runUntilPlayerPrompt routes its
    *  prompt-resolution decisions through the unified PromptResolver +
@@ -1038,6 +1067,26 @@ export class OCGCoreAdapter implements GameOracle {
         }
         internal.lastPromptSourceCardId = resolvedSource;
 
+        // mechanicalOverrides[] hook (2026-05-03) — consulted FIRST so a
+        // matching override bypasses the resolver / legacy paths entirely
+        // for player-0 mechanical (non-EXPLORATORY) prompts. Opponent
+        // prompts and EXPLORATORY prompts are intentionally excluded:
+        //   - Opponent prompts have their own auto-respond logic and are
+        //     not user-overridable in the β-1 grammar.
+        //   - EXPLORATORY prompts (SELECT_OPTION, SELECT_CHAIN, etc.) are
+        //     surfaced as legal actions; the CLI handles those via its own
+        //     pre-tryConsumeTarget override pass.
+        if (this.mechanicalOverrideHook
+          && promptType
+          && !EXPLORATORY_PROMPTS.has(promptType)
+          && (msgAny['player'] as number) !== OPPONENT) {
+          const overrideResp = this.mechanicalOverrideHook(promptType, msgAny);
+          if (overrideResp !== null && overrideResp !== undefined) {
+            this.core.duelSetResponse(internal.nativeHandle, overrideResp as never);
+            internal.responseHistory.push(overrideResp);
+            continue;
+          }
+        }
 
         // Phase 3 of prompt-resolver-refactor: route through PromptResolver
         // when the env flag is set. Default OFF; bit-exact gate compares
@@ -1116,6 +1165,8 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Mechanical prompts: auto-resolve with defaults
         if (promptType && !EXPLORATORY_PROMPTS.has(promptType)) {
+          // Note: mechanicalOverrides[] hook is consulted earlier (above the
+          // resolver path) so it intercepts both legacy and resolver flows.
           // Phase 5-lite trace-assist: expose multi-pick mechanical prompts as
           // interactive actions BEFORE the existing exploratory gates (those
           // only handle single-pick SELECT_CARD). The interactive path covers
