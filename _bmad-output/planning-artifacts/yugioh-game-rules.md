@@ -283,6 +283,31 @@ The lock `You cannot Special Summon monsters from the Extra Deck, except Fusion 
 
 This rule is a frequent source of LLM misreasoning. Subagents commonly assume "lock activates AFTER the card resolves" — wrong. The check is bidirectional across the entire turn.
 
+#### Non-retroactive locks — ordering matters (don't over-eliminate)
+
+The retroactive rule above applies ONLY to wording explicitly tied to the entire turn (`this turn`, `the turn you activate this card`, `the turn this effect resolves`). A separate class of locks applies **forward-only** — they only restrict actions performed AFTER the lock takes effect, not before. The two main mechanisms:
+
+1. **Lingering-effect locks attached to a Trigger/Ignition resolution**: phrased as `for the rest of this turn after this card's effect resolves`, `for the rest of this turn after activation`, or `until the end of your turn`. These come into force at the moment the source effect resolves; actions that happened earlier in the turn are unaffected.
+
+2. **Continuous Effect locks tied to a card being on the field**: phrased as Continuous-Effect text on a monster/spell/trap (no `:` and no `;` in the lock clause — see §1.2). These are active **only while the source card is face-up on the field**. Actions performed before the source entered the field are not retroactively prohibited; actions after the source leaves the field are no longer restricted.
+
+**Example — Promethean Princess of the Sky's Crown** (cardId `2772337`):
+> *"You cannot Special Summon monsters, except FIRE monsters."* (continuous text, no `:`, no `;`, while face-up on the field)
+
+This is a Continuous Effect tied to Promethean being face-up in MZONE (Lua: `EFFECT_TYPE_FIELD` with `LOCATION_MZONE` range, `EFFECT_CANNOT_SPECIAL_SUMMON`). The lock applies **only after Promethean Link-Summons onto the field**, not before.
+
+Concrete consequences in a combo plan that uses both Promethean and a non-FIRE Synchro/Link (e.g., Lollipo, LIGHT Synchro):
+- **Order Promethean → Lollipo**: blocked. After Promethean is on the field, only FIRE Special Summons are legal; Lollipo (LIGHT) cannot be SS'd.
+- **Order Lollipo → Promethean**: legal. Lollipo Special Summons before Promethean enters the field, so the lock isn't yet active. Once Promethean Link-Summons, no further non-FIRE SS is allowed, but the previously-summoned Lollipo stays on board.
+
+**Example — Branded Fusion contrasted**: Branded Fusion's lock uses `the turn you activate this card` — that wording is explicitly turn-scoped, so it IS retroactive (see worked example above). Promethean's lock uses Continuous-Effect wording without any turn anchor, so it is forward-only.
+
+**LLM blind-spot warning**: subagents commonly declare "Promethean and Lollipo are mutually incompatible because Promethean's FIRE lock blocks Lollipo's LIGHT summon" — wrong, ordering matters. Before declaring two cards incompatible, classify the lock:
+- Does the lock text contain `this turn` / `the turn you activate this card` / `the turn this card was activated`? → retroactive — order doesn't help.
+- Does the lock text say `for the rest of this turn after this card's effect resolves` / `after activation` / nothing turn-scoped (Continuous Effect on a monster on the field)? → forward-only — order matters; do the restricted action first.
+
+When in doubt, read the source card's Lua: an `EFFECT_TYPE_FIELD` with `LOCATION_MZONE` range is a Continuous-on-field lock (forward-only); a `RESETS_STANDARD_PHASE_END`-scoped effect attached at activation is a per-turn lingering lock (forward-only); a turn-flag set in the operation function (e.g. `Duel.RegisterFlagEffect` with `RESET_PHASE+PHASE_END`) is a turn-anchored retroactive check.
+
 ### §2.5 Summoning conditions vs effects
 
 A **Summoning Condition** describes how a monster can be Special Summoned without activating an effect or creating a chain link. Recognized by absence of `:` or `;` in the relevant clause (see §1.2).
@@ -1453,6 +1478,50 @@ The `replayLog` is a chronological record of every prompt the engine emitted and
 **Trigger Effects do NOT need their own IDLECMD `(activate)` plan-step**. Cards with on-Summon, on-SS, on-NS, or on-GY-send Trigger Effects auto-resolve in the post-event Trigger window via SEGOC (§4.7). The plan should only include IDLECMD steps for **player-initiated activations** (Ignition Effects, Spell/Trap activations, Quick Effects you choose to activate). Adding a redundant `(activate)` plan-step for an auto-firing Trigger Effect causes divergence — the engine has already resolved the trigger, so the card no longer surfaces in legal actions at the next IDLECMD.
 
 **Concrete example of the trigger-redundancy trap**: a plan that summons monster X (which has an on-Summon search trigger) and then has a separate plan-step `{cardName: "X", verb: "activate"}` will diverge at that step — X's search trigger already auto-fired in the SEGOC window after the summon, and X cannot be re-activated. Drop the redundant step; the search target goes via the `targets[]` of the summon plan-step (or via `chainTargets[]` if the trigger surfaced on a chain).
+
+#### When does a Trigger need an explicit `chainTargets[]` entry vs auto-resolve?
+
+This is the **dominant silent-failure mode** of Path β plans: optional Trigger Effects that surface in `SELECT_CHAIN` are auto-passed by the CLI default unless an explicit `chainTargets[]` entry pins them to fire. Mandatory triggers fire automatically. The taxonomy is determined by the Lua `EFFECT_TYPE_*` flag, which maps directly to the `forced` flag on the OCG-core SELECT_CHAIN message:
+
+| Trigger flavor | Lua marker | OCG `forced` | Oracle wording | `chainTargets[]` needed? |
+|---|---|---|---|---|
+| **Mandatory** | `EFFECT_TYPE_TRIGGER_F` | `true` (no pass action surfaced) | `If/When [event]: [effect]` (no `you can`) | **NO** — auto-fires |
+| **Optional** | `EFFECT_TYPE_TRIGGER_O` | `false` (pass `responseIndex=-1` available) | `If/When [event]: **You can** [effect]` | **YES** — without it, default = pass = trigger silently dropped |
+| **Cost-paying optional** | `EFFECT_TYPE_TRIGGER_O` + cost in operation | `false` | `If/When [event]: **You can** pay/discard/banish X; [effect]` | **YES** — `chainTargets[]` to activate, then `targets[]` for the cost selection if any |
+
+**Mechanical rule (operational)**: at every `SELECT_CHAIN`, the CLI ranks legal actions and picks `responseIndex === -1` (pass) when no `chainTargets[]` entry matches. For mandatory triggers (`forced=true`), the OCG core does NOT surface the pass action — `responseIndex === -1` is absent from the legal list, so the CLI falls back to `legal[0]` (the actual trigger), and it fires. For optional triggers (`forced=false`), the pass action IS in the legal list, the auto-default selects it, and the trigger silently fails to fire.
+
+**Rule of thumb (from oracle text)**: scan the trigger clause for `you can`.
+- `If/When [event]: [effect]` (no `you can`) → mandatory → auto-fires, no `chainTargets[]` needed.
+- `If/When [event]: **You can** [effect]` → optional → MUST add `{cardName: "X"}` to the relevant plan-step's `chainTargets[]`, otherwise it silently passes.
+- Sub-effect bundles (`You can only use 1 of the following effects of "[X]" per turn`) are still optional from the SELECT_CHAIN perspective — each surfaces with a pass branch.
+
+**Snake-Eye worked examples** (from Snake-Eyes Poplar / Silhouhatte Rabbit, all `EFFECT_TYPE_TRIGGER_O`):
+
+| Card | Trigger event | Oracle wording | Lua flag | chainTargets[] entry |
+|---|---|---|---|---|
+| Snake-Eyes Poplar (90241276) | EVENT_TO_HAND (added to hand non-draw) | `If this card is added to your hand except by drawing it: **You can** Special Summon this card.` | `TRIGGER_O` | `{cardName: "Snake-Eyes Poplar"}` on the plan-step that added Poplar |
+| Snake-Eyes Poplar (90241276) | EVENT_SUMMON_SUCCESS / EVENT_SPSUMMON_SUCCESS | `When this card is Normal or Special Summoned: **You can** add 1 "Snake-Eye" Spell/Trap from your Deck to your hand.` | `TRIGGER_O` | `{cardName: "Snake-Eyes Poplar"}` on the summon plan-step |
+| Snake-Eyes Poplar (90241276) | EVENT_TO_GRAVE | `If this card is sent to the GY: **You can** target 1 FIRE monster in either GY; place it face-up in its owner's S/T Zone as a Continuous Spell.` | `TRIGGER_O` | `{cardName: "Snake-Eyes Poplar"}` on the plan-step that sent Poplar to GY |
+| Silhouhatte Rabbit (1528054) | EVENT_SPSUMMON_SUCCESS (Link Summoned) | `If this card is Link Summoned: **You can** Set 1 Continuous Trap that can Special Summon itself...` | `TRIGGER_O` | `{cardName: "Silhouhatte"}` on the Link Summon plan-step |
+
+**Counter-example (mandatory, no `chainTargets[]` needed)** — Babycerasaurus (36042004):
+> *"If this card is destroyed by card effect and sent to the GY: Special Summon 1 Level 4 or lower Dinosaur monster from your Deck."*
+
+No `you can`. Lua flag is `EFFECT_TYPE_TRIGGER_F`. The OCG-core SELECT_CHAIN comes with `forced=true` and no pass action. Adding `chainTargets[]` for Babycerasaurus is harmless (the matcher would match it anyway), but omitting it works equally well — the engine forces the trigger to fire.
+
+**Empirical validation 2026-05-03** (snake-eye-yummy-opener):
+- WITH all `chainTargets[]` (Poplar SS-on-add + Silhouhatte set-Cont-Trap + Poplar GY): matched=4/7, score=24, stopped=completed.
+- Same plan with `chainTargets[]` arrays REMOVED: matched=1/7, score=8, stopped=divergence at step 3 (Divine Temple cannot activate because Poplar's SS-on-add never fired → required setup state not reached). Replay log shows `[auto] (pass)` at every optional `SELECT_CHAIN`.
+
+**Diagnostic checklist when `matched < expected` despite `stoppedReason === "completed"`**:
+1. Read every `SELECT_CHAIN` line in `replayLog`. For each `(pass) [auto]`:
+   - What card just resolved that the optional trigger window opens for?
+   - Is the trigger's oracle text `If/When … you can …`? If yes → likely silent failure.
+2. Cross-check the relevant Lua at `duel-server/data/scripts_full/{official,unofficial}/c<cardId>.lua`:
+   - `EFFECT_TYPE_TRIGGER_O` → optional → needs `chainTargets[]`.
+   - `EFFECT_TYPE_TRIGGER_F` → mandatory → already firing automatically; no fix needed.
+3. Add the missing `{cardName: "<TriggerSourceName>"}` entry to the responsible plan-step's `chainTargets[]` array.
 
 ### B.7 Auto-defaults at sub-prompts
 
