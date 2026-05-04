@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "timestamp": "2026-05-04T16:49:33.746Z",
+    "budgetMs": 12000,
+    "scorerVersion": "unspecified",
+    "rootChildBudgetNodes": 800
+  },
+  "fixtures": {
+    "ddd-pendulum-opener-replay": {
+      "score": 60.5,
+      "transpositionHits": 146,
+      "explorationScore": 60.5,
+      "breakdown": {
+        "omniNegate": 0,
+        "typedNegate": 0,
+        "targetedNegate": 1,
+        "floodgate": 0,
+        "controlChange": 0,
+        "banish": 0,
+        "banishFacedown": 0,
+        "attach": 1,
+        "spin": 0,
+        "flipFacedown": 0,
+        "destruction": 0,
+        "moveToSt": 0,
+        "bounce": 0,
+        "handRip": 0,
+        "sendToGy": 0,
+        "weighted": 17,
+        "fallbackPoints": 1,
+        "latentPoints": 0,
+        "goalMatchPoints": 42.5,
+        "implicitGoalPoints": 0,
+        "pathPoints": 0,
+        "interruptionScore": 60.5,
+        "explorationScore": 60.5
+      },
+      "matched": 0,
+      "matchedTotal": 9,
+      "matchedCardIds": [],
+      "missingCardIds": [
+        79559912,
+        44852429,
+        46593546,
+        30998403,
+        20715411,
+        9030160,
+        32665564,
+        91781484,
+        74069667
+      ],
+      "terminationReason": "timeout",
+      "nodesExplored": 842,
+      "maxDepthReached": 26,
+      "actionsZeroPct": 0,
+      "turn2Pct": 48.8,
+      "wallMs": 10251
+    }
+  },
+  "aggregate": {
+    "cumulativeMatched": 0,
+    "cumulativeMatchedTotal": 9,
+    "cumulativeScore": 60.5,
+    "cumulativeExplorationScore": 60.5,
+    "fixtureCount": 1
+  }
+}
