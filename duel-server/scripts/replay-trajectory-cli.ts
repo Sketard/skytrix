@@ -1332,7 +1332,18 @@ async function main(): Promise<void> {
               if (chosen) {
                 pickSource = 'target';
               } else {
-                chosen = legal[0];
+                // Atomic multi-pick auto-fallback (2026-05-04): when targets
+                // are exhausted inside a SELECT_CARD multi-pick atomic flow
+                // (Doomed Dragon-class procedures using SelectMatchingCard
+                // min=max=N finishable=true), legal[0] is `multi-pick-undo`
+                // because the enumerator emits ADD → UNDO → COMMIT and ADD
+                // is skipped at picks==max. Naïve legal[0] picks UNDO,
+                // dropping picks back below max, then ADD reappears on the
+                // next iteration — undo/add infinite loop until ceiling.
+                // Prefer COMMIT when present (min satisfied) so plans
+                // providing exactly N targets for N picks resolve cleanly.
+                const commit = legal.find(a => a.actionTag === 'multi-pick-commit');
+                chosen = commit ?? legal[0];
                 pickSource = 'auto';
               }
             }
