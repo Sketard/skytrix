@@ -1,0 +1,61 @@
+{
+  "fixtureId": "ddd-pendulum-opener",
+  "rawReplayPath": "../_bmad-output/planning-artifacts/research/trajectories/ddd-pendulum-replay-eb8c6865.raw-replay.json",
+  "rawReplayFixtureId": "ddd-pendulum-replay-eb8c6865",
+  "rawReplaySeed": [
+    "13286124478549588979",
+    "13175075721773498195",
+    "8073424696826179950",
+    "4475465596156117151"
+  ],
+  "fixtureDeckSeed": "11111,22222",
+  "fixtureMainDeckLen": 41,
+  "replayMainDeckLen": 42,
+  "deckMainSortedDiffCount": 17,
+  "deckExtraSortedDiffCount": 0,
+  "fixtureHand": [
+    11609969,
+    46796664,
+    42382265,
+    46372010,
+    42141493
+  ],
+  "replayDrawnHand": [
+    54693926,
+    20715411,
+    54693926,
+    54693926,
+    39256679
+  ],
+  "fixtureHandNames": [
+    "D/D Savant Kepler",
+    "D/D Savant Copernicus",
+    "D/D Scale Surveyor",
+    "Dark Contract with the Gate",
+    "Mulcharmy Fuwalos"
+  ],
+  "replayDrawnHandNames": [
+    "Dark Ruler No More",
+    "D/D/D Zero Doom Queen Machinex",
+    "Dark Ruler No More",
+    "Dark Ruler No More",
+    "Beta The Magnet Warrior"
+  ],
+  "cohesion": "deck-mismatch",
+  "delta": {
+    "onlyInFixture": [
+      11609969,
+      46796664,
+      42382265,
+      46372010,
+      42141493
+    ],
+    "onlyInReplay": [
+      54693926,
+      20715411,
+      54693926,
+      54693926,
+      39256679
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "fixtureId": "snake-eye-yummy-opener",
+  "rawReplayPath": "../_bmad-output/planning-artifacts/research/trajectories/snake-eye-yummy-opener.raw-replay.json",
+  "rawReplayFixtureId": "snake-eye-yummy-opener",
+  "rawReplaySeed": [
+    "12301164246358577464",
+    "15489252968079702587",
+    "12428844045779631262",
+    "12960245582222047265"
+  ],
+  "fixtureDeckSeed": "12301164246358577464,15489252968079702587",
+  "fixtureMainDeckLen": 41,
+  "replayMainDeckLen": 41,
+  "deckMainSortedDiffCount": 0,
+  "deckExtraSortedDiffCount": 0,
+  "fixtureHand": [
+    66975205,
+    9674034,
+    35269904,
+    90241276,
+    25311006
+  ],
+  "replayDrawnHand": [
+    66975205,
+    9674034,
+    35269904,
+    90241276,
+    25311006
+  ],
+  "fixtureHandNames": [
+    "Yummyusment☆Mignon",
+    "Snake-Eye Ash",
+    "Triple Tactics Thrust",
+    "Snake-Eyes Poplar",
+    "Triple Tactics Talent"
+  ],
+  "replayDrawnHandNames": [
+    "Yummyusment☆Mignon",
+    "Snake-Eye Ash",
+    "Triple Tactics Thrust",
+    "Snake-Eyes Poplar",
+    "Triple Tactics Talent"
+  ],
+  "cohesion": "identical",
+  "delta": {
+    "onlyInFixture": [],
+    "onlyInReplay": []
+  }
+}

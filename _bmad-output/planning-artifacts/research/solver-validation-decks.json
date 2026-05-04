@@ -1336,7 +1336,10 @@
         30271097,
         44362883
       ],
-      "deckSeed": "3510667737223306533,13278052914564331778",
+      "deckSeed": "3510667737223306533,13278052914564331778,3716801787236758182,14305699795602822198",
+      "_originalDeckSeed": "3510667737223306533,13278052914564331778",
+      "_replayDerivedFrom": "trajectories/branded-dracotail-opener.raw-replay.json",
+      "_coherenceNote": "deckSeed extended 2026-05-03 from 2 bigints (slots 0-1 only) to 4 bigints (full raw-replay seed). Hand was already replay-coherent; the prior 2-bigint deckSeed caused the OCG adapter to fall back to stub seed [42n,123n,456n,789n] in createNativeDuel (length<4 branch), making downstream in-turn shuffles diverge from the raw-replay. Extending to 4 bigints aligns the solver's RNG with the captured PvP run for fidelity in mid-turn searches.",
       "maxDepth": 75,
       "expectedBoard": [
         {
@@ -1558,7 +1561,10 @@
         90241276,
         25311006
       ],
-      "deckSeed": "12301164246358577464,15489252968079702587",
+      "deckSeed": "12301164246358577464,15489252968079702587,12428844045779631262,12960245582222047265",
+      "_originalDeckSeed": "12301164246358577464,15489252968079702587",
+      "_replayDerivedFrom": "trajectories/snake-eye-yummy-opener.raw-replay.json",
+      "_coherenceNote": "deckSeed extended 2026-05-03 from 2 bigints (slots 0-1 only) to 4 bigints (full raw-replay seed). Hand was already replay-coherent; the prior 2-bigint deckSeed caused the OCG adapter to fall back to stub seed [42n,123n,456n,789n] in createNativeDuel (length<4 branch), making downstream in-turn shuffles diverge from the raw-replay. Extending to 4 bigints aligns the solver's RNG with the captured PvP run for fidelity in mid-turn searches.",
       "maxDepth": 75,
       "expectedBoard": [
         {
