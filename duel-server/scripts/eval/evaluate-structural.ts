@@ -42,13 +42,8 @@ import { OCGCoreAdapter } from '../../src/solver/ocgcore-adapter.js';
 import { InterruptionScorer } from '../../src/solver/interruption-scorer.js';
 import { GoldfishChainRanker } from '../../src/solver/goldfish-chain-ranker.js';
 import { RouteAwareRanker } from '../../src/solver/route-aware-ranker.js';
-import { PathBiasedRanker } from '../../src/solver/ml/path-biased-ranker.js';
 import { GraphGuidedRanker, type RankerTrackingDump } from '../../src/solver/ml/graph-guided-ranker.js';
-import { loadTunedWeightsIfEnabled } from '../../src/solver/ml/graph-weights-loader.js';
-import { NeuralFeatureRanker } from '../../src/solver/ml/neural-ranker.js';
-import { loadNeuralWeightsIfEnabled } from '../../src/solver/ml/neural-weights-loader.js';
-import { PolicyGuidedRanker } from '../../src/solver/ml/policy-guided-ranker.js';
-import { loadVerbPolicyIfEnabled } from '../../src/solver/ml/verb-policy-loader.js';
+import { RankerPipeline } from '../../src/solver/ml/ranker-pipeline.js';
 import { filterExpertiseByDeck } from '../../src/solver/solver-config-loader.js';
 import type { ActionRanker } from '../../src/solver/solver-strategy.js';
 import { DfsSolver } from '../../src/solver/dfs-solver.js';
@@ -497,12 +492,16 @@ export async function runFixture(
   scorer.setDeckContents(deckCardIds);
   ranker.setArchetypeExpertise(filteredExpertise);
   // Levier B / PathBiasedRanker (2026-05-02) — push the deck-filtered
-  // expertise into the path ranker if present. Structural-type detection
-  // mirrors the PolicyGuidedRanker / NeuralFeatureRanker handling above.
-  // No-op when SOLVER_USE_PATH_RANKER flag is OFF (dfsRanker is not a
-  // PathBiasedRanker).
-  if (opts?.dfsRanker instanceof PathBiasedRanker) {
-    opts.dfsRanker.setArchetypeExpertise(filteredExpertise);
+  // expertise into the path ranker if present. Duck-typed: only the path
+  // ranker exposes setArchetypeExpertise on the outer wrapper (delegating
+  // to its own state, separate from the inner RouteAware).
+  const pathSetter = opts?.dfsRanker as Partial<{
+    setArchetypeExpertise(list: readonly typeof filteredExpertise[number][]): void;
+  }> | undefined;
+  // Only call when dfsRanker is the outer Path wrapper (its setArchetypeExpertise
+  // sets its own pathCardsSet). Inner RouteAware was already configured above.
+  if (opts?.dfsRanker && opts.dfsRanker !== ranker && typeof pathSetter?.setArchetypeExpertise === 'function') {
+    pathSetter.setArchetypeExpertise(filteredExpertise);
   }
   // Phase 7 of prompt-resolver-refactor (2026-05-01) — feed the deck-filtered
   // expertise into the adapter so CardExpertiseOracle can consume it on every
@@ -570,27 +569,19 @@ export async function runFixture(
   const algorithm = opts?.algorithm ?? 'dfs';
   const hasher = new ZobristHasher();
   const table = new TranspositionTable(perFixtureConfig.transpositionMaxEntries);
-  // dfsRanker = outer ranker stack (potentially GraphGuidedRanker(ranker) or
-  // NeuralFeatureRanker(ranker)). Defaults to `ranker` so existing serial
-  // callers keep working unchanged.
+  // dfsRanker = outer ranker stack (potentially Neural/Graph/Policy/Path).
+  // Defaults to `ranker` so existing serial callers keep working unchanged.
   const dfsRanker: ActionRanker = opts?.dfsRanker ?? ranker;
-  // Phase B (graph-ml-v2): refresh per-fixture deck pools on the neural ranker.
-  // Deck Sets are pre-computed once per call and reused across the rank()
-  // batch. Cheap; idempotent if the pools haven't changed.
-  // PolicyGuidedRanker delegates these setters to its inner — calling on the
-  // outer wrapper updates both feature contexts.
-  // PathBiasedRanker (Levier B 2026-05-02) also delegates setters to its
-  // inner via `delegateToInner`, so instanceof check covers the wrapped case.
-  if (dfsRanker instanceof PolicyGuidedRanker) {
-    dfsRanker.setMainDeck(deck.main);
-    dfsRanker.setExtraDeck(deck.extra);
-  } else if (dfsRanker instanceof NeuralFeatureRanker) {
-    dfsRanker.setMainDeck(deck.main);
-    dfsRanker.setExtraDeck(deck.extra);
-  } else if (dfsRanker instanceof PathBiasedRanker) {
-    dfsRanker.setMainDeck(deck.main);
-    dfsRanker.setExtraDeck(deck.extra);
-  }
+  // Refresh per-fixture deck pools when the outer ranker exposes setMainDeck/
+  // setExtraDeck (Neural/Policy/Path implement them; outer wrappers delegate
+  // inward via `delegateToInner`). Plain RouteAwareRanker/GoldfishChainRanker
+  // omit these methods and fall through silently.
+  const setters = dfsRanker as Partial<{
+    setMainDeck(ids: readonly number[]): void;
+    setExtraDeck(ids: readonly number[]): void;
+  }>;
+  setters.setMainDeck?.(deck.main);
+  setters.setExtraDeck?.(deck.extra);
   const solver = algorithm === 'mcts'
     ? new MCTSSolver(scorer, adapter, dfsRanker, perFixtureConfig)
     : new DfsSolver(hasher, table, scorer, adapter, dfsRanker, perFixtureConfig);
@@ -881,14 +872,14 @@ export interface EvaluationContext {
   fixture: FixtureFile;
   adapter: OCGCoreAdapter;
   scorer: InterruptionScorer;
-  /** Inner expertise host (always RouteAwareRanker). `runFixture` calls
-   *  `setArchetypeExpertise` here. */
+  /** ML ranker pipeline — owns the decorator stack and per-fixture wiring.
+   *  Inject `pipeline.outerRanker` into DfsSolver/MCTSSolver. Call
+   *  `pipeline.configurePerFixture(...)` at the start of each solve. */
+  pipeline: RankerPipeline;
+  /** Convenience aliases for back-compat with pre-pipeline callers (cross-eval,
+   *  diag-train-vs-eval). `ranker` = inner RouteAware, `dfsRanker` = outermost
+   *  decorated ranker. New code should prefer `pipeline.{routeAware,outerRanker}`. */
   ranker: RouteAwareRanker;
-  /** Outer ranker passed to the DfsSolver. When `SOLVER_USE_TUNED_WEIGHTS=1`
-   *  is set at process boot, this is `GraphGuidedRanker(ranker)` with weights
-   *  loaded from `data/trained-weights/<basename>.json`. Otherwise it equals
-   *  `ranker`. Mirror of solver-worker.ts wiring so the eval harness reflects
-   *  production runtime exactly. */
   dfsRanker: ActionRanker;
   allConfigs: ReturnType<typeof loadAllSolverConfigs>;
   /** Same map injected into the scorer — exposed so diagnostic probes can
@@ -896,11 +887,6 @@ export interface EvaluationContext {
    *  on a FieldState without rebuilding metadata. */
   cardMetadata: CardMetadataMap;
   metadataSize: number;
-  /** Phase 3 Stage 1 — neural weights blob loaded at boot (same one wired
-   *  into `dfsRanker` when graph-ml-v2 is active). `null` when no neural
-   *  weights loaded. Read by the trajectory dump for embedded traceability
-   *  (featureSpecHash, arch). */
-  neuralWeights: NeuralWeights | null;
   /** Phase 3 Stage 1 — basename of the loaded neural weights file.
    *  Defaults to `process.env.SOLVER_NEURAL_WEIGHTS_FILE` when set, else
    *  `'neural-tier-a-latest'`. `null` when neural weights are not loaded. */
@@ -983,52 +969,16 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     allConfigs.structuralWeights,
     allConfigs.structuralTutorCards,
   );
-  const ranker = new RouteAwareRanker(new GoldfishChainRanker(allConfigs.interruptionTags));
+  // Boot the ML ranker pipeline once. Mirror solver-worker.ts: composes
+  // Goldfish → RouteAware → (Neural XOR Graph) → Policy → PathBiased per
+  // env flags. Falls back to plain RouteAware(Goldfish) when no flags set.
+  const pipeline = new RankerPipeline({
+    interruptionTags: allConfigs.interruptionTags,
+    interruptionWeights: allConfigs.interruptionWeights,
+    dataDir: DATA_DIR,
+  });
 
-  // Graph-ml-v1 (SOLVER_USE_TUNED_WEIGHTS=1) and graph-ml-v2 (SOLVER_USE_NEURAL_WEIGHTS=1)
-  // are mutually exclusive — when both env vars are set, neural wins (Phase B
-  // design doc §2). Off by default → `dfsRanker === ranker`, behaviour unchanged.
-  const neuralWeights = loadNeuralWeightsIfEnabled({ dataDir: DATA_DIR });
-  const tunedWeights = neuralWeights ? undefined : loadTunedWeightsIfEnabled({ dataDir: DATA_DIR });
-  const verbPolicyWeights = loadVerbPolicyIfEnabled({ dataDir: DATA_DIR });
-  let dfsRanker: ActionRanker;
-  if (neuralWeights) {
-    const nr = new NeuralFeatureRanker(ranker);
-    nr.setMetadata(cardMetadata);
-    nr.setInterruptionTags(allConfigs.interruptionTags);
-    nr.setInterruptionWeights(allConfigs.interruptionWeights);
-    nr.setNeuralWeights(neuralWeights);
-    // Per-fixture mainDeck/extraDeck pools are pushed by `runFixture` (deck-pool
-    // features need per-fixture context).
-    dfsRanker = nr;
-  } else if (tunedWeights) {
-    const gr = new GraphGuidedRanker(ranker);
-    gr.setWeights(tunedWeights);
-    dfsRanker = gr;
-  } else {
-    dfsRanker = ranker;
-  }
-
-  // Phase 3 Stage 3b — verb-policy wraps whichever ranker is current.
-  // setMainDeck/setExtraDeck are pushed per-fixture by `runFixture`.
-  if (verbPolicyWeights) {
-    const pgr = new PolicyGuidedRanker(dfsRanker);
-    pgr.setMetadata(cardMetadata);
-    pgr.setInterruptionTags(allConfigs.interruptionTags);
-    pgr.setInterruptionWeights(allConfigs.interruptionWeights);
-    pgr.setVerbPolicyWeights(verbPolicyWeights);
-    dfsRanker = pgr;
-  }
-
-  // Levier B / PathBiasedRanker (2026-05-02) — outermost decoration.
-  // Default OFF; setArchetypeExpertise pushed per-fixture in runFixture.
-  let pathRanker: PathBiasedRanker | undefined;
-  if (process.env.SOLVER_USE_PATH_RANKER === '1') {
-    pathRanker = new PathBiasedRanker(dfsRanker);
-    dfsRanker = pathRanker;
-  }
-
-  const neuralWeightsBasename = neuralWeights
+  const neuralWeightsBasename = pipeline.weights.neural
     ? (process.env['SOLVER_NEURAL_WEIGHTS_FILE'] ?? 'neural-tier-a-latest')
     : null;
 
@@ -1036,12 +986,12 @@ export async function setupEvaluationContext(): Promise<EvaluationContext> {
     fixture,
     adapter,
     scorer,
-    ranker,
-    dfsRanker,
+    pipeline,
+    ranker: pipeline.routeAware,
+    dfsRanker: pipeline.outerRanker,
     allConfigs,
     cardMetadata,
     metadataSize: cardMetadata.size,
-    neuralWeights: neuralWeights ?? null,
     neuralWeightsBasename,
     dispose: () => adapter.destroyAll(),
   };
