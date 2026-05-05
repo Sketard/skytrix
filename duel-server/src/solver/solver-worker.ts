@@ -21,13 +21,13 @@ import { MCTSSolver } from './mcts-solver.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
 import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
 import { RouteAwareRanker } from './route-aware-ranker.js';
-import { PathBiasedRanker } from './path-biased-ranker.js';
-import { GraphGuidedRanker } from './graph-guided-ranker.js';
-import { NeuralFeatureRanker } from './neural-ranker.js';
-import { PolicyGuidedRanker } from './policy-guided-ranker.js';
-import { loadTunedWeightsIfEnabled } from './graph-weights-loader.js';
-import { loadNeuralWeightsIfEnabled } from './neural-weights-loader.js';
-import { loadVerbPolicyIfEnabled } from './verb-policy-loader.js';
+import { PathBiasedRanker } from './ml/path-biased-ranker.js';
+import { GraphGuidedRanker } from './ml/graph-guided-ranker.js';
+import { NeuralFeatureRanker } from './ml/neural-ranker.js';
+import { PolicyGuidedRanker } from './ml/policy-guided-ranker.js';
+import { loadTunedWeightsIfEnabled } from './ml/graph-weights-loader.js';
+import { loadNeuralWeightsIfEnabled } from './ml/neural-weights-loader.js';
+import { loadVerbPolicyIfEnabled } from './ml/verb-policy-loader.js';
 import type { ActionRanker } from './solver-strategy.js';
 import type {
   DuelConfig,
