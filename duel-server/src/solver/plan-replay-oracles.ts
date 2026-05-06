@@ -40,12 +40,26 @@ export function normalizeName(s: string): string {
 
 /** β-1 plan step matcher. Action matches when its normalized name equals OR
  *  bidirectionally substring-contains the step's normalized name; if the step
- *  has a verb, action.actionVerb must equal it exactly. Verbatim of CLI:297-308. */
+ *  has a verb, action.actionVerb must equal it exactly. The `sourceZone`
+ *  field disambiguates same-cardName same-verb actions that differ by source
+ *  zone (e.g., King's Sarcophagus copy in HAND vs S1 — both surface as
+ *  "activate" at IDLECMD but represent distinct actions). Optional. The
+ *  `responseIndex` field bypasses cardName matching entirely — use it when
+ *  cardName is undefined or ambiguous. */
 export function actionMatchesPlanStep(
   action: Action,
-  step: { cardName: string; verb?: string },
+  step: { cardName?: string; verb?: string; sourceZone?: string; responseIndex?: number },
   getName: (id: number) => string,
 ): boolean {
+  // responseIndex bypass: when set, match on responseIndex only, ignoring all
+  // other fields. Avoids the cardName-undefined crash on responseIndex-only
+  // steps and allows pinning a specific legal-action index when cardName
+  // matching is insufficient.
+  if (step.responseIndex !== undefined) {
+    return action.responseIndex === step.responseIndex;
+  }
+  // cardName is required in non-responseIndex mode
+  if (step.cardName === undefined || step.cardName === '') return false;
   const targetName = normalizeName(step.cardName);
   const actionName = normalizeName((action as Action & { cardName?: string }).cardName || getName(action.cardId));
   if (actionName !== targetName) {
@@ -53,6 +67,20 @@ export function actionMatchesPlanStep(
   }
   if (step.verb && step.verb.length > 0) {
     if (action.actionVerb !== step.verb) return false;
+  }
+  // sourceZone disambiguation: when set on the step, action.sourceZone must
+  // equal it. Prefix match for zone families ('SZONE' matches 'S1'..'S5',
+  // 'MZONE' matches 'M1'..'M5'). Non-prefix matches require exact equality.
+  if (step.sourceZone && step.sourceZone.length > 0) {
+    const actSrc = action.sourceZone;
+    if (!actSrc) return false;
+    if (step.sourceZone === 'SZONE') {
+      if (!/^S[1-5]$|^FZONE$|^PZONE$/.test(actSrc)) return false;
+    } else if (step.sourceZone === 'MZONE') {
+      if (!/^M[1-5]$|^EMZ_[LR]$/.test(actSrc)) return false;
+    } else if (actSrc !== step.sourceZone) {
+      return false;
+    }
   }
   return true;
 }
@@ -205,7 +233,17 @@ export class PlanTargetOracle implements DecisionOracle {
         chosen = consumed;
         pickSource = 'target';
       } else {
-        chosen = legal[0];
+        // Atomic multi-pick auto-fallback (2026-05-04, mirrors CLI fix):
+        // when targets are exhausted inside a SELECT_CARD multi-pick atomic
+        // flow (Doomed Dragon-class procedures using SelectMatchingCard
+        // min=max=N finishable=true), legal[0] is `multi-pick-undo` because
+        // the enumerator emits ADD → UNDO → COMMIT and ADD is skipped at
+        // picks==max. Naïve legal[0] picks UNDO, dropping picks below max,
+        // then ADD reappears — undo/add infinite loop until ceiling.
+        // Prefer COMMIT when present (min satisfied) so plans providing
+        // exactly N targets for N picks resolve cleanly.
+        const commit = legal.find(a => a.actionTag === 'multi-pick-commit');
+        chosen = commit ?? legal[0];
         pickSource = 'auto';
       }
     } else {
@@ -226,14 +264,47 @@ export class PlanTargetOracle implements DecisionOracle {
 }
 
 /** Consume the next pendingTargets[0] if it matches any legal action. Verbatim
- *  of CLI:466-484. Mutates ctx.pendingTargets via shift() on match. */
+ *  of CLI:466-484. Mutates ctx.pendingTargets via shift() on match.
+ *
+ *  Semantic convention for `responseIndex: -1`:
+ *  - SELECT_CHAIN: pass (the enumerator already exposes the pass action with
+ *    `responseIndex: -1`, so a literal-index match works directly).
+ *  - SELECT_UNSELECT_CARD: finish-selection marker. The enumerator exposes
+ *    finish as a positive responseIndex (= legal.length - 1) with `actionTag
+ *    === 'unselect-finish'`. We special-case `-1` to match that finish action,
+ *    so plans can use the unified `responseIndex: -1` convention across both
+ *    prompt types (consistent with documented Annexe B.7.1 behaviour).
+ *  - All other pickable prompt types: literal-index match (no special case).
+ *
+ *  Mismatch semantics:
+ *  - `responseIndex` no-match → consume the target anyway (do NOT shift onto
+ *    the next prompt) and return null. Reasoning: a literal index is a hard
+ *    contract; if the requested index isn't present, retrying the same target
+ *    on a different prompt-set silently mis-fires (e.g., picks the wrong card
+ *    because that index points to something else there). Force the engine
+ *    to surface a divergence at this prompt instead of mis-consuming later.
+ *  - `cardName`/`cardNames` no-match → leave the target in queue (skip-
+ *    tolerant). Reasoning: substring matching can legitimately fail at a
+ *    prompt the user didn't anticipate (e.g., an interleaved Trigger window);
+ *    falling through to the next pickable prompt is the desired behaviour.
+ */
 function tryConsumeTarget(legal: readonly Action[], ctx: DecisionContext): Action | null {
   if (!ctx.pendingTargets || ctx.pendingTargets.length === 0) return null;
   if (!SUB_PROMPT_PICKABLE.has(ctx.promptType)) return null;
   const t = ctx.pendingTargets[0];
   let match: Action | null = null;
   if (t.responseIndex !== undefined) {
-    match = legal.find(a => a.responseIndex === t.responseIndex) ?? null;
+    if (t.responseIndex === -1 && ctx.promptType === 'SELECT_UNSELECT_CARD') {
+      // Semantic finish-marker for SELECT_UNSELECT_CARD: match the action
+      // tagged 'unselect-finish' (positive index) instead of looking for a
+      // literal -1 (which the enumerator never produces for this prompt type).
+      match = legal.find(a => a.actionTag === 'unselect-finish') ?? null;
+    } else {
+      match = legal.find(a => a.responseIndex === t.responseIndex) ?? null;
+    }
+    // responseIndex is a hard contract: consume the target on no-match too,
+    // forcing a divergence here rather than silent mis-fire at a later prompt.
+    if (!match) ctx.pendingTargets.shift();
   } else {
     const wanted = (t.cardNames ?? (t.cardName ? [t.cardName] : [])).map(normalizeName);
     if (wanted.length > 0) {
@@ -242,6 +313,8 @@ function tryConsumeTarget(legal: readonly Action[], ctx: DecisionContext): Actio
         return wanted.some(w => n === w || n.includes(w) || w.includes(n));
       }) ?? null;
     }
+    // cardName-driven targets remain in queue on no-match (skip-tolerant) —
+    // substring matching can legitimately miss at unanticipated prompts.
   }
   if (match) ctx.pendingTargets.shift();
   return match;

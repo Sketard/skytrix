@@ -439,5 +439,18 @@
     }
   ],
 
-  "sourceNotes": "v1 (2026-04-23) — Snake-Eye + Yummy hybrid archetype-expertise for snake-eye-yummy-sarcophagus-hollywood-wcq fixture. Authored from mechanical-bridges-catalog-2026-04-23.md (6 bridges: 4 Snake-Eye + Cupsy★Way synchro + Doomed Dragon alt-SS). All bridges are mechanically sourced (edge enumeration on card-effects-catalog v5), not hand-authored. 6 goals cover the canonical apex + 5 waypoints (trio / Cupsy★Way / Poplar / Snake-Eye body / Divine Temple / Flamberge-or-Doomed). 3 routes express hand-start patterns (Ash 1-card, Bonfire alt, Poplar-in-hand). Yummy engine outputs (Lollipo, Acroquey, Cooky★Way) are reached via Cupsy★Way's CW.1 tutor — the grammar graph route-assembly step is expected to chain cupsy-way bridge into Lollipo/Acroquey reveals."
+  "sourceNotes": "v1 (2026-04-23) — Snake-Eye + Yummy hybrid archetype-expertise for snake-eye-yummy-sarcophagus-hollywood-wcq fixture. Authored from mechanical-bridges-catalog-2026-04-23.md (6 bridges: 4 Snake-Eye + Cupsy★Way synchro + Doomed Dragon alt-SS). All bridges are mechanically sourced (edge enumeration on card-effects-catalog v5), not hand-authored. 6 goals cover the canonical apex + 5 waypoints (trio / Cupsy★Way / Poplar / Snake-Eye body / Divine Temple / Flamberge-or-Doomed). 3 routes express hand-start patterns (Ash 1-card, Bonfire alt, Poplar-in-hand). Yummy engine outputs (Lollipo, Acroquey, Cooky★Way) are reached via Cupsy★Way's CW.1 tutor — the grammar graph route-assembly step is expected to chain cupsy-way bridge into Lollipo/Acroquey reveals.",
+
+  "decisionHints": {
+    "53639887": {
+      "SELECT_YESNO": {
+        "policy": "yes",
+        "context": "Divine Temple of the Snake-Eye DT.1 — place a Snake-Eye monster from deck face-up in own S/T zone as Continuous Spell",
+        "_source": "manual",
+        "_confidence": "observed",
+        "_authored": "2026-05-01",
+        "_rationale": "Externalised from the hardcoded plan-side override (commit 513446af). Default SELECT_YESNO policy is NO (preserved at MechanicalDefaultOracle). Forcing YES on Divine Temple's place-Snake-Eye-as-Cont-Spell prompt unlocks Flamberge in the S-zone as a Continuous Spell, gating Snake-Eye Cont-Spell self-summon lines (DT.1 / SeP.3 / Doomed Dragon alt-SS). Empirically: snake-eye-yummy-opener β-1 v2 plan goes from 3/7 to 4/7 with this override. Ground-truth: SELECT_YESNO → sourceCardId resolution is 100% reliable via msg.description (Tier 1 Phase 6 coverage matrix); no misfire risk."
+      }
+    }
+  }
 }

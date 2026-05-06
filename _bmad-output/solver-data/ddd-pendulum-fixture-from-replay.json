@@ -1,0 +1,139 @@
+{
+  "deck": {
+    "id": "ddd-doom-queen-machinex-variant",
+    "main": [
+      20715411,
+      9030160,
+      20715411,
+      74069667,
+      11609969,
+      11609969,
+      11609969,
+      28406301,
+      28406301,
+      28406301,
+      5997110,
+      14558127,
+      42382265,
+      42382265,
+      72181263,
+      46796664,
+      67322708,
+      72291412,
+      42141493,
+      42141493,
+      91781484,
+      42141493,
+      14558127,
+      14558127,
+      94145021,
+      94145021,
+      46372010,
+      46372010,
+      24224830,
+      46372010,
+      32665564,
+      93729896,
+      65681983,
+      42382265,
+      40366667,
+      40366667,
+      40366667,
+      39256679,
+      54693926,
+      54693926,
+      20715411,
+      54693926
+    ],
+    "extra": [
+      71398055,
+      74583607,
+      70576413,
+      44852429,
+      72402069,
+      3758046,
+      79559912,
+      32232538,
+      71612253,
+      46593546,
+      46593546,
+      62541668,
+      9024198,
+      9024198,
+      30998403
+    ],
+    "_source": "raw-replay eb8c6865-666f-4e9f-8c6a-7a69615db5f0"
+  },
+  "hand": {
+    "id": "ddd-pendulum-opener-v2",
+    "deck": "ddd-doom-queen-machinex-variant",
+    "description": "D/D/D Doom Queen Machinex variant — auto-generated from PvP raw-replay eb8c6865 (Path β v2 reference).",
+    "hand": [
+      54693926,
+      20715411,
+      54693926,
+      54693926,
+      39256679
+    ],
+    "deckSeed": "13286124478549588979,13175075721773498195,8073424696826179950,4475465596156117151",
+    "maxDepth": 75,
+    "expectedBoard": [
+      {
+        "zone": "MZONE",
+        "cardId": 79559912,
+        "cardName": "D/D/D Wave High King Caesar",
+        "position": "attack"
+      },
+      {
+        "zone": "MZONE",
+        "cardId": 44852429,
+        "cardName": "D/D/D Cursed King Siegfried",
+        "position": "attack"
+      },
+      {
+        "zone": "MZONE",
+        "cardId": 46593546,
+        "cardName": "D/D/D Deviser King Deus Machinex",
+        "position": "defense"
+      },
+      {
+        "zone": "MZONE",
+        "cardId": 30998403,
+        "cardName": "D/D/D Sky King Zeus Ragnarok",
+        "position": "attack"
+      },
+      {
+        "zone": "SZONE",
+        "cardId": 20715411,
+        "cardName": "D/D/D Zero Doom Queen Machinex",
+        "position": "set"
+      },
+      {
+        "zone": "SZONE",
+        "cardId": 9030160,
+        "cardName": "Dark Contract with the Eternal Darkness",
+        "position": "set"
+      },
+      {
+        "zone": "SZONE",
+        "cardId": 32665564,
+        "cardName": "Dark Contract with the Zero King",
+        "position": "set"
+      },
+      {
+        "zone": "SZONE",
+        "cardId": 91781484,
+        "cardName": "D/D/D Headhunt",
+        "position": "set"
+      },
+      {
+        "zone": "SZONE",
+        "cardId": 74069667,
+        "cardName": "D/D/D Oblivion King Abyss Ragnarok",
+        "position": "set"
+      }
+    ],
+    "_seedFrozen": true,
+    "_replayDerivedFrom": "eb8c6865-666f-4e9f-8c6a-7a69615db5f0"
+  }
+}

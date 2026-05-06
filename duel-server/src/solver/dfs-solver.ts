@@ -204,6 +204,7 @@ export class DfsSolver implements SolverStrategy {
       terminalAbortOrNodeLimit: 0,
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
+      compressedSelectChainNodes: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
       terminalRootChildBudgetCut: 0,
@@ -402,6 +403,7 @@ export class DfsSolver implements SolverStrategy {
             turn2: ctx.terminalTurn2,
             branchBoundCut: ctx.terminalBranchBoundCut,
             rootChildBudgetCut: ctx.terminalRootChildBudgetCut,
+            compressedSelectChain: ctx.compressedSelectChainNodes,
           },
           bestTurn1ExplorationScore: ctx.bestTurn1ExplorationScore,
           // Phase H — authoritative peak field-state snapshot. Probes and
@@ -514,6 +516,81 @@ export class DfsSolver implements SolverStrategy {
     // Get legal actions — advances through mechanical/opponent prompts
     let actions = ctx.oracle.getLegalActions(handle);
 
+    // Phase 1 macro-compression (Levier D, 2026-05-02) — collapse runs of
+    // SELECT_CHAIN prompts with a single legal action into a sequence of
+    // direct applyAction calls, without a recursive descent step. A
+    // SELECT_CHAIN with N=1 has one forced response (a (pass) sentinel
+    // when no chain link is available, or a forced trigger that the engine
+    // demands resolved). The DFS would otherwise spend one node per such
+    // prompt to re-emerge with the same field state — pure budget waste.
+    //
+    // Empirical (2026-05-02): on β-1 ddd-canonical (86 prompts), 22 of
+    // the 39 SELECT_CHAIN prompts have N=1 — collapsing them yields a
+    // ~25.6% reduction in effective trajectory length, putting the
+    // canonical depth (~80 prompts) within the canonical 400-node budget.
+    //
+    // Bit-exact safety: applyAction records the response in actionHistory
+    // and responseHistory exactly as a recursive descent would, so
+    // mainPath replay and verifyMainPath stay byte-identical. The only
+    // observable change is `nodesExplored` decreasing (and the new
+    // `compressedSelectChainNodes` counter increasing). Default OFF via
+    // SOLVER_USE_DFS_COMPRESSION; flag-OFF reproduces the prior trace.
+    // Track how many actions we push during compression so the wrapping
+    // try/finally below can pop the same number on exit. Stack discipline
+    // mirrors the parent-side fork+push+recurse+pop pattern (~ line 918).
+    let compressedPushCount = 0;
+    if (process.env.SOLVER_USE_DFS_COMPRESSION === '1') {
+      // Cap to avoid runaway in pathological cases (engine bug, infinite
+      // chain). In practice the bound is ~5 consecutive on β-1 traces.
+      const MAX_COMPRESS_PER_CALL = 32;
+      while (
+        compressedPushCount < MAX_COMPRESS_PER_CALL
+        && actions.length === 1
+        && actions[0].promptType === 'SELECT_CHAIN'
+        // Bans take precedence over compression — if the single action is
+        // banned, fall through to the standard path so the empty-actions
+        // terminal logic fires.
+        && (ctx.bannedCardIds === undefined || !ctx.bannedCardIds.has(actions[0].cardId))
+      ) {
+        const forced = actions[0];
+        // Push BEFORE applyAction so currentActionStack reflects the live
+        // descent path through the compressed prompts. This ensures
+        // `bestTurn1Path` captures the full action sequence required to
+        // replay/verify the mainPath: verifyMainPath replays every action
+        // in order, so missing compressed prompts would diverge at step N.
+        ctx.currentActionStack.push(forced);
+        compressedPushCount++;
+        ctx.oracle.applyAction(handle, forced);
+        ctx.compressedSelectChainNodes++;
+        // Accounting: a compressed prompt still consumes engine cycles
+        // (applyAction → duelSetResponse → engine advance → next prompt
+        // resolution). Counting it in `totalTreeNodes` keeps Phase L's
+        // per-subtree node budget honest — without this, compression
+        // silently doubles or triples the effective per-subtree budget,
+        // and the DFS visits very different branches than the baseline
+        // (we observed mitsurugi regressing −1 matched with the naive
+        // implementation that omitted this increment). `nodesExplored`
+        // is NOT incremented — that is the "decision-points-explored"
+        // count and a compressed prompt has no decision.
+        ctx.totalTreeNodes++;
+        // Re-fetch legal actions for the next prompt the engine surfaces.
+        // Loop continues if the next prompt is also a single-action
+        // SELECT_CHAIN (chain windows often cluster in pairs/triples).
+        // Phase 2 (SELECT_EFFECTYN N=2 → force "yes") was prototyped here
+        // 2026-05-02 and reverted: cum 30/595 vs Option G baseline 31/596,
+        // with stable −1 matched on nekroz-ryzeal-opener (the "no" branch
+        // turned out to be load-bearing for that archetype's combo). See
+        // dfs-compression-phase-2-pilot-2026-05-02.md.
+        actions = ctx.oracle.getLegalActions(handle);
+      }
+    }
+    // Wrap the rest of the body so the compressed-action pushes are
+    // unwound regardless of which return path fires (loop-detect, TT-hit,
+    // turn-2 virtual terminal, branch-bound cut, normal completion). The
+    // pop count exactly matches the push count above. No-op in the
+    // common case (compression disabled or no compressible prompts).
+    try {
+
     // Anti-pin filter (Phase 5-lite Phase 0). When `bannedCardIds` is set,
     // remove any action whose cardId is in the ban set BEFORE canonicalPath
     // forcing. Complements pins: pins steer toward a desired line, bans
@@ -555,6 +632,10 @@ export class DfsSolver implements SolverStrategy {
     // Story 1.8: also fetch the activation log so OPT-aware scoring and the
     // verification key both see the same per-handle OPT state.
     const activationLog = ctx.oracle.getActivationLog(handle);
+    // Path scoring (Levier 3, 2026-05-02) — distinct cardIds activated
+    // this turn (own-side, untagged-inclusive). Empty Set when no flag /
+    // no expertise pathCards.
+    const distinctActivations = ctx.oracle.getDistinctActivationCardIds(handle);
 
     // Constraint 3.2-light: score every visited state, not just terminals.
     // Without this, `ctx.bestExplorationScore` only captures terminal scores, and
@@ -578,7 +659,7 @@ export class DfsSolver implements SolverStrategy {
     // canonical line then walks past it. This gate freezes capture at the
     // right moment. See synthesis §7.10.4 / §7.10.6.
     // `interim.score` = explorationScore (scorer contract, methodology v5).
-    const interim = this.scorer.scoreWithCards(fieldState, activationLog);
+    const interim = this.scorer.scoreWithCards(fieldState, activationLog, distinctActivations);
     this.updateBest(ctx, interim.score, interim.scoreBreakdown, interim.endBoardCards, fieldState.turn, fieldState);
 
     // Phase F-bis v2: fold the current interim into the ancestor chain
@@ -753,7 +834,7 @@ export class DfsSolver implements SolverStrategy {
           });
         }
       }
-      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
+      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog, distinctActivations);
     }
 
     // Record BF + prompt type now that we know this is a non-terminal node
@@ -875,6 +956,14 @@ export class DfsSolver implements SolverStrategy {
     // it here is free regardless.
     let ranked = actions;
     if (actions.length > 0 && this.ranker.needsState(actions[0].promptType)) {
+      // Levier B / PathBiasedRanker (2026-05-02) — inject the per-handle
+      // distinctActivations snapshot via the optional `setDistinctActivations`
+      // method when present. Structural-type detection avoids a hard
+      // dependency on PathBiasedRanker; non-path rankers ignore the call.
+      const r = this.ranker as { setDistinctActivations?: (s: ReadonlySet<number> | undefined) => void };
+      if (typeof r.setDistinctActivations === 'function') {
+        r.setDistinctActivations(distinctActivations);
+      }
       ranked = instrumentTime('rank', () => this.ranker.rank(actions, fieldState));
     }
 
@@ -948,7 +1037,7 @@ export class DfsSolver implements SolverStrategy {
     // If no children were explored (abort + time budget), treat as terminal
     if (children.length === 0) {
       ctx.terminalBudgetCutoff++;
-      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog);
+      return this.scoreTerminal(ctx, fieldState, depth, undefined, activationLog, distinctActivations);
     }
 
     // Sort children by explorationScore descending (DFS guidance order)
@@ -980,6 +1069,15 @@ export class DfsSolver implements SolverStrategy {
       explorationScore: bestExplorationScore,
       scoreBreakdown: bestBreakdown ?? this.emptyBreakdown(),
     };
+    } finally {
+      // Phase 1 macro-compression unwind — pop exactly the actions
+      // pushed during the SELECT_CHAIN compression at the top of this
+      // body. Symmetric with the parent's fork+push+recurse+pop pattern.
+      // No-op when compressedPushCount === 0 (the common case).
+      for (let i = 0; i < compressedPushCount; i++) {
+        ctx.currentActionStack.pop();
+      }
+    }
   }
 
   // ===========================================================================
@@ -989,7 +1087,8 @@ export class DfsSolver implements SolverStrategy {
   private makeTerminal(ctx: DfsContext, handle: DuelHandle, depth: number, truncated?: boolean): DfsNodeResult {
     const fieldState = ctx.oracle.getFieldState(handle);
     const activationLog = ctx.oracle.getActivationLog(handle);
-    return this.scoreTerminal(ctx, fieldState, depth, truncated, activationLog);
+    const distinctActivations = ctx.oracle.getDistinctActivationCardIds(handle);
+    return this.scoreTerminal(ctx, fieldState, depth, truncated, activationLog, distinctActivations);
   }
 
   private scoreTerminal(
@@ -998,11 +1097,12 @@ export class DfsSolver implements SolverStrategy {
     _depth: number,
     truncated?: boolean,
     activationLog?: ActivationLog,
+    distinctActivations?: ReadonlySet<number>,
   ): DfsNodeResult {
     // `score` returned by scoreWithCards = explorationScore (preserves pre-v5
     // DFS internal contract). The breakdown carries interruptionScore for
     // downstream user-facing extraction.
-    const { score: explorationScore, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog);
+    const { score: explorationScore, scoreBreakdown, endBoardCards } = this.scorer.scoreWithCards(fieldState, activationLog, distinctActivations);
     ctx.totalTreeNodes++;
     this.updateBest(ctx, explorationScore, scoreBreakdown, endBoardCards, fieldState.turn, fieldState);
 
@@ -1148,6 +1248,7 @@ export class DfsSolver implements SolverStrategy {
       terminalAbortOrNodeLimit: 0,
       terminalBudgetCutoff: 0,
       terminalTtHit: 0,
+      compressedSelectChainNodes: 0,
       terminalTurn2: 0,
       terminalBranchBoundCut: 0,
       terminalRootChildBudgetCut: 0,
@@ -1416,6 +1517,13 @@ interface DfsContext {
   terminalAbortOrNodeLimit: number;
   terminalBudgetCutoff: number;
   terminalTtHit: number;
+  /** Phase 1 macro-compression (Levier D, 2026-05-02) — count of prompts
+   *  short-circuited by the SELECT_CHAIN N=1 compression in `dfs()` (a
+   *  legal-action set with a single forced response, applied without
+   *  creating a recursive node). Default 0 when SOLVER_USE_DFS_COMPRESSION
+   *  is not '1'. Surfaced in diagnostic stats so eval harnesses can quote
+   *  the realised depth gain. */
+  compressedSelectChainNodes: number;
   /** Constraint 3.2 full: nodes cut off because `fieldState.turn >= 2`.
    *  The solver's search horizon is end of player turn 1; reaching opponent
    *  turn is a virtual terminal. */

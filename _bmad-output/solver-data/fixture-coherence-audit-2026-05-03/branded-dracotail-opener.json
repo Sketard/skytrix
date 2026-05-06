@@ -1,0 +1,49 @@
+{
+  "fixtureId": "branded-dracotail-opener",
+  "rawReplayPath": "../_bmad-output/planning-artifacts/research/trajectories/branded-dracotail-opener.raw-replay.json",
+  "rawReplayFixtureId": "branded-dracotail-opener",
+  "rawReplaySeed": [
+    "3510667737223306533",
+    "13278052914564331778",
+    "3716801787236758182",
+    "14305699795602822198"
+  ],
+  "fixtureDeckSeed": "3510667737223306533,13278052914564331778",
+  "fixtureMainDeckLen": 40,
+  "replayMainDeckLen": 40,
+  "deckMainSortedDiffCount": 0,
+  "deckExtraSortedDiffCount": 0,
+  "fixtureHand": [
+    75003700,
+    73819701,
+    84477320,
+    30271097,
+    44362883
+  ],
+  "replayDrawnHand": [
+    75003700,
+    73819701,
+    84477320,
+    30271097,
+    44362883
+  ],
+  "fixtureHandNames": [
+    "Dracotail Lukias",
+    "Fallen of the White Dragon",
+    "Dracotail Phryxul",
+    "The Fallen & The Virtuous",
+    "Branded Fusion"
+  ],
+  "replayDrawnHandNames": [
+    "Dracotail Lukias",
+    "Fallen of the White Dragon",
+    "Dracotail Phryxul",
+    "The Fallen & The Virtuous",
+    "Branded Fusion"
+  ],
+  "cohesion": "identical",
+  "delta": {
+    "onlyInFixture": [],
+    "onlyInReplay": []
+  }
+}

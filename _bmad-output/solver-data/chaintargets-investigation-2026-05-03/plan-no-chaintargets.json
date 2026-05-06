@@ -1,0 +1,28 @@
+{
+  "_note": "Control variant — same plan as v3-best-plan.json with chainTargets[] STRIPPED. Hypothesis: optional triggers (Poplar SS-on-add, Silhouhatte set-Cont-Trap, Poplar GY) silently fail to fire, dropping matched count.",
+  "plan": [
+    { "cardName": "Snake-Eye Ash", "verb": "normal-summon", "targets": [
+      { "promptHint": "search Lv1 FIRE → Snake-Eyes Poplar (2nd copy from deck)", "cardName": "Snake-Eyes Poplar" }
+    ] },
+    { "cardName": "Yummyusment", "verb": "activate" },
+    { "cardName": "Snake-Eye Ash", "verb": "activate", "sourceZone": "MZONE", "targets": [
+      { "promptHint": "send 2 face-up: 2nd is Mignon FZ", "cardName": "Yummyusment" },
+      { "promptHint": "SS Snake-Eyes Flamberge Dragon from Deck", "cardName": "Snake-Eyes Flamberge" }
+    ] },
+    { "cardName": "Divine Temple", "verb": "activate", "targets": [
+      { "promptHint": "YES — place a Snake-Eye monster", "responseIndex": 1 },
+      { "promptHint": "place which Snake-Eye monster → Diabellstar from Deck", "cardName": "Snake-Eyes Diabellstar" }
+    ] },
+    { "cardName": "Snake-Eyes Diabellstar", "verb": "activate", "sourceZone": "SZONE", "targets": [
+      { "promptHint": "target FIRE monster in GY → Snake-Eye Ash", "cardName": "Snake-Eye Ash" }
+    ] },
+    { "cardName": "Silhouhatte Rabbit", "verb": "summon-procedure", "targets": [
+      { "promptHint": "Link material 1 = Poplar", "cardName": "Snake-Eyes Poplar" },
+      { "promptHint": "Link material 2 = Diabellstar", "cardName": "Snake-Eyes Diabellstar" },
+      { "promptHint": "finish material selection", "responseIndex": -1 },
+      { "promptHint": "Silhouhatte Set Cont Trap target → Angel Statue", "cardName": "Angel Statue" },
+      { "promptHint": "Poplar GY trigger target FIRE → Diabellstar", "cardName": "Snake-Eyes Diabellstar" }
+    ] }
+  ],
+  "endTurn": true
+}

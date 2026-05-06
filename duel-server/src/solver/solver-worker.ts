@@ -19,15 +19,7 @@ import { extractMainPath } from './tree-utils.js';
 import { verifyAdversarialPath } from './solver-verifier.js';
 import { MCTSSolver } from './mcts-solver.js';
 import { MinimaxMctsSolver } from './minimax-mcts-solver.js';
-import { GoldfishChainRanker } from './goldfish-chain-ranker.js';
-import { RouteAwareRanker } from './route-aware-ranker.js';
-import { GraphGuidedRanker } from './graph-guided-ranker.js';
-import { NeuralFeatureRanker } from './neural-ranker.js';
-import { PolicyGuidedRanker } from './policy-guided-ranker.js';
-import { loadTunedWeightsIfEnabled } from './graph-weights-loader.js';
-import { loadNeuralWeightsIfEnabled } from './neural-weights-loader.js';
-import { loadVerbPolicyIfEnabled } from './verb-policy-loader.js';
-import type { ActionRanker } from './solver-strategy.js';
+import { RankerPipeline } from './ml/ranker-pipeline.js';
 import type {
   DuelConfig,
   SolverConfig,
@@ -105,54 +97,17 @@ const scorer = new InterruptionScorer(
   allConfigs.structuralWeights,
   allConfigs.structuralTutorCards,
 );
-// Wrap the base ranker with RouteAwareRanker so that archetype-expertise
-// routes can re-prioritize actions that advance known combo lines. The
-// wrapper is a no-op unless expertise is configured per-solve via
-// `setArchetypeExpertise` — done in runSolve() below once we know which
-// deck we're solving for.
-const baseRanker = new GoldfishChainRanker(allConfigs.interruptionTags);
-const routeAwareRanker = new RouteAwareRanker(baseRanker);
-
-// Phase B (graph-ml-v2 / neural) and graph-ml-v1 are mutually exclusive —
-// when both env vars are set, neural wins (Phase B design doc §2; mirrors
-// evaluate-structural.ts). NeuralFeatureRanker wraps RouteAwareRanker and
-// adds a neural bonus over the deck-agnostic feature vector. Per-fixture
-// metadata + mainDeck/extraDeck pools are pushed by runSolve() below.
-// `setArchetypeExpertise` always targets `routeAwareRanker` directly —
-// neither GraphGuidedRanker nor NeuralFeatureRanker has expertise coupling.
-const neuralWeights = loadNeuralWeightsIfEnabled({ dataDir });
-const tunedWeights = neuralWeights ? undefined : loadTunedWeightsIfEnabled({ dataDir });
-const verbPolicyWeights = loadVerbPolicyIfEnabled({ dataDir });
-let ranker: ActionRanker;
-let neuralRanker: NeuralFeatureRanker | undefined;
-let policyRanker: PolicyGuidedRanker | undefined;
-if (neuralWeights) {
-  const nr = new NeuralFeatureRanker(routeAwareRanker);
-  nr.setInterruptionTags(allConfigs.interruptionTags);
-  nr.setInterruptionWeights(allConfigs.interruptionWeights);
-  nr.setNeuralWeights(neuralWeights);
-  neuralRanker = nr;
-  ranker = nr;
-} else if (tunedWeights) {
-  const gr = new GraphGuidedRanker(routeAwareRanker);
-  gr.setWeights(tunedWeights);
-  ranker = gr;
-} else {
-  ranker = routeAwareRanker;
-}
-
-// Phase 3 Stage 3b — verb-class policy wraps whichever ranker is current.
-// Composition over extension: policy provides move-ordering prior at
-// SELECT_IDLECMD, inner provides value/route bonus on every prompt. Off
-// by default → wrapper not constructed → no behaviour change.
-if (verbPolicyWeights) {
-  const pgr = new PolicyGuidedRanker(ranker);
-  pgr.setInterruptionTags(allConfigs.interruptionTags);
-  pgr.setInterruptionWeights(allConfigs.interruptionWeights);
-  pgr.setVerbPolicyWeights(verbPolicyWeights);
-  policyRanker = pgr;
-  ranker = pgr;
-}
+// Boot the ML ranker pipeline once — composes Goldfish → RouteAware →
+// (Neural XOR Graph) → Policy → PathBiased depending on env flags. Falls
+// back to plain RouteAware(Goldfish) when no flags are set (production
+// default). Per-fixture wiring (metadata, deck pools, expertise) goes
+// through `pipeline.configurePerFixture()` in runSolve().
+const pipeline = new RankerPipeline({
+  interruptionTags: allConfigs.interruptionTags,
+  interruptionWeights: allConfigs.interruptionWeights,
+  dataDir,
+});
+const ranker = pipeline.outerRanker;
 
 const dfsSolver = new DfsSolver(hasher, table, scorer, adapter, ranker, allConfigs.solverConfig);
 const mctsSolver = new MCTSSolver(scorer, adapter, ranker, allConfigs.solverConfig);
@@ -179,42 +134,32 @@ export default async function runSolve(task: SolveTask): Promise<WorkerResult | 
   ];
   const cardMetadata = buildCardMetadataMap(cardDB, duelCards);
   scorer.setCardMetadata(cardMetadata);
-  // Phase B: per-solve metadata + deck pools for the neural ranker. The
-  // feature extractor needs these to populate `act_card_in_main_deck_pool`
-  // / `act_card_in_extra_deck_pool` and to look up source-card type bits.
-  if (neuralRanker) {
-    neuralRanker.setMetadata(cardMetadata);
-    neuralRanker.setMainDeck(task.duelConfig.mainDeck);
-    neuralRanker.setExtraDeck(task.duelConfig.extraDeck);
-  }
-  // Phase 3 Stage 3b — same per-solve metadata/deck-pool wiring for the
-  // policy ranker. Its FeatureContext mirrors the neural ranker's; both
-  // need the per-fixture deck Sets to populate `act_card_in_*_pool` etc.
-  if (policyRanker) {
-    policyRanker.setMetadata(cardMetadata);
-    policyRanker.setMainDeck(task.duelConfig.mainDeck);
-    policyRanker.setExtraDeck(task.duelConfig.extraDeck);
-  }
 
-  // Activate archetype-expertise for this duel — pass the deck's main (per the
-  // loader's convention) to filter to matching archetypes (keyCards overlap
-  // ≥ threshold). Both the scorer's goal-match evaluator and the ranker's
-  // route-alignment walker need this to take effect; without it the bridges
-  // and goals loaded from data/archetype-expertise/*.json are dormant.
+  // Activate archetype-expertise for this duel — pass the deck's main to
+  // filter to matching archetypes (keyCards overlap ≥ threshold). Both the
+  // scorer's goal-match evaluator and the ranker's route-alignment walker
+  // need this to take effect.
   const filteredExpertise = filterExpertiseByDeck(
     allConfigs.archetypeExpertise,
     task.duelConfig.mainDeck,
   );
   scorer.setArchetypeExpertise(filteredExpertise);
   scorer.setDeckContents([...task.duelConfig.mainDeck, ...task.duelConfig.extraDeck]);
-  // Expertise always lives on the inner RouteAwareRanker, even when
-  // GraphGuidedRanker wraps it — the graph wrapper is expertise-agnostic.
-  routeAwareRanker.setArchetypeExpertise(filteredExpertise);
+
+  pipeline.configurePerFixture({
+    cardMetadata,
+    mainDeck: task.duelConfig.mainDeck,
+    extraDeck: task.duelConfig.extraDeck,
+    filteredExpertise,
+  });
   // Phase 5 of prompt-resolver-refactor — feed the same deck-filtered
   // expertise into the adapter so CardExpertiseOracle can consume it on
   // every DecisionContext. No-op pass-through until decisionHints fields are
   // populated (Phase 7).
   adapter.setArchetypeExpertise(filteredExpertise);
+  // Resource scoring (Design D, 2026-05-02) — feed initial deck/extra sizes
+  // into the scorer. No-op when SOLVER_USE_RESOURCE_SCORING flag absent.
+  scorer.setInitialDeckSizes(task.duelConfig.mainDeck.length, task.duelConfig.extraDeck.length);
 
   // Verify mode: replay adversarial path on a fresh duel
   if (task.type === 'verify') {

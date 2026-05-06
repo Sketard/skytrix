@@ -720,5 +720,28 @@
     }
   ],
 
-  "sourceNotes": "v2 (2026-04-24) — added Mirrorjade bridge from mechanical-bridges-catalog-2026-04-23.md (discovery-tooling decomposition of Mirrorjade's Fusion.AddProcMix). Catalogued in `bridges` for future use by bridge-validator and smarter-subsumption scoring. Successor wiring DEFERRED: tested `any-fusion-partial → mirrorjade-solo via mirrorjade-fusion-via-extra-type-bridge` on 2026-04-24 and observed -3 regression on both fixtures. Root cause: `hasViableSuccessor` subsumption fires on deck-pieces-available check alone, but current DFS peaks at Arthalion/Secreterion (not Mirrorjade), so the waypoint subsumption punition (-3) runs without apex gain. Fix requires either (a) field-state-aware subsumption (apex reachability check at current state), or (b) a fixture where Mirrorjade IS the target peak. v1 (2026-04-21) — derived from _bmad-output/solver-data/branded-dracotail-combo-plan-2026-04-19.md (user-dictated 12-step canonical line). 36 cards mapped covering Branded+Despia+Dogmatika+Dracotail. 8 goals: canonical-full (7-piece endboard), 4MZONE-partial, Mirrorjade-alt, Arthalion+Secreterion duo, any-fusion-partial, dark-dragon-body, dracotail-trap-set, branded-trap-set. 10 routes capturing each Phase of the combo plan (Fallen-mill, Synchro, Dark-Dragon-banish, Lukias-search, Cartesia-Fusion, Urgula-GY-recycle, Rahu-Fusion-Arthalion, Secreterion-GY-re-SS, Albion-EP-set, Mirrorjade-alt, Cartesia-field-SS). Dogmatika/Despia enablers (Aluber 62962630, Guiding Ariadne 98301564) included in roleMap for completeness though not core to this fixture. Expected combo depth ~40-60 OCG decisions per the source plan — 5/5 matched is ambitious but goal catalogue pushes DFS toward canonical terminal with strong gradient signals."
+  "sourceNotes": "v2 (2026-04-24) — added Mirrorjade bridge from mechanical-bridges-catalog-2026-04-23.md (discovery-tooling decomposition of Mirrorjade's Fusion.AddProcMix). Catalogued in `bridges` for future use by bridge-validator and smarter-subsumption scoring. Successor wiring DEFERRED: tested `any-fusion-partial → mirrorjade-solo via mirrorjade-fusion-via-extra-type-bridge` on 2026-04-24 and observed -3 regression on both fixtures. Root cause: `hasViableSuccessor` subsumption fires on deck-pieces-available check alone, but current DFS peaks at Arthalion/Secreterion (not Mirrorjade), so the waypoint subsumption punition (-3) runs without apex gain. Fix requires either (a) field-state-aware subsumption (apex reachability check at current state), or (b) a fixture where Mirrorjade IS the target peak. v1 (2026-04-21) — derived from _bmad-output/solver-data/branded-dracotail-combo-plan-2026-04-19.md (user-dictated 12-step canonical line). 36 cards mapped covering Branded+Despia+Dogmatika+Dracotail. 8 goals: canonical-full (7-piece endboard), 4MZONE-partial, Mirrorjade-alt, Arthalion+Secreterion duo, any-fusion-partial, dark-dragon-body, dracotail-trap-set, branded-trap-set. 10 routes capturing each Phase of the combo plan (Fallen-mill, Synchro, Dark-Dragon-banish, Lukias-search, Cartesia-Fusion, Urgula-GY-recycle, Rahu-Fusion-Arthalion, Secreterion-GY-re-SS, Albion-EP-set, Mirrorjade-alt, Cartesia-field-SS). Dogmatika/Despia enablers (Aluber 62962630, Guiding Ariadne 98301564) included in roleMap for completeness though not core to this fixture. Expected combo depth ~40-60 OCG decisions per the source plan — 5/5 matched is ambitious but goal catalogue pushes DFS toward canonical terminal with strong gradient signals.",
+
+  "decisionHints": {
+    "75003700": {
+      "SELECT_EFFECTYN": {
+        "policy": "yes",
+        "context": "Dracotail Lukias on-summon search trigger — activate the search to fetch Mululu (the canonical 1-card combo enabler).",
+        "_source": "manual",
+        "_confidence": "observed",
+        "_authored": "2026-05-01",
+        "_rationale": "Aligned with the current PlanTargetOracle default (SELECT_EFFECTYN auto-resolves to YES when no target matches). Documents the expected behavior explicitly so DFS-standalone benefits from the same alignment as the β-1 plan when it visits this prompt. Bit-exact preserved on critic-branded-best-plan.json (7/8 score 37). sourceCardId=75003700 resolves at 100% via msg.code (Tier 1 Phase 6 coverage matrix) — no misfire risk."
+      }
+    },
+    "73819701": {
+      "SELECT_EFFECTYN": {
+        "policy": "yes",
+        "context": "Fallen of the White Dragon on-SS trigger — accept the Special Summon ability that fetches/SS Incredible Ecclesia.",
+        "_source": "manual",
+        "_confidence": "observed",
+        "_authored": "2026-05-01",
+        "_rationale": "Aligned with the current PlanTargetOracle default. Critic-branded plan step 2 activates Fallen of the White Dragon and consumes both targets (Lubellion + Ecclesia); the on-SS EFFECTYN is the gate before its second clause fires. Empirically resolves YES in the β-1 baseline (step 10 picked responseIndex=1 auto). Bit-exact preserved. sourceCardId=73819701 resolves at 100% via msg.code (Tier 1)."
+      }
+    }
+  }
 }

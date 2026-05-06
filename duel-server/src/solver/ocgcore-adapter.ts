@@ -214,6 +214,12 @@ interface InternalHandle {
    *  via getLastPromptSourceCardId. undefined when no reliable source for
    *  this prompt type (see Phase 6 coverage matrix). */
   lastPromptSourceCardId?: number;
+  /** Phase 6 audit B — most recent card source announced by the OCG event
+   *  stream (CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING events all carry
+   *  `code: number`). Used as fallback for `lastPromptSourceCardId` when
+   *  the SELECT_* msg itself has no `code` field (SELECT_CARD, SELECT_PLACE,
+   *  etc.). Reset on CHAIN_END / NEW_TURN / NEW_PHASE. */
+  eventStreamSourceCardId?: number;
   /** Phase B (graph-ml-v2) axis E (tempo / commitment) — per-turn cumulative
    *  counters tracking action density. Reset on every NEW_TURN. Surface via
    *  FieldState's matching optional fields. All condition-free, history-
@@ -311,6 +317,35 @@ export class OCGCoreAdapter implements GameOracle {
    *  bound exploration, and interactive multi-pick would produce non-terminal
    *  trees the DFS can't rank. Only set to true by `scripts/trace-assist.ts`. */
   exposeMultiPickMechanical = false;
+
+  /** mechanicalOverrides[] grammar (2026-05-03). When set via
+   *  `setMechanicalOverrideHook`, runUntilPlayerPrompt consults the hook
+   *  BEFORE `tryInteractiveMechanical` / `autoRespondMechanical` for player-0
+   *  mechanical (non-EXPLORATORY) prompts. The hook receives the prompt type
+   *  + raw OCG msg and may return a duelSetResponse-compatible response
+   *  object to bypass the default behavior, or `null` to fall through to the
+   *  legacy auto-respond path.
+   *
+   *  Used by `replay-trajectory-cli.ts` to support the β-1 v2 plan grammar's
+   *  `mechanicalOverrides[]` field (pin SELECT_PLACE / SELECT_POSITION /
+   *  SELECT_TRIBUTE / ANNOUNCE_NUMBER). The DFS solver does NOT install a
+   *  hook — production behavior is unchanged when the field is undefined.
+   *
+   *  Bypasses BOTH `tryInteractiveMechanical` (when `exposeMultiPickMechanical`
+   *  would have surfaced the prompt as actions) AND `autoRespondMechanical`
+   *  (the default fallback). EXPLORATORY prompts (SELECT_OPTION, SELECT_CHAIN,
+   *  etc.) are NOT routed here — the CLI handles those via its own override
+   *  pre-check before `tryConsumeTarget`. */
+  private mechanicalOverrideHook: ((promptType: PromptType, msg: Record<string, unknown>) => unknown | null) | null = null;
+
+  /** Install a mechanical override hook (mechanicalOverrides[] grammar). Pass
+   *  `null` to clear. The hook is consulted on every player-0 mechanical
+   *  prompt that would otherwise be auto-resolved. */
+  setMechanicalOverrideHook(
+    hook: ((promptType: PromptType, msg: Record<string, unknown>) => unknown | null) | null,
+  ): void {
+    this.mechanicalOverrideHook = hook;
+  }
 
   /** Phase 3 of prompt-resolver-refactor (2026-05-01). When env
    *  `SOLVER_USE_PROMPT_RESOLVER=1` is set, runUntilPlayerPrompt routes its
@@ -634,6 +669,12 @@ export class OCGCoreAdapter implements GameOracle {
     return internal.activationLog;
   }
 
+  getDistinctActivationCardIds(handle: DuelHandle): ReadonlySet<number> {
+    const internal = this.resolveHandle(handle);
+    // Live Set, ReadonlySet typing on GameOracle prevents mutation.
+    return internal.distinctEffectCardsThisTurn;
+  }
+
   destroyDuel(handle: DuelHandle): void {
     const internal = this.findInternal(handle);
     if (!internal || !internal.isActive) return;
@@ -830,6 +871,59 @@ export class OCGCoreAdapter implements GameOracle {
       const status = this.core.duelProcess(internal.nativeHandle);
       const messages = this.core.duelGetMessage(internal.nativeHandle);
 
+      // Phase 6 audit B — track the most recent "source card" announced by
+      // the OCG event stream. Reset only on NEW_TURN / NEW_PHASE — keeping
+      // the source through CHAIN_END boosts coverage on post-chain prompts
+      // (SELECT_PLACE for the resolved Special Summon, etc.). Validated
+      // against ground-truth (SELECT_EFFECTYN direct vs eventStream): 100%
+      // agreement on overlap. See Phase 6 coverage matrix doc.
+      //
+      // Source-bearing events sniffed (in order of reliability):
+      //   CHAINING (70)        — card entering the chain
+      //   SUMMONING (60)       — normal/tribute summon
+      //   SPSUMMONING (62)     — special summon
+      //   FLIPSUMMONING (64)   — flip summon
+      //   PLAYER_HINT (165)    — explicit hint from OCGCore (hint: bigint, decode >>20)
+      //   BECOME_TARGET (123)  — added Audit B Option 2 — card-target events
+      //   CARD_HINT (160)      — added Audit B Option 2 — explicit card hint events
+      for (const m of messages) {
+        const mt = m.type;
+        if (mt === OcgMessageType.CHAINING
+          || mt === OcgMessageType.SUMMONING
+          || mt === OcgMessageType.SPSUMMONING
+          || mt === OcgMessageType.FLIPSUMMONING) {
+          const code = (m as unknown as { code?: number }).code;
+          if (typeof code === 'number' && code > 0) {
+            internal.eventStreamSourceCardId = code;
+          }
+        } else if (mt === OcgMessageType.CARD_HINT) {
+          // CARD_HINT carries `description: bigint` encoded as
+          // (cardCode << 20 | strIndex). Audit B Option 2: this event
+          // refines the source on sub-prompts where the active card emits
+          // a hint just before the SELECT_*. More precise than CHAINING
+          // when the chain has multiple links resolving in sequence.
+          const desc = (m as unknown as { description?: bigint }).description;
+          if (typeof desc === 'bigint') {
+            const cardCode = Number(desc >> 20n);
+            if (cardCode > 0) {
+              internal.eventStreamSourceCardId = cardCode;
+            }
+          }
+        } else if (mt === OcgMessageType.PLAYER_HINT) {
+          const hint = (m as unknown as { hint?: bigint }).hint;
+          if (typeof hint === 'bigint') {
+            const cardCode = Number(hint >> 20n);
+            if (cardCode > 0) {
+              internal.eventStreamSourceCardId = cardCode;
+            }
+          }
+        } else if (mt === OcgMessageType.NEW_TURN
+          || mt === OcgMessageType.NEW_PHASE) {
+          internal.eventStreamSourceCardId = undefined;
+        }
+      }
+
+
       // Track turn/phase from messages
       for (const m of messages) {
         if (m.type === OcgMessageType.NEW_TURN) {
@@ -904,6 +998,26 @@ export class OCGCoreAdapter implements GameOracle {
       if (status === OcgProcessResult.END) return [];
 
       if (status === OcgProcessResult.WAITING) {
+        // SORT_CARD / SORT_CHAIN: not enumerated as player prompts. Without
+        // this branch, the silent fall-through (`if (!selectMsg) return [];`)
+        // freezes any combo that hits a SORT prompt — the canonical case is
+        // Tearlaments fusion (Havnis/Scheiren GY-fusion clauses end with
+        // `Duel.SortDeckbottom` to let the player order materials placed at
+        // deck-bottom). Auto-respond with `order: null` (engine treats as
+        // default order) so the Fusion Summon completes and the next prompt
+        // surfaces normally. Order rarely matters for combo ground-truth;
+        // surfacing as a player prompt would be over-engineering for Path β.
+        const sortMsg = messages.find((m) =>
+          m.type === OcgMessageType.SORT_CARD || m.type === OcgMessageType.SORT_CHAIN);
+        if (sortMsg) {
+          // Both SORT_CARD and SORT_CHAIN responses use the SORT_CARD response
+          // shape (the binding only declares OcgResponseSortCard). `order: null`
+          // signals "no reordering" to the engine.
+          const resp = { type: 15, order: null } as unknown;
+          this.core.duelSetResponse(internal.nativeHandle, resp as never);
+          internal.responseHistory.push(resp);
+          continue;
+        }
         const selectMsg = messages.find((m) => SELECT_MSG_TYPES.has(m.type));
         if (!selectMsg) return [];
 
@@ -915,8 +1029,64 @@ export class OCGCoreAdapter implements GameOracle {
         // getLastPromptSourceCardId AFTER getLegalActions returns. Stored on
         // both the resolver and legacy paths so the value is consistent
         // regardless of SOLVER_USE_PROMPT_RESOLVER state.
-        internal.lastPromptSourceCardId = extractSourceCardIdFromMsg(msgAny);
+        // Audit B: msg.code / msg.description first (100% reliable on
+        // SELECT_EFFECTYN, SELECT_POSITION, SELECT_YESNO — the prompts
+        // that natively carry source). Fall back to the most recent
+        // CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING/PLAYER_HINT event
+        // for sub-prompts of an active effect (SELECT_CARD targets,
+        // SELECT_PLACE for SS, etc.). Lifts coverage from 26.6% to 61.7%
+        // across the audit corpus — see Phase 6 matrix doc.
+        // Audit B: msg.code / msg.description first (100% reliable on
+        // SELECT_EFFECTYN, SELECT_POSITION, SELECT_YESNO — the prompts
+        // that natively carry source). Fall back to the most recent
+        // CHAINING/SUMMONING/SPSUMMONING/FLIPSUMMONING/CARD_HINT/PLAYER_HINT
+        // event for sub-prompts of an active effect (SELECT_CARD targets,
+        // SELECT_PLACE for SS, etc.). With CHAIN_END reset relaxed (only
+        // NEW_TURN/NEW_PHASE reset), coverage reaches 93.3% across the
+        // audit corpus — see Phase 6 matrix doc.
+        // Audit C: targeted-lookback fallback for SELECT_PLACE following a
+        // summon/ss action — covers the ~7 remaining SELECT_PLACE gaps
+        // where MSG_SUMMONING fires AFTER the SELECT_PLACE (engine quirk).
+        // Restricted to summon-class actions only (vs Audit A's broader
+        // _isEffectActivation lookback which was 22% reliable).
+        let resolvedSource = extractSourceCardIdFromMsg(msgAny)
+          ?? internal.eventStreamSourceCardId;
+        if (resolvedSource === undefined && promptType === 'SELECT_PLACE') {
+          for (let i = internal.actionHistory.length - 1; i >= 0; i--) {
+            const a = internal.actionHistory[i];
+            const tag = a.actionTag;
+            if (tag === 'summon' || tag === 'ss' || tag === 'psummon' || tag === 'mset') {
+              if (a.cardId > 0) {
+                resolvedSource = a.cardId;
+                break;
+              }
+            }
+            // Stop searching after going past 5 actions (avoid stale source).
+            if (internal.actionHistory.length - i > 5) break;
+          }
+        }
+        internal.lastPromptSourceCardId = resolvedSource;
 
+        // mechanicalOverrides[] hook (2026-05-03) — consulted FIRST so a
+        // matching override bypasses the resolver / legacy paths entirely
+        // for player-0 mechanical (non-EXPLORATORY) prompts. Opponent
+        // prompts and EXPLORATORY prompts are intentionally excluded:
+        //   - Opponent prompts have their own auto-respond logic and are
+        //     not user-overridable in the β-1 grammar.
+        //   - EXPLORATORY prompts (SELECT_OPTION, SELECT_CHAIN, etc.) are
+        //     surfaced as legal actions; the CLI handles those via its own
+        //     pre-tryConsumeTarget override pass.
+        if (this.mechanicalOverrideHook
+          && promptType
+          && !EXPLORATORY_PROMPTS.has(promptType)
+          && (msgAny['player'] as number) !== OPPONENT) {
+          const overrideResp = this.mechanicalOverrideHook(promptType, msgAny);
+          if (overrideResp !== null && overrideResp !== undefined) {
+            this.core.duelSetResponse(internal.nativeHandle, overrideResp as never);
+            internal.responseHistory.push(overrideResp);
+            continue;
+          }
+        }
 
         // Phase 3 of prompt-resolver-refactor: route through PromptResolver
         // when the env flag is set. Default OFF; bit-exact gate compares
@@ -995,6 +1165,8 @@ export class OCGCoreAdapter implements GameOracle {
 
         // Mechanical prompts: auto-resolve with defaults
         if (promptType && !EXPLORATORY_PROMPTS.has(promptType)) {
+          // Note: mechanicalOverrides[] hook is consulted earlier (above the
+          // resolver path) so it intercepts both legacy and resolver flows.
           // Phase 5-lite trace-assist: expose multi-pick mechanical prompts as
           // interactive actions BEFORE the existing exploratory gates (those
           // only handle single-pick SELECT_CARD). The interactive path covers
@@ -1939,6 +2111,8 @@ export class OCGCoreAdapter implements GameOracle {
       activationLog: cloneActivationLog(parent.activationLog),
       normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
       lastIdlecmdActivatableHandCount: parent.lastIdlecmdActivatableHandCount,
+      lastPromptSourceCardId: parent.lastPromptSourceCardId,
+      eventStreamSourceCardId: parent.eventStreamSourceCardId,
       specialSummonsThisTurn: [parent.specialSummonsThisTurn[0], parent.specialSummonsThisTurn[1]],
       chainResolutionsThisTurn: parent.chainResolutionsThisTurn,
       cardsDrawnThisTurn: [parent.cardsDrawnThisTurn[0], parent.cardsDrawnThisTurn[1]],
@@ -2030,6 +2204,8 @@ export class OCGCoreAdapter implements GameOracle {
       // the parent's already-tracked state is the correct snapshot.
       normalSummonsByPlayer: [parent.normalSummonsByPlayer[0], parent.normalSummonsByPlayer[1]],
       lastIdlecmdActivatableHandCount: parent.lastIdlecmdActivatableHandCount,
+      lastPromptSourceCardId: parent.lastPromptSourceCardId,
+      eventStreamSourceCardId: parent.eventStreamSourceCardId,
       specialSummonsThisTurn: [parent.specialSummonsThisTurn[0], parent.specialSummonsThisTurn[1]],
       chainResolutionsThisTurn: parent.chainResolutionsThisTurn,
       cardsDrawnThisTurn: [parent.cardsDrawnThisTurn[0], parent.cardsDrawnThisTurn[1]],

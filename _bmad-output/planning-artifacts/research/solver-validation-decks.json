@@ -9,6 +9,12 @@
         "format": "TCG December 2025",
         "validatedAgainstCardDb": true
       },
+      "ddd-doom-queen-machinex-variant": {
+        "source": "PvP raw-replay eb8c6865-666f-4e9f-8c6a-7a69615db5f0 (skytrix dev DB, 2026-04-29)",
+        "format": "TCG 2026 (D/D/D Doom Queen Machinex variant)",
+        "validatedAgainstCardDb": true,
+        "notes": "Auto-derived 2026-05-03 from raw-replay-v1. Main = 42 cards (dev-build allowed >40), Extra = 15. Different cardlist from ddd-wcq-top4 (Doom Queen Machinex variant, no Savant Kepler / Scale Surveyor). Used to back the replay-derived fixture ddd-pendulum-opener-replay (coexists with the authored ddd-pendulum-opener; see ddd-fixture-rebuild-2026-05-03.md)."
+      },
       "ryzeal-mitsurugi-hk-top8": {
         "source": "ygoprodeck.com — Mitsurugi Ryzeal, Top 8 Yu-Gi-Oh! Open Tournament Hong Kong 2026 AE (Tu Kai-Hsiang, 2026-03-23)",
         "url": "https://ygoprodeck.com/deck/mitsurugi-ryzeal-701763",
@@ -181,6 +187,70 @@
         37209439,
         94145021
       ]
+    },
+    "ddd-doom-queen-machinex-variant": {
+      "main": [
+        20715411,
+        9030160,
+        20715411,
+        74069667,
+        11609969,
+        11609969,
+        11609969,
+        28406301,
+        28406301,
+        28406301,
+        5997110,
+        14558127,
+        42382265,
+        42382265,
+        72181263,
+        46796664,
+        67322708,
+        72291412,
+        42141493,
+        42141493,
+        91781484,
+        42141493,
+        14558127,
+        14558127,
+        94145021,
+        94145021,
+        46372010,
+        46372010,
+        24224830,
+        46372010,
+        32665564,
+        93729896,
+        65681983,
+        42382265,
+        40366667,
+        40366667,
+        40366667,
+        39256679,
+        54693926,
+        54693926,
+        20715411,
+        54693926
+      ],
+      "extra": [
+        71398055,
+        74583607,
+        70576413,
+        44852429,
+        72402069,
+        3758046,
+        79559912,
+        32232538,
+        71612253,
+        46593546,
+        46593546,
+        62541668,
+        9024198,
+        9024198,
+        30998403
+      ],
+      "_source": "raw-replay eb8c6865-666f-4e9f-8c6a-7a69615db5f0"
     },
     "ryzeal-mitsurugi-hk-top8": {
       "main": [
@@ -1196,7 +1266,7 @@
   },
   "hands": [
     {
-      "id": "ddd-pendulum-opener",
+      "id": "ddd-pendulum-opener-authored-2026-04",
       "deck": "ddd-wcq-top4",
       "description": "D/D/D Pendulum opener: Savant Kepler + Savant Copernicus + Scale Surveyor + Dark Contract with the Gate + Mulcharmy Fuwalos. Canonical 1-card Gate combo produces the FULL endboard: Deus Machinex+1 contract, Wave High King Caesar, Cursed King Siegfried, Sky King Zeus Ragnarok, Headhunt. See ddd-combo-reference.md.",
       "hand": [
@@ -1240,7 +1310,80 @@
           "position": "set"
         }
       ],
-      "_seedFrozen": true
+      "_seedFrozen": true,
+      "_archived": "Swapped out 2026-05-03 in favor of replay-derived ddd-pendulum-opener (Doom Queen Machinex variant from PvP raw-replay eb8c6865). Authored hand+endboard preserved here as historical baseline. Subagent v3 empirically concluded 2/5 ceiling on this hand — suspected fixture authoring mismatch (expectedBoard requires combinatorics this hand cannot mechanically deliver). See ddd-fixture-rebuild-2026-05-03.md."
+    },
+    {
+      "id": "ddd-pendulum-opener",
+      "deck": "ddd-doom-queen-machinex-variant",
+      "description": "D/D/D Doom Queen Machinex variant — replay-derived opener (PvP raw-replay eb8c6865, player 0). Hand: 3x Dark Ruler No More + D/D/D Zero Doom Queen Machinex + Beta The Magnet Warrior. Atypical handtrap-heavy opener; canonical 9-piece endboard documented from PvP play (Caesar/Siegfried/Deus/Sky King + Doom Queen set + Eternal Darkness + Zero King + Headhunt + Oblivion King set). Seed = full 4-bigint OCG seed from raw-replay (preserves byte-exact reproducibility). PROMOTED 2026-05-03 from ddd-pendulum-opener-replay to canonical id (swap from authored ddd-pendulum-opener-authored-2026-04). Endboard mechanically validated: PvP players reached this 9-piece field with this exact hand+seed. See ddd-fixture-rebuild-2026-05-03.md.",
+      "hand": [
+        54693926,
+        20715411,
+        54693926,
+        54693926,
+        39256679
+      ],
+      "deckSeed": "13286124478549588979,13175075721773498195,8073424696826179950,4475465596156117151",
+      "maxDepth": 75,
+      "expectedBoard": [
+        {
+          "zone": "MZONE",
+          "cardId": 79559912,
+          "cardName": "D/D/D Wave High King Caesar",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 44852429,
+          "cardName": "D/D/D Cursed King Siegfried",
+          "position": "attack"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 46593546,
+          "cardName": "D/D/D Deviser King Deus Machinex",
+          "position": "defense"
+        },
+        {
+          "zone": "MZONE",
+          "cardId": 30998403,
+          "cardName": "D/D/D Sky King Zeus Ragnarok",
+          "position": "attack"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 20715411,
+          "cardName": "D/D/D Zero Doom Queen Machinex",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 9030160,
+          "cardName": "Dark Contract with the Eternal Darkness",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 32665564,
+          "cardName": "Dark Contract with the Zero King",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 91781484,
+          "cardName": "D/D/D Headhunt",
+          "position": "set"
+        },
+        {
+          "zone": "SZONE",
+          "cardId": 74069667,
+          "cardName": "D/D/D Oblivion King Abyss Ragnarok",
+          "position": "set"
+        }
+      ],
+      "_seedFrozen": true,
+      "_replayDerivedFrom": "eb8c6865-666f-4e9f-8c6a-7a69615db5f0"
     },
     {
       "id": "ryzeal-mitsurugi-opener",
@@ -1336,7 +1479,10 @@
         30271097,
         44362883
       ],
-      "deckSeed": "3510667737223306533,13278052914564331778",
+      "deckSeed": "3510667737223306533,13278052914564331778,3716801787236758182,14305699795602822198",
+      "_originalDeckSeed": "3510667737223306533,13278052914564331778",
+      "_replayDerivedFrom": "trajectories/branded-dracotail-opener.raw-replay.json",
+      "_coherenceNote": "deckSeed extended 2026-05-03 from 2 bigints (slots 0-1 only) to 4 bigints (full raw-replay seed). Hand was already replay-coherent; the prior 2-bigint deckSeed caused the OCG adapter to fall back to stub seed [42n,123n,456n,789n] in createNativeDuel (length<4 branch), making downstream in-turn shuffles diverge from the raw-replay. Extending to 4 bigints aligns the solver's RNG with the captured PvP run for fidelity in mid-turn searches.",
       "maxDepth": 75,
       "expectedBoard": [
         {
@@ -1558,7 +1704,10 @@
         90241276,
         25311006
       ],
-      "deckSeed": "12301164246358577464,15489252968079702587",
+      "deckSeed": "12301164246358577464,15489252968079702587,12428844045779631262,12960245582222047265",
+      "_originalDeckSeed": "12301164246358577464,15489252968079702587",
+      "_replayDerivedFrom": "trajectories/snake-eye-yummy-opener.raw-replay.json",
+      "_coherenceNote": "deckSeed extended 2026-05-03 from 2 bigints (slots 0-1 only) to 4 bigints (full raw-replay seed). Hand was already replay-coherent; the prior 2-bigint deckSeed caused the OCG adapter to fall back to stub seed [42n,123n,456n,789n] in createNativeDuel (length<4 branch), making downstream in-turn shuffles diverge from the raw-replay. Extending to 4 bigints aligns the solver's RNG with the captured PvP run for fidelity in mid-turn searches.",
       "maxDepth": 75,
       "expectedBoard": [
         {
