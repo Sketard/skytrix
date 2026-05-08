@@ -278,6 +278,24 @@ export class DuelConnection {
     this.rbs.commitAll();
   }
 
+  /**
+   * Drop the prompt-flow accumulators (lastConfirmedCards, lastSelectedCards,
+   * promptType streak, hint-consumed flag). M16: solo swap must invoke this
+   * on the outgoing connection so the next time it becomes active, its
+   * stale CONFIRM/SELECT history doesn't bleed into the next prompt's
+   * "revealed cards" panel or exclusion accumulator.
+   *
+   * NOT called by skipPendingAnimations — that helper is also used in PvP
+   * reconnection paths where the buffers are intentionally preserved across
+   * a queue reset (server replays them).
+   */
+  clearLastSelections(): void {
+    this._lastConfirmedCards = [];
+    this._lastSelectedCards = [];
+    this._lastSelectedPromptType = null;
+    this._hintCardConsumed = false;
+  }
+
   setBoardActive(active: boolean): void {
     this._boardActive = active;
   }
@@ -429,7 +447,12 @@ export class DuelConnection {
     };
 
     this.ws.onerror = () => {
-      // onclose will be called after onerror
+      // The browser fires `onerror` with an opaque Event (no `.message` /
+      // `.code` per WebSocket spec). All we can record is the readyState
+      // at the moment of the error — onclose will follow with the close
+      // code, which carries the actionable signal. M19: surface the
+      // readyState so a connect-vs-disconnect failure isn't silent.
+      this.logger?.warn('ws onerror — readyState=%d url=%s', this.ws?.readyState ?? -1, this.wsUrlBase);
     };
   }
 

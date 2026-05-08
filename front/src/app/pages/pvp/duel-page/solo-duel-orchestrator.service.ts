@@ -73,6 +73,12 @@ export class SoloDuelOrchestratorService {
     // and the stale MSG_DRAW events re-trigger the initial draw animation on
     // top of already-visible cards.
     conns[newIndex].skipPendingAnimations();
+    // M16: drop prompt-flow accumulators on both sides. Otherwise the
+    // outgoing connection's lastConfirmedCards/lastSelectedCards persist
+    // until its next sendResponse, and would surface in the next prompt's
+    // "revealed cards" panel after switching back.
+    conns[outgoingIndex].clearLastSelections();
+    conns[newIndex].clearLastSelections();
     this.animationService.resetForSwitch();
     this.activePlayerIndex.set(newIndex);
     this.wsService.setActiveConnection(conns[newIndex]);

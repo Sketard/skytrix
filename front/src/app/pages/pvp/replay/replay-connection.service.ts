@@ -137,6 +137,9 @@ export class ReplayConnectionService implements OnDestroy {
       this.ws = null;
     }
     this.connectionStatus.set('disconnected');
+    // M20: drop any stale fork state so the next session does not inherit
+    // a fork warning / tokens fantôme from the previous replay.
+    this.resetForkState();
   }
 
   ngOnDestroy(): void {
