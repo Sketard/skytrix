@@ -78,14 +78,24 @@ export interface Deck {
  *  sending the union to both players leaks the opponent's decklist. Use
  *  `extractCardCodesForPlayer` instead. */
 export function extractCardCodes(decks: readonly [Deck, Deck]): number[] {
-  return [...new Set(decks.flatMap(d => [...d.main, ...d.extra]).filter(c => c > 0))];
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const d of decks) {
+    for (const c of d.main) if (c > 0 && !seen.has(c)) { seen.add(c); out.push(c); }
+    for (const c of d.extra) if (c > 0 && !seen.has(c)) { seen.add(c); out.push(c); }
+  }
+  return out;
 }
 
 /** Deduplicated non-zero card codes from a single player's deck — for live
  *  PvP image prefetch without leaking the opponent's decklist. */
 export function extractCardCodesForPlayer(decks: readonly [Deck, Deck], playerIndex: 0 | 1): number[] {
   const d = decks[playerIndex];
-  return [...new Set([...d.main, ...d.extra].filter(c => c > 0))];
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const c of d.main) if (c > 0 && !seen.has(c)) { seen.add(c); out.push(c); }
+  for (const c of d.extra) if (c > 0 && !seen.has(c)) { seen.add(c); out.push(c); }
+  return out;
 }
 
 export interface InitDuelMessage {
