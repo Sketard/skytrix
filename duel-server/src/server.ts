@@ -45,6 +45,7 @@ import { validateData, findMissingPasscodes, initScriptsHash, getScriptsHash, ge
 import { updateData } from './data-updater.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
+import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -492,9 +493,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       turnTimeSecs,
       invalidResponseCount: [0, 0],
       promptSentAt: [0, 0],
-      activeChainLinks: [],
-      chainPhase: 'idle',
-      negatedChainIndices: new Set(),
+      ...emptyChainState(),
       playerUsernames: [parsed.player1.username ?? parsed.player1.id, parsed.player2.username ?? parsed.player2.id],
       deckNames: [parsed.player1.deckName ?? 'Deck', parsed.player2.deckName ?? 'Deck'],
       pendingReplayResult: null,
@@ -685,9 +684,7 @@ function startRematch(session: ActiveDuelSession): void {
   session.lastStateSyncAt = [0, 0];
   session.invalidResponseCount = [0, 0];
   session.promptSentAt = [0, 0];
-  session.activeChainLinks = [];
-  session.chainPhase = 'idle';
-  session.negatedChainIndices = new Set();
+  Object.assign(session, emptyChainState());
 
   clearAllDuelTimers(session);
 
@@ -999,20 +996,9 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
     handleDuelEnd(session);
   }
 
-  // Track active chain state for reconnection
-  if (message.type === 'MSG_CHAINING') {
-    if (session.chainPhase === 'idle') session.chainPhase = 'building';
-    session.activeChainLinks.push(message);
-  } else if (message.type === 'MSG_CHAIN_SOLVING') {
-    session.chainPhase = 'resolving';
-  } else if (message.type === 'MSG_CHAIN_END') {
-    session.activeChainLinks = [];
-    session.chainPhase = 'idle';
-    session.negatedChainIndices = new Set();
-  } else if (message.type === 'MSG_CHAIN_NEGATED') {
-    const negIdx = (message as { chainIndex: number }).chainIndex;
-    session.negatedChainIndices.add(negIdx);
-  }
+  // Track active chain state for reconnection (extracted to chain-state-tracker
+  // for unit testing — same 4 transitions as before, behavior unchanged).
+  applyChainTransition(session, message);
 
   // Store last BOARD_STATE for late-connecting players
   if (message.type === 'BOARD_STATE') {
