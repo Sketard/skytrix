@@ -39,8 +39,13 @@ export class RenderedBoardStateService {
 
   private parseZoneKey(zoneKey: string): { zoneId: string; playerIndex: Player } {
     const sep = zoneKey.lastIndexOf('-');
-    if (sep === -1) this.logger?.warn(`Invalid zoneKey: ${zoneKey}`);
-    return { zoneId: zoneKey.substring(0, sep), playerIndex: Number(zoneKey.substring(sep + 1)) as Player };
+    const playerIndex = sep === -1 ? NaN : Number(zoneKey.substring(sep + 1));
+    duelAssert(
+      sep !== -1 && (playerIndex === 0 || playerIndex === 1),
+      'parseZoneKey',
+      `Invalid zoneKey: ${zoneKey} (expected "ZONE-0" or "ZONE-1")`,
+    );
+    return { zoneId: zoneKey.substring(0, sep), playerIndex: playerIndex as Player };
   }
 
   private cloneStateWithPlayer(playerIndex: Player, playerPatch: Partial<PlayerBoardState>): DuelState {

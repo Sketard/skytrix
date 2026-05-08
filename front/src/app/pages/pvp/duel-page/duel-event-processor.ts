@@ -5,6 +5,24 @@ import { locationToZoneId } from '../pvp-zone.utils';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import type { QueueEntry } from './animation-data-source';
 
+// Set of ServerMessage `type` values that map to a GameEvent member. Used as
+// the runtime guard for the cast in `enqueue` (audit finding L26). The cast
+// is safe because every entry here is a discriminant of the GameEvent union.
+const GAME_EVENT_TYPES: ReadonlySet<GameEvent['type']> = new Set([
+  'MSG_MOVE', 'MSG_DRAW', 'MSG_SHUFFLE_HAND', 'MSG_SHUFFLE_DECK',
+  'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
+  'MSG_CHAINING', 'MSG_CHAIN_SOLVING', 'MSG_CHAIN_SOLVED', 'MSG_CHAIN_END',
+  'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET', 'MSG_SWAP',
+  'MSG_BECOME_TARGET', 'MSG_ATTACK', 'MSG_BATTLE', 'MSG_CONFIRM_CARDS',
+  'MSG_TOSS_COIN', 'MSG_TOSS_DICE', 'MSG_EQUIP',
+  'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER',
+  'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK',
+]);
+
+function isGameEvent(msg: ServerMessage): msg is GameEvent {
+  return GAME_EVENT_TYPES.has(msg.type as GameEvent['type']);
+}
+
 /**
  * Shared chain state machine and animation queue routing.
  * Plain class (NOT injectable) — instantiated privately by DuelConnection and ReplayDuelAdapter.
@@ -23,10 +41,16 @@ export class DuelEventProcessor {
   readonly animationQueue = this._animationQueue.asReadonly();
   readonly hasPendingChainEntry = this._hasPendingChainEntry.asReadonly();
 
-  // Only visual + chain messages are enqueued (never prompts/system messages).
-  // ServerMessage is a wider union, so the cast is safe at this single site.
+  // Enqueue only if `msg` is a known GameEvent — runtime guard via
+  // GAME_EVENT_TYPES set lets us narrow the discriminated union without an
+  // unchecked cast. Non-GameEvent messages reaching here would indicate a
+  // routing bug; the logger trace surfaces it instead of corrupting the queue.
   private enqueue(msg: ServerMessage): void {
-    this._animationQueue.update(q => [...q, msg as GameEvent]);
+    if (!isGameEvent(msg)) {
+      this.logger?.warn('enqueue: dropped non-GameEvent type %s', msg.type);
+      return;
+    }
+    this._animationQueue.update(q => [...q, msg]);
   }
 
   private commitPendingChainEntry(): void {
