@@ -103,34 +103,44 @@ export class PvpChainOverlayComponent {
   /** chainIndex of the front card being resolved as negated (grey shake) */
   readonly negatedResolvingIndex = signal(-1);
 
+  /**
+   * Internal flags as private signals — pattern aligned with the public state
+   * exposed by the component (overlayVisible, resolvingIndex, etc.). Each flag
+   * is read and written exclusively inside `untracked()` blocks (effects) or
+   * synchronous handler methods, so signal-graph propagation is irrelevant —
+   * the migration is a uniformity refactor, not a reactivity change.
+   *
+   * `entryTimerId` and `activeTimers` stay POJO: they are resource handles,
+   * not state.
+   */
   /** Whether card entry animation is in progress (for burst detection) */
-  private entryAnimInProgress = false;
+  private readonly _entryAnimInProgress = signal(false);
   private entryTimerId: ReturnType<typeof setTimeout> | null = null;
-  private previousLinkCount = 0;
+  private readonly _previousLinkCount = signal(0);
   /** Track whether we've already handled the first resolving phase entry */
-  private resolutionStarted = false;
+  private readonly _resolutionStarted = signal(false);
 
   /** Store resolving card info before link removal */
-  private resolvingCardInfo: { cardCode: number; cardName: string } | null = null;
-  private resolvingNegated = false;
+  private readonly _resolvingCardInfo = signal<{ cardCode: number; cardName: string } | null>(null);
+  private readonly _resolvingNegated = signal(false);
   /** Resolved card that stays visible at front until the next resolving link pushes it out.
    *  Signal so that visibleCards recomputes when it's set/cleared. */
   readonly pendingExitCard = signal<ExitingCardState | null>(null);
   /** Re-entrancy guard — true while onChainLinkResolved async flow is running */
-  private resolvingInFlight = false;
+  private readonly _resolvingInFlight = signal(false);
   /** True while the exit→pulse timeout in Effect B is pending (prevents duplicate pulse) */
-  private exitPulseInFlight = false;
+  private readonly _exitPulseInFlight = signal(false);
   /** True once overlayVisible was set during building phase (chain had ≥2 links) */
-  private overlayShownDuringBuild = false;
+  private readonly _overlayShownDuringBuild = signal(false);
   /** Dedup guard: track last resolving link announced to prevent duplicate liveAnnouncer/buffer calls */
-  private lastAnnouncedResolvingIndex = -1;
-  private lastAnnouncedNegated = false;
+  private readonly _lastAnnouncedResolvingIndex = signal(-1);
+  private readonly _lastAnnouncedNegated = signal(false);
 
   private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
 
   // --- Deferred entry animation (see Effect C) ---
-  private hasPendingEntry = false;
-  private pendingPrevCount = 0;
+  private readonly _hasPendingEntry = signal(false);
+  private readonly _pendingPrevCount = signal(0);
 
   // --- Animation durations (scaled by speedMultiplier) ---
   readonly durations = computed(() => {
@@ -203,8 +213,8 @@ export class PvpChainOverlayComponent {
 
       untracked(() => {
         const currentCount = links.length;
-        const prevCount = this.previousLinkCount;
-        this.previousLinkCount = currentCount;
+        const prevCount = this._previousLinkCount();
+        this._previousLinkCount.set(currentCount);
 
         if (phase === 'idle') {
           if (currentCount === 0) this.onChainEnd();
@@ -215,8 +225,8 @@ export class PvpChainOverlayComponent {
           if (currentCount > prevCount && currentCount > 0) {
             // Defer entry animation while cost prompt is open (see Effect C for replay)
             if (this.promptActive()) {
-              this.hasPendingEntry = true;
-              this.pendingPrevCount = prevCount;
+              this._hasPendingEntry.set(true);
+              this._pendingPrevCount.set(prevCount);
             } else {
               this.onNewChainLink(prevCount, links);
             }
@@ -233,11 +243,11 @@ export class PvpChainOverlayComponent {
           this.onNewChainLink(prevCount, links);
         }
 
-        if (!this.resolutionStarted) {
-          this.resolutionStarted = true;
+        if (!this._resolutionStarted()) {
+          this._resolutionStarted.set(true);
           // Cancel any pending building-phase fade-out to avoid race with resolution overlay
           this.cancelEntryTimer();
-          this.entryAnimInProgress = false;
+          this._entryAnimInProgress.set(false);
           // Force clear entry animation gate — resolution takes over
           this.chainManager.chainEntryAnimating.set(false);
         }
@@ -270,34 +280,34 @@ export class PvpChainOverlayComponent {
           resolvingLink ? { idx: resolvingLink.chainIndex, negated: resolvingLink.negated, name: resolvingLink.cardName } : null,
           links.map(l => ({ idx: l.chainIndex, negated: l.negated, resolving: l.resolving })));
         if (resolvingLink) {
-          this.resolvingCardInfo = { cardCode: resolvingLink.cardCode, cardName: resolvingLink.cardName };
-          this.resolvingNegated = resolvingLink.negated;
+          this._resolvingCardInfo.set({ cardCode: resolvingLink.cardCode, cardName: resolvingLink.cardName });
+          this._resolvingNegated.set(resolvingLink.negated);
 
           // Show overlay during resolving phase so animation is visible —
           // skip only for chain-1 (overlay was never shown during building)
-          if (this.overlayShownDuringBuild) this.overlayVisible.set(true);
+          if (this._overlayShownDuringBuild()) this.overlayVisible.set(true);
 
           // Previous resolved card still on screen → push it out, then pulse
           if (this.pendingExitCard()) {
             this.exitingCard.set(this.pendingExitCard());
             this.pendingExitCard.set(null);
-            this.exitPulseInFlight = true;
+            this._exitPulseInFlight.set(true);
             this.scheduleTimeout(() => {
-              this.exitPulseInFlight = false;
+              this._exitPulseInFlight.set(false);
               this.exitingCard.set(null);
               this.applyResolvingPulse(resolvingLink.chainIndex, resolvingLink.negated);
             }, this.durations().exit);
-          } else if (!this.exitPulseInFlight) {
+          } else if (!this._exitPulseInFlight()) {
             this.applyResolvingPulse(resolvingLink.chainIndex, resolvingLink.negated);
           }
 
           // Dedup: announce only for a new link, or when negation state changes (resolving→negated)
-          const isNewLink = resolvingLink.chainIndex !== this.lastAnnouncedResolvingIndex;
-          const isNegationUpdate = resolvingLink.chainIndex === this.lastAnnouncedResolvingIndex
-            && resolvingLink.negated && !this.lastAnnouncedNegated;
+          const isNewLink = resolvingLink.chainIndex !== this._lastAnnouncedResolvingIndex();
+          const isNegationUpdate = resolvingLink.chainIndex === this._lastAnnouncedResolvingIndex()
+            && resolvingLink.negated && !this._lastAnnouncedNegated();
           if (isNewLink || isNegationUpdate) {
-            this.lastAnnouncedResolvingIndex = resolvingLink.chainIndex;
-            this.lastAnnouncedNegated = resolvingLink.negated;
+            this._lastAnnouncedResolvingIndex.set(resolvingLink.chainIndex);
+            this._lastAnnouncedNegated.set(resolvingLink.negated);
             const announcement = resolvingLink.negated
               ? `Chain Link ${resolvingLink.chainIndex + 1} negated: ${resolvingLink.cardName}`
               : `Chain Link ${resolvingLink.chainIndex + 1} resolving: ${resolvingLink.cardName}`;
@@ -313,7 +323,7 @@ export class PvpChainOverlayComponent {
       untracked(() => {
         if (announcing) {
           this.cancelEntryTimer();
-          this.entryAnimInProgress = false;
+          this._entryAnimInProgress.set(false);
           this.overlayVisible.set(false);
         }
       });
@@ -326,11 +336,11 @@ export class PvpChainOverlayComponent {
       const isPromptActive = this.promptActive();
 
       untracked(() => {
-        if (!isPromptActive && this.hasPendingEntry) {
-          this.hasPendingEntry = false;
+        if (!isPromptActive && this._hasPendingEntry()) {
+          this._hasPendingEntry.set(false);
           const links = this.activeChainLinks();
           if (links.length > 0 && this.phase() !== 'idle') {
-            this.onNewChainLink(this.pendingPrevCount, links);
+            this.onNewChainLink(this._pendingPrevCount(), links);
           }
         }
       });
@@ -392,16 +402,16 @@ export class PvpChainOverlayComponent {
     this.scheduleTimeout(() => this.enteringCardIndex.set(-1), this.durations().entry);
 
     // Burst detection: if entry anim still in progress, skip fade-out/fade-in cycle
-    if (this.entryAnimInProgress) {
+    if (this._entryAnimInProgress()) {
       this.cancelEntryTimer();
       this.scheduleFadeOutAfterEntry();
       return;
     }
 
     // Normal flow: show overlay, animate entry, then fade out
-    this.overlayShownDuringBuild = true;
+    this._overlayShownDuringBuild.set(true);
     this.overlayVisible.set(true);
-    this.entryAnimInProgress = true;
+    this._entryAnimInProgress.set(true);
     this.chainManager.chainEntryAnimating.set(true);
     this.scheduleTimeout(() => this.chainManager.chainEntryAnimating.set(false), this.durations().constructAppear);
     this.scheduleFadeOutAfterEntry();
@@ -409,7 +419,7 @@ export class PvpChainOverlayComponent {
 
   private scheduleFadeOutAfterEntry(): void {
     this.entryTimerId = this.scheduleTimeout(() => {
-      this.entryAnimInProgress = false;
+      this._entryAnimInProgress.set(false);
       this.overlayVisible.set(false);
     }, this.durations().constructAppear);
   }
@@ -435,18 +445,18 @@ export class PvpChainOverlayComponent {
    */
   private async onChainLinkResolved(): Promise<void> {
     this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved — resolvingInFlight=%s chainOverlayReady=%s waitingForOverlay=%s',
-      this.resolvingInFlight, this.chainManager.chainOverlayReady(), this.chainManager.isWaitingForOverlay);
-    if (this.resolvingInFlight) {
+      this._resolvingInFlight(), this.chainManager.chainOverlayReady(), this.chainManager.isWaitingForOverlay);
+    if (this._resolvingInFlight()) {
       this.logger.log(DuelLogCategory.CHAIN, 'BLOCKED by resolvingInFlight guard');
       return;
     }
-    this.resolvingInFlight = true;
+    this._resolvingInFlight.set(true);
     this.chainManager.chainOverlayReady.set(false);
 
     // Snapshot mutable state before any await — immune to concurrent Effect B updates
-    const resolvedIdx = this.resolvingNegated ? this.negatedResolvingIndex() : this.resolvingIndex();
-    const cardInfo = this.resolvingCardInfo;
-    const negated = this.resolvingNegated;
+    const resolvedIdx = this._resolvingNegated() ? this.negatedResolvingIndex() : this.resolvingIndex();
+    const cardInfo = this._resolvingCardInfo();
+    const negated = this._resolvingNegated();
 
     // Store resolved card for deferred exit (pushed out by next resolving link)
     if (resolvedIdx >= 0) {
@@ -470,14 +480,14 @@ export class PvpChainOverlayComponent {
     await this.replayAndPause(negated);
 
     // 4. Re-show overlay — resolved card stays visible until pushed out
-    if (this.overlayShownDuringBuild) this.overlayVisible.set(true);
+    if (this._overlayShownDuringBuild()) this.overlayVisible.set(true);
     await this.waitFor(this.durations().overlayFadeIn);
 
     // 5. Cleanup resolving state + signal ready
     this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved DONE — signaling ready');
-    this.resolvingInFlight = false;
-    this.resolvingNegated = false;
-    this.resolvingCardInfo = null;
+    this._resolvingInFlight.set(false);
+    this._resolvingNegated.set(false);
+    this._resolvingCardInfo.set(null);
     this.resolvingIndex.set(-1);
     this.negatedResolvingIndex.set(-1);
     this.chainManager.chainOverlayReady.set(true);
@@ -507,21 +517,21 @@ export class PvpChainOverlayComponent {
   private onChainEnd(): void {
     this.overlayVisible.set(false);
     this.clearAllTimers();
-    this.resolutionStarted = false;
-    this.resolvingInFlight = false;
-    this.exitPulseInFlight = false;
+    this._resolutionStarted.set(false);
+    this._resolvingInFlight.set(false);
+    this._exitPulseInFlight.set(false);
     this.exitingCard.set(null);
     this.pendingExitCard.set(null);
     this.resolvingIndex.set(-1);
     this.negatedResolvingIndex.set(-1);
-    this.resolvingCardInfo = null;
-    this.resolvingNegated = false;
-    this.hasPendingEntry = false;
-    this.pendingPrevCount = 0;
+    this._resolvingCardInfo.set(null);
+    this._resolvingNegated.set(false);
+    this._hasPendingEntry.set(false);
+    this._pendingPrevCount.set(0);
 
-    this.overlayShownDuringBuild = false;
-    this.lastAnnouncedResolvingIndex = -1;
-    this.lastAnnouncedNegated = false;
+    this._overlayShownDuringBuild.set(false);
+    this._lastAnnouncedResolvingIndex.set(-1);
+    this._lastAnnouncedNegated.set(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -538,7 +548,7 @@ export class PvpChainOverlayComponent {
 
   private clearAllTimers(): void {
     this.cancelEntryTimer();
-    this.entryAnimInProgress = false;
+    this._entryAnimInProgress.set(false);
     this.activeTimers.forEach(id => clearTimeout(id));
     this.activeTimers.clear();
   }
