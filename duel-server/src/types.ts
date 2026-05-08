@@ -16,6 +16,12 @@ export const INACTIVITY_WARNING_BEFORE_MS = 20_000;
 export const INACTIVITY_RACE_WINDOW_MS = 500;
 export const BOTH_DISCONNECTED_CLEANUP_MS = 4 * 60 * 60 * 1000; // 4 hours
 export const STATE_SYNC_RATE_LIMIT_MS = 5_000;
+/** P0-3bis.3 hardening — minimum interval between consecutive
+ *  CANCEL_PROMPT_SEQUENCE messages from the same player. Bounds the
+ *  cost of a malicious flood (each cancel triggers a worker restore +
+ *  prompt re-broadcast). 1s is well below human-paced rate but blocks
+ *  scripted spam. */
+export const CANCEL_PROMPT_RATE_LIMIT_MS = 1_000;
 export const REPLAY_WORKER_WATCHDOG_MS = 30_000;
 export const REPLAY_CACHE_TTL_MS = 600_000; // 10 min
 export const ANIMATIONS_DONE_TIMEOUT_MS = 30_000; // safety: start timer even if client never sends ANIMATIONS_DONE

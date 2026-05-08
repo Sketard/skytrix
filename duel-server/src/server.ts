@@ -12,6 +12,7 @@ import {
   INACTIVITY_RACE_WINDOW_MS,
   BOTH_DISCONNECTED_CLEANUP_MS,
   STATE_SYNC_RATE_LIMIT_MS,
+  CANCEL_PROMPT_RATE_LIMIT_MS,
   RPS_TIMEOUT_MS,
   TP_TIMEOUT_MS,
   REPLAY_WORKER_WATCHDOG_MS,
@@ -104,6 +105,19 @@ interface ActiveDuelSession extends DuelSession {
   combinedGraceTimer: ReturnType<typeof setTimeout> | null;
   storedDuelResult: ServerMessage | null;
   lastStateSyncAt: [number, number];
+  /** P0-3bis.3 hardening — last CANCEL_PROMPT_SEQUENCE timestamp per
+   *  player (epoch ms). Used by the cancel rate-limit. */
+  lastCancelAt: [number, number];
+  /** P0-3bis.3 — snapshot of the IDLECMD/BATTLECMD prompt at the
+   *  moment the player committed via PLAYER_RESPONSE. The worker takes
+   *  its WASM rollback snapshot at the same boundary. On
+   *  CANCEL_PROMPT_SEQUENCE, the server re-broadcasts THIS prompt
+   *  (not the latest `lastSentPrompt`, which has been overwritten by
+   *  intermediate SELECT_PLACE / SELECT_TRIBUTE / SELECT_POSITION).
+   *  Cleared when a fresh IDLECMD/BATTLECMD is broadcast (= new
+   *  rollback boundary, so the previous snapshot is no longer
+   *  relevant). */
+  cancelTargetPrompt: [ServerMessage | null, ServerMessage | null];
   // M1 consolidation — turn timer context (formerly standalone Map)
   timerContext: TimerContext | null;
   soloMode: boolean;
@@ -487,6 +501,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       combinedGraceTimer: null,
       storedDuelResult: null,
       lastStateSyncAt: [0, 0],
+      lastCancelAt: [0, 0],
+      cancelTargetPrompt: [null, null],
       timerContext: null,
       soloMode,
       skipShuffle,
@@ -682,6 +698,8 @@ function startRematch(session: ActiveDuelSession): void {
   session.bothDisconnected = false;
   session.storedDuelResult = null;
   session.lastStateSyncAt = [0, 0];
+  session.lastCancelAt = [0, 0];
+  session.cancelTargetPrompt = [null, null];
   session.invalidResponseCount = [0, 0];
   session.promptSentAt = [0, 0];
   Object.assign(session, emptyChainState());
@@ -958,6 +976,90 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
       break;
     }
 
+    case 'WORKER_CANCEL_DONE': {
+      // P0-3bis.3 — the worker has rolled back to the IDLECMD/BATTLECMD
+      // boundary. Re-broadcast the IDLECMD/BATTLECMD prompt (cached at
+      // the moment the player committed) so the client returns to the
+      // action menu. NOT counted as a retry.
+      //
+      // We use `cancelTargetPrompt` (snapshot at PLAYER_RESPONSE for
+      // IDLECMD/BATTLECMD) rather than `lastSentPrompt` because the
+      // latter was overwritten by intermediate SELECT_PLACE /
+      // SELECT_TRIBUTE / SELECT_POSITION between the commit and the
+      // cancel. Re-broadcasting the latest `lastSentPrompt` would
+      // diverge from the worker's restored ocgcore state.
+      //
+      // For the FULL inventory of state slots reset across the cancel
+      // flow (worker + server + client), see
+      // `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+      // READ IT BEFORE ADDING A NEW MUTABLE FIELD TO ActiveDuelSession
+      // that diverges between an IDLECMD/BATTLECMD response and the
+      // next IDLECMD/BATTLECMD prompt.
+      const p = wmsg.playerIndex;
+      const cached = session.cancelTargetPrompt[p];
+      if (cached) {
+        logger.log('CANCEL: re-broadcasting IDLECMD/BATTLECMD prompt', { duelId: session.duelId, promptType: cached.type, player: p });
+
+        // P0-3bis.3 follow-up — the client may have built up animation
+        // queue + chain links + pending prompt between the commit and
+        // the cancel (e.g. an MSG_CHAINING that pushed a chain link badge
+        // into the overlay). The worker's WASM rollback has discarded
+        // all of that on the server side, but the client doesn't know.
+        // Send a STATE_SYNC + empty CHAIN_STATE so the client's
+        // `handleMessage` STATE_SYNC path runs `processor.reset()` +
+        // `commitAll()` + clears pendingPrompt, then restores the chain
+        // to empty. Same machinery as a reconnection re-sync.
+        if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
+          const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
+          const filtered = filterMessage(stateSync, p);
+          if (filtered) sendToPlayer(session, p, filtered);
+        }
+        // Empty CHAIN_STATE — the worker has discarded the chain links.
+        // The client's CHAIN_STATE handler calls
+        // `processor.restoreChainState([], 'idle')` which clears the
+        // overlay + activeChainLinks signal.
+        sendToPlayer(session, p, {
+          type: 'CHAIN_STATE',
+          links: [],
+          phase: 'idle',
+          negatedIndices: [],
+        } as ServerMessage);
+        // Mirror the server-side chain bookkeeping so a subsequent
+        // reconnect-resync sends the same empty chain.
+        session.activeChainLinks = [];
+        session.chainPhase = 'idle';
+        session.negatedChainIndices.clear();
+
+        // P0-3bis follow-up — clear the cached hint for this player.
+        // It was set when the cancelled effect fired its MSG_HINT
+        // ("Select the card(s) to send to the GY", etc.) and would
+        // otherwise be replayed verbatim on a reconnect-resync after
+        // cancel — pointing at an effect that no longer exists.
+        session.lastSentHint[p] = null;
+
+        // P0-3bis follow-up — reset the invalid-response counter.
+        // Without this, a player who alternates "activate → cancel"
+        // with a few RETRY-inducing inputs would accumulate strikes
+        // toward MAX_INVALID_RESPONSES and lose the duel artificially
+        // (see `WORKER_RETRY` handler around line 936). Cancel is a
+        // legitimate user action and shouldn't carry retry stigma.
+        session.invalidResponseCount[p] = 0;
+
+        // Restore both `lastSentPrompt` and `awaitingResponse` so any
+        // subsequent disconnect/reconnect re-sync hands back the same
+        // prompt the worker is now waiting on.
+        session.lastSentPrompt[p] = cached;
+        session.awaitingResponse[p] = true;
+        sendToPlayer(session, p, cached);
+        // Drop the cache — the prompt is now in flight and a future
+        // commit will re-snapshot it.
+        session.cancelTargetPrompt[p] = null;
+      } else {
+        logger.warn('CANCEL: no cached IDLECMD/BATTLECMD to re-broadcast', { duelId: session.duelId, player: p });
+      }
+      break;
+    }
+
     case 'WORKER_ERROR': {
       logger.error('Worker error', { duelId: wmsg.duelId, error: wmsg.error });
       const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'worker_error' };
@@ -1019,6 +1121,14 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
     // Park the timer: runs for the prompted player, starts only after ANIMATIONS_DONE.
     scheduleTimerStart(session, targetPlayer);
     startInactivityTimer(session, targetPlayer);
+    // P0-3bis.3 — a fresh IDLECMD/BATTLECMD = new rollback boundary.
+    // The worker drops its WASM snapshot here too (see duel-worker.ts
+    // around the dto emit path). Mirror that: drop our prompt cache so
+    // a stale post-rollback re-broadcast can never fire after a new
+    // boundary has been set.
+    if (message.type === 'SELECT_IDLECMD' || message.type === 'SELECT_BATTLECMD') {
+      session.cancelTargetPrompt[targetPlayer] = null;
+    }
   }
 
   // Apply message filter per player
@@ -1843,7 +1953,7 @@ function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void 
 // Client Message Handling
 // =============================================================================
 
-const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC', 'ACTIVITY_PING', 'ANIMATIONS_DONE']);
+const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC', 'ACTIVITY_PING', 'ANIMATIONS_DONE', 'CANCEL_PROMPT_SEQUENCE']);
 
 function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg: ClientMessage): void {
   // Validate message type
@@ -1903,6 +2013,17 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       // Keep lastSentPrompt set — WORKER_RETRY (OCGCore rejected response) needs it to re-send.
       // It is overwritten when the next SELECT prompt is broadcast, or cleared on reconnect/reset.
       session.lastSentHint[playerIndex] = null;
+
+      // P0-3bis.3 — when the player commits a SELECT_IDLECMD/BATTLECMD
+      // response, snapshot the prompt SO the cancel handler can restore
+      // it later. The worker takes its WASM snapshot at the same boundary.
+      // We mirror the worker's intent on the server side because
+      // `lastSentPrompt` will be overwritten by intermediate
+      // SELECT_PLACE / SELECT_TRIBUTE / SELECT_POSITION before the user
+      // can right-click to cancel.
+      if (msg.promptType === 'SELECT_IDLECMD' || msg.promptType === 'SELECT_BATTLECMD') {
+        session.cancelTargetPrompt[playerIndex] = expectedPrompt ?? null;
+      }
 
       // Story 3.2 — Pause turn timer + clear inactivity/race timers on player response
       pauseTurnTimer(session);
@@ -1976,6 +2097,51 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
 
       sendStateSnapshot(session, playerIndex);
       resendPendingPrompt(session, playerIndex);
+      break;
+    }
+
+    case 'CANCEL_PROMPT_SEQUENCE': {
+      // P0-3bis.3 — Roll back the duel to the most recent
+      // IDLECMD/BATTLECMD snapshot the worker holds. The worker will
+      // re-emit the original prompt so the player can choose again.
+      //
+      // Guards (P0-3bis.3 hardening — code-review 2026-05-08):
+      //  1. Phase must be DUELING — pre-duel RPS / rematch / disconnect-grace
+      //     can have `awaitingResponse=true` without an active duel worker.
+      //  2. Rate-limit (CANCEL_PROMPT_RATE_LIMIT_MS) — bounds the cost of a
+      //     malicious flood. Each cancel triggers a worker restore +
+      //     prompt re-broadcast; without this guard, scripted spam could
+      //     saturate the worker.
+      //  3. `awaitingResponse[player]` — the player must currently have
+      //     an in-flight prompt to cancel.
+      //  4. Worker must exist and duel not ended — defensive.
+      if (session.phase !== 'DUELING') {
+        logger.warn('CANCEL_PROMPT_SEQUENCE rejected (non-DUELING phase)', { duelId: session.duelId, player: playerIndex, phase: session.phase });
+        break;
+      }
+      const now = Date.now();
+      if (now - session.lastCancelAt[playerIndex] < CANCEL_PROMPT_RATE_LIMIT_MS) {
+        logger.warn('CANCEL_PROMPT_SEQUENCE rate-limited', { duelId: session.duelId, player: playerIndex });
+        break;
+      }
+      if (!session.awaitingResponse[playerIndex]) {
+        logger.warn('CANCEL_PROMPT_SEQUENCE while not awaiting response', { duelId: session.duelId, player: playerIndex });
+        break;
+      }
+      if (!session.worker || session.endedAt) {
+        logger.warn('CANCEL_PROMPT_SEQUENCE with no active worker', { duelId: session.duelId, player: playerIndex });
+        break;
+      }
+      session.lastCancelAt[playerIndex] = now;
+      logger.log('CANCEL_PROMPT_SEQUENCE forwarded to worker', { duelId: session.duelId, player: playerIndex });
+      // The worker will re-emit BOARD_STATE + the previous IDLECMD/BATTLECMD;
+      // those messages flow through the existing WORKER_MESSAGE handling so
+      // `awaitingResponse` is reset by the prompt-broadcast path. Don't
+      // pre-flip it here — let the prompt arrival do it normally.
+      session.worker.postMessage({
+        type: 'CANCEL_PROMPT_SEQUENCE',
+        playerIndex,
+      });
       break;
     }
   }
@@ -2445,6 +2611,8 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
     combinedGraceTimer: null,
     storedDuelResult: null,
     lastStateSyncAt: [0, 0],
+    lastCancelAt: [0, 0],
+    cancelTargetPrompt: [null, null],
     timerContext: null,
     soloMode: true,
     skipShuffle: true,
