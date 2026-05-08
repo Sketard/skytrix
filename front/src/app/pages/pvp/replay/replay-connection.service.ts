@@ -34,42 +34,51 @@ export class ReplayConnectionService implements OnDestroy {
     };
 
     this.ws.onmessage = (event: MessageEvent) => {
-      let msg: ReplayServerMessage;
+      let parsed: unknown;
       try {
-        msg = JSON.parse(event.data as string);
+        parsed = JSON.parse(event.data as string);
       } catch (e) {
         console.warn('[ReplayConnection] Failed to parse WS message:', e);
         return;
       }
+      if (!isReplayServerMessage(parsed)) {
+        console.warn('[ReplayConnection] Dropped malformed WS message:', parsed);
+        return;
+      }
+      const msg = parsed;
 
-      switch (msg.type) {
-        case 'REPLAY_METADATA':
-          this.metadata.set(msg);
-          this.totalResponses.set(msg.totalResponses);
-          break;
+      try {
+        switch (msg.type) {
+          case 'REPLAY_METADATA':
+            this.metadata.set(msg);
+            this.totalResponses.set(msg.totalResponses);
+            break;
 
-        case 'REPLAY_BOARD_STATES':
-          this.boardStates.update(prev => prev.concat(msg.states));
-          this.lastReceivedTurn.set(msg.turnNumber);
-          break;
+          case 'REPLAY_BOARD_STATES':
+            this.boardStates.update(prev => prev.concat(msg.states));
+            this.lastReceivedTurn.set(msg.turnNumber);
+            break;
 
-        case 'REPLAY_ERROR': {
-          if (msg.code === 'FORK_DIVERGENCE_WARNING') {
-            this.forkStatus.set('warning');
-            this.forkWarning.set(msg.message);
-          } else {
-            this.error.set(msg.code ?? msg.message);
-            if (this.forkStatus() === 'forking') {
-              this.forkStatus.set('error');
+          case 'REPLAY_ERROR': {
+            if (msg.code === 'FORK_DIVERGENCE_WARNING') {
+              this.forkStatus.set('warning');
+              this.forkWarning.set(msg.message);
+            } else {
+              this.error.set(msg.code ?? msg.message);
+              if (this.forkStatus() === 'forking') {
+                this.forkStatus.set('error');
+              }
             }
+            break;
           }
-          break;
-        }
 
-        case 'REPLAY_FORK_READY':
-          this.forkStatus.set('ready');
-          this.forkTokens.set({ token1: msg.token1, token2: msg.token2 });
-          break;
+          case 'REPLAY_FORK_READY':
+            this.forkStatus.set('ready');
+            this.forkTokens.set({ token1: msg.token1, token2: msg.token2 });
+            break;
+        }
+      } catch (e) {
+        console.warn('[ReplayConnection] handler threw, dropping:', msg.type, e);
       }
     };
 
@@ -133,4 +142,8 @@ export class ReplayConnectionService implements OnDestroy {
   ngOnDestroy(): void {
     this.disconnect();
   }
+}
+
+function isReplayServerMessage(x: unknown): x is ReplayServerMessage {
+  return typeof x === 'object' && x !== null && typeof (x as { type?: unknown }).type === 'string';
 }

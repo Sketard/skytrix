@@ -371,11 +371,22 @@ export class DuelConnection {
     };
 
     this.ws.onmessage = event => {
+      let message: ServerMessage;
       try {
-        const message: ServerMessage = JSON.parse(event.data);
-        this.handleMessage(message);
+        const parsed: unknown = JSON.parse(event.data);
+        if (!isServerMessage(parsed)) {
+          this.logger?.log(DuelLogCategory.PROC, 'Dropped malformed WS message: %o', parsed);
+          return;
+        }
+        message = parsed;
       } catch (e) {
         console.error('Failed to parse WebSocket message:', e);
+        return;
+      }
+      try {
+        this.handleMessage(message);
+      } catch (e) {
+        console.error('handleMessage threw — dropping message:', message.type, e);
       }
     };
 
@@ -711,4 +722,8 @@ export class DuelConnection {
     }
     return false;
   }
+}
+
+function isServerMessage(x: unknown): x is ServerMessage {
+  return typeof x === 'object' && x !== null && typeof (x as { type?: unknown }).type === 'string';
 }
