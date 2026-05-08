@@ -44,6 +44,7 @@ import { LpAnimationTracker } from '../duel-page/lp-animation-tracker';
 import { ChainResolutionManager } from '../duel-page/chain-resolution-manager';
 import { DrawSequenceManager } from '../duel-page/draw-sequence-manager';
 import { MoveAnimationRouter } from '../duel-page/move-animation-router';
+import { TargetIndicatorManager } from '../duel-page/target-indicator-manager';
 import { BufferReplayBuilder } from '../duel-page/buffer-replay-builder';
 import { PvpChainOverlayComponent } from '../duel-page/pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from '../duel-page/pvp-duel-overlays/pvp-duel-overlays.component';
@@ -59,7 +60,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
     ReplayConnectionService, ReplayForkService,
     CardDataCacheService, CardInspectionService, CardTravelService, DuelCardArtService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
-    ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder,
+    ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DebugLogService,
     DuelWebSocketService, // Required by PvpPromptDialogComponent

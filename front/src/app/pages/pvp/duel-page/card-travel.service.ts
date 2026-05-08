@@ -833,6 +833,71 @@ export class CardTravelService implements OnDestroy {
     return flashAnim.finished.then(() => undefined, () => undefined);
   }
 
+  /**
+   * Create a card-shaped float positioned above the given pile zone (GY, BANISHED, EXTRA),
+   * sized to match the zone and offset by a cascade index. Used by `TargetIndicatorManager`
+   * to surface MSG_BECOME_TARGET feedback when targets are inside a pile (the pile only
+   * renders the top card so the existing `.zone-card--targeted` reticle would point at
+   * the wrong card).
+   *
+   * Returns null if the zone element cannot be resolved (also under reduced motion).
+   * The caller owns lifecycle: call `removeTargetFloat(el)` to remove + untrack.
+   */
+  createTargetFloat(zoneKey: string, cardImage: string, cascadeIndex: number, cascadeYPx: number, cascadeXPx: number, enterMs: number): HTMLDivElement | null {
+    if (this._reducedMotion) return null;
+    const zoneEl = this.getZoneElement(zoneKey);
+    if (!zoneEl) return null;
+    const rect = zoneEl.getBoundingClientRect();
+    // Float 0 overlaps the pile by 50% (its bottom half hides behind the
+    // pile, top half rises above) so it visually reads as a card being
+    // pulled out of the GY for targeting. Each subsequent float in the
+    // cascade lifts by `cascadeYPx` further (newest on top).
+    const liftY = rect.height * 0.5 + cascadeIndex * cascadeYPx;
+    const shiftX = cascadeIndex * cascadeXPx;
+
+    const div = document.createElement('div');
+    div.dataset['targetFloat'] = 'true';
+    div.dataset['zoneKey'] = zoneKey;
+    div.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 900;
+      left: ${rect.left + shiftX}px;
+      top: ${rect.top - liftY}px;
+      width: ${rect.width}px;
+      height: ${rect.height}px;
+      border-radius: 4px;
+      background-image: url('${cardImage}');
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transform: translateY(8px) scale(0.92);
+      transition: opacity ${enterMs}ms ease-out, transform ${enterMs}ms ease-out;
+    `;
+    this._container.appendChild(div);
+    this._overlayEls.add(div);
+    // Trigger entry transition on next frame.
+    requestAnimationFrame(() => {
+      div.style.opacity = '1';
+      div.style.transform = 'translateY(0) scale(1)';
+    });
+    return div;
+  }
+
+  /** Remove a target float element and untrack it. Safe to call multiple times. */
+  removeTargetFloat(el: HTMLDivElement): void {
+    el.remove();
+    this._overlayEls.delete(el);
+  }
+
+  /** Fade-out helper for target floats — resolves after `durationMs` then removes the element. */
+  fadeOutAndRemoveTargetFloat(el: HTMLDivElement, durationMs: number): void {
+    el.style.transition = `opacity ${durationMs}ms ease-in`;
+    el.style.opacity = '0';
+    const id = window.setTimeout(() => this.removeTargetFloat(el), durationMs);
+    this._timers.add(id);
+  }
+
   /** Append `el` to the container and track it; remove from DOM + tracking when
    *  `animation.finished` resolves OR rejects (animation.cancel()). */
   private trackOverlay(el: HTMLElement, animation: Animation): void {

@@ -225,7 +225,89 @@ a, button {
   }
 }
 
+// === PvP Target Pile Floats (MSG_BECOME_TARGET on GY/Banished/Extra) ===
+// Floats are created in JS by `CardTravelService.createTargetFloat` and tagged
+// with class `target-float`. Global because they live outside Angular's view
+// encapsulation (appended directly to the duel-page native element).
+// Active = newest float (full reticle). Demoted = older floats (red halo only).
+.target-float {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    aspect-ratio: 1;
+    width: 90%;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    pointer-events: none;
+    border-radius: 50%;
+    opacity: 0;
+  }
+  &::before {
+    border: 2px solid rgba(255, 60, 60, 0.85);
+  }
+  &::after {
+    background:
+      linear-gradient(to right,
+        transparent 10%, rgba(255, 60, 60, 0.7) 10%, rgba(255, 60, 60, 0.7) 35%,
+        transparent 35%, transparent 65%,
+        rgba(255, 60, 60, 0.7) 65%, rgba(255, 60, 60, 0.7) 90%, transparent 90%),
+      linear-gradient(to bottom,
+        transparent 10%, rgba(255, 60, 60, 0.7) 10%, rgba(255, 60, 60, 0.7) 35%,
+        transparent 35%, transparent 65%,
+        rgba(255, 60, 60, 0.7) 65%, rgba(255, 60, 60, 0.7) 90%, transparent 90%);
+    background-size: 100% 2px, 2px 100%;
+    background-position: center center;
+    background-repeat: no-repeat;
+  }
+}
 
+.target-float--active::before,
+.target-float--active::after {
+  animation: target-float-reticle-appear 0.6s ease-out forwards,
+             target-float-reticle-pulse 1.2s ease-in-out 0.6s infinite;
+}
 
+.target-float--demoted {
+  box-shadow:
+    0 0 0 2px rgba(255, 51, 68, 0.6),
+    0 0 14px rgba(255, 51, 68, 0.45);
+  animation: target-float-demoted-pulse 1.4s ease-in-out infinite;
+}
 
+@keyframes target-float-reticle-appear {
+  0%   { opacity: 0; transform: scale(1.6) rotate(-30deg); }
+  50%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes target-float-reticle-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 60, 60, 0.6)); }
+  50%      { filter: drop-shadow(0 0 10px rgba(255, 60, 60, 0.9)); }
+}
+
+@keyframes target-float-demoted-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(255, 51, 68, 0.5),
+      0 0 10px rgba(255, 51, 68, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(255, 51, 68, 0.85),
+      0 0 18px rgba(255, 51, 68, 0.65);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target-float--active::before,
+  .target-float--active::after {
+    animation: none;
+    opacity: 1;
+  }
+  .target-float--demoted {
+    animation: none;
+  }
+}
 

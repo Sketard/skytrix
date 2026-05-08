@@ -40,6 +40,27 @@ export const POSITION_FLIP_MS = 300;
  *  it for the unset-targeted-keys timer). Not scaled by `scaledDuration`. */
 export const BECOME_TARGET_PULSE_MS = 800;
 
+/** Vertical cascade offset (px) between stacked target floats above a pile.
+ *  Tight stack — only a sliver of the card beneath shows, so the cascade
+ *  reads as a single grouped indicator rather than spread fan. */
+export const TARGET_PILE_FLOAT_CASCADE_Y_PX = 14;
+
+/** Horizontal cascade offset (px) between stacked target floats above a pile. */
+export const TARGET_PILE_FLOAT_CASCADE_X_PX = 4;
+
+/** Stagger delay (ms) between consecutive target floats in a cascade. Sized
+ *  so the user sees a full narrative beat per card: float appears + reticle
+ *  pulses in (~600ms appear anim) + brief settle, THEN the next card arrives
+ *  and demotes the previous reticle. */
+export const TARGET_PILE_FLOAT_STAGGER_MS = 700;
+
+/** Entry transition duration (ms) for a target pile float — opacity 0→1 +
+ *  scale/translateY ease-in. Applied as inline `transition: ...` on creation. */
+export const TARGET_PILE_FLOAT_ENTER_MS = 250;
+
+/** Fade-out duration (ms) when target pile floats are cleaned up. */
+export const TARGET_PILE_FLOAT_FADE_OUT_MS = 150;
+
 /** MSG_CHAINING activation glow + post-activation hold. */
 export const CHAIN_ACTIVATE_MS = 500;
 export const CHAIN_ACTIVATE_MIN_MS = 250;

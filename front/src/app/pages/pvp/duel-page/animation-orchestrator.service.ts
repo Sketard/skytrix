@@ -9,7 +9,7 @@ import {
   CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS,
   LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
-  POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS,
+  POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
   CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
   CHAIN_BANNER_PAUSE_MS, CHAIN_BANNER_DEFERRED_BUDGET_MS,
   CHAIN_END_SETTLE_MS, CHAIN_SOLVING_TAIL_MS,
@@ -31,6 +31,7 @@ import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import { LpAnimationTracker } from './lp-animation-tracker';
 import { MoveAnimationRouter } from './move-animation-router';
+import { TargetIndicatorManager } from './target-indicator-manager';
 import { DuelToastService } from './duel-toast.service';
 import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { duelAssert } from '../../../core/utilities/duel-assert';
@@ -64,6 +65,7 @@ export class AnimationOrchestratorService {
   readonly drawManager = inject(DrawSequenceManager);
   readonly moveRouter = inject(MoveAnimationRouter);
   private readonly battleTracker = inject(BattleAnimationTracker);
+  private readonly targetIndicator = inject(TargetIndicatorManager);
   private readonly toastService = inject(DuelToastService);
   private readonly artService = inject(DuelCardArtService);
   private readonly bufferReplayBuilder = inject(BufferReplayBuilder);
@@ -328,6 +330,7 @@ export class AnimationOrchestratorService {
     this.moveRouter.releaseAllPreLocks();
     this.confirmRevealedCards.set(new Map());
     this.targetedZoneKeys.set(new Set());
+    this.targetIndicator.reset();
     this.counterPulseKey.set(null);
     this.swapGraveDeckKeys.set(new Set());
     this.toastService.clear();
@@ -774,6 +777,9 @@ export class AnimationOrchestratorService {
   }
 
   private handleChainSolving(msg: ChainSolvingMsg): number {
+    // Clear pile-target floats: the cascade was for the targeting prompt
+    // (MSG_BECOME_TARGET × N during chain building) and resolution begins now.
+    this.targetIndicator.cleanup();
     const result = this.chainManager.handleSolving(msg);
     if (result.deferred) {
       const pauseMs = this.ctx.scaledDuration(CHAIN_BANNER_PAUSE_MS);
@@ -802,14 +808,50 @@ export class AnimationOrchestratorService {
 
   private handleBecomeTarget(msg: BecomeTargetMsg): number {
     const ownIdx = this.ctx.ownPlayerIndex();
-    const keys = new Set(msg.cards.map(c => {
-      const relPlayer = c.player === ownIdx ? 0 : 1;
-      return locationToZoneKey(c.location, c.sequence, relPlayer);
-    }));
-    this.targetedZoneKeys.set(keys);
-    const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), BECOME_TARGET_PULSE_MS * this.ctx.speedMultiplier());
+    // Field-zone targets keep the existing reticle binding on `.zone-card--targeted`.
+    // Pile-zone targets (GY/Banished/Extra) are surfaced as floats above the pile,
+    // since `.zone-pile` only renders the top card and would otherwise mis-target.
+    // Accumulate (union) field keys instead of replacing — back-to-back MSG_BECOME_TARGET
+    // (one per card) would otherwise leave only the last target highlighted.
+    const fieldKeys = new Set<string>(this.targetedZoneKeys());
+    for (const c of msg.cards) {
+      if (c.location === LOCATION.MZONE || c.location === LOCATION.SZONE) {
+        const relPlayer = c.player === ownIdx ? 0 : 1;
+        fieldKeys.add(locationToZoneKey(c.location, c.sequence, relPlayer));
+      }
+    }
+    this.targetedZoneKeys.set(fieldKeys);
+    this.targetIndicator.spawnPileFloats(msg);
+    const holdMs = BECOME_TARGET_PULSE_MS * this.ctx.speedMultiplier();
+    const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), holdMs);
     this.animationTimeouts.push(tid);
-    return BECOME_TARGET_PULSE_MS;
+    // Pile-target floats live until handleChainSolving calls targetIndicator.cleanup().
+    // The cascade safety timer is sized for the worst case (many targets + slow
+    // playback) plus a margin; a chain that never resolves (negated, error)
+    // still cleans up eventually.
+    // Coalesce + stagger back-to-back MSG_BECOME_TARGET:
+    //   - non-last MSGs return TARGET_PILE_FLOAT_STAGGER_MS so consecutive
+    //     spawns look sequential (carte 1 → carte 2 → ...) rather than
+    //     appearing simultaneously.
+    //   - the LAST MSG returns BECOME_TARGET_PULSE_MS so the cascade hold
+    //     plays out before the queue advances and the next prompt shows.
+    // The cleanup timer is sized to fire RIGHT AFTER the last hold so the
+    // floats fade away before the SELECT_CHAIN prompt appears (which would
+    // otherwise overlap the still-visible cascade in replay mode where
+    // MSG_CHAIN_SOLVING arrives in a later step).
+    const nextEvents = this.dataSource.animationQueue();
+    const hasMoreBecomeTarget = nextEvents.some(e => !('kind' in e) && e.type === 'MSG_BECOME_TARGET');
+    if (hasMoreBecomeTarget) {
+      // Long fallback safety only — the next BECOME_TARGET will reschedule.
+      this.targetIndicator.scheduleCleanup(holdMs * 6 + 4000);
+      return TARGET_PILE_FLOAT_STAGGER_MS;
+    }
+    // Last MSG: cleanup starts at the hold end, queue waits until fade-out
+    // completes so isAnimating stays true through the entire cascade
+    // disappearance. Otherwise the next prompt would render for a frame
+    // while the floats are still fading out.
+    this.targetIndicator.scheduleCleanup(holdMs);
+    return BECOME_TARGET_PULSE_MS + TARGET_PILE_FLOAT_FADE_OUT_MS;
   }
 
   private handleTossCoin(msg: TossCoinMsg): number {
