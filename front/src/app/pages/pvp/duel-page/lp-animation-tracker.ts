@@ -50,20 +50,32 @@ export class LpAnimationTracker {
     return this.baseLpDuration;
   }
 
-  /** Commit pending LP to rendered state (called by queue loop after event duration). */
-  commitPendingLp(): void {
+  /**
+   * Commit pending LP to rendered state and clear the animating signal.
+   * Called by the queue loop after an LP event's animation duration elapses.
+   * No-op if nothing is pending.
+   */
+  commitIfPending(): void {
+    if (this._pendingLpCommits.size === 0) return;
     for (const p of this._pendingLpCommits) {
       this.rbs.commitLp(p);
     }
     this._pendingLpCommits.clear();
+    this.animatingLpPlayer.set(null);
   }
 
   get hasPendingCommit(): boolean {
     return this._pendingLpCommits.size > 0;
   }
 
-  /** Clear pending LP commit without committing (used when commitAll() handles it). */
-  clearPending(): void {
+  /**
+   * Discard the pending commit set without committing — used when an upcoming
+   * `commitUnlocked()`/`commitAll()` will sync state through a different path
+   * (e.g. zone-only commit during chain idle/building, full reset on hard sync).
+   * Does NOT clear `animatingLpPlayer` because the visual animation may still
+   * be running while pending is discarded.
+   */
+  discardPending(): void {
     this._pendingLpCommits.clear();
   }
 

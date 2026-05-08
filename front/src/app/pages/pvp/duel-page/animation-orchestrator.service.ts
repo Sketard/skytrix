@@ -149,7 +149,7 @@ export class AnimationOrchestratorService {
 
   private finalizeAndCommit(): void {
     this.cardTravelService.clearAllTravels();
-    this.lpTracker.clearPending();
+    this.lpTracker.discardPending();
     this.trace('commitUnlocked', { site: 'finalizeAndCommit' });
     this.rbs.commitUnlocked();
   }
@@ -554,7 +554,7 @@ export class AnimationOrchestratorService {
 
       if (this.commitMode === 'per-event') {
         this.moveRouter.preLockQueuedSources();
-        this.lpTracker.clearPending();
+        this.lpTracker.discardPending();
         this.trace('commitUnlocked', { event: event.type });
         this.rbs.commitUnlocked();
       }
@@ -573,9 +573,8 @@ export class AnimationOrchestratorService {
           }, this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS));
         });
         await Promise.race([result, guard]);
-        this.lpTracker.commitPendingLp();
+        this.lpTracker.commitIfPending();
         this.animatingZone.set(null);
-        this.lpTracker.animatingLpPlayer.set(null);
         continue;
       }
 
@@ -594,9 +593,8 @@ export class AnimationOrchestratorService {
         });
       }
 
-      this.lpTracker.commitPendingLp();
+      this.lpTracker.commitIfPending();
       this.animatingZone.set(null);
-      this.lpTracker.animatingLpPlayer.set(null);
     }
     } finally {
       this._innerLoopDepth--;
@@ -630,7 +628,7 @@ export class AnimationOrchestratorService {
         }
         if (this.commitMode === 'per-event') {
           this.moveRouter.preLockQueuedSources();
-          this.lpTracker.clearPending();
+          this.lpTracker.discardPending();
           this.rbs.commitUnlocked();
         }
         this.trace('groupAwait', { promiseCount: promises.length, inFlight: this.cardTravelService.inFlightCount(), landed: this.cardTravelService.landedCount() });

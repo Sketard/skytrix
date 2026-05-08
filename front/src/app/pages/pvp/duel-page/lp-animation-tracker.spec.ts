@@ -95,35 +95,58 @@ describe('LpAnimationTracker', () => {
     });
   });
 
-  describe('commitPendingLp', () => {
+  describe('commitIfPending', () => {
     it('should call rbs.commitLp for each pending player', () => {
       tracker.processLpEvent(0, 100, 'damage');
       tracker.processLpEvent(1, 200, 'damage');
-      tracker.commitPendingLp();
+      tracker.commitIfPending();
       expect(mockRbs.commitLp).toHaveBeenCalledWith(0);
       expect(mockRbs.commitLp).toHaveBeenCalledWith(1);
       expect(tracker.hasPendingCommit).toBeFalse();
     });
 
     it('should not call commitLp when nothing pending', () => {
-      tracker.commitPendingLp();
+      tracker.commitIfPending();
       expect(mockRbs.commitLp).not.toHaveBeenCalled();
     });
 
     it('should deduplicate commits for same player', () => {
       tracker.processLpEvent(0, 100, 'damage');
       tracker.processLpEvent(0, 200, 'damage');
-      tracker.commitPendingLp();
+      tracker.commitIfPending();
       expect(mockRbs.commitLp).toHaveBeenCalledTimes(1);
+    });
+
+    it('should clear animatingLpPlayer signal after committing', () => {
+      tracker.processLpEvent(0, 100, 'damage');
+      expect(tracker.animatingLpPlayer()).not.toBeNull();
+      tracker.commitIfPending();
+      expect(tracker.animatingLpPlayer()).toBeNull();
+    });
+
+    it('should not touch animatingLpPlayer signal when nothing pending', () => {
+      tracker.processLpEvent(0, 100, 'damage');
+      tracker.discardPending();
+      // simulate signal still set by an in-flight animation
+      const before = tracker.animatingLpPlayer();
+      expect(before).not.toBeNull();
+      tracker.commitIfPending();
+      expect(tracker.animatingLpPlayer()).toBe(before);
     });
   });
 
-  describe('clearPending', () => {
+  describe('discardPending', () => {
     it('should clear pending without committing', () => {
       tracker.processLpEvent(0, 100, 'damage');
-      tracker.clearPending();
+      tracker.discardPending();
       expect(tracker.hasPendingCommit).toBeFalse();
       expect(mockRbs.commitLp).not.toHaveBeenCalled();
+    });
+
+    it('should NOT clear animatingLpPlayer signal (animation may still play)', () => {
+      tracker.processLpEvent(0, 100, 'damage');
+      tracker.discardPending();
+      expect(tracker.animatingLpPlayer()).not.toBeNull();
     });
   });
 
@@ -254,7 +277,7 @@ describe('LpAnimationTracker', () => {
 
     it('should commitLp with relative player index', () => {
       tracker1.processLpEvent(1, 100, 'damage');
-      tracker1.commitPendingLp();
+      tracker1.commitIfPending();
       expect(mockRbs1.commitLp).toHaveBeenCalledWith(0); // relative index
     });
   });

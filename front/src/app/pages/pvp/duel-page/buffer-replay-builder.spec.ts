@@ -95,7 +95,7 @@ describe('BufferReplayBuilder', () => {
     mockDrawManager.processDrawEvent.and.returnValue(0);
 
     mockLpTracker = jasmine.createSpyObj<LpAnimationTracker>('LpAnimationTracker', [
-      'fireLpReplayEvent', 'processLpEvent', 'commitPendingLp', 'clearPending',
+      'fireLpReplayEvent', 'processLpEvent', 'commitIfPending', 'discardPending',
       'applyInstant', 'syncFromBoardState', 'getTrackedLp', 'reset',
     ]);
 
