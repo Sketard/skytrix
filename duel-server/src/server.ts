@@ -49,6 +49,7 @@ import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
+import { LruMap } from './lru-map.js';
 import {
   configureSolverHandlers,
   handleSolverMessage,
@@ -164,7 +165,10 @@ interface ReplayConnection {
   state: ReplayConnectionState;
 }
 
-const replayCache = new Map<string, { data: WorkerReplayPayload; playerIds: [string, string]; timer: ReturnType<typeof setTimeout> }>();
+const replayCache = new LruMap<{ data: WorkerReplayPayload; playerIds: [string, string] }>({
+  maxEntries: MAX_REPLAY_CACHE_ENTRIES,
+  ttlMs: REPLAY_CACHE_TTL_MS,
+});
 let replayWorkerCount = 0;
 const replayQueue: Array<() => void> = [];
 const activeReplayConnections = new Map<WebSocket, ReplayConnection>();
@@ -2120,11 +2124,7 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
       return;
     }
     replayData = cached.data;
-    // LRU: refresh TTL and move to end of insertion order
-    clearTimeout(cached.timer);
-    replayCache.delete(replayId);
-    const refreshedTimer = setTimeout(() => { replayCache.delete(replayId); }, REPLAY_CACHE_TTL_MS);
-    replayCache.set(replayId, { data: cached.data, playerIds: cached.playerIds, timer: refreshedTimer });
+    replayCache.touch(replayId);
     logger.debug('Replay cache hit (TTL refreshed)', { replayId });
   } else {
     const maxRetries = 3;
@@ -2162,17 +2162,8 @@ async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: stri
 
         replayData = { ...body.replayData, metadata: body.metadata };
 
-        // Evict oldest entry if cache is full
-        if (replayCache.size >= MAX_REPLAY_CACHE_ENTRIES) {
-          const oldestKey = replayCache.keys().next().value!;
-          const oldest = replayCache.get(oldestKey)!;
-          clearTimeout(oldest.timer);
-          replayCache.delete(oldestKey);
-        }
-
-        // Cache with TTL (includes playerIds for auth on cache hit)
-        const timer = setTimeout(() => { replayCache.delete(replayId); }, REPLAY_CACHE_TTL_MS);
-        replayCache.set(replayId, { data: replayData, playerIds: [p1, p2], timer });
+        // LruMap handles capacity eviction (LRU) and TTL internally.
+        replayCache.set(replayId, { data: replayData, playerIds: [p1, p2] });
         break;
       } catch (err) {
         logger.error('Replay fetch error', { replayId, attempt, maxRetries, error: err instanceof Error ? err.message : String(err) });
@@ -2312,11 +2303,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
       worker.terminate();
       conn.worker = null;
       // Evict stale cache entry to prevent reuse of failed replay data
-      const cached = replayCache.get(conn.replayId);
-      if (cached) {
-        clearTimeout(cached.timer);
-        replayCache.delete(conn.replayId);
-      }
+      replayCache.delete(conn.replayId);
       onReplayWorkerDone();
     }
   });
@@ -2707,11 +2694,7 @@ function cleanupReplayConnection(conn: ReplayConnection, preserveCache = false):
 
   // Evict cache entry (unless preserving for fork return)
   if (!preserveCache) {
-    const cached = replayCache.get(conn.replayId);
-    if (cached) {
-      clearTimeout(cached.timer);
-      replayCache.delete(conn.replayId);
-    }
+    replayCache.delete(conn.replayId);
   }
 
   // Clean up any pending fork worker
