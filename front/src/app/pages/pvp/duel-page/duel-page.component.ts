@@ -27,6 +27,7 @@ import { PvpZoneBrowserOverlayComponent } from './pvp-zone-browser-overlay/pvp-z
 import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { ActivationMode, PvpActivationToggleComponent } from './pvp-activation-toggle/pvp-activation-toggle.component';
 import { CardActionMenuService } from './card-action-menu.service';
+import { PromptDerivationService } from './prompt-derivation.service';
 import { buildHandChainBadges, buildOpponentHandChainData } from './chain-badge.utils';
 import { PhaseAnnouncementService } from './phase-announcement.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
@@ -70,7 +71,7 @@ import { environment } from '../../../../environments/environment';
     AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
-    DuelCardArtService, CardActionMenuService,
+    DuelCardArtService, CardActionMenuService, PromptDerivationService,
     { provide: ANIMATION_DATA_SOURCE, useExisting: DuelWebSocketService },
   ],
   imports: [
@@ -192,41 +193,22 @@ export class DuelPageComponent implements OnInit {
     return this.artService.resolveUrl(cardCode);
   }
 
-  // Zone highlight (Pattern A — SELECT_PLACE / SELECT_DISFIELD)
-  // Story 4.2 — All prompt-dependent computeds use visiblePrompt (drain coordination)
-  readonly isZoneHighlightActive = computed(() => {
-    const p = this.visiblePrompt();
-    return p?.type === 'SELECT_PLACE' || p?.type === 'SELECT_DISFIELD';
-  });
-
-  readonly highlightedZones = computed(() => {
-    const p = this.visiblePrompt();
-    if (p?.type !== 'SELECT_PLACE' && p?.type !== 'SELECT_DISFIELD') return new Set<string>();
-    const places = (p as SelectPlaceMsg | SelectDisfieldMsg).places;
-    const ownIdx = this.ownPlayerIndex();
-    const keys = places
-      .map(pl => {
-        const zoneId = locationToZoneId(pl.location, pl.sequence);
-        const relPlayer = pl.player === ownIdx ? 0 : 1;
-        return zoneId ? `${zoneId}-${relPlayer}` : null;
-      })
-      .filter((k): k is string => k !== null);
-    return new Set(keys);
-  });
-
-  readonly zoneInstruction = computed(() => {
-    const p = this.visiblePrompt();
-    if (p?.type === 'SELECT_PLACE') return 'Select a zone to place your card';
-    if (p?.type === 'SELECT_DISFIELD') return 'Select a zone to destroy';
-    return '';
-  });
-
-  // Story 1.7 — Actionable prompt (IDLECMD/BATTLECMD distributed UI)
-  readonly actionablePrompt = computed((): SelectIdleCmdMsg | SelectBattleCmdMsg | null => {
-    const p = this.visiblePrompt();
-    if (p?.type === 'SELECT_IDLECMD' || p?.type === 'SELECT_BATTLECMD') return p;
-    return null;
-  });
+  // Prompt-derived state — delegated to component-scoped PromptDerivationService.
+  // Re-export the service signals so existing template bindings keep working.
+  // The service owns: visiblePrompt, actionablePrompt, hasActivePrompt,
+  // isZoneHighlightActive, highlightedZones, zoneInstruction,
+  // playerActionableHandIndices, playerActivateHandIndices, tpPassiveMessage.
+  // Configured below in the constructor (two-phase init like DuelContext).
+  private readonly promptDerivation = inject(PromptDerivationService);
+  readonly visiblePrompt = this.promptDerivation.visiblePrompt;
+  readonly actionablePrompt = this.promptDerivation.actionablePrompt;
+  readonly hasActivePrompt = this.promptDerivation.hasActivePrompt;
+  readonly isZoneHighlightActive = this.promptDerivation.isZoneHighlightActive;
+  readonly highlightedZones = this.promptDerivation.highlightedZones;
+  readonly zoneInstruction = this.promptDerivation.zoneInstruction;
+  readonly playerActionableHandIndices = this.promptDerivation.playerActionableHandIndices;
+  readonly playerActivateHandIndices = this.promptDerivation.playerActivateHandIndices;
+  readonly tpPassiveMessage = this.promptDerivation.tpPassiveMessage;
 
   // Card Action Menu — delegated to component-scoped CardActionMenuService.
   // Re-export the service signals so the existing template bindings keep
@@ -247,70 +229,8 @@ export class DuelPageComponent implements OnInit {
   // Story 1.7 — Own turn detection
   readonly isOwnTurn = computed(() => this.renderedState().turnPlayer === 0);
 
-  // Story 1.7 — Hand actionable indices (all actions, for click behavior)
-  readonly playerActionableHandIndices = computed((): Set<number> => {
-    const prompt = this.actionablePrompt();
-    if (!prompt) return new Set();
-    const actionMap = prompt.type === 'SELECT_IDLECMD'
-      ? buildActionableCardsFromIdle(prompt)
-      : buildActionableCardsFromBattle(prompt);
-    const indices = new Set<number>();
-    for (const key of actionMap.keys()) {
-      const parts = key.split('-');
-      if (parseInt(parts[0], 10) === LOCATION.HAND) {
-        indices.add(parseInt(parts[1], 10));
-      }
-    }
-    return indices;
-  });
-
-  // Hand indices with activate effect (gold glow)
-  readonly playerActivateHandIndices = computed((): Set<number> => {
-    const prompt = this.actionablePrompt();
-    if (!prompt) return new Set();
-    const promptType = prompt.type as 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
-    const actionMap = prompt.type === 'SELECT_IDLECMD'
-      ? buildActionableCardsFromIdle(prompt)
-      : buildActionableCardsFromBattle(prompt);
-    const indices = new Set<number>();
-    for (const [key, actions] of actionMap) {
-      const parts = key.split('-');
-      if (parseInt(parts[0], 10) === LOCATION.HAND && actions.some(a => isActivateAction(a.actionCode, promptType))) {
-        indices.add(parseInt(parts[1], 10));
-      }
-    }
-    return indices;
-  });
-
   // Server-driven: true when opponent has a pending prompt
   readonly waitingForOpponent = this.wsService.waitingForOpponent;
-
-  // TP passive message: shown in prompt dialog during turn-order phase
-  readonly tpPassiveMessage = computed(() => {
-    const tpResult = this.wsService.tpResult();
-    if (tpResult) return {
-      title: tpResult.goFirst ? 'You go first!' : 'You go second!',
-      subtitle: 'The duel will begin shortly',
-      style: 'result' as const,
-    };
-    // Pre-duel waiting (loser waits for winner to choose TP)
-    const waiting = this.wsService.waitingForOpponent();
-    const preDuel = this.wsService.ocgPlayerIndex() === null;
-    const noPrompt = !this.wsService.pendingPrompt();
-    const noRps = !this.wsService.rpsResult() && !this.wsService.rpsInProgress();
-    if (waiting && preDuel && noPrompt && noRps) return {
-      title: 'Opponent is choosing turn order...',
-      style: 'waiting' as const,
-    };
-    return null;
-  });
-
-  // [C2 fix] Has active blocking prompt — excludes IDLECMD/BATTLECMD (distributed UI, not blocking)
-  // Story 4.2 — uses visiblePrompt for drain coordination
-  readonly hasActivePrompt = computed(() => {
-    const p = this.visiblePrompt();
-    return p !== null && p.type !== 'SELECT_IDLECMD' && p.type !== 'SELECT_BATTLECMD';
-  });
 
   // Story 3.1 — Own player index (0 = player1, 1 = player2)
   // In solo mode, tracks the active connection's player index so the board and badges
@@ -435,32 +355,25 @@ export class DuelPageComponent implements OnInit {
   private switchTimer: ReturnType<typeof setTimeout> | null = null;
 
 
-  // Story 4.2 — Prompt drain: gate prompt display behind animation queue drain
-  // During chain building with pending cost, let cost prompts through immediately
-  // (the zone glow continues visually behind the prompt dialog).
-  // After cost paid, gate on chainEntryAnimating so the overlay entry animation
-  // plays before SELECT_CHAIN appears.
-  readonly visiblePrompt = computed(() => {
-    const animating = this.isAnimating();
-    const chainEntryAnim = this.chainManager.chainEntryAnimating();
-    const prompt = this.wsService.pendingPrompt();
-    const queuePending = this.wsService.animationQueue().length > 0;
-    const chainPromptGate = this.chainManager.chainPromptGateActive();
-    const blocked = animating || chainEntryAnim || queuePending || chainPromptGate;
-    if (!blocked) return prompt;
-    // During chain building with pending cost → let cost prompts through,
-    // but ONLY if the sole blocker is chain entry animation (not active travels/moves)
-    if (this.wsService.chainPhase() === 'building' && this.wsService.hasPendingChainEntry()
-      && !animating && !queuePending) {
-      return prompt;
-    }
-    return null;
-  });
-
   constructor() {
     // --- Initialize extracted services ---
     this.roomService.init({ wsService: this.wsService, tabGuard: this.tabGuard });
     this.cardMenu.setOnClose(() => this.playerHandRow?.selectedIndex.set(null));
+    this.promptDerivation.configure({
+      pendingPrompt: this.wsService.pendingPrompt,
+      isAnimating: this.isAnimating,
+      queueLength: () => this.wsService.animationQueue().length,
+      chainPhase: this.wsService.chainPhase,
+      hasPendingChainEntry: () => this.wsService.hasPendingChainEntry(),
+      chainEntryAnimating: this.chainManager.chainEntryAnimating,
+      chainPromptGateActive: this.chainManager.chainPromptGateActive,
+      ownPlayerIndex: this.ownPlayerIndex,
+      waitingForOpponent: this.wsService.waitingForOpponent,
+      tpResult: this.wsService.tpResult,
+      rpsResult: () => this.wsService.rpsResult(),
+      rpsInProgress: () => this.wsService.rpsInProgress(),
+      ocgPlayerIndex: () => this.wsService.ocgPlayerIndex(),
+    });
     this.duelCtx.configure({
       ownPlayerIndex: () => this.ownPlayerIndex(),
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
