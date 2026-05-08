@@ -87,6 +87,11 @@ duel-server/dist/
 # Logs (generated at runtime)
 logs/
 
+# Playwright (E2E tests)
+front/test-results/
+front/playwright-report/
+front/playwright/.cache/
+
 # OS
 .DS_Store
 Thumbs.db
