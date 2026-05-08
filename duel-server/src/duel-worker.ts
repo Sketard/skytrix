@@ -371,6 +371,198 @@ const LOC_NAME: Record<number, string> = {
 };
 function locName(loc: number): string { return LOC_NAME[loc] ?? `0x${loc.toString(16)}`; }
 
+// =============================================================================
+// transformMessage helpers (audit finding M1)
+// =============================================================================
+// The main switch in `transformMessage` was 395 LOC / 30+ cases — well above
+// Miller. These helpers extract the cases that span more than ~8 lines into
+// named functions; trivial 1-line returns stay inline in the dispatcher so
+// the high-level shape (which OcgMessageType maps to which DTO) remains
+// scannable in one screen. Helpers close over module-level state
+// (`getCardName`, `systemStrings`, `core`, `duel`, etc.) — not exported.
+
+function transformMove(msg: any): ServerMessage {
+  let reason = 0;
+  if (core && duel && msg.to.location as number !== 0) {
+    const reasonInfo = core.duelQuery(duel, {
+      flags: OcgQueryFlags.REASON as number,
+      controller: msg.to.controller,
+      location: msg.to.location as number,
+      sequence: msg.to.sequence,
+      overlaySequence: 0,
+    } as never);
+    reason = reasonInfo?.reason ?? 0;
+  }
+  return {
+    type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card), player: msg.from.controller,
+    fromLocation: msg.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    fromSequence: msg.from.sequence,
+    fromPosition: msg.from.position as number as Position,
+    toLocation: msg.to.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    toSequence: msg.to.sequence,
+    toPosition: msg.to.position as number as Position,
+    isToken: isTokenCard(msg.card),
+    reason,
+  };
+}
+
+function transformHint(msg: any): ServerMessage {
+  const hintType = msg.hint_type as number;
+  const value = Number(msg.hint);
+  let cardName = '';
+  let hintAction = '';
+  if (hintType === 5 || hintType === 8 || hintType === 10 || hintType === 13 || hintType === 15) {
+    // HINT_EFFECT / HINT_CODE / HINT_CARD: value is a card code
+    cardName = getCardName(value);
+  } else if (hintType === 1 || hintType === 2) {
+    // HINT_EVENT / HINT_MESSAGE: value is a system string ID
+    hintAction = systemStrings.get(value) ?? '';
+  } else if (hintType === 3 || hintType === 4) {
+    // HINT_SELECTMSG / HINT_OPSELECTED: value is a system string ID or a card code
+    const sysStr = systemStrings.get(value);
+    if (sysStr) {
+      hintAction = sysStr;
+    } else {
+      cardName = getCardName(value);
+    }
+  } else if (hintType === 6) {
+    // HINT_RACE: value is a race bitmask
+    hintAction = RACE_LABELS[value] ?? `race:0x${value.toString(16)}`;
+  } else if (hintType === 7) {
+    // HINT_ATTRIB: value is an attribute bitmask
+    hintAction = ATTRIB_LABELS[value] ?? `attr:0x${value.toString(16)}`;
+  } else if (hintType === 9) {
+    // HINT_NUMBER: value is a number
+    hintAction = String(value);
+  }
+  return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName, hintAction };
+}
+
+function transformBattle(msg: any): ServerMessage | null {
+  if (!msg.target) return null; // Direct attacks don't produce BATTLE
+  const defInDef = (msg.target.position as number) & 0xC; // FACEUP_DEFENSE | FACEDOWN_DEFENSE
+  return {
+    type: 'MSG_BATTLE',
+    attackerPlayer: msg.card.controller,
+    attackerSequence: msg.card.sequence,
+    attackerDamage: msg.card.attack,
+    defenderPlayer: msg.target.controller,
+    defenderSequence: msg.target.sequence,
+    defenderDamage: defInDef ? msg.target.defense : msg.target.attack,
+  };
+}
+
+function transformBecomeTarget(msg: any): ServerMessage {
+  return {
+    type: 'MSG_BECOME_TARGET',
+    cards: msg.cards.map((c: any) => ({
+      player: c.controller as Player,
+      location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+      sequence: c.sequence,
+    })),
+  };
+}
+
+function transformEquip(msg: any): ServerMessage {
+  return {
+    type: 'MSG_EQUIP',
+    equipPlayer: msg.card.controller as Player,
+    equipLocation: msg.card.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    equipSequence: msg.card.sequence,
+    targetPlayer: msg.target.controller as Player,
+    targetLocation: msg.target.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    targetSequence: msg.target.sequence,
+  };
+}
+
+function transformShuffleSetCard(msg: any): ServerMessage {
+  return {
+    type: 'MSG_SHUFFLE_SET_CARD',
+    cards: msg.cards.map((c: any) => ({
+      fromPlayer: c.from.controller as Player,
+      fromSequence: c.from.sequence,
+      toPlayer: c.to.controller as Player,
+      toSequence: c.to.sequence,
+      location: c.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
+    })),
+  };
+}
+
+function transformSelectIdleCmd(msg: any): ServerMessage {
+  return {
+    type: 'SELECT_IDLECMD', player: msg.player as Player,
+    summons: msg.summons.map(toCardInfo),
+    specialSummons: msg.special_summons.map(toCardInfo),
+    repositions: msg.pos_changes.map(toCardInfo),
+    setMonsters: msg.monster_sets.map(toCardInfo),
+    activations: msg.activates.map((c: any) => ({ ...toCardInfo(c), description: getOptionDesc(c.description) })),
+    setSpellTraps: msg.spell_sets.map(toCardInfo),
+    canBattlePhase: msg.to_bp, canEndPhase: msg.to_ep,
+  };
+}
+
+function transformSelectChain(msg: any): ServerMessage {
+  const timing = msg.hint_timing as number;
+  const timingLabel = systemStrings.get(TIMING_STRING_ID[timing] ?? 0) ?? '';
+  return {
+    type: 'SELECT_CHAIN', player: msg.player as Player,
+    cards: msg.selects.map((c: any) => toCardInfo(c)),
+    forced: msg.forced,
+    hintTiming: timing,
+    hintTimingLabel: timingLabel,
+  };
+}
+
+function transformSelectEffectYn(msg: any): ServerMessage {
+  const effectDesc = getOptionDesc(msg.description as bigint);
+  return {
+    type: 'SELECT_EFFECTYN', player: msg.player as Player,
+    cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
+    descriptionText: resolvedDescOrEmpty(effectDesc),
+  };
+}
+
+function transformSelectOption(msg: any): ServerMessage {
+  const rawOptions = msg.options.map(Number);
+  const descriptions = msg.options.map((o: any) => getOptionDesc(BigInt(o)));
+  dlog.debug('SELECT_OPTION', { raw: msg.options.map(String), decoded: rawOptions.map((o: number) => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF })), descriptions });
+  return {
+    type: 'SELECT_OPTION', player: msg.player as Player,
+    options: rawOptions, descriptions,
+  };
+}
+
+function transformSelectSum(msg: any): ServerMessage {
+  return {
+    type: 'SELECT_SUM', player: msg.player as Player,
+    mustSelect: msg.selects_must.map((c: any) => ({ ...toCardInfo(c), amount: c.amount })),
+    cards: msg.selects.map((c: any) => ({ ...toCardInfo(c), amount: c.amount })),
+    targetSum: msg.amount, minCards: msg.min, maxCards: msg.max, selectMax: msg.select_max,
+  };
+}
+
+function transformSelectUnselect(msg: any): ServerMessage {
+  dlog.debug('SELECT_UNSELECT_CARD', { select: msg.select_cards.length, unselect: msg.unselect_cards.length, canFinish: msg.can_finish });
+  return {
+    type: 'SELECT_UNSELECT_CARD', player: msg.player as Player,
+    cards: [...msg.select_cards, ...msg.unselect_cards].map(toCardInfo),
+    selectCount: msg.select_cards.length,
+    canFinish: msg.can_finish,
+  };
+}
+
+function transformHandRes(msg: any): ServerMessage {
+  // OCGCore RPS values: 1=scissors, 2=rock, 3=paper. Client format: 0=rock, 1=paper, 2=scissors.
+  const OCGCORE_TO_CLIENT: Record<number, number> = { 1: 2, 2: 0, 3: 1 };
+  const handRes = msg as unknown as { res1: number; res2: number; winner: number };
+  return {
+    type: 'RPS_RESULT',
+    player1Choice: OCGCORE_TO_CLIENT[handRes.res1] ?? handRes.res1,
+    player2Choice: OCGCORE_TO_CLIENT[handRes.res2] ?? handRes.res2,
+    winner: handRes.winner === 2 ? null : (handRes.winner as Player),
+  };
+}
+
 function transformMessage(msg: OcgMessage): ServerMessage | null {
   if (msg.type === OcgMessageType.MOVE) {
     const m = msg as any;
@@ -392,30 +584,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     case OcgMessageType.DRAW:
       return { type: 'MSG_DRAW', player: msg.player as Player, cards: msg.drawn.map(d => d.code) };
 
-    case OcgMessageType.MOVE: {
-      let reason = 0;
-      if (core && duel && msg.to.location as number !== 0) {
-        const reasonInfo = core.duelQuery(duel, {
-          flags: OcgQueryFlags.REASON as number,
-          controller: msg.to.controller,
-          location: msg.to.location as number,
-          sequence: msg.to.sequence,
-          overlaySequence: 0,
-        } as never);
-        reason = reasonInfo?.reason ?? 0;
-      }
-      return {
-        type: 'MSG_MOVE', cardCode: msg.card, cardName: getCardName(msg.card), player: msg.from.controller,
-        fromLocation: msg.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        fromSequence: msg.from.sequence,
-        fromPosition: msg.from.position as number as Position,
-        toLocation: msg.to.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        toSequence: msg.to.sequence,
-        toPosition: msg.to.position as number as Position,
-        isToken: isTokenCard(msg.card),
-        reason,
-      };
-    }
+    case OcgMessageType.MOVE:
+      return transformMove(msg);
 
     case OcgMessageType.DAMAGE:
       return { type: 'MSG_DAMAGE', player: msg.player as Player, amount: msg.amount };
@@ -450,37 +620,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       dlog.debug('MSG_CHAIN_NEGATED', { ocgType: OcgMessageType[msg.type], chainIndex: msg.chain_size - 1 });
       return { type: 'MSG_CHAIN_NEGATED', chainIndex: msg.chain_size - 1 };
 
-    case OcgMessageType.HINT: {
-      const hintType = msg.hint_type as number;
-      const value = Number(msg.hint);
-      let cardName = '';
-      let hintAction = '';
-      if (hintType === 5 || hintType === 8 || hintType === 10 || hintType === 13 || hintType === 15) {
-        // HINT_EFFECT / HINT_CODE / HINT_CARD: value is a card code
-        cardName = getCardName(value);
-      } else if (hintType === 1 || hintType === 2) {
-        // HINT_EVENT / HINT_MESSAGE: value is a system string ID
-        hintAction = systemStrings.get(value) ?? '';
-      } else if (hintType === 3 || hintType === 4) {
-        // HINT_SELECTMSG / HINT_OPSELECTED: value is a system string ID or a card code
-        const sysStr = systemStrings.get(value);
-        if (sysStr) {
-          hintAction = sysStr;
-        } else {
-          cardName = getCardName(value);
-        }
-      } else if (hintType === 6) {
-        // HINT_RACE: value is a race bitmask
-        hintAction = RACE_LABELS[value] ?? `race:0x${value.toString(16)}`;
-      } else if (hintType === 7) {
-        // HINT_ATTRIB: value is an attribute bitmask
-        hintAction = ATTRIB_LABELS[value] ?? `attr:0x${value.toString(16)}`;
-      } else if (hintType === 9) {
-        // HINT_NUMBER: value is a number
-        hintAction = String(value);
-      }
-      return { type: 'MSG_HINT', hintType, player: msg.player as Player, value, cardName, hintAction };
-    }
+    case OcgMessageType.HINT:
+      return transformHint(msg);
 
     case OcgMessageType.CONFIRM_DECKTOP:
       // Private reveal (excavate/peek/scry): only `player` may see the cardCodes;
@@ -523,14 +664,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return { type: 'MSG_SWAP', card1: toCardInfo(msg.card1), card2: toCardInfo(msg.card2) };
 
     case OcgMessageType.BECOME_TARGET:
-      return {
-        type: 'MSG_BECOME_TARGET',
-        cards: msg.cards.map(c => ({
-          player: c.controller as Player,
-          location: c.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-          sequence: c.sequence,
-        })),
-      };
+      return transformBecomeTarget(msg);
 
     case OcgMessageType.ATTACK:
       return {
@@ -541,19 +675,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         defenderSequence: msg.target?.sequence ?? null,
       };
 
-    case OcgMessageType.BATTLE: {
-      if (!msg.target) return null; // Direct attacks don't produce BATTLE
-      const defInDef = (msg.target.position as number) & 0xC; // FACEUP_DEFENSE | FACEDOWN_DEFENSE
-      return {
-        type: 'MSG_BATTLE',
-        attackerPlayer: msg.card.controller,
-        attackerSequence: msg.card.sequence,
-        attackerDamage: msg.card.attack,
-        defenderPlayer: msg.target.controller,
-        defenderSequence: msg.target.sequence,
-        defenderDamage: defInDef ? msg.target.defense : msg.target.attack,
-      };
-    }
+    case OcgMessageType.BATTLE:
+      return transformBattle(msg);
 
     case OcgMessageType.TOSS_COIN:
       return { type: 'MSG_TOSS_COIN', player: msg.player as Player, results: msg.results };
@@ -562,15 +685,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return { type: 'MSG_TOSS_DICE', player: msg.player as Player, results: msg.results };
 
     case OcgMessageType.EQUIP:
-      return {
-        type: 'MSG_EQUIP',
-        equipPlayer: msg.card.controller as Player,
-        equipLocation: msg.card.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        equipSequence: msg.card.sequence,
-        targetPlayer: msg.target.controller as Player,
-        targetLocation: msg.target.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        targetSequence: msg.target.sequence,
-      };
+      return transformEquip(msg);
 
     case OcgMessageType.ADD_COUNTER:
       return {
@@ -587,16 +702,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SHUFFLE_SET_CARD:
-      return {
-        type: 'MSG_SHUFFLE_SET_CARD',
-        cards: msg.cards.map(c => ({
-          fromPlayer: c.from.controller as Player,
-          fromSequence: c.from.sequence,
-          toPlayer: c.to.controller as Player,
-          toSequence: c.to.sequence,
-          location: c.from.location as number as (typeof LOCATION)[keyof typeof LOCATION],
-        })),
-      };
+      return transformShuffleSetCard(msg);
 
     case OcgMessageType.SWAP_GRAVE_DECK:
       return { type: 'MSG_SWAP_GRAVE_DECK', player: msg.player as Player };
@@ -606,16 +712,7 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
 
     // --- Prompt Messages ---
     case OcgMessageType.SELECT_IDLECMD:
-      return {
-        type: 'SELECT_IDLECMD', player: msg.player as Player,
-        summons: msg.summons.map(toCardInfo),
-        specialSummons: msg.special_summons.map(toCardInfo),
-        repositions: msg.pos_changes.map(toCardInfo),
-        setMonsters: msg.monster_sets.map(toCardInfo),
-        activations: msg.activates.map(c => ({ ...toCardInfo(c), description: getOptionDesc(c.description) })),
-        setSpellTraps: msg.spell_sets.map(toCardInfo),
-        canBattlePhase: msg.to_bp, canEndPhase: msg.to_ep,
-      };
+      return transformSelectIdleCmd(msg);
 
     case OcgMessageType.SELECT_BATTLECMD:
       return {
@@ -633,26 +730,11 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         cancelable: msg.can_cancel,
       };
 
-    case OcgMessageType.SELECT_CHAIN: {
-      const timing = msg.hint_timing as number;
-      const timingLabel = systemStrings.get(TIMING_STRING_ID[timing] ?? 0) ?? '';
-      return {
-        type: 'SELECT_CHAIN', player: msg.player as Player,
-        cards: msg.selects.map(c => toCardInfo(c)),
-        forced: msg.forced,
-        hintTiming: timing,
-        hintTimingLabel: timingLabel,
-      };
-    }
+    case OcgMessageType.SELECT_CHAIN:
+      return transformSelectChain(msg);
 
-    case OcgMessageType.SELECT_EFFECTYN: {
-      const effectDesc = getOptionDesc(msg.description as bigint);
-      return {
-        type: 'SELECT_EFFECTYN', player: msg.player as Player,
-        cardCode: msg.code, cardName: getCardName(msg.code), description: Number(msg.description),
-        descriptionText: resolvedDescOrEmpty(effectDesc),
-      };
-    }
+    case OcgMessageType.SELECT_EFFECTYN:
+      return transformSelectEffectYn(msg);
 
     case OcgMessageType.SELECT_YESNO: {
       const desc = Number(msg.description);
@@ -678,15 +760,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
         cardCode: msg.code, cardName: getCardName(msg.code), positions: decodePositions(msg.positions as number),
       };
 
-    case OcgMessageType.SELECT_OPTION: {
-      const rawOptions = msg.options.map(Number);
-      const descriptions = msg.options.map(o => getOptionDesc(BigInt(o)));
-      dlog.debug('SELECT_OPTION', { raw: msg.options.map(String), decoded: rawOptions.map(o => ({ cardCode: o >> 20, strIndex: o & 0xFFFFF })), descriptions });
-      return {
-        type: 'SELECT_OPTION', player: msg.player as Player,
-        options: rawOptions, descriptions,
-      };
-    }
+    case OcgMessageType.SELECT_OPTION:
+      return transformSelectOption(msg);
 
     case OcgMessageType.SELECT_TRIBUTE:
       return {
@@ -697,21 +772,10 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       };
 
     case OcgMessageType.SELECT_SUM:
-      return {
-        type: 'SELECT_SUM', player: msg.player as Player,
-        mustSelect: msg.selects_must.map(c => ({ ...toCardInfo(c), amount: c.amount })),
-        cards: msg.selects.map(c => ({ ...toCardInfo(c), amount: c.amount })),
-        targetSum: msg.amount, minCards: msg.min, maxCards: msg.max, selectMax: msg.select_max,
-      };
+      return transformSelectSum(msg);
 
     case OcgMessageType.SELECT_UNSELECT_CARD:
-      dlog.debug('SELECT_UNSELECT_CARD', { select: msg.select_cards.length, unselect: msg.unselect_cards.length, canFinish: msg.can_finish });
-      return {
-        type: 'SELECT_UNSELECT_CARD', player: msg.player as Player,
-        cards: [...msg.select_cards, ...msg.unselect_cards].map(toCardInfo),
-        selectCount: msg.select_cards.length,
-        canFinish: msg.can_finish,
-      };
+      return transformSelectUnselect(msg);
 
     case OcgMessageType.SELECT_COUNTER:
       return {
@@ -750,18 +814,8 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       if (skipRpsFlag) return null;
       return { type: 'RPS_CHOICE', player: msg.player as Player };
 
-    case OcgMessageType.HAND_RES: {
-      if (skipRpsFlag) return null;
-      // OCGCore RPS values: 1=scissors, 2=rock, 3=paper. Client format: 0=rock, 1=paper, 2=scissors.
-      const OCGCORE_TO_CLIENT: Record<number, number> = { 1: 2, 2: 0, 3: 1 };
-      const handRes = msg as unknown as { res1: number; res2: number; winner: number };
-      return {
-        type: 'RPS_RESULT',
-        player1Choice: OCGCORE_TO_CLIENT[handRes.res1] ?? handRes.res1,
-        player2Choice: OCGCORE_TO_CLIENT[handRes.res2] ?? handRes.res2,
-        winner: handRes.winner === 2 ? null : (handRes.winner as Player),
-      };
-    }
+    case OcgMessageType.HAND_RES:
+      return skipRpsFlag ? null : transformHandRes(msg);
 
     case OcgMessageType.RETRY:
       dlog.warn('OCGCore sent RETRY — previous response was invalid');
