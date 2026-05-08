@@ -212,57 +212,97 @@ export class BufferReplayBuilder {
    * Matching: confirm card is matched to the earliest unconsumed preceding
    * MOVE→HAND with the same (cardCode, player) AND the confirm card's
    * location === HAND. Unmatched cards stay as a reduced CONFIRM at the
-   * original CONFIRM position.
+   * original CONFIRM position (or, if multiple CONFIRMs share the same
+   * position, accumulated per-CONFIRM-event).
    *
-   * Consumed moves are tracked by reference so splice-induced index shifts
-   * don't invalidate matching state across multiple CONFIRM events.
+   * Implementation (O(n), M12 fix): two passes with no splice.
+   *   - Pass 1 builds a per-key FIFO of MOVE→HAND events from the buffer
+   *     and walks each CONFIRM in chronological order, popping from the
+   *     FIFO to assign single-card CONFIRMs to specific MOVEs (stored in
+   *     a Map<MoveMsg, ConfirmCardsMsg[]>) and accumulating unmatched
+   *     cards into a remainder per original CONFIRM index.
+   *   - Pass 2 emits the buffer in order, inlining the per-MOVE inserts
+   *     after each MOVE and the remainder CONFIRM at its original index.
+   *
+   * Replaces the prior O(n²) implementation that scanned `interleaved` for
+   * each card. Behavior is preserved: same earliest-unconsumed match rule,
+   * same remainder placement, same single-card output shape. Validated by
+   * the spec invariants in buffer-replay-builder.spec.ts (24 tests).
    *
    * Public for unit testing — the orchestrator does NOT call this directly,
    * `build()` invokes it internally.
    */
   interleaveConfirmsWithMoves(buffer: readonly GameEvent[]): GameEvent[] {
-    const interleaved: GameEvent[] = [];
-    const consumedMoves = new WeakSet<MoveMsg>();
-    for (const e of buffer) {
-      if (e.type !== 'MSG_CONFIRM_CARDS') { interleaved.push(e); continue; }
+    const matchKey = (player: number, cardCode: number) => `${player}:${cardCode}`;
+
+    // Pass 1: assign matches.
+    const fifoByKey = new Map<string, MoveMsg[]>();
+    const insertedAfter = new Map<MoveMsg, ConfirmCardsMsg[]>();
+    // Per original-buffer-index → reduced CONFIRM (or null when no remainder).
+    const remainderAtIndex = new Map<number, ConfirmCardsMsg>();
+
+    for (let i = 0; i < buffer.length; i++) {
+      const e = buffer[i];
+      if (e.type === 'MSG_MOVE') {
+        const mm = e as MoveMsg;
+        if (mm.toLocation === LOCATION.HAND) {
+          const key = matchKey(mm.player, mm.cardCode);
+          const list = fifoByKey.get(key);
+          if (list) list.push(mm);
+          else fifoByKey.set(key, [mm]);
+        }
+        continue;
+      }
+      if (e.type !== 'MSG_CONFIRM_CARDS') continue;
+
       const confirmMsg = e as ConfirmCardsMsg;
       const remaining: CardInfo[] = [];
-      const matches: Array<{ card: CardInfo; moveIdx: number }> = [];
       for (const card of confirmMsg.cards) {
-        let matchIdx = -1;
-        for (let i = 0; i < interleaved.length; i++) {
-          const prev = interleaved[i];
-          if (prev.type !== 'MSG_MOVE') continue;
-          const mm = prev as MoveMsg;
-          if (consumedMoves.has(mm)) continue;
-          if (mm.toLocation === LOCATION.HAND
-            && mm.cardCode === card.cardCode
-            && mm.player === card.player
-            && card.location === LOCATION.HAND) {
-            matchIdx = i;
-            break;
-          }
-        }
-        if (matchIdx >= 0) {
-          consumedMoves.add(interleaved[matchIdx] as MoveMsg);
-          matches.push({ card, moveIdx: matchIdx });
-        } else {
+        if (card.location !== LOCATION.HAND) {
           remaining.push(card);
+          continue;
         }
-      }
-      // Splice back-to-front so earlier indices stay valid during insertion.
-      matches.sort((a, b) => b.moveIdx - a.moveIdx);
-      for (const { card, moveIdx } of matches) {
-        interleaved.splice(moveIdx + 1, 0, {
+        const key = matchKey(card.player, card.cardCode);
+        const list = fifoByKey.get(key);
+        const matchedMove = list && list.length > 0 ? list.shift()! : null;
+        if (!matchedMove) {
+          remaining.push(card);
+          continue;
+        }
+        const inserts = insertedAfter.get(matchedMove);
+        const single: ConfirmCardsMsg = {
           type: 'MSG_CONFIRM_CARDS',
           player: confirmMsg.player,
           cards: [card],
-        } as ConfirmCardsMsg);
+        } as ConfirmCardsMsg;
+        if (inserts) inserts.push(single);
+        else insertedAfter.set(matchedMove, [single]);
       }
       if (remaining.length > 0) {
-        interleaved.push({ ...confirmMsg, cards: remaining } as ConfirmCardsMsg);
+        remainderAtIndex.set(i, { ...confirmMsg, cards: remaining } as ConfirmCardsMsg);
       }
     }
-    return interleaved;
+
+    // Pass 2: emit in order. Original CONFIRM positions are skipped — their
+    // remainder (if any) is appended at the end to preserve the prior
+    // implementation's behavior (which used `interleaved.push(remaining)`
+    // after walking the buffer).
+    const out: GameEvent[] = [];
+    const remainderAppendOrder: ConfirmCardsMsg[] = [];
+    for (let i = 0; i < buffer.length; i++) {
+      const e = buffer[i];
+      if (e.type === 'MSG_CONFIRM_CARDS') {
+        const r = remainderAtIndex.get(i);
+        if (r) remainderAppendOrder.push(r);
+        continue;
+      }
+      out.push(e);
+      if (e.type === 'MSG_MOVE') {
+        const inserts = insertedAfter.get(e as MoveMsg);
+        if (inserts) for (const c of inserts) out.push(c);
+      }
+    }
+    for (const r of remainderAppendOrder) out.push(r);
+    return out;
   }
 }
