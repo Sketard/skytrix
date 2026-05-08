@@ -289,6 +289,11 @@ export interface ConfirmCardsMsg {
   type: 'MSG_CONFIRM_CARDS';
   player: Player;
   cards: CardInfo[];
+  /** When true, the reveal is private (CONFIRM_DECKTOP — peek/scry/excavate)
+   *  and only `player` sees the cardCodes. The filter masks cards (cardCode=0,
+   *  name='') for the opponent. Absent or false = public reveal (CONFIRM_CARDS),
+   *  passthrough to both players. */
+  private?: boolean;
   boardStateAfter?: BoardStatePayload;
 }
 

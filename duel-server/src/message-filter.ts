@@ -68,6 +68,9 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
       return message;
 
     case 'MSG_CONFIRM_CARDS':
+      if (!omniscient && message.private && forPlayer !== message.player) {
+        return { ...message, cards: message.cards.map(c => ({ ...c, cardCode: 0, name: '' })) };
+      }
       return message;
 
     // --- SELECT_* (20 types) + RPS_CHOICE: routed to deciding player only (omniscient: never drop) ---

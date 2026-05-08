@@ -361,7 +361,11 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
     }
 
     case OcgMessageType.CONFIRM_DECKTOP:
+      // Private reveal (excavate/peek/scry): only `player` may see the cardCodes;
+      // message-filter masks cards for the opponent.
+      return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo), private: true };
     case OcgMessageType.CONFIRM_CARDS:
+      // Public reveal: passthrough to both players unchanged.
       return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo) };
 
     case OcgMessageType.SHUFFLE_HAND:

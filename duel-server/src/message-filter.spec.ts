@@ -383,10 +383,45 @@ describe('filterMessage', () => {
   // === MSG_CONFIRM_CARDS ===
 
   describe('MSG_CONFIRM_CARDS', () => {
-    it('should pass through to both players', () => {
+    it('public reveal: passes through to both players', () => {
       const msg = { type: 'MSG_CONFIRM_CARDS', player: 0, cards: [] } as any;
       expect(filterMessage(msg, 0)).toBe(msg);
       expect(filterMessage(msg, 1)).toBe(msg);
+    });
+
+    it('private reveal: owner sees cardCodes, opponent sees masked cards', () => {
+      const msg = {
+        type: 'MSG_CONFIRM_CARDS',
+        player: 0,
+        private: true,
+        cards: [
+          { cardCode: 12345, name: 'Foo', player: 0, location: LOCATION.DECK, sequence: 0 },
+          { cardCode: 67890, name: 'Bar', player: 0, location: LOCATION.DECK, sequence: 1 },
+        ],
+      } as any;
+      // Owner: passthrough (same reference)
+      expect(filterMessage(msg, 0)).toBe(msg);
+      // Opponent: cards masked (cardCode=0, name='')
+      const opp = filterMessage(msg, 1) as any;
+      expect(opp).not.toBe(msg);
+      expect(opp.cards[0].cardCode).toBe(0);
+      expect(opp.cards[0].name).toBe('');
+      expect(opp.cards[1].cardCode).toBe(0);
+      expect(opp.cards[1].name).toBe('');
+      // Other fields preserved
+      expect(opp.player).toBe(0);
+      expect(opp.private).toBe(true);
+      expect(opp.cards[0].sequence).toBe(0);
+    });
+
+    it('private reveal in omniscient mode: passes through unchanged', () => {
+      const msg = {
+        type: 'MSG_CONFIRM_CARDS',
+        player: 0,
+        private: true,
+        cards: [{ cardCode: 12345, name: 'Foo', player: 0, location: LOCATION.DECK, sequence: 0 }],
+      } as any;
+      expect(filterMessage(msg, 1, true)).toBe(msg);
     });
   });
 });
