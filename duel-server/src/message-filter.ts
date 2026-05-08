@@ -9,6 +9,29 @@ import * as logger from './logger.js';
 const PRIVATE_LOCATIONS: Set<number> = new Set([LOCATION.DECK, LOCATION.HAND, LOCATION.EXTRA]);
 
 // =============================================================================
+// MSG_HINT info-leak whitelist (audit finding M6)
+// =============================================================================
+
+/**
+ * Public hintTypes — payload is a system string ID, bitmask label, or number.
+ * Never carries a card code, safe to broadcast to both players.
+ *
+ * See `duel-worker.ts:transformMessage HINT case` for the produced shape:
+ * - 1 = HINT_EVENT     (sysStr ID → hintAction)
+ * - 2 = HINT_MESSAGE   (sysStr ID → hintAction)
+ * - 6 = HINT_RACE      (race bitmask → label)
+ * - 7 = HINT_ATTRIB    (attr bitmask → label)
+ * - 9 = HINT_NUMBER    (raw number → string)
+ *
+ * Every other hintType (3, 4, 5, 8, 10, 13, 15 + any future/unknown value)
+ * may carry a card code (cardName populated) and is routed to the deciding
+ * player only. Default-DROP for unknown values mirrors the unknown-message
+ * fail-safe at the bottom of `filterMessageInner` — same policy: prefer
+ * missing display over an info leak.
+ */
+const SAFE_PUBLIC_HINT_TYPES: ReadonlySet<number> = new Set([1, 2, 6, 7, 9]);
+
+// =============================================================================
 // Whitelist Message Filter — ADR-4: Default DROP policy
 // =============================================================================
 
@@ -17,8 +40,8 @@ const PRIVATE_LOCATIONS: Set<number> = new Set([LOCATION.DECK, LOCATION.HAND, LO
  * or null if the message should not be sent to this player.
  * Pure function — no side effects except logger.error for unknown types.
  *
- * @param omniscient When true, skips routing drops (SELECT_*, MSG_HINT type 10,
- *   MSG_CONFIRM_CARDS are returned instead of null) and field sanitization
+ * @param omniscient When true, skips routing drops (SELECT_*, non-public
+ *   MSG_HINT, MSG_CONFIRM_CARDS are returned instead of null) and field sanitization
  *   (card codes, hand contents, face-down stats preserved). Perspective
  *   transformations (RPS_RESULT swap, BOARD_STATE player remapping) still apply.
  *   Default DROP for unknown message types is NOT bypassed.
@@ -63,10 +86,13 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     // --- Routed to intended player only (omniscient: never drop) ---
 
     case 'MSG_HINT':
-      // hintType 10 = HINT_EFFECT: leaks card codes via effect activation hints
-      if (!omniscient && message.hintType === 10 && forPlayer !== message.player) return null;
-      // hintType 3 = HINT_SELECTMSG: card name is fine for both players
-      return message;
+      // Whitelist (M6): public hintTypes broadcast to both players; everything
+      // else (card-code-carrying or unknown) is routed to the deciding player
+      // only. Replay precompute keeps full visibility via omniscient.
+      if (omniscient) return message;
+      if (forPlayer === message.player) return message;
+      if (SAFE_PUBLIC_HINT_TYPES.has(message.hintType)) return message;
+      return null;
 
     case 'MSG_CONFIRM_CARDS':
       if (!omniscient && message.private && forPlayer !== message.player) {

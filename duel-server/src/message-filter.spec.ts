@@ -224,21 +224,47 @@ describe('filterMessage', () => {
   // === MSG_HINT ===
 
   describe('MSG_HINT', () => {
-    it('should drop hintType 10 (HINT_EFFECT) from opponent', () => {
-      const msg = { type: 'MSG_HINT', hintType: 10, player: 0, value: 1, cardName: 'X' } as any;
+    // Card-code-carrying hintTypes — must route to deciding player only.
+    // 5=HINT_EFFECT, 8=HINT_CODE, 10=HINT_EFFECT_alt, 13=HINT_CARD, 15=HINT_CARD.
+    for (const hintType of [5, 8, 10, 13, 15]) {
+      it(`should drop hintType ${hintType} (card-code-carrying) from opponent`, () => {
+        const msg = { type: 'MSG_HINT', hintType, player: 0, value: 1, cardName: 'X' } as any;
+        expect(filterMessage(msg, 0)).toBe(msg);
+        expect(filterMessage(msg, 1)).toBeNull();
+      });
+    }
+
+    // Mixed-payload hintTypes (sysStr OR card code in fallback path) — drop
+    // adverse by default (M6 whitelist policy: filter cannot distinguish at
+    // runtime, fail-safe to routing).
+    for (const hintType of [3, 4]) {
+      it(`should drop hintType ${hintType} (sysStr-or-cardCode) from opponent (M6)`, () => {
+        const msg = { type: 'MSG_HINT', hintType, player: 0, value: 1, cardName: 'X' } as any;
+        expect(filterMessage(msg, 0)).toBe(msg);
+        expect(filterMessage(msg, 1)).toBeNull();
+      });
+    }
+
+    // Public hintTypes — broadcast safe (no card code in payload).
+    for (const hintType of [1, 2, 6, 7, 9]) {
+      it(`should pass hintType ${hintType} (public) to both players`, () => {
+        const msg = { type: 'MSG_HINT', hintType, player: 0, value: 1, cardName: '', hintAction: 'a' } as any;
+        expect(filterMessage(msg, 0)).toBe(msg);
+        expect(filterMessage(msg, 1)).toBe(msg);
+      });
+    }
+
+    it('should drop unknown hintType from opponent (default-DROP fail-safe)', () => {
+      const msg = { type: 'MSG_HINT', hintType: 99, player: 0, value: 1, cardName: '' } as any;
       expect(filterMessage(msg, 0)).toBe(msg);
       expect(filterMessage(msg, 1)).toBeNull();
     });
 
-    it('should pass hintType 3 (HINT_SELECTMSG) to both players', () => {
-      const msg = { type: 'MSG_HINT', hintType: 3, player: 0, value: 1, cardName: 'X' } as any;
-      expect(filterMessage(msg, 0)).toBe(msg);
-      expect(filterMessage(msg, 1)).toBe(msg);
-    });
-
-    it('should not drop hintType 10 in omniscient mode', () => {
-      const msg = { type: 'MSG_HINT', hintType: 10, player: 0, value: 1, cardName: 'X' } as any;
-      expect(filterMessage(msg, 1, true)).toBe(msg);
+    it('should never drop in omniscient mode regardless of hintType', () => {
+      for (const hintType of [3, 4, 5, 8, 10, 13, 15, 99]) {
+        const msg = { type: 'MSG_HINT', hintType, player: 0, value: 1, cardName: 'X' } as any;
+        expect(filterMessage(msg, 1, true)).toBe(msg);
+      }
     });
   });
 
