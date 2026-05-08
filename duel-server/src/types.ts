@@ -117,7 +117,14 @@ export interface ForkResumeMessage {
   type: 'FORK_RESUME';
 }
 
-export type MainToWorkerMessage = InitDuelMessage | PlayerResponseMessage | EmitReplayDataMessage | InitReplayMessage | InitForkMessage | ForkResumeMessage;
+/** P0-3bis.3 — main thread asks the worker to roll back to its
+ *  most recent IDLECMD/BATTLECMD snapshot and re-emit the original prompt. */
+export interface CancelPromptSequenceMessage {
+  type: 'CANCEL_PROMPT_SEQUENCE';
+  playerIndex: 0 | 1;
+}
+
+export type MainToWorkerMessage = InitDuelMessage | PlayerResponseMessage | EmitReplayDataMessage | InitReplayMessage | InitForkMessage | ForkResumeMessage | CancelPromptSequenceMessage;
 
 // =============================================================================
 // Worker -> Main Thread Messages
@@ -206,11 +213,21 @@ export interface WorkerForkError {
   message: string;
 }
 
+/** P0-3bis.3 — worker tells the main thread "rollback applied; re-send the
+ *  cached IDLECMD/BATTLECMD prompt to player N WITHOUT counting it as
+ *  an invalid response (this is a cancel, not a RETRY)". */
+export interface WorkerCancelDoneMessage {
+  type: 'WORKER_CANCEL_DONE';
+  duelId: string;
+  playerIndex: 0 | 1;
+}
+
 export type WorkerToMainMessage =
   | WorkerDuelCreated
   | WorkerMessage
   | WorkerError
   | WorkerRetry
+  | WorkerCancelDoneMessage
   | WorkerReplayData
   | WorkerReplayBoardStates
   | WorkerReplayComplete

@@ -445,7 +445,21 @@ export class DuelConnection {
         break;
 
       case 'STATE_SYNC':
+        // STATE_SYNC fires on TWO paths: reconnection re-sync, AND the
+        // server-side cancel rollback (CANCEL_PROMPT_SEQUENCE). Both
+        // require a clean slate.
+        //
+        // For the FULL inventory of state slots reset on cancel (worker
+        // + server + client), see
+        // `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+        // READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection
+        // that holds prompt-flow state.
         this._lastConfirmedCards = [];
+        // P0-3bis follow-up — reset the selection accumulator and the
+        // hint-consumed flag too.
+        this._lastSelectedCards = [];
+        this._lastSelectedPromptType = null;
+        this._hintCardConsumed = false;
         this._rematchStarting.set(false);
         this.rbs.assertNoLocks('onStateSync');
         this.rbs.updateLogical(message.data);

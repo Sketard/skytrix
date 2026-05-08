@@ -19,8 +19,8 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CdkPortalOutlet, ComponentPortal } from '@angular/cdk/portal';
-import { CdkTrapFocus } from '@angular/cdk/a11y';
-import { TranslatePipe } from '@ngx-translate/core';
+import { CdkTrapFocus, LiveAnnouncer } from '@angular/cdk/a11y';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DuelWebSocketService, ResponseData } from '../../duel-web-socket.service';
 import {
   AUTO_SELECT_PROMPT_TYPES,
@@ -58,6 +58,8 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly envInjector = inject(EnvironmentInjector);
   private readonly injector = inject(Injector);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly translate = inject(TranslateService);
 
   @ViewChild(CdkPortalOutlet) portalOutlet!: CdkPortalOutlet;
 
@@ -143,14 +145,45 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Desktop: right-click = cancel/no
+  /**
+   * Desktop: right-click = cancel.
+   *
+   * Resolution order (P0-3bis.3 / Sprint cleanup 2026-05-08):
+   *  1. If the active prompt has a local Cancel button (`.btn--secondary`,
+   *     ex: SELECT_YESNO "No", SELECT_CARD "Cancel" when `cancelable=true`,
+   *     SELECT_CHAIN "Don't chain" when `!forced`) → click it. This is
+   *     the path ocgcore expects — the engine receives a normal "no
+   *     selection" response and continues naturally.
+   *
+   *  2. Otherwise (SELECT_POSITION, SELECT_TRIBUTE forced, SELECT_CARD
+   *     `cancelable=false`, etc. — prompts that have no client-side
+   *     escape hatch) → fall back to the server-side rollback via
+   *     `CANCEL_PROMPT_SEQUENCE`. The worker rewinds to the most recent
+   *     IDLECMD/BATTLECMD snapshot and re-emits the original prompt.
+   *
+   * Replay (`readOnly`) and closed-dialog states are no-op.
+   *
+   * SELECT_PLACE / SELECT_DISFIELD are handled by `prompt-zone-highlight`,
+   * not this dialog (they live on the board overlay).
+   */
   @HostListener('document:contextmenu', ['$event'])
   handleContextMenu(event: MouseEvent): void {
     if (this.readOnly()) return;
     if (this.dialogState() !== 'open') return;
     event.preventDefault();
-    const cancelBtn = this.elementRef.nativeElement.querySelector('.btn--secondary') as HTMLElement;
-    cancelBtn?.click();
+
+    const cancelBtn = this.elementRef.nativeElement.querySelector('.btn--secondary') as HTMLElement | null;
+    if (cancelBtn) {
+      cancelBtn.click();
+      return;
+    }
+
+    // No local Cancel — this is a forced/non-cancelable prompt. Fall back
+    // to the server-side rollback. The worker will re-emit the prior
+    // IDLECMD/BATTLECMD prompt (or the rate-limit / phase-guard server
+    // path will silently reject if not eligible).
+    this.wsService.sendCancelPromptSequence();
+    this.liveAnnouncer.announce(this.translate.instant('duel.a11y.selectionCancelled'), 'polite');
   }
 
   toggleCollapse(): void {

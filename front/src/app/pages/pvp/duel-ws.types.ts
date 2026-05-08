@@ -842,6 +842,26 @@ export interface AnimationsDoneMsg {
   type: 'ANIMATIONS_DONE';
 }
 
+/**
+ * P0-3bis.3 — Cancel the in-flight multi-step prompt sequence and roll
+ * back to the most recent SELECT_IDLECMD/SELECT_BATTLECMD state.
+ *
+ * Sent by the client when the player right-clicks on a continuation
+ * prompt (SELECT_PLACE / SELECT_DISFIELD / SELECT_POSITION) that
+ * followed an IDLECMD/BATTLECMD response. The server forwards to the
+ * worker; the worker restores its WASM snapshot + non-WASM state slots
+ * and re-emits the original IDLECMD/BATTLECMD prompt.
+ *
+ * No-op if no rollback target is held (defensive — the client should
+ * not have sent it).
+ *
+ * The player is implicit (the connection's authenticated playerIndex);
+ * no payload field is needed.
+ */
+export interface CancelPromptSequenceMsg {
+  type: 'CANCEL_PROMPT_SEQUENCE';
+}
+
 export interface InactivityWarningMsg {
   type: 'INACTIVITY_WARNING';
   remainingSec: number;
@@ -1219,6 +1239,7 @@ export type ClientMessage =
   | RequestStateSyncMsg
   | ActivityPingMsg
   | AnimationsDoneMsg
+  | CancelPromptSequenceMsg
   // Replay messages (4)
   | ReplayLoadMsg
   | ReplayForkMsg

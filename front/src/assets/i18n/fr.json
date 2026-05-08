@@ -253,7 +253,8 @@
       "opponentTurn": "Tour de l'adversaire",
       "connectionRestored": "Connexion rétablie",
       "chainResolved": "Chaîne résolue",
-      "opponentPhase": "Adversaire — {{phase}}"
+      "opponentPhase": "Adversaire — {{phase}}",
+      "selectionCancelled": "Sélection annulée — retour au menu d'action"
     },
     "phase": {
       "turn": "Tour {{n}}",

@@ -93,6 +93,16 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     this._activeConnection().sendSurrender();
   }
 
+  /**
+   * P0-3bis.3 — Cancel the in-flight multi-step prompt sequence and
+   * return to the previous SELECT_IDLECMD/SELECT_BATTLECMD prompt.
+   * No-op for replay (the active connection is the live PVP one
+   * during PVP duels; replay never triggers this path).
+   */
+  sendCancelPromptSequence(): void {
+    this._activeConnection().sendCancelPromptSequence();
+  }
+
   sendRequestStateSync(): void {
     this._activeConnection().sendRequestStateSync();
   }
