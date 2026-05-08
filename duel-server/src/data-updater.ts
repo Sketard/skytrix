@@ -2,8 +2,10 @@ import { writeFileSync, readFileSync, mkdirSync, existsSync, rmSync, renameSync 
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import * as logger from './logger.js';
+import Database from 'better-sqlite3';
 
 const CARDS_CDB_URL = 'https://raw.githubusercontent.com/ProjectIgnis/BabelCDB/master/cards.cdb';
+const BABEL_CDB_API_URL = 'https://api.github.com/repos/ProjectIgnis/BabelCDB/contents/';
 const STRINGS_CONF_URL = 'https://raw.githubusercontent.com/ProjectIgnis/Distribution/master/config/strings.conf';
 const SCRIPTS_REPO = 'https://github.com/ProjectIgnis/CardScripts.git';
 const SCRIPTS_DIR_NAME = 'scripts_full';
@@ -15,6 +17,7 @@ interface UpdateResult {
   scriptsUpdated: boolean;
   stringsUpdated: boolean;
   cardsSize?: number;
+  extraCdbsMerged?: number;
   scriptsMethod?: 'pull' | 'clone';
 }
 
@@ -102,6 +105,70 @@ function updateScripts(dataDir: string): { updated: boolean; method: 'pull' | 'c
   return { updated: true, method: 'clone' };
 }
 
+async function mergeReleaseCdbs(dataDir: string, mainCdbPath: string): Promise<number> {
+  let res: Response;
+  try {
+    res = await fetch(BABEL_CDB_API_URL, { headers: { Accept: 'application/vnd.github.v3+json' } });
+  } catch (err) {
+    logger.warn('[UpdateData] Cannot reach GitHub API — skipping extra CDBs', { err: err instanceof Error ? err.message : String(err) });
+    return 0;
+  }
+
+  if (!res.ok) {
+    logger.warn(`[UpdateData] GitHub API returned HTTP ${res.status} — skipping extra CDBs`);
+    return 0;
+  }
+
+  const files = await res.json() as Array<{ name: string; download_url: string }>;
+  const EXCLUDED_CDBS = new Set([
+    'cards.cdb',
+    'cards-rush.cdb',
+    'cards-skills.cdb',
+    'cards-skills-unofficial.cdb',
+    'cards-unofficial.cdb',
+    'goat-entries.cdb',
+    'prerelease-cards-rush.cdb',
+  ]);
+  const releaseCdbs = files.filter(f => f.name.endsWith('.cdb') && !EXCLUDED_CDBS.has(f.name));
+
+  if (releaseCdbs.length === 0) {
+    logger.log('[UpdateData] No release-*.cdb files found in BabelCDB');
+    return 0;
+  }
+
+  logger.log(`[UpdateData] Merging ${releaseCdbs.length} release CDB(s): ${releaseCdbs.map(f => f.name).join(', ')}`);
+
+  let totalMerged = 0;
+  const db = new Database(mainCdbPath);
+  try {
+    for (const file of releaseCdbs) {
+      const tmpPath = join(dataDir, `${file.name}.tmp`);
+      try {
+        const cdbRes = await fetch(file.download_url);
+        if (!cdbRes.ok) {
+          logger.warn(`[UpdateData] Failed to download ${file.name}: HTTP ${cdbRes.status}`);
+          continue;
+        }
+        writeFileSync(tmpPath, Buffer.from(await cdbRes.arrayBuffer()));
+        // Escape single quotes in path for SQLite ATTACH
+        const safePath = tmpPath.replace(/\\/g, '/').replace(/'/g, "''");
+        db.exec(`ATTACH '${safePath}' AS extra`);
+        const { changes } = db.prepare('INSERT OR IGNORE INTO datas SELECT * FROM extra.datas').run();
+        db.prepare('INSERT OR IGNORE INTO texts SELECT * FROM extra.texts').run();
+        db.exec('DETACH extra');
+        logger.log(`[UpdateData] ${file.name}: ${changes} new card(s) merged`);
+        totalMerged += changes;
+      } finally {
+        if (existsSync(tmpPath)) rmSync(tmpPath, { force: true });
+      }
+    }
+  } finally {
+    db.close();
+  }
+
+  return totalMerged;
+}
+
 async function downloadStringsConf(dataDir: string): Promise<{ updated: boolean }> {
   const targetPath = join(dataDir, 'strings.conf');
 
@@ -128,6 +195,7 @@ export async function updateData(dataDir: string): Promise<UpdateResult> {
   }
 
   const cardsResult = await downloadCardsCdb(dataDir);
+  const extraCdbsMerged = await mergeReleaseCdbs(dataDir, join(dataDir, 'cards.cdb'));
   const stringsResult = await downloadStringsConf(dataDir);
   const scriptsResult = updateScripts(dataDir);
 
@@ -138,6 +206,7 @@ export async function updateData(dataDir: string): Promise<UpdateResult> {
     scriptsUpdated: scriptsResult.updated,
     stringsUpdated: stringsResult.updated,
     cardsSize: cardsResult.size,
+    extraCdbsMerged,
     scriptsMethod: scriptsResult.method,
   };
 }

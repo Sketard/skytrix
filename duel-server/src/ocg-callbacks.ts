@@ -70,10 +70,11 @@ export function createScriptReader(scripts: ScriptDB): (name: string) => string 
     const startup = scripts.startupScripts.get(name);
     if (startup !== undefined) return startup;
 
-    // Search on-demand: scripts/{name}, scripts/official/{name}
+    // Search on-demand: scripts/{name}, scripts/official/{name}, scripts/pre-release/{name}
     const locations = [
       join(scripts.basePath, name),
       join(scripts.basePath, 'official', name),
+      join(scripts.basePath, 'pre-release', name),
     ];
 
     for (const path of locations) {
