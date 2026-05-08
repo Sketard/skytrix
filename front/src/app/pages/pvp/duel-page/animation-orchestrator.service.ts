@@ -88,6 +88,12 @@ export class AnimationOrchestratorService {
   private _pollCount = 0;
   /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
   private _isProcessing = false;
+  /** Detects parallel re-entry into _processAnimationQueueInner (audit finding C4).
+   *  Always 0 or 1 in normal operation. >1 means a second async loop started before
+   *  the first finished — would dequeue events out of order. duelAssert fires in dev,
+   *  console.error in prod. See PVP-REPLAY-DIVERGENCES.md §2 for the design rationale
+   *  of the _isProcessing finalize block (lines ~648-656). */
+  private _innerLoopDepth = 0;
   /** Set while inline replayBuffer is dispatching buffered events, so processEvent skips re-buffering. */
   private _isReplayingBuffer = false;
   /** Active await-signal effect (cleaned up on destroy/resetForSwitch). */
@@ -566,6 +572,15 @@ export class AnimationOrchestratorService {
   }
 
   private async _processAnimationQueueInner(): Promise<void> {
+    this._innerLoopDepth++;
+    duelAssert(
+      this._innerLoopDepth <= 1,
+      '_processAnimationQueueInner',
+      `Parallel re-entry detected (depth=${this._innerLoopDepth}). The _isProcessing ` +
+      `finalize block (lines ~648-656) opened a window where a second async loop ` +
+      `started before the first finished (audit finding C4).`,
+    );
+    try {
     while (this._isAnimating()) {
       if (this.chainManager.isWaitingForOverlay || this.drawManager.hasDrawsInFlight) return;
       const queue = this.dataSource.animationQueue();
@@ -755,6 +770,9 @@ export class AnimationOrchestratorService {
       this.lpTracker.commitPendingLp();
       this.animatingZone.set(null);
       this.lpTracker.animatingLpPlayer.set(null);
+    }
+    } finally {
+      this._innerLoopDepth--;
     }
   }
 
