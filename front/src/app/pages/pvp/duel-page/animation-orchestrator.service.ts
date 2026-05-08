@@ -156,7 +156,7 @@ export class AnimationOrchestratorService {
 
   constructor() {
     // Wire CardTravelService for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
-    this.rbs.cardTravelService = this.cardTravelService;
+    this.rbs.attachCardTravelService(this.cardTravelService);
     // Scale RBS lock safety timeouts with playback speed so slow replay
     // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
     // 50% safety margin from DuelContext.safetyTimeout().

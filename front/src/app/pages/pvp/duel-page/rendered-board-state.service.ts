@@ -14,8 +14,19 @@ export interface ZoneLock {
 @Injectable()
 export class RenderedBoardStateService {
   logger?: DuelLogger;
-  /** Optional — set by orchestrator for [LOCK-ASSERT] runtime assertion in dev mode. */
-  cardTravelService?: CardTravelService;
+
+  /**
+   * Optional in-flight-travel observer used by `commitUnlocked` to assert in
+   * dev mode that no zone has active travels without a lock. Replay adapter
+   * runs without CardTravelService — the assertion is silently skipped there.
+   * Wired via {@link attachCardTravelService} (audit L22 — was a public
+   * mutable field, the method makes the contract explicit).
+   */
+  private _cardTravelService?: CardTravelService;
+
+  attachCardTravelService(svc: CardTravelService): void {
+    this._cardTravelService = svc;
+  }
   /**
    * Returns the current lock safety-timeout (ms). Orchestrator overrides this
    * with `ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS)` so the timeout scales
@@ -229,8 +240,8 @@ export class RenderedBoardStateService {
   // Used by the per-event queue loop so in-flight travel locks survive.
 
   commitUnlocked(): void {
-    if (this.cardTravelService) {
-      for (const [zoneKey, travels] of this.cardTravelService.inFlightByZone()) {
+    if (this._cardTravelService) {
+      for (const [zoneKey, travels] of this._cardTravelService.inFlightByZone()) {
         if (travels.length > 0 && !this._locks.has(zoneKey)) {
           duelAssert(false, 'commitUnlocked',
             `Zone ${zoneKey} has ${travels.length} in-flight travels but is NOT locked — handler likely missed a synchronous lockZone() before await`);
