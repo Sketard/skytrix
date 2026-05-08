@@ -15,7 +15,7 @@ export class DuelPromptEffectsService {
   private inactivityDialogRef: MatDialogRef<unknown> | null = null;
 
   initEffects(config: { activationMode: Signal<ActivationMode> }): void {
-    // [H4 fix] Activation toggle auto-respond effect (off + auto modes)
+    // Activation toggle auto-respond effect (off + auto modes).
     effect(() => {
       const mode = config.activationMode();
       const prompt = this.wsService.pendingPrompt();

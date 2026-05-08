@@ -20,7 +20,7 @@ export class PvpCardInspectorWrapperComponent {
   readonly dismissed = output<void>();
 
   readonly isCompact = signal(false);
-  // [M2 fix] Separate signal for user-initiated re-expand while prompt is active
+  // Separate signal for user-initiated re-expand while prompt is active.
   readonly forceExpanded = signal(false);
   private mql: MediaQueryList | null = null;
 

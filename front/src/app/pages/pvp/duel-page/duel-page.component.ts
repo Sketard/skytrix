@@ -298,7 +298,6 @@ export class DuelPageComponent implements OnInit {
     return state === 'requested' || state === 'opponent-left' || state === 'expired';
   });
 
-  // [H1 fix] Track prompt sheet expanded state for mini-toolbar interaction
   readonly promptSheetExpanded = signal(false);
 
   readonly preTargetZoneKeys = signal<ReadonlySet<string>>(new Set());
@@ -317,7 +316,7 @@ export class DuelPageComponent implements OnInit {
     openId: number;
   } | null>(null);
 
-  // [H2 fix] Actionable card codes for the currently open zone browser
+  // Actionable card codes for the currently open zone browser
   readonly zoneBrowserActionableCodes = computed((): Set<number> => {
     const zb = this.zoneBrowserState();
     const prompt = this.actionablePrompt();
@@ -707,7 +706,6 @@ export class DuelPageComponent implements OnInit {
     this.zoneBrowserState.set(null);
   }
 
-  // [H3 fix] Handle actionable card selection from zone browser
   onZoneBrowserAction(event: { cardCode: number; sequence: number; element: HTMLElement }): void {
     const prompt = this.actionablePrompt();
     const zb = this.zoneBrowserState();

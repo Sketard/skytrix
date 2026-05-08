@@ -54,7 +54,7 @@ export class CardActionMenuService {
     this.onCloseHook = hook;
   }
 
-  // [L3 fix] Use visualViewport for mobile-safe bounds checking
+  // Use visualViewport for mobile-safe bounds checking (handles on-screen keyboard).
   open(element: HTMLElement, actions: CardAction[], promptType: ResponderPromptType): void {
     const rect = element.getBoundingClientRect();
     const vpWidth = window.visualViewport?.width ?? window.innerWidth;

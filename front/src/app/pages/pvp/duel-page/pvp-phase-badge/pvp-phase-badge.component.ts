@@ -66,7 +66,7 @@ export class PvpPhaseBadgeComponent {
   private removeOutsideListener: (() => void) | null = null;
 
   constructor() {
-    // [M5 fix] Close menu when actionablePrompt changes (new prompt arrival)
+    // Close menu when actionablePrompt changes (new prompt arrival).
     effect(() => {
       this.actionablePrompt();
       untracked(() => {

@@ -91,7 +91,7 @@ export class PromptDerivationService {
     return null;
   });
 
-  // [C2 fix] Has active blocking prompt — excludes IDLECMD/BATTLECMD (distributed UI, not blocking)
+  // Has active blocking prompt — excludes IDLECMD/BATTLECMD (distributed UI, not blocking).
   readonly hasActivePrompt = computed(() => {
     const p = this.visiblePrompt();
     return p !== null && p.type !== 'SELECT_IDLECMD' && p.type !== 'SELECT_BATTLECMD';
