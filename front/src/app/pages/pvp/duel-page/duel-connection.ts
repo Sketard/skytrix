@@ -101,8 +101,6 @@ export class DuelConnection {
   private _totalAutoRetries = signal(0);
   private _hasToken = signal(false);
   private readonly _maxRetries = 6;
-  /** After this many failed reconnect-token attempts, fall back to wsToken. */
-  private readonly _reconnectFallbackThreshold = 2;
   private readonly _autoReconnect: boolean;
   readonly canRetry = computed(() => this._retryCount() < this._maxRetries && this._autoReconnect && this._hasToken());
   readonly totalAutoRetries = this._totalAutoRetries.asReadonly();
@@ -232,6 +230,20 @@ export class DuelConnection {
 
   sendSurrender(): void {
     this.safeSend({ type: 'SURRENDER' });
+  }
+
+  /**
+   * P0-3bis.3 — Roll the duel back to the most recent
+   * SELECT_IDLECMD/SELECT_BATTLECMD prompt. The server will re-emit a
+   * BOARD_STATE followed by the original prompt; the client stays in a
+   * waiting state until the prompt arrives.
+   *
+   * Triggered by right-click on continuation prompts (SELECT_PLACE,
+   * SELECT_DISFIELD, SELECT_POSITION). No-op if no rollback target
+   * exists server-side — the server will WARN and ignore.
+   */
+  sendCancelPromptSequence(): void {
+    this.safeSend({ type: 'CANCEL_PROMPT_SEQUENCE' });
   }
 
   sendRequestStateSync(): void {
@@ -639,7 +651,9 @@ export class DuelConnection {
         }
         this._connectionStatus.set('connected');
         this._retryCount.set(0);
-        this.wsToken = null; // no longer needed as fallback
+        // wsToken is consumed once server-side at the first handshake (pendingTokens.delete);
+        // clear our copy so future reconnects rely solely on the rotating reconnectToken.
+        this.wsToken = null;
         this.reconnectToken = (message as SessionTokenMsg).token;
         this._hasToken.set(true);
         if (this._autoReconnect) {
@@ -734,12 +748,10 @@ export class DuelConnection {
       return;
     }
 
-    // If reconnect token failed enough times and a fresh wsToken is available, fall back to it.
-    if (this.reconnectToken && this._retryCount() >= this._reconnectFallbackThreshold && this.wsToken) {
-      this.reconnectToken = null;
-      try { sessionStorage.removeItem(this.storageKey); } catch {}
-      this._retryCount.set(0);
-    }
+    // Note: there is no wsToken fallback here. wsToken is consumed once by the
+    // server (pendingTokens.delete on first handshake) and SESSION_TOKEN clears
+    // our copy — so by the time a reconnectToken would fail, wsToken is also
+    // useless. Reaching _maxRetries means the duel is truly lost.
 
     if (this._retryCount() >= this._maxRetries) {
       this.reconnectToken = null;
