@@ -1,7 +1,7 @@
 import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
 import type { DuelState, GameEvent } from '../types';
 import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
-import { LOCATION, POSITION } from '../duel-ws.types';
+import { BOARD_CHANGING_EVENT_TYPES, LOCATION, POSITION } from '../duel-ws.types';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
@@ -535,7 +535,7 @@ export class AnimationOrchestratorService {
       // pass (the `!has` guard prevents duplication), and MSG_CHAIN_END's
       // `releaseAllPreLocks()` is the safety net for any orphans.
       const buffered = this.chainManager.shouldBufferDuringChain
-        && ChainResolutionManager.BOARD_CHANGING_EVENTS.has(event.type);
+        && BOARD_CHANGING_EVENT_TYPES.has(event.type);
       if (!buffered) {
         if (event.type === 'MSG_MOVE') {
           const msg = event as MoveMsg;
@@ -1007,18 +1007,17 @@ export class AnimationOrchestratorService {
   // Instant animation (queue collapse)
   // ---------------------------------------------------------------------------
 
+  /**
+   * Apply an LP event (MSG_DAMAGE / MSG_PAY_LPCOST / MSG_RECOVER) instantly,
+   * bypassing the per-event animation. Only ever called from the queue-collapse
+   * path which filters its predicate to LP-class events (audit L21 — earlier
+   * branches for MSG_CHAIN_SOLVING/SOLVED/END were unreachable after the
+   * collapse predicate was tightened to LP-only; removed).
+   */
   private applyInstantAnimation(event: GameEvent): void {
     if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST'
       || event.type === 'MSG_RECOVER') {
       this.lpTracker.applyInstant(event);
-    } else if (event.type === 'MSG_CHAIN_SOLVING') {
-      this.dataSource.applyChainSolving((event as ChainSolvingMsg).chainIndex);
-      this.chainManager.applyInstantSolving();
-    } else if (event.type === 'MSG_CHAIN_SOLVED') {
-      this.dataSource.applyChainSolved((event as ChainSolvedMsg).chainIndex);
-      this.chainManager.applyInstantSolved();
-    } else if (event.type === 'MSG_CHAIN_END') {
-      this.dataSource.applyChainEnd();
     }
   }
 

@@ -32,13 +32,6 @@ export class ChainResolutionManager {
   private _deferredSolvingEvent: GameEvent | null = null;
   private _bannerTimeouts: ReturnType<typeof setTimeout>[] = [];
 
-  /**
-   * Re-exported for legacy call sites (`ChainResolutionManager.BOARD_CHANGING_EVENTS`).
-   * New code should import `BOARD_CHANGING_EVENT_TYPES` directly from
-   * `duel-ws.types` — single source of truth shared with the server.
-   */
-  static readonly BOARD_CHANGING_EVENTS = BOARD_CHANGING_EVENT_TYPES;
-
   // --- State queries ---
   get isResolving(): boolean { return this._insideChainResolution; }
   get isWaitingForOverlay(): boolean { return this._waitingForOverlay; }
@@ -123,7 +116,7 @@ export class ChainResolutionManager {
 
   /** Buffer a board-changing event during chain resolution. Returns true if buffered. */
   bufferIfResolving(event: GameEvent): boolean {
-    if (this.shouldBufferDuringChain && ChainResolutionManager.BOARD_CHANGING_EVENTS.has(event.type)) {
+    if (this.shouldBufferDuringChain && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
       this._bufferedBoardEvents.push(event);
       return true;
     }

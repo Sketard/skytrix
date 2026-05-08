@@ -3,6 +3,7 @@ import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelLogger } from './duel-logger';
 import type { GameEvent } from '../types';
 import type { ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
+import { BOARD_CHANGING_EVENT_TYPES } from '../duel-ws.types';
 
 const solving = (chainIndex: number): GameEvent => ({ type: 'MSG_CHAIN_SOLVING', chainIndex }) as ChainSolvingMsg as GameEvent;
 const solved = (chainIndex: number): GameEvent => ({ type: 'MSG_CHAIN_SOLVED', chainIndex }) as ChainSolvedMsg as GameEvent;
@@ -141,7 +142,7 @@ describe('ChainResolutionManager', () => {
     });
   });
 
-  describe('BOARD_CHANGING_EVENTS set', () => {
+  describe('BOARD_CHANGING_EVENT_TYPES set', () => {
     const expected = [
       'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
       'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET', 'MSG_SHUFFLE_HAND',
@@ -151,9 +152,9 @@ describe('ChainResolutionManager', () => {
     ];
 
     it('should contain exactly the expected event types', () => {
-      expect(ChainResolutionManager.BOARD_CHANGING_EVENTS.size).toBe(expected.length);
+      expect(BOARD_CHANGING_EVENT_TYPES.size).toBe(expected.length);
       for (const type of expected) {
-        expect(ChainResolutionManager.BOARD_CHANGING_EVENTS.has(type)).toBeTrue();
+        expect(BOARD_CHANGING_EVENT_TYPES.has(type)).toBeTrue();
       }
     });
   });

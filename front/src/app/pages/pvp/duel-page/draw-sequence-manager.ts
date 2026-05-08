@@ -14,6 +14,21 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  * Manages draw sequences: initial parallel draw, mid-game draws,
  * hand expansion slots, and the travelToHand pattern.
  * Provided at component level (NOT root).
+ *
+ * Cross-manager couplings (audit L23):
+ * - Reads `chainManager.hasActiveReplayTimeouts` to gate
+ *   `resumeQueueIfSafe` — draw resume must not race with a buffer-replay
+ *   stagger. Single read site (no write).
+ * - Calls `moveRouter.processMoveEvent` from `processShuffleEvent` for
+ *   shuffle-induced MOVEs.
+ * - Calls `moveRouter.releasePreLocksForKeys` from
+ *   `peekAndDequeueOtherInitialDraw` to release the dequeued draw's HAND
+ *   pre-lock — the dequeued event bypasses the normal queue loop, so the
+ *   orchestrator's automatic pre-lock release in
+ *   `processAnimationQueueInner` doesn't see it.
+ *
+ * `MoveAnimationRouter` is injected lazily (`injector.get`) to break the
+ * circular DI: MoveAnimationRouter → DrawSequenceManager → MoveAnimationRouter.
  */
 @Injectable()
 export class DrawSequenceManager {
