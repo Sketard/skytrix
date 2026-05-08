@@ -55,14 +55,23 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   /** Only rebuild zone map when players appear/disappear, not on every state update */
   private readonly hasOpponent = computed(() => this.duelState().players[1] != null);
 
+  /** Guard against multiple `afterNextRender` callbacks queued on rapid hasOpponent flips. */
+  private _rebuildScheduled = false;
+
   constructor() {
     this.destroyRef.onDestroy(() => this.onLinkedLeave());
 
-    // Dynamic rebuild: re-query zone elements when opponent field first renders
+    // Dynamic rebuild: re-query zone elements when opponent field first renders.
+    // Dedup ensures one rebuild per render cycle even if `hasOpponent` flips
+    // multiple times before the queued `afterNextRender` fires.
     effect(() => {
       this.hasOpponent(); // track only player presence changes
-      if (this.preview()) return;
-      afterNextRender(() => this.rebuildZoneMap(), { injector: this.injector });
+      if (this.preview() || this._rebuildScheduled) return;
+      this._rebuildScheduled = true;
+      afterNextRender(() => {
+        this._rebuildScheduled = false;
+        this.rebuildZoneMap();
+      }, { injector: this.injector });
     });
   }
 
@@ -80,7 +89,10 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     this.zoneElements.clear();
     // Scope the query to the closest layout ancestor (board-area / duel-container)
     // instead of the entire document, to avoid capturing zones from preview
-    // miniatures or other board instances.
+    // miniatures or other board instances. The scope also captures sibling
+    // zones (HAND-0, HAND-1 in app-pvp-hand-row) that share the duel-container
+    // ancestor — a single resolver is registered with cardTravelService, so
+    // hand zones must be resolvable through it too.
     const host = this.elementRef.nativeElement as HTMLElement;
     const scope = host.parentElement ?? host;
     const elements = scope.querySelectorAll<HTMLElement>('[data-zone]');
