@@ -23,6 +23,7 @@ import { installWasmHook, uninstallWasmHook, locateWasmMemory, snapshotAvailable
 import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
 import { filterMessage } from './message-filter.js';
 import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
+import { CardDbCache } from './card-db-cache.js';
 import type {
   ServerMessage,
   BoardStateMsg,
@@ -237,13 +238,18 @@ function getCardName(code: number): string {
 }
 
 const TYPE_TOKEN = 0x4000;
-const TYPE_XYZ = 0x800000;
-const TYPE_LINK = 0x4000000;
 const STATUS_DISABLED = 0x0001;
+
+/**
+ * Per-cardCode memoization of cards.cdb base values + bitwise post-processing
+ * (level/rank/scales/type masks). Cleared in `cleanup()` when CardDB is closed.
+ * See `card-db-cache.ts` for invariants.
+ */
+const cardDbCache = new CardDbCache();
+
 function isTokenCard(code: number): boolean {
-  if (!cardDb || !code) return false;
-  const row = cardDb.stmt.get(code) as Record<string, number | bigint> | undefined;
-  return row ? (Number(row['type']) & TYPE_TOKEN) !== 0 : false;
+  const cached = cardDbCache.get(cardDb, code);
+  return cached ? (cached.cardType & TYPE_TOKEN) !== 0 : false;
 }
 
 function getOptionDesc(optionCode: bigint): string {
@@ -887,21 +893,19 @@ function buildBoardState(): ServerMessage {
       card.currentRScale = rscaleInfo?.rightScale !== undefined ? Number(rscaleInfo.rightScale) : undefined;
       card.currentType = typeInfo?.type !== undefined ? Number(typeInfo.type) : undefined;
 
-      // Base values from card database (level, rank, attribute, race, scales, type)
-      const dbRow = cardDb?.stmt.get(code) as Record<string, number | bigint> | undefined;
+      // Base values from card database (level, rank, attribute, race, scales, type).
+      // Memoized per-cardCode via `cardDbCache` — these values never change for
+      // a given card and are queried per face-up zone on every BOARD_STATE.
+      const dbRow = cardDbCache.get(cardDb, code);
       if (dbRow) {
-        const rawLevel = Number(dbRow['level']);
-        const cardType = Number(dbRow['type']);
-        const isXyz = (cardType & TYPE_XYZ) !== 0;
-        const isLink = (cardType & TYPE_LINK) !== 0;
-        card.isLink = isLink;
-        card.baseLevel = (isXyz || isLink) ? 0 : (rawLevel & 0xFF);
-        card.baseRank = isXyz ? (rawLevel & 0xFF) : 0;
-        card.baseAttribute = Number(dbRow['attribute']);
-        card.baseRace = Number(dbRow['race']);
-        card.baseLScale = (rawLevel >> 16) & 0xFF;
-        card.baseRScale = (rawLevel >> 24) & 0xFF;
-        card.baseType = cardType;
+        card.isLink = dbRow.isLink;
+        card.baseLevel = dbRow.baseLevel;
+        card.baseRank = dbRow.baseRank;
+        card.baseAttribute = dbRow.baseAttribute;
+        card.baseRace = dbRow.baseRace;
+        card.baseLScale = dbRow.baseLScale;
+        card.baseRScale = dbRow.baseRScale;
+        card.baseType = dbRow.baseType;
       } else {
         dlog.warn('No DB row for card — base alteration fields unavailable', { cardCode: code });
       }
@@ -1438,6 +1442,10 @@ function cleanup(): void {
     try { cardDb.db.close(); } catch (e) { dlog.error('db.close failed', { error: e instanceof Error ? e.message : String(e) }); }
     cardDb = null;
   }
+  // Drop memoized cards.cdb base values — entries reference data from a DB
+  // that's now closed, and a worker reused for a different cards.cdb version
+  // could otherwise serve stale entries.
+  cardDbCache.clear();
   // Release WASM core reference + replay capture buffers so a worker that
   // doesn't process.exit (replay/fork error paths) doesn't retain memory.
   core = null;
