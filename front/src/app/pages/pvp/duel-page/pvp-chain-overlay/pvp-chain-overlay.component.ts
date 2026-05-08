@@ -138,6 +138,14 @@ export class PvpChainOverlayComponent {
 
   private readonly activeTimers = new Set<ReturnType<typeof setTimeout>>();
 
+  /**
+   * Aborts the in-flight `onChainLinkResolved` async chain on chain end /
+   * destroy. Each `await waitForOrAbort` short-circuits when the signal
+   * fires; the `finally` block resets `_resolvingInFlight` so no zombie
+   * state survives a mid-resolution cancel.
+   */
+  private _resolutionAbort: AbortController | null = null;
+
   // --- Deferred entry animation (see Effect C) ---
   private readonly _hasPendingEntry = signal(false);
   private readonly _pendingPrevCount = signal(0);
@@ -202,6 +210,7 @@ export class PvpChainOverlayComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => {
+      this._resolutionAbort?.abort();
       this.activeTimers.forEach(id => clearTimeout(id));
       this.activeTimers.clear();
     });
@@ -440,8 +449,11 @@ export class PvpChainOverlayComponent {
    * "pushed out" by the next resolving link (see Effect B). On chain end,
    * it simply disappears with the overlay.
    *
-   * Cancelled gracefully by clearAllTimers() on chain end — pending waitFor
-   * promises never resolve, so the rest of the async chain is discarded.
+   * Cancellation: when chain end / destroy fires `clearAllTimers()` (via
+   * `onChainEnd` or the destroyRef hook), the AbortController short-circuits
+   * each remaining `waitForOrAbort`. The `finally` block resets
+   * `_resolvingInFlight` so a fresh chain can re-enter the sequence
+   * immediately after the cancel.
    */
   private async onChainLinkResolved(): Promise<void> {
     this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved — resolvingInFlight=%s chainOverlayReady=%s waitingForOverlay=%s',
@@ -453,51 +465,72 @@ export class PvpChainOverlayComponent {
     this._resolvingInFlight.set(true);
     this.chainManager.chainOverlayReady.set(false);
 
-    // Snapshot mutable state before any await — immune to concurrent Effect B updates
-    const resolvedIdx = this._resolvingNegated() ? this.negatedResolvingIndex() : this.resolvingIndex();
-    const cardInfo = this._resolvingCardInfo();
-    const negated = this._resolvingNegated();
+    // Aborted by onChainEnd (chain ended mid-resolution) or destroy. The
+    // signal short-circuits each `waitForOrAbort` and `finally` resets the
+    // in-flight flag, so no zombie state survives the cancel.
+    const abort = new AbortController();
+    this._resolutionAbort = abort;
+    const aborted = abort.signal;
 
-    // Store resolved card for deferred exit (pushed out by next resolving link)
-    if (resolvedIdx >= 0) {
-      this.pendingExitCard.set({
-        type: 'resolved',
-        negated,
-        card: {
-          chainIndex: resolvedIdx,
-          cardCode: cardInfo?.cardCode ?? 0,
-          cardName: cardInfo?.cardName ?? '',
-          position: 'front',
-        },
-      });
+    try {
+      // Snapshot mutable state before any await — immune to concurrent Effect B updates
+      const resolvedIdx = this._resolvingNegated() ? this.negatedResolvingIndex() : this.resolvingIndex();
+      const cardInfo = this._resolvingCardInfo();
+      const negated = this._resolvingNegated();
+
+      // Store resolved card for deferred exit (pushed out by next resolving link)
+      if (resolvedIdx >= 0) {
+        this.pendingExitCard.set({
+          type: 'resolved',
+          negated,
+          card: {
+            chainIndex: resolvedIdx,
+            cardCode: cardInfo?.cardCode ?? 0,
+            cardName: cardInfo?.cardName ?? '',
+            position: 'front',
+          },
+        });
+      }
+
+      // 1. Hide overlay so the board is visible underneath
+      this.overlayVisible.set(false);
+      await this.waitForOrAbort(this.durations().overlayFadeOut, aborted);
+      if (aborted.aborted) return;
+
+      // 2–3. Replay board events + pause for impact (skip for negated — no board change)
+      await this.replayAndPause(negated, aborted);
+      if (aborted.aborted) return;
+
+      // 4. Re-show overlay — resolved card stays visible until pushed out
+      if (this._overlayShownDuringBuild()) this.overlayVisible.set(true);
+      await this.waitForOrAbort(this.durations().overlayFadeIn, aborted);
+      if (aborted.aborted) return;
+
+      // 5. Cleanup resolving state + signal ready
+      this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved DONE — signaling ready');
+      this._resolvingNegated.set(false);
+      this._resolvingCardInfo.set(null);
+      this.resolvingIndex.set(-1);
+      this.negatedResolvingIndex.set(-1);
+      this.chainManager.chainOverlayReady.set(true);
+    } finally {
+      // The flag MUST be reset whether we exit via the happy path or via abort.
+      // onChainEnd also resets it (belt-and-suspenders): an abort fires the
+      // finally one micro-task later, but onChainEnd needs a synchronous reset
+      // so a fresh chain can re-enter the resolution sequence immediately.
+      this._resolvingInFlight.set(false);
+      if (this._resolutionAbort === abort) this._resolutionAbort = null;
     }
-
-    // 1. Hide overlay so the board is visible underneath
-    this.overlayVisible.set(false);
-    await this.waitFor(this.durations().overlayFadeOut);
-
-    // 2–3. Replay board events + pause for impact (skip for negated — no board change)
-    await this.replayAndPause(negated);
-
-    // 4. Re-show overlay — resolved card stays visible until pushed out
-    if (this._overlayShownDuringBuild()) this.overlayVisible.set(true);
-    await this.waitFor(this.durations().overlayFadeIn);
-
-    // 5. Cleanup resolving state + signal ready
-    this.logger.log(DuelLogCategory.CHAIN, 'onChainLinkResolved DONE — signaling ready');
-    this._resolvingInFlight.set(false);
-    this._resolvingNegated.set(false);
-    this._resolvingCardInfo.set(null);
-    this.resolvingIndex.set(-1);
-    this.negatedResolvingIndex.set(-1);
-    this.chainManager.chainOverlayReady.set(true);
   }
 
-  private async replayAndPause(negated: boolean): Promise<void> {
+  private async replayAndPause(negated: boolean, aborted: AbortSignal): Promise<void> {
     if (negated) return;
     if (this.chainManager.chainOverlayBoardChanged()) {
+      // replayBuffer is an external Promise we cannot abort — short-circuit
+      // after it resolves if a cancel arrived in the meantime.
       await this.orchestrator.replayBuffer();
-      await this.waitFor(this.durations().impactPause);
+      if (aborted.aborted) return;
+      await this.waitForOrAbort(this.durations().impactPause, aborted);
     }
   }
 
@@ -549,6 +582,10 @@ export class PvpChainOverlayComponent {
   private clearAllTimers(): void {
     this.cancelEntryTimer();
     this._entryAnimInProgress.set(false);
+    // Abort the in-flight resolution chain BEFORE clearing timers — its
+    // waitForOrAbort calls listen for abort and self-clean. If we cleared
+    // first the listeners would still fire (signal-then-timeout race).
+    this._resolutionAbort?.abort();
     this.activeTimers.forEach(id => clearTimeout(id));
     this.activeTimers.clear();
   }
@@ -565,5 +602,28 @@ export class PvpChainOverlayComponent {
   /** Promise wrapper around scheduleTimeout — cancelled by clearAllTimers (promise never resolves). */
   private waitFor(ms: number): Promise<void> {
     return new Promise(resolve => this.scheduleTimeout(resolve, ms));
+  }
+
+  /**
+   * Like waitFor but resolves immediately when `aborted` fires. Cleans up the
+   * timer on abort so it can't leak into a later cycle. Used inside
+   * `onChainLinkResolved` so a chain end / destroy cancels the wait
+   * deterministically (the ms-pure waitFor would hang indefinitely after
+   * clearAllTimers).
+   */
+  private waitForOrAbort(ms: number, aborted: AbortSignal): Promise<void> {
+    if (aborted.aborted) return Promise.resolve();
+    return new Promise(resolve => {
+      const id = this.scheduleTimeout(() => {
+        aborted.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      const onAbort = () => {
+        clearTimeout(id);
+        this.activeTimers.delete(id);
+        resolve();
+      };
+      aborted.addEventListener('abort', onAbort, { once: true });
+    });
   }
 }

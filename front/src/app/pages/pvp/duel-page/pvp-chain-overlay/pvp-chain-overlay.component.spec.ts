@@ -705,26 +705,24 @@ describe('PvpChainOverlayComponent', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 14. pathology pinning
+  // 14. cancellation behavior + late-commit pathology
   // ---------------------------------------------------------------------------
 
-  describe('pathology pinning (known behaviors to preserve through M9)', () => {
-    it('should leave resolvingInFlight=true if chain ends mid-resolution (waitFor never resolves)', fakeAsync(() => {
+  describe('cancellation + late-commit pathology', () => {
+    it('should let a fresh chain re-enter resolution after a mid-flow cancel', fakeAsync(() => {
+      // The guard `_resolvingInFlight` MUST be reset so the next chain isn't
+      // blocked. Two paths reset it: onChainEnd (synchronous) and the finally
+      // block of onChainLinkResolved (after the AbortController fires).
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       setLinksAndPhase(
         [createLink(0), createLink(1, { resolving: true })],
         'resolving',
       );
-      setLinks([createLink(0)]);
-
-      // Chain end happens while onChainLinkResolved is awaiting waitFor
-      // (clearAllTimers cancels the timeout, so the inner Promise never resolves;
-      // resolvingInFlight is reset by onChainEnd, NOT by the discarded async chain)
-      setLinksAndPhase([], 'idle');
-
-      // onChainEnd resets resolvingInFlight as part of its full reset
+      setLinks([createLink(0)]); // triggers onChainLinkResolved
+      setLinksAndPhase([], 'idle'); // hard cancel mid-flow
       flush();
-      // Re-enter resolution sequence — guard should NOT block (because onChainEnd reset)
+
+      // Fresh chain re-enters the sequence immediately
       setLinksAndPhase([createLink(0), createLink(1)], 'building');
       setLinksAndPhase(
         [createLink(0), createLink(1, { resolving: true })],
@@ -732,8 +730,30 @@ describe('PvpChainOverlayComponent', () => {
       );
       mockChainManager.chainOverlayBoardChanged.set(false);
       setLinks([createLink(0)]);
-      // chainOverlayReady was reset, so this triggers a fresh in-flight (false)
+
+      // chainOverlayReady set to false synchronously — proves the guard didn't block
       expect(mockChainManager.chainOverlayReady()).toBeFalse();
+
+      flush();
+    }));
+
+    it('should clear activeTimers synchronously when chain ends mid-resolution', fakeAsync(() => {
+      setLinksAndPhase([createLink(0), createLink(1)], 'building');
+      setLinksAndPhase(
+        [createLink(0), createLink(1, { resolving: true })],
+        'resolving',
+      );
+      mockChainManager.chainOverlayBoardChanged.set(false);
+      setLinks([createLink(0)]);
+      const internal = component as unknown as { activeTimers: Set<unknown> };
+      // Pre-cancel: resolution is mid-flow so timers are scheduled
+      expect(internal.activeTimers.size).toBeGreaterThan(0);
+
+      // Hard cancel — clearAllTimers MUST wipe the Set synchronously, before
+      // any flush. Asserting pre-flush distinguishes "cleared at clearAllTimers"
+      // from "cleared via auto-removal callbacks during flush".
+      setLinksAndPhase([], 'idle');
+      expect(internal.activeTimers.size).toBe(0);
 
       flush();
     }));
