@@ -4,7 +4,7 @@ import { randomUUID, randomBytes } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join } from 'node:path';
 import {
-  MAX_PAYLOAD_SIZE,
+  MAX_WS_FRAME_SIZE,
   RECONNECT_GRACE_MS,
   TURN_TIME_INCREMENT_MS,
   INACTIVITY_TIMEOUT_MS,
@@ -1480,7 +1480,7 @@ const server = createServer((req, res) => {
 // WebSocket Server
 // =============================================================================
 
-const wss = new WebSocketServer({ server, maxPayload: MAX_PAYLOAD_SIZE });
+const wss = new WebSocketServer({ server, maxPayload: MAX_WS_FRAME_SIZE });
 
 // WS rate limiting moved to ws-rate-limit.ts (H1 split)
 const wsRateLimitSweepTimer = startWsRateLimitSweep();

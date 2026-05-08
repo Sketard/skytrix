@@ -5,7 +5,22 @@ import type Database from 'better-sqlite3';
 // Constants
 // =============================================================================
 
-export const MAX_PAYLOAD_SIZE = 4096;
+/**
+ * Caps for inbound payloads. Split into HTTP body vs WS frame because the two
+ * have very different worst-case sizes (audit finding M3).
+ *
+ * - `MAX_HTTP_BODY_SIZE` (16 KB) sizes `POST /api/duels`. The body is a JSON
+ *   `{ player1, player2, soloMode?, skipShuffle?, turnTimeSecs? }` carrying
+ *   2 decklists (main + extra arrays of card codes), playerIds, optional
+ *   usernames + deckNames. Two 60+15 card decks ≈ 1.5–2 KB JSON; 16 KB
+ *   leaves comfortable headroom for long Unicode usernames / deckNames /
+ *   future fields without a re-tune.
+ * - `MAX_WS_FRAME_SIZE` (4 KB) sizes inbound WS frames. Client→server traffic
+ *   is bounded: the largest message is `PLAYER_RESPONSE` for a `SORT_CARD`
+ *   over 60 cards, well under 1 KB. Keeping this tight is anti-DoS hygiene.
+ */
+export const MAX_HTTP_BODY_SIZE = 16384;
+export const MAX_WS_FRAME_SIZE = 4096;
 export const RECONNECT_GRACE_MS = 60_000;
 export const WATCHDOG_TIMEOUT_MS = 30_000;
 export const RPS_TIMEOUT_MS = 30_000;

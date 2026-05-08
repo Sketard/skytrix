@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
-import { MAX_PAYLOAD_SIZE } from './types.js';
+import { MAX_HTTP_BODY_SIZE } from './types.js';
 
 /**
  * HTTP request/response utilities used by the duel-server's HTTP route
@@ -39,12 +39,12 @@ export function validateInternalAuth(
 /**
  * Read the request body as a UTF-8 string with a content-length cap +
  * incremental size guard. Rejects with `Error('PAYLOAD_TOO_LARGE')` when the
- * body exceeds `MAX_PAYLOAD_SIZE`. 10s timeout via `req.destroy()`.
+ * body exceeds `MAX_HTTP_BODY_SIZE`. 10s timeout via `req.destroy()`.
  */
 export function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const contentLength = parseInt(req.headers['content-length'] ?? '0', 10);
-    if (contentLength > MAX_PAYLOAD_SIZE) {
+    if (contentLength > MAX_HTTP_BODY_SIZE) {
       reject(new Error('PAYLOAD_TOO_LARGE'));
       return;
     }
@@ -58,7 +58,7 @@ export function readBody(req: IncomingMessage): Promise<string> {
     let size = 0;
     req.on('data', (chunk: Buffer) => {
       size += chunk.length;
-      if (size > MAX_PAYLOAD_SIZE) {
+      if (size > MAX_HTTP_BODY_SIZE) {
         clearTimeout(timeout);
         reject(new Error('PAYLOAD_TOO_LARGE'));
         req.destroy();
