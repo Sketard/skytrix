@@ -168,9 +168,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   );
 
   /** Eligible zones for the active SELECT_PLACE/SELECT_DISFIELD decision (zone keys with player suffix). */
-  readonly replayHighlightedZones = computed<Set<string>>(() => {
+  readonly replayHighlightedZones = computed<ReadonlySet<string>>(() => {
     const prompt = this.adapter.activePrompt();
-    if (prompt?.type !== 'SELECT_PLACE' && prompt?.type !== 'SELECT_DISFIELD') return EMPTY_ZONE_SET as Set<string>;
+    if (prompt?.type !== 'SELECT_PLACE' && prompt?.type !== 'SELECT_DISFIELD') return EMPTY_ZONE_SET;
     const places = (prompt as SelectPlaceMsg | SelectDisfieldMsg).places;
     const perspective = this.perspectiveIndex();
     const keys = places

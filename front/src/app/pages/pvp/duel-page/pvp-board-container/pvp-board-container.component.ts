@@ -106,7 +106,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   readonly duelState = input.required<DuelState>();
   readonly timerState = input<TimerStateMsg | null>(null);
   readonly ownPlayerIndex = input<Player>(0);
-  readonly highlightedZones = input<Set<string>>(new Set());
+  readonly highlightedZones = input<ReadonlySet<string>>(new Set());
   readonly chosenZone = input<string | null>(null);
   readonly actionablePrompt = input<SelectIdleCmdMsg | SelectBattleCmdMsg | null>(null);
   readonly opponentDisconnected = input(false);
