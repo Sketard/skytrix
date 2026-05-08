@@ -3,6 +3,7 @@ import { environment } from '../../../../environments/environment';
 import { DuelConnection, ResponseData } from './duel-connection';
 import { DebugLogService } from './debug-log.service';
 import { DuelLogger } from './duel-logger';
+import { DuelCardArtService } from './duel-card-art.service';
 import type { AnimationDataSource, QueueEntry } from './animation-data-source';
 
 export { ResponseData } from './duel-connection';
@@ -11,6 +12,7 @@ export { ResponseData } from './duel-connection';
 export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   private readonly debugLog = inject(DebugLogService);
   private readonly logger = inject(DuelLogger);
+  private readonly artService = inject(DuelCardArtService);
 
   private readonly _defaultConnection = new DuelConnection(environment.wsUrl, true, undefined, this.logger);
   private _activeConnection = signal<DuelConnection>(this._defaultConnection);
@@ -18,6 +20,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   onStateSync?: () => void;
 
   constructor() {
+    this._defaultConnection.artService = this.artService;
     this._defaultConnection.onMessage = msg => {
       this.debugLog.logServerMessage(msg);
     };

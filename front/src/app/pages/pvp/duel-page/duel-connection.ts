@@ -48,6 +48,11 @@ export class DuelConnection {
   private _pendingPrompt = signal<Prompt | null>(null);
   private _hintContext = signal<HintContext>({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' });
   private logger?: DuelLogger;
+  /** Optional art service for JIT prefetch of revealed card images. Wired from
+   *  DuelWebSocketService / SoloDuelOrchestratorService at construction time so
+   *  every revealed cardCode is requested once, before its animation lands.
+   *  See P3 audit follow-up — opponent decklist no longer pre-fetched upfront. */
+  artService?: { prefetchCard(code: number | null | undefined): void };
   private readonly processor = new DuelEventProcessor();
   private readonly rbs = new RenderedBoardStateService();
   readonly renderedBoardState = this.rbs;
@@ -429,6 +434,7 @@ export class DuelConnection {
 
   private handleMessage(message: ServerMessage): void {
     this.onMessage?.(message);
+    this.prefetchRevealedCards(message);
     switch (message.type) {
       case 'BOARD_STATE':
         this._rematchStarting.set(false);
@@ -679,6 +685,44 @@ export class DuelConnection {
         this.processor.processMessage(message);
         break;
 
+      default:
+        break;
+    }
+  }
+
+  /** Walk a server message and request prefetch of every revealed cardCode.
+   *  The artService dedups internally — safe to call on every dispatch. Called
+   *  early in handleMessage so the browser can start the HTTP request in
+   *  parallel with the animation that will display the image (~300-800ms travel
+   *  duration is usually long enough on a normal connection). */
+  private prefetchRevealedCards(message: ServerMessage): void {
+    const svc = this.artService;
+    if (!svc) return;
+    switch (message.type) {
+      case 'BOARD_STATE':
+      case 'STATE_SYNC':
+        for (const player of message.data.players) {
+          for (const zone of player.zones) {
+            for (const card of zone.cards) {
+              svc.prefetchCard(card.cardCode);
+              if (card.overlayMaterials) for (const code of card.overlayMaterials) svc.prefetchCard(code);
+            }
+          }
+        }
+        break;
+      case 'MSG_MOVE':
+      case 'MSG_FLIP_SUMMONING':
+      case 'MSG_CHAINING':
+      case 'MSG_BECOME_TARGET':
+      case 'MSG_EQUIP':
+        svc.prefetchCard((message as { cardCode?: number }).cardCode);
+        break;
+      case 'MSG_DRAW':
+        for (const c of message.cards) svc.prefetchCard(c);
+        break;
+      case 'MSG_CONFIRM_CARDS':
+        for (const c of message.cards) svc.prefetchCard(c.cardCode);
+        break;
       default:
         break;
     }

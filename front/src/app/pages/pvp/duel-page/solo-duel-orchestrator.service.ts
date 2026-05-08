@@ -5,6 +5,7 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { DebugLogService } from './debug-log.service';
 import { DuelLogger } from './duel-logger';
+import { DuelCardArtService } from './duel-card-art.service';
 
 @Injectable()
 export class SoloDuelOrchestratorService {
@@ -12,6 +13,7 @@ export class SoloDuelOrchestratorService {
   private readonly animationService = inject(AnimationOrchestratorService);
   private readonly debugLog = inject(DebugLogService);
   private readonly logger = inject(DuelLogger);
+  private readonly artService = inject(DuelCardArtService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
 
@@ -35,6 +37,10 @@ export class SoloDuelOrchestratorService {
     this.enabled = true;
     const conn0 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p1', this.logger);
     const conn1 = new DuelConnection(environment.wsUrl, true, 'duel-reconnect-token-p2', this.logger);
+    // Share the art service so the prefetch dedup Set is unified — switching
+    // players doesn't re-prefetch the same cards.
+    conn0.artService = this.artService;
+    conn1.artService = this.artService;
 
     // Set callbacks on both connections
     conn0.onMessage = msg => this.debugLog.logServerMessage(msg);
