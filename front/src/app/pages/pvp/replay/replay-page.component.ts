@@ -158,6 +158,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   });
 
   readonly totalEvents = computed(() => this.boardStates().length);
+  readonly atEnd = computed(() => {
+    const upTo = this.computedUpTo();
+    return upTo > 0 && this.currentIndex() >= upTo;
+  });
   readonly currentState = computed<PreComputedState | null>(() => this.boardStates()[this.currentIndex()] ?? null);
   readonly debugLogEntries = computed(() => buildReplayLogEntries(this.boardStates(), this.logDetail()));
 
@@ -536,6 +540,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       this.pausePlayback();
       this.pausedAtBoundary.set(false);
     } else {
+      if (this.atEnd()) return;
       this.startPlayback();
     }
   }
@@ -646,11 +651,8 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     console.log('[PLAY:START] idx=%d computedUpTo=%d t=%dms',
       this.currentIndex(), this.computedUpTo(), performance.now() | 0);
 
-    if (this.currentIndex() >= this.computedUpTo()) {
-      this.abortAndClean();
-      this.currentIndex.set(0);
-    }
     if (this.computedUpTo() <= 0) return;
+    if (this.currentIndex() >= this.computedUpTo()) return;
     this.isPlaying.set(true);
 
     if (this.adapter.activePrompt()) {

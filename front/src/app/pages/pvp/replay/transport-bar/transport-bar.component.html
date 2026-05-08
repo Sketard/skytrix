@@ -20,6 +20,7 @@
   <button mat-icon-button
           [attr.aria-label]="(isPlaying() ? 'replay.transport.pause' : 'replay.transport.play') | translate"
           [matTooltip]="(isPlaying() ? 'replay.transport.pause' : 'replay.transport.play') | translate"
+          [disabled]="atEnd() && !isPlaying()"
           (click)="playPause.emit()">
     <mat-icon>{{ isPlaying() ? 'pause' : 'play_arrow' }}</mat-icon>
   </button>

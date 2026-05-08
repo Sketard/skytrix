@@ -15,6 +15,7 @@ import { TranslateModule } from '@ngx-translate/core';
 })
 export class TransportBarComponent {
   readonly isPlaying = input(false);
+  readonly atEnd = input(false);
   readonly forking = input(false);
   readonly positionLabel = input<string | null>(null);
   readonly animationsEnabled = input(false);
