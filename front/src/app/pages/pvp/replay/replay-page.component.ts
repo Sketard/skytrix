@@ -377,7 +377,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     effect(() => {
       const state = this.activeDuelState();
       untracked(() => {
-        if (state === EMPTY_DUEL_STATE || state.players.length < 2) return;
+        // Skip while uninitialised — EMPTY_DUEL_STATE has players[0].zones === []
+        // by construction (audit L16: don't rely on referential equality with
+        // EMPTY_DUEL_STATE because a future patch could clone the sentinel).
+        if (state.players[0].zones.length === 0) return;
         const key = `${state.turnCount}-${state.phase}`;
         if (key === this.lastAnnouncedPhase) return;
         this.lastAnnouncedPhase = key;
@@ -391,7 +394,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     effect(() => {
       const states = this.boardStates();
       untracked(() => {
-        if (states.length > 0 && this.adapter.renderedBoardState.renderedState() === EMPTY_DUEL_STATE) {
+        // Same uninitialised guard as above (L16) — structural check rather
+        // than referential equality with EMPTY_DUEL_STATE.
+        const rendered = this.adapter.renderedBoardState.renderedState();
+        if (states.length > 0 && rendered.players[0].zones.length === 0) {
           this.adapter.jumpToState(states[0]);
         }
       });

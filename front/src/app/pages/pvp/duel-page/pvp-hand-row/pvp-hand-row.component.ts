@@ -10,6 +10,16 @@ import { DuelCardArtService } from '../duel-card-art.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PvpHandRowComponent {
+  /**
+   * Sentinel object identifying invisible expansion slots (draw-animation
+   * landing targets). Compared by reference in {@link isExpansionMarker} —
+   * works because the marker is only ever pushed into `allItems` via
+   * `Array.from(...)` which preserves the reference. Audit L17: if a future
+   * change ever clones this list (e.g. via `structuredClone` or a deep-copy
+   * input pipeline), the identity check breaks silently. The cards array
+   * arrives as an Angular input and is not mutated locally, so the risk is
+   * latent rather than active.
+   */
   private static readonly EXPANSION_MARKER = {} as CardOnField;
   private readonly el = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
