@@ -19,6 +19,7 @@ import {
   MAX_REPLAY_WORKERS,
   ANIMATIONS_DONE_TIMEOUT_MS,
   extractCardCodes,
+  extractCardCodesForPlayer,
 } from './types.js';
 import type {
   WorkerToMainMessage,
@@ -870,10 +871,11 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
     }
   }
 
-  // Tell each player their OCGCore index (after potential swap)
-  const duelCardCodes = extractCardCodes(session.decks);
-  sendToPlayer(session, 0, { type: 'DUEL_STARTING', playerIndex: 0, traceId: session.duelId, cardCodes: duelCardCodes });
-  sendToPlayer(session, 1, { type: 'DUEL_STARTING', playerIndex: 1, traceId: session.duelId, cardCodes: duelCardCodes });
+  // Tell each player their OCGCore index (after potential swap). Each side
+  // receives only their own decklist's card codes — sending the union would
+  // let the opponent's deck be reconstructed from the upfront image prefetch.
+  sendToPlayer(session, 0, { type: 'DUEL_STARTING', playerIndex: 0, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, 0) });
+  sendToPlayer(session, 1, { type: 'DUEL_STARTING', playerIndex: 1, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, 1) });
 
   // Spawn worker
   const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
@@ -1971,7 +1973,7 @@ function resendPendingPrompt(session: ActiveDuelSession, playerIndex: 0 | 1): vo
 function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void {
   // Re-send OCGCore player index (lost on page refresh)
   if (session.phase === 'DUELING') {
-    sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex, traceId: session.duelId, cardCodes: extractCardCodes(session.decks) } as ServerMessage);
+    sendToPlayer(session, playerIndex, { type: 'DUEL_STARTING', playerIndex, traceId: session.duelId, cardCodes: extractCardCodesForPlayer(session.decks, playerIndex) } as ServerMessage);
   }
   if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
     const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };

@@ -52,9 +52,19 @@ export interface Deck {
   extra: number[];
 }
 
-/** Deduplicated non-zero card codes from both decklists — for client-side image prefetch. */
+/** Deduplicated non-zero card codes from both decklists — for omniscient
+ *  prefetch (replay precompute). DO NOT use for live PvP DUEL_STARTING:
+ *  sending the union to both players leaks the opponent's decklist. Use
+ *  `extractCardCodesForPlayer` instead. */
 export function extractCardCodes(decks: readonly [Deck, Deck]): number[] {
   return [...new Set(decks.flatMap(d => [...d.main, ...d.extra]).filter(c => c > 0))];
+}
+
+/** Deduplicated non-zero card codes from a single player's deck — for live
+ *  PvP image prefetch without leaking the opponent's decklist. */
+export function extractCardCodesForPlayer(decks: readonly [Deck, Deck], playerIndex: 0 | 1): number[] {
+  const d = decks[playerIndex];
+  return [...new Set([...d.main, ...d.extra].filter(c => c > 0))];
 }
 
 export interface InitDuelMessage {
