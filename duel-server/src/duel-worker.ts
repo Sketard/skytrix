@@ -19,8 +19,10 @@ import { loadDatabase, loadScripts, loadSystemStrings, getScriptsHash, getOcgcor
 import { createCardReader, createScriptReader } from './ocg-callbacks.js';
 import { WATCHDOG_TIMEOUT_MS } from './types.js';
 import * as logger from './logger.js';
+import { installWasmHook, uninstallWasmHook, locateWasmMemory, snapshotAvailable } from './wasm-snapshot.js';
 import type { MainToWorkerMessage, CapturedResponse, Deck, InitReplayMessage, InitForkMessage } from './types.js';
 import { filterMessage } from './message-filter.js';
+import { ChainSnapshotTracker } from './chain-snapshot-tracker.js';
 import type {
   ServerMessage,
   BoardStateMsg,
@@ -76,6 +78,120 @@ let playerUsernames: [string, string] = ['', ''];
 let deckNames: [string, string] = ['', ''];
 let duelResult: string | null = null;
 let replayEmitted = false;
+
+// =============================================================================
+// Worker Snapshot Wrapper (P0-3bis.2)
+// =============================================================================
+//
+// Bridge between `wasm-snapshot.ts` (WASM-only primitives) and the
+// 5 divergent module-level state slots identified in P0-3bis-POC.1's
+// report Q2. The actual capture/restore logic lives in
+// `wasm-snapshot-wrapper.ts` (testable without booting the worker);
+// this module just exposes accessor closures for the wrapper to use.
+//
+// NOTE: not yet wired to any production code path. The next story
+// (P0-3bis.3) will plug these into the `CANCEL_PROMPT_SEQUENCE` WS
+// message handler.
+// =============================================================================
+
+import {
+  type WorkerSnapshot,
+  type WorkerStateAccessors,
+  takeWorkerSnapshotImpl,
+  restoreWorkerSnapshotImpl,
+  tryCancelRollback,
+} from './wasm-snapshot-wrapper.js';
+
+/** Accessor closures bound to this worker module's `let` bindings. */
+const workerStateAccessors: WorkerStateAccessors = {
+  getTurnPlayer: () => turnPlayer,
+  getTurnCount: () => turnCount,
+  getPhase: () => phase,
+  getLp: () => lp,
+  getLastResponsePlayerIndex: () => lastResponsePlayerIndex,
+  getLastAnnounceNumberOptions: () => lastAnnounceNumberOptions,
+  getCapturedResponsesLength: () => capturedResponses.length,
+  setTurnPlayer: (v) => { turnPlayer = v; },
+  setTurnCount: (v) => { turnCount = v; },
+  setPhase: (v) => { phase = v; },
+  setLp: (v) => { lp = v; },
+  setLastResponsePlayerIndex: (v) => { lastResponsePlayerIndex = v; },
+  setLastAnnounceNumberOptions: (v) => { lastAnnounceNumberOptions = v; },
+  truncateCapturedResponses: (len) => { capturedResponses.length = len; },
+  log: (msg) => dlog.debug(msg),
+};
+
+export function takeWorkerSnapshot(): WorkerSnapshot {
+  return takeWorkerSnapshotImpl(workerStateAccessors);
+}
+
+export function restoreWorkerSnapshot(snap: WorkerSnapshot): void {
+  restoreWorkerSnapshotImpl(snap, workerStateAccessors);
+}
+
+export type { WorkerSnapshot };
+
+/**
+ * P0-3bis.3 — single-slot rollback target.
+ * Set BEFORE applying a SELECT_IDLECMD/SELECT_BATTLECMD response, used by
+ * `CANCEL_PROMPT_SEQUENCE` to roll back. Cleared (a) when the next
+ * IDLECMD/BATTLECMD prompt is emitted (= new boundary), (b) on cancel
+ * after restore, (c) on duel cleanup, (d) after SNAPSHOT_TTL_MS expires.
+ *
+ * For the FULL inventory of state slots reset across the cancel flow
+ * (worker + server + client), see
+ * `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
+ * READ IT BEFORE ADDING A NEW MUTABLE MODULE-LEVEL STATE SLOT.
+ */
+let lastIdleSnapshot: WorkerSnapshot | null = null;
+
+/** P0-3bis.4 — TTL timer that drops a stale snapshot if the player
+ *  ignores the continuation prompt for too long. Always paired with
+ *  `lastIdleSnapshot`; reset on snapshot replace/clear. */
+let lastIdleSnapshotTimer: NodeJS.Timeout | null = null;
+const SNAPSHOT_TTL_MS = 30_000;
+
+/** P0-3bis.4 — chain-resolution tracker, hoisted out of `runDuelLoop` so the
+ *  CANCEL_PROMPT_SEQUENCE handler can refuse mid-chain rollbacks via
+ *  `liveChainTracker.isResolving`. Reset at the top of each `runDuelLoop`
+ *  call to preserve the original per-call semantics. The
+ *  `runReplayPreComputation` path uses its own local instance since cancel
+ *  never applies in replay. Audit finding H2 — same code path on both sides
+ *  guarantees PvP↔Replay parity by construction. */
+const liveChainTracker = new ChainSnapshotTracker();
+
+/**
+ * P0-3bis.4 — Replace (or clear) the held rollback snapshot. Cancels any
+ * pending TTL timer and schedules a new one for non-null assignments.
+ *
+ * MUST be the only EXTERNAL writer to `lastIdleSnapshot`. The internal
+ * TTL timer callback is the single sanctioned exception — it nulls the
+ * slot and the timer ref atomically (the timer is already firing, so
+ * calling `setLastIdleSnapshot(null)` from within would re-enter the
+ * helper to clear a timer that doesn't need clearing).
+ */
+function setLastIdleSnapshot(snap: WorkerSnapshot | null): void {
+  if (lastIdleSnapshotTimer) {
+    clearTimeout(lastIdleSnapshotTimer);
+    lastIdleSnapshotTimer = null;
+  }
+  lastIdleSnapshot = snap;
+  if (snap !== null) {
+    const tookAt = performance.now();
+    lastIdleSnapshotTimer = setTimeout(() => {
+      // Sanctioned in-place mutation — see helper docstring. The
+      // try/finally ensures the (slot=null, timer=null) invariant holds
+      // even if the debug log throws unexpectedly.
+      try {
+        const aliveMs = performance.now() - tookAt;
+        dlog.debug(`[duel-worker] snapshot expired after ${aliveMs.toFixed(0)}ms`);
+      } finally {
+        lastIdleSnapshot = null;
+        lastIdleSnapshotTimer = null;
+      }
+    }, SNAPSHOT_TTL_MS);
+  }
+}
 
 // =============================================================================
 // Constants & Helpers
@@ -1024,11 +1140,10 @@ function emitReplayData(): void {
 function runDuelLoop(): void {
   if (!core || !duel) return;
 
-  // Mirror of the replay precompute's chain-resolving tracker. Board-changing
-  // events emitted between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED get a
-  // `boardStateAfter` snapshot attached so the live-play client can sync
-  // logical state per event (same mechanism as replay) — PvP↔Replay parity.
-  let chainResolving = false;
+  // Reset the live chain tracker on every runDuelLoop entry to preserve the
+  // original per-call semantics (the tracker is hoisted to module-level so
+  // the CANCEL_PROMPT_SEQUENCE handler can read its `isResolving` flag).
+  liveChainTracker.reset();
 
   while (true) {
     let skipRpsAutoResponded = false;
@@ -1096,19 +1211,13 @@ function runDuelLoop(): void {
           dlog.debug('MSG_MOVE', { card: dto.cardName, code: dto.cardCode, from: `loc${dto.fromLocation}/seq${dto.fromSequence}`, to: `loc${dto.toLocation}/seq${dto.toSequence}` });
           hasCostMoves = true;
         }
-        // Track chain-resolving window for per-event board snapshots.
-        if (dto.type === 'MSG_CHAIN_SOLVING') chainResolving = true;
-        else if (dto.type === 'MSG_CHAIN_SOLVED') chainResolving = false;
-        // Attach a post-event board snapshot to BOARD_CHANGING events fired
-        // during the resolving window. Lets the client's `processEvent` hook
+        // Track chain-resolving window + attach `boardStateAfter` snapshot to
+        // BOARD_CHANGING events. Lets the client's `processEvent` hook
         // `rbs.updateLogical(boardStateAfter)` progress logical state per
         // event, matching the replay precompute behavior. Cost is one
         // `buildBoardState()` per BOARD_CHANGING event during resolving
         // (~10-50ms each, bounded by chain length).
-        if (chainResolving && BOARD_CHANGING_EVENT_TYPES.has(dto.type)) {
-          (dto as { boardStateAfter?: BoardStatePayload }).boardStateAfter =
-            (buildBoardState() as BoardStateMsg).data;
-        }
+        liveChainTracker.process(dto, () => (buildBoardState() as BoardStateMsg).data);
         // Emit intermediate BOARD_STATE before chain resolution starts so the client
         // can apply cost-related moves (e.g. cards sent to GY) before chainPhase='resolving'
         // blocks applyPendingBoardState().
@@ -1119,6 +1228,30 @@ function runDuelLoop(): void {
         }
         dlog.debug('EMIT', { type: dto.type });
         port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: dto });
+        // P0-3bis.3 — drop the rollback target when a fresh
+        // IDLECMD/BATTLECMD prompt is emitted. The next response will
+        // re-take a snapshot for the next rollback boundary.
+        // P0-3bis.4 — go through `setLastIdleSnapshot` so the TTL timer
+        // is also cleared.
+        //
+        // Design decision (2026-05-08, with Axel): the rollback target
+        // is dropped here, which means PHASE TRANSITIONS (Battle Phase,
+        // End Turn) and IDLECMD↔BATTLECMD pivots are NOT cancellable.
+        // This is intentional:
+        //   1. YGO rules: announcing a phase is binding — Main Phase
+        //      effects can't fire retroactively after Battle declared.
+        //   2. UX: no prompt is visible during the transient window
+        //      between PLAYER_RESPONSE and the next prompt — the player
+        //      has nowhere to right-click on.
+        //   3. Fairness: rolling back after seeing the opponent's
+        //      response would break the OPT/timing fence.
+        // If a future product decision wants confirmable phase
+        // transitions, the right pattern is a client-side "Are you
+        // sure?" confirm step (Master Duel-style), NOT a server-side
+        // snapshot rollback.
+        if (!forkMode && (dto.type === 'SELECT_IDLECMD' || dto.type === 'SELECT_BATTLECMD')) {
+          setLastIdleSnapshot(null);
+        }
       } else {
         dlog.debug('transformMessage returned null', { type: OcgMessageType[msg.type] ?? 'UNKNOWN', typeId: msg.type });
       }
@@ -1160,13 +1293,38 @@ interface OcgInitResult {
   strings: Map<number, string>;
 }
 
+// First-call WASM-memory capture flag. The worker may call `initOcgEngine`
+// multiple times (init duel, init replay, init fork) — we only need to
+// hook `WebAssembly.instantiate` around the very FIRST `createCore` call
+// to grab the Memory reference. Subsequent calls reuse the same Memory
+// (the OCGCore wasm module is cached by `@n1xx1/ocgcore-wasm`).
+let wasmHookAttempted = false;
+
 async function initOcgEngine(
   seed: [bigint, bigint, bigint, bigint],
 ): Promise<OcgInitResult | null> {
   const dbPath = join(dataDir, 'cards.cdb');
   const scriptsDir = join(dataDir, 'scripts_full');
 
-  const newCore = await createCore({ sync: true });
+  // Hook the first createCore to capture WebAssembly.Memory.
+  // After this, snapshot/restore primitives in `wasm-snapshot.ts` are
+  // available. Failure is non-fatal — feature stays unavailable.
+  let shouldHook = false;
+  if (!wasmHookAttempted) {
+    wasmHookAttempted = true;
+    shouldHook = true;
+    installWasmHook();
+  }
+
+  let newCore: OcgCoreSync;
+  try {
+    newCore = await createCore({ sync: true });
+  } finally {
+    if (shouldHook) {
+      uninstallWasmHook();
+      locateWasmMemory();
+    }
+  }
   const db = loadDatabase(dbPath);
   const strings = loadSystemStrings(join(dataDir, 'strings.conf'));
   const scripts = loadScripts(scriptsDir);
@@ -1240,6 +1398,9 @@ async function initDuel(msg: MainToWorkerMessage & { type: 'INIT_DUEL' }): Promi
   capturedResponses = [];
   duelResult = null;
   replayEmitted = false;
+  // P0-3bis.4 — defensive: clear any leftover rollback snapshot in case
+  // cleanup() was skipped (re-init without prior duel-end signal).
+  setLastIdleSnapshot(null);
 
   const seed = generateSeed();
   duelSeed = [...seed];
@@ -1284,6 +1445,14 @@ function cleanup(): void {
   capturedResponses = [];
   duelSeed = [];
   forkPendingSelect = null;
+  // Defensive reset (code-review 2026-05-08) — `forkMode` was previously
+  // sticky across error paths that don't `process.exit`. Resetting here
+  // makes a re-init via INIT_DUEL after an INIT_FORK error pick up the
+  // correct mode. Pre-existing latent bug, surfaced when P0-3bis.3
+  // started gating its snapshot-take and cancel handler on `!forkMode`.
+  forkMode = false;
+  // P0-3bis.4 — release any held rollback snapshot + its TTL timer.
+  setLastIdleSnapshot(null);
 }
 
 // =============================================================================
@@ -1501,11 +1670,9 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
   let lastConfirmedCards: CardInfo[] | null = null;
   let hasWinOrDraw = false;
   let activeChainIndex: number | null = null; // Track current chain link depth
-  // Set to true while we're between MSG_CHAIN_SOLVING and MSG_CHAIN_SOLVED —
-  // mirrors `ChainResolutionManager.isResolving` on the client. Board-changing
-  // events emitted during this window get a `boardStateAfter` snapshot so the
-  // client's buffer replay can progressively sync logical state per event.
-  let chainResolving = false;
+  // Local chain tracker — replay precompute doesn't share state with cancel,
+  // so a per-run instance is enough (vs `liveChainTracker` for live PvP).
+  const chainTracker = new ChainSnapshotTracker();
   const MAX_ITERATIONS = 100_000; // CPU-spin guard — well above any real duel
   let iterations = 0;
 
@@ -1578,21 +1745,13 @@ function runReplayPreComputation(msg: InitReplayMessage): void {
       if (translated) {
         const filtered = filterMessage(translated, 0 as Player, true); // omniscient
         if (filtered) {
-          // Track chain-resolving window (MSG_CHAIN_SOLVING..MSG_CHAIN_SOLVED) so
-          // board-changing events in that window get a `boardStateAfter` snapshot.
-          if (filtered.type === 'MSG_CHAIN_SOLVING') chainResolving = true;
-          else if (filtered.type === 'MSG_CHAIN_SOLVED') chainResolving = false;
-
-          // Attach a post-event board snapshot to BOARD_CHANGING events inside
-          // the resolving window. Client's `replayBuffer` uses it to progress
-          // logical state across events instead of jumping to the final chain
-          // state at commit. The snapshot reflects ocgcore state at the moment
-          // of capture (post-batch if multiple events fire in one `duelProcess`
-          // call); still strictly better than no snapshot at all.
-          if (chainResolving && BOARD_CHANGING_EVENT_TYPES.has(filtered.type)) {
-            const snapshot = (buildBoardState() as BoardStateMsg).data;
-            (filtered as { boardStateAfter?: BoardStatePayload }).boardStateAfter = snapshot;
-          }
+          // Track chain-resolving window + attach `boardStateAfter` snapshot.
+          // Client's `replayBuffer` uses it to progress logical state across
+          // events instead of jumping to the final chain state at commit. The
+          // snapshot reflects ocgcore state at capture time (post-batch if
+          // multiple events fire in one `duelProcess` call); still strictly
+          // better than no snapshot at all.
+          chainTracker.process(filtered, () => (buildBoardState() as BoardStateMsg).data);
 
           // Track hint/confirmedCards accumulators (metadata, not pushed to events)
           if (filtered.type === 'MSG_HINT') {
@@ -1938,6 +2097,20 @@ port.on('message', (msg: MainToWorkerMessage) => {
     lastResponsePlayerIndex = msg.playerIndex;
     const response = transformResponse(msg.promptType, msg.data as unknown as Record<string, unknown>);
     if (response) {
+      // P0-3bis.3 — take a rollback snapshot BEFORE applying an
+      // IDLECMD/BATTLECMD response. The cancel path will restore this if
+      // the user right-clicks on the continuation prompt.
+      // Only applies in regular PVP (not fork mode — replay-fork already
+      // bypasses capturedSetResponse, and rollback there has no client UI).
+      if (!forkMode && snapshotAvailable() && (msg.promptType === 'SELECT_IDLECMD' || msg.promptType === 'SELECT_BATTLECMD')) {
+        try {
+          setLastIdleSnapshot(takeWorkerSnapshot());
+        } catch (err) {
+          dlog.warn('Failed to take rollback snapshot', { error: err instanceof Error ? err.message : String(err) });
+          setLastIdleSnapshot(null);
+        }
+      }
+
       if (forkMode) {
         core!.duelSetResponse(duel, response as never);
       } else {
@@ -1949,5 +2122,77 @@ port.on('message', (msg: MainToWorkerMessage) => {
     } else {
       dlog.error('transformResponse returned null', { promptType: msg.promptType });
     }
+  } else if (msg.type === 'CANCEL_PROMPT_SEQUENCE') {
+    // P0-3bis.3 — Roll the duel back to the most recent IDLECMD/BATTLECMD
+    // snapshot and re-emit the original prompt.
+    if (!core || !duel) {
+      dlog.error('Received CANCEL_PROMPT_SEQUENCE but no active duel');
+      return;
+    }
+    if (forkMode) {
+      dlog.warn('[duel-worker] cancel ignored (fork mode)');
+      return;
+    }
+    // P0-3bis.4 — pure decision helper: gate on snapshot existence,
+    // player match, and chain-resolving interlock. Side-effect-free.
+    const decision = tryCancelRollback(lastIdleSnapshot, msg.playerIndex, liveChainTracker.isResolving);
+    if (!decision.canCancel) {
+      switch (decision.reason) {
+        case 'no-snapshot':
+          dlog.warn('[duel-worker] cancel ignored (no snapshot)');
+          break;
+        case 'wrong-player':
+          dlog.warn('[duel-worker] cancel rejected (wrong player)', {
+            snapshotPlayer: lastIdleSnapshot?.lastResponsePlayerIndex,
+            messagePlayer: msg.playerIndex,
+          });
+          break;
+        case 'chain-resolving':
+          // P0-3bis.4 — keep snapshot alive across the interlock; player
+          // can re-attempt cancel after MSG_CHAIN_SOLVED. By design we do
+          // NOT auto-replay post-chain (per AC #3) — the user's mental
+          // model may have shifted; require an explicit re-action.
+          dlog.warn('[duel-worker] cancel ignored (chain resolving)');
+          break;
+      }
+      return;
+    }
+    try {
+      // tryCancelRollback proved snapshot is non-null; assert by capture
+      const snap = lastIdleSnapshot as WorkerSnapshot;
+      restoreWorkerSnapshot(snap);
+    } catch (err) {
+      dlog.error('restoreWorkerSnapshot failed', { error: err instanceof Error ? err.message : String(err) });
+      setLastIdleSnapshot(null);
+      return;
+    }
+    setLastIdleSnapshot(null);
+    dlog.log('[duel-worker] cancel applied', { player: msg.playerIndex });
+    // Drain the post-restore RETRY message that ocgcore emits — the
+    // restored state is "awaiting response to the original prompt", and
+    // ocgcore signals this via RETRY. We DON'T want runDuelLoop to handle
+    // it (that would route through the regular RETRY path which counts
+    // toward `invalidResponseCount` and could trigger DUEL_END at 5
+    // cancels). Instead, drain it silently and ask the main thread to
+    // re-broadcast the cached prompt without counting it as a retry.
+    if (core && duel) {
+      const status = core.duelProcess(duel);
+      const messages = core.duelGetMessage(duel);
+      // Sanity: post-restore should be WAITING with at least RETRY.
+      // If something else, log a warning but proceed — server will still
+      // re-broadcast the cached prompt.
+      if (status !== OcgProcessResult.WAITING) {
+        dlog.warn('[duel-worker] post-cancel duelProcess unexpected status', { status });
+      }
+      const hasRetry = messages.some((m) => m.type === OcgMessageType.RETRY);
+      if (!hasRetry) {
+        dlog.warn('[duel-worker] post-cancel did not emit RETRY', { messageTypes: messages.map((m) => OcgMessageType[m.type] ?? m.type) });
+      }
+    }
+    // Re-emit BOARD_STATE so the client re-syncs visual state to the
+    // pre-action point, then ask the server to re-send the cached
+    // IDLECMD/BATTLECMD prompt without counting it as a retry.
+    port.postMessage({ type: 'WORKER_MESSAGE', duelId, message: buildBoardState() });
+    port.postMessage({ type: 'WORKER_CANCEL_DONE', duelId, playerIndex: msg.playerIndex });
   }
 });
