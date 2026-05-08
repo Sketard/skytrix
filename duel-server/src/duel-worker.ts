@@ -1588,35 +1588,50 @@ function finalizeChainGroups(states: PreComputedState[]): void {
   }
 }
 
+/**
+ * Emit a turn's pre-computed states in chunks bounded by `MAX_BATCH_BYTES`.
+ *
+ * Audit finding M5 — previous implementation re-serialized chunks while
+ * halving them until they fit, worst-case O(n × log(start_chunk_size))
+ * stringifies on a long turn. Now: one byteLength measurement up-front
+ * derives an arithmetic chunk size from the observed avg-bytes-per-state,
+ * with a 20% safety margin to absorb per-state variance. The chunk-fits
+ * guard is kept (defense in depth — a chain with one giant boardStateAfter
+ * after dozens of trivial events could still drift), but in practice it
+ * almost never fires because the margin already covers typical variance.
+ */
 function emitTurnBatch(replayDuelId: string, turnNum: number, states: PreComputedState[]): void {
   if (states.length === 0) return;
   const MAX_BATCH_BYTES = 512 * 1024;
   const serialized = JSON.stringify(states);
-  if (serialized.length > MAX_BATCH_BYTES) {
-    // Sub-batch: start with groups of 50, validate each chunk individually
-    for (let i = 0; i < states.length;) {
-      let end = Math.min(i + 50, states.length);
-      let chunk = states.slice(i, end);
-      // If a chunk still exceeds the limit, halve it until it fits
-      while (chunk.length > 1 && JSON.stringify(chunk).length > MAX_BATCH_BYTES) {
-        end = i + Math.ceil(chunk.length / 2);
-        chunk = states.slice(i, end);
-      }
-      port.postMessage({
-        type: 'WORKER_REPLAY_BOARD_STATES',
-        duelId: replayDuelId,
-        turnNumber: turnNum,
-        states: chunk,
-      });
-      i = end;
-    }
-  } else {
+  const totalBytes = Buffer.byteLength(serialized, 'utf-8');
+  if (totalBytes <= MAX_BATCH_BYTES) {
     port.postMessage({
       type: 'WORKER_REPLAY_BOARD_STATES',
       duelId: replayDuelId,
       turnNumber: turnNum,
       states,
     });
+    return;
+  }
+  // Derive chunk size arithmetically: target 80% of MAX to absorb per-state
+  // size variance. Floor at 1 so the loop always advances.
+  const avgPerState = totalBytes / states.length;
+  const targetChunkSize = Math.max(1, Math.floor((MAX_BATCH_BYTES * 0.8) / avgPerState));
+  for (let i = 0; i < states.length;) {
+    let chunk = states.slice(i, Math.min(i + targetChunkSize, states.length));
+    // Defense in depth: if variance pushed this chunk over MAX, halve it
+    // until it fits. Borderline cases only — typical chunks pass first try.
+    while (chunk.length > 1 && Buffer.byteLength(JSON.stringify(chunk), 'utf-8') > MAX_BATCH_BYTES) {
+      chunk = chunk.slice(0, Math.ceil(chunk.length / 2));
+    }
+    port.postMessage({
+      type: 'WORKER_REPLAY_BOARD_STATES',
+      duelId: replayDuelId,
+      turnNumber: turnNum,
+      states: chunk,
+    });
+    i += chunk.length;
   }
 }
 
