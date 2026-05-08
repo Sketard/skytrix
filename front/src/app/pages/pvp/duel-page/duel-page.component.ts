@@ -39,6 +39,7 @@ import { LpAnimationTracker } from './lp-animation-tracker';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { MoveAnimationRouter } from './move-animation-router';
+import { BufferReplayBuilder } from './buffer-replay-builder';
 import { RoomStateMachineService } from './room-state-machine.service';
 import { CardInspectionService } from './card-inspection.service';
 import { DuelConnectionEffectsService } from './duel-connection-effects.service';
@@ -65,7 +66,7 @@ import { environment } from '../../../../environments/environment';
   providers: [
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
-    ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter,
+    ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder,
     AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,

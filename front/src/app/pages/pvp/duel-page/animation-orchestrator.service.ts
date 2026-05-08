@@ -1,15 +1,16 @@
 import { effect, type EffectRef, inject, Injectable, Injector, isDevMode, signal } from '@angular/core';
 import type { DuelState, GameEvent } from '../types';
-import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg, CardInfo } from '../duel-ws.types';
+import type { MoveMsg, DrawMsg, DamageMsg, RecoverMsg, PayLpCostMsg, FlipSummoningMsg, ChangePosMsg, ChainingMsg, ChainSolvingMsg, ChainSolvedMsg, ShuffleHandMsg, ConfirmCardsMsg, ShuffleDeckMsg, BecomeTargetMsg, SwapMsg, AttackMsg, BattleMsg, TossCoinMsg, TossDiceMsg, EquipMsg, AddCounterMsg, RemoveCounterMsg, ShuffleSetCardMsg, SwapGraveDeckMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
-import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, GROUP_STAGGER_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
+import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
 import { CardTravelService } from './card-travel.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { BattleAnimationTracker } from './battle-animation-tracker';
+import { BufferReplayBuilder } from './buffer-replay-builder';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import { LpAnimationTracker } from './lp-animation-tracker';
@@ -49,6 +50,7 @@ export class AnimationOrchestratorService {
   private readonly battleTracker = inject(BattleAnimationTracker);
   private readonly toastService = inject(DuelToastService);
   private readonly artService = inject(DuelCardArtService);
+  private readonly bufferReplayBuilder = inject(BufferReplayBuilder);
 
   // --- Public read-only signals ---
   private readonly _isAnimating = signal(false);
@@ -201,7 +203,9 @@ export class AnimationOrchestratorService {
    * directives. The queue loop processes them identically to normal events.
    * Returns a Promise that resolves when the batch-end sentinel fires.
    *
-   * Replaces the old replayBufferedEvents (~80 lines of parallel pipeline).
+   * Pure dispatch policy: drain → fast-path or build → prepend → resolve.
+   * All build logic (interleave, session locks, group/barrier directives)
+   * lives in `BufferReplayBuilder`.
    */
   replayBuffer(inlineFromLoop = false): Promise<void> {
     const buffer = this.chainManager.drainBuffer();
@@ -216,155 +220,21 @@ export class AnimationOrchestratorService {
     // net by chainManager.reset().
     this.chainManager.beginDrain();
 
-    // Reduced motion: apply state changes instantly
     if (this.ctx.reducedMotion()) {
-      for (const event of buffer) {
-        if (event.type === 'MSG_MOVE') this.moveRouter.processMoveEvent(event as MoveMsg);
-        else if (event.type === 'MSG_DRAW') this.drawManager.processDrawEvent(event as DrawMsg);
-      }
-      this.rbs.commitAll();
-      for (const event of buffer) {
-        if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_RECOVER' || event.type === 'MSG_PAY_LPCOST') {
-          this.lpTracker.fireLpReplayEvent(event);
-        }
-      }
+      this.bufferReplayBuilder.applyReducedMotion(buffer);
       this.chainManager.endDrain();
       return Promise.resolve();
     }
 
-    const isZoneEvent = (e: GameEvent) => e.type === 'MSG_MOVE' || e.type === 'MSG_DRAW';
-    const isLpEvent = (e: GameEvent) =>
-      e.type === 'MSG_DAMAGE' || e.type === 'MSG_RECOVER' || e.type === 'MSG_PAY_LPCOST';
-    const KNOWN_BUFFER_TYPES = new Set([
-      'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',
-      'MSG_FLIP_SUMMONING', 'MSG_CHANGE_POS', 'MSG_SET', 'MSG_SHUFFLE_HAND',
-      'MSG_CONFIRM_CARDS', 'MSG_SHUFFLE_DECK', 'MSG_TOSS_COIN', 'MSG_TOSS_DICE',
-      'MSG_EQUIP', 'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER', 'MSG_SHUFFLE_SET_CARD',
-      'MSG_SWAP_GRAVE_DECK', 'MSG_BECOME_TARGET', 'MSG_SWAP',
-    ]);
-    const unknown = buffer.filter(e => !KNOWN_BUFFER_TYPES.has(e.type));
-    if (unknown.length) {
-      this.logger.warn('replayBuffer: %d unknown event type(s): %o', unknown.length, unknown.map(e => e.type));
-    }
-
-    // Interleave MSG_CONFIRM_CARDS cards with their matching MOVE→HAND events.
-    // For each card in a CONFIRM, find the earliest unconsumed preceding
-    // MOVE→HAND with the same (cardCode, player); emit a single-card CONFIRM
-    // immediately after that MOVE. Cards with no match remain in the original
-    // CONFIRM at its original position. Produces tutor→reveal→tutor→reveal →
-    // … → shuffle flow instead of tutor→tutor→reveal-all→discard.
-    const interleaved = this.interleaveConfirmsWithMoves(buffer);
-
-    // Session HAND lock + expansion-slot batch: hold HAND across the entire
-    // buffer replay so travelToHand/discardFromHand inner commits only
-    // decrement their own ref-count without firing commitZone(HAND). This
-    // keeps rendered HAND at its pre-chain state throughout the sequence,
-    // otherwise:
-    //   - For tutors: the first tutor's commit would snap rendered HAND to
-    //     the pre-computed FINAL logical state mid-way.
-    //   - For discards: the first discard's commit would remove the
-    //     subsequent cards from the HAND DOM, breaking
-    //     `resolveHandTarget(HAND, fromSeq)` for discard 2/3 — they'd
-    //     animate from the HAND zone centre instead of their real card
-    //     position.
-    //
-    // Also reserves N distinct expansion slots per affected player via
-    // `drawManager.beginHandBatch` (only for MOVE→HAND), so tutor1 lands at
-    // slot 0, tutor2 at slot 1, etc., each keeping the fan's per-index
-    // rotation. Released at batch-end.
-    const sessionHandLocks: Array<{ commit(): void; release(): void }> = [];
-    const handMoveCountByRelPlayer = new Map<0 | 1, number>();
-    const handInvolvedRelPlayers = new Set<0 | 1>();
-    for (const e of interleaved) {
-      if (e.type !== 'MSG_MOVE') continue;
-      const mm = e as MoveMsg;
-      const touchesHand = mm.toLocation === LOCATION.HAND || mm.fromLocation === LOCATION.HAND;
-      if (!touchesHand) continue;
-      const rp = this.ctx.relativePlayer(mm.player);
-      handInvolvedRelPlayers.add(rp);
-      if (mm.toLocation === LOCATION.HAND) {
-        handMoveCountByRelPlayer.set(rp, (handMoveCountByRelPlayer.get(rp) ?? 0) + 1);
-      }
-    }
-    for (const rp of handInvolvedRelPlayers) {
-      sessionHandLocks.push(this.rbs.lockZone(`HAND-${rp}`));
-    }
-    for (const [rp, count] of handMoveCountByRelPlayer) {
-      this.drawManager.beginHandBatch(rp, count);
-    }
-
-    // Pre-lock all zone event sources across the entire buffer
-    this.moveRouter.preLockQueuedSources(interleaved.filter(isZoneEvent));
-
-    // Build batch preserving buffer chronology.
-    // Consecutive zone events (MSG_MOVE/MSG_DRAW) are grouped for parallel
-    // travel with stagger; a barrier follows each group so subsequent events
-    // see cards in their final positions. When a single-card CONFIRM has been
-    // inlined right after a MOVE→HAND (see interleaveConfirmsWithMoves), the
-    // MOVE becomes a group of one, followed by barrier and its reveal.
-    const batch: QueueEntry[] = [];
-    let pendingGroup: GameEvent[] = [];
-
-    const flushGroup = () => {
-      if (pendingGroup.length === 0) return;
-      batch.push({ kind: 'group', events: pendingGroup, staggerMs: GROUP_STAGGER_MS });
-      batch.push({ kind: 'barrier' });
-      pendingGroup = [];
-    };
-
-    // A zone event is an "overlay detach" when its source is the OVERLAY
-    // location. We split the group at the boundary between overlay detach
-    // events and other zone events so XYZ destruction plays cleanly:
-    //   detach material 1 + detach material 2 (parallel, ~600ms)
-    //   └─ barrier ─┘
-    //   destroy monster (next group, ~400ms)
-    // Without the split, all three animate together: the monster's
-    // `preDestroyEffect` captures a srcEl that still holds the sliding-out
-    // overlay children, and the monster finishes disappearing before its
-    // materials finish their slide-out.
-    const isOverlayDetach = (e: GameEvent): boolean =>
-      e.type === 'MSG_MOVE' && (e as MoveMsg).fromLocation === LOCATION.OVERLAY;
-
-    for (const e of interleaved) {
-      if (isZoneEvent(e)) {
-        const last = pendingGroup[pendingGroup.length - 1];
-        if (last && isOverlayDetach(last) !== isOverlayDetach(e)) {
-          // Category boundary (overlay→non-overlay or vice versa) — flush so
-          // the two phases play sequentially with a barrier between them.
-          flushGroup();
-        }
-        pendingGroup.push(e);
-      } else {
-        flushGroup();
-        batch.push(isLpEvent(e) ? { kind: 'lp', event: e } : e);
-      }
-    }
-    flushGroup();
-
-    const releaseSessionLocks = () => {
-      // Safety release: processShuffleEvent's commitAll() clears locks during
-      // normal shuffle flow, and each lock's .release() is idempotent via the
-      // internal `released` flag. Release all here so the last remaining
-      // session lock drops HAND ref-count to the travelToHand commits' level
-      // and commitZone(HAND) fires with the final logical state. Also
-      // retires the hand-batch expansion slots so the post-commit fan lays
-      // out against the final card count.
-      for (const rp of handMoveCountByRelPlayer.keys()) {
-        this.drawManager.endHandBatch(rp);
-      }
-      for (const l of sessionHandLocks) l.release();
-      // Drain complete — events processed past this point are again subject
-      // to bufferIfResolving (e.g., events arriving from the server after the
-      // batch finishes but before MSG_CHAIN_SOLVED).
-      this.chainManager.endDrain();
-    };
+    const { batch, releaseSessionLocks } = this.bufferReplayBuilder.build(buffer);
+    const cleanup = () => { releaseSessionLocks(); this.chainManager.endDrain(); };
 
     // Inline path: called from mid-chain pre-replay inside _processAnimationQueueInner.
     // Prepend batch directly — the while loop continues and processes directives.
     // No await-signal (overlay not involved), no external processAnimationQueue
     // (would be a no-op since _isProcessing is true — causing a 10s deadlock).
     if (inlineFromLoop) {
-      batch.push({ kind: 'batch-end', resolve: releaseSessionLocks });
+      batch.push({ kind: 'batch-end', resolve: cleanup });
       this.trace('batchEnqueue', { bufferLen: buffer.length, directives: batch.filter(e => 'kind' in e).length, inline: true });
       this._isReplayingBuffer = true;
       this.dataSource.prependToQueue(batch);
@@ -383,7 +253,7 @@ export class AnimationOrchestratorService {
       batch.push({
         kind: 'batch-end', resolve: () => {
           clearTimeout(safety);
-          releaseSessionLocks();
+          cleanup();
           resolve();
         },
       });
@@ -397,65 +267,6 @@ export class AnimationOrchestratorService {
       this.chainManager.clearWaiting();
       this.processAnimationQueue();
     });
-  }
-
-  /**
-   * Split aggregated MSG_CONFIRM_CARDS into per-card reveals inlined right
-   * after each matching MOVE→HAND, so the visual flow becomes
-   * `tutor1 → reveal1 → tutor2 → reveal2 → … → (unmatched remainder)`.
-   *
-   * Matching: confirm card is matched to the earliest unconsumed preceding
-   * MOVE→HAND with the same (cardCode, player) AND the confirm card's
-   * location === HAND. Unmatched cards stay as a reduced CONFIRM at the
-   * original CONFIRM position.
-   *
-   * Consumed moves are tracked by reference so splice-induced index shifts
-   * don't invalidate matching state across multiple CONFIRM events.
-   */
-  private interleaveConfirmsWithMoves(buffer: readonly GameEvent[]): GameEvent[] {
-    const interleaved: GameEvent[] = [];
-    const consumedMoves = new WeakSet<MoveMsg>();
-    for (const e of buffer) {
-      if (e.type !== 'MSG_CONFIRM_CARDS') { interleaved.push(e); continue; }
-      const confirmMsg = e as ConfirmCardsMsg;
-      const remaining: CardInfo[] = [];
-      const matches: Array<{ card: CardInfo; moveIdx: number }> = [];
-      for (const card of confirmMsg.cards) {
-        let matchIdx = -1;
-        for (let i = 0; i < interleaved.length; i++) {
-          const prev = interleaved[i];
-          if (prev.type !== 'MSG_MOVE') continue;
-          const mm = prev as MoveMsg;
-          if (consumedMoves.has(mm)) continue;
-          if (mm.toLocation === LOCATION.HAND
-            && mm.cardCode === card.cardCode
-            && mm.player === card.player
-            && card.location === LOCATION.HAND) {
-            matchIdx = i;
-            break;
-          }
-        }
-        if (matchIdx >= 0) {
-          consumedMoves.add(interleaved[matchIdx] as MoveMsg);
-          matches.push({ card, moveIdx: matchIdx });
-        } else {
-          remaining.push(card);
-        }
-      }
-      // Splice back-to-front so earlier indices stay valid during insertion.
-      matches.sort((a, b) => b.moveIdx - a.moveIdx);
-      for (const { card, moveIdx } of matches) {
-        interleaved.splice(moveIdx + 1, 0, {
-          type: 'MSG_CONFIRM_CARDS',
-          player: confirmMsg.player,
-          cards: [card],
-        } as ConfirmCardsMsg);
-      }
-      if (remaining.length > 0) {
-        interleaved.push({ ...confirmMsg, cards: remaining } as ConfirmCardsMsg);
-      }
-    }
-    return interleaved;
   }
 
   // ---------------------------------------------------------------------------
