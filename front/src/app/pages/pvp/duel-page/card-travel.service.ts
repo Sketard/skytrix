@@ -32,6 +32,11 @@ export class CardTravelService implements OnDestroy {
   private readonly _inFlight = new Map<HTMLDivElement, { animation: Animation; resolve: () => void }>();
   private readonly _landed = new Set<HTMLDivElement>();
   private readonly _timers = new Set<number>();
+  /** Tracks ephemeral overlay elements (glow, sink, particles, cracks, flash, star)
+   *  appended by the autonomous effects (zoneImpactEffect, slamDustParticles,
+   *  preDestroyEffect, activateEffect). Cleared in ngOnDestroy so a destroy mid-effect
+   *  doesn't leave orphan DOM elements when the .finished.then() never fires. */
+  private readonly _overlayEls = new Set<HTMLElement>();
   private readonly _reducedMotion: boolean;
 
   constructor() {
@@ -404,6 +409,8 @@ export class CardTravelService implements OnDestroy {
       resolve();
     }
     this._inFlight.clear();
+    for (const el of this._overlayEls) el.remove();
+    this._overlayEls.clear();
     this.clearLandedTravels();
   }
 
@@ -569,13 +576,12 @@ export class CardTravelService implements OnDestroy {
       border-radius:4px;
       background:radial-gradient(circle, ${color} 0%, transparent 70%);
     `;
-    this._container.appendChild(glow);
-    glow.animate([
+    const glowAnim = glow.animate([
       { opacity: 0, transform: 'scale(1.3)' },
       { opacity: 0.8, transform: 'scale(1)', offset: 0.4 },
       { opacity: 0, transform: 'scale(0.85)' },
-    ], { duration: duration * 0.6, easing: 'ease-in-out', fill: 'forwards' })
-      .finished.then(() => glow.remove());
+    ], { duration: duration * 0.6, easing: 'ease-in-out', fill: 'forwards' });
+    this.trackOverlay(glow, glowAnim);
 
     // 2. Brief dark overlay simulating the card sinking in
     const sink = document.createElement('div');
@@ -586,13 +592,12 @@ export class CardTravelService implements OnDestroy {
       border-radius:4px;
       background:rgba(0,0,0,0.5);
     `;
-    this._container.appendChild(sink);
-    sink.animate([
+    const sinkAnim = sink.animate([
       { opacity: 0 },
       { opacity: 1, offset: 0.35 },
       { opacity: 0 },
-    ], { duration: duration * 0.55, easing: 'ease-in', fill: 'forwards' })
-      .finished.then(() => sink.remove());
+    ], { duration: duration * 0.55, easing: 'ease-in', fill: 'forwards' });
+    this.trackOverlay(sink, sinkAnim);
   }
 
   /** Dust particles expelled from the zone edges on slam impact. */
@@ -621,8 +626,6 @@ export class CardTravelService implements OnDestroy {
         border-radius:50%;
         background:rgba(200,190,170,0.75);
       `;
-      this._container.appendChild(p);
-
       // Direction: outward from center, slightly randomised
       const baseAngle = Math.atan2(y - cy, x - cx);
       const angle = baseAngle + (Math.random() - 0.5) * 0.6;
@@ -631,11 +634,11 @@ export class CardTravelService implements OnDestroy {
       const ty = Math.sin(angle) * dist;
       const delay = i * 18;
 
-      p.animate([
+      const pAnim = p.animate([
         { opacity: 0.9, transform: 'translate(0,0) scale(1)' },
         { opacity: 0,   transform: `translate(${tx}px,${ty}px) scale(0.3)` },
-      ], { duration: 340 + Math.random() * 120, delay, easing: 'ease-out', fill: 'forwards' })
-        .finished.then(() => p.remove());
+      ], { duration: 340 + Math.random() * 120, delay, easing: 'ease-out', fill: 'forwards' });
+      this.trackOverlay(p, pAnim);
     });
   }
 
@@ -698,7 +701,7 @@ export class CardTravelService implements OnDestroy {
     }
 
     overlay.appendChild(svg);
-    this._container.appendChild(overlay);
+    this.trackOverlayUntimed(overlay);
 
     // Animate cracks drawing in with staggered starts
     const animations: Animation[] = [];
@@ -714,7 +717,7 @@ export class CardTravelService implements OnDestroy {
       // Brief hold so the cracks are visible before the travel starts
       new Promise<void>(resolve => {
         const tid = setTimeout(() => {
-          overlay.remove();
+          this.removeOverlay(overlay);
           resolve();
         }, duration * 0.3) as unknown as number;
         this._timers.add(tid);
@@ -770,14 +773,13 @@ export class CardTravelService implements OnDestroy {
       border-radius:8px;
       background:radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,220,100,0.6) 40%, transparent 70%);
     `;
-    this._container.appendChild(flash);
-
     const flashAnim = flash.animate([
       { opacity: 0, transform: 'scale(0.3)' },
       { opacity: 1, transform: 'scale(1.2)', offset: 0.3 },
       { opacity: 0.8, transform: 'scale(1.4)', offset: 0.5 },
       { opacity: 0, transform: 'scale(1.8)' },
     ], { duration: duration * 0.8, easing: 'ease-out', fill: 'forwards' });
+    this.trackOverlay(flash, flashAnim);
 
     // --- 2. Growing star burst ---
     const starSize = Math.max(rect.width, rect.height) * 1.4;
@@ -789,14 +791,13 @@ export class CardTravelService implements OnDestroy {
       clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
       background:radial-gradient(circle, rgba(255,255,220,0.95) 0%, rgba(255,200,60,0.7) 50%, transparent 100%);
     `;
-    this._container.appendChild(star);
-    star.animate([
+    const starAnim = star.animate([
       { opacity: 0, transform: 'scale(0) rotate(0deg)' },
       { opacity: 1, transform: 'scale(0.8) rotate(20deg)', offset: 0.3 },
       { opacity: 0.7, transform: 'scale(1.2) rotate(35deg)', offset: 0.6 },
       { opacity: 0, transform: 'scale(1.6) rotate(50deg)' },
-    ], { duration: duration * 0.9, easing: 'ease-out', fill: 'forwards' })
-      .finished.then(() => star.remove());
+    ], { duration: duration * 0.9, easing: 'ease-out', fill: 'forwards' });
+    this.trackOverlay(star, starAnim);
 
     // --- 3. Spark particles (golden/cyan, radiating outward) ---
     const particleCount = 10;
@@ -815,22 +816,45 @@ export class CardTravelService implements OnDestroy {
         background:${color};
         box-shadow:0 0 ${size}px ${color};
       `;
-      this._container.appendChild(p);
-
       const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
       const dist = 25 + Math.random() * 35;
       const tx = Math.cos(angle) * dist;
       const ty = Math.sin(angle) * dist;
 
-      p.animate([
+      const pAnim = p.animate([
         { opacity: 1, transform: 'translate(0,0) scale(1)' },
         { opacity: 0.8, transform: `translate(${tx * 0.5}px,${ty * 0.5}px) scale(1.2)`, offset: 0.3 },
         { opacity: 0, transform: `translate(${tx}px,${ty}px) scale(0.2)` },
-      ], { duration: duration * 0.7 + Math.random() * duration * 0.3, delay: duration * 0.1 + i * (duration * 0.024), easing: 'ease-out', fill: 'forwards' })
-        .finished.then(() => p.remove());
+      ], { duration: duration * 0.7 + Math.random() * duration * 0.3, delay: duration * 0.1 + i * (duration * 0.024), easing: 'ease-out', fill: 'forwards' });
+      this.trackOverlay(p, pAnim);
     }
 
-    return flashAnim.finished.then(() => flash.remove());
+    // flash element is already cleaned up by trackOverlay above; just await its end.
+    return flashAnim.finished.then(() => undefined, () => undefined);
+  }
+
+  /** Append `el` to the container and track it; remove from DOM + tracking when
+   *  `animation.finished` resolves OR rejects (animation.cancel()). */
+  private trackOverlay(el: HTMLElement, animation: Animation): void {
+    this._container.appendChild(el);
+    this._overlayEls.add(el);
+    const cleanup = () => {
+      el.remove();
+      this._overlayEls.delete(el);
+    };
+    animation.finished.then(cleanup, cleanup);
+  }
+
+  /** Append `el` to the container and track it without auto-cleanup. The caller
+   *  is responsible for invoking `removeOverlay(el)` when done. */
+  private trackOverlayUntimed(el: HTMLElement): void {
+    this._container.appendChild(el);
+    this._overlayEls.add(el);
+  }
+
+  private removeOverlay(el: HTMLElement): void {
+    el.remove();
+    this._overlayEls.delete(el);
   }
 
   private applyGlow(el: HTMLElement, color: string, duration: number): void {
