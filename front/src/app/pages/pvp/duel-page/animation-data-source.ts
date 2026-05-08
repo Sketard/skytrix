@@ -80,7 +80,23 @@ export function syncAfterBoardState(
   // resolving: defer — orchestrator controls commits via chain overlay contract
 }
 
-/** Peek into the animation queue, find the first event matching predicate, remove it, and return it. */
+/**
+ * Peek into the animation queue, find the first event matching predicate,
+ * remove it, and return it.
+ *
+ * **Complexity**: O(n) per call — `findIndex` walks the queue and
+ * `removeAnimationAt` re-spreads it. Callers must NOT loop this over a
+ * large queue (would be O(m·n)).
+ *
+ * **Expected queue size**: ≤ 50 entries in PvP/replay (typical: 5-15 for
+ * initial draw, 1-3 mid-game, up to 30-40 during long chains with buffer
+ * replay). Both current callers (`DrawSequenceManager.peekAndDequeueOther
+ * InitialDraw` and the MSG_MOVE pairing path in draw sequences) make a
+ * single call per event, so amortized cost is bounded.
+ *
+ * If the queue ever grows beyond 100, switch to an indexed structure
+ * (Map<eventType, indexSet>) before this becomes a real hot-path concern.
+ */
 export function peekAndDequeueMatching<T extends GameEvent>(
   dataSource: AnimationDataSource,
   predicate: (e: GameEvent) => boolean,

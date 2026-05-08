@@ -3,6 +3,7 @@ import { EMPTY_DUEL_STATE, Prompt, HintContext, GameEvent, ConnectionStatus, Cha
 import { syncAfterBoardState, type QueueEntry } from './animation-data-source';
 import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService } from './rendered-board-state.service';
 import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
@@ -136,6 +137,14 @@ export class DuelConnection {
   // effect from bleeding into unrelated prompts via HINT_SELECTMSG merge.
   // Cleared when a fresh HINT type 10/13/15 (card-identifying hint) arrives.
   private _hintCardConsumed = false;
+
+  // M18 — STATE_SYNC timestamp. Server contract: CHAIN_STATE is ALWAYS preceded
+  // by STATE_SYNC in the same WS batch (cancel rollback + reconnect snapshot).
+  // We assert that the gap is small (TCP segmentation should not split them by
+  // more than a fraction of a second). If the gap is large, processor.reset()
+  // from STATE_SYNC may arrive AFTER restoreChainState and silently wipe the
+  // restored chain links — surfacing it via duelAssert is the cheap detection.
+  private _lastStateSyncAt = 0;
 
   // --- Just-reconnected flag ---
   // Set to true on STATE_SYNC (reconnect), cleared on the first BOARD_STATE after
@@ -484,6 +493,8 @@ export class DuelConnection {
         this._lastSelectedPromptType = null;
         this._hintCardConsumed = false;
         this._rematchStarting.set(false);
+        // M18 — record timestamp for the CHAIN_STATE gap assertion
+        this._lastStateSyncAt = Date.now();
         this.rbs.assertNoLocks('onStateSync');
         this.rbs.updateLogical(message.data);
         this.rbs.commitAll();
@@ -498,6 +509,16 @@ export class DuelConnection {
 
       case 'CHAIN_STATE': {
         const cs = message as ChainStateMsg;
+        // M18 — STATE_SYNC + CHAIN_STATE arrive in the same WS batch by
+        // server contract. If the gap exceeds 1s, segmentation/proxy
+        // buffering has split them and processor.reset() from a delayed
+        // STATE_SYNC might wipe the chain we're about to restore.
+        const sinceSync = Date.now() - this._lastStateSyncAt;
+        duelAssert(
+          this._lastStateSyncAt > 0 && sinceSync < 1000,
+          'CHAIN_STATE',
+          `received without recent STATE_SYNC (gap=${sinceSync}ms, lastSyncAt=${this._lastStateSyncAt})`,
+        );
         const negatedSet = new Set(cs.negatedIndices);
         const links: ChainLinkState[] = cs.links.map(msg => ({
           chainIndex: msg.chainIndex,
@@ -510,7 +531,7 @@ export class DuelConnection {
           resolving: false,
           negated: negatedSet.has(msg.chainIndex),
         }));
-        // STATE_SYNC + CHAIN_STATE arrive in same WS batch — queue already cleared by processor.reset() in STATE_SYNC
+        // Queue already cleared by processor.reset() in STATE_SYNC
         this.processor.restoreChainState(links, cs.phase);
         break;
       }
