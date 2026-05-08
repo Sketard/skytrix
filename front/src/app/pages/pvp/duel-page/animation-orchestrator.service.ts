@@ -5,7 +5,23 @@ import { LOCATION, POSITION } from '../duel-ws.types';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
-import { CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS, LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD, REPLAY_BUFFER_SAFETY_TIMEOUT_MS } from './animation-constants';
+import {
+  CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS,
+  LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
+  REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
+  POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS,
+  CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
+  CHAIN_BANNER_PAUSE_MS, CHAIN_BANNER_DEFERRED_BUDGET_MS,
+  CHAIN_END_SETTLE_MS, CHAIN_SOLVING_TAIL_MS,
+  TOSS_TOAST_MS, COUNTER_PULSE_MS,
+  SHUFFLE_SET_CARD_TRAVEL_MS, SHUFFLE_SET_CARD_TRAVEL_MIN_MS,
+  SWAP_TRAVEL_MS, SWAP_TRAVEL_MIN_MS,
+  SWAP_GRAVE_DECK_GLOW_MS, SWAP_GRAVE_DECK_GLOW_MIN_MS,
+  SWAP_GRAVE_DECK_TRAVEL_MS, SWAP_GRAVE_DECK_TRAVEL_MIN_MS,
+  SHUFFLE_DECK_MS, SHUFFLE_DECK_MIN_MS,
+  POSITION_ROTATE_MS, POSITION_ROTATE_MIN_MS,
+  CHAIN_PULSE_BASE_MS,
+} from './animation-constants';
 import { CardTravelService } from './card-travel.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DrawSequenceManager } from './draw-sequence-manager';
@@ -63,12 +79,12 @@ export class AnimationOrchestratorService {
 
   /** Single source of truth for the chain pulse glow duration (ms). */
   chainPulseDuration(): number {
-    return Math.round(600 * this.ctx.speedMultiplier());
+    return Math.round(CHAIN_PULSE_BASE_MS * this.ctx.speedMultiplier());
   }
 
   /** Single source of truth for the chain exit animation duration (ms). */
   chainExitDuration(): number {
-    return Math.round(600 * this.ctx.speedMultiplier());
+    return Math.round(CHAIN_PULSE_BASE_MS * this.ctx.speedMultiplier());
   }
 
   /** Current speed multiplier (0.5 when speed toggle is Off, 1 otherwise). */
@@ -720,7 +736,7 @@ export class AnimationOrchestratorService {
       this.setAnimatingZone(zoneId, 'flip', msg.player);
       this.ctx.announceEvent('Card flip summoned', msg.player);
     }
-    return 300;
+    return POSITION_FLIP_MS;
   }
 
   private handleChangePos(msg: ChangePosMsg): number | Promise<void> | 0 {
@@ -729,7 +745,7 @@ export class AnimationOrchestratorService {
     if (wasFaceDown && nowFaceUp) {
       const zoneId = locationToZoneId(msg.location, msg.sequence);
       if (zoneId) this.setAnimatingZone(zoneId, 'flip', msg.player);
-      return 300;
+      return POSITION_FLIP_MS;
     }
     if (!wasFaceDown && nowFaceUp) {
       return this.processPositionRotation(msg);
@@ -739,37 +755,37 @@ export class AnimationOrchestratorService {
 
   private handleChaining(msg: ChainingMsg): number | Promise<void> {
     const relPlayer = this.ctx.relativePlayer(msg.player);
-    const holdMs = this.ctx.scaledDuration(500, 250);
+    const holdMs = this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS);
     const zoneId = locationToZoneId(msg.location, msg.sequence);
     if (zoneId) {
       this.setAnimatingZone(zoneId, 'activate', msg.player);
       const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
-      if (zoneKey) return this.cardTravelService.activateEffect(zoneKey, this.ctx.scaledDuration(500, 250))
+      if (zoneKey) return this.cardTravelService.activateEffect(zoneKey, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
         .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
     }
     if (msg.location === LOCATION.HAND) {
       const handEl = this.drawManager.resolveHandTarget(`HAND-${relPlayer}`, msg.sequence);
       if (handEl instanceof HTMLElement) {
         handEl.style.zIndex = '500';
-        return this.cardTravelService.activateEffect(handEl, this.ctx.scaledDuration(500, 250))
+        return this.cardTravelService.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
           .then(() => { handEl.style.zIndex = ''; })
           .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
       }
     }
-    return 400;
+    return CHAIN_ACTIVATE_FALLBACK_MS;
   }
 
   private handleChainSolving(msg: ChainSolvingMsg): number {
     const result = this.chainManager.handleSolving(msg);
     if (result.deferred) {
-      const pauseMs = this.ctx.scaledDuration(1000);
+      const pauseMs = this.ctx.scaledDuration(CHAIN_BANNER_PAUSE_MS);
       const tid = this.chainManager.scheduleBannerAnnounce(pauseMs);
       this.animationTimeouts.push(tid);
-      return 3000;
+      return CHAIN_BANNER_DEFERRED_BUDGET_MS;
     }
     this.dataSource.applyChainSolving(msg.chainIndex);
     const exitDelay = this.chainManager.chainSolvedCount > 0 ? this.chainExitDuration() : 0;
-    return result.isSingleLink ? 0 : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(300);
+    return result.isSingleLink ? 0 : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(CHAIN_SOLVING_TAIL_MS);
   }
 
   private handleChainSolved(msg: ChainSolvedMsg): 'async' {
@@ -783,7 +799,7 @@ export class AnimationOrchestratorService {
     this.moveRouter.releaseAllPreLocks();
     this.drawManager.clearDrawsCompleteCallback();
     this.confirmRevealedCards.set(new Map());
-    return 100;
+    return CHAIN_END_SETTLE_MS;
   }
 
   private handleBecomeTarget(msg: BecomeTargetMsg): number {
@@ -793,25 +809,25 @@ export class AnimationOrchestratorService {
       return locationToZoneKey(c.location, c.sequence, relPlayer);
     }));
     this.targetedZoneKeys.set(keys);
-    const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), 800 * this.ctx.speedMultiplier());
+    const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), BECOME_TARGET_PULSE_MS * this.ctx.speedMultiplier());
     this.animationTimeouts.push(tid);
-    return 800;
+    return BECOME_TARGET_PULSE_MS;
   }
 
   private handleTossCoin(msg: TossCoinMsg): number {
     if (this.ctx.reducedMotion()) return 0;
     const lines = msg.results.map(r => r ? 'Heads ✓' : 'Tails ✗');
-    this.toastService.show({ icon: '🪙', lines }, 1200 * this.ctx.speedMultiplier());
+    this.toastService.show({ icon: '🪙', lines }, TOSS_TOAST_MS * this.ctx.speedMultiplier());
     this.ctx.announceEvent(`Coin toss: ${lines.join(', ')}`, msg.player);
-    return 1200;
+    return TOSS_TOAST_MS;
   }
 
   private handleTossDice(msg: TossDiceMsg): number {
     if (this.ctx.reducedMotion()) return 0;
     const lines = msg.results.map((v, i) => `Die ${i + 1}: ${v}`);
-    this.toastService.show({ icon: '🎲', lines }, 1200 * this.ctx.speedMultiplier());
+    this.toastService.show({ icon: '🎲', lines }, TOSS_TOAST_MS * this.ctx.speedMultiplier());
     this.ctx.announceEvent(`Dice roll: ${msg.results.join(', ')}`, msg.player);
-    return 1200;
+    return TOSS_TOAST_MS;
   }
 
   private handleEquip(msg: EquipMsg): number | Promise<void> {
@@ -850,13 +866,13 @@ export class AnimationOrchestratorService {
     // so Angular re-evaluates the class binding and the CSS animation restarts.
     this.counterPulseKey.set(null);
     this.counterPulseKey.set(key);
-    this.scheduleTimeout(() => this.counterPulseKey.set(null), 400 * this.ctx.speedMultiplier());
-    return 400;
+    this.scheduleTimeout(() => this.counterPulseKey.set(null), COUNTER_PULSE_MS * this.ctx.speedMultiplier());
+    return COUNTER_PULSE_MS;
   }
 
   private handleShuffleSetCard(msg: ShuffleSetCardMsg): number | Promise<void> {
     if (this.ctx.reducedMotion()) return 0;
-    const duration = this.ctx.scaledDuration(400, 200);
+    const duration = this.ctx.scaledDuration(SHUFFLE_SET_CARD_TRAVEL_MS, SHUFFLE_SET_CARD_TRAVEL_MIN_MS);
     const locks: { commit: () => void; release: () => void }[] = [];
     const travels: Promise<void>[] = [];
     for (const c of msg.cards) {
@@ -882,7 +898,7 @@ export class AnimationOrchestratorService {
     const key2 = locationToZoneKey(msg.card2.location, msg.card2.sequence, rel2);
     const img1 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card1.cardCode));
     const img2 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card2.cardCode));
-    const duration = this.ctx.scaledDuration(400, 200);
+    const duration = this.ctx.scaledDuration(SWAP_TRAVEL_MS, SWAP_TRAVEL_MIN_MS);
 
     const lock1 = this.rbs.lockZone(key1);
     const lock2 = this.rbs.lockZone(key2);
@@ -908,8 +924,8 @@ export class AnimationOrchestratorService {
     this.swapGraveDeckKeys.set(new Set());
     this.swapGraveDeckKeys.set(new Set([gyKey, deckKey]));
 
-    const glowMs = this.ctx.scaledDuration(300, 150);
-    const travelMs = this.ctx.scaledDuration(400, 200);
+    const glowMs = this.ctx.scaledDuration(SWAP_GRAVE_DECK_GLOW_MS, SWAP_GRAVE_DECK_GLOW_MIN_MS);
+    const travelMs = this.ctx.scaledDuration(SWAP_GRAVE_DECK_TRAVEL_MS, SWAP_GRAVE_DECK_TRAVEL_MIN_MS);
 
     const lockGy = this.rbs.lockZone(gyKey);
     const lockDeck = this.rbs.lockZone(deckKey);
@@ -934,7 +950,7 @@ export class AnimationOrchestratorService {
     const pile = deckZone?.querySelector<HTMLElement>('.zone-pile');
     if (!pile) return 0;
 
-    const duration = this.ctx.scaledDuration(500, 250);
+    const duration = this.ctx.scaledDuration(SHUFFLE_DECK_MS, SHUFFLE_DECK_MIN_MS);
     pile.style.setProperty('--pvp-shuffle-duration', `${duration}ms`);
     pile.classList.add('pvp-deck-shuffle');
 
@@ -961,7 +977,7 @@ export class AnimationOrchestratorService {
 
     const nowDefense = (msg.currentPosition & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0;
     const toRotation = this.ctx.zoneCardRotation(relPlayer, nowDefense);
-    const duration = this.ctx.scaledDuration(300, 150);
+    const duration = this.ctx.scaledDuration(POSITION_ROTATE_MS, POSITION_ROTATE_MIN_MS);
 
     const lock = this.rbs.lockZone(zoneKey);
     const anim = cardEl.animate(

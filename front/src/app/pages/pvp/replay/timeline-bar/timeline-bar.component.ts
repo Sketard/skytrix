@@ -9,6 +9,7 @@ import type { PreComputedState } from '../../replay-ws.types';
 import type { Player } from '../../duel-ws.types';
 import type { DuelState } from '../../types';
 import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../../types';
+import { TIMELINE_BAR_TRANSITION_FALLBACK_MS } from '../../duel-page/animation-constants';
 
 export type TimelineSegment =
   | { type: 'single'; idx: number }
@@ -262,8 +263,9 @@ export class TimelineBarComponent implements OnDestroy {
     };
     track?.addEventListener('transitionend', onEnd, { once: true });
 
-    // Safety: stop after 300ms even if transitionend doesn't fire
-    setTimeout(onEnd, 300);
+    // Safety: stop even if transitionend doesn't fire (matches longest CSS
+    // transition declared on the bar element). See animation-constants.ts.
+    setTimeout(onEnd, TIMELINE_BAR_TRANSITION_FALLBACK_MS);
   }
 
   onTurnMouseEnter(event: MouseEvent, turn: TurnMeta): void {
