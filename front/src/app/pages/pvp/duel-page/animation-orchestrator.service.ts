@@ -869,194 +869,198 @@ export class AnimationOrchestratorService {
     if (boardStateAfter) this.rbs.updateLogical(boardStateAfter);
 
     switch (event.type) {
-      case 'MSG_MOVE':
-        return this.moveRouter.processMoveEvent(event as MoveMsg);
-      case 'MSG_DAMAGE':
-        return this.lpTracker.processLpEvent((event as DamageMsg).player, (event as DamageMsg).amount, 'damage');
-      case 'MSG_RECOVER':
-        return this.lpTracker.processLpEvent((event as RecoverMsg).player, (event as RecoverMsg).amount, 'recover');
-      case 'MSG_PAY_LPCOST':
-        return this.lpTracker.processLpEvent((event as PayLpCostMsg).player, (event as PayLpCostMsg).amount, 'damage');
-      case 'MSG_FLIP_SUMMONING': {
-        const msg = event as FlipSummoningMsg;
-        const zoneId = locationToZoneId(msg.location, msg.sequence);
-        if (zoneId) {
-          this.setAnimatingZone(zoneId, 'flip', msg.player);
-          this.ctx.announceEvent('Card flip summoned', msg.player);
-        }
-        return 300;
-      }
-      case 'MSG_CHANGE_POS': {
-        const msg = event as ChangePosMsg;
-        const wasFaceDown = (msg.previousPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
-        const nowFaceUp = (msg.currentPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
-        if (wasFaceDown && nowFaceUp) {
-          const zoneId = locationToZoneId(msg.location, msg.sequence);
-          if (zoneId) this.setAnimatingZone(zoneId, 'flip', msg.player);
-          return 300;
-        }
-        if (!wasFaceDown && nowFaceUp) {
-          return this.processPositionRotation(msg);
-        }
-        return 0;
-      }
-      case 'MSG_CHAINING': {
-        const msg = event as ChainingMsg;
-        const relPlayer = this.ctx.relativePlayer(msg.player);
-        const holdMs = this.ctx.scaledDuration(500, 250);
-        const zoneId = locationToZoneId(msg.location, msg.sequence);
-        if (zoneId) {
-          this.setAnimatingZone(zoneId, 'activate', msg.player);
-          const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
-          if (zoneKey) return this.cardTravelService.activateEffect(zoneKey, this.ctx.scaledDuration(500, 250))
-            .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
-        }
-        if (msg.location === LOCATION.HAND) {
-          const handEl = this.drawManager.resolveHandTarget(`HAND-${relPlayer}`, msg.sequence);
-          if (handEl instanceof HTMLElement) {
-            handEl.style.zIndex = '500';
-            return this.cardTravelService.activateEffect(handEl, this.ctx.scaledDuration(500, 250))
-              .then(() => { handEl.style.zIndex = ''; })
-              .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
-          }
-        }
-        return 400;
-      }
-      case 'MSG_CHAIN_SOLVING': {
-        const msg = event as ChainSolvingMsg;
-        const result = this.chainManager.handleSolving(event);
-        if (result.deferred) {
-          const pauseMs = this.ctx.scaledDuration(1000);
-          const tid = this.chainManager.scheduleBannerAnnounce(pauseMs);
-          this.animationTimeouts.push(tid);
-          return 3000;
-        }
-        this.dataSource.applyChainSolving(msg.chainIndex);
-        const exitDelay = this.chainManager.chainSolvedCount > 0 ? this.chainExitDuration() : 0;
-        return result.isSingleLink ? 0 : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(300);
-      }
-      case 'MSG_CHAIN_SOLVED': {
-        const msg = event as ChainSolvedMsg;
-        this.dataSource.applyChainSolved(msg.chainIndex);
-        return this.chainManager.handleSolved(event);
-      }
-      case 'MSG_CHAIN_END':
-        this.dataSource.applyChainEnd();
-        this.chainManager.handleEnd();
-        this.moveRouter.releaseAllPreLocks();
-        this.drawManager.clearDrawsCompleteCallback();
-        this.confirmRevealedCards.set(new Map());
-        return 100;
-      case 'MSG_DRAW':
-        return this.drawManager.processDrawEvent(event as DrawMsg);
-      case 'MSG_SHUFFLE_HAND':
-        return this.drawManager.processShuffleEvent(event as ShuffleHandMsg);
-      case 'MSG_CONFIRM_CARDS':
-        return this.drawManager.processConfirmCardsEvent(event as ConfirmCardsMsg);
-      case 'MSG_SHUFFLE_DECK':
-        return this.processShuffleDeckEvent(event as ShuffleDeckMsg);
-      case 'MSG_SET':
-        return 0; // No animation — position change handled by BOARD_STATE
-      case 'MSG_BECOME_TARGET': {
-        const msg = event as BecomeTargetMsg;
-        const ownIdx = this.ctx.ownPlayerIndex();
-        const keys = new Set(msg.cards.map(c => {
-          const relPlayer = c.player === ownIdx ? 0 : 1;
-          return locationToZoneKey(c.location, c.sequence, relPlayer);
-        }));
-        this.targetedZoneKeys.set(keys);
-        const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), 800 * this.ctx.speedMultiplier());
-        this.animationTimeouts.push(tid);
-        return 800;
-      }
-      case 'MSG_SWAP':
-        return this.processSwapEvent(event as SwapMsg);
-      case 'MSG_ATTACK':
-        return this.battleTracker.processAttackEvent(event as AttackMsg);
-      case 'MSG_BATTLE':
-        return this.battleTracker.processBattleEvent(event as BattleMsg);
-      case 'MSG_TOSS_COIN': {
-        if (this.ctx.reducedMotion()) return 0;
-        const msg = event as TossCoinMsg;
-        const lines = msg.results.map(r => r ? 'Heads ✓' : 'Tails ✗');
-        this.toastService.show({ icon: '🪙', lines }, 1200 * this.ctx.speedMultiplier());
-        this.ctx.announceEvent(`Coin toss: ${lines.join(', ')}`, msg.player);
-        return 1200;
-      }
-      case 'MSG_TOSS_DICE': {
-        if (this.ctx.reducedMotion()) return 0;
-        const msg = event as TossDiceMsg;
-        const lines = msg.results.map((v, i) => `Die ${i + 1}: ${v}`);
-        this.toastService.show({ icon: '🎲', lines }, 1200 * this.ctx.speedMultiplier());
-        this.ctx.announceEvent(`Dice roll: ${msg.results.join(', ')}`, msg.player);
-        return 1200;
-      }
-      case 'MSG_EQUIP': {
-        if (this.ctx.reducedMotion()) return 0;
-        const msg = event as EquipMsg;
-        const relEquip = this.ctx.relativePlayer(msg.equipPlayer);
-        const relTarget = this.ctx.relativePlayer(msg.targetPlayer);
-        const equipKey = locationToZoneKey(msg.equipLocation, msg.equipSequence, relEquip);
-        const targetKey = locationToZoneKey(msg.targetLocation, msg.targetSequence, relTarget);
-        const equipEl = this.cardTravelService.getZoneElement(equipKey);
-        const targetEl = this.cardTravelService.getZoneElement(targetKey);
-        const lineEl = this.cardTravelService.createLineBetween(equipEl, targetEl, {
-          color: EQUIP_LINE_COLOR, shadow: EQUIP_LINE_SHADOW,
-        });
-        if (!lineEl) return 0;
-        this.activeEquipLines.push(lineEl);
-        const duration = this.ctx.scaledDuration(500, 250);
-        lineEl.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], {
-          duration: duration * 0.4, easing: 'ease-out', fill: 'forwards',
-        });
-        return new Promise<void>(resolve => {
-          this.scheduleTimeout(() => {
-            const idx = this.activeEquipLines.indexOf(lineEl);
-            if (idx !== -1) this.activeEquipLines.splice(idx, 1);
-            lineEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration * 0.3, easing: 'ease-in' })
-              .finished.then(() => lineEl.remove()).catch(() => lineEl.remove());
-            resolve();
-          }, duration * 0.7);
-        });
-      }
+      case 'MSG_MOVE':            return this.moveRouter.processMoveEvent(event as MoveMsg);
+      case 'MSG_DAMAGE':          return this.lpTracker.processLpEvent((event as DamageMsg).player, (event as DamageMsg).amount, 'damage');
+      case 'MSG_RECOVER':         return this.lpTracker.processLpEvent((event as RecoverMsg).player, (event as RecoverMsg).amount, 'recover');
+      case 'MSG_PAY_LPCOST':      return this.lpTracker.processLpEvent((event as PayLpCostMsg).player, (event as PayLpCostMsg).amount, 'damage');
+      case 'MSG_FLIP_SUMMONING':  return this.handleFlipSummoning(event as FlipSummoningMsg);
+      case 'MSG_CHANGE_POS':      return this.handleChangePos(event as ChangePosMsg);
+      case 'MSG_CHAINING':        return this.handleChaining(event as ChainingMsg);
+      case 'MSG_CHAIN_SOLVING':   return this.handleChainSolving(event as ChainSolvingMsg);
+      case 'MSG_CHAIN_SOLVED':    return this.handleChainSolved(event as ChainSolvedMsg);
+      case 'MSG_CHAIN_END':       return this.handleChainEnd();
+      case 'MSG_DRAW':            return this.drawManager.processDrawEvent(event as DrawMsg);
+      case 'MSG_SHUFFLE_HAND':    return this.drawManager.processShuffleEvent(event as ShuffleHandMsg);
+      case 'MSG_CONFIRM_CARDS':   return this.drawManager.processConfirmCardsEvent(event as ConfirmCardsMsg);
+      case 'MSG_SHUFFLE_DECK':    return this.processShuffleDeckEvent(event as ShuffleDeckMsg);
+      case 'MSG_SET':             return 0; // No animation — position change handled by BOARD_STATE
+      case 'MSG_BECOME_TARGET':   return this.handleBecomeTarget(event as BecomeTargetMsg);
+      case 'MSG_SWAP':            return this.processSwapEvent(event as SwapMsg);
+      case 'MSG_ATTACK':          return this.battleTracker.processAttackEvent(event as AttackMsg);
+      case 'MSG_BATTLE':          return this.battleTracker.processBattleEvent(event as BattleMsg);
+      case 'MSG_TOSS_COIN':       return this.handleTossCoin(event as TossCoinMsg);
+      case 'MSG_TOSS_DICE':       return this.handleTossDice(event as TossDiceMsg);
+      case 'MSG_EQUIP':           return this.handleEquip(event as EquipMsg);
       case 'MSG_ADD_COUNTER':
-      case 'MSG_REMOVE_COUNTER': {
-        if (this.ctx.reducedMotion()) return 0;
-        const msg = event as AddCounterMsg | RemoveCounterMsg;
-        const rel = this.ctx.relativePlayer(msg.player);
-        const key = locationToZoneKey(msg.location, msg.sequence, rel);
-        // Force signal change even for consecutive events on the same zone,
-        // so Angular re-evaluates the class binding and the CSS animation restarts.
-        this.counterPulseKey.set(null);
-        this.counterPulseKey.set(key);
-        this.scheduleTimeout(() => this.counterPulseKey.set(null), 400 * this.ctx.speedMultiplier());
-        return 400;
-      }
-      case 'MSG_SHUFFLE_SET_CARD': {
-        if (this.ctx.reducedMotion()) return 0;
-        const msg = event as ShuffleSetCardMsg;
-        const duration = this.ctx.scaledDuration(400, 200);
-        const locks: { commit: () => void; release: () => void }[] = [];
-        const travels: Promise<void>[] = [];
-        for (const c of msg.cards) {
-          const relFrom = this.ctx.relativePlayer(c.fromPlayer);
-          const relTo = this.ctx.relativePlayer(c.toPlayer);
-          const fromKey = locationToZoneKey(c.location, c.fromSequence, relFrom);
-          const toKey = locationToZoneKey(c.location, c.toSequence, relTo);
-          locks.push(this.rbs.lockZone(fromKey));
-          if (fromKey !== toKey) locks.push(this.rbs.lockZone(toKey));
-          travels.push(this.cardTravelService.travel(fromKey, toKey, '', { duration, showBack: true }));
-        }
-        return Promise.all(travels).then(
-          () => locks.forEach(l => l.commit()),
-          () => locks.forEach(l => l.release()),
-        );
-      }
-      case 'MSG_SWAP_GRAVE_DECK':
-        return this.processSwapGraveDeckEvent(event as SwapGraveDeckMsg);
-      default:
-        return 0;
+      case 'MSG_REMOVE_COUNTER':  return this.handleCounter(event as AddCounterMsg | RemoveCounterMsg);
+      case 'MSG_SHUFFLE_SET_CARD': return this.handleShuffleSetCard(event as ShuffleSetCardMsg);
+      case 'MSG_SWAP_GRAVE_DECK': return this.processSwapGraveDeckEvent(event as SwapGraveDeckMsg);
+      default:                    return 0;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-event handlers (extracted from processEvent for Miller compliance — H4)
+  // ---------------------------------------------------------------------------
+
+  private handleFlipSummoning(msg: FlipSummoningMsg): number {
+    const zoneId = locationToZoneId(msg.location, msg.sequence);
+    if (zoneId) {
+      this.setAnimatingZone(zoneId, 'flip', msg.player);
+      this.ctx.announceEvent('Card flip summoned', msg.player);
+    }
+    return 300;
+  }
+
+  private handleChangePos(msg: ChangePosMsg): number | Promise<void> | 0 {
+    const wasFaceDown = (msg.previousPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
+    const nowFaceUp = (msg.currentPosition & (POSITION.FACEUP_ATTACK | POSITION.FACEUP_DEFENSE)) !== 0;
+    if (wasFaceDown && nowFaceUp) {
+      const zoneId = locationToZoneId(msg.location, msg.sequence);
+      if (zoneId) this.setAnimatingZone(zoneId, 'flip', msg.player);
+      return 300;
+    }
+    if (!wasFaceDown && nowFaceUp) {
+      return this.processPositionRotation(msg);
+    }
+    return 0;
+  }
+
+  private handleChaining(msg: ChainingMsg): number | Promise<void> {
+    const relPlayer = this.ctx.relativePlayer(msg.player);
+    const holdMs = this.ctx.scaledDuration(500, 250);
+    const zoneId = locationToZoneId(msg.location, msg.sequence);
+    if (zoneId) {
+      this.setAnimatingZone(zoneId, 'activate', msg.player);
+      const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
+      if (zoneKey) return this.cardTravelService.activateEffect(zoneKey, this.ctx.scaledDuration(500, 250))
+        .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
+    }
+    if (msg.location === LOCATION.HAND) {
+      const handEl = this.drawManager.resolveHandTarget(`HAND-${relPlayer}`, msg.sequence);
+      if (handEl instanceof HTMLElement) {
+        handEl.style.zIndex = '500';
+        return this.cardTravelService.activateEffect(handEl, this.ctx.scaledDuration(500, 250))
+          .then(() => { handEl.style.zIndex = ''; })
+          .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
+      }
+    }
+    return 400;
+  }
+
+  private handleChainSolving(msg: ChainSolvingMsg): number {
+    const result = this.chainManager.handleSolving(msg);
+    if (result.deferred) {
+      const pauseMs = this.ctx.scaledDuration(1000);
+      const tid = this.chainManager.scheduleBannerAnnounce(pauseMs);
+      this.animationTimeouts.push(tid);
+      return 3000;
+    }
+    this.dataSource.applyChainSolving(msg.chainIndex);
+    const exitDelay = this.chainManager.chainSolvedCount > 0 ? this.chainExitDuration() : 0;
+    return result.isSingleLink ? 0 : exitDelay + this.chainPulseDuration() + this.ctx.scaledDuration(300);
+  }
+
+  private handleChainSolved(msg: ChainSolvedMsg): 'async' {
+    this.dataSource.applyChainSolved(msg.chainIndex);
+    return this.chainManager.handleSolved(msg);
+  }
+
+  private handleChainEnd(): number {
+    this.dataSource.applyChainEnd();
+    this.chainManager.handleEnd();
+    this.moveRouter.releaseAllPreLocks();
+    this.drawManager.clearDrawsCompleteCallback();
+    this.confirmRevealedCards.set(new Map());
+    return 100;
+  }
+
+  private handleBecomeTarget(msg: BecomeTargetMsg): number {
+    const ownIdx = this.ctx.ownPlayerIndex();
+    const keys = new Set(msg.cards.map(c => {
+      const relPlayer = c.player === ownIdx ? 0 : 1;
+      return locationToZoneKey(c.location, c.sequence, relPlayer);
+    }));
+    this.targetedZoneKeys.set(keys);
+    const tid = setTimeout(() => this.targetedZoneKeys.set(new Set()), 800 * this.ctx.speedMultiplier());
+    this.animationTimeouts.push(tid);
+    return 800;
+  }
+
+  private handleTossCoin(msg: TossCoinMsg): number {
+    if (this.ctx.reducedMotion()) return 0;
+    const lines = msg.results.map(r => r ? 'Heads ✓' : 'Tails ✗');
+    this.toastService.show({ icon: '🪙', lines }, 1200 * this.ctx.speedMultiplier());
+    this.ctx.announceEvent(`Coin toss: ${lines.join(', ')}`, msg.player);
+    return 1200;
+  }
+
+  private handleTossDice(msg: TossDiceMsg): number {
+    if (this.ctx.reducedMotion()) return 0;
+    const lines = msg.results.map((v, i) => `Die ${i + 1}: ${v}`);
+    this.toastService.show({ icon: '🎲', lines }, 1200 * this.ctx.speedMultiplier());
+    this.ctx.announceEvent(`Dice roll: ${msg.results.join(', ')}`, msg.player);
+    return 1200;
+  }
+
+  private handleEquip(msg: EquipMsg): number | Promise<void> {
+    if (this.ctx.reducedMotion()) return 0;
+    const relEquip = this.ctx.relativePlayer(msg.equipPlayer);
+    const relTarget = this.ctx.relativePlayer(msg.targetPlayer);
+    const equipKey = locationToZoneKey(msg.equipLocation, msg.equipSequence, relEquip);
+    const targetKey = locationToZoneKey(msg.targetLocation, msg.targetSequence, relTarget);
+    const equipEl = this.cardTravelService.getZoneElement(equipKey);
+    const targetEl = this.cardTravelService.getZoneElement(targetKey);
+    const lineEl = this.cardTravelService.createLineBetween(equipEl, targetEl, {
+      color: EQUIP_LINE_COLOR, shadow: EQUIP_LINE_SHADOW,
+    });
+    if (!lineEl) return 0;
+    this.activeEquipLines.push(lineEl);
+    const duration = this.ctx.scaledDuration(500, 250);
+    lineEl.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], {
+      duration: duration * 0.4, easing: 'ease-out', fill: 'forwards',
+    });
+    return new Promise<void>(resolve => {
+      this.scheduleTimeout(() => {
+        const idx = this.activeEquipLines.indexOf(lineEl);
+        if (idx !== -1) this.activeEquipLines.splice(idx, 1);
+        lineEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration * 0.3, easing: 'ease-in' })
+          .finished.then(() => lineEl.remove()).catch(() => lineEl.remove());
+        resolve();
+      }, duration * 0.7);
+    });
+  }
+
+  private handleCounter(msg: AddCounterMsg | RemoveCounterMsg): number {
+    if (this.ctx.reducedMotion()) return 0;
+    const rel = this.ctx.relativePlayer(msg.player);
+    const key = locationToZoneKey(msg.location, msg.sequence, rel);
+    // Force signal change even for consecutive events on the same zone,
+    // so Angular re-evaluates the class binding and the CSS animation restarts.
+    this.counterPulseKey.set(null);
+    this.counterPulseKey.set(key);
+    this.scheduleTimeout(() => this.counterPulseKey.set(null), 400 * this.ctx.speedMultiplier());
+    return 400;
+  }
+
+  private handleShuffleSetCard(msg: ShuffleSetCardMsg): number | Promise<void> {
+    if (this.ctx.reducedMotion()) return 0;
+    const duration = this.ctx.scaledDuration(400, 200);
+    const locks: { commit: () => void; release: () => void }[] = [];
+    const travels: Promise<void>[] = [];
+    for (const c of msg.cards) {
+      const relFrom = this.ctx.relativePlayer(c.fromPlayer);
+      const relTo = this.ctx.relativePlayer(c.toPlayer);
+      const fromKey = locationToZoneKey(c.location, c.fromSequence, relFrom);
+      const toKey = locationToZoneKey(c.location, c.toSequence, relTo);
+      locks.push(this.rbs.lockZone(fromKey));
+      if (fromKey !== toKey) locks.push(this.rbs.lockZone(toKey));
+      travels.push(this.cardTravelService.travel(fromKey, toKey, '', { duration, showBack: true }));
+    }
+    return Promise.all(travels).then(
+      () => locks.forEach(l => l.commit()),
+      () => locks.forEach(l => l.release()),
+    );
   }
 
   private processSwapEvent(msg: SwapMsg): Promise<void> | 0 {
