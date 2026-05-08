@@ -96,6 +96,9 @@
       <img [src]="currentImageUrlFull()"
            [alt]="c | cardName"
            class="image-lightbox__img"
+           [style.transform]="'scale(' + lightboxZoom() + ')'"
+           [style.cursor]="lightboxZoom() < 4 ? 'zoom-in' : 'zoom-out'"
+           (click)="onLightboxImgClick($event)"
            (error)="$any($event.target).src='assets/images/card_back.jpg'" />
     </div>
   }

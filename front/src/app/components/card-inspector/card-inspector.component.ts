@@ -43,6 +43,42 @@ export class CardInspectorComponent {
   readonly isVisible = computed(() => this.card() !== null);
   readonly showPersonalMetadata = computed(() => this.ownedCount() !== undefined);
   readonly lightboxOpen = signal(false);
+  readonly lightboxZoom = signal(1);
+
+  private static readonly LIGHTBOX_ZOOM_STEP = 0.2;
+  private static readonly LIGHTBOX_ZOOM_MIN = 1;
+  private static readonly LIGHTBOX_ZOOM_MAX = 4;
+
+  private _pinchStartDist = 0;
+  private _pinchStartZoom = 1;
+
+  private readonly _lightboxWheelHandler = (e: WheelEvent): void => {
+    e.preventDefault();
+    const delta = e.deltaY < 0
+      ? CardInspectorComponent.LIGHTBOX_ZOOM_STEP
+      : -CardInspectorComponent.LIGHTBOX_ZOOM_STEP;
+    const raw = Math.round((this.lightboxZoom() + delta) * 100) / 100;
+    this.lightboxZoom.set(Math.min(Math.max(raw, CardInspectorComponent.LIGHTBOX_ZOOM_MIN), CardInspectorComponent.LIGHTBOX_ZOOM_MAX));
+  };
+
+  private readonly _pinchStartHandler = (e: TouchEvent): void => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    this._pinchStartDist = Math.hypot(dx, dy);
+    this._pinchStartZoom = this.lightboxZoom();
+  };
+
+  private readonly _pinchMoveHandler = (e: TouchEvent): void => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    const raw = this._pinchStartZoom * (dist / this._pinchStartDist);
+    this.lightboxZoom.set(Math.min(Math.max(raw, CardInspectorComponent.LIGHTBOX_ZOOM_MIN), CardInspectorComponent.LIGHTBOX_ZOOM_MAX));
+  };
 
   /** Index of the currently displayed image within card().images */
   readonly currentImageIndex = signal(0);
@@ -96,8 +132,27 @@ export class CardInspectorComponent {
     return img?.url ?? c.imageUrlFull ?? c.imageUrl;
   });
 
-  openLightbox(): void { this.lightboxOpen.set(true); }
-  closeLightbox(): void { this.lightboxOpen.set(false); }
+  openLightbox(): void {
+    this.lightboxOpen.set(true);
+    document.addEventListener('wheel', this._lightboxWheelHandler, { passive: false });
+    document.addEventListener('touchstart', this._pinchStartHandler, { passive: false });
+    document.addEventListener('touchmove', this._pinchMoveHandler, { passive: false });
+  }
+
+  closeLightbox(): void {
+    this.lightboxOpen.set(false);
+    this.lightboxZoom.set(1);
+    document.removeEventListener('wheel', this._lightboxWheelHandler);
+    document.removeEventListener('touchstart', this._pinchStartHandler);
+    document.removeEventListener('touchmove', this._pinchMoveHandler);
+  }
+
+  onLightboxImgClick(event: MouseEvent): void {
+    event.stopPropagation();
+    const { LIGHTBOX_ZOOM_MIN: min, LIGHTBOX_ZOOM_MAX: max } = CardInspectorComponent;
+    const next = this.lightboxZoom() >= max ? min : Math.min(Math.floor(this.lightboxZoom()) + 1, max);
+    this.lightboxZoom.set(next);
+  }
 
   changeOwned(delta: number): void {
     this.ownedCount.set(Math.max(0, (this.ownedCount() ?? 0) + delta));
