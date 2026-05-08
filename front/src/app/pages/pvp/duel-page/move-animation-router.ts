@@ -175,8 +175,15 @@ export class MoveAnimationRouter {
       // fires, the CSS `pvp-xyz-detach` class stays on srcElement and the
       // outer branch's Promise never resolves → dstLock waits on the 5s
       // safety net. Running cleanupCss + resolve() here guarantees clean
-      // teardown on reset.
-      this._pendingTimeouts.set(id, () => { cleanupCss(); resolve(); });
+      // teardown on reset. cancelTravel(dstKey) is a no-op when the timeout
+      // hasn't fired yet, but aborts the travel if the timeout already fired
+      // and started it (post-fire window between setTimeout firing and the
+      // cardTravelService.travel promise resolving).
+      this._pendingTimeouts.set(id, () => {
+        cleanupCss();
+        this.cardTravelService.cancelTravel(dstKey);
+        resolve();
+      });
     });
   }
 

@@ -369,6 +369,19 @@ export class CardTravelService implements OnDestroy {
     return byZone;
   }
 
+  /** Cancel any in-flight travel whose dstKey matches. Used to abort a travel
+   *  scheduled by a setTimeout that fired after the orchestrator started a reset. */
+  cancelTravel(dstKey: string): void {
+    for (const [el, { animation, resolve }] of this._inFlight) {
+      if (el.dataset['dstKey'] === dstKey) {
+        animation.cancel();
+        el.remove();
+        resolve();
+        this._inFlight.delete(el);
+      }
+    }
+  }
+
   /** Finish all in-flight animations and remove all travel elements. */
   clearAllTravels(): void {
     for (const [el, { animation, resolve }] of this._inFlight) {
