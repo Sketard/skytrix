@@ -14,7 +14,7 @@ import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
 import { EMPTY_STRING_SET } from '../types';
 import { BoardZone, CardInfo, CardOnField, LOCATION, Phase, Player, SelectBattleCmdMsg, SelectCardMsg, SelectDisfieldMsg, SelectIdleCmdMsg, SelectPlaceMsg, ZoneId } from '../duel-ws.types';
-import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, groupMenuActions, IDLE_ACTION, isActivateAction } from './idle-action-codes';
+import { BATTLE_ACTION, buildActionableCardsFromBattle, buildActionableCardsFromIdle, CardAction, IDLE_ACTION, isActivateAction } from './idle-action-codes';
 import { buildFaceDownZoneKeys } from '../pvp-card.utils';
 import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey, getZonePillCards } from '../pvp-zone.utils';
@@ -26,7 +26,7 @@ import { PromptZoneHighlightComponent } from './prompts/prompt-zone-highlight/pr
 import { PvpZoneBrowserOverlayComponent } from './pvp-zone-browser-overlay/pvp-zone-browser-overlay.component';
 import { PvpCardInspectorWrapperComponent } from './pvp-card-inspector-wrapper/pvp-card-inspector-wrapper.component';
 import { ActivationMode, PvpActivationToggleComponent } from './pvp-activation-toggle/pvp-activation-toggle.component';
-import { setupClickOutsideListener } from './click-outside.utils';
+import { CardActionMenuService } from './card-action-menu.service';
 import { buildHandChainBadges, buildOpponentHandChainData } from './chain-badge.utils';
 import { PhaseAnnouncementService } from './phase-announcement.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
@@ -70,7 +70,7 @@ import { environment } from '../../../../environments/environment';
     AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
-    DuelCardArtService,
+    DuelCardArtService, CardActionMenuService,
     { provide: ANIMATION_DATA_SOURCE, useExisting: DuelWebSocketService },
   ],
   imports: [
@@ -85,10 +85,6 @@ import { environment } from '../../../../environments/environment';
   ],
 })
 export class DuelPageComponent implements OnInit {
-  private static readonly MENU_HEIGHT = 200;
-  private static readonly MENU_WIDTH_WITH_PADDING = 164;
-  private static readonly MENU_HEIGHT_WITH_PADDING = 204;
-
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
@@ -232,40 +228,21 @@ export class DuelPageComponent implements OnInit {
     return null;
   });
 
-  // Card Action Menu state
-  readonly menuState = signal<{
-    top: number;
-    left: number;
-    actions: CardAction[];
-    promptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD';
-  } | null>(null);
-
-  // Effect sub-menu: shown when user clicks a grouped "Activate Effect" entry
-  readonly effectSubMenu = signal<CardAction[] | null>(null);
-
-  // Pile card selection: synthetic prompt for choosing a card from a pile action group
-  readonly pilePrompt = signal<SelectCardMsg | null>(null);
-  private pileActions: CardAction[] = [];
-  private pilePromptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD' = 'SELECT_IDLECMD';
+  // Card Action Menu — delegated to component-scoped CardActionMenuService.
+  // Re-export the service signals so the existing template bindings keep
+  // working unchanged. The service owns: menuState, effectSubMenu, pilePrompt,
+  // menuDisplayActions, plus open/close/onAction/onChildAction/onKeydown
+  // /pileResponse logic.
+  private readonly cardMenu = inject(CardActionMenuService);
+  readonly menuState = this.cardMenu.menuState;
+  readonly effectSubMenu = this.cardMenu.effectSubMenu;
+  readonly pilePrompt = this.cardMenu.pilePrompt;
+  readonly menuDisplayActions = this.cardMenu.menuDisplayActions;
 
   readonly effectivePrompt = computed(() => this.pilePrompt() ?? this.visiblePrompt());
 
-  readonly pileResponseHandler = (data: unknown) => {
-    const resp = data as { indices: number[] };
-    const idx = resp.indices?.[0];
-    const action = this.pileActions[idx];
-    if (action) {
-      this.wsService.sendResponse(this.pilePromptType, { action: action.actionCode, index: action.index });
-    }
-    this.pilePrompt.set(null);
-    this.pileActions = [];
-  };
-
-  readonly menuDisplayActions = computed(() => {
-    const menu = this.menuState();
-    if (!menu) return [];
-    return groupMenuActions(menu.actions);
-  });
+  readonly pileResponseHandler = (data: unknown) =>
+    this.cardMenu.pileResponse(data, (pt, payload) => this.wsService.sendResponse(pt, payload));
 
   // Story 1.7 — Own turn detection
   readonly isOwnTurn = computed(() => this.renderedState().turnPlayer === 0);
@@ -451,7 +428,6 @@ export class DuelPageComponent implements OnInit {
   // Story 3.1 — duelResult as observable (created in injection context for toObservable)
   private readonly duelResult$ = toObservable(this.wsService.duelResult);
 
-  private teardownMenuListener: () => void = () => {};
 
 
   // Task 16 — Board flip transition for solo player switch
@@ -484,6 +460,7 @@ export class DuelPageComponent implements OnInit {
   constructor() {
     // --- Initialize extracted services ---
     this.roomService.init({ wsService: this.wsService, tabGuard: this.tabGuard });
+    this.cardMenu.setOnClose(() => this.playerHandRow?.selectedIndex.set(null));
     this.duelCtx.configure({
       ownPlayerIndex: () => this.ownPlayerIndex(),
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
@@ -553,7 +530,6 @@ export class DuelPageComponent implements OnInit {
 
     this.destroyRef.onDestroy(() => {
       this.navbarCollapse.setNavbarHidden(false);
-      this.teardownMenuListener();
       this.roomService.destroy();
       this.animationService.destroy();
       if (isSolo && code) {
@@ -700,132 +676,30 @@ export class DuelPageComponent implements OnInit {
     this.switchTimer = setTimeout(() => this.switching.set(false), 200);
   }
 
-  // --- Card Action Menu methods ---
+  // --- Card Action Menu — thin delegations to CardActionMenuService ---
 
-  // [L3 fix] Use visualViewport for mobile-safe bounds checking
   openCardActionMenu(element: HTMLElement, actions: CardAction[], promptType: 'SELECT_IDLECMD' | 'SELECT_BATTLECMD'): void {
-    const rect = element.getBoundingClientRect();
-    const vpWidth = window.visualViewport?.width ?? window.innerWidth;
-    const vpHeight = window.visualViewport?.height ?? window.innerHeight;
-    const gap = 10;
-    // Initial left approximation (corrected after render using actual width)
-    let left = rect.left;
-    let top = rect.top - DuelPageComponent.MENU_HEIGHT - gap;
-    // Clamp horizontally
-    left = Math.max(4, Math.min(left, vpWidth - DuelPageComponent.MENU_WIDTH_WITH_PADDING));
-    // If above viewport, place below the card instead
-    if (top < 4) {
-      top = rect.bottom + gap;
-    }
-    // If below also overflows, clamp to bottom
-    if (top + DuelPageComponent.MENU_HEIGHT > vpHeight) {
-      top = Math.max(4, vpHeight - DuelPageComponent.MENU_HEIGHT_WITH_PADDING);
-    }
-
-    this.menuState.set({ top, left, actions, promptType });
-
-    this.teardownMenuListener();
-    // After the menu renders (next tick), attach click-outside listener to the menu element
-    setTimeout(() => {
-      const menuEl = document.querySelector('.card-action-menu') as HTMLElement | null;
-      if (menuEl) {
-        // Correct position using actual rendered dimensions
-        const actualHeight = menuEl.offsetHeight;
-        const actualWidth = menuEl.offsetWidth;
-        const correctedTop = rect.top - actualHeight - gap;
-        const centeredLeft = Math.max(4, Math.min(
-          rect.left + rect.width / 2 - actualWidth / 2,
-          vpWidth - actualWidth - 4,
-        ));
-        this.menuState.update(s => s ? {
-          ...s,
-          left: centeredLeft,
-          top: correctedTop >= 4 ? correctedTop : s.top,
-        } : s);
-        this.teardownMenuListener = setupClickOutsideListener(
-          { nativeElement: menuEl } as ElementRef,
-          this.destroyRef,
-          () => this.closeCardActionMenu(),
-        );
-      }
-    });
+    this.cardMenu.open(element, actions, promptType);
   }
 
   closeCardActionMenu(): void {
-    this.menuState.set(null);
-    this.effectSubMenu.set(null);
-    this.teardownMenuListener();
-    this.playerHandRow?.selectedIndex.set(null);
+    this.cardMenu.close();
   }
 
   onMenuAction(action: CardAction, event?: MouseEvent): void {
-    if (action.children) {
-      // Pile grouped actions (children with cardCode) → open prompt card grid
-      if (action.children[0]?.cardCode) {
-        const menu = this.menuState();
-        if (!menu) return;
-        this.pileActions = action.children;
-        this.pilePromptType = menu.promptType;
-        this.pilePrompt.set({
-          type: 'SELECT_CARD',
-          player: 0,
-          min: 1,
-          max: 1,
-          cancelable: true,
-          cards: action.children.map(c => ({
-            cardCode: c.cardCode!,
-            name: c.cardName ?? '',
-            player: 0 as Player,
-            location: 0 as any,
-            sequence: 0,
-            description: c.description,
-          })),
-        });
-        this.closeCardActionMenu();
-        return;
-      }
-      // Same-card effect grouping → sub-menu
-      event?.stopPropagation();
-      this.effectSubMenu.set(action.children);
-      return;
-    }
-    const menu = this.menuState();
-    if (!menu || !this.actionablePrompt()) return;
-    this.wsService.sendResponse(menu.promptType, { action: action.actionCode, index: action.index });
-    this.closeCardActionMenu();
+    // Preserve the actionablePrompt() guard — leaf actions need an active
+    // SELECT_IDLECMD/SELECT_BATTLECMD to send a response. Children branches
+    // (pile / sub-menu) are unconditional.
+    if (!action.children && !this.actionablePrompt()) return;
+    this.cardMenu.onAction(action, (pt, payload) => this.wsService.sendResponse(pt, payload), event);
   }
 
   onMenuChildAction(action: CardAction): void {
-    this.effectSubMenu.set(null);
-    this.onMenuAction(action);
+    this.cardMenu.onChildAction(action, (pt, payload) => this.wsService.sendResponse(pt, payload));
   }
 
   onMenuKeydown(event: KeyboardEvent): void {
-    switch (event.key) {
-      case 'Escape':
-        if (this.effectSubMenu()) {
-          this.effectSubMenu.set(null);
-        } else {
-          this.closeCardActionMenu();
-        }
-        event.preventDefault();
-        break;
-      case 'ArrowDown':
-      case 'ArrowUp': {
-        const items = Array.from(
-          (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="menuitem"]')
-        );
-        const current = items.indexOf(event.target as HTMLElement);
-        const delta = event.key === 'ArrowDown' ? 1 : -1;
-        const next = items[(current + delta + items.length) % items.length];
-        next?.focus();
-        event.preventDefault();
-        break;
-      }
-      case 'Tab':
-        event.preventDefault();
-        break;
-    }
+    this.cardMenu.onKeydown(event);
   }
 
   // --- Board container handlers ---
