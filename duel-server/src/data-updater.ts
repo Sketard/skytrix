@@ -32,12 +32,17 @@ async function downloadCardsCdb(dataDir: string): Promise<{ updated: boolean; si
 
   const buffer = Buffer.from(await response.arrayBuffer());
 
-  // Validate SQLite header
+  // Validate SQLite header + minimum size as a sanity check on the download.
+  // We do NOT verify a checksum or signature against ProjectIgnis — this
+  // codebase trusts BabelCDB as its upstream (no signed releases published).
+  // The magic + size guard catches truncated downloads, HTML error pages
+  // served by a misconfigured proxy, and partial writes; supply-chain
+  // integrity relies on the HTTPS connection to raw.githubusercontent.com.
+  // Audit finding L8.
   if (buffer.length < 16 || buffer.toString('utf8', 0, SQLITE_MAGIC.length) !== SQLITE_MAGIC) {
     throw new Error(`Invalid SQLite file: bad magic header (size=${buffer.length})`);
   }
 
-  // Validate minimum size (a valid cards.cdb should be > 100KB)
   if (buffer.length < MIN_CDB_SIZE) {
     throw new Error(`Downloaded cards.cdb is suspiciously small (${buffer.length} bytes, expected >${MIN_CDB_SIZE})`);
   }
