@@ -50,6 +50,7 @@ import { applyChainTransition, emptyChainState, type ChainStateContainer } from 
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { LruMap } from './lru-map.js';
+import { createInactivityScheduler, type InactivityScheduler } from './inactivity-timer.js';
 import {
   configureSolverHandlers,
   handleSolverMessage,
@@ -442,8 +443,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       phase: 'WAITING_PLAYERS',
       rpsState: null,
       players: [
-        { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
-        { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
+        { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
+        { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
       ],
       createdAt: Date.now(),
       startedAt: null,
@@ -1318,59 +1319,43 @@ function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, new
   }
 }
 
+/**
+ * Build a fresh InactivityScheduler bound to the given session. Wraps the
+ * dependencies (slot storage on PlayerSession, isDuelEnded check, warning +
+ * forfeit side-effects) so the timer logic itself lives in inactivity-timer.ts
+ * and is unit-testable in isolation. See L6 in the audit doc.
+ */
+function inactivitySchedulerFor(session: ActiveDuelSession): InactivityScheduler {
+  return createInactivityScheduler({
+    isDuelEnded: () => session.endedAt !== null,
+    getSlot: (p) => session.players[p].inactivitySlot,
+    setSlot: (p, slot) => { session.players[p].inactivitySlot = slot; },
+    sendWarning: (p, remainingSec) => {
+      const warningMsg: ServerMessage = { type: 'INACTIVITY_WARNING', remainingSec };
+      sendToPlayer(session, p, warningMsg);
+    },
+    forfeit: (p) => {
+      const winner: Player = p === 0 ? 1 : 0;
+      session.awaitingResponse[p] = false;
+      const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
+      logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'inactivity', player: p });
+      sendToPlayer(session, 0, endMsg);
+      sendToPlayer(session, 1, endMsg);
+      handleDuelEnd(session);
+      requestReplayFromWorker(session, 'TIMEOUT');
+    },
+    warningDelayMs: INACTIVITY_TIMEOUT_MS - INACTIVITY_WARNING_BEFORE_MS,
+    warningBeforeMs: INACTIVITY_WARNING_BEFORE_MS,
+    raceWindowMs: INACTIVITY_RACE_WINDOW_MS,
+  });
+}
+
 function startInactivityTimer(session: ActiveDuelSession, player: Player): void {
-  clearInactivityTimer(session, player);
-
-  const ps = session.players[player];
-  const warningDelay = INACTIVITY_TIMEOUT_MS - INACTIVITY_WARNING_BEFORE_MS;
-
-  // Stage 1: send warning N seconds before forfeit
-  ps.warningTimer = setTimeout(() => {
-    ps.warningTimer = null;
-    if (session.endedAt) return;
-
-    const remainingSec = Math.round(INACTIVITY_WARNING_BEFORE_MS / 1000);
-    const warningMsg: ServerMessage = { type: 'INACTIVITY_WARNING', remainingSec };
-    sendToPlayer(session, player, warningMsg);
-
-    // Stage 2: forfeit after remaining time
-    ps.inactivityTimer = setTimeout(() => {
-      ps.inactivityTimer = null;
-      if (session.endedAt) return;
-
-      // Enter 500ms race condition window (AC4)
-      ps.raceWindowTimer = setTimeout(() => {
-        ps.raceWindowTimer = null;
-        if (session.endedAt) return;
-
-        // No response within grace window — forfeit for inactivity
-        const winner: Player = player === 0 ? 1 : 0;
-        session.awaitingResponse[player] = false;
-        const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
-        logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'inactivity', player });
-        sendToPlayer(session, 0, endMsg);
-        sendToPlayer(session, 1, endMsg);
-        handleDuelEnd(session);
-        requestReplayFromWorker(session, 'TIMEOUT');
-      }, INACTIVITY_RACE_WINDOW_MS);
-    }, INACTIVITY_WARNING_BEFORE_MS);
-  }, warningDelay);
+  inactivitySchedulerFor(session).start(player);
 }
 
 function clearInactivityTimer(session: ActiveDuelSession, player: Player): void {
-  const ps = session.players[player];
-  if (ps.warningTimer) {
-    clearTimeout(ps.warningTimer);
-    ps.warningTimer = null;
-  }
-  if (ps.inactivityTimer) {
-    clearTimeout(ps.inactivityTimer);
-    ps.inactivityTimer = null;
-  }
-  if (ps.raceWindowTimer) {
-    clearTimeout(ps.raceWindowTimer);
-    ps.raceWindowTimer = null;
-  }
+  inactivitySchedulerFor(session).cancel(player);
 }
 
 function clearAllDuelTimers(session: ActiveDuelSession): void {
@@ -2501,8 +2486,8 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
     phase: 'DUELING',
     rpsState: null,
     players: [
-      { playerId: conn.userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
-      { playerId: conn.userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivityTimer: null, warningTimer: null, raceWindowTimer: null },
+      { playerId: conn.userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
+      { playerId: conn.userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
     ],
     createdAt: Date.now(),
     startedAt: Date.now(),

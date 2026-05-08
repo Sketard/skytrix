@@ -293,9 +293,9 @@ export interface PlayerSession {
   reconnectToken: string | null;
   // Per-player timers (M1 consolidation — formerly standalone Maps)
   gracePeriodTimer: ReturnType<typeof setTimeout> | null;
-  inactivityTimer: ReturnType<typeof setTimeout> | null;
-  warningTimer: ReturnType<typeof setTimeout> | null;
-  raceWindowTimer: ReturnType<typeof setTimeout> | null;
+  // L6: 3 nested setTimeout slots (inactivityTimer/warningTimer/raceWindowTimer)
+  // collapsed into a single tagged slot owned by inactivity-timer.ts.
+  inactivitySlot: import('./inactivity-timer.js').InactivitySlot | null;
 }
 
 export interface TimerContext {
