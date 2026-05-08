@@ -21,6 +21,28 @@ export type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' |
  * countdown timer, and WS connection hand-off.
  *
  * Provided at component level (NOT root).
+ *
+ * ## State transition matrix
+ *
+ * Set by RoomStateMachineService:
+ *   loading       ← fetchRoom() entry point
+ *   waiting       ← handleRoomStatus(WAITING + isParticipant)
+ *   creating-duel ← handleRoomStatus(CREATING_DUEL)
+ *   connecting    ← connectWhenReady(room.wsToken)  // also via SSE ACTIVE event
+ *   error         ← startSseSubscription error fallback
+ *
+ * Set EXTERNALLY (forceState) — owned by collaborator services:
+ *   duel-loading  ← duel-loading-effects.service.ts (post-WS-connect, pre-RPS)
+ *   active        ← duel-loading-effects.service.ts | solo-mode-effects.service.ts
+ *   connecting    ← duel-page.component.ts (REMATCH_STARTING + reconnect paths)
+ *
+ * Terminal exits (always via `redirectWithError`):
+ *   - HTTP 404 / 5xx on getRoom         → ROOM_NOT_FOUND | DUEL_CONNECT_FAILED
+ *   - room.status === ENDED             → ROOM_NOT_FOUND
+ *   - room.status === CLOSED            → ROOM_CLOSED
+ *   - ACTIVE w/o wsToken                → DUEL_CONNECT_FAILED (M17 fix: SSE arrêtée)
+ *   - join 409 (full) / non-422 errors  → ROOM_FULL | ROOM_JOIN_FAILED
+ *   - 3 invalid deck attempts           → TOO_MANY_ATTEMPTS
  */
 @Injectable()
 export class RoomStateMachineService {
@@ -85,6 +107,19 @@ export class RoomStateMachineService {
     this.stopCountdown();
   }
 
+  /**
+   * Single terminal exit: stop SSE + countdown, surface a localized error,
+   * and route back to lobby. All error paths (HTTP failures, ENDED/CLOSED
+   * status, ACTIVE w/o token, deck join errors) funnel through here so
+   * cleanup invariants (no zombie SSE, no zombie countdown) are guaranteed.
+   */
+  private redirectWithError(messageKey: string): void {
+    this.stopPolling$.next();
+    this.stopCountdown();
+    this.notify.error(messageKey);
+    this.router.navigate(['/pvp']);
+  }
+
   // ---------------------------------------------------------------------------
   // Room fetching
   // ---------------------------------------------------------------------------
@@ -99,8 +134,7 @@ export class RoomStateMachineService {
         this.handleRoomStatus(room);
       },
       error: (err: HttpErrorResponse) => {
-        this.notify.error(err.status === 404 ? 'error.ROOM_NOT_FOUND' : 'error.DUEL_CONNECT_FAILED');
-        this.router.navigate(['/pvp']);
+        this.redirectWithError(err.status === 404 ? 'error.ROOM_NOT_FOUND' : 'error.DUEL_CONNECT_FAILED');
       },
     });
   }
@@ -126,20 +160,17 @@ export class RoomStateMachineService {
         this.connectWhenReady(room);
         break;
       case 'ENDED':
-        this.notify.error('error.ROOM_NOT_FOUND');
-        this.router.navigate(['/pvp']);
+        this.redirectWithError('error.ROOM_NOT_FOUND');
         break;
       case 'CLOSED':
-        this.notify.error('error.ROOM_CLOSED');
-        this.router.navigate(['/pvp']);
+        this.redirectWithError('error.ROOM_CLOSED');
         break;
     }
   }
 
   private openDeckPickerForJoin(roomCode: string, attempt = 0): void {
     if (attempt >= 3) {
-      this.notify.error('error.TOO_MANY_ATTEMPTS');
-      this.router.navigate(['/pvp']);
+      this.redirectWithError('error.TOO_MANY_ATTEMPTS');
       return;
     }
     const dialogRef = this.dialog.open(DeckPickerDialogComponent);
@@ -161,29 +192,29 @@ export class RoomStateMachineService {
       },
       error: (err: HttpErrorResponse) => {
         if (err.status === 409) {
-          this.notify.error('error.ROOM_FULL');
-          this.router.navigate(['/pvp']);
+          this.redirectWithError('error.ROOM_FULL');
         } else if (err.status === 422) {
+          // Recoverable: re-open the picker, keep SSE/countdown alive
           this.notify.error('error.INVALID_DECK_SELECT');
           this.openDeckPickerForJoin(roomCode, attempt + 1);
         } else {
-          this.notify.error('error.ROOM_JOIN_FAILED');
-          this.router.navigate(['/pvp']);
+          this.redirectWithError('error.ROOM_JOIN_FAILED');
         }
       },
     });
   }
 
   connectWhenReady(room: RoomDTO): void {
-    this.roomState.set('connecting');
-    if (room.wsToken) {
-      this.tabGuard.init(room.roomCode);
-      this.tabGuard.broadcast();
-      this.wsService.connect(room.wsToken);
-    } else {
-      this.notify.error('error.DUEL_CONNECT_FAILED');
-      this.router.navigate(['/pvp']);
+    if (!room.wsToken) {
+      // M17 fix: must redirect-with-cleanup BEFORE flipping state, otherwise
+      // a still-live SSE could re-deliver ACTIVE and re-trigger this branch.
+      this.redirectWithError('error.DUEL_CONNECT_FAILED');
+      return;
     }
+    this.roomState.set('connecting');
+    this.tabGuard.init(room.roomCode);
+    this.tabGuard.broadcast();
+    this.wsService.connect(room.wsToken);
   }
 
   // ---------------------------------------------------------------------------
