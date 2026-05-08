@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { Worker } from 'node:worker_threads';
-import { randomUUID, timingSafeEqual, randomBytes } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { resolve, join } from 'node:path';
 import {
@@ -47,6 +47,15 @@ import { updateData } from './data-updater.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
+import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
+import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
+import {
+  configureSolverHandlers,
+  handleSolverMessage,
+  solverConnections,
+  solverJwts,
+  solverDeckCache,
+} from './solver-handlers.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -70,8 +79,6 @@ if (IS_PRODUCTION && !process.env['INTERNAL_API_KEY']) {
 const SPRING_BOOT_API_URL = process.env['SPRING_BOOT_API_URL'] ?? 'http://localhost:8080/api';
 const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
 const HEARTBEAT_INTERVAL_MS = 30_000;
-const WS_RATE_LIMIT_WINDOW_MS = 60_000;
-const WS_RATE_LIMIT_MAX = 30;
 const MAX_INVALID_RESPONSES = 5;
 const MAX_REPLAY_CACHE_ENTRIES = 50;
 let maxSolverConnections = 10; // overridden at boot from solver-config.json
@@ -213,82 +220,32 @@ if (dataReady) {
   }
 }
 
-// =============================================================================
-// Solver State (Story 1.4)
-// =============================================================================
+// Solver state (solverConnections, solverJwts, solverDeckCache, solverLastStart,
+// solverResultCache) moved to solver-handlers.ts (H1 split). Re-exported maps
+// imported above are used by the WS connection/close handler below.
 
-const solverConnections = new Map<string, WebSocket>();
-const solverLastStart = new Map<string, number>();
-const solverResultCache = new Map<string, { message: SolverResultMessage; timer: ReturnType<typeof setTimeout>; createdAt: number }>();
-/** Per-user JWT, captured at WS handshake. Forwarded to Spring Boot when the
- *  solver fetches the deck composition (C2 fix from Epic 1 review — never
- *  trust the client-supplied deck array). Cleared on WS close. */
-const solverJwts = new Map<string, string>();
-
-/** TTL cache for deck fetches keyed by `${userId}:${deckId}`. Avoids hitting
- *  Spring Boot on every verify click — verify is run within seconds of the
- *  initial solve, so a short window is enough to short-circuit the round-trip.
- *  Cleared per-user on WS close. */
-const DECK_FETCH_CACHE_TTL_MS = 60_000;
-interface DeckCacheEntry { main: number[]; extra: number[]; expiresAt: number; }
-const solverDeckCache = new Map<string, DeckCacheEntry>();
+configureSolverHandlers({
+  orchestrator: () => solverOrchestrator,
+  handtraps: () => solverHandtraps,
+  rateLimitIntervalMs: () => solverRateLimitIntervalMs,
+  timeBudgetFastMs: () => solverTimeBudgetFastMs,
+  timeBudgetOptimalMs: () => solverTimeBudgetOptimalMs,
+  maxHandtraps: () => solverMaxHandtraps,
+  springBootApiUrl: SPRING_BOOT_API_URL,
+  fillerCardId: FILLER_CARD_ID,
+  maxSolverCacheEntries: MAX_SOLVER_CACHE_ENTRIES,
+  solverResultCacheTtlMs: SOLVER_RESULT_CACHE_TTL_MS,
+  deckFetchCacheTtlMs: 60_000, // formerly DECK_FETCH_CACHE_TTL_MS
+});
 
 // =============================================================================
 // HTTP Helpers
 // =============================================================================
 
-function json(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body);
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(payload);
-}
-
+// HTTP helpers (json, readBody) moved to http-helpers.ts (H1 split).
+// validateInternalAuth wrapped to bind INTERNAL_API_KEY at the call site.
 function validateInternalAuth(req: IncomingMessage, res: ServerResponse): boolean {
-  const expected = INTERNAL_API_KEY;
-  const received = req.headers['x-internal-key'];
-  const receivedBuf = Buffer.from(String(received ?? ''), 'utf-8');
-  const expectedBuf = Buffer.from(expected, 'utf-8');
-  if (receivedBuf.length !== expectedBuf.length || !timingSafeEqual(receivedBuf, expectedBuf)) {
-    json(res, 401, { code: 'UNAUTHORIZED', error: 'Unauthorized' });
-    return false;
-  }
-  return true;
-}
-
-function readBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const contentLength = parseInt(req.headers['content-length'] ?? '0', 10);
-    if (contentLength > MAX_PAYLOAD_SIZE) {
-      reject(new Error('PAYLOAD_TOO_LARGE'));
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      req.destroy();
-      reject(new Error('Request body read timeout'));
-    }, 10_000);
-
-    const chunks: Buffer[] = [];
-    let size = 0;
-    req.on('data', (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > MAX_PAYLOAD_SIZE) {
-        clearTimeout(timeout);
-        reject(new Error('PAYLOAD_TOO_LARGE'));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      clearTimeout(timeout);
-      resolve(Buffer.concat(chunks).toString());
-    });
-    req.on('error', (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+  return validateInternalAuthBase(req, res, INTERNAL_API_KEY);
 }
 
 // =============================================================================
@@ -1525,42 +1482,8 @@ const server = createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, maxPayload: MAX_PAYLOAD_SIZE });
 
-// Rate limiting: sliding-window counter per IP (failed/rejected connections only)
-const wsFailedConnections = new Map<string, number[]>();
-
-function isWsRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const timestamps = wsFailedConnections.get(ip);
-  if (!timestamps) return false;
-  const recent = timestamps.filter(t => now - t < WS_RATE_LIMIT_WINDOW_MS);
-  if (recent.length === 0) {
-    wsFailedConnections.delete(ip);
-    return false;
-  }
-  wsFailedConnections.set(ip, recent);
-  return recent.length >= WS_RATE_LIMIT_MAX;
-}
-
-function recordFailedWsAttempt(ip: string): void {
-  const now = Date.now();
-  const timestamps = wsFailedConnections.get(ip) ?? [];
-  timestamps.push(now);
-  // Cap array size to prevent memory growth from rapid-fire spam
-  if (timestamps.length > WS_RATE_LIMIT_MAX * 2) {
-    timestamps.splice(0, timestamps.length - WS_RATE_LIMIT_MAX);
-  }
-  wsFailedConnections.set(ip, timestamps);
-}
-
-// Cleanup stale IPs every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, timestamps] of wsFailedConnections) {
-    const recent = timestamps.filter(t => now - t < WS_RATE_LIMIT_WINDOW_MS);
-    if (recent.length === 0) wsFailedConnections.delete(ip);
-    else wsFailedConnections.set(ip, recent);
-  }
-}, 5 * 60_000);
+// WS rate limiting moved to ws-rate-limit.ts (H1 split)
+const wsRateLimitSweepTimer = startWsRateLimitSweep();
 
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   // Trust x-real-ip only behind a reverse proxy in production; fall back to socket IP otherwise
@@ -2803,451 +2726,6 @@ function cleanupReplayConnection(conn: ReplayConnection, preserveCache = false):
   activeReplayConnections.delete(conn.ws);
 }
 
-// =============================================================================
-// Solver WS Handlers (Story 1.4)
-// =============================================================================
-
-function sendSolverMessage(ws: WebSocket | undefined, message: ServerMessage): void {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  try {
-    ws.send(JSON.stringify(message));
-  } catch {
-    // TOCTOU: ws transitioned to CLOSING between readyState check and send()
-  }
-}
-
-function sendSolverError(ws: WebSocket | undefined, error: SolverWsError, message: string): void {
-  const msg: SolverErrorMessage = { type: SOLVER_ERROR, error, message };
-  sendSolverMessage(ws, msg);
-}
-
-// --- Task 3: Message router ---
-
-function handleSolverMessage(userId: string, ws: WebSocket, msg: unknown): void {
-  if (!msg || typeof (msg as { type?: unknown }).type !== 'string') return;
-
-  if (solverOrchestrator === null) {
-    sendSolverError(ws, 'WASM_INIT_FAILED', 'Solver not available — orchestrator failed to initialize');
-    return;
-  }
-
-  const type = (msg as { type: string }).type;
-  switch (type) {
-    case SOLVER_INIT:
-      handleSolverInit(userId, ws);
-      break;
-    case SOLVER_START:
-      handleSolverStart(userId, ws, msg as SolverStartMessage).catch(err => {
-        console.error('[Solver] unhandled start error', { userId, err });
-        sendSolverError(ws, 'INTERNAL_ERROR', 'Unexpected error');
-      });
-      break;
-    case SOLVER_CANCEL:
-      handleSolverCancel(userId);
-      break;
-    default:
-      console.warn('[Solver] unknown message type', { userId, type });
-  }
-}
-
-// --- Task 4: SOLVER_INIT handler ---
-
-function handleSolverInit(userId: string, ws: WebSocket): void {
-  const handtrapsMsg: SolverHandtrapsMessage = { type: SOLVER_HANDTRAPS, handtraps: solverHandtraps };
-  sendSolverMessage(ws, handtrapsMsg);
-
-  const cached = solverResultCache.get(userId);
-  if (cached) {
-    sendSolverMessage(ws, cached.message);
-  }
-
-  console.log('[Solver] init', { userId, cachedResult: !!cached });
-}
-
-// --- Task 5: SOLVER_START handler ---
-
-/**
- * Fetch a deck composition from Spring Boot using the user's JWT.
- * AC #4 of Story 1.4 — never trust the client-supplied deck array. C2 fix
- * from the Epic 1 review. Returns the parsed main + extra cardId arrays, or
- * null on error (404 / 403 / network failure / malformed payload). Caller
- * sends the appropriate SOLVER_ERROR response.
- *
- * NOTE: ownership enforcement happens in Spring Boot's `DeckService.getById`
- * via the JWT-bound SecurityContext. As of this commit, that method does NOT
- * actually check ownership — any authenticated user can fetch any deck by ID.
- * That gap is a separate Spring Boot security finding (tracked outside this
- * solver review). The fix here closes the larger threat surface (client
- * fabricating deck contents entirely) by routing through the canonical API.
- */
-async function fetchDeckCached(userId: string, deckId: string, jwt: string) {
-  const key = `${userId}:${deckId}`;
-  const cached = solverDeckCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
-    return { ok: true as const, main: [...cached.main], extra: [...cached.extra] };
-  }
-  const result = await fetchDeckFromBackend(deckId, jwt);
-  if (result.ok) {
-    solverDeckCache.set(key, {
-      main: result.main,
-      extra: result.extra,
-      expiresAt: Date.now() + DECK_FETCH_CACHE_TTL_MS,
-    });
-  }
-  return result;
-}
-
-async function fetchDeckFromBackend(deckId: string, jwt: string): Promise<
-  | { ok: true; main: number[]; extra: number[] }
-  | { ok: false; error: 'DECK_NOT_FOUND' | 'DECK_ACCESS_DENIED' | 'INTERNAL_ERROR'; message: string }
-> {
-  try {
-    const response = await fetch(`${SPRING_BOOT_API_URL}/decks/${deckId}`, {
-      headers: { Authorization: `Bearer ${jwt}` },
-    });
-    if (response.status === 404) return { ok: false, error: 'DECK_NOT_FOUND', message: 'Deck not found' };
-    if (response.status === 401 || response.status === 403) {
-      return { ok: false, error: 'DECK_ACCESS_DENIED', message: 'Not authorized for this deck' };
-    }
-    if (!response.ok) {
-      return { ok: false, error: 'INTERNAL_ERROR', message: `Backend returned ${response.status}` };
-    }
-    const body = await response.json() as {
-      mainDeck?: { card?: { card?: { id?: number } } }[];
-      extraDeck?: { card?: { card?: { id?: number } } }[];
-    };
-    const main: number[] = [];
-    for (const entry of body.mainDeck ?? []) {
-      const id = entry?.card?.card?.id;
-      if (typeof id === 'number' && id > 0) main.push(id);
-    }
-    const extra: number[] = [];
-    for (const entry of body.extraDeck ?? []) {
-      const id = entry?.card?.card?.id;
-      if (typeof id === 'number' && id > 0) extra.push(id);
-    }
-    if (main.length < 40 || main.length > 60) {
-      return { ok: false, error: 'INTERNAL_ERROR', message: `Invalid main deck size: ${main.length}` };
-    }
-    if (extra.length > 15) {
-      return { ok: false, error: 'INTERNAL_ERROR', message: `Invalid extra deck size: ${extra.length}` };
-    }
-    return { ok: true, main, extra };
-  } catch (err) {
-    console.error('[Solver] fetchDeckFromBackend failed', { deckId, err });
-    return { ok: false, error: 'INTERNAL_ERROR', message: 'Failed to fetch deck from backend' };
-  }
-}
-
-async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStartMessage): Promise<void> {
-  // Per-solve correlation tag for log grep across the solve lifecycle.
-  // Workers run in their own threads and don't see this — it tags the
-  // main-thread logs only (start, error, completion).
-  const solveId = randomBytes(4).toString('hex');
-  try {
-    // Verify mode detection — skip rate limit (verify costs ~62ms, not a full solve)
-    const isVerifyMode = Array.isArray(msg.verifyPath) && msg.verifyPath.length > 0
-      && Array.isArray(msg.verifyTimings);
-
-    // Rate limit check (AC #6) — skip for verify mode
-    if (!isVerifyMode) {
-      const now = Date.now();
-      const lastStart = solverLastStart.get(userId);
-      if (lastStart !== undefined && now - lastStart < solverRateLimitIntervalMs) {
-        sendSolverError(ws, 'RATE_LIMITED', 'Please wait before starting another solve');
-        return;
-      }
-      solverLastStart.set(userId, now);
-    }
-
-    // Input validation (AC #10)
-    if (!Array.isArray(msg.hand) || msg.hand.length < 1 || msg.hand.length > 5 || !msg.hand.every(c => Number.isInteger(c) && c > 0)) {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Hand must be 1-5 positive integers');
-      return;
-    }
-    if (!msg.deckId || typeof msg.deckId !== 'string') {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'deckId is required');
-      return;
-    }
-    if (msg.mode !== 'goldfish' && msg.mode !== 'adversarial') {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Mode must be goldfish or adversarial');
-      return;
-    }
-    if (msg.speed !== 'fast' && msg.speed !== 'optimal') {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Speed must be fast or optimal');
-      return;
-    }
-    const algorithm: 'dfs' | 'mcts' | 'auto' = msg.algorithm ?? 'auto';
-    if (algorithm !== 'dfs' && algorithm !== 'mcts' && algorithm !== 'auto') {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Algorithm must be dfs, mcts, or auto');
-      return;
-    }
-    if (msg.mode === 'adversarial' && algorithm === 'dfs') {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'DFS does not support adversarial mode');
-      return;
-    }
-    if (msg.mode === 'adversarial') {
-      if (!Array.isArray(msg.handtraps) || msg.handtraps.length === 0) {
-        sendSolverError(ws, 'INTERNAL_ERROR', 'Adversarial mode requires at least one handtrap');
-        return;
-      }
-      if (msg.handtraps.length > solverMaxHandtraps) {
-        sendSolverError(ws, 'INTERNAL_ERROR', `Too many handtraps (got ${msg.handtraps.length}, max ${solverMaxHandtraps})`);
-        return;
-      }
-      const validIds = new Set(solverHandtraps.map(h => h.cardId));
-      const invalidIds = msg.handtraps.filter(h => !validIds.has(h.cardId));
-      if (invalidIds.length > 0) {
-        sendSolverError(ws, 'INTERNAL_ERROR', `Invalid handtrap cardIds: ${invalidIds.map(h => h.cardId).join(', ')}`);
-        return;
-      }
-      // Dedupe by cardId (first occurrence wins) — prevents client from
-      // injecting duplicated handtraps into the opponent's hand, which would
-      // inflate branching factor and mislead minimax scoring.
-      const seen = new Set<number>();
-      msg.handtraps = msg.handtraps.filter(h => {
-        if (seen.has(h.cardId)) return false;
-        seen.add(h.cardId);
-        return true;
-      });
-    }
-    // Verify-mode input validation
-    if (isVerifyMode) {
-      if (msg.mode !== 'adversarial') {
-        sendSolverError(ws, 'INTERNAL_ERROR', 'Verify mode requires adversarial mode');
-        return;
-      }
-      if (!msg.verifyPath!.every(a => typeof a.responseIndex === 'number' && typeof a.cardId === 'number')) {
-        sendSolverError(ws, 'INTERNAL_ERROR', 'verifyPath must contain valid SolverAction entries');
-        return;
-      }
-      if (!msg.verifyTimings!.every(t => typeof t.stepIndex === 'number' && typeof t.responseIndex === 'number' && typeof t.handtrapCardId === 'number')) {
-        sendSolverError(ws, 'INTERNAL_ERROR', 'verifyTimings must contain valid AdversarialTiming entries');
-        return;
-      }
-      if (typeof msg.verifyExpectedScore !== 'number') {
-        sendSolverError(ws, 'INTERNAL_ERROR', 'verifyExpectedScore is required for verify mode');
-        return;
-      }
-    }
-
-    // C2 fix: fetch the deck from Spring Boot via the user's JWT instead of
-    // trusting the client-supplied deck array. The pre-fix flow let any
-    // authenticated user solve any synthetic deck composition (including
-    // banned/illegal cards), and was a cost amplification vector against the
-    // worker pool. AC #4 of Story 1.4 explicitly required this fetch.
-    const jwt = solverJwts.get(userId);
-    if (!jwt) {
-      sendSolverError(ws, 'INTERNAL_ERROR', 'Missing JWT for solver session');
-      return;
-    }
-    const deckResult = await fetchDeckCached(userId, msg.deckId, jwt);
-    if (!deckResult.ok) {
-      sendSolverError(ws, deckResult.error, deckResult.message);
-      return;
-    }
-
-    // Hand removal from deck (AC #4)
-    const mainDeck = [...deckResult.main];
-    for (const cardId of msg.hand) {
-      const idx = mainDeck.indexOf(cardId);
-      if (idx === -1) {
-        sendSolverError(ws, 'INTERNAL_ERROR', `Hand card ${cardId} not found in deck`);
-        return;
-      }
-      mainDeck.splice(idx, 1);
-    }
-
-    // Seed generation
-    let deckSeed: bigint[];
-    if (msg.deckSeed) {
-      try {
-        deckSeed = msg.deckSeed.split(',').map(s => BigInt(s.trim()));
-        if (deckSeed.length !== 2) throw new Error('Expected 2 seed values');
-      } catch {
-        sendSolverError(ws, 'INTERNAL_ERROR', 'Invalid deckSeed format');
-        return;
-      }
-    } else {
-      const buf = randomBytes(16);
-      deckSeed = [buf.readBigUInt64LE(0), buf.readBigUInt64LE(8)];
-    }
-
-    // Build DuelConfig
-    const duelConfig: DuelConfig = {
-      mainDeck,
-      extraDeck: deckResult.extra,
-      hand: msg.hand,
-      deckSeed,
-      opponentDeck: Array(40).fill(FILLER_CARD_ID),
-      ...(msg.mode === 'adversarial' ? { handtraps: msg.handtraps } : {}),
-    };
-
-    // Build SolverConfig
-    const solverCfg: SolverConfig = {
-      mode: msg.mode,
-      speed: msg.speed,
-      timeLimitMs: msg.speed === 'fast' ? solverTimeBudgetFastMs : solverTimeBudgetOptimalMs,
-      ...(msg.mode === 'adversarial' ? { handtraps: msg.handtraps } : {}),
-    };
-
-    // Verify mode: fast single-worker dispatch, no caching, no progress
-    if (isVerifyMode) {
-      console.log(`[Solver][${solveId}] verify-start`, { userId, deckId: msg.deckId });
-      const startTime = Date.now();
-      try {
-        const verifyResult = await solverOrchestrator!.verify(duelConfig, msg.verifyPath!, msg.verifyTimings!, msg.verifyExpectedScore!);
-        const elapsed = Date.now() - startTime;
-        const deckSeedStr = deckSeed.map(String).join(',');
-        const currentWs = solverConnections.get(userId);
-        const resultMsg: SolverResultMessage = {
-          type: SOLVER_RESULT,
-          tree: { action: { responseIndex: 0, cardId: 0, cardName: '', actionDescription: '' }, annotation: '', score: 0, confidence: 0, children: [], isTerminal: true },
-          mainPath: [],
-          score: 0,
-          scoreBreakdown: EMPTY_BREAKDOWN,
-          stats: {
-            nodesExplored: 0, elapsed,
-            algorithm: 'minimax-mcts', algorithmUsed: 'minimax-mcts',
-            maxDepthReached: 0, averageBranchingFactor: 0, maxBranchingFactor: 0,
-            deckSeed: deckSeedStr,
-            // Verify path replays a known line — no search budget, no truncation surface.
-            budgetMs: 0,
-            truncated: false,
-            terminationReason: 'completed',
-            depthHistogram: [],
-            ...(verifyResult.reason ? { verifyDivergence: verifyResult.reason } : {}),
-          },
-          verified: verifyResult.verified,
-          isVerifyResult: true,
-        };
-        sendSolverMessage(currentWs, resultMsg);
-        console.log(`[Solver][${solveId}] verify-complete`, { userId, verified: verifyResult.verified, elapsed });
-      } catch (err) {
-        console.error(`[Solver][${solveId}] verify-error`, { userId, err });
-        sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'Verification failed unexpectedly');
-      }
-      return;
-    }
-
-    // Evict previous cache
-    evictSolverResult(userId);
-
-    console.log(`[Solver][${solveId}] solve-start`, { userId, deckId: msg.deckId, mode: msg.mode, speed: msg.speed, algorithm });
-
-    // Progress callback — resolve CURRENT ws (not captured closure)
-    // Throttling is handled by the orchestrator (config.progressThrottleMs) — no WS-layer throttle
-    const onProgress = (progress: SolverProgress) => {
-      const currentWs = solverConnections.get(userId);
-      if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
-
-      // highComplexity is set by the worker (Story 1.7 auto-probe BF check)
-      // and propagated by the orchestrator. The WS layer just forwards it.
-      const progressMsg: SolverProgressMessage = {
-        type: SOLVER_PROGRESS,
-        nodesExplored: progress.nodesExplored,
-        bestScore: progress.bestScore,
-        elapsed: progress.elapsed,
-        ...(progress.highComplexity ? { highComplexity: true } : {}),
-        ...(progress.stalled ? { stalled: true } : {}),
-      };
-      sendSolverMessage(currentWs, progressMsg);
-    };
-
-    const onDebug = process.env['LOG_LEVEL'] === 'debug'
-      ? (cat: string, data: unknown) => { console.log('[Solver:debug]', cat, data); }
-      : undefined;
-
-    // Dispatch solve
-    const outcome = await solverOrchestrator!.solve(userId, duelConfig, solverCfg, algorithm, onProgress, onDebug, msg.deckId);
-
-    // Handle SolveOutcome — resolve CURRENT ws
-    const currentWs = solverConnections.get(userId);
-    const deckSeedStr = deckSeed.map(String).join(',');
-
-    if (outcome.type === 'cancelled') {
-      const stats = outcome.partialResult?.stats ?? {
-        nodesExplored: 0, elapsed: 0, algorithm, algorithmUsed: algorithm,
-        maxDepthReached: 0, averageBranchingFactor: 0, deckSeed: deckSeedStr,
-      };
-      const cancelledMsg: SolverCancelledMessage = {
-        type: SOLVER_CANCELLED,
-        partialTree: outcome.partialResult?.tree as SolverCancelledMessage['partialTree'],
-        stats: stats as SolverCancelledMessage['stats'],
-      };
-      sendSolverMessage(currentWs, cancelledMsg);
-      // Do NOT cache partial cancelled results as SOLVER_RESULT — the client
-      // would receive an incomplete tree as if it were a full solve on reconnect
-    } else if (outcome.type === 'result') {
-      const result = outcome.result;
-      const resultMsg: SolverResultMessage = {
-        type: SOLVER_RESULT,
-        tree: result.tree as SolverResultMessage['tree'],
-        mainPath: result.mainPath as SolverResultMessage['mainPath'],
-        score: result.score,
-        scoreBreakdown: result.scoreBreakdown as SolverResultMessage['scoreBreakdown'],
-        endBoardCards: result.endBoardCards as SolverResultMessage['endBoardCards'],
-        stats: { ...result.stats, deckSeed: deckSeedStr } as SolverResultMessage['stats'],
-        verified: result.verified,
-        ...(result.minimax !== undefined ? { minimax: result.minimax } : {}),
-        ...(result.adversarialTimings ? { adversarialTimings: result.adversarialTimings as SolverResultMessage['adversarialTimings'] } : {}),
-      };
-      cacheSolverResult(userId, resultMsg);
-      sendSolverMessage(currentWs, resultMsg);
-      console.log(`[Solver][${solveId}] solve-complete`, { userId, score: result.score, nodes: result.stats.nodesExplored, elapsedMs: result.stats.elapsed });
-    } else if (outcome.type === 'error') {
-      sendSolverError(currentWs, outcome.error as SolverWsError, outcome.message);
-      console.error(`[Solver][${solveId}] solve error`, { userId, error: outcome.error, message: outcome.message });
-    }
-  } catch (err) {
-    console.error(`[Solver][${solveId}] unexpected error`, { userId, err });
-    sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'An unexpected error occurred');
-  }
-}
-
-// --- Task 6: SOLVER_CANCEL handler ---
-
-function handleSolverCancel(userId: string): void {
-  solverOrchestrator?.cancel(userId);
-  solverLastStart.delete(userId);
-  console.log('[Solver] cancel-requested', { userId });
-}
-
-// --- Task 7: Result caching ---
-
-function cacheSolverResult(userId: string, resultMsg: SolverResultMessage): void {
-  evictSolverResult(userId);
-
-  // Cache size cap. Eviction policy: oldest createdAt cross-user. The cache
-  // is keyed by userId and we always evict the same user above before
-  // inserting, so this LRU only kicks in when the cache holds entries from
-  // many distinct users at once. Under that pressure, an older user's cached
-  // result is dropped to make room for the newcomer — they will see no cached
-  // result on reconnect, which the frontend handles as the normal post-init
-  // state (see Story 1.4 reconnect-grace logic in solver.service.ts).
-  if (solverResultCache.size >= MAX_SOLVER_CACHE_ENTRIES) {
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
-    for (const [key, entry] of solverResultCache) {
-      if (entry.createdAt < oldestTime) {
-        oldestTime = entry.createdAt;
-        oldestKey = key;
-      }
-    }
-    if (oldestKey) evictSolverResult(oldestKey);
-  }
-
-  const timer = setTimeout(() => { solverResultCache.delete(userId); }, SOLVER_RESULT_CACHE_TTL_MS);
-  solverResultCache.set(userId, { message: resultMsg, timer, createdAt: Date.now() });
-}
-
-function evictSolverResult(userId: string): void {
-  const cached = solverResultCache.get(userId);
-  if (cached) {
-    clearTimeout(cached.timer);
-    solverResultCache.delete(userId);
-  }
-}
 
 // =============================================================================
 // Graceful Shutdown
@@ -3260,6 +2738,7 @@ function shutdown(): void {
   logger.log('Shutting down...');
 
   clearInterval(heartbeatTimer);
+  clearInterval(wsRateLimitSweepTimer);
 
   // Terminate all active duel workers
   for (const session of activeDuels.values()) {
