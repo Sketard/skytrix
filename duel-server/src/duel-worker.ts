@@ -1273,6 +1273,13 @@ function cleanup(): void {
     try { cardDb.db.close(); } catch (e) { dlog.error('db.close failed', { error: e instanceof Error ? e.message : String(e) }); }
     cardDb = null;
   }
+  // Release WASM core reference + replay capture buffers so a worker that
+  // doesn't process.exit (replay/fork error paths) doesn't retain memory.
+  core = null;
+  systemStrings.clear();
+  capturedResponses = [];
+  duelSeed = [];
+  forkPendingSelect = null;
 }
 
 // =============================================================================
