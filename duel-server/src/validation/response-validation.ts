@@ -1,11 +1,16 @@
 import type { ServerMessage } from '../ws-protocol.js';
 import * as logger from '../logger.js';
 
+export type ValidationResult = { ok: true } | { ok: false; error: string };
+
+const OK: ValidationResult = { ok: true };
+const err = (error: string): ValidationResult => ({ ok: false, error });
+
 /**
  * Validates the shape and bounds of a player's response data against the
  * pending SELECT_* / SORT_* / ANNOUNCE_* prompt before forwarding it to
- * OCGCore. Returns `null` if the response is valid, or an error string
- * describing the violation otherwise.
+ * OCGCore. Returns a `Result<void, string>` discriminated union: `{ ok: true }`
+ * on success, `{ ok: false, error }` with a human-readable violation otherwise.
  *
  * This is the last guard before the FFI call into the WASM core: a
  * malformed response (out-of-bounds index, wrong shape, duplicate entry,
@@ -13,9 +18,9 @@ import * as logger from '../logger.js';
  * error and surface it as a RETRY upstream.
  *
  * Pure function — no side effects except a single `logger.warn` for
- * SELECT_TRIBUTE diagnostics. Audit finding H8 (test coverage).
+ * SELECT_TRIBUTE diagnostics. Audit finding H8 (test coverage) + L3 (Result type).
  */
-export function validateResponseData(prompt: ServerMessage, data: Record<string, unknown>): string | null {
+export function validateResponseData(prompt: ServerMessage, data: Record<string, unknown>): ValidationResult {
   const p = prompt as unknown as Record<string, unknown>;
   const cards = p['cards'] as unknown[] | undefined;
   const cardsLen = cards?.length ?? 0;
@@ -24,19 +29,19 @@ export function validateResponseData(prompt: ServerMessage, data: Record<string,
     case 'SELECT_CARD': {
       const indices = data['indices'];
       if (indices === null) {
-        return p['cancelable'] ? null : 'cancel not allowed for this prompt';
+        return p['cancelable'] ? OK : err('cancel not allowed for this prompt');
       }
-      if (!Array.isArray(indices)) return 'indices must be an array';
+      if (!Array.isArray(indices)) return err('indices must be an array');
       const min = (p['min'] as number) ?? 1;
       const max = (p['max'] as number) ?? cardsLen;
-      if (indices.length < min || indices.length > max) return `indices length ${indices.length} not in [${min}, ${max}]`;
+      if (indices.length < min || indices.length > max) return err(`indices length ${indices.length} not in [${min}, ${max}]`);
       for (const idx of indices) {
         if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
-          return `index ${idx} out of bounds [0, ${cardsLen})`;
+          return err(`index ${idx} out of bounds [0, ${cardsLen})`);
         }
       }
-      if (new Set(indices).size !== indices.length) return 'duplicate indices';
-      return null;
+      if (new Set(indices).size !== indices.length) return err('duplicate indices');
+      return OK;
     }
 
     case 'SELECT_TRIBUTE': {
@@ -45,17 +50,17 @@ export function validateResponseData(prompt: ServerMessage, data: Record<string,
       // A single card with amount=2 satisfies min=2 by itself.
       const indices = data['indices'];
       if (indices === null) {
-        return p['cancelable'] ? null : 'cancel not allowed for this prompt';
+        return p['cancelable'] ? OK : err('cancel not allowed for this prompt');
       }
-      if (!Array.isArray(indices)) return 'indices must be an array';
-      if (indices.length === 0) return 'indices must not be empty';
-      if (indices.length > cardsLen) return `indices length ${indices.length} exceeds cards length ${cardsLen}`;
+      if (!Array.isArray(indices)) return err('indices must be an array');
+      if (indices.length === 0) return err('indices must not be empty');
+      if (indices.length > cardsLen) return err(`indices length ${indices.length} exceeds cards length ${cardsLen}`);
       for (const idx of indices) {
         if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
-          return `index ${idx} out of bounds [0, ${cardsLen})`;
+          return err(`index ${idx} out of bounds [0, ${cardsLen})`);
         }
       }
-      if (new Set(indices).size !== indices.length) return 'duplicate indices';
+      if (new Set(indices).size !== indices.length) return err('duplicate indices');
       // Validate tribute count (sum of release_param of selected cards)
       const cardsList = cards as Array<Record<string, unknown>> | undefined;
       if (cardsList) {
@@ -66,41 +71,41 @@ export function validateResponseData(prompt: ServerMessage, data: Record<string,
           return sum + (typeof amount === 'number' ? amount : 1);
         }, 0);
         logger.warn('SELECT_TRIBUTE validation', { indicesLen: (indices as number[]).length, tributeSum, min, max });
-        if (tributeSum < min || tributeSum > max) return `tribute sum ${tributeSum} not in [${min}, ${max}]`;
+        if (tributeSum < min || tributeSum > max) return err(`tribute sum ${tributeSum} not in [${min}, ${max}]`);
       }
-      return null;
+      return OK;
     }
 
     case 'SELECT_SUM': {
       const indices = data['indices'];
       const mustLen = (p['mustSelect'] as unknown[])?.length ?? 0;
       const totalLen = mustLen + cardsLen;
-      if (!Array.isArray(indices)) return 'indices must be an array';
+      if (!Array.isArray(indices)) return err('indices must be an array');
       for (const idx of indices) {
         if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= totalLen) {
-          return `index ${idx} out of bounds [0, ${totalLen})`;
+          return err(`index ${idx} out of bounds [0, ${totalLen})`);
         }
       }
-      if (new Set(indices).size !== indices.length) return 'duplicate indices';
-      return null;
+      if (new Set(indices).size !== indices.length) return err('duplicate indices');
+      return OK;
     }
 
     case 'SELECT_CHAIN': {
       const idx = data['index'];
-      if (idx === null || idx === -1) return null; // decline chain
+      if (idx === null || idx === -1) return OK; // decline chain
       if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
-        return `index ${idx} out of bounds [0, ${cardsLen})`;
+        return err(`index ${idx} out of bounds [0, ${cardsLen})`);
       }
-      return null;
+      return OK;
     }
 
     case 'SELECT_UNSELECT_CARD': {
       const idx = data['index'];
-      if (idx === null) return null; // finish selection
+      if (idx === null) return OK; // finish selection
       if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
-        return `index ${idx} out of bounds [0, ${cardsLen})`;
+        return err(`index ${idx} out of bounds [0, ${cardsLen})`);
       }
-      return null;
+      return OK;
     }
 
     case 'SELECT_OPTION': {
@@ -108,102 +113,102 @@ export function validateResponseData(prompt: ServerMessage, data: Record<string,
       const optLen = options?.length ?? 0;
       const idx = data['index'];
       if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= optLen) {
-        return `index ${idx} out of bounds [0, ${optLen})`;
+        return err(`index ${idx} out of bounds [0, ${optLen})`);
       }
-      return null;
+      return OK;
     }
 
     case 'SORT_CARD':
     case 'SORT_CHAIN': {
       const order = data['order'];
-      if (order === null) return null; // auto-sort
-      if (!Array.isArray(order)) return 'order must be an array';
-      if (order.length !== cardsLen) return `order length ${order.length} !== cards length ${cardsLen}`;
+      if (order === null) return OK; // auto-sort
+      if (!Array.isArray(order)) return err('order must be an array');
+      if (order.length !== cardsLen) return err(`order length ${order.length} !== cards length ${cardsLen}`);
       const seen = new Set<number>();
       for (const idx of order) {
         if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= cardsLen) {
-          return `order value ${idx} out of bounds [0, ${cardsLen})`;
+          return err(`order value ${idx} out of bounds [0, ${cardsLen})`);
         }
-        if (seen.has(idx)) return `duplicate order value ${idx}`;
+        if (seen.has(idx)) return err(`duplicate order value ${idx}`);
         seen.add(idx);
       }
-      return null;
+      return OK;
     }
 
     case 'SELECT_COUNTER': {
       const counts = data['counts'];
-      if (!Array.isArray(counts)) return 'counts must be an array';
-      if (counts.length !== cardsLen) return `counts length ${counts.length} !== cards length ${cardsLen}`;
+      if (!Array.isArray(counts)) return err('counts must be an array');
+      if (counts.length !== cardsLen) return err(`counts length ${counts.length} !== cards length ${cardsLen}`);
       const total = (p['count'] as number) ?? 0;
       let sum = 0;
       for (const c of counts) {
-        if (typeof c !== 'number' || !Number.isInteger(c) || c < 0) return `invalid count value ${c}`;
+        if (typeof c !== 'number' || !Number.isInteger(c) || c < 0) return err(`invalid count value ${c}`);
         sum += c;
       }
-      if (sum !== total) return `counts sum ${sum} !== required ${total}`;
-      return null;
+      if (sum !== total) return err(`counts sum ${sum} !== required ${total}`);
+      return OK;
     }
 
     case 'SELECT_POSITION': {
       const pos = data['position'];
-      if (typeof pos !== 'number') return 'position must be a number';
+      if (typeof pos !== 'number') return err('position must be a number');
       const positions = p['positions'] as number[] | undefined;
-      if (positions && !positions.includes(pos)) return `position ${pos} not in allowed set`;
-      return null;
+      if (positions && !positions.includes(pos)) return err(`position ${pos} not in allowed set`);
+      return OK;
     }
 
     case 'SELECT_EFFECTYN':
     case 'SELECT_YESNO': {
       const yes = data['yes'];
-      if (typeof yes !== 'boolean') return 'yes must be a boolean';
-      return null;
+      if (typeof yes !== 'boolean') return err('yes must be a boolean');
+      return OK;
     }
 
     case 'SELECT_PLACE':
     case 'SELECT_DISFIELD': {
       const places = data['places'];
-      if (!Array.isArray(places)) return 'places must be an array';
+      if (!Array.isArray(places)) return err('places must be an array');
       const count = (p['count'] as number) ?? 1;
-      if (places.length !== count) return `places length ${places.length} !== required ${count}`;
+      if (places.length !== count) return err(`places length ${places.length} !== required ${count}`);
       const allowed = p['places'] as Array<{ player: number; location: number; sequence: number }> | undefined;
       if (allowed) {
         for (const pl of places as Array<{ player: number; location: number; sequence: number }>) {
           if (!allowed.some(a => a.player === pl.player && a.location === pl.location && a.sequence === pl.sequence)) {
-            return `place p${pl.player}/loc${pl.location}/seq${pl.sequence} not in allowed set`;
+            return err(`place p${pl.player}/loc${pl.location}/seq${pl.sequence} not in allowed set`);
           }
         }
       }
-      return null;
+      return OK;
     }
 
     case 'ANNOUNCE_RACE': {
       const value = data['value'];
-      if (typeof value !== 'number') return 'value must be a number';
-      return null;
+      if (typeof value !== 'number') return err('value must be a number');
+      return OK;
     }
 
     case 'ANNOUNCE_ATTRIB': {
       const value = data['value'];
-      if (typeof value !== 'number') return 'value must be a number';
-      return null;
+      if (typeof value !== 'number') return err('value must be a number');
+      return OK;
     }
 
     case 'ANNOUNCE_NUMBER': {
       const value = data['value'];
-      if (typeof value !== 'number') return 'value must be a number';
+      if (typeof value !== 'number') return err('value must be a number');
       const options = p['options'] as number[] | undefined;
-      if (options && !options.includes(value)) return `value ${value} not in options`;
-      return null;
+      if (options && !options.includes(value)) return err(`value ${value} not in options`);
+      return OK;
     }
 
     case 'SELECT_BATTLECMD':
     case 'SELECT_IDLECMD': {
       const action = data['action'];
-      if (typeof action !== 'string' && typeof action !== 'number') return 'action must be string or number';
-      return null;
+      if (typeof action !== 'string' && typeof action !== 'number') return err('action must be string or number');
+      return OK;
     }
 
     default:
-      return null;
+      return OK;
   }
 }

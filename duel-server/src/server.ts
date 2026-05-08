@@ -1900,9 +1900,9 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
 
       // Validate response data bounds before forwarding to worker (FFI safety)
       if (expectedPrompt) {
-        const validationError = validateResponseData(expectedPrompt, msg.data as unknown as Record<string, unknown>);
-        if (validationError) {
-          logger.warn('Invalid response data — re-sending prompt', { duelId: session.duelId, player: playerIndex, reason: validationError });
+        const validation = validateResponseData(expectedPrompt, msg.data as unknown as Record<string, unknown>);
+        if (!validation.ok) {
+          logger.warn('Invalid response data — re-sending prompt', { duelId: session.duelId, player: playerIndex, reason: validation.error });
           session.invalidResponseCount[playerIndex]++;
           if (session.invalidResponseCount[playerIndex] >= MAX_INVALID_RESPONSES) {
             const winner: Player = playerIndex === 0 ? 1 : 0;
