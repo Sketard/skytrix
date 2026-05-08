@@ -88,7 +88,7 @@ export class DuelContext {
    * interpolates the shortest path (90° CCW) instead of going 270° CW.
    * ATK is always 0° (card-art handles the 180° flip for opponents separately).
    */
-  zoneCardRotation(_relPlayer: number, isDefense: boolean): number {
+  zoneCardRotation(isDefense: boolean): number {
     if (!isDefense) return 0;
     return -90;
   }

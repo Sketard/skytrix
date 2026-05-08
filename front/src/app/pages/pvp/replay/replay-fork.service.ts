@@ -5,6 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 
 import { ReplayConnectionService } from './replay-connection.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { duelAssert } from '../../../core/utilities/duel-assert';
 import type { PreComputedState } from '../replay-ws.types';
 import { PHASE_TO_NUM } from '../duel-ws.types';
 
@@ -65,10 +66,12 @@ export class ReplayForkService {
     this.cachedBoardStates.set([...boardStates]);
 
     const bs = state.boardState;
+    const phaseNum = PHASE_TO_NUM[bs.phase];
+    duelAssert(phaseNum !== undefined, 'replay-fork', `Unknown phase: ${bs.phase}`);
     this.replayConnection.sendFork(state.responseCount, {
       lp: [bs.players[0].lp, bs.players[1].lp] as [number, number],
       turnNumber: bs.turnCount,
-      phase: PHASE_TO_NUM[bs.phase] ?? 0,
+      phase: phaseNum,
     });
   }
 

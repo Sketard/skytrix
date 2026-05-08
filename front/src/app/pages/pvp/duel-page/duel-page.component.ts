@@ -632,7 +632,7 @@ export class DuelPageComponent implements OnInit {
     const player = this.logicalState().players[event.playerIndex];
     if (!player) return;
     this._zoneBrowserClickGuard = true;
-    setTimeout(() => this._zoneBrowserClickGuard = false, 0);
+    queueMicrotask(() => this._zoneBrowserClickGuard = false);
     const isPile = event.zoneId === 'GY' || event.zoneId === 'BANISHED' || event.zoneId === 'EXTRA';
     this.zoneBrowserState.set({
       zoneId: event.zoneId,

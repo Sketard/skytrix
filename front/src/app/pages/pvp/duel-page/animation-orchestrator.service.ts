@@ -976,7 +976,7 @@ export class AnimationOrchestratorService {
     const fromRotation = this.extractRotationDeg(getComputedStyle(cardEl).transform);
 
     const nowDefense = (msg.currentPosition & (POSITION.FACEUP_DEFENSE | POSITION.FACEDOWN_DEFENSE)) !== 0;
-    const toRotation = this.ctx.zoneCardRotation(relPlayer, nowDefense);
+    const toRotation = this.ctx.zoneCardRotation(nowDefense);
     const duration = this.ctx.scaledDuration(POSITION_ROTATE_MS, POSITION_ROTATE_MIN_MS);
 
     const lock = this.rbs.lockZone(zoneKey);

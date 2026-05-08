@@ -122,13 +122,11 @@ describe('DuelContext', () => {
 
   describe('zoneCardRotation', () => {
     it('should return 0 for attack position', () => {
-      expect(ctx.zoneCardRotation(0, false)).toBe(0);
-      expect(ctx.zoneCardRotation(1, false)).toBe(0);
+      expect(ctx.zoneCardRotation(false)).toBe(0);
     });
 
     it('should return -90 for defense position', () => {
-      expect(ctx.zoneCardRotation(0, true)).toBe(-90);
-      expect(ctx.zoneCardRotation(1, true)).toBe(-90);
+      expect(ctx.zoneCardRotation(true)).toBe(-90);
     });
   });
 
