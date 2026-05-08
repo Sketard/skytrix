@@ -109,9 +109,14 @@ export class DuelConnection {
   private ws: WebSocket | null = null;
   private wsToken: string | null = null;
   private reconnectToken: string | null = null;
-  private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
-  private sessionTokenTimeout: ReturnType<typeof setTimeout> | null = null;
-  private retryTimeout: ReturnType<typeof setTimeout> | null = null;
+  /** Three named timer slots. Use armTimeout/clearTimeoutSlot to manage them —
+   *  arming a slot already holding a timer would otherwise leak two concurrent
+   *  setTimeouts (handshake retry race, see audit finding H11). */
+  private readonly _timers: {
+    connection: ReturnType<typeof setTimeout> | null;
+    sessionToken: ReturnType<typeof setTimeout> | null;
+    retry: ReturnType<typeof setTimeout> | null;
+  } = { connection: null, sessionToken: null, retry: null };
   private readonly wsUrlBase: string;
 
   // --- Last selected cards (for excluding from next card-selection prompt) ---
@@ -308,15 +313,9 @@ export class DuelConnection {
   cleanup(): void {
     this.rbs.assertNoLocks('cleanup');
     this.rbs.destroy();
-    if (this.connectionTimeout) {
-      clearTimeout(this.connectionTimeout);
-    }
-    if (this.sessionTokenTimeout) {
-      clearTimeout(this.sessionTokenTimeout);
-    }
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout);
-    }
+    this.clearTimeoutSlot('connection');
+    this.clearTimeoutSlot('sessionToken');
+    this.clearTimeoutSlot('retry');
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.close();
@@ -358,7 +357,7 @@ export class DuelConnection {
 
     this.ws = new WebSocket(url);
 
-    this.connectionTimeout = setTimeout(() => {
+    this.armTimeout('connection', () => {
       if (this.ws?.readyState !== WebSocket.OPEN) {
         this.ws?.close();
         this.handleReconnect();
@@ -366,10 +365,7 @@ export class DuelConnection {
     }, 5000);
 
     this.ws.onopen = () => {
-      if (this.connectionTimeout) {
-        clearTimeout(this.connectionTimeout);
-        this.connectionTimeout = null;
-      }
+      this.clearTimeoutSlot('connection');
       // retryCount and connectionStatus are NOT updated here — only on SESSION_TOKEN.
       // Updating on open would flash 'connected' then snap to 'reconnecting'/'lost'
       // if the server accepts the handshake but immediately closes.
@@ -379,8 +375,7 @@ export class DuelConnection {
         this._rematchState.set('idle');
       }
       // Expect SESSION_TOKEN within 5s after handshake; otherwise force-close and retry.
-      this.sessionTokenTimeout = setTimeout(() => {
-        this.sessionTokenTimeout = null;
+      this.armTimeout('sessionToken', () => {
         if (this._connectionStatus() !== 'connected') {
           this.ws?.close();
         }
@@ -408,14 +403,8 @@ export class DuelConnection {
     };
 
     this.ws.onclose = (event) => {
-      if (this.connectionTimeout) {
-        clearTimeout(this.connectionTimeout);
-        this.connectionTimeout = null;
-      }
-      if (this.sessionTokenTimeout) {
-        clearTimeout(this.sessionTokenTimeout);
-        this.sessionTokenTimeout = null;
-      }
+      this.clearTimeoutSlot('connection');
+      this.clearTimeoutSlot('sessionToken');
       // 4029 = rate limited — no point retrying immediately
       if (event.code === 4029) {
         this.reconnectToken = null;
@@ -645,10 +634,7 @@ export class DuelConnection {
 
       case 'SESSION_TOKEN':
         // Server confirmed the session — connection is genuinely alive.
-        if (this.sessionTokenTimeout) {
-          clearTimeout(this.sessionTokenTimeout);
-          this.sessionTokenTimeout = null;
-        }
+        this.clearTimeoutSlot('sessionToken');
         this._connectionStatus.set('connected');
         this._retryCount.set(0);
         // wsToken is consumed once server-side at the first handshake (pendingTokens.delete);
@@ -766,9 +752,7 @@ export class DuelConnection {
     this._retryCount.update(c => c + 1);
     this._totalAutoRetries.update(c => c + 1);
 
-    this.retryTimeout = setTimeout(() => {
-      this.openConnection();
-    }, delay);
+    this.armTimeout('retry', () => this.openConnection(), delay);
   }
 
   private safeSend(data: object): boolean {
@@ -777,6 +761,25 @@ export class DuelConnection {
       return true;
     }
     return false;
+  }
+
+  /** Atomically replace any existing timer in `slot` with a fresh one. The
+   *  callback runs `fn` after `ms`, and the slot is auto-nulled before fn
+   *  fires so callers don't need to clear themselves. Audit finding H11. */
+  private armTimeout(slot: keyof typeof this._timers, fn: () => void, ms: number): void {
+    this.clearTimeoutSlot(slot);
+    this._timers[slot] = setTimeout(() => {
+      this._timers[slot] = null;
+      fn();
+    }, ms);
+  }
+
+  private clearTimeoutSlot(slot: keyof typeof this._timers): void {
+    const id = this._timers[slot];
+    if (id !== null) {
+      clearTimeout(id);
+      this._timers[slot] = null;
+    }
   }
 }
 
