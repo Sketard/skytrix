@@ -625,7 +625,7 @@ export class AnimationOrchestratorService {
           this.trace('groupEvent', { type: entry.events[i].type, result: rlabel, idx: i });
           if (result instanceof Promise) promises.push(result);
           else if (result === 'async' && isDevMode()) {
-            console.warn('[GROUP] Event %s returned async — a barrier MUST follow this group', entry.events[i].type);
+            this.logger.warn('[GROUP] Event %s returned async — a barrier MUST follow this group', entry.events[i].type);
           }
         }
         if (this.commitMode === 'per-event') {

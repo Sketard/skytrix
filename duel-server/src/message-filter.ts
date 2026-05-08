@@ -1,5 +1,6 @@
 import type { ServerMessage, Player, BoardStatePayload, PlayerBoardState, CardOnField } from './ws-protocol.js';
 import { LOCATION, POSITION } from './ws-protocol.js';
+import * as logger from './logger.js';
 
 // =============================================================================
 // Private Zone Detection
@@ -14,7 +15,7 @@ const PRIVATE_LOCATIONS: Set<number> = new Set([LOCATION.DECK, LOCATION.HAND, LO
 /**
  * Filters a ServerMessage for a specific player. Returns the filtered message
  * or null if the message should not be sent to this player.
- * Pure function — no side effects except console.error for unknown types.
+ * Pure function — no side effects except logger.error for unknown types.
  *
  * @param omniscient When true, skips routing drops (SELECT_*, MSG_HINT type 10,
  *   MSG_CONFIRM_CARDS are returned instead of null) and field sanitization
@@ -169,7 +170,7 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     // --- Default: DROP unknown types (fail-safe: prefer missing display over info leak) ---
 
     default:
-      console.error(`Dropped unknown message type: ${(message as { type: string }).type}`);
+      logger.error('Dropped unknown message type', { type: (message as { type: string }).type });
       return null;
   }
 }

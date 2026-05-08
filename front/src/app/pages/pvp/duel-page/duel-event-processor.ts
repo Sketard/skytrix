@@ -127,9 +127,18 @@ export class DuelEventProcessor {
   }
 
   applyChainSolved(chainIndex: number): void {
+    const before = this._activeChainLinks();
+    const matched = before.some(l => l.chainIndex === chainIndex);
     this._activeChainLinks.update(links =>
       links.filter(l => l.chainIndex !== chainIndex),
     );
+    if (!matched) {
+      // L27 — server/client chain index drift: every CHAIN_SOLVING should
+      // pair with a tracked link. Missing match means the link was already
+      // pruned (replay edge) or the index never registered (server bug).
+      this.logger?.warn('applyChainSolved: chainIndex %d not in active links %o',
+        chainIndex, before.map(l => l.chainIndex));
+    }
     this.logger?.log(DuelLogCategory.PROC, 'applyChainSolved idx=%d → remaining links=%o',
       chainIndex, this._activeChainLinks().map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence, zoneId: l.zoneId })));
   }

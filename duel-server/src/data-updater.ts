@@ -1,6 +1,7 @@
 import { writeFileSync, readFileSync, mkdirSync, existsSync, rmSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
+import * as logger from './logger.js';
 
 const CARDS_CDB_URL = 'https://raw.githubusercontent.com/ProjectIgnis/BabelCDB/master/cards.cdb';
 const STRINGS_CONF_URL = 'https://raw.githubusercontent.com/ProjectIgnis/Distribution/master/config/strings.conf';
@@ -22,7 +23,7 @@ async function downloadCardsCdb(dataDir: string): Promise<{ updated: boolean; si
   const tmpPath = join(dataDir, 'cards.cdb.tmp');
   const backupPath = join(dataDir, 'cards.cdb.backup');
 
-  console.log('[UpdateData] Downloading cards.cdb from ProjectIgnis/BabelCDB...');
+  logger.log('[UpdateData] Downloading cards.cdb from ProjectIgnis/BabelCDB...');
   const response = await fetch(CARDS_CDB_URL);
 
   if (!response.ok) {
@@ -69,7 +70,7 @@ async function downloadCardsCdb(dataDir: string): Promise<{ updated: boolean; si
     throw err;
   }
 
-  console.log(`[UpdateData] cards.cdb updated (${buffer.length} bytes)`);
+  logger.log(`[UpdateData] cards.cdb updated (${buffer.length} bytes)`);
   return { updated: true, size: buffer.length };
 }
 
@@ -78,7 +79,7 @@ function updateScripts(dataDir: string): { updated: boolean; method: 'pull' | 'c
   const gitDir = join(scriptsPath, '.git');
 
   if (existsSync(gitDir)) {
-    console.log('[UpdateData] Pulling latest scripts...');
+    logger.log('[UpdateData] Pulling latest scripts...');
     // Discard any local edits to tracked files. ProjectIgnis/CardScripts is
     // upstream-only — we never author here. Local diffs only appear from
     // older patch attempts (e.g. retired P4) and would block ff-only pulls.
@@ -87,7 +88,7 @@ function updateScripts(dataDir: string): { updated: boolean; method: 'pull' | 'c
     return { updated: true, method: 'pull' };
   }
 
-  console.log('[UpdateData] Cloning CardScripts repository...');
+  logger.log('[UpdateData] Cloning CardScripts repository...');
   if (existsSync(scriptsPath)) {
     rmSync(scriptsPath, { recursive: true, force: true });
   }
@@ -99,7 +100,7 @@ function updateScripts(dataDir: string): { updated: boolean; method: 'pull' | 'c
 async function downloadStringsConf(dataDir: string): Promise<{ updated: boolean }> {
   const targetPath = join(dataDir, 'strings.conf');
 
-  console.log('[UpdateData] Downloading strings.conf from ProjectIgnis/Distribution...');
+  logger.log('[UpdateData] Downloading strings.conf from ProjectIgnis/Distribution...');
   const response = await fetch(STRINGS_CONF_URL);
 
   if (!response.ok) {
@@ -112,7 +113,7 @@ async function downloadStringsConf(dataDir: string): Promise<{ updated: boolean 
   }
 
   writeFileSync(targetPath, text, 'utf-8');
-  console.log(`[UpdateData] strings.conf updated (${text.length} bytes)`);
+  logger.log(`[UpdateData] strings.conf updated (${text.length} bytes)`);
   return { updated: true };
 }
 
@@ -125,7 +126,7 @@ export async function updateData(dataDir: string): Promise<UpdateResult> {
   const stringsResult = await downloadStringsConf(dataDir);
   const scriptsResult = updateScripts(dataDir);
 
-  console.log('[UpdateData] Update complete');
+  logger.log('[UpdateData] Update complete');
 
   return {
     cardsUpdated: cardsResult.updated,

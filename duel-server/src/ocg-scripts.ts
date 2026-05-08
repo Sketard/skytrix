@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import type { CardDB, ScriptDB } from './types.js';
+import * as logger from './logger.js';
 
 // =============================================================================
 // Scripts Hash — cached at startup for replay metadata
@@ -21,7 +22,7 @@ export function initScriptsHash(scriptDir: string): void {
     hash.update(readFileSync(join(scriptDir, file)));
   }
   cachedScriptsHash = hash.digest('hex');
-  console.log(`[Scripts] Scripts hash computed: ${cachedScriptsHash.slice(0, 12)}...`);
+  logger.log('[Scripts] Scripts hash computed', { prefix: cachedScriptsHash.slice(0, 12) });
 }
 
 export function getScriptsHash(): string {
@@ -120,7 +121,7 @@ export function loadScripts(scriptDir: string): ScriptDB {
     if (existsSync(path)) {
       startupScripts.set(name, readFileSync(path, 'utf-8'));
     } else {
-      console.warn(`[Scripts] Startup script not found: ${name}`);
+      logger.warn('[Scripts] Startup script not found', { name });
     }
   }
 
@@ -135,7 +136,7 @@ export function loadScripts(scriptDir: string): ScriptDB {
 export function loadSystemStrings(filePath: string): Map<number, string> {
   const map = new Map<number, string>();
   if (!existsSync(filePath)) {
-    console.warn(`[Scripts] strings.conf not found: ${filePath}`);
+    logger.warn('[Scripts] strings.conf not found', { filePath });
     return map;
   }
   const content = readFileSync(filePath, 'utf-8');
@@ -145,7 +146,7 @@ export function loadSystemStrings(filePath: string): Map<number, string> {
       map.set(Number(match[1]), match[2].trimEnd());
     }
   }
-  console.log(`[Scripts] Loaded ${map.size} system strings from strings.conf`);
+  logger.log('[Scripts] Loaded system strings from strings.conf', { count: map.size });
   return map;
 }
 

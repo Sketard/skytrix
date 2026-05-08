@@ -7,6 +7,15 @@
 //
 // LOG_LEVEL env var controls minimum level: 'debug' | 'info' | 'warn' | 'error'.
 // Default: 'debug' (all logs visible).
+//
+// L9 — PII handling: some log sites pass `playerId` (Spring Boot user UUID),
+// `username`, or `deckName` in the structured context (e.g. duel start, replay
+// auth failures). These IDs/usernames are necessary for cross-system debugging
+// (matching duel logs to Spring Boot session traces) and are kept out of the
+// `msg` field — they only appear in `ctx`. If the deployment is subject to
+// GDPR right-to-erasure, log retention should be ≤30 days OR `playerId`
+// should be hashed before emit (override `forDuel` to wrap the logger).
+// Decks themselves (cardCode arrays) are NOT logged.
 
 const IS_PRODUCTION = process.env['NODE_ENV'] === 'production';
 

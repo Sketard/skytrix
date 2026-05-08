@@ -2,6 +2,7 @@ import type { OcgCardData } from '@n1xx1/ocgcore-wasm';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CardDB, ScriptDB } from './types.js';
+import * as logger from './logger.js';
 
 // =============================================================================
 // Card Reader Factory
@@ -11,7 +12,7 @@ export function createCardReader(db: CardDB): (code: number) => OcgCardData | nu
   return (code: number): OcgCardData | null => {
     const row = db.stmt.get(code) as Record<string, number | bigint> | undefined;
     if (!row) {
-      console.warn(`[CardReader] Card not found in cards.cdb: ${code}`);
+      logger.warn('[CardReader] Card not found in cards.cdb', { code });
       return null;
     }
 
@@ -34,7 +35,12 @@ export function createCardReader(db: CardDB): (code: number) => OcgCardData | nu
     const isLink = (type & 0x4000000) !== 0;
     const linkMarker = isLink ? def : 0;
     if (isLink && process.env.OCG_DEBUG_LINK_MARKER === '1') {
-      console.log(`[cardReader] ${row['id']} (Link) link_marker=${linkMarker} (0x${linkMarker.toString(16)}) level=${level & 0xFF}`);
+      logger.debug('[cardReader] Link card', {
+        id: row['id'],
+        linkMarker,
+        linkMarkerHex: '0x' + linkMarker.toString(16),
+        level: level & 0xFF,
+      });
     }
 
     return {
@@ -76,7 +82,8 @@ export function createScriptReader(scripts: ScriptDB): (name: string) => string 
       }
     }
 
-    console.warn(`[ScriptReader] Not found: ${name}`);
+    // ocgcore probes `c0.lua` for its internal code-0 sentinel (token template) on every duel init — expected miss, silenced to match errorHandler's `script not found` filter.
+    if (name !== 'c0.lua') logger.warn('[ScriptReader] Not found', { name });
     return null;
   };
 }

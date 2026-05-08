@@ -774,6 +774,11 @@ export class DuelConnection {
       this.ws.send(JSON.stringify(data));
       return true;
     }
+    // L28 — silent send drop = duel-blocking on the server side. Prefer a
+    // visible warn so a regression in caller code (e.g. sendResponse fired
+    // before WS handshake completes) is debuggable instead of a frozen UI.
+    this.logger?.warn('safeSend dropped — WS not open (readyState=%d, type=%s)',
+      this.ws?.readyState ?? -1, (data as { type?: string }).type ?? '?');
     return false;
   }
 
