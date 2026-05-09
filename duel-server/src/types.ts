@@ -317,3 +317,62 @@ export interface DuelSession {
   startedAt: number | null;
   endedAt: number | null;
 }
+
+/**
+ * Server-owned in-flight duel state. Layered on top of `DuelSession` with
+ * runtime fields (worker handle, RPS state, replay metadata, prompt cache,
+ * timer context, chain-state tracker spread). Lives in the `activeDuels`
+ * map in server.ts and is mutated freely by the message handlers /
+ * timer-management module / replay-handlers fork bridge.
+ */
+export interface ActiveDuelSession extends DuelSession {
+  phase: SessionPhase;
+  rpsState: RpsState | null;
+  worker: import('node:worker_threads').Worker | null;
+  workerTerminated: boolean;
+  awaitingResponse: [boolean, boolean];
+  lastBoardState: import('./ws-protocol.js').ServerMessage | null;
+  lastSentPrompt: [import('./ws-protocol.js').ServerMessage | null, import('./ws-protocol.js').ServerMessage | null];
+  lastSentHint: [import('./ws-protocol.js').ServerMessage | null, import('./ws-protocol.js').ServerMessage | null];
+  decks: [Deck, Deck];
+  rematchRequested: [boolean, boolean];
+  rematchTimeout: ReturnType<typeof setTimeout> | null;
+  // Story 5.2 — Both-disconnect handling
+  preservationTimer: ReturnType<typeof setTimeout> | null;
+  bothDisconnected: boolean;
+  combinedGraceTimer: ReturnType<typeof setTimeout> | null;
+  storedDuelResult: import('./ws-protocol.js').ServerMessage | null;
+  lastStateSyncAt: [number, number];
+  /** P0-3bis.3 hardening — last CANCEL_PROMPT_SEQUENCE timestamp per
+   *  player (epoch ms). Used by the cancel rate-limit. */
+  lastCancelAt: [number, number];
+  /** P0-3bis.3 — snapshot of the IDLECMD/BATTLECMD prompt at the
+   *  moment the player committed via PLAYER_RESPONSE. The worker takes
+   *  its WASM rollback snapshot at the same boundary. On
+   *  CANCEL_PROMPT_SEQUENCE, the server re-broadcasts THIS prompt
+   *  (not the latest `lastSentPrompt`, which has been overwritten by
+   *  intermediate SELECT_PLACE / SELECT_TRIBUTE / SELECT_POSITION).
+   *  Cleared when a fresh IDLECMD/BATTLECMD is broadcast (= new
+   *  rollback boundary, so the previous snapshot is no longer
+   *  relevant). */
+  cancelTargetPrompt: [import('./ws-protocol.js').ServerMessage | null, import('./ws-protocol.js').ServerMessage | null];
+  // M1 consolidation — turn timer context (formerly standalone Map)
+  timerContext: TimerContext | null;
+  soloMode: boolean;
+  skipShuffle: boolean;
+  turnTimeSecs: number;
+  invalidResponseCount: [number, number];
+  promptSentAt: [number, number];
+  // Active chain links — tracked for reconnection state sync
+  activeChainLinks: import('./ws-protocol.js').ServerMessage[];
+  chainPhase: 'idle' | 'building' | 'resolving';
+  negatedChainIndices: Set<number>;
+  /** M22 — chainIndex of the link currently resolving. Set on MSG_CHAIN_SOLVING,
+   *  cleared on MSG_CHAIN_SOLVED + MSG_CHAIN_END. Used to tag MSG_CONFIRM_CARDS. */
+  currentSolvingChainIndex: number | null;
+  // Replay: player metadata
+  playerUsernames: [string, string];
+  deckNames: [string, string];
+  pendingReplayResult: string | null;
+  forkConnectionTimeout: ReturnType<typeof setTimeout> | null;
+}

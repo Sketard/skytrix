@@ -23,6 +23,7 @@ import {
 import type {
   WorkerToMainMessage,
   DuelSession,
+  ActiveDuelSession,
   Deck,
   TimerContext,
   SessionPhase,
@@ -49,7 +50,15 @@ import { json, readBody, validateInternalAuth as validateInternalAuthBase } from
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
 import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState } from './replay-handlers.js';
-import { createInactivityScheduler, type InactivityScheduler } from './inactivity-timer.js';
+import {
+  configureTimerManagement,
+  sendTimerStateToAll, sendTimerStateToPlayer,
+  startTurnTimer, pauseTurnTimer, scheduleTimerStart, commitPendingTimer,
+  addTurnIncrement, handleTurnChange,
+  startInactivityTimer, clearInactivityTimer,
+  clearAllDuelTimers,
+  startGracePeriod,
+} from './timer-management.js';
 import {
   configureSolverHandlers,
   handleSolverMessage,
@@ -94,57 +103,8 @@ let dataReady = false;
 // State
 // =============================================================================
 
-interface ActiveDuelSession extends DuelSession {
-  phase: SessionPhase;
-  rpsState: RpsState | null;
-  worker: Worker | null;
-  workerTerminated: boolean;
-  awaitingResponse: [boolean, boolean];
-  lastBoardState: ServerMessage | null;
-  lastSentPrompt: [ServerMessage | null, ServerMessage | null];
-  lastSentHint: [ServerMessage | null, ServerMessage | null];
-  decks: [Deck, Deck];
-  rematchRequested: [boolean, boolean];
-  rematchTimeout: ReturnType<typeof setTimeout> | null;
-  // Story 5.2 — Both-disconnect handling
-  preservationTimer: ReturnType<typeof setTimeout> | null;
-  bothDisconnected: boolean;
-  combinedGraceTimer: ReturnType<typeof setTimeout> | null;
-  storedDuelResult: ServerMessage | null;
-  lastStateSyncAt: [number, number];
-  /** P0-3bis.3 hardening — last CANCEL_PROMPT_SEQUENCE timestamp per
-   *  player (epoch ms). Used by the cancel rate-limit. */
-  lastCancelAt: [number, number];
-  /** P0-3bis.3 — snapshot of the IDLECMD/BATTLECMD prompt at the
-   *  moment the player committed via PLAYER_RESPONSE. The worker takes
-   *  its WASM rollback snapshot at the same boundary. On
-   *  CANCEL_PROMPT_SEQUENCE, the server re-broadcasts THIS prompt
-   *  (not the latest `lastSentPrompt`, which has been overwritten by
-   *  intermediate SELECT_PLACE / SELECT_TRIBUTE / SELECT_POSITION).
-   *  Cleared when a fresh IDLECMD/BATTLECMD is broadcast (= new
-   *  rollback boundary, so the previous snapshot is no longer
-   *  relevant). */
-  cancelTargetPrompt: [ServerMessage | null, ServerMessage | null];
-  // M1 consolidation — turn timer context (formerly standalone Map)
-  timerContext: TimerContext | null;
-  soloMode: boolean;
-  skipShuffle: boolean;
-  turnTimeSecs: number;
-  invalidResponseCount: [number, number];
-  promptSentAt: [number, number];
-  // Active chain links — tracked for reconnection state sync
-  activeChainLinks: ServerMessage[];
-  chainPhase: 'idle' | 'building' | 'resolving';
-  negatedChainIndices: Set<number>;
-  /** M22 — chainIndex of the link currently resolving. Set on MSG_CHAIN_SOLVING,
-   *  cleared on MSG_CHAIN_SOLVED + MSG_CHAIN_END. Used to tag MSG_CONFIRM_CARDS. */
-  currentSolvingChainIndex: number | null;
-  // Replay: player metadata
-  playerUsernames: [string, string];
-  deckNames: [string, string];
-  pendingReplayResult: string | null;
-  forkConnectionTimeout: ReturnType<typeof setTimeout> | null;
-}
+// ActiveDuelSession moved to types.ts (H1-suite phase 4) so the timer-
+// management module can reference it without re-importing server.ts.
 
 const activeDuels = new Map<string, ActiveDuelSession>();
 const pendingTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
@@ -253,6 +213,21 @@ configureReplayHandlers({
   replayWorkerWatchdogMs: REPLAY_WORKER_WATCHDOG_MS,
   dataDir: DATA_DIR,
   createForkSoloSession,
+});
+
+configureTimerManagement({
+  sendToPlayer,
+  handleDuelEnd,
+  requestReplayFromWorker,
+  cleanupDuelSession,
+  safeTerminateWorker,
+  turnTimeIncrementMs: TURN_TIME_INCREMENT_MS,
+  inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
+  inactivityWarningBeforeMs: INACTIVITY_WARNING_BEFORE_MS,
+  inactivityRaceWindowMs: INACTIVITY_RACE_WINDOW_MS,
+  reconnectGraceMs: RECONNECT_GRACE_MS,
+  bothDisconnectedCleanupMs: BOTH_DISCONNECTED_CLEANUP_MS,
+  animationsDoneTimeoutMs: ANIMATIONS_DONE_TIMEOUT_MS,
 });
 
 // =============================================================================
@@ -1081,249 +1056,9 @@ function isSelectMessage(message: ServerMessage): boolean {
 // =============================================================================
 // Turn Timer & Inactivity Timeout (Story 3.2)
 // =============================================================================
-
-// TIMER_STATE is sent directly via ws.send() — it does NOT go through message-filter.ts.
-// This is intentional: both players see both timers, and the server is the sole source of truth.
-
-function sendTimerStateToAll(session: ActiveDuelSession): void {
-  const ctx = session.timerContext;
-  if (!ctx) return;
-  const timer0: ServerMessage = { type: 'TIMER_STATE', player: 0, remainingMs: Math.max(0, ctx.pools[0]) };
-  const timer1: ServerMessage = { type: 'TIMER_STATE', player: 1, remainingMs: Math.max(0, ctx.pools[1]) };
-  for (const client of [0, 1] as const) {
-    sendToPlayer(session, client, timer0);
-    sendToPlayer(session, client, timer1);
-  }
-}
-
-function sendTimerStateToPlayer(session: ActiveDuelSession, targetPlayer: 0 | 1): void {
-  const ctx = session.timerContext;
-  if (!ctx) return;
-  for (const p of [0, 1] as const) {
-    sendToPlayer(session, targetPlayer, { type: 'TIMER_STATE', player: p, remainingMs: Math.max(0, ctx.pools[p]) });
-  }
-}
-
-function startTurnTimer(session: ActiveDuelSession): void {
-  const ctx = session.timerContext;
-  if (!ctx || ctx.running) {
-    logger.debug('startTurnTimer SKIPPED', { duelId: session.duelId, hasCtx: !!ctx, running: ctx?.running });
-    return;
-  }
-
-  logger.debug('startTurnTimer START', { duelId: session.duelId, activePlayer: ctx.activePlayer, pool: ctx.pools[ctx.activePlayer] });
-  ctx.running = true;
-  ctx.lastTickMs = Date.now();
-
-  ctx.intervalRef = setInterval(() => {
-    const now = Date.now();
-    const elapsed = now - ctx.lastTickMs;
-    ctx.lastTickMs = now;
-    ctx.pools[ctx.activePlayer] -= elapsed;
-
-    // Broadcast TIMER_STATE for active player to both clients
-    const timerMsg: ServerMessage = {
-      type: 'TIMER_STATE',
-      player: ctx.activePlayer,
-      remainingMs: Math.max(0, ctx.pools[ctx.activePlayer]),
-    };
-    sendToPlayer(session, 0, timerMsg);
-    sendToPlayer(session, 1, timerMsg);
-
-    // Pool depletion → timeout forfeit
-    if (ctx.pools[ctx.activePlayer] <= 0) {
-      ctx.pools[ctx.activePlayer] = 0;
-      const loser = ctx.activePlayer;
-      const winner: Player = loser === 0 ? 1 : 0;
-      session.awaitingResponse[loser] = false;
-      const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'timeout' };
-      logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'timeout', loser });
-      sendToPlayer(session, 0, endMsg);
-      sendToPlayer(session, 1, endMsg);
-      handleDuelEnd(session);
-      requestReplayFromWorker(session, 'TIMEOUT');
-    }
-  }, 250);
-}
-
-function pauseTurnTimer(session: ActiveDuelSession): void {
-  const ctx = session.timerContext;
-  if (!ctx || !ctx.running) {
-    logger.debug('pauseTurnTimer SKIPPED', { duelId: session.duelId, hasCtx: !!ctx, running: ctx?.running });
-    return;
-  }
-  logger.debug('pauseTurnTimer PAUSE', { duelId: session.duelId, activePlayer: ctx.activePlayer, pool: ctx.pools[ctx.activePlayer] });
-
-
-  // Account for time elapsed since last tick
-  const now = Date.now();
-  const elapsed = now - ctx.lastTickMs;
-  ctx.pools[ctx.activePlayer] -= elapsed;
-  ctx.lastTickMs = now;
-
-  if (ctx.intervalRef) {
-    clearInterval(ctx.intervalRef);
-    ctx.intervalRef = null;
-  }
-  ctx.running = false;
-
-  // Broadcast accurate pool value after pause (prevents up to ~1s display drift)
-  const timerMsg: ServerMessage = {
-    type: 'TIMER_STATE',
-    player: ctx.activePlayer,
-    remainingMs: Math.max(0, ctx.pools[ctx.activePlayer]),
-  };
-  sendToPlayer(session, 0, timerMsg);
-  sendToPlayer(session, 1, timerMsg);
-}
-
-
-/**
- * Park the timer as pending for `player` — starts only when ANIMATIONS_DONE arrives.
- * A safety timeout fires startTurnTimer() after ANIMATIONS_DONE_TIMEOUT_MS
- * in case the client never sends the message (disconnect, bug, etc.).
- */
-function scheduleTimerStart(session: ActiveDuelSession, player: Player): void {
-  const ctx = session.timerContext;
-  if (!ctx) return;
-
-  // Deduct elapsed from whoever was active, then freeze.
-  pauseTurnTimer(session);
-  ctx.activePlayer = player;
-
-  // Clear any previous pending slot.
-  if (ctx.pendingTimeout) {
-    clearTimeout(ctx.pendingTimeout);
-    ctx.pendingTimeout = null;
-  }
-  ctx.pendingPlayer = player;
-
-  ctx.pendingTimeout = setTimeout(() => {
-    ctx.pendingPlayer = null;
-    ctx.pendingTimeout = null;
-    startTurnTimer(session);
-  }, ANIMATIONS_DONE_TIMEOUT_MS);
-}
-
-/**
- * Commit a pending timer immediately (used on reconnect so we don't wait for
- * ANIMATIONS_DONE from a client that may have just re-established its connection).
- */
-function commitPendingTimer(session: ActiveDuelSession): void {
-  const ctx = session.timerContext;
-  if (!ctx) return;
-  if (ctx.pendingTimeout) {
-    clearTimeout(ctx.pendingTimeout);
-    ctx.pendingTimeout = null;
-  }
-  ctx.pendingPlayer = null;
-  startTurnTimer(session);
-}
-
-function addTurnIncrement(session: ActiveDuelSession, player: Player, newTurnCount: number): void {
-  const ctx = session.timerContext;
-  if (!ctx) return;
-
-  ctx.turnCount = newTurnCount;
-  // Skip +40s on the first turn — initial 300s only
-  if (ctx.turnCount > 1) {
-    ctx.pools[player] += TURN_TIME_INCREMENT_MS;
-  }
-  ctx.activePlayer = player;
-}
-
-function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Player, newTurnCount: number): void {
-  const ctx = session.timerContext;
-  if (!ctx || newTurnCount <= ctx.turnCount) return;
-
-  logger.debug('handleTurnChange', { duelId: session.duelId, fromTurn: ctx.turnCount, toTurn: newTurnCount, activePlayer: newTurnPlayer });
-  // New turn detected — pause current timer, cancel any pending ANIMATIONS_DONE slot,
-  // add increment, switch active player.
-  const wasRunning = ctx.running;
-  pauseTurnTimer(session);
-  if (ctx.pendingTimeout) {
-    clearTimeout(ctx.pendingTimeout);
-    ctx.pendingTimeout = null;
-    ctx.pendingPlayer = null;
-  }
-  addTurnIncrement(session, newTurnPlayer, newTurnCount);
-
-  // Send updated TIMER_STATE for the player who received the increment
-  const timerMsg: ServerMessage = {
-    type: 'TIMER_STATE',
-    player: newTurnPlayer,
-    remainingMs: Math.max(0, ctx.pools[newTurnPlayer]),
-  };
-  sendToPlayer(session, 0, timerMsg);
-  sendToPlayer(session, 1, timerMsg);
-
-  // Worker may send SELECT before BOARD_STATE — resume timer if it was running
-  if (wasRunning) {
-    startTurnTimer(session);
-  }
-}
-
-/**
- * Build a fresh InactivityScheduler bound to the given session. Wraps the
- * dependencies (slot storage on PlayerSession, isDuelEnded check, warning +
- * forfeit side-effects) so the timer logic itself lives in inactivity-timer.ts
- * and is unit-testable in isolation. See L6 in the audit doc.
- */
-function inactivitySchedulerFor(session: ActiveDuelSession): InactivityScheduler {
-  return createInactivityScheduler({
-    isDuelEnded: () => session.endedAt !== null,
-    getSlot: (p) => session.players[p].inactivitySlot,
-    setSlot: (p, slot) => { session.players[p].inactivitySlot = slot; },
-    sendWarning: (p, remainingSec) => {
-      const warningMsg: ServerMessage = { type: 'INACTIVITY_WARNING', remainingSec };
-      sendToPlayer(session, p, warningMsg);
-    },
-    forfeit: (p) => {
-      const winner: Player = p === 0 ? 1 : 0;
-      session.awaitingResponse[p] = false;
-      const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'inactivity' };
-      logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'inactivity', player: p });
-      sendToPlayer(session, 0, endMsg);
-      sendToPlayer(session, 1, endMsg);
-      handleDuelEnd(session);
-      requestReplayFromWorker(session, 'TIMEOUT');
-    },
-    warningDelayMs: INACTIVITY_TIMEOUT_MS - INACTIVITY_WARNING_BEFORE_MS,
-    warningBeforeMs: INACTIVITY_WARNING_BEFORE_MS,
-    raceWindowMs: INACTIVITY_RACE_WINDOW_MS,
-  });
-}
-
-function startInactivityTimer(session: ActiveDuelSession, player: Player): void {
-  inactivitySchedulerFor(session).start(player);
-}
-
-function clearInactivityTimer(session: ActiveDuelSession, player: Player): void {
-  inactivitySchedulerFor(session).cancel(player);
-}
-
-function clearAllDuelTimers(session: ActiveDuelSession): void {
-  // Clear turn timer
-  const ctx = session.timerContext;
-  if (ctx) {
-    if (ctx.intervalRef) {
-      clearInterval(ctx.intervalRef);
-      ctx.intervalRef = null;
-      ctx.running = false;
-    }
-    if (ctx.pendingTimeout) {
-      clearTimeout(ctx.pendingTimeout);
-      ctx.pendingTimeout = null;
-    }
-    ctx.pendingPlayer = null;
-  }
-  session.timerContext = null;
-
-  // Clear inactivity + race window timers for both players
-  for (const p of [0, 1] as const) {
-    clearInactivityTimer(session, p);
-  }
-}
+// Moved to timer-management.ts (H1-suite phase 4). The 13 timer functions
+// take `session` as their first arg and call back into server.ts via the
+// configureTimerManagement closures (sendToPlayer, handleDuelEnd, etc.).
 
 // =============================================================================
 // Duel Session Cleanup
@@ -1752,58 +1487,7 @@ function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void
   sendTimerStateToPlayer(session, playerIndex);
 }
 
-function startGracePeriod(session: ActiveDuelSession, playerIndex: 0 | 1): void {
-  // Story 5.2 — Check if both players are now disconnected
-  const otherIndex: Player = playerIndex === 0 ? 1 : 0;
-  if (!session.players[otherIndex].connected) {
-    // Both disconnected — cancel individual grace timer for the other player
-    const otherPs = session.players[otherIndex];
-    if (otherPs.gracePeriodTimer) {
-      clearTimeout(otherPs.gracePeriodTimer);
-      otherPs.gracePeriodTimer = null;
-    }
-
-    session.bothDisconnected = true;
-
-    // Start combined grace timer (60s from the later disconnect)
-    if (!session.combinedGraceTimer) {
-      session.combinedGraceTimer = setTimeout(() => {
-        session.combinedGraceTimer = null;
-        // Neither player reconnected — end as draw
-        if (!session.players[0].connected && !session.players[1].connected && !session.endedAt) {
-          const endMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'draw_both_disconnect' };
-          logger.log('DUEL_END', { duelId: session.duelId, winner: null, reason: 'draw_both_disconnect' });
-          session.storedDuelResult = endMsg;
-          handleDuelEnd(session);
-          requestReplayFromWorker(session, 'DISCONNECT');
-          session.preservationTimer = setTimeout(() => {
-            session.preservationTimer = null;
-            cleanupDuelSession(session);
-            safeTerminateWorker(session);
-          }, BOTH_DISCONNECTED_CLEANUP_MS);
-        }
-      }, RECONNECT_GRACE_MS);
-    }
-    return;
-  }
-
-  // Single player disconnect — existing per-player grace logic
-  const ps = session.players[playerIndex];
-  if (ps.gracePeriodTimer) return;
-
-  ps.gracePeriodTimer = setTimeout(() => {
-    ps.gracePeriodTimer = null;
-    if (!session.players[playerIndex].connected && !session.endedAt) {
-      const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
-      const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'disconnect' };
-      logger.log('DUEL_END', { duelId: session.duelId, winner: opponentIndex, reason: 'disconnect', player: playerIndex });
-      sendToPlayer(session, 0, endMsg);
-      sendToPlayer(session, 1, endMsg);
-      handleDuelEnd(session);
-      requestReplayFromWorker(session, 'DISCONNECT');
-    }
-  }, RECONNECT_GRACE_MS);
-}
+// startGracePeriod moved to timer-management.ts (H1-suite phase 4).
 
 // =============================================================================
 // Client Message Handling
