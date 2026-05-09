@@ -37,6 +37,35 @@ function isExcavatedCard(c: CardInfo): boolean {
   return c.location === LOCATION.DECK || c.location === LOCATION.EXTRA;
 }
 
+/**
+ * M22 — Pick the chainIndex of the link the dialog should read its reveals
+ * from. Priority: a link with `resolving: true` (a CHAIN_SOLVING fired for it,
+ * its CONFIRMs land under that index server-side); else the last activeChainLink
+ * (chain still building, prompt arriving for the about-to-resolve link);
+ * else null (no chain — cost prompt outside resolution).
+ *
+ * Exported for unit testing — pure function.
+ */
+export function selectCurrentChainLinkIndex(
+  links: ReadonlyArray<{ chainIndex: number; resolving: boolean }>,
+): number | null {
+  const resolving = links.find(l => l.resolving);
+  if (resolving) return resolving.chainIndex;
+  if (links.length > 0) return links[links.length - 1].chainIndex;
+  return null;
+}
+
+/**
+ * Filter for the REVEALED CARDS panel. Strictly excavate (DECK/EXTRA).
+ * Hand-reveal prompts (Aqua Dolphin) render the opponent's hand in the
+ * sub-component itself; they MUST NOT bleed into this panel.
+ *
+ * Exported for unit testing — pure function.
+ */
+export function selectExcavatedReveals(allConfirmed: ReadonlyArray<CardInfo>): CardInfo[] {
+  return allConfirmed.filter(isExcavatedCard);
+}
+
 export type DialogState = 'closed' | 'open' | 'collapsed';
 
 export interface PassiveMessage {
@@ -309,37 +338,16 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       (instance as unknown as { excludedCards: unknown[] }).excludedCards = this.wsService.lastSelectedCards;
     }
     // M22 — Read reveals tagged with the current chain link's index.
-    // Priority: link with `resolving: true` (a CHAIN_SOLVING fired for it),
-    // else the last activeChainLink (chain building phase, prompt arriving
-    // for the about-to-resolve link), else null (no chain — cost prompt etc).
-    // Reveals from previously-resolved links of the same chain are scoped
-    // under their own chainIndex and excluded — fixes the Dracotail leak
-    // observed after a mid-chain reload (M22).
     // Replay-mode override (`confirmedCards` input set): preserve flat
-    // semantics. The replay adapter pre-aggregates the revealed cards.
+    // semantics — the replay adapter pre-aggregates the revealed cards.
     const overrideConfirmed = this.confirmedCards();
-    let allConfirmed: CardInfo[];
-    if (overrideConfirmed) {
-      allConfirmed = overrideConfirmed;
-    } else {
-      const links = this.wsService.activeChainLinks();
-      const resolvingLink = links.find(l => l.resolving);
-      const currentLinkIdx = resolvingLink
-        ? resolvingLink.chainIndex
-        : (links.length > 0 ? links[links.length - 1].chainIndex : null);
-      allConfirmed = this.wsService.confirmedCardsForChainIndex(currentLinkIdx);
-    }
+    const allConfirmed = overrideConfirmed
+      ?? this.wsService.confirmedCardsForChainIndex(
+        selectCurrentChainLinkIndex(this.wsService.activeChainLinks()),
+      );
     if ('revealedCards' in instance) {
-      // REVEALED CARDS panel — strictly excavated cards (DECK/EXTRA reveals).
-      // Use case: a prior excavate showed cards from the deck, and the player
-      // now responds to a follow-up prompt that does NOT list the excavated
-      // cards (e.g. GMX Applied Experiment). Without this panel the player
-      // would not remember which cards had been revealed.
-      // Hand-reveal prompts (Aqua Dolphin) render the opponent's hand inside
-      // the sub-component itself — they don't need this panel and showing
-      // the non-monster part of the hand here was an accidental side-effect.
       (instance as unknown as { revealedCards: unknown[] }).revealedCards =
-        allConfirmed.filter(isExcavatedCard);
+        selectExcavatedReveals(allConfirmed);
     }
     if ('confirmedCardKeys' in instance) {
       (instance as unknown as { confirmedCardKeys: Set<string> }).confirmedCardKeys =

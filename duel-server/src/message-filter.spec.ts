@@ -415,6 +415,32 @@ describe('filterMessage', () => {
       expect(filterMessage(msg, 1)).toBe(msg);
     });
 
+    // Pinning test for the C1 → CONFIRM_DECKTOP unmask follow-up.
+    // OcgMessageType.CONFIRM_DECKTOP is mapped to MSG_CONFIRM_CARDS *without*
+    // the `private` flag (excavate is public in YGO). This spec asserts that
+    // a CONFIRM_DECKTOP-shaped DTO (cardCodes set, location DECK, no private
+    // flag) is passed through to the opponent unchanged — they MUST see the
+    // cardCodes so the REVEALED CARDS panel works for cards like
+    // GMX Applied Experiment where the panel is the only on-screen record.
+    it('excavate scenario: cardCodes visible to opponent (no private flag)', () => {
+      const msg = {
+        type: 'MSG_CONFIRM_CARDS',
+        player: 0,
+        cards: [
+          { cardCode: 18795635, name: 'GMX Applied Experiment #55', player: 0, location: LOCATION.DECK, sequence: 0 },
+          { cardCode: 11111111, name: 'Some Dinosaur', player: 0, location: LOCATION.DECK, sequence: 1 },
+        ],
+      } as any;
+      // Owner sees the reveal
+      const own = filterMessage(msg, 0) as any;
+      expect(own.cards[0].cardCode).toBe(18795635);
+      // Opponent ALSO sees the reveal (excavate is public)
+      const opp = filterMessage(msg, 1) as any;
+      expect(opp.cards[0].cardCode).toBe(18795635);
+      expect(opp.cards[0].name).toBe('GMX Applied Experiment #55');
+      expect(opp.cards[1].cardCode).toBe(11111111);
+    });
+
     it('private reveal: owner sees cardCodes, opponent sees masked cards', () => {
       const msg = {
         type: 'MSG_CONFIRM_CARDS',
