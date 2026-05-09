@@ -1,7 +1,7 @@
 import { effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import type { GameEvent } from '../types';
-import type { ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
-import { BOARD_CHANGING_EVENT_TYPES } from '../duel-ws.types';
+import type { ChainSolvingMsg, ChainSolvedMsg, ConfirmCardsMsg } from '../duel-ws.types';
+import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 
@@ -140,6 +140,15 @@ export class ChainResolutionManager {
   /** Buffer a board-changing event during chain resolution. Returns true if buffered. */
   bufferIfResolving(event: GameEvent): boolean {
     if (this.shouldBufferDuringChain && BOARD_CHANGING_EVENT_TYPES.has(event.type)) {
+      // Deck-top reveals (CONFIRM_DECKTOP → MSG_CONFIRM_CARDS with DECK location) precede
+      // mid-effect prompts (e.g., SelectYesNo for fusion). Buffering them delays the reveal
+      // animation until after the chain overlay closes — i.e., after the player already
+      // answered the prompt. Skip buffering when all cards are non-HAND so the reveal
+      // plays immediately before the player makes their decision.
+      if (event.type === 'MSG_CONFIRM_CARDS') {
+        const msg = event as ConfirmCardsMsg;
+        if (msg.cards.every(c => c.location !== LOCATION.HAND)) return false;
+      }
       this._bufferedBoardEvents.push(event);
       return true;
     }
