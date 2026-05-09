@@ -217,9 +217,12 @@ export function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Play
   if (!ctx || newTurnCount <= ctx.turnCount) return;
 
   logger.debug('handleTurnChange', { duelId: session.duelId, fromTurn: ctx.turnCount, toTurn: newTurnCount, activePlayer: newTurnPlayer });
-  // New turn detected — pause current timer, cancel any pending ANIMATIONS_DONE slot,
-  // add increment, switch active player.
+  // New turn detected — pause current timer, capture any pending ANIMATIONS_DONE
+  // slot (it may have been armed by a SELECT that the worker emitted before this
+  // BOARD_STATE), add increment, switch active player. If a pending slot existed,
+  // re-arm it for the new turn player so the timer still starts on ANIMATIONS_DONE.
   const wasRunning = ctx.running;
+  const hadPending = ctx.pendingTimeout !== null;
   pauseTurnTimer(session);
   if (ctx.pendingTimeout) {
     clearTimeout(ctx.pendingTimeout);
@@ -238,9 +241,13 @@ export function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Play
   c.sendToPlayer(session, 0, timerMsg);
   c.sendToPlayer(session, 1, timerMsg);
 
-  // Worker may send SELECT before BOARD_STATE — resume timer if it was running
+  // Worker may send SELECT before BOARD_STATE — resume timer if it was running,
+  // OR re-arm the pending slot for the new turn player if a SELECT had just
+  // armed one (otherwise ANIMATIONS_DONE would never start the timer).
   if (wasRunning) {
     startTurnTimer(session);
+  } else if (hadPending) {
+    scheduleTimerStart(session, newTurnPlayer);
   }
 }
 
