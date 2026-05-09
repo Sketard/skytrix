@@ -33,7 +33,7 @@ interface TrackedFloat {
  */
 @Injectable()
 export class TargetIndicatorManager implements OnDestroy {
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
   private readonly artService = inject(DuelCardArtService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
@@ -67,7 +67,7 @@ export class TargetIndicatorManager implements OnDestroy {
         ? (card.position & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0
         : false;
       const resolvedCode = isFaceDown ? null : (card?.cardCode ?? null);
-      const cardImage = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(resolvedCode));
+      const cardImage = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(resolvedCode));
 
       const cascadeIndex = (this.floatsByZone.get(zoneKey)?.length ?? 0);
       const el = this.boardEffects.createTargetFloat(

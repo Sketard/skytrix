@@ -61,7 +61,7 @@ export class AnimationOrchestratorService {
   private readonly logger = inject(DuelLogger);
   readonly lpTracker = inject(LpAnimationTracker);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
   private readonly floatRegistry = inject(FloatRegistryService);
   private readonly ctx = inject(DuelContext);
@@ -880,9 +880,9 @@ export class AnimationOrchestratorService {
     const relTarget = this.ctx.relativePlayer(msg.targetPlayer);
     const equipKey = locationToZoneKey(msg.equipLocation, msg.equipSequence, relEquip);
     const targetKey = locationToZoneKey(msg.targetLocation, msg.targetSequence, relTarget);
-    const equipEl = this.cardTravelService.getZoneElement(equipKey);
-    const targetEl = this.cardTravelService.getZoneElement(targetKey);
-    const lineEl = this.cardTravelService.createLineBetween(equipEl, targetEl, {
+    const equipEl = this.cardTravelEngine.getZoneElement(equipKey);
+    const targetEl = this.cardTravelEngine.getZoneElement(targetKey);
+    const lineEl = this.cardTravelEngine.createLineBetween(equipEl, targetEl, {
       color: EQUIP_LINE_COLOR, shadow: EQUIP_LINE_SHADOW,
     });
     if (!lineEl) return 0;
@@ -926,7 +926,7 @@ export class AnimationOrchestratorService {
       const toKey = locationToZoneKey(c.location, c.toSequence, relTo);
       locks.push(this.rbs.lockZone(fromKey));
       if (fromKey !== toKey) locks.push(this.rbs.lockZone(toKey));
-      travels.push(this.cardTravelService.travel(fromKey, toKey, '', { duration, showBack: true }));
+      travels.push(this.cardTravelEngine.travel(fromKey, toKey, '', { duration, showBack: true }));
     }
     return Promise.all(travels).then(
       () => locks.forEach(l => l.commit()),
@@ -940,15 +940,15 @@ export class AnimationOrchestratorService {
     const rel2 = this.ctx.relativePlayer(msg.card2.player);
     const key1 = locationToZoneKey(msg.card1.location, msg.card1.sequence, rel1);
     const key2 = locationToZoneKey(msg.card2.location, msg.card2.sequence, rel2);
-    const img1 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card1.cardCode));
-    const img2 = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(msg.card2.cardCode));
+    const img1 = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(msg.card1.cardCode));
+    const img2 = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(msg.card2.cardCode));
     const duration = this.ctx.scaledDuration(SWAP_TRAVEL_MS, SWAP_TRAVEL_MIN_MS);
 
     const lock1 = this.rbs.lockZone(key1);
     const lock2 = this.rbs.lockZone(key2);
     return Promise.all([
-      this.cardTravelService.travel(key1, key2, img1, { duration, impactGlowColor: 'rgba(180,180,220,0.5)' }),
-      this.cardTravelService.travel(key2, key1, img2, { duration, impactGlowColor: 'rgba(180,180,220,0.5)' }),
+      this.cardTravelEngine.travel(key1, key2, img1, { duration, impactGlowColor: 'rgba(180,180,220,0.5)' }),
+      this.cardTravelEngine.travel(key2, key1, img2, { duration, impactGlowColor: 'rgba(180,180,220,0.5)' }),
     ]).then(() => {
       lock1.commit();
       lock2.commit();
@@ -978,7 +978,7 @@ export class AnimationOrchestratorService {
       this.scheduleTimeout(() => {
         this.swapGraveDeckKeys.set(new Set());
         // Phase 2: single travel DECK→GY (card back) — GY update implied by commit
-        this.cardTravelService.travel(deckKey, gyKey, '', { duration: travelMs, showBack: true }).then(
+        this.cardTravelEngine.travel(deckKey, gyKey, '', { duration: travelMs, showBack: true }).then(
           () => { lockGy.commit(); lockDeck.commit(); resolve(); },
           () => { lockGy.release(); lockDeck.release(); resolve(); },
         );
@@ -990,7 +990,7 @@ export class AnimationOrchestratorService {
     if (this.ctx.reducedMotion()) return 0;
     const relPlayer = this.ctx.relativePlayer(msg.player);
     const deckKey = `DECK-${relPlayer}`;
-    const deckZone = this.cardTravelService.getZoneElement(deckKey);
+    const deckZone = this.cardTravelEngine.getZoneElement(deckKey);
     const pile = deckZone?.querySelector<HTMLElement>('.zone-pile');
     if (!pile) return 0;
 
@@ -1013,7 +1013,7 @@ export class AnimationOrchestratorService {
     const zoneId = locationToZoneId(msg.location, msg.sequence);
     if (!zoneId) return 0;
     const zoneKey = `${zoneId}-${relPlayer}`;
-    const zoneEl = this.cardTravelService.getZoneElement(zoneKey);
+    const zoneEl = this.cardTravelEngine.getZoneElement(zoneKey);
     const cardEl = zoneEl?.querySelector<HTMLElement>('.zone-card');
     if (!cardEl) return 0;
 

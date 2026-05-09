@@ -51,7 +51,7 @@ const isPile = (loc: number) => loc === LOCATION.GRAVE || loc === LOCATION.BANIS
  */
 @Injectable()
 export class MoveAnimationRouter {
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
   private readonly floatRegistry = inject(FloatRegistryService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
@@ -147,9 +147,9 @@ export class MoveAnimationRouter {
     const dstKey = locationToZoneKey(msg.toLocation, msg.toSequence, relPlayer);
     const slideOutDuration = this.ctx.scaledDuration(200, 100);
     const travelDuration = this.ctx.scaledDuration(400, 200);
-    const cardBackImage = this.cardTravelService.toAbsoluteUrl('assets/images/card_back.jpg');
+    const cardBackImage = this.cardTravelEngine.toAbsoluteUrl('assets/images/card_back.jpg');
 
-    const srcElement = this.cardTravelService.getZoneElement(srcKey);
+    const srcElement = this.cardTravelEngine.getZoneElement(srcKey);
     this.ctx.announceEvent('Material detached', msg.player);
     if (!srcElement) return 0;
 
@@ -165,7 +165,7 @@ export class MoveAnimationRouter {
       const id = setTimeout(() => {
         this._pendingTimeouts.delete(id);
         cleanupCss();
-        this.cardTravelService.travel(srcKey, dstKey, cardBackImage, {
+        this.cardTravelEngine.travel(srcKey, dstKey, cardBackImage, {
           duration: travelDuration,
           showBack: true,
           departureGlowColor: 'rgba(0, 150, 255, 0.4)',
@@ -182,7 +182,7 @@ export class MoveAnimationRouter {
       // teardown on reset. cancelTravel(dstKey) is a no-op when the timeout
       // hasn't fired yet, but aborts the travel if the timeout already fired
       // and started it (post-fire window between setTimeout firing and the
-      // cardTravelService.travel promise resolving).
+      // cardTravelEngine.travel promise resolving).
       this._pendingTimeouts.set(id, () => {
         cleanupCss();
         this.floatRegistry.cancelTravel(dstKey);
@@ -305,7 +305,7 @@ export class MoveAnimationRouter {
       && (msg.toPosition & (POSITION.FACEDOWN_ATTACK | POSITION.FACEDOWN_DEFENSE)) !== 0;
     const baseRotateZ = this.ctx.cardBaseRotation(relPlayer);
     const travelDuration = this.ctx.scaledDuration(400, 200);
-    const cardImage = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(resolvedCardCode));
+    const cardImage = this.cardTravelEngine.toAbsoluteUrl(this.artService.resolveUrl(resolvedCardCode));
 
     const src: string | HTMLElement = from === LOCATION.HAND
       ? this.drawManager.resolveHandTarget(srcKey, msg.fromSequence)
@@ -356,7 +356,7 @@ export class MoveAnimationRouter {
     this.ctx.announceEvent('Card summoned', mc.msg.player);
     mc.preSrcLock?.commit();
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
-    const summonP = this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
+    const summonP = this.cardTravelEngine.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
       destRotateZ: isMonsterDefense ? -90 : undefined,
       showBack: isSet, baseRotateZ: mc.baseRotateZ,
@@ -370,7 +370,7 @@ export class MoveAnimationRouter {
 
   private tokenDissolve(mc: MoveContext): number | Promise<void> {
     if (this.ctx.reducedMotion()) { mc.preSrcLock?.release(); mc.preDstLock?.release(); return 0; }
-    const srcElement = this.cardTravelService.getZoneElement(mc.srcKey);
+    const srcElement = this.cardTravelEngine.getZoneElement(mc.srcKey);
     this.ctx.announceEvent('Token removed', mc.msg.player);
     if (!srcElement) { mc.preSrcLock?.release(); mc.preDstLock?.release(); return 0; }
     const anim = srcElement.animate(
@@ -388,14 +388,14 @@ export class MoveAnimationRouter {
     const impactGlow = mc.to === LOCATION.GRAVE ? GLOW_GY
       : mc.to === LOCATION.BANISHED ? GLOW_BANISH : undefined;
     this.ctx.announceEvent('Card destroyed', mc.msg.player);
-    const srcEl = this.cardTravelService.getZoneElement(mc.srcKey);
+    const srcEl = this.cardTravelEngine.getZoneElement(mc.srcKey);
     const preEffect = (srcEl && !this.ctx.reducedMotion())
       ? this.boardEffects.preDestroyEffect(srcEl, mc.isFaceDown ? null : mc.cardImage, this.ctx.scaledDuration(400, 200))
       : Promise.resolve();
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
     return preEffect.then(async () => {
-      const p = this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+      const p = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
         duration: mc.travelDuration,
         showBack: mc.isFaceDown,
         flipDuringTravel: mc.isBanishFaceDown,
@@ -416,7 +416,7 @@ export class MoveAnimationRouter {
     this.ctx.announceEvent('Card sent off field', mc.msg.player);
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
-    const travelP = this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+    const travelP = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
       showBack: mc.isFaceDown,
       flipDuringTravel: mc.isBanishFaceDown,
@@ -447,7 +447,7 @@ export class MoveAnimationRouter {
     mc.preSrcLock?.commit();
     mc.preDstLock?.release(); // DECK not locked by design
     const dstKey = mc.dstKey;
-    return this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+    return this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL,
       srcRotateZ: mc.isDefenseFrom ? -90 : undefined, baseRotateZ: mc.baseRotateZ,
     }).then(() => { this.floatRegistry.clearLandedByDstPrefix(dstKey); });
@@ -457,7 +457,7 @@ export class MoveAnimationRouter {
     const isMonsterDefenseTo = mc.to === LOCATION.MZONE && mc.isDefenseTo;
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
-    const travelP = this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+    const travelP = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, impactGlowColor: GLOW_NEUTRAL,
       srcRotateZ: mc.isDefenseFrom ? -90 : undefined,
       destRotateZ: isMonsterDefenseTo ? -90 : undefined,
@@ -477,7 +477,7 @@ export class MoveAnimationRouter {
     const impactGlow = mc.to === LOCATION.GRAVE ? GLOW_GY : GLOW_BANISH;
     mc.preSrcLock?.commit();
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
-    const discardP = this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
+    const discardP = this.cardTravelEngine.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
       flipDuringTravel: shouldFlip,
       showBack,
@@ -496,7 +496,7 @@ export class MoveAnimationRouter {
     mc.preSrcLock?.commit();
     mc.preDstLock?.release(); // DECK not locked by design
     const dstKey = mc.dstKey;
-    return this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
+    return this.cardTravelEngine.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL, baseRotateZ: mc.baseRotateZ,
     }).then(() => { this.floatRegistry.clearLandedByDstPrefix(dstKey); });
   }
@@ -504,7 +504,7 @@ export class MoveAnimationRouter {
   private deckOrExtraToPile(mc: MoveContext): Promise<void> {
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
-    const travelP = this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+    const travelP = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
       showBack: mc.isFaceDown,
       flipDuringTravel: mc.isFaceDown && !mc.isBanishFaceDown,
@@ -533,7 +533,7 @@ export class MoveAnimationRouter {
     mc.preSrcLock?.commit();
     mc.preDstLock?.release(); // DECK not locked by design
     const dstKey = mc.dstKey;
-    return this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+    return this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL, baseRotateZ: mc.baseRotateZ,
     }).then(() => { this.floatRegistry.clearLandedByDstPrefix(dstKey); });
   }
@@ -541,7 +541,7 @@ export class MoveAnimationRouter {
   private pileToPile(mc: MoveContext): Promise<void> {
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);
-    const travelP = this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
+    const travelP = this.cardTravelEngine.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration,
       showBack: mc.isFaceDown,
       flipDuringTravel: mc.isBanishFaceDown,
@@ -566,7 +566,7 @@ export class MoveAnimationRouter {
         duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,
       }, batchIdx, mc.preDstLock, mc.resolvedCardCode);
     }
-    const fallbackP = this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
+    const fallbackP = this.cardTravelEngine.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, baseRotateZ: mc.baseRotateZ,
     });
     if (mc.to === LOCATION.MZONE || mc.to === LOCATION.SZONE) {

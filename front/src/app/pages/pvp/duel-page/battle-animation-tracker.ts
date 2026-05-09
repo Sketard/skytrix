@@ -17,7 +17,7 @@ interface PendingAttack {
  */
 @Injectable()
 export class BattleAnimationTracker {
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly ctx = inject(DuelContext);
 
   private readonly pendingAttack = signal<PendingAttack | null>(null);
@@ -40,8 +40,8 @@ export class BattleAnimationTracker {
       defenderKey = `HAND-${opponentRel}`;
     }
 
-    const attackerEl = this.cardTravelService.getZoneElement(attackerKey);
-    const defenderEl = this.cardTravelService.getZoneElement(defenderKey);
+    const attackerEl = this.cardTravelEngine.getZoneElement(attackerKey);
+    const defenderEl = this.cardTravelEngine.getZoneElement(defenderKey);
     if (!attackerEl || !defenderEl) return;
 
     const lineEl = this.createAttackLine(attackerEl, defenderEl);
@@ -83,7 +83,7 @@ export class BattleAnimationTracker {
     const pending = this.pendingAttack();
     if (!pending) return; // queue collapse safety
 
-    const defenderEl = this.cardTravelService.getZoneElement(pending.defenderKey);
+    const defenderEl = this.cardTravelEngine.getZoneElement(pending.defenderKey);
     const duration = this.ctx.scaledDuration(350, 175);
 
     // Fade line
@@ -134,7 +134,7 @@ export class BattleAnimationTracker {
   // ---------------------------------------------------------------------------
 
   private createAttackLine(attackerEl: HTMLElement, defenderEl: HTMLElement): HTMLDivElement | null {
-    return this.cardTravelService.createLineBetween(attackerEl, defenderEl, {
+    return this.cardTravelEngine.createLineBetween(attackerEl, defenderEl, {
       color: 'linear-gradient(90deg, rgba(255,80,80,0.9), rgba(255,200,60,0.9))',
       shadow: '0 0 6px rgba(255,100,50,0.6)',
     });
@@ -142,7 +142,7 @@ export class BattleAnimationTracker {
 
   private playClashImpact(targetEl: HTMLElement, duration: number): void {
     const rect = targetEl.getBoundingClientRect();
-    const container = this.cardTravelService.getContainer();
+    const container = this.cardTravelEngine.getContainer();
 
     const flash = document.createElement('div');
     flash.style.cssText = `

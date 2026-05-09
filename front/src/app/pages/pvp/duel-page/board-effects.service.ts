@@ -169,6 +169,7 @@ export class BoardEffectsService implements OnDestroy {
     return lastAnim.finished.then(() =>
       new Promise<void>(resolve => {
         const tid = setTimeout(() => {
+          this._timers.delete(tid);
           this.removeOverlay(overlay);
           resolve();
         }, duration * 0.3) as unknown as number;
@@ -309,7 +310,10 @@ export class BoardEffectsService implements OnDestroy {
   fadeOutAndRemoveTargetFloat(el: HTMLDivElement, durationMs: number): void {
     el.style.transition = `opacity ${durationMs}ms ease-in`;
     el.style.opacity = '0';
-    const id = window.setTimeout(() => this.removeTargetFloat(el), durationMs);
+    const id = window.setTimeout(() => {
+      this._timers.delete(id);
+      this.removeTargetFloat(el);
+    }, durationMs);
     this._timers.add(id);
   }
 

@@ -140,6 +140,49 @@ Move depends on Draw for `travelToHand()`. Draw depends on Move
 Draw depends on Chain for `hasActiveReplayTimeouts`. Chain has zero
 cross-manager deps.
 
+## Card Travel Stack
+
+The card-travel subsystem is split into 3 services (M11 Phases 1+2):
+
+- **`CardTravelEngine`** (`card-travel-engine.service.ts`) — animates card
+  travel from a source zone/element to a destination zone/element. Owns:
+  zone resolver registry (`registerZoneResolver` / `getZoneElement`),
+  container element (`registerContainer` / `getContainer`), geometry +
+  keyframe computation (via `card-travel-helpers`), animation kickoff,
+  departure/impact glow timers, `createLineBetween`, `toAbsoluteUrl`.
+- **`BoardEffectsService`** (`board-effects.service.ts`) — autonomous
+  visual effects anchored to a zone/element: `zoneImpactEffect`,
+  `slamDustParticles`, `preDestroyEffect`, `activateEffect`,
+  `createTargetFloat` / `removeTargetFloat` / `fadeOutAndRemoveTargetFloat`.
+- **`FloatRegistryService`** (`float-registry.service.ts`) — tracks the
+  lifecycle of float elements created by `CardTravelEngine.travel()`.
+  Owns the in-flight `Map` and the landed `Set` plus the LIFO/FIFO
+  `popLandedFloat`, prefix queries, `stabilizeFloat`, `cancelTravel`,
+  `clearAllTravels`, `inFlightByZone` (LOCK-ASSERT consumer).
+
+**Single entry point** for adding a float to the registry:
+`FloatRegistryService.register(el, animation, onLand?)` returns a
+cancel-safe `Promise<void>` (resolves on both `animation.finished`
+success AND on `animation.cancel()` rejection). The Engine never
+touches `_inFlight`/`_landed` directly.
+
+**`clearAllTravels` cancels (not finishes)** so the registered
+`.finished.then()` callback does NOT asynchronously re-add the element
+to `_landed` after the registry was cleared.
+
+**DI graph:** Engine ↔ BoardEffects (cycle, resolved via Angular
+field-level `inject()`). Engine → FloatRegistry. BoardEffects → Engine
+(uses `getZoneElement` / `getContainer` / `toAbsoluteUrl`).
+FloatRegistry has zero cross-service deps. The Engine ↔ BoardEffects
+cycle is intentional — `travel()` calls back into
+`zoneImpactEffect` / `slamDustParticles` for soft / banish / slam
+landings, while BoardEffects consumes the Engine's zone registry
+rather than duplicating it.
+
+`RenderedBoardStateService.attachFloatRegistry(svc)` wires the
+LOCK-ASSERT observer (replaces former `attachCardTravelService` —
+the assertion only ever needed `inFlightByZone()`).
+
 ## Async Handler Lock Contract
 
 Event handlers in `processEvent()` MUST call `lockZone()` on ALL zones they

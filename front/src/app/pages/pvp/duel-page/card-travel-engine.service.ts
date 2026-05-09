@@ -188,11 +188,13 @@ export class CardTravelEngine implements OnDestroy {
     if (options.flipDuringTravel) {
       const img = floatingEl.querySelector('img')!;
       const showingBack = options.showBack ?? false;
-      this.addTimer(window.setTimeout(() => {
+      const flipId = window.setTimeout(() => {
+        this._timers.delete(flipId);
         img.src = showingBack
           ? this.toAbsoluteUrl(cardImage)
           : this.toAbsoluteUrl('assets/images/card_back.jpg');
-      }, duration * 0.45));
+      }, duration * 0.45);
+      this._timers.add(flipId);
     }
 
     // Copy transform-origin from destination as percentages so the pivot maps
@@ -220,23 +222,33 @@ export class CardTravelEngine implements OnDestroy {
     }
     if (options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
-      this.addTimer(window.setTimeout(() => {
+      const filterOnId = window.setTimeout(() => {
+        this._timers.delete(filterOnId);
         floatingEl.style.filter = `drop-shadow(0 0 8px ${glowColor})`;
-        this.addTimer(window.setTimeout(() => { floatingEl.style.filter = ''; }, duration * 0.25));
-      }, duration * 0.75));
+        const filterOffId = window.setTimeout(() => {
+          this._timers.delete(filterOffId);
+          floatingEl.style.filter = '';
+        }, duration * 0.25);
+        this._timers.add(filterOffId);
+      }, duration * 0.75);
+      this._timers.add(filterOnId);
     }
 
     if (options.landingStyle === 'soft' && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
-      this.addTimer(window.setTimeout(() => {
+      const id = window.setTimeout(() => {
+        this._timers.delete(id);
         this.boardEffects.zoneImpactEffect(rawDestRect, glowColor, duration);
-      }, duration * 0.70));
+      }, duration * 0.70);
+      this._timers.add(id);
     }
     if (options.landingStyle === 'banish' && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
-      this.addTimer(window.setTimeout(() => {
+      const id = window.setTimeout(() => {
+        this._timers.delete(id);
         this.boardEffects.zoneImpactEffect(rawDestRect, glowColor, duration);
-      }, duration * 0.70));
+      }, duration * 0.70);
+      this._timers.add(id);
     }
 
     const onLand = options.landingStyle === 'slam'
@@ -281,10 +293,10 @@ export class CardTravelEngine implements OnDestroy {
   private applyGlow(el: HTMLElement, color: string, duration: number): void {
     const target = el.querySelector<HTMLElement>('img') ?? el;
     target.style.boxShadow = `0 0 12px 4px ${color}`;
-    this.addTimer(window.setTimeout(() => { target.style.boxShadow = ''; }, duration));
-  }
-
-  private addTimer(id: number): void {
+    const id = window.setTimeout(() => {
+      this._timers.delete(id);
+      target.style.boxShadow = '';
+    }, duration);
     this._timers.add(id);
   }
 

@@ -45,7 +45,7 @@ interface ZoneRenderData {
 export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly destroyRef = inject(DestroyRef);
   private readonly zoneElements = new Map<string, HTMLElement>();
 
@@ -78,7 +78,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     if (this.preview()) return;
     this.rebuildZoneMap();
-    this.cardTravelService.registerZoneResolver(this.getZoneElement.bind(this));
+    this.cardTravelEngine.registerZoneResolver(this.getZoneElement.bind(this));
   }
 
   getZoneElement(zoneKey: string): HTMLElement | null {
@@ -91,7 +91,7 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     // instead of the entire document, to avoid capturing zones from preview
     // miniatures or other board instances. The scope also captures sibling
     // zones (HAND-0, HAND-1 in app-pvp-hand-row) that share the duel-container
-    // ancestor — a single resolver is registered with cardTravelService, so
+    // ancestor — a single resolver is registered with cardTravelEngine, so
     // hand zones must be resolvable through it too.
     const host = this.elementRef.nativeElement as HTMLElement;
     const scope = host.parentElement ?? host;
@@ -494,10 +494,10 @@ export class PvpBoardContainerComponent implements AfterViewInit {
     const linked = this.linkedZoneMap().get(zoneKey);
     if (linked?.length) {
       this.linkedHighlightedZones.set(new Set(linked));
-      const srcEl = this.cardTravelService.getZoneElement(zoneKey);
+      const srcEl = this.cardTravelEngine.getZoneElement(zoneKey);
       for (const targetKey of linked) {
-        const dstEl = this.cardTravelService.getZoneElement(targetKey);
-        const line = this.cardTravelService.createLineBetween(srcEl, dstEl, {
+        const dstEl = this.cardTravelEngine.getZoneElement(targetKey);
+        const line = this.cardTravelEngine.createLineBetween(srcEl, dstEl, {
           color: EQUIP_HOVER_COLOR, shadow: EQUIP_HOVER_SHADOW,
         });
         if (line) this.linkedHoverLines.push(line);

@@ -33,7 +33,7 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  */
 @Injectable()
 export class DrawSequenceManager {
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly floatRegistry = inject(FloatRegistryService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
@@ -297,8 +297,8 @@ export class DrawSequenceManager {
     for (let i = 0; i < drawCount; i++) {
       const card = msg.cards[i];
       const cardImage = isOwn && card
-        ? this.cardTravelService.toAbsoluteUrl(`/api/documents/small/code/${card}`)
-        : this.cardTravelService.toAbsoluteUrl('assets/images/card_back.jpg');
+        ? this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card}`)
+        : this.cardTravelEngine.toAbsoluteUrl('assets/images/card_back.jpg');
       await this.travelToHand(srcKey, relPlayer, cardImage, {
         duration: travelDuration, showBack: true, flipDuringTravel: isOwn && !!card,
       }, opts.keepFloats ? i : undefined, undefined, card || undefined);
@@ -321,7 +321,7 @@ export class DrawSequenceManager {
       await new Promise<void>(resolve =>
         afterNextRender(() => resolve(), { injector: this.injector })
       );
-      const zone = this.cardTravelService.getZoneElement(dstKey);
+      const zone = this.cardTravelEngine.getZoneElement(dstKey);
       if (zone) {
         const cards = zone.querySelectorAll<HTMLElement>('.hand-card:not(.hand-card--expansion)');
         const lastCard = cards.length ? cards[cards.length - 1] : null;
@@ -394,7 +394,7 @@ export class DrawSequenceManager {
       );
 
       const target = this.resolveHandTarget(dstKey, targetIndex ?? 'last');
-      await this.cardTravelService.travel(src, target, cardImage, {
+      await this.cardTravelEngine.travel(src, target, cardImage, {
         ...options, dstZoneKey: dstKey, cardCode,
       });
       success = true;
@@ -412,7 +412,7 @@ export class DrawSequenceManager {
   }
 
   resolveHandTarget(zoneKey: string, index: number | 'last'): HTMLElement | string {
-    const zone = this.cardTravelService.getZoneElement(zoneKey);
+    const zone = this.cardTravelEngine.getZoneElement(zoneKey);
     if (!zone) return zoneKey;
     if (index === 'last') {
       const slots = zone.querySelectorAll('.hand-card--expansion');
@@ -517,7 +517,7 @@ export class DrawSequenceManager {
       this.logger.log(DuelLogCategory.SHUFFLE, 'no moveMsg in queue');
     }
 
-    const handZone = this.cardTravelService.getZoneElement(handZoneKey);
+    const handZone = this.cardTravelEngine.getZoneElement(handZoneKey);
 
     if (this.ctx.reducedMotion() || !handZone) {
       this.floatRegistry.clearLandedByDstPrefix('HAND');
@@ -671,7 +671,7 @@ export class DrawSequenceManager {
       if (relPlayer === 1) {
         const img = floatEl.querySelector('img');
         if (img) {
-          const cardFaceUrl = this.cardTravelService.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
+          const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
           // Skip flip if the float already shows the card face (replay/omniscient mode).
           const alreadyRevealed = img.src === cardFaceUrl;
           if (!alreadyRevealed) {

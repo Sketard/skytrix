@@ -113,7 +113,7 @@ export class DuelPageComponent implements OnInit {
   readonly animationService = inject(AnimationOrchestratorService);
   readonly chainManager = inject(ChainResolutionManager);
   readonly drawManager = inject(DrawSequenceManager);
-  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly cardTravelEngine = inject(CardTravelEngine);
   readonly roomService = inject(RoomStateMachineService);
   readonly cardInspection = inject(CardInspectionService);
   readonly phaseService = inject(PhaseAnnouncementService);
@@ -381,7 +381,7 @@ export class DuelPageComponent implements OnInit {
       speedMultiplier: () => this.activationMode() === 'off' ? 0.5 : 1,
       isBoardActive: () => this.roomState() === 'active',
     });
-    this.cardTravelService.registerContainer(this.elementRef.nativeElement);
+    this.cardTravelEngine.registerContainer(this.elementRef.nativeElement);
     this.cardInspection.init(this.cardDataCache);
     this.wsService.onStateSync = () => {
       this.animationService.onStateSync();
