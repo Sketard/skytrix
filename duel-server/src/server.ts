@@ -18,7 +18,6 @@ import {
   REPLAY_WORKER_WATCHDOG_MS,
   MAX_REPLAY_WORKERS,
   ANIMATIONS_DONE_TIMEOUT_MS,
-  extractCardCodes,
   extractCardCodesForPlayer,
 } from './types.js';
 import type {
@@ -49,6 +48,7 @@ import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from '.
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
+import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState } from './replay-handlers.js';
 import { createInactivityScheduler, type InactivityScheduler } from './inactivity-timer.js';
 import {
   configureSolverHandlers,
@@ -156,21 +156,10 @@ const reconnectTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>(
 // Replay State
 // =============================================================================
 
-type ReplayConnectionState = 'loading' | 'ready' | 'fork_pending' | 'fork_warning' | 'transitioning' | 'closed';
-
-interface ReplayConnection {
-  ws: WebSocket;
-  replayId: string;
-  userId: string;
-  worker: Worker | null;
-  watchdogTimer: ReturnType<typeof setTimeout> | null;
-  state: ReplayConnectionState;
-}
-
+// ReplayConnection / ReplayConnectionState + replay worker pool moved to
+// replay-handlers.ts (H1-suite phase 3). The cache instance stays here so
+// server.ts owns its lifecycle (passed to configureReplayHandlers below).
 const replayCache = createReplayCache();
-let replayWorkerCount = 0;
-const replayQueue: Array<() => void> = [];
-const activeReplayConnections = new Map<WebSocket, ReplayConnection>();
 
 // Track WebSocket liveness for heartbeat
 interface AliveWebSocket extends WebSocket {
@@ -254,6 +243,16 @@ configureHttpRoutes({
   internalApiKey: INTERNAL_API_KEY,
   getSolverOrchestrator: () => solverOrchestrator,
   setSolverOrchestrator: (orch) => { solverOrchestrator = orch; },
+});
+
+configureReplayHandlers({
+  replayCache,
+  springBootApiUrl: SPRING_BOOT_API_URL,
+  internalApiKey: INTERNAL_API_KEY,
+  maxReplayWorkers: MAX_REPLAY_WORKERS,
+  replayWorkerWatchdogMs: REPLAY_WORKER_WATCHDOG_MS,
+  dataDir: DATA_DIR,
+  createForkSoloSession,
 });
 
 // =============================================================================
@@ -2023,416 +2022,34 @@ const heartbeatTimer = setInterval(() => {
 // =============================================================================
 // Replay Connection Handling
 // =============================================================================
-
-async function handleReplayConnection(ws: WebSocket, jwt: string, replayId: string, ip: string): Promise<void> {
-  // Decode JWT to extract userId (same pattern as existing auth — JWT payload is base64 middle segment)
-  let userId: string;
-  try {
-    const parts = jwt.split('.');
-    if (parts.length !== 3) throw new Error('Invalid JWT format');
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-    userId = String(payload.sub ?? payload.userId ?? payload.id ?? '');
-    if (!userId) throw new Error('No user ID in JWT');
-  } catch (err) {
-    logger.error('Replay JWT decode error', { error: err instanceof Error ? err.message : String(err) });
-    recordFailedWsAttempt(ip);
-    ws.close(4001, 'Invalid token');
-    return;
-  }
-
-  logger.log('Replay connection', { replayId, userId });
-
-  // Fetch replay data from Spring Boot
-  let replayData!: WorkerReplayPayload;
-  const cached = replayCache.get(replayId);
-  if (cached) {
-    // Auth check even on cache hit
-    if (cached.playerIds[0] !== userId && cached.playerIds[1] !== userId) {
-      logger.error('Replay auth failed (cached)', { replayId, userId, allowed: cached.playerIds });
-      recordFailedWsAttempt(ip);
-      ws.close(4003, 'Not authorized');
-      return;
-    }
-    replayData = cached.data;
-    replayCache.touch(replayId);
-    logger.debug('Replay cache hit (TTL refreshed)', { replayId });
-  } else {
-    const maxRetries = 3;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await fetch(`${SPRING_BOOT_API_URL}/internal/replays/${replayId}`, {
-          headers: { 'X-Internal-Key': INTERNAL_API_KEY },
-        });
-        if (response.status === 404) {
-          logger.error('Replay not found', { replayId });
-          recordFailedWsAttempt(ip);
-          ws.close(4004, 'Replay not found');
-          return;
-        }
-        if (!response.ok) {
-          logger.error('Replay fetch failed', { replayId, status: response.status, attempt, maxRetries });
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, Math.pow(3, attempt - 1) * 1000));
-            continue;
-          }
-          ws.close(4500, 'Internal error');
-          return;
-        }
-        const body = await response.json() as { replayData: Omit<WorkerReplayPayload, 'metadata'>; metadata: ReplayMetadata; player1Id: number; player2Id: number };
-
-        // Auth check: verify userId is player1 or player2
-        const p1 = String(body.player1Id);
-        const p2 = String(body.player2Id);
-        if (p1 !== userId && p2 !== userId) {
-          logger.error('Replay auth failed', { replayId, userId, p1: body.player1Id, p2: body.player2Id });
-          recordFailedWsAttempt(ip);
-          ws.close(4003, 'Not authorized');
-          return;
-        }
-
-        replayData = { ...body.replayData, metadata: body.metadata };
-
-        // LruMap handles capacity eviction (LRU) and TTL internally.
-        replayCache.set(replayId, { data: replayData, playerIds: [p1, p2] });
-        break;
-      } catch (err) {
-        logger.error('Replay fetch error', { replayId, attempt, maxRetries, error: err instanceof Error ? err.message : String(err) });
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(3, attempt - 1) * 1000));
-          continue;
-        }
-        ws.close(4500, 'Internal error');
-        return;
-      }
-    }
-    if (!replayData) return;
-  }
-
-  // Check WS still open after async fetch
-  if (ws.readyState !== WebSocket.OPEN) return;
-
-  // Send REPLAY_METADATA
-  const divergenceWarning = replayData.metadata.scriptsHash !== getScriptsHash()
-    || replayData.metadata.ocgcoreVersion !== getOcgcoreVersion();
-  const cardCodes = extractCardCodes(replayData.decks);
-  ws.send(JSON.stringify({
-    type: 'REPLAY_METADATA',
-    playerUsernames: replayData.metadata.playerUsernames,
-    deckNames: replayData.metadata.deckNames,
-    turnCount: replayData.metadata.turnCount,
-    result: replayData.metadata.result,
-    divergenceWarning,
-    totalResponses: replayData.playerResponses.length,
-    cardCodes,
-  }));
-
-  // Mark as alive for heartbeat (shared with duel connections via wss.clients)
-  (ws as AliveWebSocket).isAlive = true;
-  ws.on('pong', () => { (ws as AliveWebSocket).isAlive = true; });
-
-  // Track this connection
-  const conn: ReplayConnection = { ws, replayId, userId, worker: null, watchdogTimer: null, state: 'loading' };
-  activeReplayConnections.set(ws, conn);
-
-  // Start replay worker (or queue)
-  const startFn = () => createReplayWorker(conn, replayData);
-  tryStartReplayWorker(startFn);
-
-  // WS message handler for fork commands
-  ws.on('message', (raw) => {
-    let parsed: { type: string;[key: string]: unknown };
-    try {
-      parsed = JSON.parse(String(raw));
-    } catch {
-      return;
-    }
-
-    if (parsed.type === 'REPLAY_FORK') {
-      handleReplayFork(conn, replayData, parsed as { type: 'REPLAY_FORK'; responseCount: number; expectedState: { lp: [number, number]; turnNumber: number; phase: number } });
-    } else if (parsed.type === 'REPLAY_FORK_CONTINUE') {
-      handleReplayForkContinue(conn);
-    } else if (parsed.type === 'REPLAY_FORK_CANCEL') {
-      handleReplayForkCancel(conn);
-    }
-  });
-
-  // WS close/error handlers for replay
-  ws.on('close', () => {
-    logger.log('Replay client disconnected', { replayId });
-    cleanupReplayConnection(conn);
-  });
-  ws.on('error', (err) => {
-    logger.error('Replay WS error', { replayId, error: err.message });
-    cleanupReplayConnection(conn);
-  });
-}
-
-function tryStartReplayWorker(startFn: () => void): void {
-  if (replayWorkerCount < MAX_REPLAY_WORKERS) {
-    replayWorkerCount++;
-    startFn();
-  } else {
-    replayQueue.push(startFn);
-  }
-}
-
-function onReplayWorkerDone(): void {
-  replayWorkerCount--;
-  if (replayQueue.length > 0) {
-    replayWorkerCount++;
-    const next = replayQueue.shift()!;
-    next();
-  }
-}
-
-function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayload): void {
-  const replayDuelId = `replay-${conn.replayId}-${Date.now()}`;
-  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
-    workerData: { dataDir: DATA_DIR },
-  });
-  conn.worker = worker;
-
-  // Inactivity watchdog — reset on each WORKER_REPLAY_BOARD_STATES
-  function resetWatchdog(): void {
-    if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
-    conn.watchdogTimer = setTimeout(() => {
-      logger.error('Replay watchdog timeout — terminating worker', { replayId: conn.replayId });
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Pre-computation timed out (30s inactivity)' }));
-      }
-      cleanupReplayConnection(conn);
-    }, REPLAY_WORKER_WATCHDOG_MS);
-  }
-  resetWatchdog();
-
-  worker.on('message', (wmsg: WorkerToMainMessage) => {
-    if (wmsg.type === 'WORKER_REPLAY_BOARD_STATES') {
-      resetWatchdog();
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({
-          type: 'REPLAY_BOARD_STATES',
-          turnNumber: wmsg.turnNumber,
-          states: wmsg.states,
-        }));
-      }
-    } else if (wmsg.type === 'WORKER_REPLAY_COMPLETE') {
-      logger.log('Replay pre-computation complete', { replayId: conn.replayId });
-      conn.state = 'ready';
-      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-      worker.removeAllListeners();
-      worker.terminate();
-      conn.worker = null;
-      onReplayWorkerDone();
-    } else if (wmsg.type === 'WORKER_REPLAY_ERROR') {
-      logger.error('Replay worker error', { replayId: conn.replayId, error: wmsg.message });
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
-      }
-      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-      worker.removeAllListeners();
-      worker.terminate();
-      conn.worker = null;
-      // Evict stale cache entry to prevent reuse of failed replay data
-      replayCache.delete(conn.replayId);
-      onReplayWorkerDone();
-    }
-  });
-
-  worker.on('exit', (code) => {
-    logger.log('Replay worker exited', { replayId: conn.replayId, exitCode: code });
-    if (conn.worker === worker) {
-      conn.worker = null;
-      onReplayWorkerDone();
-    }
-  });
-
-  worker.on('error', (err: Error) => {
-    logger.error('Replay worker thread error', { replayId: conn.replayId, error: err.message });
-  });
-
-  // Send INIT_REPLAY to worker
-  worker.postMessage({
-    type: 'INIT_REPLAY',
-    duelId: replayDuelId,
-    seed: replayData.seed,
-    decks: replayData.decks,
-    playerResponses: replayData.playerResponses,
-    metadata: replayData.metadata,
-  });
-}
+// Moved to replay-handlers.ts (H1-suite phase 3). server.ts owns the bridge
+// callback createForkSoloSession (below) which builds an ActiveDuelSession
+// when a fork worker reports sanity OK.
 
 // =============================================================================
-// Fork Handling
+// Fork Session Bridge
 // =============================================================================
+// `createForkSoloSession` is the bridge that replay-handlers calls when a
+// fork worker reports sanity OK. It owns everything that touches the session
+// manager state (activeDuels / pendingTokens / setupForkWorkerHandlers).
+// Replay-handlers stays unaware of `ActiveDuelSession` shape.
 
-// Pending fork state: stored on the ReplayConnection when waiting for client decision after divergence warning
-const pendingForkWorkers = new Map<ReplayConnection, { worker: Worker; replayData: WorkerReplayPayload; forkDuelId: string }>();
-
-function handleReplayFork(
-  conn: ReplayConnection,
-  replayData: WorkerReplayPayload,
-  msg: { type: 'REPLAY_FORK'; responseCount: number; expectedState: { lp: [number, number]; turnNumber: number; phase: number } },
-): void {
-  // Guard: only allow fork from loading/ready states
-  if (conn.state !== 'loading' && conn.state !== 'ready') {
-    logger.warn('Ignoring REPLAY_FORK in unexpected state', { replayId: conn.replayId, state: conn.state });
-    return;
-  }
-
-  // Validate responseCount
-  if (typeof msg.responseCount !== 'number' || !Number.isInteger(msg.responseCount) || msg.responseCount < 0 || msg.responseCount > replayData.playerResponses.length) {
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Invalid responseCount' }));
-    }
-    return;
-  }
-
-  // Validate expectedState fields
-  const es = msg.expectedState;
-  if (!es || !Array.isArray(es.lp) || es.lp.length !== 2
-    || typeof es.lp[0] !== 'number' || typeof es.lp[1] !== 'number'
-    || typeof es.turnNumber !== 'number' || typeof es.phase !== 'number') {
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Invalid expectedState' }));
-    }
-    return;
-  }
-
-  // Auth re-check (defense in depth)
-  const cached = replayCache.get(conn.replayId);
-  if (cached && cached.playerIds[0] !== conn.userId && cached.playerIds[1] !== conn.userId) {
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Not authorized' }));
-    }
-    return;
-  }
-
-  // Double fork guard: terminate previous fork/pre-computation worker if still running (AC#5)
-  const hadWorker = !!conn.worker;
-  if (conn.worker) {
-    logger.log('Terminating previous worker before starting fork', { replayId: conn.replayId });
-    conn.worker.removeAllListeners();
-    conn.worker.terminate();
-    conn.worker = null;
-    // Don't call onReplayWorkerDone() — we're reusing this slot for the fork worker
-  }
-
-  // Also clean up any pending fork worker
-  const pending = pendingForkWorkers.get(conn);
-  if (pending) {
-    pending.worker.removeAllListeners();
-    pending.worker.terminate();
-    pendingForkWorkers.delete(conn);
-    onReplayWorkerDone();
-  }
-
-  conn.state = 'fork_pending';
-
-  // Create fork worker: reuse existing slot if we had a worker, otherwise queue normally
-  if (hadWorker) {
-    createForkWorker(conn, replayData, msg.responseCount, msg.expectedState);
-  } else {
-    tryStartReplayWorker(() => createForkWorker(conn, replayData, msg.responseCount, msg.expectedState));
-  }
-}
-
-function createForkWorker(
-  conn: ReplayConnection,
-  replayData: WorkerReplayPayload,
-  targetResponseCount: number,
-  expectedState: { lp: [number, number]; turnNumber: number; phase: number },
-): void {
-  const forkDuelId = `fork-${conn.replayId}-${Date.now()}`;
-  const worker = new Worker(new URL('./duel-worker.js', import.meta.url), {
-    workerData: { dataDir: DATA_DIR },
-  });
-  conn.worker = worker;
-
-  // Watchdog: 30s timeout
-  if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
-  conn.watchdogTimer = setTimeout(() => {
-    logger.error('Fork watchdog timeout — terminating worker', { replayId: conn.replayId });
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Fork reconstruction timed out (30s)' }));
-    }
-    worker.removeAllListeners();
-    worker.terminate();
-    conn.worker = null;
-    conn.watchdogTimer = null;
-    conn.state = 'ready';
-    onReplayWorkerDone();
-  }, REPLAY_WORKER_WATCHDOG_MS);
-
-  worker.on('message', (wmsg: WorkerToMainMessage) => {
-    if (wmsg.type === 'WORKER_FORK_READY') {
-      // Clear watchdog
-      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-
-      if (!wmsg.sanityResult.match) {
-        // Divergence warning — send to client, keep worker alive pending decision
-        conn.state = 'fork_warning';
-        logger.log('Fork sanity mismatch', { replayId: conn.replayId, details: wmsg.sanityResult.details });
-        pendingForkWorkers.set(conn, { worker, replayData, forkDuelId });
-        if (conn.ws.readyState === WebSocket.OPEN) {
-          conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: 'FORK_DIVERGENCE_WARNING', message: wmsg.sanityResult.details ?? '' }));
-        }
-      } else {
-        // Sanity OK — transition to solo session
-        conn.state = 'transitioning';
-        transitionForkToSolo(conn, worker, forkDuelId, replayData);
-      }
-    } else if (wmsg.type === 'WORKER_FORK_ERROR') {
-      logger.error('Fork worker error', { replayId: conn.replayId, error: wmsg.message });
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
-      }
-      if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
-      worker.removeAllListeners();
-      worker.terminate();
-      conn.worker = null;
-      conn.state = 'ready';
-      onReplayWorkerDone();
-    }
-  });
-
-  worker.on('exit', (code) => {
-    logger.log('Fork worker exited', { replayId: conn.replayId, exitCode: code });
-    if (conn.worker === worker) {
-      conn.worker = null;
-      onReplayWorkerDone();
-    }
-  });
-
-  worker.on('error', (err: Error) => {
-    logger.error('Fork worker thread error', { replayId: conn.replayId, error: err.message });
-  });
-
-  // Send INIT_FORK to worker
-  worker.postMessage({
-    type: 'INIT_FORK',
-    duelId: forkDuelId,
-    seed: replayData.seed,
-    decks: replayData.decks,
-    playerResponses: replayData.playerResponses,
-    targetResponseCount,
-    expectedState,
-    scriptsHash: getScriptsHash(),
-    ocgcoreVersion: getOcgcoreVersion(),
-  });
-}
-
-function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId: string, replayData: WorkerReplayPayload): void {
+function createForkSoloSession({ forkDuelId, userId, worker, replayData }: {
+  forkDuelId: string;
+  userId: string;
+  worker: Worker;
+  replayData: WorkerReplayPayload;
+}): { token1: string; token2: string } {
   const token1 = randomUUID();
   const token2 = randomUUID();
 
-  // Create ActiveDuelSession for the fork (solo mode)
   const session: ActiveDuelSession = {
     duelId: forkDuelId,
     phase: 'DUELING',
     rpsState: null,
     players: [
-      { playerId: conn.userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
-      { playerId: conn.userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
+      { playerId: userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
+      { playerId: userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
     ],
     createdAt: Date.now(),
     startedAt: Date.now(),
@@ -2479,36 +2096,14 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
     }
   }, 30_000);
 
-  // Detach worker from replay connection (it's now owned by ActiveDuelSession)
-  conn.worker = null;
-  // Release the replay worker slot — the worker lives on in the solo session
-  // but is no longer a replay worker. Without this, replayWorkerCount leaks +1
-  // per fork, eventually blocking all future replay pre-computations.
-  onReplayWorkerDone();
-
-  // Remove WS event listeners BEFORE close to prevent double cleanup
-  // (close handler would call cleanupReplayConnection without preserveCache, evicting the cache)
-  conn.ws.removeAllListeners('close');
-  conn.ws.removeAllListeners('error');
-  conn.ws.removeAllListeners('message');
-
-  // M16 — Send REPLAY_FORK_READY with tokens, close after message is flushed (AC#3)
-  if (conn.ws.readyState === WebSocket.OPEN) {
-    conn.ws.send(JSON.stringify({ type: 'REPLAY_FORK_READY', token1, token2 }), () => {
-      conn.ws.close();
-    });
-  }
-
-  // Clean up replay connection but PRESERVE cache (needed for return/re-fork)
-  cleanupReplayConnection(conn, true);
-
-  // Re-wire the fork worker's message handler to route through the ActiveDuelSession
+  // Re-wire the fork worker from the replay-handlers handlers to the session
+  // ones. Order matters: removeAllListeners FIRST, then attach.
   worker.removeAllListeners('message');
   worker.removeAllListeners('exit');
   worker.removeAllListeners('error');
   setupForkWorkerHandlers(session, worker);
 
-  logger.log('Fork transitioned to solo session', { replayId: conn.replayId, duelId: forkDuelId });
+  return { token1, token2 };
 }
 
 function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): void {
@@ -2574,70 +2169,6 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
   });
 }
 
-function handleReplayForkContinue(conn: ReplayConnection): void {
-  if (conn.state !== 'fork_warning') {
-    logger.warn('Ignoring REPLAY_FORK_CONTINUE in unexpected state', { replayId: conn.replayId, state: conn.state });
-    return;
-  }
-  const pending = pendingForkWorkers.get(conn);
-  if (!pending) return;
-  pendingForkWorkers.delete(conn);
-
-  conn.state = 'transitioning';
-  transitionForkToSolo(conn, pending.worker, pending.forkDuelId, pending.replayData);
-}
-
-function handleReplayForkCancel(conn: ReplayConnection): void {
-  if (conn.state !== 'fork_warning') {
-    logger.warn('Ignoring REPLAY_FORK_CANCEL in unexpected state', { replayId: conn.replayId, state: conn.state });
-    return;
-  }
-  const pending = pendingForkWorkers.get(conn);
-  if (!pending) return;
-
-  pending.worker.removeAllListeners();
-  pending.worker.terminate();
-  pendingForkWorkers.delete(conn);
-  onReplayWorkerDone();
-  conn.state = 'ready';
-  // Replay WS stays open — client is still in replay mode
-}
-
-function cleanupReplayConnection(conn: ReplayConnection, preserveCache = false): void {
-  conn.state = 'closed';
-
-  // Cancel watchdog
-  if (conn.watchdogTimer) {
-    clearTimeout(conn.watchdogTimer);
-    conn.watchdogTimer = null;
-  }
-
-  // Terminate worker if still active
-  if (conn.worker) {
-    conn.worker.removeAllListeners();
-    conn.worker.terminate();
-    conn.worker = null;
-    onReplayWorkerDone();
-  }
-
-  // Evict cache entry (unless preserving for fork return)
-  if (!preserveCache) {
-    replayCache.delete(conn.replayId);
-  }
-
-  // Clean up any pending fork worker
-  const pending = pendingForkWorkers.get(conn);
-  if (pending) {
-    pending.worker.removeAllListeners();
-    pending.worker.terminate();
-    pendingForkWorkers.delete(conn);
-    onReplayWorkerDone();
-  }
-
-  activeReplayConnections.delete(conn.ws);
-}
-
-
 // =============================================================================
 // Graceful Shutdown
 // =============================================================================
@@ -2656,20 +2187,8 @@ function shutdown(): void {
     safeTerminateWorker(session);
   }
 
-  // Clean up active replay connections
-  for (const conn of activeReplayConnections.values()) {
-    cleanupReplayConnection(conn);
-  }
-
-  // Terminate pending fork workers
-  for (const [conn, pending] of pendingForkWorkers) {
-    pending.worker.removeAllListeners();
-    pending.worker.terminate();
-    pendingForkWorkers.delete(conn);
-  }
-
-  // Clear replay queue
-  replayQueue.length = 0;
+  // Tear down replay state (active connections + pending forks + queue)
+  cleanupAllReplayState();
 
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
