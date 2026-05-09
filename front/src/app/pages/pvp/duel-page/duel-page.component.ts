@@ -32,8 +32,9 @@ import { buildHandChainBadges, buildOpponentHandChainData } from './chain-badge.
 import { PhaseAnnouncementService } from './phase-announcement.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
+import { FloatRegistryService } from './float-registry.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { BattleAnimationTracker } from './battle-animation-tracker';
@@ -70,7 +71,7 @@ import { environment } from '../../../../environments/environment';
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
-    AnimationOrchestratorService, CardTravelService, BoardEffectsService, RoomStateMachineService, CardInspectionService,
+    AnimationOrchestratorService, CardTravelEngine, BoardEffectsService, FloatRegistryService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
     DuelCardArtService, CardActionMenuService, PromptDerivationService,
@@ -112,7 +113,7 @@ export class DuelPageComponent implements OnInit {
   readonly animationService = inject(AnimationOrchestratorService);
   readonly chainManager = inject(ChainResolutionManager);
   readonly drawManager = inject(DrawSequenceManager);
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
   readonly roomService = inject(RoomStateMachineService);
   readonly cardInspection = inject(CardInspectionService);
   readonly phaseService = inject(PhaseAnnouncementService);

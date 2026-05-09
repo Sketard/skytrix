@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { BattleAnimationTracker } from './battle-animation-tracker';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { DuelContext } from './duel-context';
 import type { AttackMsg, BattleMsg } from '../duel-ws.types';
 
@@ -21,7 +21,7 @@ function makeAnimatableEl(tag: 'div' | 'span' = 'div'): HTMLElement {
 
 describe('BattleAnimationTracker', () => {
   let tracker: BattleAnimationTracker;
-  let mockCardTravel: jasmine.SpyObj<CardTravelService>;
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
   let mockCtx: jasmine.SpyObj<DuelContext>;
   let attackerEl: HTMLElement;
   let defenderEl: HTMLElement;
@@ -39,7 +39,7 @@ describe('BattleAnimationTracker', () => {
     lineEl = makeAnimatableEl('div') as HTMLDivElement;
     containerEl = document.createElement('div');
 
-    mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', [
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
       'getZoneElement', 'getContainer', 'createLineBetween',
     ]);
     mockCardTravel.getZoneElement.and.callFake((key: string) => {
@@ -60,7 +60,7 @@ describe('BattleAnimationTracker', () => {
     TestBed.configureTestingModule({
       providers: [
         BattleAnimationTracker,
-        { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: DuelContext, useValue: mockCtx },
       ],
     });

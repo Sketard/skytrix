@@ -29,8 +29,9 @@ import { PvpCardInspectorWrapperComponent } from '../duel-page/pvp-card-inspecto
 import { PvpZoneBrowserOverlayComponent } from '../duel-page/pvp-zone-browser-overlay/pvp-zone-browser-overlay.component';
 import { CardDataCacheService } from '../duel-page/card-data-cache.service';
 import { CardInspectionService } from '../duel-page/card-inspection.service';
-import { CardTravelService } from '../duel-page/card-travel.service';
+import { CardTravelEngine } from '../duel-page/card-travel-engine.service';
 import { BoardEffectsService } from '../duel-page/board-effects.service';
+import { FloatRegistryService } from '../duel-page/float-registry.service';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
@@ -59,7 +60,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     ReplayConnectionService, ReplayForkService,
-    CardDataCacheService, CardInspectionService, CardTravelService, BoardEffectsService, DuelCardArtService,
+    CardDataCacheService, CardInspectionService, CardTravelEngine, BoardEffectsService, FloatRegistryService, DuelCardArtService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
@@ -84,7 +85,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly cardDataCache = inject(CardDataCacheService);
   private readonly cardInspection = inject(CardInspectionService);
-  private readonly cardTravel = inject(CardTravelService);
+  private readonly cardTravel = inject(CardTravelEngine);
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
   private readonly duelCtx = inject(DuelContext);

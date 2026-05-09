@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { BoardEffectsService } from './board-effects.service';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 
 /**
  * Override `Element.animate` so `.finished` resolves immediately and the
@@ -25,7 +25,7 @@ function patchAnimateOnElementProto(): { restore: () => void } {
 
 describe('BoardEffectsService', () => {
   let service: BoardEffectsService;
-  let mockCardTravel: jasmine.SpyObj<CardTravelService>;
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
   let container: HTMLElement;
   let zoneEl: HTMLElement;
   let restoreAnimate: () => void;
@@ -42,7 +42,7 @@ describe('BoardEffectsService', () => {
 
     ({ restore: restoreAnimate } = patchAnimateOnElementProto());
 
-    mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', [
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
       'getZoneElement', 'getContainer', 'toAbsoluteUrl',
     ]);
     mockCardTravel.getContainer.and.returnValue(container);
@@ -52,7 +52,7 @@ describe('BoardEffectsService', () => {
     TestBed.configureTestingModule({
       providers: [
         BoardEffectsService,
-        { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: CardTravelEngine, useValue: mockCardTravel },
       ],
     });
     service = TestBed.inject(BoardEffectsService);

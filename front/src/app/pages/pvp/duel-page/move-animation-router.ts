@@ -5,8 +5,9 @@ import { LOCATION, POSITION } from '../duel-ws.types';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { DuelCardArtService } from './duel-card-art.service';
 import { ANIMATION_DATA_SOURCE, type QueueEntry } from './animation-data-source';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
+import { FloatRegistryService } from './float-registry.service';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
@@ -50,8 +51,9 @@ const isPile = (loc: number) => loc === LOCATION.GRAVE || loc === LOCATION.BANIS
  */
 @Injectable()
 export class MoveAnimationRouter {
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
+  private readonly floatRegistry = inject(FloatRegistryService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger);
@@ -183,7 +185,7 @@ export class MoveAnimationRouter {
       // cardTravelService.travel promise resolving).
       this._pendingTimeouts.set(id, () => {
         cleanupCss();
-        this.cardTravelService.cancelTravel(dstKey);
+        this.floatRegistry.cancelTravel(dstKey);
         resolve();
       });
     });
@@ -334,7 +336,7 @@ export class MoveAnimationRouter {
   private commitAndClearFloat(dstLock: { commit(): void }, dstKey: string): void {
     dstLock.commit();
     const stillLocked = this.rbs.lockedZoneKeys().includes(dstKey);
-    if (!stillLocked) this.cardTravelService.clearLandedByDstPrefix(dstKey);
+    if (!stillLocked) this.floatRegistry.clearLandedByDstPrefix(dstKey);
   }
 
   private overlayDetach(mc: MoveContext): number | Promise<void> {
@@ -448,7 +450,7 @@ export class MoveAnimationRouter {
     return this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL,
       srcRotateZ: mc.isDefenseFrom ? -90 : undefined, baseRotateZ: mc.baseRotateZ,
-    }).then(() => { this.cardTravelService.clearLandedByDstPrefix(dstKey); });
+    }).then(() => { this.floatRegistry.clearLandedByDstPrefix(dstKey); });
   }
 
   private fieldToField(mc: MoveContext): Promise<void> {
@@ -496,7 +498,7 @@ export class MoveAnimationRouter {
     const dstKey = mc.dstKey;
     return this.cardTravelService.travel(mc.src, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL, baseRotateZ: mc.baseRotateZ,
-    }).then(() => { this.cardTravelService.clearLandedByDstPrefix(dstKey); });
+    }).then(() => { this.floatRegistry.clearLandedByDstPrefix(dstKey); });
   }
 
   private deckOrExtraToPile(mc: MoveContext): Promise<void> {
@@ -533,7 +535,7 @@ export class MoveAnimationRouter {
     const dstKey = mc.dstKey;
     return this.cardTravelService.travel(mc.srcKey, mc.dstKey, mc.cardImage, {
       duration: mc.travelDuration, flipDuringTravel: true, impactGlowColor: GLOW_NEUTRAL, baseRotateZ: mc.baseRotateZ,
-    }).then(() => { this.cardTravelService.clearLandedByDstPrefix(dstKey); });
+    }).then(() => { this.floatRegistry.clearLandedByDstPrefix(dstKey); });
   }
 
   private pileToPile(mc: MoveContext): Promise<void> {

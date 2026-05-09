@@ -8,7 +8,7 @@ import { EQUIP_HOVER_COLOR, EQUIP_HOVER_SHADOW } from '../equip-line.constants';
 import { PvpLpBadgeComponent, LpAnimData } from '../pvp-lp-badge/pvp-lp-badge.component';
 import { PvpTimerBadgeComponent } from '../pvp-timer-badge/pvp-timer-badge.component';
 import { PvpPhaseBadgeComponent } from '../pvp-phase-badge/pvp-phase-badge.component';
-import { CardTravelService } from '../card-travel.service';
+import { CardTravelEngine } from '../card-travel-engine.service';
 import { formatStat, getAttributeName, getRaceName, totalCounters } from '../../pvp-alteration.utils';
 import { locationToZoneId, locationToZoneKey } from '../../pvp-zone.utils';
 import { NgTemplateOutlet } from '@angular/common';
@@ -45,7 +45,7 @@ interface ZoneRenderData {
 export class PvpBoardContainerComponent implements AfterViewInit {
   private readonly injector = inject(Injector);
   private readonly elementRef = inject(ElementRef);
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
   private readonly destroyRef = inject(DestroyRef);
   private readonly zoneElements = new Map<string, HTMLElement>();
 

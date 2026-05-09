@@ -1,22 +1,22 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { toCardRect, buildCrackPaths } from './card-travel-helpers';
 
 /**
  * Visual effects anchored to a board zone or DOM element. Split from
- * `CardTravelService` (M11 Phase 1) so the travel engine stays focused on
+ * `CardTravelEngine` (M11 Phase 1) so the travel engine stays focused on
  * A→B card translation while autonomous effects (impacts, particles,
  * cracks, activation, target floats) live here.
  *
- * `CardTravelService` is the zone-resolver / container registry — this
+ * `CardTravelEngine` is the zone-resolver / container registry — this
  * service consumes its `getZoneElement`, `getContainer`, and
- * `toAbsoluteUrl` rather than duplicating them. `CardTravelService.travel`
+ * `toAbsoluteUrl` rather than duplicating them. `CardTravelEngine.travel`
  * also calls back into `zoneImpactEffect` / `slamDustParticles` for soft /
  * banish / slam landings (cross-injection accepted via lazy `inject()`).
  */
 @Injectable()
 export class BoardEffectsService implements OnDestroy {
-  private readonly cardTravel = inject(CardTravelService);
+  private readonly cardTravel = inject(CardTravelEngine);
   private readonly _overlayEls = new Set<HTMLElement>();
   private readonly _timers = new Set<number>();
   private readonly _reducedMotion: boolean;

@@ -4,7 +4,7 @@ import { BufferReplayBuilder } from './buffer-replay-builder';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { LpAnimationTracker } from './lp-animation-tracker';
 import { MoveAnimationRouter } from './move-animation-router';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
@@ -99,7 +99,7 @@ describe('BufferReplayBuilder', () => {
       'applyInstant', 'syncFromBoardState', 'getTrackedLp', 'reset',
     ]);
 
-    const mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', ['getZoneElement']);
+    const mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', ['getZoneElement']);
 
     const mockCtx = {
       relativePlayer: (p: number) => (p === 0 ? 0 : 1) as 0 | 1,
@@ -116,7 +116,7 @@ describe('BufferReplayBuilder', () => {
       providers: [
         BufferReplayBuilder,
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
-        { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: DuelContext, useValue: mockCtx as unknown as DuelContext },
         { provide: DuelLogger, useValue: mockLogger },
         { provide: DrawSequenceManager, useValue: mockDrawManager },

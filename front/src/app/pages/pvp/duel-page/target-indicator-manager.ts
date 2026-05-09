@@ -3,7 +3,7 @@ import type { BecomeTargetMsg } from '../duel-ws.types';
 import { LOCATION, POSITION } from '../duel-ws.types';
 import type { ZoneId } from '../duel-ws-shared.types';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
@@ -33,7 +33,7 @@ interface TrackedFloat {
  */
 @Injectable()
 export class TargetIndicatorManager implements OnDestroy {
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
   private readonly artService = inject(DuelCardArtService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);

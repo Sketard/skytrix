@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { toCardRect, buildTravelKeyframes } from './card-travel-helpers';
 import { BoardEffectsService } from './board-effects.service';
+import { FloatRegistryService } from './float-registry.service';
 
 export interface TravelOptions {
   showBack?: boolean;
@@ -27,13 +28,26 @@ export interface TravelOptions {
   cardCode?: number;
 }
 
+/**
+ * Animates card travel from a source zone/element to a destination zone/element.
+ *
+ * Owns: zone resolver registry, container element, geometry computation,
+ * keyframe generation (via card-travel-helpers), animation kickoff, departure
+ * glow + impact filter timers, and the toAbsoluteUrl helper.
+ *
+ * Delegates: in-flight / landed float tracking → {@link FloatRegistryService};
+ * autonomous board effects (zoneImpactEffect, slamDustParticles) → {@link BoardEffectsService}.
+ *
+ * Renamed from CardTravelService in M11 Phase 2 — the new name reflects that
+ * this service is the travel ENGINE while the registry / effects live in
+ * sibling services.
+ */
 @Injectable()
-export class CardTravelService implements OnDestroy {
+export class CardTravelEngine implements OnDestroy {
   private readonly boardEffects = inject(BoardEffectsService);
+  private readonly floatRegistry = inject(FloatRegistryService);
   private _zoneResolver: ((zoneKey: string) => HTMLElement | null) | null = null;
   private _container: HTMLElement = document.body;
-  private readonly _inFlight = new Map<HTMLDivElement, { animation: Animation; resolve: () => void }>();
-  private readonly _landed = new Set<HTMLDivElement>();
   private readonly _timers = new Set<number>();
   private readonly _reducedMotion: boolean;
 
@@ -139,23 +153,18 @@ export class CardTravelService implements OnDestroy {
     if (destRotateZ && destEl instanceof HTMLElement) {
       const savedTransform = destEl.style.transform;
       const savedTransition = destEl.style.transition;
-      // Disable transition so the strip/restore doesn't trigger a CSS animation
       destEl.style.transition = 'none';
       destEl.style.transform = 'none';
       rawDestRect = destEl.getBoundingClientRect();
       destEl.style.transform = savedTransform;
-      // Force reflow to commit the restored transform BEFORE re-enabling transition
       void destEl.offsetHeight;
       destEl.style.transition = savedTransition;
     } else {
       rawDestRect = destEl.getBoundingClientRect();
     }
 
-    // Compute card-visible rect within the destination zone (same aspect ratio logic as source)
     const cardDestRect = toCardRect(rawDestRect);
 
-    // If destination is a container (much wider than source, e.g. hand row),
-    // target a card-sized rect within it to avoid stretching
     const align = options.destAlign ?? 'center';
     const destRect = rawDestRect.width > sourceRect.width * 1.5
       ? new DOMRect(
@@ -188,10 +197,7 @@ export class CardTravelService implements OnDestroy {
 
     // Copy transform-origin from destination as percentages so the pivot maps
     // correctly even though the floating element has different dimensions.
-    // Skip when baseRotateZ is set: the float needs center origin so that the
-    // constant 180° rotation doesn't shift the AABB. The dest-origin copy is
-    // only meaningful for explicit destRotateZ (defense -90°), not fan angles.
-    let originYFraction = 0.5; // default: center
+    let originYFraction = 0.5;
     const base = options.baseRotateZ ?? 0;
     if (destRotateZ && !base && destEl instanceof HTMLElement) {
       const raw = getComputedStyle(destEl).transformOrigin;
@@ -208,10 +214,6 @@ export class CardTravelService implements OnDestroy {
       easing: 'ease-in-out',
       fill: 'forwards',
     });
-
-    let resolve!: () => void;
-    const promise = new Promise<void>(r => { resolve = r; });
-    this._inFlight.set(floatingEl, { animation, resolve });
 
     if (options.departureGlowColor) {
       this.applyGlow(sourceEl, options.departureGlowColor, duration * 0.15);
@@ -237,177 +239,16 @@ export class CardTravelService implements OnDestroy {
       }, duration * 0.70));
     }
 
-    const onLanded = () => { this._landed.add(floatingEl); resolve(); };
+    const onLand = options.landingStyle === 'slam'
+      ? () => this.boardEffects.slamDustParticles(rawDestRect)
+      : undefined;
 
-    animation.finished.then(() => {
-      this._inFlight.delete(floatingEl);
-      if (options.landingStyle === 'slam') {
-        this.boardEffects.slamDustParticles(rawDestRect);
-      }
-      onLanded();
-    }).catch(() => {
-      // animation.cancel() rejects — resolve so the queue never hangs.
-      // ngOnDestroy also calls resolve(), but this covers mid-lifecycle rejections.
-      this._inFlight.delete(floatingEl);
-      resolve();
-    });
-
-    return promise;
-  }
-
-  /** Number of landed floats (for debug tracing). */
-  landedCount(): number { return this._landed.size; }
-
-  /** Number of in-flight travels (for debug tracing). */
-  inFlightCount(): number { return this._inFlight.size; }
-
-  /** Return the most recently landed float element (if any). */
-  getLastLandedFloat(): HTMLElement | null {
-    let last: HTMLElement | null = null;
-    for (const el of this._landed) last = el;
-    return last;
-  }
-
-  /**
-   * Remove and return a landed float matching the given filters.
-   *
-   * @param dstPrefix When provided, restricts to floats whose `dstKey` starts
-   *   with the prefix (e.g., 'HAND', 'GRAVE-0').
-   * @param cardCode When provided, restricts to floats whose `dataset.cardCode`
-   *   matches — used by `confirmCardsInHand` so an interleaved per-card
-   *   CONFIRM reveals the correct ghost.
-   *
-   * Strategy:
-   *   - With `cardCode`: LIFO — return the MOST RECENTLY added matching
-   *     float. An interleaved confirm always runs right after its tutor
-   *     lands, so the newest matching float is the correct ghost. Critical
-   *     when the same cardCode is tutored multiple times: FIFO would
-   *     re-pop the previously revealed-and-returned float (via
-   *     `returnToLanded`) instead of the freshly landed one.
-   *   - Without `cardCode`: FIFO — preserves behavior for non-interleaved
-   *     paths (shuffle-hand, opponent face-down reveals where the float
-   *     wasn't tagged with a cardCode).
-   */
-  popLandedFloat(dstPrefix?: string, cardCode?: number): HTMLElement | null {
-    if (cardCode !== undefined) {
-      let match: HTMLDivElement | null = null;
-      for (const el of this._landed) {
-        if (dstPrefix && !el.dataset['dstKey']?.startsWith(dstPrefix)) continue;
-        if (el.dataset['cardCode'] !== String(cardCode)) continue;
-        match = el; // keep updating to the newest matching float
-      }
-      if (match) this._landed.delete(match);
-      return match;
-    }
-    for (const el of this._landed) {
-      if (dstPrefix && !el.dataset['dstKey']?.startsWith(dstPrefix)) continue;
-      this._landed.delete(el);
-      return el;
-    }
-    return null;
-  }
-
-  /**
-   * Return (without removing) all landed floats whose dstKey starts with the
-   * given prefix. Used by `processShuffleEvent` to match every newly-added
-   * card to its post-shuffle DOM position in multi-tutor scenarios.
-   */
-  getLandedFloatsByDstPrefix(prefix: string): HTMLDivElement[] {
-    const out: HTMLDivElement[] = [];
-    for (const el of this._landed) {
-      if (el.dataset['dstKey']?.startsWith(prefix)) out.push(el);
-    }
-    return out;
-  }
-
-  /**
-   * Cancel running animations on a float and pin it at its current visual
-   * position using fixed CSS coords. `baseRotateCSS` (e.g. 'rotateZ(180deg)')
-   * is preserved so opponent cards keep facing their owner.
-   * Returns the rect captured before cancellation.
-   */
-  stabilizeFloat(el: HTMLElement, baseRotateCSS: string): DOMRect {
-    const rect = el.getBoundingClientRect();
-    el.getAnimations().forEach(a => a.cancel());
-    el.style.left = `${rect.left}px`;
-    el.style.top = `${rect.top}px`;
-    el.style.transform = baseRotateCSS;
-    return rect;
-  }
-
-  /** Re-add a previously popped float to the landed set for deferred cleanup. */
-  returnToLanded(el: HTMLDivElement): void {
-    this._landed.add(el);
-  }
-
-  /** Remove all landed floats whose dstKey starts with the given prefix, or all if no prefix. */
-  clearLandedByDstPrefix(prefix?: string): void {
-    for (const el of this._landed) {
-      if (!prefix || (el.dataset['dstKey']?.startsWith(prefix))) {
-        el.remove();
-        this._landed.delete(el);
-      }
-    }
-  }
-
-  /** Remove all travel elements whose animations have finished. */
-  clearLandedTravels(): void {
-    for (const el of this._landed) {
-      el.remove();
-    }
-    this._landed.clear();
-  }
-
-  /** Map of zone keys → in-flight travel elements for lock assertion ([LOCK-ASSERT]). */
-  inFlightByZone(): Map<string, HTMLDivElement[]> {
-    const byZone = new Map<string, HTMLDivElement[]>();
-    for (const [el] of this._inFlight) {
-      const key = el.dataset['dstKey'];
-      if (key) {
-        const list = byZone.get(key);
-        if (list) list.push(el);
-        else byZone.set(key, [el]);
-      }
-    }
-    return byZone;
-  }
-
-  /** Cancel any in-flight travel whose dstKey matches. Used to abort a travel
-   *  scheduled by a setTimeout that fired after the orchestrator started a reset. */
-  cancelTravel(dstKey: string): void {
-    for (const [el, { animation, resolve }] of this._inFlight) {
-      if (el.dataset['dstKey'] === dstKey) {
-        animation.cancel();
-        el.remove();
-        resolve();
-        this._inFlight.delete(el);
-      }
-    }
-  }
-
-  /** Finish all in-flight animations and remove all travel elements. */
-  clearAllTravels(): void {
-    for (const [el, { animation, resolve }] of this._inFlight) {
-      animation.finish();
-      el.remove();
-      resolve();
-    }
-    this._inFlight.clear();
-    this.clearLandedTravels();
+    return this.floatRegistry.register(floatingEl, animation, onLand);
   }
 
   ngOnDestroy(): void {
-    for (const id of this._timers) {
-      clearTimeout(id);
-    }
+    for (const id of this._timers) clearTimeout(id);
     this._timers.clear();
-    for (const [el, { animation, resolve }] of this._inFlight) {
-      animation.cancel();
-      el.remove();
-      resolve();
-    }
-    this._inFlight.clear();
-    this.clearLandedTravels();
   }
 
   private createFloatingElement(sourceRect: DOMRect, cardImage: string, options: TravelOptions): HTMLDivElement {

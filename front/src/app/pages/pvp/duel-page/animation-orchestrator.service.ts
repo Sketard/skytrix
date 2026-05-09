@@ -22,8 +22,9 @@ import {
   POSITION_ROTATE_MS, POSITION_ROTATE_MIN_MS,
   CHAIN_PULSE_BASE_MS,
 } from './animation-constants';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
+import { FloatRegistryService } from './float-registry.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { BattleAnimationTracker } from './battle-animation-tracker';
@@ -60,8 +61,9 @@ export class AnimationOrchestratorService {
   private readonly logger = inject(DuelLogger);
   readonly lpTracker = inject(LpAnimationTracker);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
   private readonly boardEffects = inject(BoardEffectsService);
+  private readonly floatRegistry = inject(FloatRegistryService);
   private readonly ctx = inject(DuelContext);
   readonly chainManager = inject(ChainResolutionManager);
   readonly drawManager = inject(DrawSequenceManager);
@@ -152,15 +154,15 @@ export class AnimationOrchestratorService {
   }
 
   private finalizeAndCommit(): void {
-    this.cardTravelService.clearAllTravels();
+    this.floatRegistry.clearAllTravels();
     this.lpTracker.discardPending();
     this.trace('commitUnlocked', { site: 'finalizeAndCommit' });
     this.rbs.commitUnlocked();
   }
 
   constructor() {
-    // Wire CardTravelService for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
-    this.rbs.attachCardTravelService(this.cardTravelService);
+    // Wire FloatRegistry for [LOCK-ASSERT] dev-mode assertion in commitUnlocked().
+    this.rbs.attachFloatRegistry(this.floatRegistry);
     // Scale RBS lock safety timeouts with playback speed so slow replay
     // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
     // 50% safety margin from DuelContext.safetyTimeout().
@@ -636,9 +638,9 @@ export class AnimationOrchestratorService {
           this.lpTracker.discardPending();
           this.rbs.commitUnlocked();
         }
-        this.trace('groupAwait', { promiseCount: promises.length, inFlight: this.cardTravelService.inFlightCount(), landed: this.cardTravelService.landedCount() });
+        this.trace('groupAwait', { promiseCount: promises.length, inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
         if (promises.length > 0) await Promise.all(promises);
-        this.trace('groupDone', { inFlight: this.cardTravelService.inFlightCount(), landed: this.cardTravelService.landedCount() });
+        this.trace('groupDone', { inFlight: this.floatRegistry.inFlightCount(), landed: this.floatRegistry.landedCount() });
         this.animatingZone.set(null);
         this.lpTracker.animatingLpPlayer.set(null);
         return 'continue';

@@ -3,8 +3,9 @@ import { TestBed } from '@angular/core/testing';
 import { MoveAnimationRouter } from './move-animation-router';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { DuelCardArtService } from './duel-card-art.service';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
+import { FloatRegistryService } from './float-registry.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
@@ -49,7 +50,7 @@ describe('MoveAnimationRouter', () => {
   let router: MoveAnimationRouter;
   let mockRbs: { lockZone: jasmine.Spy; lockedZoneKeys: jasmine.Spy; logicalState: () => typeof EMPTY_DUEL_STATE };
   let mockDataSource: AnimationDataSource;
-  let mockCardTravel: jasmine.SpyObj<CardTravelService>;
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
 
   /** Stub all private branch methods to no-op promises so we can assert dispatch. */
   function stubAllBranches() {
@@ -83,7 +84,7 @@ describe('MoveAnimationRouter', () => {
       applyChainEnd: () => undefined,
     };
 
-    mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', [
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
       'getZoneElement', 'toAbsoluteUrl',
     ]);
     mockCardTravel.getZoneElement.and.returnValue(null);
@@ -93,6 +94,10 @@ describe('MoveAnimationRouter', () => {
       'preDestroyEffect',
     ]);
     mockBoardEffects.preDestroyEffect.and.returnValue(Promise.resolve());
+
+    const mockFloatRegistry = jasmine.createSpyObj<FloatRegistryService>('FloatRegistryService', [
+      'clearLandedByDstPrefix', 'cancelTravel',
+    ]);
 
     const mockCtx = {
       relativePlayer: (p: number) => (p === 0 ? 0 : 1) as 0 | 1,
@@ -119,8 +124,9 @@ describe('MoveAnimationRouter', () => {
       providers: [
         MoveAnimationRouter,
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
-        { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: BoardEffectsService, useValue: mockBoardEffects },
+        { provide: FloatRegistryService, useValue: mockFloatRegistry },
         { provide: DuelContext, useValue: mockCtx as unknown as DuelContext },
         { provide: DuelLogger, useValue: mockLogger },
         { provide: DrawSequenceManager, useValue: mockDrawManager },

@@ -3,7 +3,8 @@ import type { DrawMsg, MoveMsg, ShuffleHandMsg, ConfirmCardsMsg } from '../duel-
 import { LOCATION } from '../duel-ws.types';
 import { ANIMATION_DATA_SOURCE, peekAndDequeueMatching } from './animation-data-source';
 import { MoveAnimationRouter } from './move-animation-router';
-import { CardTravelService, type TravelOptions } from './card-travel.service';
+import { CardTravelEngine, type TravelOptions } from './card-travel-engine.service';
+import { FloatRegistryService } from './float-registry.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
@@ -32,7 +33,8 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
  */
 @Injectable()
 export class DrawSequenceManager {
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
+  private readonly floatRegistry = inject(FloatRegistryService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger);
@@ -300,7 +302,7 @@ export class DrawSequenceManager {
       await this.travelToHand(srcKey, relPlayer, cardImage, {
         duration: travelDuration, showBack: true, flipDuringTravel: isOwn && !!card,
       }, opts.keepFloats ? i : undefined, undefined, card || undefined);
-      if (!opts.keepFloats) this.cardTravelService.clearLandedTravels();
+      if (!opts.keepFloats) this.floatRegistry.clearLandedTravels();
     }
 
     this.logger.log(DuelLogCategory.DRAW, 'runDrawSequence — committing locks, renderedHand=%d',
@@ -518,7 +520,7 @@ export class DrawSequenceManager {
     const handZone = this.cardTravelService.getZoneElement(handZoneKey);
 
     if (this.ctx.reducedMotion() || !handZone) {
-      this.cardTravelService.clearLandedByDstPrefix('HAND');
+      this.floatRegistry.clearLandedByDstPrefix('HAND');
       this.rbs.commitAll();
       return;
     }
@@ -527,11 +529,11 @@ export class DrawSequenceManager {
     // (search / tutor). Stabilize their positions so they can each animate
     // independently to their post-shuffle DOM slot.
     const handPrefix = `HAND-${relPlayer}`;
-    const landedFloats = this.cardTravelService.getLandedFloatsByDstPrefix(handPrefix);
+    const landedFloats = this.floatRegistry.getLandedFloatsByDstPrefix(handPrefix);
     const baseRZ = this.ctx.cardBaseRotateCSS(relPlayer);
     const floatByCode = new Map<string, { el: HTMLDivElement; rect: DOMRect }[]>();
     for (const el of landedFloats) {
-      const rect = this.cardTravelService.stabilizeFloat(el, baseRZ);
+      const rect = this.floatRegistry.stabilizeFloat(el, baseRZ);
       const code = el.dataset['cardCode'] ?? '';
       if (!floatByCode.has(code)) floatByCode.set(code, []);
       floatByCode.get(code)!.push({ el, rect });
@@ -621,11 +623,11 @@ export class DrawSequenceManager {
 
       // Reveal the real cards, remove the floats
       for (const { targetEl } of floatAssignments) targetEl.style.visibility = '';
-      this.cardTravelService.clearLandedByDstPrefix('HAND');
+      this.floatRegistry.clearLandedByDstPrefix('HAND');
     } catch (e) {
       this.logger.warn('Shuffle phase failed — committing state', e);
       this.rbs.commitAll();
-      this.cardTravelService.clearLandedByDstPrefix('HAND');
+      this.floatRegistry.clearLandedByDstPrefix('HAND');
     }
   }
 
@@ -655,8 +657,8 @@ export class DrawSequenceManager {
       // returned float and the reveal plays on the wrong card. Fallback
       // without cardCode covers face-down / opponent-perspective floats that
       // weren't tagged at travel time.
-      let floatEl = this.cardTravelService.popLandedFloat('HAND', card.cardCode);
-      if (!floatEl) floatEl = this.cardTravelService.popLandedFloat('HAND');
+      let floatEl = this.floatRegistry.popLandedFloat('HAND', card.cardCode);
+      if (!floatEl) floatEl = this.floatRegistry.popLandedFloat('HAND');
       this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — popLandedFloat=%s cardCode=%d', !!floatEl, card.cardCode);
       if (!floatEl) continue;
       animatedCount++;
@@ -664,7 +666,7 @@ export class DrawSequenceManager {
       const relPlayer = this.ctx.relativePlayer(card.player);
 
       const baseRZ = this.ctx.cardBaseRotateCSS(relPlayer);
-      this.cardTravelService.stabilizeFloat(floatEl, baseRZ);
+      this.floatRegistry.stabilizeFloat(floatEl, baseRZ);
 
       if (relPlayer === 1) {
         const img = floatEl.querySelector('img');
@@ -691,7 +693,7 @@ export class DrawSequenceManager {
         this._drawTimeouts.push(tid);
       });
 
-      this.cardTravelService.returnToLanded(floatEl as HTMLDivElement);
+      this.floatRegistry.returnToLanded(floatEl as HTMLDivElement);
     }
     this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — done: animated=%d/%d', animatedCount, cards.length);
   }

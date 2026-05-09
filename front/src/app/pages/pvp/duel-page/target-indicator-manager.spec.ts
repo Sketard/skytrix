@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { signal, type WritableSignal } from '@angular/core';
 import { TargetIndicatorManager } from './target-indicator-manager';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
@@ -38,7 +38,7 @@ function makeBoardWithGyCards(player: 0 | 1, cards: { cardCode: number | null; f
 
 describe('TargetIndicatorManager', () => {
   let manager: TargetIndicatorManager;
-  let mockCardTravel: jasmine.SpyObj<CardTravelService>;
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
   let mockBoardEffects: jasmine.SpyObj<BoardEffectsService>;
   let mockArtService: jasmine.SpyObj<DuelCardArtService>;
   let renderedState: WritableSignal<DuelState>;
@@ -71,7 +71,7 @@ describe('TargetIndicatorManager', () => {
       applyChainEnd: () => undefined,
     };
 
-    mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', ['toAbsoluteUrl']);
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', ['toAbsoluteUrl']);
     mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
 
     mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
@@ -103,7 +103,7 @@ describe('TargetIndicatorManager', () => {
     TestBed.configureTestingModule({
       providers: [
         TargetIndicatorManager,
-        { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: CardTravelEngine, useValue: mockCardTravel },
         { provide: BoardEffectsService, useValue: mockBoardEffects },
         { provide: DuelCardArtService, useValue: mockArtService },
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },

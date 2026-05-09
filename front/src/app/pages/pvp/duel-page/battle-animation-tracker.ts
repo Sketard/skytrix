@@ -2,7 +2,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import type { AttackMsg, BattleMsg } from '../duel-ws.types';
 import { LOCATION } from '../duel-ws.types';
 import { locationToZoneKey } from '../pvp-zone.utils';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
 import { DuelContext } from './duel-context';
 
 interface PendingAttack {
@@ -17,7 +17,7 @@ interface PendingAttack {
  */
 @Injectable()
 export class BattleAnimationTracker {
-  private readonly cardTravelService = inject(CardTravelService);
+  private readonly cardTravelService = inject(CardTravelEngine);
   private readonly ctx = inject(DuelContext);
 
   private readonly pendingAttack = signal<PendingAttack | null>(null);

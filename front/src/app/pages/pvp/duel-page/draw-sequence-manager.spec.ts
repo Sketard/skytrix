@@ -2,7 +2,8 @@ import { signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { ChainResolutionManager } from './chain-resolution-manager';
-import { CardTravelService } from './card-travel.service';
+import { CardTravelEngine } from './card-travel-engine.service';
+import { FloatRegistryService } from './float-registry.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { MoveAnimationRouter } from './move-animation-router';
@@ -89,14 +90,17 @@ describe('DrawSequenceManager', () => {
       announceEvent: () => undefined,
     };
 
-    const mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', [
-      'getZoneElement', 'toAbsoluteUrl', 'clearLandedTravels',
-      'clearLandedByDstPrefix', 'getLandedFloatsByDstPrefix', 'popLandedFloat',
-      'stabilizeFloat', 'returnToLanded',
+    const mockCardTravel = jasmine.createSpyObj<CardTravelEngine>('CardTravelEngine', [
+      'getZoneElement', 'toAbsoluteUrl',
     ]);
     mockCardTravel.getZoneElement.and.returnValue(null);
     mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
-    mockCardTravel.getLandedFloatsByDstPrefix.and.returnValue([]);
+
+    const mockFloatRegistry = jasmine.createSpyObj<FloatRegistryService>('FloatRegistryService', [
+      'clearLandedTravels', 'clearLandedByDstPrefix', 'getLandedFloatsByDstPrefix',
+      'popLandedFloat', 'stabilizeFloat', 'returnToLanded',
+    ]);
+    mockFloatRegistry.getLandedFloatsByDstPrefix.and.returnValue([]);
 
     const mockLogger = jasmine.createSpyObj<DuelLogger>('DuelLogger', ['log', 'warn']);
 
@@ -104,7 +108,8 @@ describe('DrawSequenceManager', () => {
       providers: [
         DrawSequenceManager,
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
-        { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: CardTravelEngine, useValue: mockCardTravel },
+        { provide: FloatRegistryService, useValue: mockFloatRegistry },
         { provide: DuelContext, useValue: mockCtx as unknown as DuelContext },
         { provide: DuelLogger, useValue: mockLogger },
         { provide: ChainResolutionManager, useValue: mockChainManager },
@@ -235,11 +240,11 @@ describe('DrawSequenceManager', () => {
 
   describe('resolveHandTarget', () => {
     let zoneEl: HTMLElement;
-    let mockCardTravel: jasmine.SpyObj<CardTravelService>;
+    let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
 
     beforeEach(() => {
       zoneEl = document.createElement('div');
-      mockCardTravel = TestBed.inject(CardTravelService) as jasmine.SpyObj<CardTravelService>;
+      mockCardTravel = TestBed.inject(CardTravelEngine) as jasmine.SpyObj<CardTravelEngine>;
       mockCardTravel.getZoneElement.and.callFake((key: string) =>
         key === 'HAND-0' ? zoneEl : null,
       );

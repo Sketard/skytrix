@@ -3,7 +3,7 @@ import { DuelState, EMPTY_DUEL_STATE } from '../types';
 import { Player, PlayerBoardState, BoardZone } from '../duel-ws.types';
 import { LOCK_SAFETY_TIMEOUT_MS } from './animation-constants';
 import { duelAssert } from '../../../core/utilities/duel-assert';
-import type { CardTravelService } from './card-travel.service';
+import type { FloatRegistryService } from './float-registry.service';
 import type { DuelLogger } from './duel-logger';
 
 export interface ZoneLock {
@@ -18,14 +18,14 @@ export class RenderedBoardStateService {
   /**
    * Optional in-flight-travel observer used by `commitUnlocked` to assert in
    * dev mode that no zone has active travels without a lock. Replay adapter
-   * runs without CardTravelService — the assertion is silently skipped there.
-   * Wired via {@link attachCardTravelService} (audit L22 — was a public
+   * runs without FloatRegistry — the assertion is silently skipped there.
+   * Wired via {@link attachFloatRegistry} (audit L22 — was a public
    * mutable field, the method makes the contract explicit).
    */
-  private _cardTravelService?: CardTravelService;
+  private _floatRegistry?: FloatRegistryService;
 
-  attachCardTravelService(svc: CardTravelService): void {
-    this._cardTravelService = svc;
+  attachFloatRegistry(svc: FloatRegistryService): void {
+    this._floatRegistry = svc;
   }
   /**
    * Returns the current lock safety-timeout (ms). Orchestrator overrides this
@@ -240,8 +240,8 @@ export class RenderedBoardStateService {
   // Used by the per-event queue loop so in-flight travel locks survive.
 
   commitUnlocked(): void {
-    if (this._cardTravelService) {
-      for (const [zoneKey, travels] of this._cardTravelService.inFlightByZone()) {
+    if (this._floatRegistry) {
+      for (const [zoneKey, travels] of this._floatRegistry.inFlightByZone()) {
         if (travels.length > 0 && !this._locks.has(zoneKey)) {
           duelAssert(false, 'commitUnlocked',
             `Zone ${zoneKey} has ${travels.length} in-flight travels but is NOT locked — handler likely missed a synchronous lockZone() before await`);
