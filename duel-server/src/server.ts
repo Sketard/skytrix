@@ -645,7 +645,7 @@ function resolveRps(session: ActiveDuelSession): void {
   let winner: Player | null = null;
   if (c0 !== c1) {
     // Rock(0) beats Scissors(2), Scissors(2) beats Paper(1), Paper(1) beats Rock(0)
-    winner = ((c0 + 1) % 3 === c1) ? 0 : 1;
+    winner = ((c1 + 1) % 3 === c0) ? 0 : 1;
   } else if (round + 1 >= MAX_RPS_ROUNDS) {
     // Force random winner after too many draws
     winner = Math.random() < 0.5 ? 0 : 1;
