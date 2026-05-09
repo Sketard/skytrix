@@ -1,4 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
+import { toCardRect, buildTravelKeyframes, buildCrackPaths } from './card-travel-helpers';
 
 export interface TravelOptions {
   showBack?: boolean;
@@ -122,7 +123,7 @@ export class CardTravelService implements OnDestroy {
     } else {
       rawSourceRect = sourceEl.getBoundingClientRect();
     }
-    const sourceRect = this.toCardRect(rawSourceRect);
+    const sourceRect = toCardRect(rawSourceRect);
 
     // Detect destination fan rotation BEFORE reading its rect.
     // When rotated, getBoundingClientRect() returns the AABB (axis-aligned bounding box)
@@ -154,7 +155,7 @@ export class CardTravelService implements OnDestroy {
     }
 
     // Compute card-visible rect within the destination zone (same aspect ratio logic as source)
-    const cardDestRect = this.toCardRect(rawDestRect);
+    const cardDestRect = toCardRect(rawDestRect);
 
     // If destination is a container (much wider than source, e.g. hand row),
     // target a card-sized rect within it to avoid stretching
@@ -204,7 +205,7 @@ export class CardTravelService implements OnDestroy {
       originYFraction = oyPct / 100;
     }
 
-    const keyframes = this.buildKeyframes(sourceRect, destRect, options, destRotateZ, destTranslateY, originYFraction);
+    const keyframes = buildTravelKeyframes(sourceRect, destRect, options, destRotateZ, destTranslateY, originYFraction);
     const animation = floatingEl.animate(keyframes, {
       duration,
       easing: 'ease-in-out',
@@ -441,127 +442,6 @@ export class CardTravelService implements OnDestroy {
     return div;
   }
 
-  private buildKeyframes(fromRect: DOMRect, destRect: DOMRect, options: TravelOptions, destRotateZ = 0, destTranslateY = 0, originYFraction = 0.5): Keyframe[] {
-    // Scale factor so the float matches the destination size at landing.
-    const fs = destRect.width > 0 && fromRect.width > 0 ? destRect.width / fromRect.width : 1;
-    // Translate center-to-center, compensated for non-center transform-origin.
-    // When scale(fs) is applied around an origin offset from center, the visual
-    // center shifts by originOffset * (1-fs). Subtract to keep the float aligned.
-    const dx = (destRect.left + destRect.width / 2) - (fromRect.left + fromRect.width / 2);
-    const originOffsetY = (originYFraction - 0.5) * fromRect.height;
-    const dy = (destRect.top + destRect.height / 2) - (fromRect.top + fromRect.height / 2) + destTranslateY - originOffsetY * (1 - fs);
-    const flip = options.flipDuringTravel ?? false;
-    const base = options.baseRotateZ ?? 0;
-
-    // Lift (0% → 15%)
-    // Travel (15% → 75%)
-    // Land (75% → 100%)
-    // Flip direction depends on which face must be non-mirrored:
-    //   showBack (draw): start at 180 → 90 → 0  — the revealed front lands at 0deg (correct)
-    //   !showBack (destroy): start at 0 → 90 → 180 — the visible front starts at 0deg (correct)
-    // Card backs are symmetric so 180deg on the back is visually identical.
-    const flipReverse = flip && (options.showBack ?? false);
-    const startRY = flipReverse ? 180 : 0;
-    const endRY = flipReverse ? 0 : (flip ? 180 : 0);
-
-    // baseRotateZ is applied throughout (for opponent cards: constant 180°).
-    // destRotateZ is applied on top at landing (for defense position: -90°).
-    // srcRotateZ is applied at departure and eased out (for leaving defense position: -90°).
-    const src = options.srcRotateZ ?? 0;
-    const rzStart = (base + src) ? ` rotateZ(${base + src}deg)` : '';
-    const rz = (base + destRotateZ) ? ` rotateZ(${base + destRotateZ}deg)` : '';
-    const rzHalf = (base + (src + destRotateZ) * 0.5) ? ` rotateZ(${base + (src + destRotateZ) * 0.5}deg)` : '';
-
-    // Interpolated scale: starts at 1 (source size), ends at fs (destination size).
-    // The lift/land phases add a slight overshoot (+15%/+5%) for visual weight.
-    const midS = (1 + fs) / 2; // halfway scale
-    const liftS = 1.15;        // overshoot at lift
-    const preS = fs * 1.15;    // overshoot near destination
-
-    const keyframes: Keyframe[] = [
-      // 0% — start
-      {
-        offset: 0,
-        transform: `translate(0, 0) scale(1) rotateY(${startRY}deg)${rzStart}`,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-      },
-      // 15% — lifted
-      {
-        offset: 0.15,
-        transform: `translate(0, 0) scale(${liftS}) rotateY(${startRY}deg)${rzStart}`,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-      },
-    ];
-
-    if (flip) {
-      // Flip travel: through 90deg edge-on midpoint
-      keyframes.push(
-        {
-          offset: 0.45,
-          transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(${midS}) rotateY(90deg)${rzHalf}`,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-        },
-        {
-          offset: 0.75,
-          transform: `translate(${dx}px, ${dy}px) scale(${preS}) rotateY(${endRY}deg)${rz}`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        },
-      );
-    } else {
-      // Subtle arc travel
-      keyframes.push(
-        {
-          offset: 0.45,
-          transform: `translate(${dx * 0.5}px, ${dy * 0.5}px) scale(${midS}) rotateY(8deg)${rzHalf}`,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-        },
-        {
-          offset: 0.75,
-          transform: `translate(${dx}px, ${dy}px) scale(${preS}) rotateY(0deg)${rz}`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        },
-      );
-    }
-
-    const land = `translate(${dx}px, ${dy}px)`;
-    const landEnd: Keyframe = {
-      offset: 1,
-      transform: `${land} scale(${fs}) rotateY(${endRY}deg)${rz}`,
-      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-    };
-
-    if (options.landingStyle === 'soft' || options.landingStyle === 'banish') {
-      keyframes.push(landEnd);
-    } else if (options.landingStyle === 'slam') {
-      keyframes.push(landEnd);
-    } else {
-      // Default: micro-bounce
-      keyframes.push(
-        { offset: 0.88, transform: `${land} scale(${fs * 1.05}) rotateY(${endRY}deg)${rz}`, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' },
-        landEnd,
-      );
-    }
-
-    return keyframes;
-  }
-
-  /** Compute the visible card area within a rect, accounting for card aspect ratio (59:86). */
-  private toCardRect(rect: DOMRect): DOMRect {
-    const CARD_ASPECT = 59 / 86;
-    let w = rect.width;
-    let h = rect.height;
-    if (w / h > CARD_ASPECT) {
-      w = h * CARD_ASPECT;
-    } else {
-      h = w / CARD_ASPECT;
-    }
-    return new DOMRect(
-      rect.left + (rect.width - w) / 2,
-      rect.top + (rect.height - h) / 2,
-      w, h,
-    );
-  }
-
   /** Radial glow contraction + dark sink overlay — shared by GY absorption and banish rift. */
   private zoneImpactEffect(rect: DOMRect, color: string, duration = 400): void {
     if (this._reducedMotion) return;
@@ -650,7 +530,7 @@ export class CardTravelService implements OnDestroy {
   preDestroyEffect(srcEl: HTMLElement, cardImageUrl: string | null, duration = 400): Promise<void> {
     if (this._reducedMotion) return Promise.resolve();
 
-    const rect = this.toCardRect(srcEl.getBoundingClientRect());
+    const rect = toCardRect(srcEl.getBoundingClientRect());
     if (rect.width === 0) return Promise.resolve();
 
     const w = rect.width;
@@ -683,7 +563,7 @@ export class CardTravelService implements OnDestroy {
     // Generate jagged crack paths radiating from a central impact point
     const cx = w * (0.4 + Math.random() * 0.2);
     const cy = h * (0.35 + Math.random() * 0.3);
-    const cracks = CardTravelService.buildCrackPaths(cx, cy, w, h);
+    const cracks = buildCrackPaths(cx, cy, w, h);
 
     const paths: SVGPathElement[] = [];
     for (const d of cracks) {
@@ -723,34 +603,6 @@ export class CardTravelService implements OnDestroy {
         this._timers.add(tid);
       })
     );
-  }
-
-  /** Build jagged SVG path data for crack lines radiating from an impact point. */
-  private static buildCrackPaths(cx: number, cy: number, w: number, h: number): string[] {
-    const angles = [-150, -100, -40, 20, 80, 140];
-    const paths: string[] = [];
-    for (const baseDeg of angles) {
-      const rad = (baseDeg * Math.PI) / 180;
-      const reach = Math.max(w, h) * 0.8;
-      let x = cx;
-      let y = cy;
-      const segments = 4 + Math.floor(Math.random() * 3);
-      let d = `M${x.toFixed(1)},${y.toFixed(1)}`;
-      for (let s = 0; s < segments; s++) {
-        const stepLen = reach / segments * (0.7 + Math.random() * 0.6);
-        const jitter = (Math.random() - 0.5) * 0.6;
-        const angle = rad + jitter;
-        x += Math.cos(angle) * stepLen;
-        y += Math.sin(angle) * stepLen;
-        // Clamp to card bounds
-        x = Math.max(0, Math.min(w, x));
-        y = Math.max(0, Math.min(h, y));
-        d += ` L${x.toFixed(1)},${y.toFixed(1)}`;
-        if (x <= 0 || x >= w || y <= 0 || y >= h) break;
-      }
-      paths.push(d);
-    }
-    return paths;
   }
 
   /** Activation burst: white flash explosion + golden spark particles radiating outward. ~500ms total. */
