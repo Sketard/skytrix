@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Injectable, Injector, OnDestroy, inject } from '@angular/core';
 import { toCardRect, buildTravelKeyframes } from './card-travel-helpers';
 import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
@@ -44,8 +44,9 @@ export interface TravelOptions {
  */
 @Injectable()
 export class CardTravelEngine implements OnDestroy {
-  private readonly boardEffects = inject(BoardEffectsService);
+  private readonly injector = inject(Injector);
   private readonly floatRegistry = inject(FloatRegistryService);
+  private _boardEffects: BoardEffectsService | null = null;
   private _zoneResolver: ((zoneKey: string) => HTMLElement | null) | null = null;
   private _container: HTMLElement = document.body;
   private readonly _timers = new Set<number>();
@@ -53,6 +54,13 @@ export class CardTravelEngine implements OnDestroy {
 
   constructor() {
     this._reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  private get boardEffects(): BoardEffectsService {
+    if (!this._boardEffects) {
+      this._boardEffects = this.injector.get(BoardEffectsService);
+    }
+    return this._boardEffects;
   }
 
   /** Register the container element for travel cards (defaults to document.body). */
