@@ -624,9 +624,15 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       return transformHint(msg);
 
     case OcgMessageType.CONFIRM_DECKTOP:
-      // Private reveal (excavate/peek/scry): only `player` may see the cardCodes;
-      // message-filter masks cards for the opponent.
-      return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo), private: true };
+      // Public excavate reveal (YGO standard): every Duel.ConfirmDecktop call
+      // in the script library reveals the cards face-up to BOTH players
+      // (Adamancipator, Snake-Eye, Spright, GMX Applied Experiment, etc.).
+      // No known private-peek effect uses this message type — `Duel.ConfirmCards`
+      // is used for "look at opponent's Extra Deck" style effects, and even
+      // those reveal publicly. The `private` flag stays in the DTO as a
+      // forward-looking escape hatch but is no longer set here. (See finding
+      // M22 follow-up; the previous masking was an over-correction of C1.)
+      return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo) };
     case OcgMessageType.CONFIRM_CARDS:
       // Public reveal: passthrough to both players unchanged.
       return { type: 'MSG_CONFIRM_CARDS', player: msg.player as Player, cards: msg.cards.map(toCardInfo) };
