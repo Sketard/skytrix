@@ -48,6 +48,7 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   readonly animationQueue = computed(() => this._activeConnection().animationQueue());
   readonly timerState = computed(() => this._activeConnection().timerState());
   readonly connectionStatus = computed(() => this._activeConnection().connectionStatus());
+  readonly protocolMismatch = computed(() => this._activeConnection().protocolMismatch());
   readonly opponentDisconnected = computed(() => this._activeConnection().opponentDisconnected());
   readonly disconnectGraceSec = computed(() => this._activeConnection().disconnectGraceSec());
   readonly activeChainLinks = computed(() => this._activeConnection().activeChainLinks());

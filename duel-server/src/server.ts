@@ -1163,13 +1163,18 @@ const wsRateLimitSweepTimer = startWsRateLimitSweep();
  * protocol shape is request/response style and currently has no version
  * surface worth gating).
  */
-function checkProtocolVersion(ws: WebSocket, url: URL, mode: string): boolean {
+function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string): boolean {
   const raw = url.searchParams.get('pv');
   const clientVersion = raw === null ? null : Number(raw);
   if (clientVersion !== PROTOCOL_VERSION) {
     logger.warn('WS handshake rejected — protocol version mismatch', {
-      mode, clientVersion: raw, serverVersion: PROTOCOL_VERSION,
+      mode, clientVersion: raw, serverVersion: PROTOCOL_VERSION, ip,
     });
+    // Count protocol mismatch as a failed handshake — otherwise an attacker
+    // can spam connections with `?pv=99` and bypass the rate limiter (which
+    // only counts failed AUTH attempts via recordFailedWsAttempt). Audit
+    // review 2026-05-09 H2.
+    recordFailedWsAttempt(ip);
     ws.close(4426, `Protocol version mismatch (server=${PROTOCOL_VERSION}, client=${raw ?? 'missing'})`);
     return false;
   }
@@ -1190,7 +1195,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   // Replay mode branch — separate flow from PvP duels
   const mode = url.searchParams.get('mode');
   if (mode === 'replay') {
-    if (!checkProtocolVersion(ws, url, 'replay')) return;
+    if (!checkProtocolVersion(ws, url, 'replay', ip)) return;
     const replayId = url.searchParams.get('replayId');
     const jwt = url.searchParams.get('token');
     if (!replayId || !jwt) {
@@ -1276,7 +1281,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   }
 
   // PvP duel branch (default — neither replay nor solver)
-  if (!checkProtocolVersion(ws, url, 'pvp')) return;
+  if (!checkProtocolVersion(ws, url, 'pvp', ip)) return;
 
   const token = url.searchParams.get('token');
   const reconnect = url.searchParams.get('reconnect');

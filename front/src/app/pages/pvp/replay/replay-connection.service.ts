@@ -18,6 +18,10 @@ export class ReplayConnectionService implements OnDestroy {
   readonly forkStatus = signal<'idle' | 'forking' | 'ready' | 'warning' | 'error'>('idle');
   readonly forkTokens = signal<{ token1: string; token2: string } | null>(null);
   readonly forkWarning = signal<string | null>(null);
+  /** True when the server closed the WS with code 4426 (protocol version
+   *  mismatch). The replay-page component reads this to render a "please
+   *  refresh" banner instead of the generic error toast. */
+  readonly protocolMismatch = signal(false);
 
   connect(replayId: string, token: string): void {
     this.disconnect();
@@ -25,6 +29,7 @@ export class ReplayConnectionService implements OnDestroy {
     this.lastReceivedTurn.set(-1);
     this.metadata.set(null);
     this.error.set(null);
+    this.protocolMismatch.set(false);
     this.connectionStatus.set('connecting');
 
     const url = `${environment.wsUrl}?mode=replay&replayId=${encodeURIComponent(replayId)}&token=${encodeURIComponent(token)}&pv=${PROTOCOL_VERSION}`;
@@ -83,8 +88,17 @@ export class ReplayConnectionService implements OnDestroy {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       this.connectionStatus.set('disconnected');
+      // 4426 = protocol version mismatch — server is running a newer
+      // PROTOCOL_VERSION than this client bundle. Surface via dedicated
+      // signal so the page can render a "please refresh" banner instead of
+      // the generic "connection lost" error.
+      if (event.code === 4426) {
+        this.protocolMismatch.set(true);
+        this.error.set('replay.viewer.protocolMismatch');
+        console.warn('[ReplayConnection] WS closed — protocol version mismatch (server bundle ahead of client)');
+      }
     };
 
     this.ws.onerror = (e) => {

@@ -63,6 +63,11 @@ export class DuelConnection {
   private _timerState = signal<TimerStateMsg | null>(null);
   private _timerStatePerPlayer = signal<[TimerStateMsg | null, TimerStateMsg | null]>([null, null]);
   private _connectionStatus = signal<ConnectionStatus>('connected');
+  /** True when the server closed the WS with code 4426 (protocol version
+   *  mismatch). Distinct from `_connectionStatus === 'lost'` so the
+   *  component can render an actionable "outdated client, please refresh"
+   *  banner instead of the generic reconnect overlay. */
+  private _protocolMismatch = signal(false);
   private _opponentDisconnected = signal(false);
   private _disconnectGraceSec = signal(0);
   private _duelResult = signal<DuelEndMsg | null>(null);
@@ -84,6 +89,7 @@ export class DuelConnection {
   readonly timerState = this._timerState.asReadonly();
   readonly timerStatePerPlayer = this._timerStatePerPlayer.asReadonly();
   readonly connectionStatus = this._connectionStatus.asReadonly();
+  readonly protocolMismatch = this._protocolMismatch.asReadonly();
   readonly opponentDisconnected = this._opponentDisconnected.asReadonly();
   readonly disconnectGraceSec = this._disconnectGraceSec.asReadonly();
   readonly activeChainLinks = this.processor.activeChainLinks;
@@ -454,6 +460,20 @@ export class DuelConnection {
     this.ws.onclose = (event) => {
       this.clearTimeoutSlot('connection');
       this.clearTimeoutSlot('sessionToken');
+      // 4426 = protocol version mismatch — client bundle is outdated relative
+      // to the server. Retrying is pointless (the same `pv` will be rejected
+      // again). Wipe tokens, surface via `protocolMismatch` signal so the
+      // component renders an actionable "please refresh" banner.
+      if (event.code === 4426) {
+        this.reconnectToken = null;
+        this.wsToken = null;
+        try { sessionStorage.removeItem(this.storageKey); } catch {}
+        this._hasToken.set(false);
+        this._connectionStatus.set('lost');
+        this._protocolMismatch.set(true);
+        this.logger?.warn('ws closed — protocol version mismatch (server bundle ahead of client)');
+        return;
+      }
       // 4029 = rate limited — no point retrying immediately
       if (event.code === 4029) {
         this.reconnectToken = null;
