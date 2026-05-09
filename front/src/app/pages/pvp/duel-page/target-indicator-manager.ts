@@ -4,6 +4,7 @@ import { LOCATION, POSITION } from '../duel-ws.types';
 import type { ZoneId } from '../duel-ws-shared.types';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { CardTravelService } from './card-travel.service';
+import { BoardEffectsService } from './board-effects.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import {
@@ -33,6 +34,7 @@ interface TrackedFloat {
 @Injectable()
 export class TargetIndicatorManager implements OnDestroy {
   private readonly cardTravelService = inject(CardTravelService);
+  private readonly boardEffects = inject(BoardEffectsService);
   private readonly artService = inject(DuelCardArtService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
@@ -68,7 +70,7 @@ export class TargetIndicatorManager implements OnDestroy {
       const cardImage = this.cardTravelService.toAbsoluteUrl(this.artService.resolveUrl(resolvedCode));
 
       const cascadeIndex = (this.floatsByZone.get(zoneKey)?.length ?? 0);
-      const el = this.cardTravelService.createTargetFloat(
+      const el = this.boardEffects.createTargetFloat(
         zoneKey,
         cardImage,
         cascadeIndex,
@@ -116,7 +118,7 @@ export class TargetIndicatorManager implements OnDestroy {
   /** Fade-out + remove all tracked floats. Idempotent. */
   cleanup(): void {
     for (const { el } of this.floats) {
-      this.cardTravelService.fadeOutAndRemoveTargetFloat(el, TARGET_PILE_FLOAT_FADE_OUT_MS);
+      this.boardEffects.fadeOutAndRemoveTargetFloat(el, TARGET_PILE_FLOAT_FADE_OUT_MS);
     }
     this.floats = [];
     this.floatsByZone.clear();
@@ -129,7 +131,7 @@ export class TargetIndicatorManager implements OnDestroy {
       this.cleanupTimer = null;
     }
     for (const { el } of this.floats) {
-      this.cardTravelService.removeTargetFloat(el);
+      this.boardEffects.removeTargetFloat(el);
     }
     this.floats = [];
     this.floatsByZone.clear();

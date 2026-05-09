@@ -1,5 +1,6 @@
-import { Injectable, OnDestroy } from '@angular/core';
-import { toCardRect, buildTravelKeyframes, buildCrackPaths } from './card-travel-helpers';
+import { Injectable, OnDestroy, inject } from '@angular/core';
+import { toCardRect, buildTravelKeyframes } from './card-travel-helpers';
+import { BoardEffectsService } from './board-effects.service';
 
 export interface TravelOptions {
   showBack?: boolean;
@@ -28,16 +29,12 @@ export interface TravelOptions {
 
 @Injectable()
 export class CardTravelService implements OnDestroy {
+  private readonly boardEffects = inject(BoardEffectsService);
   private _zoneResolver: ((zoneKey: string) => HTMLElement | null) | null = null;
   private _container: HTMLElement = document.body;
   private readonly _inFlight = new Map<HTMLDivElement, { animation: Animation; resolve: () => void }>();
   private readonly _landed = new Set<HTMLDivElement>();
   private readonly _timers = new Set<number>();
-  /** Tracks ephemeral overlay elements (glow, sink, particles, cracks, flash, star)
-   *  appended by the autonomous effects (zoneImpactEffect, slamDustParticles,
-   *  preDestroyEffect, activateEffect). Cleared in ngOnDestroy so a destroy mid-effect
-   *  doesn't leave orphan DOM elements when the .finished.then() never fires. */
-  private readonly _overlayEls = new Set<HTMLElement>();
   private readonly _reducedMotion: boolean;
 
   constructor() {
@@ -230,13 +227,13 @@ export class CardTravelService implements OnDestroy {
     if (options.landingStyle === 'soft' && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
       this.addTimer(window.setTimeout(() => {
-        this.zoneImpactEffect(rawDestRect, glowColor, duration);
+        this.boardEffects.zoneImpactEffect(rawDestRect, glowColor, duration);
       }, duration * 0.70));
     }
     if (options.landingStyle === 'banish' && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
       this.addTimer(window.setTimeout(() => {
-        this.zoneImpactEffect(rawDestRect, glowColor, duration);
+        this.boardEffects.zoneImpactEffect(rawDestRect, glowColor, duration);
       }, duration * 0.70));
     }
 
@@ -245,7 +242,7 @@ export class CardTravelService implements OnDestroy {
     animation.finished.then(() => {
       this._inFlight.delete(floatingEl);
       if (options.landingStyle === 'slam') {
-        this.slamDustParticles(rawDestRect);
+        this.boardEffects.slamDustParticles(rawDestRect);
       }
       onLanded();
     }).catch(() => {
@@ -410,8 +407,6 @@ export class CardTravelService implements OnDestroy {
       resolve();
     }
     this._inFlight.clear();
-    for (const el of this._overlayEls) el.remove();
-    this._overlayEls.clear();
     this.clearLandedTravels();
   }
 
@@ -440,338 +435,6 @@ export class CardTravelService implements OnDestroy {
     div.appendChild(img);
 
     return div;
-  }
-
-  /** Radial glow contraction + dark sink overlay — shared by GY absorption and banish rift. */
-  private zoneImpactEffect(rect: DOMRect, color: string, duration = 400): void {
-    if (this._reducedMotion) return;
-    const pad = 4;
-
-    // 1. Radial glow that contracts into the zone center
-    const glow = document.createElement('div');
-    glow.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
-      left:${rect.left - pad}px; top:${rect.top - pad}px;
-      width:${rect.width + pad * 2}px; height:${rect.height + pad * 2}px;
-      border-radius:4px;
-      background:radial-gradient(circle, ${color} 0%, transparent 70%);
-    `;
-    const glowAnim = glow.animate([
-      { opacity: 0, transform: 'scale(1.3)' },
-      { opacity: 0.8, transform: 'scale(1)', offset: 0.4 },
-      { opacity: 0, transform: 'scale(0.85)' },
-    ], { duration: duration * 0.6, easing: 'ease-in-out', fill: 'forwards' });
-    this.trackOverlay(glow, glowAnim);
-
-    // 2. Brief dark overlay simulating the card sinking in
-    const sink = document.createElement('div');
-    sink.style.cssText = `
-      position:fixed; pointer-events:none; z-index:900;
-      left:${rect.left}px; top:${rect.top}px;
-      width:${rect.width}px; height:${rect.height}px;
-      border-radius:4px;
-      background:rgba(0,0,0,0.5);
-    `;
-    const sinkAnim = sink.animate([
-      { opacity: 0 },
-      { opacity: 1, offset: 0.35 },
-      { opacity: 0 },
-    ], { duration: duration * 0.55, easing: 'ease-in', fill: 'forwards' });
-    this.trackOverlay(sink, sinkAnim);
-  }
-
-  /** Dust particles expelled from the zone edges on slam impact. */
-  private slamDustParticles(rect: DOMRect): void {
-    if (this._reducedMotion) return;
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    // Spawn points along the bottom and sides of the zone
-    const spawnPoints = [
-      { x: cx - rect.width * 0.35, y: rect.bottom },
-      { x: cx - rect.width * 0.15, y: rect.bottom },
-      { x: cx,                      y: rect.bottom },
-      { x: cx + rect.width * 0.15, y: rect.bottom },
-      { x: cx + rect.width * 0.35, y: rect.bottom },
-      { x: rect.left,               y: cy + rect.height * 0.2 },
-      { x: rect.right,              y: cy + rect.height * 0.2 },
-    ];
-
-    spawnPoints.forEach(({ x, y }, i) => {
-      const size = 4 + Math.random() * 5;
-      const p = document.createElement('div');
-      p.style.cssText = `
-        position:fixed; pointer-events:none; z-index:900;
-        left:${x - size / 2}px; top:${y - size / 2}px;
-        width:${size}px; height:${size}px;
-        border-radius:50%;
-        background:rgba(200,190,170,0.75);
-      `;
-      // Direction: outward from center, slightly randomised
-      const baseAngle = Math.atan2(y - cy, x - cx);
-      const angle = baseAngle + (Math.random() - 0.5) * 0.6;
-      const dist = 18 + Math.random() * 22;
-      const tx = Math.cos(angle) * dist;
-      const ty = Math.sin(angle) * dist;
-      const delay = i * 18;
-
-      const pAnim = p.animate([
-        { opacity: 0.9, transform: 'translate(0,0) scale(1)' },
-        { opacity: 0,   transform: `translate(${tx}px,${ty}px) scale(0.3)` },
-      ], { duration: 340 + Math.random() * 120, delay, easing: 'ease-out', fill: 'forwards' });
-      this.trackOverlay(p, pAnim);
-    });
-  }
-
-  /**
-   * Pre-destroy visual effect: cracks appear across the card. ~400ms total.
-   * Creates a fixed-position overlay so the effect is independent of board-state changes
-   * (the source card may be removed from the DOM mid-animation).
-   */
-  preDestroyEffect(srcEl: HTMLElement, cardImageUrl: string | null, duration = 400): Promise<void> {
-    if (this._reducedMotion) return Promise.resolve();
-
-    const rect = toCardRect(srcEl.getBoundingClientRect());
-    if (rect.width === 0) return Promise.resolve();
-
-    const w = rect.width;
-    const h = rect.height;
-
-    // Overlay with the card image
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position:fixed; pointer-events:none; z-index:900;
-      left:${rect.left}px; top:${rect.top}px;
-      width:${w}px; height:${h}px;
-      border-radius:4px; overflow:hidden;
-    `;
-    const img = document.createElement('img');
-    // Mirror the source card's rotation (e.g. 180° for opponent cards).
-    // The rotation lives on .card-inner (via CSS `rotate`), not on .card-art.
-    const srcInner = srcEl.querySelector<HTMLElement>('.card-inner');
-    const srcRotation = srcInner ? getComputedStyle(srcInner).transform : '';
-    const imgTransform = (srcRotation && srcRotation !== 'none') ? `transform:${srcRotation};` : '';
-    img.style.cssText = `width:100%;height:100%;object-fit:cover;display:block;${imgTransform}`;
-    img.src = cardImageUrl ?? this.toAbsoluteUrl('assets/images/card_back.jpg');
-    overlay.appendChild(img);
-
-    // SVG crack lines overlaid on the card
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;';
-
-    // Generate jagged crack paths radiating from a central impact point
-    const cx = w * (0.4 + Math.random() * 0.2);
-    const cy = h * (0.35 + Math.random() * 0.3);
-    const cracks = buildCrackPaths(cx, cy, w, h);
-
-    const paths: SVGPathElement[] = [];
-    for (const d of cracks) {
-      const path = document.createElementNS(ns, 'path');
-      path.setAttribute('d', d);
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'rgba(255,255,255,0.85)');
-      path.setAttribute('stroke-width', '1.5');
-      path.setAttribute('stroke-linecap', 'round');
-      const len = path.getTotalLength?.() || 200;
-      path.style.strokeDasharray = `${len}`;
-      path.style.strokeDashoffset = `${len}`;
-      svg.appendChild(path);
-      paths.push(path);
-    }
-
-    overlay.appendChild(svg);
-    this.trackOverlayUntimed(overlay);
-
-    // Animate cracks drawing in with staggered starts
-    const animations: Animation[] = [];
-    for (let i = 0; i < paths.length; i++) {
-      animations.push(paths[i].animate(
-        [{ strokeDashoffset: paths[i].style.strokeDasharray }, { strokeDashoffset: '0' }],
-        { duration: duration * 0.625, delay: i * (duration * 0.1), easing: 'ease-out', fill: 'forwards' },
-      ));
-    }
-
-    const lastAnim = animations[animations.length - 1];
-    return lastAnim.finished.then(() =>
-      // Brief hold so the cracks are visible before the travel starts
-      new Promise<void>(resolve => {
-        const tid = setTimeout(() => {
-          this.removeOverlay(overlay);
-          resolve();
-        }, duration * 0.3) as unknown as number;
-        this._timers.add(tid);
-      })
-    );
-  }
-
-  /** Activation burst: white flash explosion + golden spark particles radiating outward. ~500ms total. */
-  activateEffect(target: string | HTMLElement, duration = 500): Promise<void> {
-    if (this._reducedMotion) return Promise.resolve();
-    const el = typeof target === 'string' ? this.getZoneElement(target) : target;
-    if (!el) return Promise.resolve();
-
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const pad = 16;
-
-    // --- 1. White flash burst (expanding radial gradient) ---
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
-      left:${rect.left - pad}px; top:${rect.top - pad}px;
-      width:${rect.width + pad * 2}px; height:${rect.height + pad * 2}px;
-      border-radius:8px;
-      background:radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,220,100,0.6) 40%, transparent 70%);
-    `;
-    const flashAnim = flash.animate([
-      { opacity: 0, transform: 'scale(0.3)' },
-      { opacity: 1, transform: 'scale(1.2)', offset: 0.3 },
-      { opacity: 0.8, transform: 'scale(1.4)', offset: 0.5 },
-      { opacity: 0, transform: 'scale(1.8)' },
-    ], { duration: duration * 0.8, easing: 'ease-out', fill: 'forwards' });
-    this.trackOverlay(flash, flashAnim);
-
-    // --- 2. Growing star burst ---
-    const starSize = Math.max(rect.width, rect.height) * 1.4;
-    const star = document.createElement('div');
-    star.style.cssText = `
-      position:fixed; pointer-events:none; z-index:901;
-      left:${cx - starSize / 2}px; top:${cy - starSize / 2}px;
-      width:${starSize}px; height:${starSize}px;
-      clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
-      background:radial-gradient(circle, rgba(255,255,220,0.95) 0%, rgba(255,200,60,0.7) 50%, transparent 100%);
-    `;
-    const starAnim = star.animate([
-      { opacity: 0, transform: 'scale(0) rotate(0deg)' },
-      { opacity: 1, transform: 'scale(0.8) rotate(20deg)', offset: 0.3 },
-      { opacity: 0.7, transform: 'scale(1.2) rotate(35deg)', offset: 0.6 },
-      { opacity: 0, transform: 'scale(1.6) rotate(50deg)' },
-    ], { duration: duration * 0.9, easing: 'ease-out', fill: 'forwards' });
-    this.trackOverlay(star, starAnim);
-
-    // --- 3. Spark particles (golden/cyan, radiating outward) ---
-    const particleCount = 10;
-    for (let i = 0; i < particleCount; i++) {
-      const size = 3 + Math.random() * 4;
-      const p = document.createElement('div');
-      const isGold = Math.random() > 0.3;
-      const color = isGold
-        ? `rgba(255,${180 + Math.random() * 60},${50 + Math.random() * 50},0.9)`
-        : `rgba(100,${200 + Math.random() * 55},255,0.9)`;
-      p.style.cssText = `
-        position:fixed; pointer-events:none; z-index:902;
-        left:${cx - size / 2}px; top:${cy - size / 2}px;
-        width:${size}px; height:${size}px;
-        border-radius:50%;
-        background:${color};
-        box-shadow:0 0 ${size}px ${color};
-      `;
-      const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.5;
-      const dist = 25 + Math.random() * 35;
-      const tx = Math.cos(angle) * dist;
-      const ty = Math.sin(angle) * dist;
-
-      const pAnim = p.animate([
-        { opacity: 1, transform: 'translate(0,0) scale(1)' },
-        { opacity: 0.8, transform: `translate(${tx * 0.5}px,${ty * 0.5}px) scale(1.2)`, offset: 0.3 },
-        { opacity: 0, transform: `translate(${tx}px,${ty}px) scale(0.2)` },
-      ], { duration: duration * 0.7 + Math.random() * duration * 0.3, delay: duration * 0.1 + i * (duration * 0.024), easing: 'ease-out', fill: 'forwards' });
-      this.trackOverlay(p, pAnim);
-    }
-
-    // flash element is already cleaned up by trackOverlay above; just await its end.
-    return flashAnim.finished.then(() => undefined, () => undefined);
-  }
-
-  /**
-   * Create a card-shaped float positioned above the given pile zone (GY, BANISHED, EXTRA),
-   * sized to match the zone and offset by a cascade index. Used by `TargetIndicatorManager`
-   * to surface MSG_BECOME_TARGET feedback when targets are inside a pile (the pile only
-   * renders the top card so the existing `.zone-card--targeted` reticle would point at
-   * the wrong card).
-   *
-   * Returns null if the zone element cannot be resolved (also under reduced motion).
-   * The caller owns lifecycle: call `removeTargetFloat(el)` to remove + untrack.
-   */
-  createTargetFloat(zoneKey: string, cardImage: string, cascadeIndex: number, cascadeYPx: number, cascadeXPx: number, enterMs: number): HTMLDivElement | null {
-    if (this._reducedMotion) return null;
-    const zoneEl = this.getZoneElement(zoneKey);
-    if (!zoneEl) return null;
-    const rect = zoneEl.getBoundingClientRect();
-    // Float 0 overlaps the pile by 50% (its bottom half hides behind the
-    // pile, top half rises above) so it visually reads as a card being
-    // pulled out of the GY for targeting. Each subsequent float in the
-    // cascade lifts by `cascadeYPx` further (newest on top).
-    const liftY = rect.height * 0.5 + cascadeIndex * cascadeYPx;
-    const shiftX = cascadeIndex * cascadeXPx;
-
-    const div = document.createElement('div');
-    div.dataset['targetFloat'] = 'true';
-    div.dataset['zoneKey'] = zoneKey;
-    div.style.cssText = `
-      position: fixed;
-      pointer-events: none;
-      z-index: 900;
-      left: ${rect.left + shiftX}px;
-      top: ${rect.top - liftY}px;
-      width: ${rect.width}px;
-      height: ${rect.height}px;
-      border-radius: 4px;
-      background-image: url('${cardImage}');
-      background-size: cover;
-      background-position: center;
-      opacity: 0;
-      transform: translateY(8px) scale(0.92);
-      transition: opacity ${enterMs}ms ease-out, transform ${enterMs}ms ease-out;
-    `;
-    this._container.appendChild(div);
-    this._overlayEls.add(div);
-    // Trigger entry transition on next frame.
-    requestAnimationFrame(() => {
-      div.style.opacity = '1';
-      div.style.transform = 'translateY(0) scale(1)';
-    });
-    return div;
-  }
-
-  /** Remove a target float element and untrack it. Safe to call multiple times. */
-  removeTargetFloat(el: HTMLDivElement): void {
-    el.remove();
-    this._overlayEls.delete(el);
-  }
-
-  /** Fade-out helper for target floats — resolves after `durationMs` then removes the element. */
-  fadeOutAndRemoveTargetFloat(el: HTMLDivElement, durationMs: number): void {
-    el.style.transition = `opacity ${durationMs}ms ease-in`;
-    el.style.opacity = '0';
-    const id = window.setTimeout(() => this.removeTargetFloat(el), durationMs);
-    this._timers.add(id);
-  }
-
-  /** Append `el` to the container and track it; remove from DOM + tracking when
-   *  `animation.finished` resolves OR rejects (animation.cancel()). */
-  private trackOverlay(el: HTMLElement, animation: Animation): void {
-    this._container.appendChild(el);
-    this._overlayEls.add(el);
-    const cleanup = () => {
-      el.remove();
-      this._overlayEls.delete(el);
-    };
-    animation.finished.then(cleanup, cleanup);
-  }
-
-  /** Append `el` to the container and track it without auto-cleanup. The caller
-   *  is responsible for invoking `removeOverlay(el)` when done. */
-  private trackOverlayUntimed(el: HTMLElement): void {
-    this._container.appendChild(el);
-    this._overlayEls.add(el);
-  }
-
-  private removeOverlay(el: HTMLElement): void {
-    el.remove();
-    this._overlayEls.delete(el);
   }
 
   private applyGlow(el: HTMLElement, color: string, duration: number): void {

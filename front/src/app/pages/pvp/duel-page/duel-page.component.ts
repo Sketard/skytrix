@@ -33,6 +33,7 @@ import { PhaseAnnouncementService } from './phase-announcement.service';
 import { AnimationOrchestratorService } from './animation-orchestrator.service';
 import { ANIMATION_DATA_SOURCE } from './animation-data-source';
 import { CardTravelService } from './card-travel.service';
+import { BoardEffectsService } from './board-effects.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { BattleAnimationTracker } from './battle-animation-tracker';
@@ -69,7 +70,7 @@ import { environment } from '../../../../environments/environment';
     DuelWebSocketService, CardDataCacheService, DuelTabGuardService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
-    AnimationOrchestratorService, CardTravelService, RoomStateMachineService, CardInspectionService,
+    AnimationOrchestratorService, CardTravelService, BoardEffectsService, RoomStateMachineService, CardInspectionService,
     DebugLogService, SoloDuelOrchestratorService, PhaseAnnouncementService, DuelToastService,
     DuelConnectionEffectsService, SoloModeEffectsService, DuelPromptEffectsService, DuelA11yEffectsService, DuelLoadingEffectsService, DuelAnimationBridgeService,
     DuelCardArtService, CardActionMenuService, PromptDerivationService,

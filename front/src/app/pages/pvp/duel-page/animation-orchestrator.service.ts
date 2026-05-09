@@ -23,6 +23,7 @@ import {
   CHAIN_PULSE_BASE_MS,
 } from './animation-constants';
 import { CardTravelService } from './card-travel.service';
+import { BoardEffectsService } from './board-effects.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { BattleAnimationTracker } from './battle-animation-tracker';
@@ -60,6 +61,7 @@ export class AnimationOrchestratorService {
   readonly lpTracker = inject(LpAnimationTracker);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly cardTravelService = inject(CardTravelService);
+  private readonly boardEffects = inject(BoardEffectsService);
   private readonly ctx = inject(DuelContext);
   readonly chainManager = inject(ChainResolutionManager);
   readonly drawManager = inject(DrawSequenceManager);
@@ -761,14 +763,14 @@ export class AnimationOrchestratorService {
     if (zoneId) {
       this.setAnimatingZone(zoneId, 'activate', msg.player);
       const zoneKey = locationToZoneKey(msg.location, msg.sequence, relPlayer);
-      if (zoneKey) return this.cardTravelService.activateEffect(zoneKey, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
+      if (zoneKey) return this.boardEffects.activateEffect(zoneKey, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
         .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
     }
     if (msg.location === LOCATION.HAND) {
       const handEl = this.drawManager.resolveHandTarget(`HAND-${relPlayer}`, msg.sequence);
       if (handEl instanceof HTMLElement) {
         handEl.style.zIndex = '500';
-        return this.cardTravelService.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
+        return this.boardEffects.activateEffect(handEl, this.ctx.scaledDuration(CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS))
           .then(() => { handEl.style.zIndex = ''; })
           .then(() => new Promise<void>(r => setTimeout(r, holdMs)));
       }

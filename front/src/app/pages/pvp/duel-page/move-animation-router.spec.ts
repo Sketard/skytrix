@@ -4,6 +4,7 @@ import { MoveAnimationRouter } from './move-animation-router';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { DuelCardArtService } from './duel-card-art.service';
 import { CardTravelService } from './card-travel.service';
+import { BoardEffectsService } from './board-effects.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
@@ -88,6 +89,11 @@ describe('MoveAnimationRouter', () => {
     mockCardTravel.getZoneElement.and.returnValue(null);
     mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
 
+    const mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
+      'preDestroyEffect',
+    ]);
+    mockBoardEffects.preDestroyEffect.and.returnValue(Promise.resolve());
+
     const mockCtx = {
       relativePlayer: (p: number) => (p === 0 ? 0 : 1) as 0 | 1,
       ownPlayerIndex: () => 0,
@@ -114,6 +120,7 @@ describe('MoveAnimationRouter', () => {
         MoveAnimationRouter,
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
         { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: BoardEffectsService, useValue: mockBoardEffects },
         { provide: DuelContext, useValue: mockCtx as unknown as DuelContext },
         { provide: DuelLogger, useValue: mockLogger },
         { provide: DrawSequenceManager, useValue: mockDrawManager },

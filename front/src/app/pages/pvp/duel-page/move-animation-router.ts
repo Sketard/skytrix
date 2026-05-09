@@ -6,6 +6,7 @@ import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { DuelCardArtService } from './duel-card-art.service';
 import { ANIMATION_DATA_SOURCE, type QueueEntry } from './animation-data-source';
 import { CardTravelService } from './card-travel.service';
+import { BoardEffectsService } from './board-effects.service';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
@@ -50,6 +51,7 @@ const isPile = (loc: number) => loc === LOCATION.GRAVE || loc === LOCATION.BANIS
 @Injectable()
 export class MoveAnimationRouter {
   private readonly cardTravelService = inject(CardTravelService);
+  private readonly boardEffects = inject(BoardEffectsService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger);
@@ -386,7 +388,7 @@ export class MoveAnimationRouter {
     this.ctx.announceEvent('Card destroyed', mc.msg.player);
     const srcEl = this.cardTravelService.getZoneElement(mc.srcKey);
     const preEffect = (srcEl && !this.ctx.reducedMotion())
-      ? this.cardTravelService.preDestroyEffect(srcEl, mc.isFaceDown ? null : mc.cardImage, this.ctx.scaledDuration(400, 200))
+      ? this.boardEffects.preDestroyEffect(srcEl, mc.isFaceDown ? null : mc.cardImage, this.ctx.scaledDuration(400, 200))
       : Promise.resolve();
     const srcLock = mc.preSrcLock ?? this.rbs.lockZone(mc.srcKey);
     const dstLock = mc.preDstLock ?? this.rbs.lockZone(mc.dstKey);

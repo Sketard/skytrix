@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal, type WritableSignal } from '@angular/core';
 import { TargetIndicatorManager } from './target-indicator-manager';
 import { CardTravelService } from './card-travel.service';
+import { BoardEffectsService } from './board-effects.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { DuelContext } from './duel-context';
 import { ANIMATION_DATA_SOURCE, type AnimationDataSource, type QueueEntry } from './animation-data-source';
@@ -38,6 +39,7 @@ function makeBoardWithGyCards(player: 0 | 1, cards: { cardCode: number | null; f
 describe('TargetIndicatorManager', () => {
   let manager: TargetIndicatorManager;
   let mockCardTravel: jasmine.SpyObj<CardTravelService>;
+  let mockBoardEffects: jasmine.SpyObj<BoardEffectsService>;
   let mockArtService: jasmine.SpyObj<DuelCardArtService>;
   let renderedState: WritableSignal<DuelState>;
   let mockDataSource: AnimationDataSource;
@@ -69,17 +71,19 @@ describe('TargetIndicatorManager', () => {
       applyChainEnd: () => undefined,
     };
 
-    mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', [
-      'createTargetFloat', 'removeTargetFloat', 'fadeOutAndRemoveTargetFloat', 'toAbsoluteUrl',
+    mockCardTravel = jasmine.createSpyObj<CardTravelService>('CardTravelService', ['toAbsoluteUrl']);
+    mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
+
+    mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
+      'createTargetFloat', 'removeTargetFloat', 'fadeOutAndRemoveTargetFloat',
     ]);
-    mockCardTravel.createTargetFloat.and.callFake(() => {
+    mockBoardEffects.createTargetFloat.and.callFake(() => {
       const el = makeFloatEl();
       createdFloats.push(el);
       return el;
     });
-    mockCardTravel.removeTargetFloat.and.callFake((el: HTMLDivElement) => { removedFloats.push(el); });
-    mockCardTravel.fadeOutAndRemoveTargetFloat.and.callFake((el: HTMLDivElement) => { fadedFloats.push(el); });
-    mockCardTravel.toAbsoluteUrl.and.callFake((s: string) => s);
+    mockBoardEffects.removeTargetFloat.and.callFake((el: HTMLDivElement) => { removedFloats.push(el); });
+    mockBoardEffects.fadeOutAndRemoveTargetFloat.and.callFake((el: HTMLDivElement) => { fadedFloats.push(el); });
 
     mockArtService = jasmine.createSpyObj<DuelCardArtService>('DuelCardArtService', ['resolveUrl']);
     mockArtService.resolveUrl.and.callFake((code: number | null | undefined) => code == null ? 'card_back.jpg' : `art/${code}.jpg`);
@@ -100,6 +104,7 @@ describe('TargetIndicatorManager', () => {
       providers: [
         TargetIndicatorManager,
         { provide: CardTravelService, useValue: mockCardTravel },
+        { provide: BoardEffectsService, useValue: mockBoardEffects },
         { provide: DuelCardArtService, useValue: mockArtService },
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
         { provide: DuelContext, useValue: mockCtx as unknown as DuelContext },
@@ -118,14 +123,14 @@ describe('TargetIndicatorManager', () => {
         { player: 0, location: LOCATION.MZONE, sequence: 2 },
         { player: 0, location: LOCATION.SZONE, sequence: 1 },
       ]));
-      expect(mockCardTravel.createTargetFloat).not.toHaveBeenCalled();
+      expect(mockBoardEffects.createTargetFloat).not.toHaveBeenCalled();
     });
 
     it('spawns a float for a GY target with the correct zoneKey', () => {
       renderedState.set(makeBoardWithGyCards(0, [{ cardCode: 12345 }]));
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 0 }]));
-      expect(mockCardTravel.createTargetFloat).toHaveBeenCalledTimes(1);
-      const args = mockCardTravel.createTargetFloat.calls.mostRecent().args;
+      expect(mockBoardEffects.createTargetFloat).toHaveBeenCalledTimes(1);
+      const args = mockBoardEffects.createTargetFloat.calls.mostRecent().args;
       expect(args[0]).toBe('GY-0'); // zoneKey
       expect(args[1]).toBe('art/12345.jpg'); // cardImage
       expect(args[2]).toBe(0); // cascadeIndex
@@ -134,7 +139,7 @@ describe('TargetIndicatorManager', () => {
     it('builds opponent zoneKey with relPlayer=1', () => {
       renderedState.set(makeBoardWithGyCards(1, [{ cardCode: 999 }]));
       manager.spawnPileFloats(targetMsg([{ player: 1, location: LOCATION.GRAVE, sequence: 0 }]));
-      const args = mockCardTravel.createTargetFloat.calls.mostRecent().args;
+      const args = mockBoardEffects.createTargetFloat.calls.mostRecent().args;
       expect(args[0]).toBe('GY-1');
     });
 
@@ -144,7 +149,7 @@ describe('TargetIndicatorManager', () => {
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 1 }]));
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 2 }]));
 
-      const calls = mockCardTravel.createTargetFloat.calls.allArgs();
+      const calls = mockBoardEffects.createTargetFloat.calls.allArgs();
       expect(calls.length).toBe(3);
       expect(calls[0][2]).toBe(0); // cascadeIndex
       expect(calls[1][2]).toBe(1);
@@ -180,12 +185,12 @@ describe('TargetIndicatorManager', () => {
 
     it('skips float when createTargetFloat returns null (reduced motion / unmounted zone)', () => {
       renderedState.set(makeBoardWithGyCards(0, [{ cardCode: 1 }]));
-      mockCardTravel.createTargetFloat.and.returnValue(null);
+      mockBoardEffects.createTargetFloat.and.returnValue(null);
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 0 }]));
-      expect(mockCardTravel.createTargetFloat).toHaveBeenCalled();
+      expect(mockBoardEffects.createTargetFloat).toHaveBeenCalled();
       // No float tracked → cleanup is a no-op
       manager.cleanup();
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
     });
   });
 
@@ -197,16 +202,16 @@ describe('TargetIndicatorManager', () => {
         { player: 0, location: LOCATION.GRAVE, sequence: 1 },
       ]));
       manager.cleanup();
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).toHaveBeenCalledTimes(2);
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).toHaveBeenCalledTimes(2);
       // Subsequent spawn starts fresh at cascadeIndex=0
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 0 }]));
-      expect(mockCardTravel.createTargetFloat.calls.mostRecent().args[2]).toBe(0);
+      expect(mockBoardEffects.createTargetFloat.calls.mostRecent().args[2]).toBe(0);
     });
 
     it('is idempotent (second call after no spawns is a no-op)', () => {
       manager.cleanup();
       manager.cleanup();
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
     });
   });
 
@@ -216,8 +221,8 @@ describe('TargetIndicatorManager', () => {
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 0 }]));
       manager.scheduleCleanup(800);
       manager.reset();
-      expect(mockCardTravel.removeTargetFloat).toHaveBeenCalledTimes(1);
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
+      expect(mockBoardEffects.removeTargetFloat).toHaveBeenCalledTimes(1);
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
     });
   });
 
@@ -231,9 +236,9 @@ describe('TargetIndicatorManager', () => {
       manager.scheduleCleanup(800);
 
       jasmine.clock().tick(799);
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
       jasmine.clock().tick(2);
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).toHaveBeenCalledTimes(1);
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).toHaveBeenCalledTimes(1);
     });
 
     it('cancels the previous timer when called again before it fires (cascade hold extension)', () => {
@@ -246,9 +251,9 @@ describe('TargetIndicatorManager', () => {
       manager.scheduleCleanup(800);
 
       jasmine.clock().tick(500); // total 1000ms → first timer would have fired at 800ms
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).not.toHaveBeenCalled();
       jasmine.clock().tick(400); // total 1400ms → second timer at 1300ms (500+800)
-      expect(mockCardTravel.fadeOutAndRemoveTargetFloat).toHaveBeenCalledTimes(2);
+      expect(mockBoardEffects.fadeOutAndRemoveTargetFloat).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -257,7 +262,7 @@ describe('TargetIndicatorManager', () => {
       renderedState.set(makeBoardWithGyCards(0, [{ cardCode: 1 }]));
       manager.spawnPileFloats(targetMsg([{ player: 0, location: LOCATION.GRAVE, sequence: 0 }]));
       manager.ngOnDestroy();
-      expect(mockCardTravel.removeTargetFloat).toHaveBeenCalledTimes(1);
+      expect(mockBoardEffects.removeTargetFloat).toHaveBeenCalledTimes(1);
     });
   });
 });

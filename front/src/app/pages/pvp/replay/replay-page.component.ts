@@ -30,6 +30,7 @@ import { PvpZoneBrowserOverlayComponent } from '../duel-page/pvp-zone-browser-ov
 import { CardDataCacheService } from '../duel-page/card-data-cache.service';
 import { CardInspectionService } from '../duel-page/card-inspection.service';
 import { CardTravelService } from '../duel-page/card-travel.service';
+import { BoardEffectsService } from '../duel-page/board-effects.service';
 import { DuelCardArtService } from '../duel-page/duel-card-art.service';
 import { DebugLogService } from '../duel-page/debug-log.service';
 import { DuelWebSocketService } from '../duel-page/duel-web-socket.service';
@@ -58,7 +59,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     ReplayConnectionService, ReplayForkService,
-    CardDataCacheService, CardInspectionService, CardTravelService, DuelCardArtService,
+    CardDataCacheService, CardInspectionService, CardTravelService, BoardEffectsService, DuelCardArtService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
     ReplayDuelAdapter, AnimationOrchestratorService, PhaseAnnouncementService, DuelToastService,
