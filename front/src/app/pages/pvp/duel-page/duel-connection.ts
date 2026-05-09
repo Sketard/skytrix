@@ -201,14 +201,14 @@ export class DuelConnection {
   }
 
   clearStorageToken(): void {
-    try { sessionStorage.removeItem(this.storageKey); } catch {}
+    try { localStorage.removeItem(this.storageKey); } catch {}
   }
 
   // --- Public API ---
 
   connect(wsToken: string): void {
     if (this._autoReconnect) {
-      const stored = sessionStorage.getItem(this.storageKey);
+      const stored = localStorage.getItem(this.storageKey);
       if (stored) this.reconnectToken = stored;
     }
     this.wsToken = wsToken;
@@ -467,7 +467,7 @@ export class DuelConnection {
       if (event.code === 4426) {
         this.reconnectToken = null;
         this.wsToken = null;
-        try { sessionStorage.removeItem(this.storageKey); } catch {}
+        try { localStorage.removeItem(this.storageKey); } catch {}
         this._hasToken.set(false);
         this._connectionStatus.set('lost');
         this._protocolMismatch.set(true);
@@ -477,7 +477,7 @@ export class DuelConnection {
       // 4029 = rate limited — no point retrying immediately
       if (event.code === 4029) {
         this.reconnectToken = null;
-        try { sessionStorage.removeItem(this.storageKey); } catch {}
+        try { localStorage.removeItem(this.storageKey); } catch {}
         this._hasToken.set(this.wsToken !== null);
         this._connectionStatus.set('lost');
         return;
@@ -486,7 +486,7 @@ export class DuelConnection {
       if (event.code === 4001) {
         if (this.reconnectToken) {
           this.reconnectToken = null;
-          try { sessionStorage.removeItem(this.storageKey); } catch {}
+          try { localStorage.removeItem(this.storageKey); } catch {}
         } else {
           this.wsToken = null;
         }
@@ -691,7 +691,7 @@ export class DuelConnection {
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
         this._disconnectGraceSec.set(0);
-        try { sessionStorage.removeItem(this.storageKey); } catch {}
+        try { localStorage.removeItem(this.storageKey); } catch {}
         break;
 
       case 'REMATCH_INVITATION':
@@ -746,7 +746,7 @@ export class DuelConnection {
         this.reconnectToken = (message as SessionTokenMsg).token;
         this._hasToken.set(true);
         if (this._autoReconnect) {
-          try { sessionStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
+          try { localStorage.setItem(this.storageKey, this.reconnectToken); } catch {}
         }
         break;
 
@@ -861,7 +861,7 @@ export class DuelConnection {
 
     if (this._retryCount() >= this._maxRetries) {
       this.reconnectToken = null;
-      try { sessionStorage.removeItem(this.storageKey); } catch {}
+      try { localStorage.removeItem(this.storageKey); } catch {}
       this._hasToken.set(this.wsToken !== null);
       this._connectionStatus.set('lost');
       return;

@@ -540,13 +540,13 @@ export class DuelPageComponent implements OnInit {
 
   backToLobby(): void {
     this.endRoomIfNeeded();
-    try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
+    try { localStorage.removeItem('duel-reconnect-token'); } catch {}
     this.router.navigate(['/pvp']);
   }
 
   backToDeck(): void {
     this.endRoomIfNeeded();
-    try { sessionStorage.removeItem('duel-reconnect-token'); } catch {}
+    try { localStorage.removeItem('duel-reconnect-token'); } catch {}
     const deckId = this.room()?.decklistId ?? this.roomService.decklistId;
     if (deckId) {
       this.router.navigate(['/decks', deckId]);
