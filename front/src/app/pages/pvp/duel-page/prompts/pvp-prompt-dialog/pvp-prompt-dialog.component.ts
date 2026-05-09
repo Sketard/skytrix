@@ -330,18 +330,16 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
       allConfirmed = this.wsService.confirmedCardsForChainIndex(currentLinkIdx);
     }
     if ('revealedCards' in instance) {
-      // For prompts that select from a revealed hand (e.g. Aqua Dolphin), show the
-      // non-selectable confirmed cards (spells/traps) in the read-only panel.
-      // Fall back to excavated-only for prompts with no selectable card overlap.
-      const selectableKeys = new Set(
-        ('cards' in prompt ? (prompt as { cards: CardInfo[] }).cards : [])
-          .map((c: CardInfo) => `${c.location}-${c.player}-${c.sequence}`)
-      );
-      const nonSelectable = allConfirmed.filter(c =>
-        !selectableKeys.has(`${c.location}-${c.player}-${c.sequence}`)
-      );
+      // REVEALED CARDS panel — strictly excavated cards (DECK/EXTRA reveals).
+      // Use case: a prior excavate showed cards from the deck, and the player
+      // now responds to a follow-up prompt that does NOT list the excavated
+      // cards (e.g. GMX Applied Experiment). Without this panel the player
+      // would not remember which cards had been revealed.
+      // Hand-reveal prompts (Aqua Dolphin) render the opponent's hand inside
+      // the sub-component itself — they don't need this panel and showing
+      // the non-monster part of the hand here was an accidental side-effect.
       (instance as unknown as { revealedCards: unknown[] }).revealedCards =
-        nonSelectable.length > 0 ? nonSelectable : allConfirmed.filter(isExcavatedCard);
+        allConfirmed.filter(isExcavatedCard);
     }
     if ('confirmedCardKeys' in instance) {
       (instance as unknown as { confirmedCardKeys: Set<string> }).confirmedCardKeys =
