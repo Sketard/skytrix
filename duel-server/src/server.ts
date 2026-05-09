@@ -16,7 +16,6 @@ import {
   RPS_TIMEOUT_MS,
   TP_TIMEOUT_MS,
   REPLAY_WORKER_WATCHDOG_MS,
-  REPLAY_CACHE_TTL_MS,
   MAX_REPLAY_WORKERS,
   ANIMATIONS_DONE_TIMEOUT_MS,
   extractCardCodes,
@@ -42,14 +41,14 @@ import {
   SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR, SOLVER_HANDTRAPS,
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
-import { validateData, findMissingPasscodes, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
-import { updateData } from './data-updater.js';
+import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
-import { LruMap } from './lru-map.js';
+import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes } from './http-routes.js';
+import { createReplayCache } from './replay-cache.js';
 import { createInactivityScheduler, type InactivityScheduler } from './inactivity-timer.js';
 import {
   configureSolverHandlers,
@@ -82,7 +81,6 @@ const SPRING_BOOT_API_URL = process.env['SPRING_BOOT_API_URL'] ?? 'http://localh
 const INTERNAL_API_KEY = process.env['INTERNAL_API_KEY'] ?? 'dev-internal-key';
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const MAX_INVALID_RESPONSES = 5;
-const MAX_REPLAY_CACHE_ENTRIES = 50;
 let maxSolverConnections = 10; // overridden at boot from solver-config.json
 const MAX_SOLVER_CACHE_ENTRIES = 50;
 const SOLVER_RESULT_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -169,10 +167,7 @@ interface ReplayConnection {
   state: ReplayConnectionState;
 }
 
-const replayCache = new LruMap<{ data: WorkerReplayPayload; playerIds: [string, string] }>({
-  maxEntries: MAX_REPLAY_CACHE_ENTRIES,
-  ttlMs: REPLAY_CACHE_TTL_MS,
-});
+const replayCache = createReplayCache();
 let replayWorkerCount = 0;
 const replayQueue: Array<() => void> = [];
 const activeReplayConnections = new Map<WebSocket, ReplayConnection>();
@@ -246,6 +241,21 @@ configureSolverHandlers({
   deckFetchCacheTtlMs: 60_000, // formerly DECK_FETCH_CACHE_TTL_MS
 });
 
+configureHttpRoutes({
+  isDataReady: () => dataReady,
+  setDataReady: (ready) => { dataReady = ready; },
+  getValidationReason: () => validation.reason,
+  activeDuelsSize: () => activeDuels.size,
+  totalDuelsServed: () => totalDuelsServed,
+  startTime,
+  dataDir: DATA_DIR,
+  dbPath,
+  scriptsDir,
+  internalApiKey: INTERNAL_API_KEY,
+  getSolverOrchestrator: () => solverOrchestrator,
+  setSolverOrchestrator: (orch) => { solverOrchestrator = orch; },
+});
+
 // =============================================================================
 // HTTP Helpers
 // =============================================================================
@@ -273,112 +283,34 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
   });
 
-  // GET /health
+  // GET /health — extracted to http-routes.ts
   if (method === 'GET' && pathname === '/health') {
-    if (!dataReady) {
-      json(res, 503, { status: 'unavailable', reason: validation.reason });
-      return;
-    }
-    json(res, 200, { status: 'ok' });
+    handleHealth(req, res);
     return;
   }
 
-  // GET /status
+  // GET /status — extracted to http-routes.ts
   if (method === 'GET' && pathname === '/status') {
-    json(res, 200, {
-      activeDuels: activeDuels.size,
-      totalDuelsServed,
-      uptimeMs: Date.now() - startTime,
-      memoryUsageMb: process.memoryUsage().rss / 1024 / 1024,
-    });
+    handleStatus(req, res);
     return;
   }
 
   // GET /api/duels/active — List active duel IDs (internal, used by Spring Boot scheduler)
+  // Stays in server.ts: touches `activeDuels` map (H1-suite session-manager boundary).
   if (method === 'GET' && pathname === '/api/duels/active') {
     json(res, 200, { duelIds: [...activeDuels.keys()] });
     return;
   }
 
-  // PUT /api/update-data — Download latest cards.cdb + scripts from ProjectIgnis
+  // PUT /api/update-data — extracted to http-routes.ts
   if (method === 'PUT' && pathname === '/api/update-data') {
-    if (!validateInternalAuth(req, res)) return;
-
-    if (activeDuels.size > 0) {
-      json(res, 409, { code: 'UPDATE_BLOCKED_ACTIVE_DUELS', error: 'Cannot update while duels are active', activeDuels: activeDuels.size });
-      return;
-    }
-
-    // Solver pool keeps a file handle on cards.cdb open for the lifetime of
-    // each worker — on Windows that blocks the rename in updateData. Destroy
-    // the pool, run the update, then re-init with the fresh data.
-    const previousOrchestrator = solverOrchestrator;
-    solverOrchestrator = null;
-    if (previousOrchestrator) {
-      try {
-        await previousOrchestrator.destroy();
-      } catch (err) {
-        logger.warn('Solver pool destroy failed before update-data', { error: err instanceof Error ? err.message : String(err) });
-      }
-    }
-
-    try {
-      const result = await updateData(DATA_DIR);
-      const revalidation = validateData(dbPath, scriptsDir);
-      dataReady = revalidation.ok;
-      json(res, 200, { ...result, dataReady });
-    } catch (err) {
-      logger.error('UpdateData failed', { error: err instanceof Error ? err.message : String(err) });
-      json(res, 500, { error: 'Update failed', detail: err instanceof Error ? err.message : String(err) });
-    } finally {
-      if (dataReady) {
-        try {
-          const solverConfig = loadSolverConfig(DATA_DIR);
-          const orchestrator = new SolverOrchestrator();
-          await orchestrator.init(solverConfig, DATA_DIR);
-          solverOrchestrator = orchestrator;
-        } catch (err) {
-          logger.error('Solver pool re-init failed after update-data — solver disabled until restart', { error: err instanceof Error ? err.message : String(err) });
-        }
-      }
-    }
+    await handleUpdateData(req, res);
     return;
   }
 
-  // POST /api/validate-passcodes — Check which passcodes exist in cards.cdb
+  // POST /api/validate-passcodes — extracted to http-routes.ts
   if (method === 'POST' && pathname === '/api/validate-passcodes') {
-    if (!validateInternalAuth(req, res)) return;
-    if (!dataReady) {
-      json(res, 503, { code: 'SERVER_NOT_READY', error: 'Server not ready — data validation failed' });
-      return;
-    }
-
-    let body: string;
-    try {
-      body = await readBody(req);
-    } catch (err) {
-      if (err instanceof Error && err.message === 'PAYLOAD_TOO_LARGE') {
-        json(res, 413, { code: 'PAYLOAD_TOO_LARGE', error: 'Payload too large' });
-        return;
-      }
-      throw err;
-    }
-
-    let parsed: { passcodes: unknown };
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      json(res, 400, { code: 'INVALID_JSON', error: 'Invalid JSON' });
-      return;
-    }
-
-    if (!Array.isArray(parsed.passcodes) || !parsed.passcodes.every((c: unknown) => typeof c === 'number' && Number.isInteger(c) && c > 0)) {
-      json(res, 400, { code: 'INVALID_PASSCODES', error: 'passcodes must be an array of positive integers' });
-      return;
-    }
-
-    const missing = findMissingPasscodes(dbPath, parsed.passcodes as number[]);
-    json(res, 200, { missing });
+    await handleValidatePasscodes(req, res);
     return;
   }
 
