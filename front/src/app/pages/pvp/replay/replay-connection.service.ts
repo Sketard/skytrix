@@ -1,5 +1,6 @@
 import { computed, Injectable, OnDestroy, signal } from '@angular/core';
 import { environment } from '../../../../environments/environment';
+import { PROTOCOL_VERSION } from '../duel-ws.types';
 import type { PreComputedState, ReplayMetadataMsg, ReplayServerMessage, ForkSanityFields } from '../replay-ws.types';
 
 @Injectable()
@@ -26,7 +27,7 @@ export class ReplayConnectionService implements OnDestroy {
     this.error.set(null);
     this.connectionStatus.set('connecting');
 
-    const url = `${environment.wsUrl}?mode=replay&replayId=${encodeURIComponent(replayId)}&token=${encodeURIComponent(token)}`;
+    const url = `${environment.wsUrl}?mode=replay&replayId=${encodeURIComponent(replayId)}&token=${encodeURIComponent(token)}&pv=${PROTOCOL_VERSION}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {

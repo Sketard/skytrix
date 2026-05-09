@@ -6,6 +6,27 @@
 // =============================================================================
 
 // =============================================================================
+// Protocol Version
+// =============================================================================
+
+/**
+ * WebSocket protocol version. Bumped whenever a breaking change to the wire
+ * format ships (renamed/removed fields, semantic shift on existing fields,
+ * new required handshake step). Additive changes (new optional fields,
+ * new message types treated as unknown) do NOT require a bump.
+ *
+ * Both client and server pin this constant via the byte-synced
+ * shared file. The client appends `?pv=${PROTOCOL_VERSION}` to every PvP
+ * + replay WS handshake URL; the server compares and rejects mismatches
+ * with close-code 4426 ("Upgrade Required" — analog to HTTP 426).
+ *
+ * Version log:
+ *   1 — initial baseline (PvP + Replay shipped, MR5 board, chain overlay,
+ *       chainIndex-tagged CONFIRM_CARDS, boardStateAfter snapshots).
+ */
+export const PROTOCOL_VERSION = 1;
+
+// =============================================================================
 // Shared Primitive Types
 // =============================================================================
 

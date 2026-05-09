@@ -39,6 +39,7 @@ import type {
 import {
   SOLVER_START, SOLVER_CANCEL, SOLVER_INIT, SOLVER_PROGRESS,
   SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR, SOLVER_HANDTRAPS,
+  PROTOCOL_VERSION,
 } from './ws-protocol.js';
 import { filterMessage } from './message-filter.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
@@ -1153,6 +1154,28 @@ const wss = new WebSocketServer({ server, maxPayload: MAX_WS_FRAME_SIZE });
 // WS rate limiting moved to ws-rate-limit.ts (H1 split)
 const wsRateLimitSweepTimer = startWsRateLimitSweep();
 
+/**
+ * Reject the handshake when the client's `pv` query param does not match
+ * server-side `PROTOCOL_VERSION`. Returns true on accept, false on reject
+ * (after closing the WS with code 4426 — analog to HTTP 426 Upgrade Required).
+ *
+ * Applied to PvP + Replay handshakes. Solver handshakes are exempt (their
+ * protocol shape is request/response style and currently has no version
+ * surface worth gating).
+ */
+function checkProtocolVersion(ws: WebSocket, url: URL, mode: string): boolean {
+  const raw = url.searchParams.get('pv');
+  const clientVersion = raw === null ? null : Number(raw);
+  if (clientVersion !== PROTOCOL_VERSION) {
+    logger.warn('WS handshake rejected — protocol version mismatch', {
+      mode, clientVersion: raw, serverVersion: PROTOCOL_VERSION,
+    });
+    ws.close(4426, `Protocol version mismatch (server=${PROTOCOL_VERSION}, client=${raw ?? 'missing'})`);
+    return false;
+  }
+  return true;
+}
+
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   // Trust x-real-ip only behind a reverse proxy in production; fall back to socket IP otherwise
   const ip = (IS_PRODUCTION && req.headers['x-real-ip'] as string) || req.socket.remoteAddress || 'unknown';
@@ -1167,6 +1190,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   // Replay mode branch — separate flow from PvP duels
   const mode = url.searchParams.get('mode');
   if (mode === 'replay') {
+    if (!checkProtocolVersion(ws, url, 'replay')) return;
     const replayId = url.searchParams.get('replayId');
     const jwt = url.searchParams.get('token');
     if (!replayId || !jwt) {
@@ -1250,6 +1274,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     console.log('[Solver] connected', { userId });
     return;
   }
+
+  // PvP duel branch (default — neither replay nor solver)
+  if (!checkProtocolVersion(ws, url, 'pvp')) return;
 
   const token = url.searchParams.get('token');
   const reconnect = url.searchParams.get('reconnect');

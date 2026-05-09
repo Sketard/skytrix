@@ -5,7 +5,7 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
+import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, PROTOCOL_VERSION, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -396,9 +396,9 @@ export class DuelConnection {
   private openConnection(): void {
     let url: string;
     if (this.reconnectToken) {
-      url = `${this.wsUrlBase}?reconnect=${this.reconnectToken}`;
+      url = `${this.wsUrlBase}?reconnect=${this.reconnectToken}&pv=${PROTOCOL_VERSION}`;
     } else if (this.wsToken) {
-      url = `${this.wsUrlBase}?token=${this.wsToken}`;
+      url = `${this.wsUrlBase}?token=${this.wsToken}&pv=${PROTOCOL_VERSION}`;
     } else {
       this._connectionStatus.set('lost');
       return;
