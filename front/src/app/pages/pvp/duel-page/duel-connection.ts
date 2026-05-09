@@ -127,8 +127,25 @@ export class DuelConnection {
   get lastSelectedCards(): CardInfo[] { return this._lastSelectedCards; }
 
   // --- Last confirmed/revealed cards (from MSG_CONFIRM_CARDS — excavation/reveal effects) ---
+  // Flat buffer = last batch received. Used by SELECT_OPTION lastConfirmedName fallback
+  // (pvp-prompt-dialog reads the last reveal regardless of which chain link it came from).
   private _lastConfirmedCards: CardInfo[] = [];
   get lastConfirmedCards(): CardInfo[] { return this._lastConfirmedCards; }
+
+  // M22 — Per-chain-link buffer. MSG_CONFIRM_CARDS arriving while the server is
+  // resolving a chain link is tagged with that link's chainIndex; we accumulate
+  // them here so the prompt dialog can show ONLY the reveals belonging to the
+  // currently-prompting link. Without this, a mid-chain reload (F5) replays the
+  // CONFIRMs of an already-resolved link into a later link's prompt header.
+  // Cleared on MSG_CHAIN_END (mirrors server-side activeChainLinks reset),
+  // STATE_SYNC, DUEL_END, REMATCH_STARTING, sendResponse, clearLastSelections.
+  private _confirmedCardsByChain = new Map<number, CardInfo[]>();
+  /** Returns the reveals tagged with the given chainIndex, or the flat buffer
+   *  (legacy behavior) when idx is null. Empty array if no entry. */
+  confirmedCardsForChainIndex(idx: number | null): CardInfo[] {
+    if (idx === null) return this._lastConfirmedCards;
+    return this._confirmedCardsByChain.get(idx) ?? [];
+  }
 
   readonly hasPendingChainEntry = this.processor.hasPendingChainEntry;
 
@@ -221,6 +238,7 @@ export class DuelConnection {
         this._lastSelectedPromptType = null;
       }
       this._lastConfirmedCards = [];
+      this._confirmedCardsByChain.clear();
       this._hintCardConsumed = true;
       if (promptType === 'SELECT_TP') this._tpResponseSent.set(true);
       this.onResponse?.(promptType, data);
@@ -300,6 +318,7 @@ export class DuelConnection {
    */
   clearLastSelections(): void {
     this._lastConfirmedCards = [];
+    this._confirmedCardsByChain.clear();
     this._lastSelectedCards = [];
     this._lastSelectedPromptType = null;
     this._hintCardConsumed = false;
@@ -487,6 +506,7 @@ export class DuelConnection {
         // READ IT BEFORE ADDING A NEW PRIVATE FIELD TO DuelConnection
         // that holds prompt-flow state.
         this._lastConfirmedCards = [];
+        this._confirmedCardsByChain.clear();
         // P0-3bis follow-up — reset the selection accumulator and the
         // hint-consumed flag too.
         this._lastSelectedCards = [];
@@ -638,6 +658,7 @@ export class DuelConnection {
 
       case 'DUEL_END':
         this._lastConfirmedCards = [];
+        this._confirmedCardsByChain.clear();
         this.processor.reset();
         this._pendingPrompt.set(null);
         this._inactivityWarning.set(null);
@@ -660,6 +681,7 @@ export class DuelConnection {
 
       case 'REMATCH_STARTING':
         this._lastConfirmedCards = [];
+        this._confirmedCardsByChain.clear();
         this.processor.reset();
         this._rematchStarting.set(true);
         this._duelResult.set(null);
@@ -711,15 +733,32 @@ export class DuelConnection {
 
       case 'MSG_CHAIN_SOLVING':
       case 'MSG_CHAIN_SOLVED':
-      case 'MSG_CHAIN_END':
       case 'MSG_CHAIN_NEGATED':
         this.processor.processMessage(message);
         break;
 
-      case 'MSG_CONFIRM_CARDS':
-        this._lastConfirmedCards = (message as ConfirmCardsMsg).cards;
+      case 'MSG_CHAIN_END':
+        // M22 — Symmetric with server-side activeChainLinks reset.
+        // Reveals tagged with this chain's link indices are no longer
+        // relevant to any future prompt (next chain = different chainIndex
+        // namespace, next prompt outside chain = chainIndex null).
+        this._confirmedCardsByChain.clear();
         this.processor.processMessage(message);
         break;
+
+      case 'MSG_CONFIRM_CARDS': {
+        const confirm = message as ConfirmCardsMsg;
+        this._lastConfirmedCards = confirm.cards;
+        // M22 — Tagged reveals accumulate per chain link. Untagged reveals
+        // (CONFIRM outside chain resolution) only land in _lastConfirmedCards
+        // (used by SELECT_OPTION lastConfirmedName fallback).
+        if (confirm.chainIndex !== undefined) {
+          const existing = this._confirmedCardsByChain.get(confirm.chainIndex) ?? [];
+          this._confirmedCardsByChain.set(confirm.chainIndex, [...existing, ...confirm.cards]);
+        }
+        this.processor.processMessage(message);
+        break;
+      }
       case 'MSG_MOVE':
       case 'MSG_DRAW':
       case 'MSG_SHUFFLE_HAND':

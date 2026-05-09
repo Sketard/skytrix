@@ -8,8 +8,12 @@ function chaining(chainIndex: number, extra: Record<string, unknown> = {}): Serv
   return { type: 'MSG_CHAINING', chainIndex, ...extra } as unknown as ServerMessage;
 }
 
-function solving(): ServerMessage {
-  return { type: 'MSG_CHAIN_SOLVING' } as unknown as ServerMessage;
+function solving(chainIndex = 0): ServerMessage {
+  return { type: 'MSG_CHAIN_SOLVING', chainIndex } as unknown as ServerMessage;
+}
+
+function solved(chainIndex = 0): ServerMessage {
+  return { type: 'MSG_CHAIN_SOLVED', chainIndex } as unknown as ServerMessage;
 }
 
 function end(): ServerMessage {
@@ -27,11 +31,12 @@ function unrelated(type: string): ServerMessage {
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('emptyChainState', () => {
-  it('returns idle phase + empty links + empty negated set', () => {
+  it('returns idle phase + empty links + empty negated set + null currentSolvingChainIndex', () => {
     const s = emptyChainState();
     expect(s.chainPhase).toBe('idle');
     expect(s.activeChainLinks).toEqual([]);
     expect(s.negatedChainIndices.size).toBe(0);
+    expect(s.currentSolvingChainIndex).toBeNull();
   });
 
   it('returns a fresh object each call (no shared state)', () => {
@@ -214,5 +219,63 @@ describe('Full chain lifecycle (integration)', () => {
     applyChainTransition(s, chaining(1));
     expect(s.chainPhase).toBe('building');
     expect(s.activeChainLinks.length).toBe(1);
+  });
+});
+
+describe('currentSolvingChainIndex (M22)', () => {
+  it('null in idle and building phases', () => {
+    const s = emptyChainState();
+    expect(s.currentSolvingChainIndex).toBeNull();
+    applyChainTransition(s, chaining(1));
+    applyChainTransition(s, chaining(2));
+    expect(s.currentSolvingChainIndex).toBeNull();
+  });
+
+  it('set to chainIndex on MSG_CHAIN_SOLVING', () => {
+    const s = emptyChainState();
+    applyChainTransition(s, chaining(1));
+    applyChainTransition(s, chaining(2));
+    applyChainTransition(s, solving(1));
+    expect(s.currentSolvingChainIndex).toBe(1);
+  });
+
+  it('cleared on MSG_CHAIN_SOLVED', () => {
+    const s = emptyChainState();
+    applyChainTransition(s, chaining(1));
+    applyChainTransition(s, solving(0));
+    expect(s.currentSolvingChainIndex).toBe(0);
+    applyChainTransition(s, solved(0));
+    expect(s.currentSolvingChainIndex).toBeNull();
+  });
+
+  it('cleared on MSG_CHAIN_END (safety net)', () => {
+    const s = emptyChainState();
+    applyChainTransition(s, chaining(1));
+    applyChainTransition(s, solving(0));
+    expect(s.currentSolvingChainIndex).toBe(0);
+    applyChainTransition(s, end());
+    expect(s.currentSolvingChainIndex).toBeNull();
+  });
+
+  it('LIFO resolution: 3-link chain resolves links 2 → 1 → 0 with index updates', () => {
+    const s = emptyChainState();
+    applyChainTransition(s, chaining(0));
+    applyChainTransition(s, chaining(1));
+    applyChainTransition(s, chaining(2));
+
+    applyChainTransition(s, solving(2));
+    expect(s.currentSolvingChainIndex).toBe(2);
+    applyChainTransition(s, solved(2));
+    expect(s.currentSolvingChainIndex).toBeNull();
+
+    applyChainTransition(s, solving(1));
+    expect(s.currentSolvingChainIndex).toBe(1);
+    applyChainTransition(s, solved(1));
+    expect(s.currentSolvingChainIndex).toBeNull();
+
+    applyChainTransition(s, solving(0));
+    expect(s.currentSolvingChainIndex).toBe(0);
+    applyChainTransition(s, end());
+    expect(s.currentSolvingChainIndex).toBeNull();
   });
 });

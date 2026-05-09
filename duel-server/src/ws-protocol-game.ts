@@ -112,6 +112,14 @@ export interface ConfirmCardsMsg {
    *  name='') for the opponent. Absent or false = public reveal (CONFIRM_CARDS),
    *  passthrough to both players. */
   private?: boolean;
+  /** M22 — Index of the chain link whose resolution emitted this reveal.
+   *  Tagged server-side in `handleWorkerMessage` when `chainPhase === 'resolving'`
+   *  (= `session.activeChainLinks.length - 1`). Absent for reveals fired
+   *  outside chain resolution (e.g. cost prompts, draw phase). The client
+   *  uses it to filter `revealedCards` per-link in `pvp-prompt-dialog`,
+   *  preventing reveals from previously-resolved links from leaking into a
+   *  later link's prompt header (notably after a mid-chain reload). */
+  chainIndex?: number;
   boardStateAfter?: BoardStatePayload;
 }
 

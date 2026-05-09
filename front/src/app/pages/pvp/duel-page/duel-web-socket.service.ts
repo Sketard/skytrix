@@ -85,6 +85,13 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     return this._activeConnection().lastConfirmedCards;
   }
 
+  /** M22 — Reveals tagged with the given chainIndex (or the flat last-batch
+   *  buffer when null). Used by pvp-prompt-dialog to filter `revealedCards`
+   *  to the currently-prompting chain link. */
+  confirmedCardsForChainIndex(idx: number | null): import('../duel-ws.types').CardInfo[] {
+    return this._activeConnection().confirmedCardsForChainIndex(idx);
+  }
+
   clearRpsResult(): void {
     this._activeConnection().clearRpsResult();
   }

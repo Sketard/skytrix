@@ -138,6 +138,9 @@ interface ActiveDuelSession extends DuelSession {
   activeChainLinks: ServerMessage[];
   chainPhase: 'idle' | 'building' | 'resolving';
   negatedChainIndices: Set<number>;
+  /** M22 — chainIndex of the link currently resolving. Set on MSG_CHAIN_SOLVING,
+   *  cleared on MSG_CHAIN_SOLVED + MSG_CHAIN_END. Used to tag MSG_CONFIRM_CARDS. */
+  currentSolvingChainIndex: number | null;
   // Replay: player metadata
   playerUsernames: [string, string];
   deckNames: [string, string];
@@ -991,6 +994,7 @@ function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessa
         session.activeChainLinks = [];
         session.chainPhase = 'idle';
         session.negatedChainIndices.clear();
+        session.currentSolvingChainIndex = null;
 
         // P0-3bis follow-up — clear the cached hint for this player.
         // It was set when the cancelled effect fired its MSG_HINT
@@ -1063,6 +1067,15 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
   // Track active chain state for reconnection (extracted to chain-state-tracker
   // for unit testing — same 4 transitions as before, behavior unchanged).
   applyChainTransition(session, message);
+
+  // M22 — Tag MSG_CONFIRM_CARDS with the currently-resolving link's chainIndex
+  // so the client can filter prompt reveals per-link. Without this, a reload
+  // mid-chain replays previous links' confirms into a later link's prompt
+  // header (e.g. Dracotail #1 reveal leaks into Dracotail #2 SELECT_CARD).
+  // applyChainTransition above already updated currentSolvingChainIndex.
+  if (message.type === 'MSG_CONFIRM_CARDS' && session.currentSolvingChainIndex !== null) {
+    (message as { chainIndex?: number }).chainIndex = session.currentSolvingChainIndex;
+  }
 
   // Store last BOARD_STATE for late-connecting players
   if (message.type === 'BOARD_STATE') {
@@ -2514,9 +2527,7 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
     turnTimeSecs: 300,
     invalidResponseCount: [0, 0],
     promptSentAt: [0, 0],
-    activeChainLinks: [],
-    chainPhase: 'idle',
-    negatedChainIndices: new Set(),
+    ...emptyChainState(),
     playerUsernames: replayData.metadata.playerUsernames,
     deckNames: replayData.metadata.deckNames,
     pendingReplayResult: null,

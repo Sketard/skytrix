@@ -308,7 +308,27 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
     if ('excludedCards' in instance) {
       (instance as unknown as { excludedCards: unknown[] }).excludedCards = this.wsService.lastSelectedCards;
     }
-    const allConfirmed = this.confirmedCards() ?? this.wsService.lastConfirmedCards;
+    // M22 — Read reveals tagged with the current chain link's index.
+    // Priority: link with `resolving: true` (a CHAIN_SOLVING fired for it),
+    // else the last activeChainLink (chain building phase, prompt arriving
+    // for the about-to-resolve link), else null (no chain — cost prompt etc).
+    // Reveals from previously-resolved links of the same chain are scoped
+    // under their own chainIndex and excluded — fixes the Dracotail leak
+    // observed after a mid-chain reload (M22).
+    // Replay-mode override (`confirmedCards` input set): preserve flat
+    // semantics. The replay adapter pre-aggregates the revealed cards.
+    const overrideConfirmed = this.confirmedCards();
+    let allConfirmed: CardInfo[];
+    if (overrideConfirmed) {
+      allConfirmed = overrideConfirmed;
+    } else {
+      const links = this.wsService.activeChainLinks();
+      const resolvingLink = links.find(l => l.resolving);
+      const currentLinkIdx = resolvingLink
+        ? resolvingLink.chainIndex
+        : (links.length > 0 ? links[links.length - 1].chainIndex : null);
+      allConfirmed = this.wsService.confirmedCardsForChainIndex(currentLinkIdx);
+    }
     if ('revealedCards' in instance) {
       // For prompts that select from a revealed hand (e.g. Aqua Dolphin), show the
       // non-selectable confirmed cards (spells/traps) in the read-only panel.

@@ -22,11 +22,15 @@ export interface ChainStateContainer {
   /** Indices of links that received a MSG_CHAIN_NEGATED, accumulated for
    *  the current chain. Cleared on MSG_CHAIN_END. */
   negatedChainIndices: Set<number>;
+  /** M22 — chainIndex of the link currently resolving (set at MSG_CHAIN_SOLVING,
+   *  cleared at MSG_CHAIN_SOLVED + MSG_CHAIN_END). Used to tag MSG_CONFIRM_CARDS
+   *  emitted during resolution so the client can filter prompt reveals per-link. */
+  currentSolvingChainIndex: number | null;
 }
 
 /** Build a fresh chain state — used at session creation and on rematch. */
 export function emptyChainState(): ChainStateContainer {
-  return { activeChainLinks: [], chainPhase: 'idle', negatedChainIndices: new Set() };
+  return { activeChainLinks: [], chainPhase: 'idle', negatedChainIndices: new Set(), currentSolvingChainIndex: null };
 }
 
 /**
@@ -50,11 +54,16 @@ export function applyChainTransition(state: ChainStateContainer, message: Server
       break;
     case 'MSG_CHAIN_SOLVING':
       state.chainPhase = 'resolving';
+      state.currentSolvingChainIndex = (message as { chainIndex: number }).chainIndex;
+      break;
+    case 'MSG_CHAIN_SOLVED':
+      state.currentSolvingChainIndex = null;
       break;
     case 'MSG_CHAIN_END':
       state.activeChainLinks = [];
       state.chainPhase = 'idle';
       state.negatedChainIndices = new Set();
+      state.currentSolvingChainIndex = null;
       break;
     case 'MSG_CHAIN_NEGATED': {
       const negIdx = (message as { chainIndex: number }).chainIndex;
