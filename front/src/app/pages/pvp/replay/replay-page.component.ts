@@ -8,12 +8,13 @@ import { TranslateService, TranslateModule } from '@ngx-translate/core';
 import { ReplayConnectionService } from './replay-connection.service';
 import { ReplayForkService } from './replay-fork.service';
 import { ReplayDuelAdapter } from './replay-duel-adapter';
+import { ReplayTransportService } from './replay-transport.service';
 import { TimelineBarComponent } from './timeline-bar/timeline-bar.component';
 import { TransportBarComponent } from './transport-bar/transport-bar.component';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CURRENT_USER_KEY } from '../../../core/utilities/auth.constants';
-import { EMPTY_DUEL_STATE, EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
+import { EMPTY_ZONE_SET, EMPTY_STRING_SET, EMPTY_ARRAY } from '../types';
 import type { DuelState } from '../types';
 import type { PreComputedState, TurnMeta } from '../replay-ws.types';
 import { DebugLogPanelComponent } from '../duel-page/debug-log-panel/debug-log-panel.component';
@@ -59,7 +60,7 @@ import { PvpPromptDialogComponent } from '../duel-page/prompts/pvp-prompt-dialog
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
-    ReplayConnectionService, ReplayForkService,
+    ReplayConnectionService, ReplayForkService, ReplayTransportService,
     CardDataCacheService, CardInspectionService, CardTravelEngine, BoardEffectsService, FloatRegistryService, DuelCardArtService,
     DuelLogger, LpAnimationTracker, BattleAnimationTracker, DuelContext,
     ChainResolutionManager, DrawSequenceManager, MoveAnimationRouter, BufferReplayBuilder, TargetIndicatorManager,
@@ -98,10 +99,13 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   readonly phaseService = inject(PhaseAnnouncementService);
   readonly toastService = inject(DuelToastService);
   readonly fork = inject(ReplayForkService);
+  readonly transport = inject(ReplayTransportService);
 
-  readonly currentIndex = signal<number>(0);
-  readonly isPlaying = signal(false);
-  readonly pausedAtBoundary = signal(false);
+  // Transport state — owned by ReplayTransportService, re-exposed for the template (audit M10).
+  readonly currentIndex = this.transport.currentIndex;
+  readonly isPlaying = this.transport.isPlaying;
+  readonly pausedAtBoundary = this.transport.pausedAtBoundary;
+
   readonly debugPanelOpen = signal(false);
 
   /** 'decision' = pause on prompts, 'result' = skip prompts */
@@ -118,13 +122,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   private static readonly PREF_ANIMATIONS = 'replay.animationsEnabled';
   private static readonly PREF_PROMPT_MODE = 'replay.promptMode';
   private static readonly PREF_PERSPECTIVE = 'replay.perspectiveIndex';
-  private static readonly PLAYBACK_INTERVAL = 500;
-  private static readonly PROMPT_DISPLAY_MIN = 800;
-  private static readonly PROMPT_DISPLAY_MAX = 3000;
-  private static readonly PROMPT_DISPLAY_FALLBACK = 1500;
   readonly animationsEnabled = signal(localStorage.getItem(ReplayPageComponent.PREF_ANIMATIONS) === 'true');
-  private playbackTimer: ReturnType<typeof setTimeout> | null = null;
-  private _lastResponseTimestamp: number | null = null;
 
   readonly boardStates = computed(() => {
     const live = this.replayConnection.boardStates();
@@ -295,6 +293,15 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   constructor() {
     this.cardInspection.init(this.cardDataCache);
     this.cardTravel.registerContainer(this.elementRef.nativeElement);
+    this.transport.configure({
+      adapter: this.adapter,
+      orchestrator: this.orchestrator,
+      phaseService: this.phaseService,
+      boardStates: this.boardStates,
+      computedUpTo: this.computedUpTo,
+      animationsEnabled: this.animationsEnabled,
+      promptMode: this.promptMode,
+    });
 
     effect(() => {
       const meta = this.replayConnection.metadata();
@@ -323,11 +330,10 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
 
     // Auto-resume when computedUpTo increases after boundary pause
     effect(() => {
-      const upTo = this.computedUpTo();
-      if (this.pausedAtBoundary() && upTo > this.currentIndex()) {
-        this.startPlayback();
-        this.pausedAtBoundary.set(false);
-      }
+      // Subscribe to both signals so the effect re-fires on either change.
+      this.computedUpTo();
+      this.pausedAtBoundary();
+      untracked(() => this.transport.resumeIfBoundaryWaiting());
     });
 
 
@@ -358,26 +364,11 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     // Playback continuation — reactively drives auto-play when adapter.busy()
     // changes, a decision prompt appears, or a phase announcement finishes.
     effect(() => {
-      const busy = this.adapter.busy();
-      const prompt = this.adapter.activePrompt();
-      const announcing = this.phaseService.announcement();
-      untracked(() => {
-        if (!this.isPlaying()) return;
-
-        // Decision prompt appeared → auto-dismiss after proportional duration
-        if (prompt) {
-          this.schedulePromptDismiss();
-          return;
-        }
-
-        // Phase announcement still playing → wait for it to finish.
-        if (announcing) return;
-
-        // Transition complete (busy went false) → schedule next step
-        if (!busy) {
-          this.scheduleNext();
-        }
-      });
+      // Subscribe to all 3 signals so the effect re-fires when any of them flips.
+      this.adapter.busy();
+      this.adapter.activePrompt();
+      this.phaseService.announcement();
+      untracked(() => this.transport.maybeAdvance());
     });
 
     // Phase announcement detection
@@ -437,7 +428,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.clearPlaybackTimer();
+    this.transport.destroy();
     this.abortAndClean();
     this.orchestrator.destroy();
     this.fork.cleanup();
@@ -452,69 +443,22 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.adapter.abort();
   }
 
-  // --- Playback controls ---
+  // --- Playback controls (transport delegates with abortAndClean side-effect) ---
 
-  onSeek(index: number): void {
-    this.pausePlayback();
-    this.abortAndClean();
-    this.currentIndex.set(index);
-    const state = this.boardStates()[index];
-    if (state) this.adapter.jumpToState(state);
-  }
-
-  onScrub(index: number): void {
-    this.pausePlayback();
-    this.abortAndClean();
-    this.currentIndex.set(index);
-    const state = this.boardStates()[index];
-    if (state) this.adapter.jumpToState(state);
-  }
-
-  onStepForward(): void {
-    this.pausePlayback();
-    this.doStepForward();
-  }
-
-  /** Internal step — does NOT pause playback (used by auto-play). */
-  private doStepForward(): void {
-    this.clearPlaybackTimer();
-
-    if (this.adapter.activePrompt()) {
-      this.adapter.resumeAfterPrompt();
-      return;
-    }
-
-    const curr = this.currentIndex();
-    const nextIdx = curr + 1;
-    if (nextIdx > this.computedUpTo()) return;
-
-    if (this.adapter.busy()) {
-      this.abortAndClean();
-    }
-
-    this.currentIndex.set(nextIdx);
-    this.feedTransition(curr, nextIdx);
-  }
-
-  onStepBack(): void {
-    this.pausePlayback();
-    this.abortAndClean();
-    const prev = this.currentIndex() - 1;
-    if (prev < 0) return;
-    this.currentIndex.set(prev);
-    const state = this.boardStates()[prev];
-    if (state) this.adapter.jumpToState(state);
-  }
+  onSeek(index: number): void { this.abortAndClean(); this.transport.seek(index); }
+  onScrub(index: number): void { this.abortAndClean(); this.transport.scrub(index); }
+  onStepForward(): void { this.transport.stepForward(); }
+  onStepBack(): void { this.abortAndClean(); this.transport.stepBack(); }
+  onPlayPause(): void { this.transport.togglePlay(); }
+  onSkipStart(): void { this.abortAndClean(); this.transport.skipStart(); }
+  onSkipEnd(): void { this.abortAndClean(); this.transport.skipEnd(); }
 
   onToggleAnimations(): void {
     this.abortAndClean();
     const next = !this.animationsEnabled();
     this.animationsEnabled.set(next);
     localStorage.setItem(ReplayPageComponent.PREF_ANIMATIONS, String(next));
-    if (this.isPlaying()) {
-      this.pausePlayback();
-      this.startPlayback();
-    }
+    if (this.isPlaying()) this.transport.restart();
     const state = this.boardStates()[this.currentIndex()];
     if (state) this.adapter.jumpToState(state);
   }
@@ -529,39 +473,12 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   }
 
   onTogglePerspective(): void {
-    this.clearPlaybackTimer();
+    this.transport.haltPlaybackTimer();
     this.abortAndClean();
     this.perspectiveIndex.update(i => i === 0 ? 1 : 0);
     this.adapter.perspectiveIndex.set(this.perspectiveIndex());
     localStorage.setItem(ReplayPageComponent.PREF_PERSPECTIVE, String(this.perspectiveIndex()));
     const state = this.boardStates()[this.currentIndex()];
-    if (state) this.adapter.jumpToState(state);
-  }
-
-  onPlayPause(): void {
-    if (this.isPlaying()) {
-      this.pausePlayback();
-      this.pausedAtBoundary.set(false);
-    } else {
-      if (this.atEnd()) return;
-      this.startPlayback();
-    }
-  }
-
-  onSkipStart(): void {
-    this.pausePlayback();
-    this.abortAndClean();
-    this.currentIndex.set(0);
-    const state = this.boardStates()[0];
-    if (state) this.adapter.jumpToState(state);
-  }
-
-  onSkipEnd(): void {
-    this.pausePlayback();
-    this.abortAndClean();
-    const idx = this.computedUpTo();
-    this.currentIndex.set(idx);
-    const state = this.boardStates()[idx];
     if (state) this.adapter.jumpToState(state);
   }
 
@@ -633,105 +550,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     }, { injector: this.injector });
   }
 
-  // --- Private: playback ---
-
-  private feedTransition(fromIdx: number, toIdx: number): void {
-    const states = this.boardStates();
-    const prev = states[fromIdx];
-    const next = states[toIdx];
-    if (!prev || !next) return;
-    this.feedAnimatedTransition(prev, next);
-  }
-
-  private static readonly EMPTY_PRE_COMPUTED: PreComputedState = {
-    boardState: EMPTY_DUEL_STATE,
-    events: [],
-    label: '',
-    responseCount: 0,
-  };
-
-  private startPlayback(): void {
-    console.log('[PLAY:START] idx=%d computedUpTo=%d t=%dms',
-      this.currentIndex(), this.computedUpTo(), performance.now() | 0);
-
-    if (this.computedUpTo() <= 0) return;
-    if (this.currentIndex() >= this.computedUpTo()) return;
-    this.isPlaying.set(true);
-
-    if (this.adapter.activePrompt()) {
-      this.schedulePromptDismiss();
-      return;
-    }
-
-    if (this.currentIndex() === 0) {
-      const first = this.boardStates()[0];
-      if (first) {
-        this.feedAnimatedTransition(ReplayPageComponent.EMPTY_PRE_COMPUTED, first);
-        return;
-      }
-    }
-    this.scheduleNext();
-  }
-
-  private feedAnimatedTransition(prev: PreComputedState, next: PreComputedState): void {
-    if (this.animationsEnabled()) {
-      if (this.promptMode() === 'decision') {
-        this.adapter.feedTransitionPhased(prev, next);
-      } else {
-        this.adapter.feedTransition(prev, next);
-      }
-    } else {
-      this.adapter.jumpToState(next);
-      // Schedule next via timer to avoid synchronous recursion
-      // (scheduleNext → doStepForward → feedAnimatedTransition → scheduleNext ...)
-      this.playbackTimer = setTimeout(() => { this.playbackTimer = null; this.scheduleNext(); }, ReplayPageComponent.PLAYBACK_INTERVAL);
-    }
-  }
-
-  private scheduleNext(): void {
-    if (!this.isPlaying()) return;
-    if (this.playbackTimer !== null) return; // Already scheduled — prevent double-fire
-    if (this.adapter.busy()) return;
-
-    if (this.currentIndex() >= this.computedUpTo()) {
-      this.isPlaying.set(false);
-      this.pausedAtBoundary.set(true);
-      return;
-    }
-
-    this.doStepForward();
-    // No timer here — feedAnimatedTransition already schedules the next
-    // step via its own setTimeout when animations are disabled.
-  }
-
-  private schedulePromptDismiss(): void {
-    this.clearPlaybackTimer();
-    const tsStr = this.adapter.activeTimestamp();
-    const ts = tsStr ? new Date(tsStr).getTime() : null;
-    const prevTs = this._lastResponseTimestamp;
-    this._lastResponseTimestamp = ts;
-    const delta = (ts && prevTs) ? ts - prevTs : null;
-    const duration = delta !== null
-      ? Math.min(Math.max(delta * 0.6, ReplayPageComponent.PROMPT_DISPLAY_MIN), ReplayPageComponent.PROMPT_DISPLAY_MAX)
-      : ReplayPageComponent.PROMPT_DISPLAY_FALLBACK;
-
-    this.playbackTimer = setTimeout(() => {
-      this.playbackTimer = null;
-      this.adapter.resumeAfterPrompt();
-    }, duration);
-  }
-
-  private pausePlayback(): void {
-    this.isPlaying.set(false);
-    this.clearPlaybackTimer();
-  }
-
-  private clearPlaybackTimer(): void {
-    if (this.playbackTimer !== null) {
-      clearTimeout(this.playbackTimer);
-      this.playbackTimer = null;
-    }
-  }
+  // --- Private: playback engine extracted to ReplayTransportService (audit M10) ---
 
   private getHandCards(state: DuelState, playerIndex: number): CardOnField[] {
     const player = state.players[playerIndex];
