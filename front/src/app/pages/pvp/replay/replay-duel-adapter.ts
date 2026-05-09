@@ -3,7 +3,7 @@ import { computed, inject, Injectable, OnDestroy, signal } from '@angular/core';
 import { syncAfterBoardState, type AnimationDataSource, type QueueEntry } from '../duel-page/animation-data-source';
 import { DuelEventProcessor } from '../duel-page/duel-event-processor';
 import { DuelLogCategory, DuelLogger } from '../duel-page/duel-logger';
-import { RenderedBoardStateService } from '../duel-page/rendered-board-state.service';
+import { RenderedBoardStateService, type BoardStateView } from '../duel-page/rendered-board-state.service';
 import type { HintContext, Prompt } from '../types';
 import type {
   BoardStatePayload, DecisionMoment, Player, PreComputedState,
@@ -25,7 +25,10 @@ export class ReplayDuelAdapter implements AnimationDataSource, OnDestroy {
   private readonly logger = inject(DuelLogger);
   private readonly processor = (() => { const p = new DuelEventProcessor(); p.logger = this.logger; return p; })();
   private readonly rbs = (() => { const s = new RenderedBoardStateService(); s.logger = this.logger; return s; })();
+  /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
   readonly renderedBoardState = this.rbs;
+  /** Read-only view of board state used by replay-page template + non-orchestrator consumers (audit L25). */
+  readonly boardStateView: BoardStateView = this.rbs;
 
   readonly animationQueue = this.processor.animationQueue;
   readonly activeChainLinks = this.processor.activeChainLinks;

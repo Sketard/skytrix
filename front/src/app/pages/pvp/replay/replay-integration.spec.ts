@@ -112,7 +112,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(prevState, nextState);
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       expect(rendered.players[0].deckCount).toBe(35);
       expect(rendered.players[1].deckCount).toBe(35);
     });
@@ -121,7 +121,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(prevState, nextState);
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       const p0Hand = rendered.players[0].zones.find(z => z.zoneId === 'HAND');
       expect(p0Hand!.cards.length).toBe(5);
       expect(p0Hand!.cards[0].cardCode).toBe(101);
@@ -176,7 +176,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(prevState, nextState);
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       const hand = rendered.players[0].zones.find(z => z.zoneId === 'HAND');
       const m3 = rendered.players[0].zones.find(z => z.zoneId === 'M3');
       expect(hand!.cards.length).toBe(1);
@@ -186,7 +186,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
 
     it('should set logicalState to nextBoardState after feedTransition', () => {
       adapter.feedTransition(prevState, nextState);
-      const logical = adapter.renderedBoardState.logicalState();
+      const logical = adapter.boardStateView.logicalState();
       expect(logical).toEqual(nextBoardState);
     });
   });
@@ -298,14 +298,14 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(prevState, nextState);
       drainQueue(adapter);
       adapter.setAnimating(false);
-      expect(adapter.renderedBoardState.renderedState().players[1].lp).toBe(7500);
+      expect(adapter.boardStateView.renderedState().players[1].lp).toBe(7500);
     });
 
     it('should move destroyed card to GY in rendered state', () => {
       adapter.feedTransition(prevState, nextState);
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       const m2 = rendered.players[1].zones.find(z => z.zoneId === 'M2');
       const gy = rendered.players[1].zones.find(z => z.zoneId === 'GY');
       expect(m2!.cards.length).toBe(0);
@@ -316,7 +316,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(prevState, nextState);
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const m3 = adapter.renderedBoardState.renderedState().players[0].zones.find(z => z.zoneId === 'M3');
+      const m3 = adapter.boardStateView.renderedState().players[0].zones.find(z => z.zoneId === 'M3');
       expect(m3!.cards[0].cardCode).toBe(100);
     });
   });
@@ -356,7 +356,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(state(), state({ events: [setMsg], boardState: nextBoardState }));
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const s1 = adapter.renderedBoardState.renderedState().players[0].zones.find(z => z.zoneId === 'S1');
+      const s1 = adapter.boardStateView.renderedState().players[0].zones.find(z => z.zoneId === 'S1');
       expect(s1!.cards[0].position).toBe(POSITION.FACEDOWN_DEFENSE);
     });
   });
@@ -393,7 +393,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.setAnimating(false);
 
       // Rendered state should be swapped: P1's data is now players[0]
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       expect(rendered.players[0].lp).toBe(7000);  // P1 (self) at index 0
       expect(rendered.players[1].zones.find(z => z.zoneId === 'M3')!.cards[0].cardCode).toBe(100); // P0 (opp) at index 1
       expect(rendered.turnPlayer).toBe(1); // P0's turn → from P1's perspective = opponent = 1
@@ -543,7 +543,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(state(), state({ events: [bounce], boardState: nextBoardState }));
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       const hand = rendered.players[1].zones.find(z => z.zoneId === 'HAND');
       const m3 = rendered.players[1].zones.find(z => z.zoneId === 'M3');
       expect(hand!.cards.length).toBe(4);
@@ -571,7 +571,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(state(), state({ events: [recover], boardState: nextBoardState }));
       drainQueue(adapter);
       adapter.setAnimating(false);
-      expect(adapter.renderedBoardState.renderedState().players[0].lp).toBe(9500);
+      expect(adapter.boardStateView.renderedState().players[0].lp).toBe(9500);
     });
   });
 
@@ -680,7 +680,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       expect(adapter.activePrompt()).toBeNull();
 
       // Board state should still be applied
-      expect(adapter.renderedBoardState.renderedState().turnCount).toBe(5);
+      expect(adapter.boardStateView.renderedState().turnCount).toBe(5);
 
       // Should have logged a warning about the mismatch
       expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -803,7 +803,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.feedTransition(state(), state({ events: [moveToField, setEvent], boardState: nextBoardState }));
       drainQueue(adapter);
       adapter.setAnimating(false);
-      const s3 = adapter.renderedBoardState.renderedState().players[0].zones.find(z => z.zoneId === 'S3');
+      const s3 = adapter.boardStateView.renderedState().players[0].zones.find(z => z.zoneId === 'S3');
       expect(s3!.cards[0].cardCode).toBe(400);
       expect(s3!.cards[0].position).toBe(POSITION.FACEDOWN_DEFENSE);
     });
@@ -850,7 +850,7 @@ describe('Replay Integration — Queue Sequences & Rendered State', () => {
       adapter.setAnimating(false);
 
       // Final rendered state should reflect both transitions
-      const rendered = adapter.renderedBoardState.renderedState();
+      const rendered = adapter.boardStateView.renderedState();
       expect(rendered.players[0].zones.find(z => z.zoneId === 'M1')!.cards[0].cardCode).toBe(100);
       expect(rendered.players[0].zones.find(z => z.zoneId === 'HAND')!.cards.length).toBe(1);
       expect(rendered.players[1].lp).toBe(6500);

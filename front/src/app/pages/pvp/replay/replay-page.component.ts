@@ -171,7 +171,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
   /** Duel state for display — the adapter's RBS is already perspective-relative
    *  (swapBoardState applied on every updateLogical), so no swap needed here. */
   readonly activeDuelState = computed<DuelState>(() =>
-    this.adapter.renderedBoardState.renderedState(),
+    this.adapter.boardStateView.renderedState(),
   );
 
   /** Eligible zones for the active SELECT_PLACE/SELECT_DISFIELD decision (zone keys with player suffix). */
@@ -403,7 +403,7 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
       untracked(() => {
         // Same uninitialised guard as above (L16) — structural check rather
         // than referential equality with EMPTY_DUEL_STATE.
-        const rendered = this.adapter.renderedBoardState.renderedState();
+        const rendered = this.adapter.boardStateView.renderedState();
         if (states.length > 0 && rendered.players[0].zones.length === 0) {
           this.adapter.jumpToState(states[0]);
         }

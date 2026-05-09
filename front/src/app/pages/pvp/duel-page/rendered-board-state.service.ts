@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, type Signal } from '@angular/core';
 import { DuelState, EMPTY_DUEL_STATE } from '../types';
 import { Player, PlayerBoardState, BoardZone } from '../duel-ws.types';
 import { LOCK_SAFETY_TIMEOUT_MS } from './animation-constants';
@@ -11,8 +11,24 @@ export interface ZoneLock {
   release(): void;
 }
 
+/**
+ * Read-only contract surface of {@link RenderedBoardStateService}, exposed to
+ * the component layer (template + component-level computeds) and to any
+ * non-orchestrator consumer that only needs to observe board state.
+ *
+ * The full RBS class still owns the write/control surface (lock/commit/sync
+ * for the animation orchestrator + managers via `AnimationDataSource`).
+ * Splitting the contract via this interface keeps templates from accidentally
+ * calling `commitAll()` or `lockZone()` — see audit L25.
+ */
+export interface BoardStateView {
+  readonly logicalState: Signal<DuelState>;
+  readonly renderedState: Signal<DuelState>;
+  readonly hasLockedZones: Signal<boolean>;
+}
+
 @Injectable()
-export class RenderedBoardStateService {
+export class RenderedBoardStateService implements BoardStateView {
   logger?: DuelLogger;
 
   /**

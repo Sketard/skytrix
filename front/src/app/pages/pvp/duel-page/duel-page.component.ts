@@ -153,8 +153,8 @@ export class DuelPageComponent implements OnInit {
 
   readonly isPortrait = signal(false);
 
-  readonly renderedState = computed(() => this.wsService.renderedBoardState.renderedState());
-  readonly logicalState = computed(() => this.wsService.renderedBoardState.logicalState());
+  readonly renderedState = computed(() => this.wsService.boardStateView.renderedState());
+  readonly logicalState = computed(() => this.wsService.boardStateView.logicalState());
   readonly timerState = this.wsService.timerState;
 
   // In solo mode, show the active player's own timer instead of the last received timer
@@ -391,7 +391,7 @@ export class DuelPageComponent implements OnInit {
       // Silence the phase announcement that would otherwise fire when logicalState is
       // restored by STATE_SYNC. This runs synchronously before Angular effects (microtasks),
       // so lastAnnouncedPhase is already set when the phase effect fires.
-      const s = this.wsService.renderedBoardState.logicalState();
+      const s = this.wsService.boardStateView.logicalState();
       this.animBridge.silenceCurrentPhase(s.phase, s.turnPlayer);
     };
 

@@ -41,6 +41,8 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   // --- All 13 signals + canRetry computed through _activeConnection ---
 
   get renderedBoardState() { return this._activeConnection().renderedBoardState; }
+  /** Read-only view of board state for component template + non-orchestrator consumers (audit L25). */
+  get boardStateView() { return this._activeConnection().boardStateView; }
   readonly pendingPrompt = computed(() => this._activeConnection().pendingPrompt());
   readonly hintContext = computed(() => this._activeConnection().hintContext());
   readonly animationQueue = computed(() => this._activeConnection().animationQueue());

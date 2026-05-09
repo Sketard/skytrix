@@ -4,7 +4,7 @@ import { syncAfterBoardState, type QueueEntry } from './animation-data-source';
 import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
-import { RenderedBoardStateService } from './rendered-board-state.service';
+import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
 import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
@@ -56,7 +56,10 @@ export class DuelConnection {
   artService?: { prefetchCard(code: number | null | undefined): void };
   private readonly processor = new DuelEventProcessor();
   private readonly rbs = new RenderedBoardStateService();
+  /** Full RBS — write/control surface used by AnimationDataSource (orchestrator + managers). */
   readonly renderedBoardState = this.rbs;
+  /** Read-only view of board state used by component template + non-orchestrator consumers (audit L25). */
+  readonly boardStateView: BoardStateView = this.rbs;
   private _timerState = signal<TimerStateMsg | null>(null);
   private _timerStatePerPlayer = signal<[TimerStateMsg | null, TimerStateMsg | null]>([null, null]);
   private _connectionStatus = signal<ConnectionStatus>('connected');

@@ -100,15 +100,15 @@ describe('ReplayDuelAdapter', () => {
       const next = precomputed({ events: [], boardState: boardState({ turnCount: 2 }) });
       adapter.feedTransition(prev, next);
       expect(adapter.busy()).toBeFalse();
-      expect(adapter.renderedBoardState.renderedState().turnCount).toBe(2);
+      expect(adapter.boardStateView.renderedState().turnCount).toBe(2);
     });
 
     it('should set rendered state from next board state', () => {
       const prev = precomputed();
       const next = precomputed({ events: [], boardState: boardState({ turnCount: 5, phase: 'BATTLE_START' }) });
       adapter.feedTransition(prev, next);
-      expect(adapter.renderedBoardState.renderedState().turnCount).toBe(5);
-      expect(adapter.renderedBoardState.renderedState().phase).toBe('BATTLE_START');
+      expect(adapter.boardStateView.renderedState().turnCount).toBe(5);
+      expect(adapter.boardStateView.renderedState().phase).toBe('BATTLE_START');
     });
   });
 
@@ -123,8 +123,8 @@ describe('ReplayDuelAdapter', () => {
         ],
       });
       adapter.feedTransition(precomputed(), precomputed({ events: [], boardState: bs }));
-      expect(adapter.renderedBoardState.renderedState().players[0].lp).toBe(5000);
-      expect(adapter.renderedBoardState.renderedState().players[1].lp).toBe(8000);
+      expect(adapter.boardStateView.renderedState().players[0].lp).toBe(5000);
+      expect(adapter.boardStateView.renderedState().players[1].lp).toBe(8000);
     });
 
     it('should swap players when perspectiveIndex is 1', () => {
@@ -138,15 +138,15 @@ describe('ReplayDuelAdapter', () => {
       });
       adapter.feedTransition(precomputed(), precomputed({ events: [], boardState: bs }));
       // After swap: players[0] should be the original players[1]
-      expect(adapter.renderedBoardState.renderedState().players[0].lp).toBe(7000);
-      expect(adapter.renderedBoardState.renderedState().players[1].lp).toBe(5000);
+      expect(adapter.boardStateView.renderedState().players[0].lp).toBe(7000);
+      expect(adapter.boardStateView.renderedState().players[1].lp).toBe(5000);
     });
 
     it('should swap turnPlayer when perspectiveIndex is 1', () => {
       adapter.perspectiveIndex.set(1);
       const bs = boardState({ turnPlayer: 0 });
       adapter.feedTransition(precomputed(), precomputed({ events: [], boardState: bs }));
-      expect(adapter.renderedBoardState.renderedState().turnPlayer).toBe(1);
+      expect(adapter.boardStateView.renderedState().turnPlayer).toBe(1);
     });
   });
 
@@ -330,8 +330,8 @@ describe('ReplayDuelAdapter', () => {
 
       adapter.jumpToState(target);
       expect(adapter.busy()).toBeFalse();
-      expect(adapter.renderedBoardState.renderedState().turnCount).toBe(10);
-      expect(adapter.renderedBoardState.renderedState().phase).toBe('END');
+      expect(adapter.boardStateView.renderedState().turnCount).toBe(10);
+      expect(adapter.boardStateView.renderedState().phase).toBe('END');
     });
 
     it('should respect perspective swap', () => {
@@ -348,8 +348,8 @@ describe('ReplayDuelAdapter', () => {
 
       adapter.jumpToState(target);
       // Swapped: players[0] is original players[1]
-      expect(adapter.renderedBoardState.renderedState().players[0].lp).toBe(6000);
-      expect(adapter.renderedBoardState.renderedState().players[1].lp).toBe(3000);
+      expect(adapter.boardStateView.renderedState().players[0].lp).toBe(6000);
+      expect(adapter.boardStateView.renderedState().players[1].lp).toBe(3000);
     });
   });
 
