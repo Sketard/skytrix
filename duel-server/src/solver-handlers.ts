@@ -32,6 +32,16 @@ const solverConnections = new Map<string, WebSocket>();
 /** Last solve start time per user (ms). Drives the rate-limit window. */
 const solverLastStart = new Map<string, number>();
 
+/** Per-userId in-flight guard for `SOLVER_START`. R7 audit closure: two
+ *  concurrent SOLVER_STARTs from the same user (e.g. duplicate click before
+ *  the rate-limit window opens, or an aggressive client) used to race on
+ *  `fetchDeckCached`/`solverLastStart` and have the orchestrator abort the
+ *  first solve mid-flight. The set entry is added before the first `await`
+ *  in `handleSolverStart` and removed in the `finally`, so any 2nd START
+ *  while a solve is still wiring up is rejected with `RATE_LIMITED`. Verify
+ *  mode bypasses the mutex (cheap, ~62ms, no deck fetch race). */
+const solverInFlight = new Set<string>();
+
 /** TTL'd cached final result per user (last solve). Replayed on reconnect.
  *  TTL is NOT refreshed on hit — a re-emitted result extends nothing. The
  *  fixed lifetime caps how long a stale solve can be served after the user
@@ -270,15 +280,23 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
   const orchestrator = c.orchestrator();
   // Per-solve correlation tag for log grep across the solve lifecycle.
   const solveId = randomBytes(4).toString('hex');
+  // Verify mode detection — skip rate limit + mutex (verify costs ~62ms,
+  // single-worker, no deck fetch race surface).
+  const isVerifyMode = Array.isArray(msg.verifyPath) && msg.verifyPath.length > 0
+    && Array.isArray(msg.verifyTimings);
+  // R7 audit closure: per-userId mutex. Set BEFORE any `await` so two
+  // concurrent SOLVER_STARTs (same userId) can't both pass the in-flight
+  // check synchronously. Released in the outer `finally`.
+  const mutexAcquired = !isVerifyMode && tryAcquireSolverMutex(userId);
+  if (!isVerifyMode && !mutexAcquired) {
+    sendSolverError(ws, 'RATE_LIMITED', 'A solve is already in progress for this session');
+    return;
+  }
   try {
     if (!orchestrator) {
       sendSolverError(ws, 'INTERNAL_ERROR', 'Solver not available');
       return;
     }
-
-    // Verify mode detection — skip rate limit (verify costs ~62ms, not a full solve)
-    const isVerifyMode = Array.isArray(msg.verifyPath) && msg.verifyPath.length > 0
-      && Array.isArray(msg.verifyTimings);
 
     // Rate limit check (AC #6) — skip for verify mode
     if (!isVerifyMode) {
@@ -523,8 +541,32 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
   } catch (err) {
     logger.error(`[Solver][${solveId}] unexpected error`, { userId, err });
     sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'An unexpected error occurred');
+  } finally {
+    if (mutexAcquired) releaseSolverMutex(userId);
   }
 }
+
+/** R7 helper. Atomic synchronous test-and-add: returns true if the userId
+ *  was free (and adds it), false if already in-flight. MUST be called
+ *  before any `await` in the SOLVER_START flow — otherwise two coroutines
+ *  could both observe "free" and both add. */
+function tryAcquireSolverMutex(userId: string): boolean {
+  if (solverInFlight.has(userId)) return false;
+  solverInFlight.add(userId);
+  return true;
+}
+
+function releaseSolverMutex(userId: string): void {
+  solverInFlight.delete(userId);
+}
+
+// Test-only — see *.spec.ts. Underscore prefix marks the contract: these
+// are NOT part of the public solver-handlers API.
+export const _tryAcquireSolverMutex = tryAcquireSolverMutex;
+export const _releaseSolverMutex = releaseSolverMutex;
+export const _solverInFlightSize = (): number => solverInFlight.size;
+export const _solverInFlightHas = (userId: string): boolean => solverInFlight.has(userId);
+export const _resetSolverInFlight = (): void => { solverInFlight.clear(); };
 
 // --- Task 6: SOLVER_CANCEL handler ---
 
