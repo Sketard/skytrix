@@ -112,7 +112,7 @@ Key rules:
 ## Orchestrator Decomposition
 
 `AnimationOrchestratorService` is a thin coordinator that delegates to
-5 extracted managers:
+7 extracted managers:
 
 - **`ChainResolutionManager`** — chain state (signals, buffer, replay
   timeouts, solved count). Pure state + `drainBuffer()`. Orchestrator
@@ -126,6 +126,16 @@ Key rules:
   commit.
 - **`BattleAnimationTracker`** — in-progress attack animations (attack
   line + clash impact), pending attack release.
+- **`TargetIndicatorManager`** — `MSG_BECOME_TARGET` reticles for cards
+  inside pile zones (GY, Banished, Extra Deck). Pile zones only render
+  their top card, so a separate float layer is needed to point at
+  sequence > 0 cards. Field-zone targets stay on the orchestrator's
+  `targetedZoneKeys` signal.
+- **`BufferReplayBuilder`** — owns the 3-pass batch construction for
+  `replayBuffer` (see "Buffer Replay Batch Construction" section below).
+  `build(buffer)` returns `{ batch, releaseSessionLocks }`. The
+  orchestrator stays as dispatch policy: drain → call builder → prepend
+  batch + `batch-end` + `await-signal` directives.
 
 **`DuelContext`** is the shared context for all managers: `relativePlayer()`,
 `scaledDuration()`, `announceEvent()`, `reducedMotion` signal, and
@@ -264,12 +274,18 @@ its pre-chain state across the whole batch replay; the per-event
 `rbs.updateLogical(boardStateAfter)` hook progresses logical state
 without triggering commitZone until batch-end.
 
-## Buffer Replay Batch Construction
+## Buffer Replay Batch Construction (`BufferReplayBuilder`)
 
-`AnimationOrchestratorService.replayBuffer()` drains
-`chainManager._bufferedBoardEvents` and builds a `QueueEntry[]` batch
-prepended to the main animation queue. The batch builder runs THREE
-sequential passes on the buffer before queue emission:
+`BufferReplayBuilder.build(buffer)` (`buffer-replay-builder.ts`) is the
+batch builder. `AnimationOrchestratorService.replayBuffer()` drains
+`chainManager._bufferedBoardEvents` via `chainManager.drainBuffer()`,
+calls `bufferReplayBuilder.build()`, and prepends the resulting
+`{ batch, releaseSessionLocks }` plus `batch-end` + `await-signal`
+directives to the main animation queue. The orchestrator is dispatch
+policy only — all batch transformation logic lives in the builder.
+
+The builder runs THREE sequential passes on the buffer before queue
+emission:
 
 1. **`interleaveConfirmsWithMoves(buffer)`** — splits aggregated
    `MSG_CONFIRM_CARDS` into per-card single-card CONFIRMs inlined
@@ -380,6 +396,46 @@ All animation timing magic numbers live in `animation-constants.ts`:
 `CHAIN_POLL_MAX_DELAY_MS`, `QUEUE_COLLAPSE_THRESHOLD`, `QUEUE_COLLAPSE_KEEP`,
 `REPLAY_BUFFER_SAFETY_TIMEOUT_MS`. New timing values MUST be added there
 instead of inlined as literals.
+
+## Server Module Configuration (`createConfigurable<T>`)
+
+Server-side modules extracted from `server.ts` (`http-routes`,
+`replay-handlers`, `timer-management`, `solver-handlers`) follow a
+two-phase init contract via `createConfigurable<T>(name)`
+(`duel-server/src/configurable.ts`). The factory returns
+`{ configure(cfg), get(), isConfigured() }`. `get()` throws
+`"<name>: configure<Name>() not called"` if the module is read before
+configuration. `isConfigured()` participates in the **boot invariant**
+in `server.ts` (block just before `wss.on('connection')`), which throws
+with the list of unconfigured modules. New configurable modules MUST
+register their `isXxxConfigured()` in the boot block — that block is
+the regression fence for the whole pattern.
+
+## Session Management (`DuelSessionManager`)
+
+`DuelSessionManager` (`duel-server/src/duel-session-manager.ts`) owns
+the three session-state Maps (`activeDuels`, `pendingTokens`,
+`reconnectTokens`). Token consumption uses **atomic read+delete** with
+a tagged return discriminator: `'unknown'` (token never issued),
+`'session-gone'` (orphan token; auto-pruned), `'ok'` (resolved).
+Callers MUST switch on `kind` rather than null-check — the three
+branches drive distinct close-codes and log lines. `terminate()` is
+idempotent and called LAST in `cleanupDuelSession()`; WS close, timer
+clears, and worker termination happen before it.
+
+## Protocol Version Mismatch (Close-code 4426)
+
+WS handshakes that fail protocol-version validation close with **code
+4426** (analog to HTTP 426 "Upgrade Required"). Server side:
+`protocol-version-check.ts` runs on every WS connect (PvP, replay,
+solver) before any session bookkeeping; mismatches increment a
+`protocolMismatchCount` counter exposed via `/status`. Client side:
+every connection service (`duel-connection.ts`,
+`replay-connection.service.ts`, `solver.service.ts`) MUST inspect
+`event.code === 4426` in its `onclose` handler and surface a "client
+outdated, refresh" UX rather than a generic "connection lost". Losing
+this branch reads as a transient network error to the user and
+triggers an infinite reconnect loop on stale bundles.
 
 ## Solver Interruption Tags Generation
 
