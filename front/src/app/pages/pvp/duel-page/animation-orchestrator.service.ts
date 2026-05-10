@@ -39,6 +39,38 @@ import { EQUIP_LINE_COLOR, EQUIP_LINE_SHADOW } from './equip-line.constants';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 
 /**
+ * Discrete actions returned by `AnimationOrchestratorService.decideNextStep`.
+ * Drives the dispatcher inside `_processAnimationQueueInner`.
+ */
+export type QueueStep =
+  | { action: 'pause-external' }
+  | { action: 'collapse'; collapseCount: number }
+  | { action: 'consume-deferred'; entry: GameEvent }
+  | { action: 'dequeue'; entry: QueueEntry }
+  | { action: 'pre-replay-buffer' }
+  | { action: 'poll'; delayMs: number }
+  | { action: 'poll-ceiling-reset' }
+  | { action: 'finalize' };
+
+/**
+ * Snapshot of inputs consumed by the pure `decideNextStep` function.
+ * The dispatcher reads signals + internal state once per tick and passes
+ * them as plain values; tests construct the object directly.
+ */
+export interface QueueDecisionInputs {
+  isWaitingForOverlay: boolean;
+  hasDrawsInFlight: boolean;
+  queue: readonly QueueEntry[];
+  isResolving: boolean;
+  hasBufferedEvents: boolean;
+  hasPendingPrompt: boolean;
+  commitMode: 'per-event' | 'deferred';
+  pollCount: number;
+  pollDelay: number;
+  deferredSolvingEntry: GameEvent | null;
+}
+
+/**
  * Central animation queue processor for the duel page.
  * Provided at component level (NOT root).
  *
@@ -372,6 +404,63 @@ export class AnimationOrchestratorService {
   // ---------------------------------------------------------------------------
 
   /**
+   * Pure decision step for the queue loop. Given a snapshot of inputs,
+   * returns the next action to take. No side effects, no signal reads,
+   * no mutations — entirely testable in isolation.
+   *
+   * The dispatcher in _processAnimationQueueInner owns side effects
+   * (dequeue, trace, setTimeout, await processEvent, etc.) and is
+   * driven by the action returned here.
+   */
+  static decideNextStep(input: QueueDecisionInputs): QueueStep {
+    // 1. External wait (overlay ready / draws in flight)
+    if (input.isWaitingForOverlay || input.hasDrawsInFlight) {
+      return { action: 'pause-external' };
+    }
+
+    // 2. Queue collapse (LP-only burst). Visual events MUST NOT be collapsed
+    // (see CLAUDE.md "Queue collapse — LP-only predicate").
+    if (
+      input.queue.length > QUEUE_COLLAPSE_THRESHOLD
+      && input.queue.every(e => !('kind' in e)
+        && (e.type === 'MSG_DAMAGE' || e.type === 'MSG_PAY_LPCOST' || e.type === 'MSG_RECOVER'))
+    ) {
+      return { action: 'collapse', collapseCount: input.queue.length - QUEUE_COLLAPSE_KEEP };
+    }
+
+    // 3. Dequeue priority: deferred-solving (held over from first-multi-link
+    // banner) before normal queue.
+    if (input.deferredSolvingEntry !== null) {
+      return { action: 'consume-deferred', entry: input.deferredSolvingEntry };
+    }
+    if (input.queue.length > 0) {
+      return { action: 'dequeue', entry: input.queue[0] };
+    }
+
+    // 4. Queue empty — three terminal branches.
+    // 4a. Mid-chain pre-replay: prompt arrived while chain still resolving
+    // and buffered events exist → flush them so player sees animations
+    // before answering.
+    if (input.isResolving && input.hasBufferedEvents && input.hasPendingPrompt) {
+      return { action: 'pre-replay-buffer' };
+    }
+
+    // 4b. Chain poll back-off (deferred commit + waiting overlay).
+    // In replay this branch is naturally avoided because CHAIN_SOLVED clears
+    // isWaitingForOverlay between steps; in PvP it polls until next event.
+    if (input.commitMode === 'deferred' && input.isWaitingForOverlay) {
+      if (input.pollCount + 1 > CHAIN_POLL_CEILING) {
+        return { action: 'poll-ceiling-reset' };
+      }
+      const nextDelay = Math.min(input.pollDelay * 2, CHAIN_POLL_MAX_DELAY_MS);
+      return { action: 'poll', delayMs: nextDelay };
+    }
+
+    // 4c. Default: finalize.
+    return { action: 'finalize' };
+  }
+
+  /**
    * Entry point — guards against re-entry from multiple callers
    * (interruptPoll, await-signal effect, startProcessingIfIdle).
    */
@@ -415,63 +504,77 @@ export class AnimationOrchestratorService {
       `started before the first finished (audit finding C4).`,
     );
     try {
-    while (this._isAnimating()) {
-      if (this.chainManager.isWaitingForOverlay || this.drawManager.hasDrawsInFlight) return;
-      const queue = this.dataSource.animationQueue();
-      this.logger.log(DuelLogCategory.QUEUE, 'processAnimationQueue — queueLen=%d ownPlayer=%d',
-        queue.length, this.ctx.ownPlayerIndex());
+      while (this._isAnimating()) {
+        // Pre-lock pass is a non-decisional side effect: it must run before
+        // the dispatcher reads the queue so locks for queued sources are in
+        // place when downstream branches commit/dequeue.
+        this.moveRouter.preLockQueuedSources();
 
-      // Queue collapse (AC7): only trigger when ALL queued entries can be
-      // applied instantly without data loss. Visual events (MSG_MOVE,
-      // MSG_DRAW, MSG_CONFIRM_CARDS, MSG_FLIP_SUMMONING, MSG_SET, MSG_SHUFFLE_*,
-      // etc.) are NOT handled by applyInstantAnimation — collapsing them would
-      // silently drop the animation and the card would snap to destination via
-      // the next commitUnlocked(). So we limit collapse to LP-class bursts.
-      if (queue.length > QUEUE_COLLAPSE_THRESHOLD && queue.every(e =>
-        !('kind' in e) && (e.type === 'MSG_DAMAGE' || e.type === 'MSG_PAY_LPCOST' || e.type === 'MSG_RECOVER')
-      )) {
-        const collapseCount = queue.length - QUEUE_COLLAPSE_KEEP;
-        for (let i = 0; i < collapseCount; i++) {
-          const entry = this.dataSource.dequeueAnimation();
-          if (entry && !('kind' in entry)) this.applyInstantAnimation(entry);
-        }
-      }
+        const step = AnimationOrchestratorService.decideNextStep({
+          isWaitingForOverlay: this.chainManager.isWaitingForOverlay,
+          hasDrawsInFlight: this.drawManager.hasDrawsInFlight,
+          queue: this.dataSource.animationQueue(),
+          isResolving: this.chainManager.isResolving,
+          hasBufferedEvents: this.chainManager.hasBufferedEvents,
+          hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
+          commitMode: this.commitMode,
+          pollCount: this._pollCount,
+          pollDelay: this._pollDelay,
+          deferredSolvingEntry: this.chainManager.deferredSolvingEvent,
+        });
 
-      this.moveRouter.preLockQueuedSources();
+        this.logger.log(DuelLogCategory.QUEUE,
+          'decideNextStep — action=%s queueLen=%d ownPlayer=%d',
+          step.action, this.dataSource.animationQueue().length, this.ctx.ownPlayerIndex());
 
-      const entry = this.chainManager.consumeDeferredSolving() ?? this.dataSource.dequeueAnimation();
-      if (!entry) {
-        // Mid-chain pre-replay: board events were buffered during chain resolution but a prompt
-        // is already waiting. Replay them now so the player sees the animations before answering.
-        if (this.chainManager.isResolving
-          && this.chainManager.hasBufferedEvents
-          && this.dataSource.pendingPrompt() !== null) {
-          await this.replayBuffer(true);
-          continue; // re-enter loop — directives prepended, while loop dequeues them
-        }
+        switch (step.action) {
+          case 'pause-external':
+            return;
 
-        // During an active chain resolution, poll with exponential back-off
-        // instead of stopping — but ONLY if we are genuinely waiting for more
-        // events from the server (PvP) or the overlay (post-CHAIN_SOLVED).
-        //
-        // In replay, CHAIN_SOLVING may arrive alone in a step (CHAIN_SOLVED is
-        // in the next step). No WS events will come — only advanceStep() can
-        // feed the queue, and it requires setAnimating(false). Polling here
-        // would deadlock. The isWaitingForOverlay check catches post-SOLVED
-        // waits; without it, we finalize and let advanceStep resume the chain.
-        if (this.commitMode === 'deferred' && this.chainManager.isWaitingForOverlay) {
-          this._pollCount++;
-          if (this._pollCount > CHAIN_POLL_CEILING) {
-            this.trace('queueEmpty', { action: 'pollCeiling', count: this._pollCount });
-            this.logger.warn('Chain poll ceiling reached (%d) — forcing finalize. '
-              + 'This likely indicates a lost chain event (MSG_CHAIN_END never arrived).', this._pollCount);
-            this._pollCount = 0;
+          case 'collapse': {
+            for (let i = 0; i < step.collapseCount; i++) {
+              const entry = this.dataSource.dequeueAnimation();
+              if (entry && !('kind' in entry)) this.applyInstantAnimation(entry);
+            }
+            continue;
+          }
+
+          case 'consume-deferred': {
+            // Commit the peek — chainManager held it in deferredSolvingEvent
+            // until we acknowledged it.
+            this.chainManager.consumeDeferredSolving();
             this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-            // Reset chain state so finalize path runs cleanly (commitMode → per-event)
-            this.chainManager.reset();
-            // Fall through to normal finalize path below
-          } else {
-            this._pollDelay = Math.min(this._pollDelay * 2, CHAIN_POLL_MAX_DELAY_MS);
+            this._pollCount = 0;
+            const flow = await this._handleEntry(step.entry);
+            if (flow === 'return') return;
+            continue;
+          }
+
+          case 'dequeue': {
+            const entry = this.dataSource.dequeueAnimation()!;
+            this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
+            this._pollCount = 0;
+            if ('kind' in entry) {
+              const directiveResult = await this.processDirective(entry);
+              if (directiveResult === 'pause') return;
+              continue;
+            }
+            const flow = await this._handleEntry(entry);
+            if (flow === 'return') return;
+            continue;
+          }
+
+          case 'pre-replay-buffer': {
+            // Mid-chain pre-replay: prompt is waiting and buffer non-empty.
+            // replayBuffer(true) prepends directives + clears overlay wait;
+            // the next loop tick dequeues them via the 'dequeue' branch.
+            await this.replayBuffer(true);
+            continue;
+          }
+
+          case 'poll': {
+            this._pollCount++;
+            this._pollDelay = step.delayMs;
             this.trace('queueEmpty', { action: 'poll', delay: this._pollDelay, count: this._pollCount });
             this._pollTimeout = setTimeout(() => {
               this._pollTimeout = null;
@@ -479,133 +582,147 @@ export class AnimationOrchestratorService {
             }, this._pollDelay);
             return; // _isAnimating stays true — _pollTimeout cleared by clearTimersAndPolling
           }
-        }
 
-        // INVARIANT: finalizeAndCommit() MUST run BEFORE setAnimating(false).
-        // In replay, setAnimating(false) triggers advanceStep() → updateLogical()
-        // with the next state. Committing first ensures we use the current state.
-        this.trace('queueEmpty', { action: 'finalize' });
-        this.finalizeAndCommit();
-        this.drawManager.resetHandAnimationState();
-        this.animatingZone.set(null);
-        this.lpTracker.animatingLpPlayer.set(null);
-        // Clear _isProcessing BEFORE setAnimating(false) — the call may
-        // synchronously trigger advanceStep → feedTransition → enqueue,
-        // and the queue watcher effect may fire in the same microtask batch.
-        // If _isProcessing is still true, startProcessingIfIdle is a no-op
-        // and the queue stalls.
-        this._isProcessing = false;
-        this._isAnimating.set(false);
-        this.dataSource.setAnimating(false);
-        const postFinalizeQueue = this.dataSource.animationQueue().length;
-        if (postFinalizeQueue > 0) {
-          this.trace('postFinalize', { queueLen: postFinalizeQueue });
-          this._isAnimating.set(true);
-          this.dataSource.setAnimating(true);
-          this._isProcessing = true; // re-acquired for the continue
-          continue; // re-enter loop
-        }
-        const state = this.rbs.logicalState();
-        if (state.players.length === 2) {
-          this.lpTracker.syncFromBoardState(state.players[0].lp, state.players[1].lp);
-        }
-        return;
-      }
+          case 'poll-ceiling-reset': {
+            this._pollCount++;
+            this.trace('queueEmpty', { action: 'pollCeiling', count: this._pollCount });
+            this.logger.warn('Chain poll ceiling reached (%d) — forcing finalize. '
+              + 'This likely indicates a lost chain event (MSG_CHAIN_END never arrived).', this._pollCount);
+            this._pollCount = 0;
+            this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
+            // Reset chain state so commitMode → 'per-event' next tick → falls
+            // through to the 'finalize' branch on the next decision.
+            this.chainManager.reset();
+            continue;
+          }
 
-      this._pollDelay = CHAIN_POLL_BASE_DELAY_MS; // reset back-off on successful dequeue
-      this._pollCount = 0;
-
-      // --- Directive handling ---
-      if ('kind' in entry) {
-        const action = await this.processDirective(entry);
-        if (action === 'pause') return; // queue paused — external trigger resumes it
-        continue;
-      }
-
-      // --- Normal GameEvent processing ---
-      const event = entry as GameEvent;
-      const result = this.processEvent(event);
-      const resultLabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}ms`;
-      this.trace('processEvent', { type: event.type, result: resultLabel });
-
-      // Release pre-locks after processing — animated branches consume them
-      // in buildMoveContext (MSG_MOVE) so this is a no-op; for non-animated
-      // (result === 0) or async events (MSG_DRAW) it cleans up orphans.
-      //
-      // EXCEPTION: when `chainManager.isResolving`, board-changing events are
-      // buffered by `bufferIfResolving()` and replayed later as a group
-      // directive. Releasing pre-locks here would drop HAND/GY ref-counts to
-      // zero, fire commitZone() synchronously, and expose the buffered cards
-      // at their destination before the replay animates them — the classic
-      // "tutor cards appear in hand before travel" flash. Keep the pre-locks
-      // alive; `replayBuffer()` will reuse them via its own preLockQueuedSources
-      // pass (the `!has` guard prevents duplication), and MSG_CHAIN_END's
-      // `releaseAllPreLocks()` is the safety net for any orphans.
-      const buffered = this.chainManager.shouldBufferDuringChain
-        && BOARD_CHANGING_EVENT_TYPES.has(event.type);
-      if (!buffered) {
-        if (event.type === 'MSG_MOVE') {
-          const msg = event as MoveMsg;
-          const relPlayer = this.ctx.relativePlayer(msg.player);
-          const srcKey = locationToZoneKey(msg.fromLocation, msg.fromSequence, relPlayer);
-          const dstKey = locationToZoneKey(msg.toLocation, msg.toSequence, relPlayer);
-          const keys = new Set<string>();
-          if (srcKey) keys.add(srcKey);
-          if (dstKey) keys.add(dstKey);
-          if (keys.size) this.moveRouter.releasePreLocksForKeys(keys);
-        } else if (event.type === 'MSG_DRAW') {
-          const relPlayer = this.ctx.relativePlayer((event as DrawMsg).player);
-          this.moveRouter.releasePreLocksForKeys(new Set([`HAND-${relPlayer}`]));
+          case 'finalize': {
+            // INVARIANT: finalizeAndCommit() MUST run BEFORE setAnimating(false).
+            // In replay, setAnimating(false) triggers advanceStep() → updateLogical()
+            // with the next state. Committing first ensures we use the current state.
+            this.trace('queueEmpty', { action: 'finalize' });
+            this.finalizeAndCommit();
+            this.drawManager.resetHandAnimationState();
+            this.animatingZone.set(null);
+            this.lpTracker.animatingLpPlayer.set(null);
+            // Clear _isProcessing BEFORE setAnimating(false) — the call may
+            // synchronously trigger advanceStep → feedTransition → enqueue,
+            // and the queue watcher effect may fire in the same microtask batch.
+            // If _isProcessing is still true, startProcessingIfIdle is a no-op
+            // and the queue stalls.
+            this._isProcessing = false;
+            this._isAnimating.set(false);
+            this.dataSource.setAnimating(false);
+            const postFinalizeQueue = this.dataSource.animationQueue().length;
+            if (postFinalizeQueue > 0) {
+              this.trace('postFinalize', { queueLen: postFinalizeQueue });
+              this._isAnimating.set(true);
+              this.dataSource.setAnimating(true);
+              this._isProcessing = true; // re-acquired for the continue
+              continue;
+            }
+            const state = this.rbs.logicalState();
+            if (state.players.length === 2) {
+              this.lpTracker.syncFromBoardState(state.players[0].lp, state.players[1].lp);
+            }
+            return;
+          }
         }
       }
-
-      if (this.commitMode === 'per-event') {
-        this.moveRouter.preLockQueuedSources();
-        this.lpTracker.discardPending();
-        this.trace('commitUnlocked', { event: event.type });
-        this.rbs.commitUnlocked();
-      }
-
-      if (result === 'async') {
-        this.trace('asyncReturn', { type: event.type, reason: 'draw/overlay' });
-        return;
-      }
-
-      if (result instanceof Promise) {
-        this.trace('promiseReturn', { type: event.type, reason: 'travel' });
-        const guard = new Promise<void>(resolve => {
-          setTimeout(() => {
-            this.logger.warn('Travel promise never resolved for %s — forcing queue continue', event.type);
-            resolve();
-          }, this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS));
-        });
-        await Promise.race([result, guard]);
-        this.lpTracker.commitIfPending();
-        this.animatingZone.set(null);
-        continue;
-      }
-
-      const speedMultiplier = this.ctx.speedMultiplier();
-      const adjustedDuration = Math.round(result * speedMultiplier);
-      this.logger.log(DuelLogCategory.QUEUE, 'type=%s → setTimeout(%dms)', event.type, adjustedDuration);
-
-      if (adjustedDuration > 0) {
-        await new Promise<void>(resolve => {
-          const timeout = setTimeout(() => {
-            const idx = this.animationTimeouts.indexOf(timeout);
-            if (idx !== -1) this.animationTimeouts.splice(idx, 1);
-            resolve();
-          }, adjustedDuration);
-          this.animationTimeouts.push(timeout);
-        });
-      }
-
-      this.lpTracker.commitIfPending();
-      this.animatingZone.set(null);
-    }
     } finally {
       this._innerLoopDepth--;
     }
+  }
+
+  /**
+   * Process a dequeued GameEvent: release pre-locks, run processEvent,
+   * apply commitMode side effects, and await the result. Returns 'return'
+   * when the loop must exit (async result), 'continue' otherwise.
+   *
+   * Extracted from _processAnimationQueueInner to keep the dispatcher
+   * focused on routing decisions. Behavior is identical to the prior
+   * inline block — only the call site moved.
+   */
+  private async _handleEntry(event: GameEvent): Promise<'continue' | 'return'> {
+    const result = this.processEvent(event);
+    const resultLabel = result instanceof Promise ? 'Promise' : result === 'async' ? 'async' : `${result}ms`;
+    this.trace('processEvent', { type: event.type, result: resultLabel });
+
+    // Release pre-locks after processing — animated branches consume them
+    // in buildMoveContext (MSG_MOVE) so this is a no-op; for non-animated
+    // (result === 0) or async events (MSG_DRAW) it cleans up orphans.
+    //
+    // EXCEPTION: when `chainManager.isResolving`, board-changing events are
+    // buffered by `bufferIfResolving()` and replayed later as a group
+    // directive. Releasing pre-locks here would drop HAND/GY ref-counts to
+    // zero, fire commitZone() synchronously, and expose the buffered cards
+    // at their destination before the replay animates them — the classic
+    // "tutor cards appear in hand before travel" flash. Keep the pre-locks
+    // alive; `replayBuffer()` will reuse them via its own preLockQueuedSources
+    // pass (the `!has` guard prevents duplication), and MSG_CHAIN_END's
+    // `releaseAllPreLocks()` is the safety net for any orphans.
+    const buffered = this.chainManager.shouldBufferDuringChain
+      && BOARD_CHANGING_EVENT_TYPES.has(event.type);
+    if (!buffered) {
+      if (event.type === 'MSG_MOVE') {
+        const msg = event as MoveMsg;
+        const relPlayer = this.ctx.relativePlayer(msg.player);
+        const srcKey = locationToZoneKey(msg.fromLocation, msg.fromSequence, relPlayer);
+        const dstKey = locationToZoneKey(msg.toLocation, msg.toSequence, relPlayer);
+        const keys = new Set<string>();
+        if (srcKey) keys.add(srcKey);
+        if (dstKey) keys.add(dstKey);
+        if (keys.size) this.moveRouter.releasePreLocksForKeys(keys);
+      } else if (event.type === 'MSG_DRAW') {
+        const relPlayer = this.ctx.relativePlayer((event as DrawMsg).player);
+        this.moveRouter.releasePreLocksForKeys(new Set([`HAND-${relPlayer}`]));
+      }
+    }
+
+    if (this.commitMode === 'per-event') {
+      this.moveRouter.preLockQueuedSources();
+      this.lpTracker.discardPending();
+      this.trace('commitUnlocked', { event: event.type });
+      this.rbs.commitUnlocked();
+    }
+
+    if (result === 'async') {
+      this.trace('asyncReturn', { type: event.type, reason: 'draw/overlay' });
+      return 'return';
+    }
+
+    if (result instanceof Promise) {
+      this.trace('promiseReturn', { type: event.type, reason: 'travel' });
+      const guard = new Promise<void>(resolve => {
+        setTimeout(() => {
+          this.logger.warn('Travel promise never resolved for %s — forcing queue continue', event.type);
+          resolve();
+        }, this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS));
+      });
+      await Promise.race([result, guard]);
+      this.lpTracker.commitIfPending();
+      this.animatingZone.set(null);
+      return 'continue';
+    }
+
+    const speedMultiplier = this.ctx.speedMultiplier();
+    const adjustedDuration = Math.round(result * speedMultiplier);
+    this.logger.log(DuelLogCategory.QUEUE, 'type=%s → setTimeout(%dms)', event.type, adjustedDuration);
+
+    if (adjustedDuration > 0) {
+      await new Promise<void>(resolve => {
+        const timeout = setTimeout(() => {
+          const idx = this.animationTimeouts.indexOf(timeout);
+          if (idx !== -1) this.animationTimeouts.splice(idx, 1);
+          resolve();
+        }, adjustedDuration);
+        this.animationTimeouts.push(timeout);
+      });
+    }
+
+    this.lpTracker.commitIfPending();
+    this.animatingZone.set(null);
+    return 'continue';
   }
 
   // ---------------------------------------------------------------------------
