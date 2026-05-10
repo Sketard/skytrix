@@ -544,3 +544,73 @@ describe('DuelPageComponent — displayedTimerState multiplexing (C1.2)', () => 
     expect(component.displayedTimerState()).toBe(t1own);
   });
 });
+
+// =============================================================================
+// C1.3 — _animationsDoneEffect gating ANIMATIONS_DONE
+// =============================================================================
+
+describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let ws: StubWsService;
+  let anim: StubAnimationOrchestrator;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    ws = wsOf(fixture);
+    anim = fixture.componentRef.injector.get(AnimationOrchestratorService) as unknown as StubAnimationOrchestrator;
+    // Trigger the initial effect run so subsequent transitions are observed
+    // from a clean baseline (effect is created in the constructor and runs
+    // on the first flush — calling flushEffects here makes the baseline
+    // explicit instead of side-loaded into the first test).
+    fixture.detectChanges();
+  });
+
+  it('does not send ANIMATIONS_DONE when no pending prompt and not animating', () => {
+    ws.pendingPrompt.set(null);
+    anim.isAnimating.set(false);
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
+  });
+
+  it('does not send ANIMATIONS_DONE while a prompt is pending and animation queue is busy', () => {
+    // Gate: server timer waits until the visible animation queue drains.
+    // Setting isAnimating=true before the prompt arrives means we should
+    // never have fired before this point.
+    anim.isAnimating.set(true);
+    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
+  });
+
+  it('sends ANIMATIONS_DONE exactly once when a prompt arrives while idle', () => {
+    anim.isAnimating.set(false);
+    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires after isAnimating flips true→false with a pending prompt (queue drained mid-flow)', () => {
+    // Realistic flow: prompt arrives while orchestrator is still draining
+    // the animation queue, then drain completes and isAnimating flips off.
+    anim.isAnimating.set(true);
+    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
+
+    anim.isAnimating.set(false);
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires after pendingPrompt flips null→{prompt} while not animating (prompt arrives last)', () => {
+    anim.isAnimating.set(false);
+    ws.pendingPrompt.set(null);
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).not.toHaveBeenCalled();
+
+    ws.pendingPrompt.set({ type: 'SELECT_CARD' });
+    fixture.detectChanges();
+    expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
+  });
+});
