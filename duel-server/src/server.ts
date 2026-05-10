@@ -1445,37 +1445,50 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     }
   }
 
+  // Resolve the current OCG playerIndex of THIS WebSocket on every event.
+  // Required because startDuelWithOrder() may swap session.players[] after
+  // the connection — the closure's captured `playerIndex` then points to the
+  // wrong player. A live lookup against session.players[*].ws is immune to
+  // the swap.
+  const currentPlayerIndex = (): 0 | 1 => {
+    if (session!.players[0].ws === ws) return 0;
+    if (session!.players[1].ws === ws) return 1;
+    return playerIndex; // fallback to capture if the WS isn't attached yet
+  };
+
   // WebSocket message handling
   ws.on('message', (data: Buffer) => {
     let parsed: ClientMessage;
+    const live = currentPlayerIndex();
     try {
       parsed = JSON.parse(data.toString());
     } catch {
-      logger.error('Invalid JSON from player', { duelId: session!.duelId, player: playerIndex });
+      logger.error('Invalid JSON from player', { duelId: session!.duelId, player: live });
       return;
     }
 
-    handleClientMessage(session!, playerIndex, parsed);
+    handleClientMessage(session!, live, parsed);
   });
 
   ws.on('close', () => {
-    session!.players[playerIndex].connected = false;
-    session!.players[playerIndex].disconnectedAt = Date.now();
-    logger.log('Player disconnected', { duelId: session!.duelId, player: playerIndex });
+    const live = currentPlayerIndex();
+    session!.players[live].connected = false;
+    session!.players[live].disconnectedAt = Date.now();
+    logger.log('Player disconnected', { duelId: session!.duelId, player: live });
 
     if (!session!.endedAt) {
       // Story 3.2 — Pause turn timer and clear inactivity on disconnect
       pauseTurnTimer(session!);
-      clearInactivityTimer(session!, playerIndex as Player);
+      clearInactivityTimer(session!, live as Player);
 
       // Story 3.3 — Notify opponent of disconnection
-      const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
+      const opponentIndex: Player = live === 0 ? 1 : 0;
       sendToPlayer(session!, opponentIndex, { type: 'OPPONENT_DISCONNECTED', gracePeriodSec: RECONNECT_GRACE_MS / 1000 });
 
-      startGracePeriod(session!, playerIndex);
+      startGracePeriod(session!, live);
     } else {
       // Post-duel disconnect: notify opponent rematch is cancelled
-      const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
+      const opponentIndex: Player = live === 0 ? 1 : 0;
       sendToPlayer(session!, opponentIndex, { type: 'REMATCH_CANCELLED', reason: 'opponent_left' });
 
       // If both players disconnected after duel end, cleanup
