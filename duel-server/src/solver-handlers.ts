@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { WebSocket } from 'ws';
 import { createConfigurable } from './configurable.js';
+import * as logger from './logger.js';
 import {
   SOLVER_INIT, SOLVER_START, SOLVER_CANCEL,
   SOLVER_HANDTRAPS, SOLVER_PROGRESS, SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR,
@@ -133,7 +134,7 @@ export function sendSolverMessage(ws: WebSocket | undefined, message: ServerMess
   try {
     ws.send(JSON.stringify(message));
   } catch (err) {
-    console.error('[Solver] send failed', { err });
+    logger.error('[Solver] send failed', { err });
   }
 }
 
@@ -148,7 +149,7 @@ export function sendSolverError(ws: WebSocket | undefined, error: SolverWsError,
 
 export function handleSolverMessage(userId: string, ws: WebSocket, msg: unknown): void {
   if (typeof msg !== 'object' || msg === null || !('type' in msg)) {
-    console.warn('[Solver] malformed message', { userId });
+    logger.warn('[Solver] malformed message', { userId });
     return;
   }
   const type = (msg as { type: string }).type;
@@ -158,7 +159,7 @@ export function handleSolverMessage(userId: string, ws: WebSocket, msg: unknown)
       break;
     case SOLVER_START:
       handleSolverStart(userId, ws, msg as SolverStartMessage).catch(err => {
-        console.error('[Solver] unhandled start error', { userId, err });
+        logger.error('[Solver] unhandled start error', { userId, err });
         sendSolverError(ws, 'INTERNAL_ERROR', 'Unexpected error');
       });
       break;
@@ -166,7 +167,7 @@ export function handleSolverMessage(userId: string, ws: WebSocket, msg: unknown)
       handleSolverCancel(userId);
       break;
     default:
-      console.warn('[Solver] unknown message type', { userId, type });
+      logger.warn('[Solver] unknown message type', { userId, type });
   }
 }
 
@@ -181,7 +182,7 @@ function handleSolverInit(userId: string, ws: WebSocket): void {
     sendSolverMessage(ws, cached.message);
   }
 
-  console.log('[Solver] init', { userId, cachedResult: !!cached });
+  logger.log('[Solver] init', { userId, cachedResult: !!cached });
 }
 
 // --- Task 5: SOLVER_START handler ---
@@ -246,7 +247,7 @@ async function fetchDeckFromBackend(deckId: string, jwt: string, apiUrl: string)
     }
     return { ok: true, main, extra };
   } catch (err) {
-    console.error('[Solver] fetchDeckFromBackend failed', { deckId, err });
+    logger.error('[Solver] fetchDeckFromBackend failed', { deckId, err });
     return { ok: false, error: 'INTERNAL_ERROR', message: 'Failed to fetch deck from backend' };
   }
 }
@@ -405,7 +406,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
 
     // Verify mode: fast single-worker dispatch, no caching, no progress
     if (isVerifyMode) {
-      console.log(`[Solver][${solveId}] verify-start`, { userId, deckId: msg.deckId });
+      logger.log(`[Solver][${solveId}] verify-start`, { userId, deckId: msg.deckId });
       const startTime = Date.now();
       try {
         const verifyResult = await orchestrator.verify(duelConfig, msg.verifyPath!, msg.verifyTimings!, msg.verifyExpectedScore!);
@@ -434,9 +435,9 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
           isVerifyResult: true,
         };
         sendSolverMessage(currentWs, resultMsg);
-        console.log(`[Solver][${solveId}] verify-complete`, { userId, verified: verifyResult.verified, elapsed });
+        logger.log(`[Solver][${solveId}] verify-complete`, { userId, verified: verifyResult.verified, elapsed });
       } catch (err) {
-        console.error(`[Solver][${solveId}] verify-error`, { userId, err });
+        logger.error(`[Solver][${solveId}] verify-error`, { userId, err });
         sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'Verification failed unexpectedly');
       }
       return;
@@ -445,7 +446,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
     // Evict previous cache
     evictSolverResult(userId);
 
-    console.log(`[Solver][${solveId}] solve-start`, { userId, deckId: msg.deckId, mode: msg.mode, speed: msg.speed, algorithm });
+    logger.log(`[Solver][${solveId}] solve-start`, { userId, deckId: msg.deckId, mode: msg.mode, speed: msg.speed, algorithm });
 
     // Progress callback — resolve CURRENT ws (not captured closure)
     const onProgress = (progress: SolverProgress) => {
@@ -463,7 +464,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
     };
 
     const onDebug = process.env['LOG_LEVEL'] === 'debug'
-      ? (cat: string, data: unknown) => { console.log('[Solver:debug]', cat, data); }
+      ? (cat: string, data: unknown) => { logger.debug('[Solver:debug]', { cat, data }); }
       : undefined;
 
     // Dispatch solve
@@ -501,13 +502,13 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
       };
       cacheSolverResult(userId, resultMsg);
       sendSolverMessage(currentWs, resultMsg);
-      console.log(`[Solver][${solveId}] solve-complete`, { userId, score: result.score, nodes: result.stats.nodesExplored, elapsedMs: result.stats.elapsed });
+      logger.log(`[Solver][${solveId}] solve-complete`, { userId, score: result.score, nodes: result.stats.nodesExplored, elapsedMs: result.stats.elapsed });
     } else if (outcome.type === 'error') {
       sendSolverError(currentWs, outcome.error as SolverWsError, outcome.message);
-      console.error(`[Solver][${solveId}] solve error`, { userId, error: outcome.error, message: outcome.message });
+      logger.error(`[Solver][${solveId}] solve error`, { userId, error: outcome.error, message: outcome.message });
     }
   } catch (err) {
-    console.error(`[Solver][${solveId}] unexpected error`, { userId, err });
+    logger.error(`[Solver][${solveId}] unexpected error`, { userId, err });
     sendSolverError(solverConnections.get(userId), 'INTERNAL_ERROR', 'An unexpected error occurred');
   }
 }
@@ -517,7 +518,7 @@ async function handleSolverStart(userId: string, ws: WebSocket, msg: SolverStart
 function handleSolverCancel(userId: string): void {
   getCfg().orchestrator()?.cancel(userId);
   solverLastStart.delete(userId);
-  console.log('[Solver] cancel-requested', { userId });
+  logger.log('[Solver] cancel-requested', { userId });
 }
 
 // --- Task 7: Result caching ---
