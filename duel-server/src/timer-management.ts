@@ -95,6 +95,11 @@ export function startTurnTimer(session: ActiveDuelSession): void {
   ctx.running = true;
   ctx.lastTickMs = Date.now();
 
+  // Snapshot the inactive pool once on resume so clients can render its
+  // frozen value. The 250ms tick below only broadcasts the active pool;
+  // without this baseline the inactive client would never see their pool.
+  sendTimerStateToAll(session);
+
   const c = getCfg();
   ctx.intervalRef = setInterval(() => {
     const now = Date.now();
@@ -205,8 +210,9 @@ export function addTurnIncrement(session: ActiveDuelSession, player: Player, new
   if (!ctx) return;
 
   ctx.turnCount = newTurnCount;
-  // Skip +40s on the first turn — initial 300s only
-  if (ctx.turnCount > 1) {
+  // Skip +40s on each player's first turn (turn 1 = P1, turn 2 = P2's first).
+  // Both players keep their initial 300s pool intact for the opening turn.
+  if (ctx.turnCount > 2) {
     ctx.pools[player] += getCfg().turnTimeIncrementMs;
   }
   ctx.activePlayer = player;
@@ -231,15 +237,10 @@ export function handleTurnChange(session: ActiveDuelSession, newTurnPlayer: Play
   }
   addTurnIncrement(session, newTurnPlayer, newTurnCount);
 
-  // Send updated TIMER_STATE for the player who received the increment
-  const c = getCfg();
-  const timerMsg: ServerMessage = {
-    type: 'TIMER_STATE',
-    player: newTurnPlayer,
-    remainingMs: Math.max(0, ctx.pools[newTurnPlayer]),
-  };
-  c.sendToPlayer(session, 0, timerMsg);
-  c.sendToPlayer(session, 1, timerMsg);
+  // Broadcast both pools after the turn change: active pool got an increment,
+  // inactive pool's value is now frozen on the new turn — clients need both
+  // to render "your timer" vs "their timer".
+  sendTimerStateToAll(session);
 
   // Worker may send SELECT before BOARD_STATE — resume timer if it was running,
   // OR re-arm the pending slot for the new turn player if a SELECT had just

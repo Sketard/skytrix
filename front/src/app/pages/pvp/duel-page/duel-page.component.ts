@@ -157,9 +157,17 @@ export class DuelPageComponent implements OnInit {
   readonly logicalState = computed(() => this.wsService.boardStateView.logicalState());
   readonly timerState = this.wsService.timerState;
 
-  // In solo mode, show the active player's own timer instead of the last received timer
+  // Each player sees only their own timer pool. Reads from
+  // timerStatePerPlayer[ownIdx] — the server broadcasts both pools on
+  // transitions (turn change, pause, resume), then ticks only the active
+  // pool. So the local pool stays frozen on the opponent's turn and ticks
+  // down on our own turn — matching the desired UX.
   readonly displayedTimerState = computed(() => {
-    if (!this.isSoloMode()) return this.timerState();
+    if (!this.isSoloMode()) {
+      const ownIdx = this.wsService.ocgPlayerIndex();
+      if (ownIdx === null) return this.timerState();
+      return this.wsService.timerStatePerPlayer()[ownIdx] ?? this.timerState();
+    }
     const conns = this.orchestrator.connections();
     if (!conns) return this.timerState();
     const activeIdx = this.orchestrator.activePlayerIndex();
