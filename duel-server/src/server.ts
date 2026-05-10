@@ -49,11 +49,12 @@ import { applyChainTransition, emptyChainState, type ChainStateContainer } from 
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
-import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes } from './http-routes.js';
+import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes, isHttpRoutesConfigured } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
-import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState } from './replay-handlers.js';
+import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState, isReplayHandlersConfigured } from './replay-handlers.js';
 import {
   configureTimerManagement,
+  isTimerManagementConfigured,
   sendTimerStateToAll, sendTimerStateToPlayer,
   startTurnTimer, pauseTurnTimer, scheduleTimerStart, commitPendingTimer,
   addTurnIncrement, handleTurnChange,
@@ -64,6 +65,7 @@ import {
 import {
   configureSolverHandlers,
   handleSolverMessage,
+  isSolverHandlersConfigured,
   solverConnections,
   solverJwts,
   solverDeckCache,
@@ -1183,6 +1185,20 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
     return false;
   }
   return true;
+}
+
+// Boot invariant: every configurable module must be wired before we accept
+// connections. Catches a future refactor that adds a 5th module but forgets
+// to call its configureXxx() at boot.
+{
+  const unconfigured: string[] = [];
+  if (!isHttpRoutesConfigured()) unconfigured.push('http-routes');
+  if (!isReplayHandlersConfigured()) unconfigured.push('replay-handlers');
+  if (!isTimerManagementConfigured()) unconfigured.push('timer-management');
+  if (!isSolverHandlersConfigured()) unconfigured.push('solver-handlers');
+  if (unconfigured.length > 0) {
+    throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
+  }
 }
 
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {

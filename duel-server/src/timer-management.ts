@@ -1,5 +1,6 @@
 import type { ActiveDuelSession } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
+import { createConfigurable } from './configurable.js';
 import { createInactivityScheduler, type InactivityScheduler } from './inactivity-timer.js';
 import * as logger from './logger.js';
 
@@ -42,16 +43,10 @@ export interface TimerManagementConfig {
   animationsDoneTimeoutMs: number;
 }
 
-let cfg: TimerManagementConfig | null = null;
-
-export function configureTimerManagement(config: TimerManagementConfig): void {
-  cfg = config;
-}
-
-function getCfg(): TimerManagementConfig {
-  if (!cfg) throw new Error('timer-management: configureTimerManagement() not called');
-  return cfg;
-}
+const configurable = createConfigurable<TimerManagementConfig>('timer-management');
+export const configureTimerManagement = configurable.configure;
+export const isTimerManagementConfigured = configurable.isConfigured;
+const getCfg = configurable.get;
 
 // =============================================================================
 // TIMER_STATE broadcast

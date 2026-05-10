@@ -2,6 +2,7 @@ import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import * as logger from './logger.js';
+import { createConfigurable } from './configurable.js';
 import { recordFailedWsAttempt } from './ws-rate-limit.js';
 import { extractCardCodes, type WorkerReplayPayload, type ReplayMetadata, type WorkerToMainMessage } from './types.js';
 import { getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
@@ -99,16 +100,10 @@ export interface ReplayHandlersConfig {
   }) => { token1: string; token2: string };
 }
 
-let cfg: ReplayHandlersConfig | null = null;
-
-export function configureReplayHandlers(config: ReplayHandlersConfig): void {
-  cfg = config;
-}
-
-function getCfg(): ReplayHandlersConfig {
-  if (!cfg) throw new Error('replay-handlers: configureReplayHandlers() not called');
-  return cfg;
-}
+const configurable = createConfigurable<ReplayHandlersConfig>('replay-handlers');
+export const configureReplayHandlers = configurable.configure;
+export const isReplayHandlersConfigured = configurable.isConfigured;
+const getCfg = configurable.get;
 
 // =============================================================================
 // Worker concurrency gate

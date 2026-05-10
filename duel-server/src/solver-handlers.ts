@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { WebSocket } from 'ws';
+import { createConfigurable } from './configurable.js';
 import {
   SOLVER_INIT, SOLVER_START, SOLVER_CANCEL,
   SOLVER_HANDTRAPS, SOLVER_PROGRESS, SOLVER_RESULT, SOLVER_CANCELLED, SOLVER_ERROR,
@@ -58,16 +59,10 @@ interface SolverHandlerConfig {
   deckFetchCacheTtlMs: number;
 }
 
-let cfg: SolverHandlerConfig | null = null;
-
-export function configureSolverHandlers(config: SolverHandlerConfig): void {
-  cfg = config;
-}
-
-function getCfg(): SolverHandlerConfig {
-  if (!cfg) throw new Error('solver-handlers: configureSolverHandlers() not called');
-  return cfg;
-}
+const configurable = createConfigurable<SolverHandlerConfig>('solver-handlers');
+export const configureSolverHandlers = configurable.configure;
+export const isSolverHandlersConfigured = configurable.isConfigured;
+const getCfg = configurable.get;
 
 // =============================================================================
 // WebSocket emission helpers
