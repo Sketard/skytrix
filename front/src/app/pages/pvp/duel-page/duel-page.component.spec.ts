@@ -62,8 +62,9 @@ import { NotificationService } from '../../../core/services/notification.service
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 
 import { EMPTY_DUEL_STATE } from '../types';
-import type { DuelState } from '../types';
-import type { TimerStateMsg, BoardStatePayload, PlayerBoardState } from '../duel-ws.types';
+import type { DuelState, ChainLinkState } from '../types';
+import type { TimerStateMsg, BoardStatePayload, PlayerBoardState, BoardZone, CardOnField } from '../duel-ws.types';
+import { LOCATION, POSITION } from '../duel-ws.types';
 
 // =============================================================================
 // Stubs
@@ -612,5 +613,148 @@ describe('DuelPageComponent — _animationsDoneEffect (C1.3)', () => {
     ws.pendingPrompt.set({ type: 'SELECT_CARD' });
     fixture.detectChanges();
     expect(ws.sendAnimationsDone).toHaveBeenCalledTimes(1);
+  });
+});
+
+// =============================================================================
+// C1.4 — Hand computation + chain badges + revealed cards merge
+// =============================================================================
+
+function makeHandCard(code: number): CardOnField {
+  return {
+    cardCode: code,
+    name: `Card${code}`,
+    position: POSITION.FACEDOWN_ATTACK,
+    overlayMaterials: [],
+    counters: {},
+  };
+}
+
+function makeHandZone(cards: CardOnField[]): BoardZone {
+  return { zoneId: 'HAND', cards };
+}
+
+/** Build a rendered DuelState with given hands for player 0 / player 1.
+ *  We populate `renderedState` (not `logicalState`) because the playerHand /
+ *  opponentHand computeds read renderedState — the lock-aware view. */
+function makeStateWithHands(p0Hand: CardOnField[], p1Hand: CardOnField[]): DuelState {
+  return {
+    turnPlayer: 0,
+    turnCount: 1,
+    phase: 'MAIN1',
+    players: [
+      { lp: 8000, deckCount: 35, extraCount: 15, zones: [makeHandZone(p0Hand)] },
+      { lp: 8000, deckCount: 35, extraCount: 15, zones: [makeHandZone(p1Hand)] },
+    ],
+  };
+}
+
+function makeChainLink(overrides: Partial<ChainLinkState>): ChainLinkState {
+  return {
+    chainIndex: 0,
+    cardCode: 0,
+    cardName: '',
+    player: 0,
+    zoneId: null,
+    location: LOCATION.HAND,
+    sequence: 0,
+    resolving: false,
+    negated: false,
+    ...overrides,
+  };
+}
+
+describe('DuelPageComponent — playerHand + chain badges + revealed merge (C1.4)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let component: DuelPageComponent;
+  let ws: StubWsService;
+  let anim: StubAnimationOrchestrator;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    component = fixture.componentInstance;
+    ws = wsOf(fixture);
+    anim = fixture.componentRef.injector.get(AnimationOrchestratorService) as unknown as StubAnimationOrchestrator;
+  });
+
+  it('playerHand() reads renderedState (not logicalState) so locks gate it', () => {
+    // The renderedState is the lock-aware view: during chain animations,
+    // logical may already show the post-state while rendered still shows
+    // the pre-state. Reading playerHand from rendered keeps the visible
+    // hand consistent with the animation timeline. Pin both reads to
+    // make sure a refactor doesn't accidentally swap the source.
+    const renderedHand = [makeHandCard(101), makeHandCard(102)];
+    const logicalHand = [makeHandCard(999)];
+    ws.setRendered(makeStateWithHands(renderedHand, []));
+    ws.setLogical(makeStateWithHands(logicalHand, []));
+    expect(component.playerHand()).toEqual(renderedHand);
+    expect(component.playerHand().some(c => c.cardCode === 999)).toBe(false);
+  });
+
+  it('playerHand() returns [] when player[0] is missing in renderedState', () => {
+    // Pre-init / hard-reset edge: renderedState carries `players: []` for a
+    // tick. The getHandCards helper guards on `if (!player) return []`.
+    ws.setRendered({ ...EMPTY_DUEL_STATE, players: [] as unknown as DuelState['players'] });
+    expect(component.playerHand()).toEqual([]);
+    expect(component.opponentHand()).toEqual([]);
+  });
+
+  it('playerHandChainBadges delegates to buildHandChainBadges (filtered to ownPlayerIndex)', () => {
+    // ownPlayerIndex=0; chain has two HAND links, one for each player.
+    // Only the link belonging to player 0 should produce a badge in
+    // playerHandChainBadges. The badge value is chainIndex + 1.
+    const p0Card = makeHandCard(701);
+    const p1Card = makeHandCard(702);
+    ws.setRendered(makeStateWithHands([p0Card], [p1Card]));
+    ws.ocgPlayerIndex.set(0);
+    ws.activeChainLinks.set([
+      makeChainLink({ chainIndex: 0, cardCode: 701, player: 0, sequence: 0 }),
+      makeChainLink({ chainIndex: 1, cardCode: 702, player: 1, sequence: 0 }),
+    ]);
+    ws.chainPhase.set('resolving');
+
+    const badges = component.playerHandChainBadges();
+    expect(badges.size).toBe(1);
+    expect(badges.get(0)).toBe(1); // chainIndex 0 → badge "1"
+  });
+
+  it('opponentHandRevealedCards skips merge work when confirmRevealedCards is empty', () => {
+    // Optimisation invariant: when there's nothing in confirmRevealedCards,
+    // the computed returns the chain-derived map directly (object identity)
+    // — no new Map allocated. Pin reference equality to catch a refactor
+    // that replaces the early-return with an unconditional merge.
+    const p1Card = makeHandCard(801);
+    ws.setRendered(makeStateWithHands([], [p1Card]));
+    ws.ocgPlayerIndex.set(0);
+    ws.activeChainLinks.set([
+      makeChainLink({ chainIndex: 0, cardCode: 801, player: 1, sequence: 0 }),
+    ]);
+    ws.chainPhase.set('resolving');
+    anim.confirmRevealedCards.set(new Map());
+
+    const out = component.opponentHandRevealedCards();
+    expect(out.size).toBe(1);
+    expect(out.get(0)).toBe(801);
+  });
+
+  it('opponentHandRevealedCards merges confirm over chain (confirm wins on shared keys)', () => {
+    // Two reveal sources for index 0: chain says cardCode 801, confirm says
+    // 999. The confirm should overwrite — its values are the latest
+    // server-confirmed reveals (e.g., when the opponent's card was
+    // played from hand and the server emitted CONFIRM_CARDS with the
+    // accurate cardCode). A future refactor that swaps the merge order
+    // (chain over confirm) would silently leak stale data.
+    const p1Card = makeHandCard(801);
+    ws.setRendered(makeStateWithHands([], [p1Card]));
+    ws.ocgPlayerIndex.set(0);
+    ws.activeChainLinks.set([
+      makeChainLink({ chainIndex: 0, cardCode: 801, player: 1, sequence: 0 }),
+    ]);
+    ws.chainPhase.set('resolving');
+    anim.confirmRevealedCards.set(new Map([[0, 999]]));
+
+    const out = component.opponentHandRevealedCards();
+    expect(out.get(0)).toBe(999);
   });
 });
