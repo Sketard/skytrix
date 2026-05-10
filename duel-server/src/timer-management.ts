@@ -98,7 +98,10 @@ export function startTurnTimer(session: ActiveDuelSession): void {
   const c = getCfg();
   ctx.intervalRef = setInterval(() => {
     const now = Date.now();
-    const elapsed = now - ctx.lastTickMs;
+    // Clamp to 0 against backward clock skew (NTP correction, manual adjust,
+    // container clock drift). Negative elapsed would *grow* the pool and
+    // freeze the timeout indefinitely. Audit finding R6.
+    const elapsed = Math.max(0, now - ctx.lastTickMs);
     ctx.lastTickMs = now;
     ctx.pools[ctx.activePlayer] -= elapsed;
 
@@ -135,9 +138,10 @@ export function pauseTurnTimer(session: ActiveDuelSession): void {
   }
   logger.debug('pauseTurnTimer PAUSE', { duelId: session.duelId, activePlayer: ctx.activePlayer, pool: ctx.pools[ctx.activePlayer] });
 
-  // Account for time elapsed since last tick
+  // Account for time elapsed since last tick. Clamp against backward
+  // clock skew — see R6 note in startTurnTimer.
   const now = Date.now();
-  const elapsed = now - ctx.lastTickMs;
+  const elapsed = Math.max(0, now - ctx.lastTickMs);
   ctx.pools[ctx.activePlayer] -= elapsed;
   ctx.lastTickMs = now;
 

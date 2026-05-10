@@ -332,6 +332,44 @@ describe('timer-management', () => {
 
       expect(spy.sent).toHaveLength(0);
     });
+
+    // R6 — backward clock skew (NTP correction, container drift) used to
+    // grow the pool because elapsed went negative. Now floored to 0.
+    it('clamps elapsed to 0 on backward clock skew (pause path)', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession(300_000);
+
+      startTurnTimer(s);
+      const poolAtStart = s.timerContext!.pools[0];
+      const tickAtStart = s.timerContext!.lastTickMs;
+
+      // Roll the clock backwards 5s — simulates an NTP correction during
+      // an active turn. Date.now() < lastTickMs.
+      vi.setSystemTime(tickAtStart - 5_000);
+
+      pauseTurnTimer(s);
+
+      // Pool MUST NOT grow above its starting value.
+      expect(s.timerContext!.pools[0]).toBeLessThanOrEqual(poolAtStart);
+    });
+
+    it('clamps elapsed to 0 on backward clock skew (interval tick path)', () => {
+      const spy = makeSpy();
+      configureTimerManagement(makeConfig(spy));
+      const s = makeSession(300_000);
+
+      startTurnTimer(s);
+      const poolAtStart = s.timerContext!.pools[0];
+      const tickAtStart = s.timerContext!.lastTickMs;
+
+      // Backward jump just before the next 250ms tick fires.
+      vi.setSystemTime(tickAtStart - 5_000);
+      vi.advanceTimersByTime(250);
+
+      // Pool would grow by ~5s without the floor; with it, stays put.
+      expect(s.timerContext!.pools[0]).toBeLessThanOrEqual(poolAtStart);
+    });
   });
 
   // ==========================================================================
