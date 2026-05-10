@@ -4,7 +4,8 @@ import { WebSocket } from 'ws';
 import * as logger from './logger.js';
 import { createConfigurable } from './configurable.js';
 import { recordFailedWsAttempt } from './ws-rate-limit.js';
-import { extractCardCodes, type WorkerReplayPayload, type ReplayMetadata, type WorkerToMainMessage } from './types.js';
+import { extractCardCodes, type WorkerReplayPayload, type ReplayMetadata } from './types.js';
+import { validateWorkerMessage } from './validation/worker-message-validation.js';
 import { getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import type { ReplayCache } from './replay-cache.js';
 
@@ -289,7 +290,12 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
   }
   resetWatchdog();
 
-  worker.on('message', (wmsg: WorkerToMainMessage) => {
+  worker.on('message', (raw: unknown) => {
+    const wmsg = validateWorkerMessage(raw);
+    if (!wmsg) {
+      logger.error('Dropping malformed replay worker message', { replayId: conn.replayId, raw });
+      return;
+    }
     if (wmsg.type === 'WORKER_REPLAY_BOARD_STATES') {
       resetWatchdog();
       if (conn.ws.readyState === WebSocket.OPEN) {
@@ -439,7 +445,12 @@ function createForkWorker(
     onReplayWorkerDone();
   }, c.replayWorkerWatchdogMs);
 
-  worker.on('message', (wmsg: WorkerToMainMessage) => {
+  worker.on('message', (raw: unknown) => {
+    const wmsg = validateWorkerMessage(raw);
+    if (!wmsg) {
+      logger.error('Dropping malformed fork worker message', { replayId: conn.replayId, raw });
+      return;
+    }
     if (wmsg.type === 'WORKER_FORK_READY') {
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
 

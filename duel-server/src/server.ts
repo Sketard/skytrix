@@ -45,6 +45,7 @@ import { filterMessage } from './message-filter.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
+import { validateWorkerMessage } from './validation/worker-message-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
@@ -451,7 +452,12 @@ function safeTerminateWorker(session: ActiveDuelSession): void {
 
 function attachWorkerHandlers(session: ActiveDuelSession): void {
   if (!session.worker) return;
-  session.worker.on('message', (wmsg: WorkerToMainMessage) => {
+  session.worker.on('message', (raw: unknown) => {
+    const wmsg = validateWorkerMessage(raw);
+    if (!wmsg) {
+      logger.error('Dropping malformed worker message', { duelId: session.duelId, raw });
+      return;
+    }
     handleWorkerMessage(session, wmsg);
   });
   session.worker!.on('exit', (code) => {
@@ -1818,7 +1824,12 @@ function createForkSoloSession({ forkDuelId, userId, worker, replayData }: {
 }
 
 function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): void {
-  worker.on('message', (wmsg: WorkerToMainMessage) => {
+  worker.on('message', (raw: unknown) => {
+    const wmsg = validateWorkerMessage(raw);
+    if (!wmsg) {
+      logger.error('Dropping malformed fork worker message', { duelId: session.duelId, raw });
+      return;
+    }
     if (wmsg.type === 'WORKER_MESSAGE') {
       const message = wmsg.message;
 
