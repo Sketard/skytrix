@@ -218,11 +218,12 @@ export class SolverService implements OnDestroy {
       this.ws = null;
       // 4426 = protocol version mismatch — server is running a newer
       // PROTOCOL_VERSION than this client bundle. Stop retrying so we
-      // don't loop forever; surface a 'please refresh' error instead.
+      // don't loop forever; surface a persistent toast prompting refresh.
       if (event.code === 4426) {
         this.intentionalClose = true;
         this.solverState.set('error');
-        this.error.set({ error: 'INTERNAL_ERROR', message: 'Outdated client — please refresh the page' });
+        this.error.set({ error: 'INTERNAL_ERROR', message: 'solver.error.outdatedClient' });
+        this.notify.error('solver.error.outdatedClient', undefined, 0);
         console.warn('[SolverService] WS closed — protocol version mismatch (server bundle ahead of client)');
         return;
       }

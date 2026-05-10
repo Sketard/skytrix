@@ -537,7 +537,8 @@
       "accessDenied": "Accès refusé à ce deck",
       "connectionFailed": "Connexion au serveur échouée",
       "handtrapUnavailable": "Données handtrap indisponibles — vérifiez la connexion serveur",
-      "resultEvicted": "Le résultat du solve précédent a expiré pendant la reconnexion — veuillez le relancer"
+      "resultEvicted": "Le résultat du solve précédent a expiré pendant la reconnexion — veuillez le relancer",
+      "outdatedClient": "Version client obsolète — rafraîchissez la page (le serveur a été mis à jour)"
     },
     "history": {
       "button": "Historique",
