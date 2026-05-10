@@ -1,6 +1,14 @@
 // Smoke validation script for Phase 5 (DuelSessionManager) + M3 + M4.
-// Exercises the WS handshake / reconnect / token-rotation paths via direct
-// WebSocket connections, no browser. Assumes: Spring Boot :8080, duel-server :3001.
+// Exercises:
+//   - M3+M4 : protocol-version mismatch (close 4426, counter increment)
+//   - S1e   : pending token consumed twice (initial handshake)
+//   - S1b   : reconnect with rotating SESSION_TOKEN
+//   - S1c   : stale reconnect token rejected
+//   - S2    : RPS phase + winner picks turn order (C8 audit closure)
+//   - S3    : REMATCH after surrender → REMATCH_STARTING (C8)
+//   - S4    : admin DELETE auth + 401/404/200/idempotency (C8)
+// All paths via direct WebSocket connections, no browser.
+// Assumes: Spring Boot :8080, duel-server :3001.
 
 import WebSocket from 'ws';
 
@@ -212,6 +220,160 @@ console.log('\n=== S1e: pending token consumed twice (initial handshake) ===');
     if (delRes.status === 200 || delRes.status === 404) ok('duel cleanup');
     else ko('duel cleanup', `DELETE returned ${delRes.status}`);
   } catch (e) { ko('duel cleanup', e.message); }
+}
+
+// ─── S2: RPS + SELECT_TP happy path ─────────────────────────────────────────
+console.log('\n=== S2: RPS phase + winner picks turn order ===');
+{
+  // Fresh duel — RPS state requires the session to be in 'RPS' phase, which
+  // only happens after BOTH WS handshakes complete on a freshly-created session.
+  const duel2 = await createDuel(cookie);
+  const cA = connectWs(`${WS_URL}/ws?token=${duel2.wsToken1}&pv=1`, 's2-p0');
+  const cB = connectWs(`${WS_URL}/ws?token=${duel2.wsToken2}&pv=1`, 's2-p1');
+  await Promise.all([cA.open(), cB.open()]);
+
+  // Both players receive RPS_CHOICE prompts (player-scoped) once the second
+  // handshake completes. We wait for the prompt rather than send blindly —
+  // the server emits AFTER both handshakes register session.phase = 'RPS'.
+  const rpsP0 = await cA.waitFor(m => m.type === 'RPS_CHOICE', 5000).catch(() => null);
+  const rpsP1 = await cB.waitFor(m => m.type === 'RPS_CHOICE', 5000).catch(() => null);
+  if (rpsP0 && rpsP1) ok('both players received RPS_CHOICE');
+  else ko('both players received RPS_CHOICE', `p0=${JSON.stringify(rpsP0)} p1=${JSON.stringify(rpsP1)}`);
+
+  // Send choices: P0=Rock(0), P1=Scissors(2) → P0 wins (Rock crushes Scissors).
+  cA.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 0 } });
+  cB.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 2 } });
+
+  // Both clients receive RPS_RESULT after server resolves.
+  const rpsResultA = await cA.waitFor(m => m.type === 'RPS_RESULT', 5000).catch(() => null);
+  const rpsResultB = await cB.waitFor(m => m.type === 'RPS_RESULT', 5000).catch(() => null);
+  if (rpsResultA?.winner === 0 && rpsResultB?.winner === 0) ok('RPS_RESULT winner=0 (Rock vs Scissors)');
+  else ko('RPS_RESULT winner=0 (Rock vs Scissors)', `A=${JSON.stringify(rpsResultA)} B=${JSON.stringify(rpsResultB)}`);
+
+  // Winner (P0) gets SELECT_TP after a 1.5s delay.
+  // (We don't assert WAITING_RESPONSE on P1 — the RPS phase itself emits
+  // WAITING_RESPONSE messages already, so a waitFor would match noise.)
+  const tpPrompt = await cA.waitFor(m => m.type === 'SELECT_TP', 4000).catch(() => null);
+  if (tpPrompt?.player === 0) ok('winner received SELECT_TP');
+  else ko('winner received SELECT_TP', `got ${JSON.stringify(tpPrompt)}`);
+
+  // P0 chooses goFirst=true → both get TP_RESULT.
+  cA.sendType('PLAYER_RESPONSE', { promptType: 'SELECT_TP', data: { goFirst: true } });
+  const tpResA = await cA.waitFor(m => m.type === 'TP_RESULT', 4000).catch(() => null);
+  const tpResB = await cB.waitFor(m => m.type === 'TP_RESULT', 4000).catch(() => null);
+  if (tpResA?.goFirst === true && tpResB?.goFirst === false) ok('TP_RESULT: P0=goFirst, P1=goSecond (perspective-correct)');
+  else ko('TP_RESULT perspective', `A=${JSON.stringify(tpResA)} B=${JSON.stringify(tpResB)}`);
+
+  cA.close(); cB.close();
+  await new Promise(r => setTimeout(r, 300));
+  await fetch(`http://localhost:3001/api/duels/${duel2.roomCode}`, {
+    method: 'DELETE', headers: { 'X-Internal-Key': 'dev-internal-key' }
+  }).catch(() => {});
+}
+
+// ─── S3: REMATCH happy path (surrender → both REMATCH_REQUEST → REMATCH_STARTING) ─
+console.log('\n=== S3: REMATCH after surrender → REMATCH_STARTING ===');
+{
+  const duel3 = await createDuel(cookie);
+  const cA = connectWs(`${WS_URL}/ws?token=${duel3.wsToken1}&pv=1`, 's3-p0');
+  const cB = connectWs(`${WS_URL}/ws?token=${duel3.wsToken2}&pv=1`, 's3-p1');
+  await Promise.all([cA.open(), cB.open()]);
+
+  // Resolve RPS quickly so the duel reaches the 'PLAYING' state where SURRENDER
+  // is meaningful (REMATCH_REQUEST is gated on `endedAt !== null`).
+  await Promise.all([
+    cA.waitFor(m => m.type === 'RPS_CHOICE', 5000),
+    cB.waitFor(m => m.type === 'RPS_CHOICE', 5000),
+  ]);
+  cA.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 0 } });
+  cB.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 2 } });
+  await cA.waitFor(m => m.type === 'SELECT_TP', 5000).catch(() => null);
+  cA.sendType('PLAYER_RESPONSE', { promptType: 'SELECT_TP', data: { goFirst: true } });
+  await Promise.all([
+    cA.waitFor(m => m.type === 'TP_RESULT', 5000).catch(() => null),
+    cB.waitFor(m => m.type === 'TP_RESULT', 5000).catch(() => null),
+  ]);
+
+  // Wait a beat for the worker to spin up + send DUEL_STARTING + initial BOARD_STATE.
+  // The worker boot is what makes endedAt observable — surrender BEFORE worker
+  // ready races with the worker handshake, so guard with DUEL_STARTING.
+  const duelStartingA = await cA.waitFor(m => m.type === 'DUEL_STARTING', 10000).catch(() => null);
+  if (duelStartingA) ok('DUEL_STARTING received post-TP (worker booted)');
+  else ko('DUEL_STARTING received post-TP', 'worker did not signal start within 10s');
+
+  // P0 surrenders → both clients get DUEL_END with reason='surrender'.
+  cA.sendType('SURRENDER');
+  const endA = await cA.waitFor(m => m.type === 'DUEL_END' && m.reason === 'surrender', 5000).catch(() => null);
+  const endB = await cB.waitFor(m => m.type === 'DUEL_END' && m.reason === 'surrender', 5000).catch(() => null);
+  if (endA && endB) ok('DUEL_END(surrender) received on both sides');
+  else ko('DUEL_END(surrender) received on both sides', `A=${!!endA} B=${!!endB}`);
+
+  // P0 requests rematch → P1 receives REMATCH_INVITATION.
+  cA.sendType('REMATCH_REQUEST');
+  const inviteB = await cB.waitFor(m => m.type === 'REMATCH_INVITATION', 5000).catch(() => null);
+  if (inviteB) ok('opponent received REMATCH_INVITATION');
+  else ko('opponent received REMATCH_INVITATION', 'no message within 5s');
+
+  // P1 accepts → both receive REMATCH_STARTING.
+  cB.sendType('REMATCH_REQUEST');
+  const startA = await cA.waitFor(m => m.type === 'REMATCH_STARTING', 5000).catch(() => null);
+  const startB = await cB.waitFor(m => m.type === 'REMATCH_STARTING', 5000).catch(() => null);
+  if (startA && startB) ok('REMATCH_STARTING received on both sides');
+  else ko('REMATCH_STARTING received on both sides', `A=${!!startA} B=${!!startB}`);
+
+  cA.close(); cB.close();
+  await new Promise(r => setTimeout(r, 500));
+  await fetch(`http://localhost:3001/api/duels/${duel3.roomCode}`, {
+    method: 'DELETE', headers: { 'X-Internal-Key': 'dev-internal-key' }
+  }).catch(() => {});
+}
+
+// ─── S4: Admin DELETE auth + error cases ────────────────────────────────────
+console.log('\n=== S4: admin DELETE /api/duels/:id auth + error cases ===');
+{
+  // S4a — missing X-Internal-Key → 401
+  const noKey = await fetch('http://localhost:3001/api/duels/any-id', { method: 'DELETE' });
+  if (noKey.status === 401) ok('DELETE without X-Internal-Key → 401');
+  else ko('DELETE without X-Internal-Key → 401', `got ${noKey.status}`);
+
+  // S4b — wrong key → 401 (timing-safe compare)
+  const wrongKey = await fetch('http://localhost:3001/api/duels/any-id', {
+    method: 'DELETE', headers: { 'X-Internal-Key': 'wrong-key' }
+  });
+  if (wrongKey.status === 401) ok('DELETE with wrong key → 401');
+  else ko('DELETE with wrong key → 401', `got ${wrongKey.status}`);
+
+  // S4c — wrong key of CORRECT length → still 401 (real timing-safe path,
+  // not just length-mismatch fast-path).
+  const validLengthKey = 'X'.repeat('dev-internal-key'.length);
+  const wrongValidLen = await fetch('http://localhost:3001/api/duels/any-id', {
+    method: 'DELETE', headers: { 'X-Internal-Key': validLengthKey }
+  });
+  if (wrongValidLen.status === 401) ok('DELETE with same-length wrong key → 401 (timing-safe)');
+  else ko('DELETE with same-length wrong key → 401', `got ${wrongValidLen.status}`);
+
+  // S4d — valid key but unknown duelId → 404 (auth passes, lookup fails)
+  const unknown = await fetch('http://localhost:3001/api/duels/00000000-deadbeef', {
+    method: 'DELETE', headers: { 'X-Internal-Key': 'dev-internal-key' }
+  });
+  if (unknown.status === 404) ok('DELETE unknown duelId → 404');
+  else ko('DELETE unknown duelId → 404', `got ${unknown.status}`);
+
+  // S4e — valid key + valid duelId → 200 + idempotency: second DELETE → 404
+  const duel4 = await createDuel(cookie);
+  // No need to open WS sockets — POST /api/duels created the session via
+  // Spring Boot, sessionManager.get(roomCode) finds it directly.
+  const ok200 = await fetch(`http://localhost:3001/api/duels/${duel4.roomCode}`, {
+    method: 'DELETE', headers: { 'X-Internal-Key': 'dev-internal-key' }
+  });
+  if (ok200.status === 200) ok('DELETE valid duel → 200');
+  else ko('DELETE valid duel → 200', `got ${ok200.status}`);
+
+  const ok200bis = await fetch(`http://localhost:3001/api/duels/${duel4.roomCode}`, {
+    method: 'DELETE', headers: { 'X-Internal-Key': 'dev-internal-key' }
+  });
+  if (ok200bis.status === 404) ok('repeated DELETE → 404 (idempotency contract)');
+  else ko('repeated DELETE → 404', `got ${ok200bis.status}`);
 }
 
 // ─── M3: counter still tracks correctly ───
