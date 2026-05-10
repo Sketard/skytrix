@@ -65,21 +65,32 @@ Key rules:
 
 4. **`boardStateAfter` per-event snapshot** (BOARD_CHANGING events during
    `chainResolving` only — see ws-protocol.ts). Attached server-side in
-   both replay precompute (`duel-worker.ts:runReplayPreComputation`) and
-   live PvP (`duel-worker.ts:runDuelLoop`). `AnimationOrchestratorService.
-   processEvent()` calls `rbs.updateLogical(event.boardStateAfter)` BEFORE
-   dispatching the event so buffer replay progressively updates logical
-   state per event instead of jumping to the chain's final state at commit.
-   Field is optional: `filterMessage` sanitizes the snapshot per-player
-   (opponent hand/deck hidden unless omniscient) to prevent info leak.
-   PvP/Replay parity: same code path on both sides.
+   both replay precompute (`replay-precompute.ts:runReplayPreComputation`)
+   and live PvP (`duel-worker.ts:runDuelLoop`) via the shared
+   `ChainSnapshotTracker` class — same code path on both sides guarantees
+   parity by construction. `AnimationOrchestratorService.processEvent()`
+   calls `rbs.updateLogical(event.boardStateAfter)` BEFORE dispatching the
+   event so buffer replay progressively updates logical state per event
+   instead of jumping to the chain's final state at commit. Field is
+   optional: `filterMessage` sanitizes the snapshot per-player (opponent
+   hand/deck hidden unless omniscient) to prevent info leak.
 
 ### Chain State Machine Rules
 
-1. **`isResolving`** is set at MSG_CHAIN_SOLVING and cleared at
-   MSG_CHAIN_SOLVED. All BOARD_CHANGING_EVENTS while this flag is true are
-   buffered. The buffer is replayed after the chain overlay hides, using
-   queue directives (group, barrier, lp, batch-end, await-signal).
+1. **`ChainResolutionManager.isResolving`** is a **pure observer** of
+   `DuelEventProcessor.chainPhase()` — wired at construction via
+   `attachChainPhaseSource(() => dataSource.chainPhase())`. The manager
+   does NOT own a parallel flag; the processor is the single source of
+   truth. Phase transitions: `idle → building → resolving → idle`.
+   `'resolving'` is set by `applyChainSolving(chainIndex)` (driven by the
+   orchestrator after `chainManager.handleSolving`) and remains true
+   across all links of the same chain — it only flips back to `'idle'`
+   at `applyChainEnd()` (MSG_CHAIN_END). All BOARD_CHANGING_EVENTS while
+   `isResolving` is true are buffered. The buffer is replayed after the
+   chain overlay hides, using queue directives (group, barrier, lp,
+   batch-end, await-signal). **Regression guard** — `handleSolving` MUST
+   NOT re-acquire ownership of an `_insideChainResolution` flag; the
+   spec test "handleSolving alone does NOT flip isResolving" catches it.
 
 2. **`chainSolvedCount`** tracks how many links resolved in the current
    chain. ONLY reset at MSG_CHAIN_END. Drives the first-multi-link banner
@@ -137,12 +148,25 @@ Key rules:
   orchestrator stays as dispatch policy: drain → call builder → prepend
   batch + `batch-end` + `await-signal` directives.
 
-**`DuelContext`** is the shared context for all managers: `relativePlayer()`,
-`scaledDuration()`, `announceEvent()`, `reducedMotion` signal, and
-component-dependent closures (`ownPlayerIndex`, `speedMultiplier`,
-`isBoardActive`). MUST be configured via `configure(config)` before first
-read — `duelAssert()` fires if not. Config provides closures reading
-the host component's signals.
+**`DuelContext`** is the shared context for all managers. API surface:
+
+- **Component-bound closures** (set via `configure({ ownPlayerIndex,
+  speedMultiplier, isBoardActive })`): `ownPlayerIndex()`, `speedMultiplier()`,
+  `isBoardActive()`. MUST be configured before first read — `duelAssert()`
+  fires if not.
+- **Reactive signal**: `reducedMotion` (auto-tracks
+  `prefers-reduced-motion` MQ).
+- **Player helpers**: `relativePlayer(absolute) → 0|1`, `announceEvent(text,
+  player)` (LiveAnnouncer with "Opponent: " prefix when not own).
+- **Timing helpers**: `scaledDuration(base, min=0)` for animation budgets,
+  `safetyTimeout(baseMs)` for guard timers (divides by speedMultiplier
+  then adds 50% margin, so slow playback doesn't clip and loaded hardware
+  has slack).
+- **Card rotation helpers**: `cardBaseRotation(rel) → 180|undefined` for
+  float orientation (cards face their owner), `cardBaseRotateCSS(rel) →
+  string` for inline transform fragments, `zoneCardRotation(isDefense)
+  → 0|-90` for Web Animation interpolation (atan2 reads CSS 270° as
+  -90°, so we use -90° to force the 90° CCW shortest path).
 
 **DI graph:** Chain ← Draw ↔ Move (Move injected lazily in Draw).
 Move depends on Draw for `travelToHand()`. Draw depends on Move
@@ -349,10 +373,17 @@ locked zones by one transition. For synchronized metadata + zones, read
 LP is excluded from auto-sync in `mergeUnlockedZones()` and
 `syncPileCounts()` — both always copy LP from the rendered state. LP is
 committed explicitly via `commitLp(playerIndex)` after the counting
-animation plays (via `_pendingLpCommits` Set in the queue loop), or via
-`commitAll()` at hard-reset / `syncRendered()` at queue-empty.
-`_pendingLpCommits` is a `Set<Player>` so batched LP events affecting
-both players are committed correctly.
+animation plays, or via `commitAll()` at hard-reset / `syncRendered()`
+at queue-empty.
+
+The pending-commit batching lives in **`LpAnimationTracker`**
+(`lp-animation-tracker.ts:_pendingLpCommits: Set<Player>`), NOT in the
+orchestrator. The orchestrator's queue loop drains the set via
+`lpTracker.commitIfPending()` after the LP counter animation duration
+elapses; `discardPending()` is the escape hatch when an upcoming
+`commitUnlocked()`/`commitAll()` will sync via a different path. Set
+semantics let batched LP events affecting both players (e.g. mass damage
+during chain resolution) commit correctly without dedup or ordering bugs.
 
 ## Pre-computation Timeline Rules
 
@@ -370,17 +401,20 @@ both players are committed correctly.
    (SELECT_*, WAITING_RESPONSE, MSG_CHAIN_END, MSG_CHAIN_SOLVING, etc.).
    `flushState` skips these empty states to avoid phantom bullets.
 
-4. **Per-event `boardStateAfter` snapshot** — `runReplayPreComputation`
+4. **Per-event `boardStateAfter` snapshot** — both `runReplayPreComputation`
+   (in `replay-precompute.ts`) and `runDuelLoop` (in `duel-worker.ts`)
+   delegate to a `ChainSnapshotTracker` instance (one per duel) which
    tracks a `chainResolving` flag (set at MSG_CHAIN_SOLVING, cleared at
    MSG_CHAIN_SOLVED) and attaches `buildBoardState().data` as
    `boardStateAfter` on each filtered event whose type is in
-   `LIVE_BOARD_CHANGING_EVENT_TYPES` during resolving. Payload growth
-   is ~50-150 KB gzipped per duel (snapshots are highly redundant).
-   Same shared Set is used by `runDuelLoop` (live PvP) so both modes
-   attach snapshots identically. Z-index-style note: snapshots reflect
-   ocgcore state at `buildBoardState()` call time (post-batch if
-   multiple events fire in one `duelProcess` call) — strictly better
-   than no snapshot, but not truly per-event within a single batch.
+   `BOARD_CHANGING_EVENT_TYPES` during resolving. Payload growth is
+   ~50-150 KB gzipped per duel (snapshots are highly redundant). Both
+   modes use the same shared class so the attach predicate, the field
+   name, and the timing are identical by construction. Z-index-style
+   note: snapshots reflect ocgcore state at `buildBoardState()` call
+   time (post-batch if multiple events fire in one `duelProcess` call)
+   — strictly better than no snapshot, but not truly per-event within
+   a single batch.
 
 ## Duel Assertion Pattern
 
@@ -391,11 +425,24 @@ assertions; always go through `duelAssert()`.
 
 ## Animation Constants
 
-All animation timing magic numbers live in `animation-constants.ts`:
-`LOCK_SAFETY_TIMEOUT_MS`, `POLL_DROP_REGRESSION_WATCHDOG_MS`,
-`QUEUE_COLLAPSE_THRESHOLD`, `QUEUE_COLLAPSE_KEEP`,
-`REPLAY_BUFFER_SAFETY_TIMEOUT_MS`. New timing values MUST be added there
-instead of inlined as literals.
+All animation timing magic numbers live in `animation-constants.ts`. New
+timing values MUST be added there instead of inlined as literals. Naming
+convention:
+
+- **`*_MS`** — base duration (in ms) consumed by handlers via
+  `ctx.scaledDuration(BASE_MS)` so playback-speed scaling applies.
+- **`*_MIN_MS`** — companion floor passed to `scaledDuration(BASE, MIN)`
+  for any constant whose handler uses the 2-arg form. The floor protects
+  against slow-playback collapsing the animation to 0ms. Pair convention:
+  every `FOO_MS` consumed with a min has a matching `FOO_MIN_MS`.
+- **Safety timers** (`LOCK_SAFETY_TIMEOUT_MS`, `REPLAY_BUFFER_SAFETY_TIMEOUT_MS`,
+  `POLL_DROP_REGRESSION_WATCHDOG_MS`, etc.) — wrapped in
+  `ctx.safetyTimeout(BASE)` instead of `scaledDuration` so slow playback
+  stretches the guard rather than tightens it.
+
+When adding a constant: pick a `*_MS` name describing what it times,
+add a `*_MIN_MS` floor if the handler will pass a min, and document the
+single line "what does this gate" — most existing entries are 1-3 lines.
 
 ## Polling Removal — Regression Surface
 
@@ -471,6 +518,83 @@ in `server.ts` (block just before `wss.on('connection')`), which throws
 with the list of unconfigured modules. New configurable modules MUST
 register their `isXxxConfigured()` in the boot block — that block is
 the regression fence for the whole pattern.
+
+## WS Protocol Module Split (barrel)
+
+`ws-protocol.ts` (both `front/src/app/pages/pvp/duel-ws.types.ts` and
+`duel-server/src/ws-protocol.ts`) is a **barrel** that re-exports 6
+sub-files. Adding a new message type goes in the matching sub-file, NOT
+the barrel:
+
+- **`ws-protocol-shared.ts`** — `Player`, `Phase`, `LOCATION`, `POSITION`,
+  `BoardStatePayload`, `BOARD_CHANGING_EVENT_TYPES`, etc. — types and
+  enums consumed across all categories.
+- **`ws-protocol-game.ts`** — game events (MSG_*: MOVE, DRAW, DAMAGE,
+  CHAINING, etc.). All BOARD_CHANGING events live here.
+- **`ws-protocol-prompts.ts`** — SELECT_*, ANNOUNCE_*, SORT_*,
+  `PlayerResponseMsg`. Anything that pauses the duel for player input.
+- **`ws-protocol-system.ts`** — duel lifecycle (DUEL_END, RPS, REMATCH,
+  STATE_SYNC, CHAIN_STATE, timer, surrender, cancel). Non-game-event
+  protocol messages.
+- **`ws-protocol-replay.ts`** — replay-specific (REPLAY_BOARD_STATES,
+  REPLAY_METADATA, fork lifecycle).
+- **`ws-protocol-solver.ts`** — solver-specific (SOLVER_INIT, START,
+  PROGRESS, RESULT, etc.).
+
+The 6 sub-files are byte-synced front↔back via
+`scripts/check-ws-protocol-sync.mjs` (modulo `.js` import suffix in
+duel-server). The barrels are NOT byte-synced (paths differ) but mirror
+each other in structure. **A check-ws-protocol-sync run is part of
+duel-server's prebuild step.**
+
+## Server Chain Helpers (`ChainSnapshotTracker` + `ChainStateTracker`)
+
+Two small classes encapsulate chain-related server logic that used to
+live inline in `duel-worker.ts` / `server.ts`. Future bugs touching chain
+state on the server side belong in these files, not in their former hosts.
+
+- **`ChainSnapshotTracker`** (`duel-server/src/chain-snapshot-tracker.ts`)
+  — owns the `chainResolving` flag (set at MSG_CHAIN_SOLVING, cleared at
+  MSG_CHAIN_SOLVED) and attaches `boardStateAfter` snapshots to outgoing
+  BOARD_CHANGING events while resolving. Single instance per duel run.
+  Used by both `runDuelLoop` (live PvP, `duel-worker.ts`) and
+  `runReplayPreComputation` (replay precompute, `replay-precompute.ts`)
+  via `tracker.process(dto, captureSnapshot)` — the same predicate, the
+  same field, the same code path on both sides → PvP↔Replay parity by
+  construction.
+
+- **`ChainStateTracker`** (`duel-server/src/chain-state-tracker.ts` —
+  `ChainStateContainer` interface, `emptyChainState()`, and the
+  `applyChainTransition(state, message)` dispatcher) — server-side chain
+  snapshot persisted per session for reconnect handshake. Stores
+  `activeChainLinks`, `chainPhase`, `negatedChainIndices`,
+  `currentSolvingChainIndex`. Mirror of the client-side
+  `DuelEventProcessor` but minimal (server only needs what CHAIN_STATE
+  replays on reconnect). The transition logic is pure — testable
+  without booting the WS server (covered by `chain-state-tracker.spec.ts`).
+
+## Solver Connection Lifecycle (`solver-handlers.ts`)
+
+`solver-handlers.ts` owns four private Maps (`solverConnections`,
+`solverJwts`, `solverLastStart`, `solverDeckCache`) — none are exported.
+`server.ts` drives state via two functions:
+
+- **`attachSolverConnection(userId, ws, jwt)`** — atomic limit-check +
+  replace + set. Returns `{ kind: 'limit' }` (server.ts must close ws
+  with 4029) or `{ kind: 'attached'; replaced: WS | null }` (server.ts
+  closes the replaced socket with 4001 if present). Atomic so two
+  concurrent attaches can't both pass `maxSolverConnections`.
+- **`detachSolverConnection(userId, ws)`** — idempotent cleanup. Guards
+  against the replace race (`if (solverConnections.get(userId) !== ws)
+  return`) so a `close` handler that fires after a replace doesn't kick
+  out the new WS. Drops connection + JWT + the user's deck-cache prefix
+  entries in one call.
+
+WS IO (the actual `ws.close(...)` calls) stays in server.ts — solver-handlers
+mutates state, server.ts owns the socket lifecycle. `maxSolverConnections`
+lives in `SolverHandlerConfig` (getter for hot-reload via `/api/update-data`).
+A future handler that adds solver state and forgets to clean up via detach
+can no longer leak silently — the Maps simply aren't reachable from outside.
 
 ## Session Management (`DuelSessionManager`)
 
