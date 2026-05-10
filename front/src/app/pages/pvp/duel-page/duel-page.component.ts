@@ -58,6 +58,7 @@ import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.compon
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
+import { SystemOverlayComponent } from '../../../components/system-overlay/system-overlay.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { environment } from '../../../../environments/environment';
 
@@ -85,6 +86,7 @@ import { environment } from '../../../../environments/environment';
     DebugLogPanelComponent,
     PvpChainOverlayComponent,
     PvpDuelOverlaysComponent,
+    SystemOverlayComponent,
     TranslatePipe,
   ],
 })

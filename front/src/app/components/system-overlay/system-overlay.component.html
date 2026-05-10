@@ -1,0 +1,17 @@
+<div class="system-overlay" [class]="'system-overlay--' + variant()"
+     [attr.role]="role()"
+     [attr.aria-modal]="isModal() ? 'true' : null"
+     [attr.aria-live]="ariaLive()"
+     [attr.aria-label]="resolvedAriaLabel()"
+     [cdkTrapFocus]="isModal()">
+  <div class="system-overlay__content">
+    @if (title()) {
+      <p class="system-overlay__title" [class.system-overlay__title--pulse]="pulseTitle()">{{ title() }}</p>
+    }
+    @if (subtitle()) {
+      <p class="system-overlay__subtitle">{{ subtitle() }}</p>
+    }
+    <ng-content select="[slot=indicator]"></ng-content>
+    <ng-content select="[slot=actions]"></ng-content>
+  </div>
+</div>

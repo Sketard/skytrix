@@ -67,23 +67,19 @@
     </div>
   }
 
-  <!-- Story 2.1 — Error State (room polling failed before WS handshake;
-       reuses connection-overlay--lost design for visual consistency with
-       mid-duel disconnect overlay) -->
+  <!-- Story 2.1 — Error State (room polling failed before WS handshake) -->
   @if (roomState() === 'error') {
-    <div class="connection-overlay connection-overlay--lost"
-         role="alertdialog" aria-modal="true"
-         [attr.aria-label]="'a11y.connectionError' | translate" cdkTrapFocus>
-      <div class="connection-overlay__content">
-        <p class="connection-overlay__title">{{ 'duel.connection.lostTitle' | translate }}</p>
-        <p class="connection-overlay__subtitle">{{ 'duel.connection.lost' | translate }}</p>
-        <button class="connection-overlay__lobby connection-overlay__lobby--primary"
-                [attr.aria-label]="'duel.connection.backToLobby' | translate"
-                (click)="leaveRoom()">
-          {{ 'duel.connection.backToLobby' | translate }}
-        </button>
-      </div>
-    </div>
+    <app-system-overlay variant="lost"
+                        style="--system-overlay-z: 2000"
+                        [title]="'duel.connection.lostTitle' | translate"
+                        [subtitle]="'duel.connection.lost' | translate"
+                        [ariaLabel]="'a11y.connectionError' | translate">
+      <button slot="actions" class="system-overlay-btn system-overlay-btn--primary"
+              [attr.aria-label]="'duel.connection.backToLobby' | translate"
+              (click)="leaveRoom()">
+        {{ 'duel.connection.backToLobby' | translate }}
+      </button>
+    </app-system-overlay>
   }
 
   <!-- Story 2.4 — Duel Loading Screen -->
@@ -321,50 +317,44 @@
 
     <!-- Story 5.2 — Blocked tab overlay (single-tab enforcement) -->
     @if (tabGuard.isBlocked()) {
-      <div class="blocked-tab-overlay" role="alertdialog" aria-modal="true" [attr.aria-label]="'duel.tabConflict.title' | translate">
-        <div class="blocked-tab-overlay__content">
-          <p class="blocked-tab-overlay__text">{{ 'duel.tabConflict.title' | translate }}</p>
-          <button mat-raised-button
-                  class="blocked-tab-overlay__btn"
-                  (click)="tabGuard.takeControl()">
-            {{ 'duel.tabConflict.takeControl' | translate }}
-          </button>
-        </div>
-      </div>
+      <app-system-overlay variant="blocked"
+                          style="--system-overlay-z: 95"
+                          [title]="'duel.tabConflict.title' | translate">
+        <button slot="actions" class="system-overlay-btn system-overlay-btn--primary"
+                (click)="tabGuard.takeControl()">
+          {{ 'duel.tabConflict.takeControl' | translate }}
+        </button>
+      </app-system-overlay>
     }
 
     <!-- Connection status overlays -->
     @if (isReconnecting()) {
-      <div class="connection-overlay connection-overlay--reconnecting"
-           role="status" aria-live="polite">
-        <div class="connection-overlay__content">
-          <p class="connection-overlay__title">{{ 'duel.connection.reconnecting' | translate }}</p>
-          <mat-progress-spinner mode="indeterminate" [diameter]="36"
-                                [attr.aria-label]="'duel.connection.reconnecting' | translate">
-          </mat-progress-spinner>
-        </div>
-      </div>
+      <app-system-overlay variant="reconnecting"
+                          style="--system-overlay-z: 2000"
+                          [title]="'duel.connection.reconnecting' | translate"
+                          [pulseTitle]="true">
+        <mat-progress-spinner slot="indicator" mode="indeterminate" [diameter]="36"
+                              [attr.aria-label]="'duel.connection.reconnecting' | translate">
+        </mat-progress-spinner>
+      </app-system-overlay>
     }
 
     @if (isLost()) {
-      <div class="connection-overlay connection-overlay--lost"
-           role="alertdialog" aria-modal="true"
-           [attr.aria-label]="'duel.connection.lostTitle' | translate" cdkTrapFocus>
-        <div class="connection-overlay__content">
-          <p class="connection-overlay__title">{{ 'duel.connection.lostTitle' | translate }}</p>
-          <p class="connection-overlay__subtitle">{{ 'duel.connection.lostSubtitle' | translate }}</p>
-          @if (canRetry()) {
-            <button class="connection-overlay__retry" (click)="retry()">
-              {{ 'duel.connection.retry' | translate }}
-            </button>
-          }
-          <button class="connection-overlay__lobby"
-                  [class.connection-overlay__lobby--primary]="!canRetry()"
-                  (click)="backToLobby()">
-            {{ 'duel.connection.backToLobby' | translate }}
+      <app-system-overlay variant="lost"
+                          style="--system-overlay-z: 2000"
+                          [title]="'duel.connection.lostTitle' | translate"
+                          [subtitle]="'duel.connection.lostSubtitle' | translate">
+        @if (canRetry()) {
+          <button slot="actions" class="system-overlay-btn" (click)="retry()">
+            {{ 'duel.connection.retry' | translate }}
           </button>
-        </div>
-      </div>
+        }
+        <button slot="actions" class="system-overlay-btn"
+                [class.system-overlay-btn--primary]="!canRetry()"
+                (click)="backToLobby()">
+          {{ 'duel.connection.backToLobby' | translate }}
+        </button>
+      </app-system-overlay>
     }
 
     <!-- Story 6.1 / 6.3 — Chain Overlay (H1: services injected directly, only promptActive as input) -->
@@ -372,25 +362,30 @@
 
     <!-- Story 3.4 — Rematch Starting Overlay -->
     @if (wsService.rematchStarting()) {
-      <div class="rematch-starting-overlay" role="status" aria-live="polite">
-        <mat-progress-spinner mode="indeterminate" [diameter]="48" [attr.aria-label]="'duel.result.startingNew' | translate"></mat-progress-spinner>
-        <p>{{ 'duel.result.startingNew' | translate }}</p>
-      </div>
+      <app-system-overlay variant="reconnecting"
+                          style="--system-overlay-z: 90"
+                          [title]="'duel.result.startingNew' | translate">
+        <mat-progress-spinner slot="indicator" mode="indeterminate" [diameter]="48"
+                              [attr.aria-label]="'duel.result.startingNew' | translate">
+        </mat-progress-spinner>
+      </app-system-overlay>
     }
 
     <!-- Story 3.3 — Disconnect Grace Overlay -->
     @if (wsService.opponentDisconnected() && !wsService.duelResult()) {
-      <div class="disconnect-grace-overlay" role="status" aria-live="polite">
-        <div class="disconnect-grace-overlay__content">
-          <p class="disconnect-grace-overlay__title">{{ 'duel.opponent.disconnected' | translate }}</p>
-          <p class="disconnect-grace-overlay__subtitle">{{ 'duel.opponent.waitingReconnect' | translate }}</p>
-          <div class="disconnect-grace-overlay__bar-track">
-            <div class="disconnect-grace-overlay__bar"
-                 [style.animation-duration]="wsService.disconnectGraceSec() + 's'"></div>
-          </div>
-          <button class="disconnect-grace-overlay__leave" (click)="backToLobby()">{{ 'duel.opponent.leave' | translate }}</button>
+      <app-system-overlay variant="grace"
+                          style="--system-overlay-z: 90"
+                          [title]="'duel.opponent.disconnected' | translate"
+                          [subtitle]="'duel.opponent.waitingReconnect' | translate"
+                          [pulseTitle]="true">
+        <div slot="indicator" class="system-overlay-bar-track">
+          <div class="system-overlay-bar"
+               [style.animation-duration]="wsService.disconnectGraceSec() + 's'"></div>
         </div>
-      </div>
+        <button slot="actions" class="system-overlay-btn" (click)="backToLobby()">
+          {{ 'duel.opponent.leave' | translate }}
+        </button>
+      </app-system-overlay>
     }
 
     <!-- Story 3.4 — Duel Result Overlay -->

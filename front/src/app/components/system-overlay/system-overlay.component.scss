@@ -1,0 +1,137 @@
+// === System Overlay (factorise lost / reconnecting / grace / blocked) ===
+// Shared full-screen overlay used for connection-state and tab-conflict
+// surfaces. Variants only differ in backdrop opacity and (for grace) an
+// extra animated bar slot consumed via [slot=indicator]. Boxed content
+// container, title hierarchy, and button styles stay identical so the
+// surfaces feel like one design system instead of four.
+.system-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: var(--system-overlay-z, 9999);
+  animation: system-overlay-enter 200ms ease both;
+
+  &--reconnecting,
+  &--grace {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  &--lost { background: rgba(0, 0, 0, 0.85); }
+  &--blocked { background: rgba(0, 0, 0, 0.9); }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 40px;
+    border-radius: 8px;
+    background: rgba(10, 20, 45, 0.92);
+    border: 1px solid rgba(100, 140, 220, 0.2);
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+  }
+
+  &__title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin: 0;
+
+    &--pulse { animation: system-overlay-pulse 1.5s ease-in-out infinite; }
+  }
+
+  &__subtitle {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0;
+  }
+}
+
+@keyframes system-overlay-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes system-overlay-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-overlay { animation: none; }
+  .system-overlay__title--pulse { animation: none; }
+}
+
+// Narrow viewport: tighter padding so content fits portrait phone.
+@media (max-width: 480px) {
+  .system-overlay__content { padding: 20px 24px; }
+}
+
+// Shared button + progress-bar primitives consumed via [slot=actions] /
+// [slot=indicator]. Component uses ViewEncapsulation.None so these
+// classes apply to projected content too — call sites can use them
+// without ::ng-deep. All names are prefixed `system-overlay-` to keep
+// the global namespace clean.
+:host { display: contents; }
+
+.system-overlay-btn {
+  padding: 10px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  &:disabled { opacity: 0.4; cursor: default; }
+
+  &--primary {
+    background: #0f3460;
+    color: #eee;
+    border-color: transparent;
+
+    &:hover {
+      background: #1a4a7a;
+      border-color: transparent;
+      color: #fff;
+    }
+  }
+}
+
+// Animated countdown bar for grace-period overlays.
+.system-overlay-bar-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.system-overlay-bar {
+  height: 100%;
+  width: 100%;
+  background: rgba(100, 140, 220, 0.75);
+  border-radius: 2px;
+  animation: system-overlay-bar-drain linear forwards;
+}
+
+@keyframes system-overlay-bar-drain {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .system-overlay-bar { animation: none; width: 50%; }
+}
+
