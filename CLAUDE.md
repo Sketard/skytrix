@@ -392,10 +392,71 @@ assertions; always go through `duelAssert()`.
 ## Animation Constants
 
 All animation timing magic numbers live in `animation-constants.ts`:
-`LOCK_SAFETY_TIMEOUT_MS`, `CHAIN_POLL_CEILING`, `CHAIN_POLL_BASE_DELAY_MS`,
-`CHAIN_POLL_MAX_DELAY_MS`, `QUEUE_COLLAPSE_THRESHOLD`, `QUEUE_COLLAPSE_KEEP`,
+`LOCK_SAFETY_TIMEOUT_MS`, `POLL_DROP_REGRESSION_WATCHDOG_MS`,
+`QUEUE_COLLAPSE_THRESHOLD`, `QUEUE_COLLAPSE_KEEP`,
 `REPLAY_BUFFER_SAFETY_TIMEOUT_MS`. New timing values MUST be added there
 instead of inlined as literals.
+
+## Polling Removal — Regression Surface
+
+⚠️ **If you ever see `[POLL-DROP REGRESSION]` in console.error or a
+duelAssert fires with site `POLL-DROP-REGRESSION`, READ THIS SECTION
+BEFORE INVESTIGATING ANYTHING ELSE.**
+
+**Context.** The orchestrator used to run a chain-poll back-off
+(`_pollTimeout` + exponential 50→500ms + ceiling=30 force-finalize) when
+the queue emptied during `chainPhase === 'resolving'`. Investigation on
+2026-05-10 (Phase 2 of the pvp-replay-2026-05-08 audit closure) found
+the poll branch was UNREACHABLE since commit 89b761c4 (2026-04-06):
+the wait gate (`isWaitingForOverlay || hasDrawsInFlight → return`) and
+the poll predicate (`commitMode === 'deferred' && isWaitingForOverlay`)
+were mutually exclusive in the same loop tick. ~5 weeks of dead code.
+
+**Why it never broke prod.** Three event-driven re-wake paths cover the
+"chain in progress, queue temporarily empty" gap:
+- **PvP**: next WS message → `startProcessingIfIdle()` re-launches queue
+- **Replay**: `setAnimating(false)` → `advanceStep()` feeds next step
+- **Overlay**: `chainOverlayReady` signal → `initResumeEffect` resumes
+
+The dropped poll mechanism was a redundant safety net for the
+pathological case "MSG_CHAIN_END never arrives". Replaced by:
+
+**The watchdog.** `armPollDropWatchdog()` is called inside the
+`'finalize'` case of `_processAnimationQueueInner` whenever
+`chainPhase === 'resolving'`. After `POLL_DROP_REGRESSION_WATCHDOG_MS`
+(10s — generous, since legitimate event-driven re-wakes complete in
+<2s), the watchdog re-checks state. If the chain is still resolving and
+the queue is still empty, it fires:
+- `console.error('[POLL-DROP REGRESSION] ...')` (unfilterable, NOT
+  through `DuelLogger` which has category-based filtering)
+- `duelAssert(false, 'POLL-DROP-REGRESSION', ...)` (throws in dev)
+
+The error log dumps `activeChainLinks`, `queueLen`,
+`isWaitingForOverlay`, `hasBufferedEvents` — enough to reproduce.
+
+**If you see the marker, investigate in this order:**
+1. Did MSG_CHAIN_END arrive? Check WS logs for the duel ID.
+2. Did `chainPhase` transition to `'idle'`? Grep `applyChainEnd` traces.
+3. Was the resume effect (`initResumeEffect` on `chainOverlayReady`)
+   ever fired? Check `[ANIM:CHAIN] resumeEffect` logs.
+4. Did `startProcessingIfIdle` get called after the stall? Check
+   `[ANIM:QUEUE] startProcessingIfIdle` traces.
+
+If none of (1-4) hold, the dropped poll mechanism was masking a real
+upstream bug. Re-introducing the poll is NOT the fix — find the missing
+event/signal first. If you confirm the case is genuine and unfixable
+upstream, the simplest restore is to re-add a single
+`setTimeout(processAnimationQueue, 500)` here (no back-off, no ceiling
+— the watchdog itself is the ceiling).
+
+**Clear paths.** `clearPollDropWatchdog()` is called in
+`startProcessingIfIdle()` (any new event activity) and
+`clearTimersAndPolling()` (destroy/resetForSwitch/onStateSync — wired
+through `_isProcessing=false` cleanup).
+
+**Grep markers (do not change without updating this section):**
+- `POLL-DROP REGRESSION` — the console.error string
+- `POLL-DROP-REGRESSION` — the duelAssert site tag
 
 ## Server Module Configuration (`createConfigurable<T>`)
 

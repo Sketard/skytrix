@@ -1,14 +1,22 @@
 /** Safety timeout for zone locks — auto-releases if commit/release is never called. */
 export const LOCK_SAFETY_TIMEOUT_MS = 5000;
 
-/** Maximum poll iterations when queue empties during chain resolution. */
-export const CHAIN_POLL_CEILING = 30;
-
-/** Initial delay (ms) for chain poll back-off. */
-export const CHAIN_POLL_BASE_DELAY_MS = 50;
-
-/** Maximum delay (ms) for chain poll exponential back-off. */
-export const CHAIN_POLL_MAX_DELAY_MS = 500;
+/**
+ * POLL-DROP REGRESSION watchdog timeout (ms).
+ *
+ * Armed by AnimationOrchestratorService when the queue finalizes while
+ * `chainPhase === 'resolving'` — the state where the dropped poll
+ * back-off mechanism would have engaged. If the chain is still resolving
+ * and the queue is still empty after this delay, fires a high-visibility
+ * `console.error('[POLL-DROP REGRESSION] ...')` + `duelAssert` in dev.
+ *
+ * Generous (10s) on purpose: legitimate event-driven re-wakes (WS message
+ * arrival, advanceStep, chainOverlayReady signal) all complete in <2s in
+ * normal play. A 10s stall is unambiguously pathological.
+ *
+ * See CLAUDE.md "Polling Removal — Regression Surface".
+ */
+export const POLL_DROP_REGRESSION_WATCHDOG_MS = 10_000;
 
 /** Queue collapse fires when queue length exceeds this threshold. */
 export const QUEUE_COLLAPSE_THRESHOLD = 5;

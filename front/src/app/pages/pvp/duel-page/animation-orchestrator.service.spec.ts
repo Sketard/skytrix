@@ -2,13 +2,7 @@ import {
   AnimationOrchestratorService,
   type QueueDecisionInputs,
 } from './animation-orchestrator.service';
-import {
-  CHAIN_POLL_BASE_DELAY_MS,
-  CHAIN_POLL_CEILING,
-  CHAIN_POLL_MAX_DELAY_MS,
-  QUEUE_COLLAPSE_KEEP,
-  QUEUE_COLLAPSE_THRESHOLD,
-} from './animation-constants';
+import { QUEUE_COLLAPSE_KEEP } from './animation-constants';
 import type { QueueEntry } from './animation-data-source';
 import type { GameEvent } from '../types';
 
@@ -28,8 +22,6 @@ const baseInputs = (overrides: Partial<QueueDecisionInputs> = {}): QueueDecision
   hasBufferedEvents: false,
   hasPendingPrompt: false,
   commitMode: 'per-event',
-  pollCount: 0,
-  pollDelay: CHAIN_POLL_BASE_DELAY_MS,
   deferredSolvingEntry: null,
   ...overrides,
 });
@@ -182,56 +174,18 @@ describe('AnimationOrchestratorService.decideNextStep', () => {
       expect(step.action).toBe('finalize');
     });
 
-    it('returns finalize when commitMode=deferred but isWaitingForOverlay=false (poll condition unmet)', () => {
-      // The poll branch requires both commitMode='deferred' AND isWaitingForOverlay=true.
-      // With only commitMode='deferred', the branch is skipped and we fall through to finalize.
-      // This is the typical mid-chain-resolving state where the WS will re-trigger via
-      // startProcessingIfIdle when the next event arrives (event-driven, not poll-driven).
+    it('returns finalize when commitMode=deferred (mid-chain queue gap, event-driven re-wake expected)', () => {
+      // Mid-chain queue-empty: chainPhase='resolving' but no overlay wait.
+      // The dispatcher arms the POLL-DROP REGRESSION watchdog at this point
+      // (see CLAUDE.md "Polling Removal — Regression Surface"); decideNextStep
+      // itself just returns finalize. The watchdog catches stalls if no
+      // event-driven re-wake (WS / advanceStep / chainOverlayReady) arrives
+      // within POLL_DROP_REGRESSION_WATCHDOG_MS.
       const step = AnimationOrchestratorService.decideNextStep(baseInputs({
         commitMode: 'deferred',
         isWaitingForOverlay: false,
       }));
       expect(step.action).toBe('finalize');
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Poll branch — currently UNREACHABLE in production. See Phase 2 of the
-  // pvp-replay-2026-05-08 audit closure plan: the poll branch was found dead
-  // because the wait gate (priority 1) returns first whenever
-  // isWaitingForOverlay=true, and the poll predicate also requires
-  // isWaitingForOverlay=true. The two conditions are mutually exclusive in
-  // the same loop tick. The unit-level cases are kept here as xit markers
-  // so the regression is pinned: if the wait-gate logic ever changes such
-  // that the poll branch becomes reachable, the suite calls attention to
-  // re-validate these scenarios.
-  //
-  // Pure-function unit tests below would PASS (decideNextStep is pure and
-  // has no concept of caller-side mutual exclusion). They are skipped to
-  // signal the architectural unreachability rather than testing dead code.
-  // -------------------------------------------------------------------------
-
-  describe('poll branch (DEAD CODE — see Phase 2 cleanup)', () => {
-    xit('would return poll when commitMode=deferred + isWaitingForOverlay=true (UNREACHABLE: gate returns first)', () => {
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
-        commitMode: 'deferred',
-        isWaitingForOverlay: true,
-        pollCount: 0,
-        pollDelay: CHAIN_POLL_BASE_DELAY_MS,
-      }));
-      expect(step.action).toBe('poll');
-      if (step.action === 'poll') {
-        expect(step.delayMs).toBe(Math.min(CHAIN_POLL_BASE_DELAY_MS * 2, CHAIN_POLL_MAX_DELAY_MS));
-      }
-    });
-
-    xit('would return poll-ceiling-reset when pollCount + 1 > CHAIN_POLL_CEILING (UNREACHABLE)', () => {
-      const step = AnimationOrchestratorService.decideNextStep(baseInputs({
-        commitMode: 'deferred',
-        isWaitingForOverlay: true,
-        pollCount: CHAIN_POLL_CEILING,
-      }));
-      expect(step.action).toBe('poll-ceiling-reset');
     });
   });
 });

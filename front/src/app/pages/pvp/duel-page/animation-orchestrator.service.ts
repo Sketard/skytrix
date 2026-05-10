@@ -6,9 +6,9 @@ import { DuelCardArtService } from './duel-card-art.service';
 import { locationToZoneId, locationToZoneKey } from '../pvp-zone.utils';
 import { ANIMATION_DATA_SOURCE, type QueueDirective, type QueueEntry } from './animation-data-source';
 import {
-  CHAIN_POLL_BASE_DELAY_MS, CHAIN_POLL_CEILING, CHAIN_POLL_MAX_DELAY_MS,
   LOCK_SAFETY_TIMEOUT_MS, QUEUE_COLLAPSE_KEEP, QUEUE_COLLAPSE_THRESHOLD,
   REPLAY_BUFFER_SAFETY_TIMEOUT_MS,
+  POLL_DROP_REGRESSION_WATCHDOG_MS,
   POSITION_FLIP_MS, BECOME_TARGET_PULSE_MS, TARGET_PILE_FLOAT_STAGGER_MS, TARGET_PILE_FLOAT_FADE_OUT_MS,
   CHAIN_ACTIVATE_MS, CHAIN_ACTIVATE_MIN_MS, CHAIN_ACTIVATE_FALLBACK_MS,
   CHAIN_BANNER_PAUSE_MS, CHAIN_BANNER_DEFERRED_BUDGET_MS,
@@ -41,6 +41,14 @@ import { duelAssert } from '../../../core/utilities/duel-assert';
 /**
  * Discrete actions returned by `AnimationOrchestratorService.decideNextStep`.
  * Drives the dispatcher inside `_processAnimationQueueInner`.
+ *
+ * NOTE: 'poll' / 'poll-ceiling-reset' actions were removed in 2026-05-10
+ * (Phase 2 of pvp-replay-2026-05-08 audit closure). Investigation found
+ * the poll branch UNREACHABLE since 2026-04-06 because the wait gate
+ * (priority 1) returned first whenever the poll predicate matched. All
+ * legitimate wait paths are now event-driven (WS message, advanceStep,
+ * resume effect on chainOverlayReady). A POLL-DROP REGRESSION watchdog
+ * fires if a finalize-during-resolving stalls — see CLAUDE.md.
  */
 export type QueueStep =
   | { action: 'pause-external' }
@@ -48,8 +56,6 @@ export type QueueStep =
   | { action: 'consume-deferred'; entry: GameEvent }
   | { action: 'dequeue'; entry: QueueEntry }
   | { action: 'pre-replay-buffer' }
-  | { action: 'poll'; delayMs: number }
-  | { action: 'poll-ceiling-reset' }
   | { action: 'finalize' };
 
 /**
@@ -65,8 +71,6 @@ export interface QueueDecisionInputs {
   hasBufferedEvents: boolean;
   hasPendingPrompt: boolean;
   commitMode: 'per-event' | 'deferred';
-  pollCount: number;
-  pollDelay: number;
   deferredSolvingEntry: GameEvent | null;
 }
 
@@ -136,12 +140,16 @@ export class AnimationOrchestratorService {
   private animationTimeouts: ReturnType<typeof setTimeout>[] = [];
   /** Active equip line elements — tracked for cleanup on destroy/reset. */
   private activeEquipLines: HTMLDivElement[] = [];
-  /** Chain polling: pending poll timeout (cleared on interruptPoll or destroy). */
-  private _pollTimeout: ReturnType<typeof setTimeout> | null = null;
-  /** Chain polling: back-off delay (50→100→200→…→500ms), reset on event dequeue. */
-  private _pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-  /** Chain polling: consecutive empty polls (safety ceiling — force finalize after 30). */
-  private _pollCount = 0;
+  /**
+   * POLL-DROP REGRESSION watchdog. Armed when the dispatcher finalizes
+   * the queue while `chainPhase === 'resolving'` — i.e. the dropped poll
+   * mechanism would have been engaged. If no chain event re-wakes the
+   * queue within POLL_DROP_REGRESSION_WATCHDOG_MS, fires a high-visibility
+   * `logger.error` (grep marker: 'POLL-DROP REGRESSION') + duelAssert in
+   * dev. Cleared on chainManager.reset(), startProcessingIfIdle, and
+   * destroy. See CLAUDE.md "Polling Removal — Regression Surface".
+   */
+  private _pollDropWatchdog: ReturnType<typeof setTimeout> | null = null;
   /** Re-entry guard for processAnimationQueue (prevents double-dequeue). */
   private _isProcessing = false;
   /** Detects parallel re-entry into _processAnimationQueueInner (audit finding C4).
@@ -211,6 +219,11 @@ export class AnimationOrchestratorService {
   /** Called by the animation queue watcher effect in the component. */
   startProcessingIfIdle(): void {
     this.trace('startProcessingIfIdle', { isAnimating: this._isAnimating(), isProcessing: this._isProcessing, queueLen: this.dataSource.animationQueue().length });
+    // Any new event arrival means the chain progressed — disarm the
+    // POLL-DROP REGRESSION watchdog. Even when _isAnimating is already
+    // true (re-entry from another caller), the watchdog might have been
+    // armed by an earlier finalize that has since been superseded.
+    this.clearPollDropWatchdog();
     if (!this._isAnimating()) {
       this._isAnimating.set(true);
       this.dataSource.setAnimating(true);
@@ -219,22 +232,48 @@ export class AnimationOrchestratorService {
       // before the travel animation plays.
       this.moveRouter.preLockQueuedSources();
       this.processAnimationQueue();
-    } else {
-      this.interruptPoll(); // wake up immediately if polling during chain
     }
   }
 
   /**
-   * Interrupts a pending chain poll timeout, resets back-off, and resumes
-   * queue processing immediately. Called when new events arrive while the
-   * orchestrator is polling (chain gap).
+   * POLL-DROP REGRESSION watchdog — see CLAUDE.md "Polling Removal —
+   * Regression Surface" for the full investigation context. Armed at
+   * finalize-during-resolving; if it fires the dropped poll mechanism
+   * would have rescued the queue, so we surface the regression with a
+   * non-missable error log and (in dev) a duelAssert.
    */
-  private interruptPoll(): void {
-    if (this._pollTimeout !== null) {
-      clearTimeout(this._pollTimeout);
-      this._pollTimeout = null;
-      this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-      this.processAnimationQueue();
+  private armPollDropWatchdog(): void {
+    this.clearPollDropWatchdog();
+    this._pollDropWatchdog = setTimeout(() => {
+      this._pollDropWatchdog = null;
+      // Re-check state at fire time: if anything has changed (queue
+      // re-filled, chain ended), the watchdog is moot.
+      const stillResolving = this.dataSource.chainPhase() === 'resolving';
+      const queueLen = this.dataSource.animationQueue().length;
+      if (!stillResolving || queueLen > 0 || this._isAnimating()) return;
+      const links = this.dataSource.activeChainLinks();
+      // console.error (NOT logger.error — that doesn't exist) so the
+      // marker is unfilterable by debug-category settings.
+      console.error(
+        '[POLL-DROP REGRESSION] chain stuck after finalize-during-resolving for %dms. '
+        + 'activeChainLinks=%o queueLen=%d isWaitingForOverlay=%s hasBufferedEvents=%s. '
+        + 'See CLAUDE.md "Polling Removal — Regression Surface" — the dropped poll '
+        + 'mechanism would have rescued this state.',
+        POLL_DROP_REGRESSION_WATCHDOG_MS,
+        links.map(l => ({ idx: l.chainIndex, loc: l.location, seq: l.sequence })),
+        queueLen,
+        this.chainManager.isWaitingForOverlay,
+        this.chainManager.hasBufferedEvents,
+      );
+      duelAssert(false, 'POLL-DROP-REGRESSION',
+        `chain stuck after ${POLL_DROP_REGRESSION_WATCHDOG_MS}ms — see error log above`);
+    }, POLL_DROP_REGRESSION_WATCHDOG_MS);
+  }
+
+  private clearPollDropWatchdog(): void {
+    if (this._pollDropWatchdog !== null) {
+      clearTimeout(this._pollDropWatchdog);
+      this._pollDropWatchdog = null;
     }
   }
 
@@ -332,9 +371,7 @@ export class AnimationOrchestratorService {
     this.animationTimeouts = [];
     for (const el of this.activeEquipLines) el.remove();
     this.activeEquipLines = [];
-    if (this._pollTimeout !== null) { clearTimeout(this._pollTimeout); this._pollTimeout = null; }
-    this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-    this._pollCount = 0;
+    this.clearPollDropWatchdog();
     this._awaitSignalEffect?.destroy();
     this._awaitSignalEffect = null;
     this._isProcessing = false;
@@ -445,24 +482,19 @@ export class AnimationOrchestratorService {
       return { action: 'pre-replay-buffer' };
     }
 
-    // 4b. Chain poll back-off (deferred commit + waiting overlay).
-    // In replay this branch is naturally avoided because CHAIN_SOLVED clears
-    // isWaitingForOverlay between steps; in PvP it polls until next event.
-    if (input.commitMode === 'deferred' && input.isWaitingForOverlay) {
-      if (input.pollCount + 1 > CHAIN_POLL_CEILING) {
-        return { action: 'poll-ceiling-reset' };
-      }
-      const nextDelay = Math.min(input.pollDelay * 2, CHAIN_POLL_MAX_DELAY_MS);
-      return { action: 'poll', delayMs: nextDelay };
-    }
-
-    // 4c. Default: finalize.
+    // 4b. Default: finalize.
+    // Note: prior versions had a poll back-off branch here gated on
+    // (commitMode === 'deferred' && isWaitingForOverlay). It was found
+    // unreachable due to the wait gate above (priority 1) and dropped
+    // in 2026-05-10 — see CLAUDE.md "Polling Removal — Regression Surface".
+    // The POLL-DROP REGRESSION watchdog (armPollDropWatchdog) catches
+    // the pathological case the dropped branch was meant to handle.
     return { action: 'finalize' };
   }
 
   /**
    * Entry point — guards against re-entry from multiple callers
-   * (interruptPoll, await-signal effect, startProcessingIfIdle).
+   * (await-signal effect, startProcessingIfIdle, postFinalize rescue).
    */
   private processAnimationQueue(): void {
     if (this._isProcessing || !this._isAnimating()) return;
@@ -518,8 +550,6 @@ export class AnimationOrchestratorService {
           hasBufferedEvents: this.chainManager.hasBufferedEvents,
           hasPendingPrompt: this.dataSource.pendingPrompt() !== null,
           commitMode: this.commitMode,
-          pollCount: this._pollCount,
-          pollDelay: this._pollDelay,
           deferredSolvingEntry: this.chainManager.deferredSolvingEvent,
         });
 
@@ -543,8 +573,6 @@ export class AnimationOrchestratorService {
             // Commit the peek — chainManager held it in deferredSolvingEvent
             // until we acknowledged it.
             this.chainManager.consumeDeferredSolving();
-            this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-            this._pollCount = 0;
             const flow = await this._handleEntry(step.entry);
             if (flow === 'return') return;
             continue;
@@ -552,8 +580,6 @@ export class AnimationOrchestratorService {
 
           case 'dequeue': {
             const entry = this.dataSource.dequeueAnimation()!;
-            this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-            this._pollCount = 0;
             if ('kind' in entry) {
               const directiveResult = await this.processDirective(entry);
               if (directiveResult === 'pause') return;
@@ -572,35 +598,19 @@ export class AnimationOrchestratorService {
             continue;
           }
 
-          case 'poll': {
-            this._pollCount++;
-            this._pollDelay = step.delayMs;
-            this.trace('queueEmpty', { action: 'poll', delay: this._pollDelay, count: this._pollCount });
-            this._pollTimeout = setTimeout(() => {
-              this._pollTimeout = null;
-              this.processAnimationQueue();
-            }, this._pollDelay);
-            return; // _isAnimating stays true — _pollTimeout cleared by clearTimersAndPolling
-          }
-
-          case 'poll-ceiling-reset': {
-            this._pollCount++;
-            this.trace('queueEmpty', { action: 'pollCeiling', count: this._pollCount });
-            this.logger.warn('Chain poll ceiling reached (%d) — forcing finalize. '
-              + 'This likely indicates a lost chain event (MSG_CHAIN_END never arrived).', this._pollCount);
-            this._pollCount = 0;
-            this._pollDelay = CHAIN_POLL_BASE_DELAY_MS;
-            // Reset chain state so commitMode → 'per-event' next tick → falls
-            // through to the 'finalize' branch on the next decision.
-            this.chainManager.reset();
-            continue;
-          }
-
           case 'finalize': {
             // INVARIANT: finalizeAndCommit() MUST run BEFORE setAnimating(false).
             // In replay, setAnimating(false) triggers advanceStep() → updateLogical()
             // with the next state. Committing first ensures we use the current state.
             this.trace('queueEmpty', { action: 'finalize' });
+            // POLL-DROP REGRESSION watchdog — arm BEFORE finalize so a
+            // reset-during-finalize chain (rare but possible if the LP
+            // sync triggers a sync handler) clears it correctly. The
+            // dropped poll mechanism would have engaged here while
+            // chainPhase === 'resolving'; this watchdog catches stalls.
+            if (this.dataSource.chainPhase() === 'resolving') {
+              this.armPollDropWatchdog();
+            }
             this.finalizeAndCommit();
             this.drawManager.resetHandAnimationState();
             this.animatingZone.set(null);
