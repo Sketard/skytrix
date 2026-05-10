@@ -605,6 +605,9 @@ export function cleanupReplayConnection(conn: ReplayConnection, preserveCache = 
  * Safe to call once from the SIGTERM/SIGINT handler.
  */
 export function cleanupAllReplayState(): void {
+  // Drain the queue FIRST so the onReplayWorkerDone() calls below can't
+  // re-spawn a worker mid-shutdown.
+  replayQueue.length = 0;
   for (const conn of activeReplayConnections.values()) {
     cleanupReplayConnection(conn);
   }
@@ -612,6 +615,6 @@ export function cleanupAllReplayState(): void {
     pending.worker.removeAllListeners();
     pending.worker.terminate();
     pendingForkWorkers.delete(conn);
+    onReplayWorkerDone();
   }
-  replayQueue.length = 0;
 }
