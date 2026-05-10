@@ -67,9 +67,8 @@ import {
   configureSolverHandlers,
   handleSolverMessage,
   isSolverHandlersConfigured,
-  solverConnections,
-  solverJwts,
-  solverDeckCache,
+  attachSolverConnection,
+  detachSolverConnection,
 } from './solver-handlers.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
@@ -177,9 +176,9 @@ if (dataReady) {
   }
 }
 
-// Solver state (solverConnections, solverJwts, solverDeckCache, solverLastStart,
-// solverResultCache) moved to solver-handlers.ts (H1 split). Re-exported maps
-// imported above are used by the WS connection/close handler below.
+// All solver state (connections, JWTs, deck cache, last-start, result cache)
+// is private to solver-handlers.ts (H2 audit closure). The WS connection
+// handler below drives it via attachSolverConnection / detachSolverConnection.
 
 configureSolverHandlers({
   orchestrator: () => solverOrchestrator,
@@ -188,6 +187,7 @@ configureSolverHandlers({
   timeBudgetFastMs: () => solverTimeBudgetFastMs,
   timeBudgetOptimalMs: () => solverTimeBudgetOptimalMs,
   maxHandtraps: () => solverMaxHandtraps,
+  maxSolverConnections: () => maxSolverConnections,
   springBootApiUrl: SPRING_BOOT_API_URL,
   fillerCardId: FILLER_CARD_ID,
   maxSolverCacheEntries: MAX_SOLVER_CACHE_ENTRIES,
@@ -1235,19 +1235,16 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       return;
     }
 
-    // Connection limit guard
-    if (solverConnections.size >= maxSolverConnections) {
+    // Atomic connection register (limit check + replace + set in one go).
+    // server.ts owns WS IO: closing the rejected/replaced socket happens here.
+    const attached = attachSolverConnection(userId, ws, jwt);
+    if (attached.kind === 'limit') {
       ws.close(4029, 'Too many solver connections');
       return;
     }
-
-    // Replace existing solver WS for same user
-    const existingWs = solverConnections.get(userId);
-    if (existingWs) {
-      existingWs.close(4001, 'Replaced by new connection');
+    if (attached.replaced) {
+      attached.replaced.close(4001, 'Replaced by new connection');
     }
-    solverConnections.set(userId, ws);
-    solverJwts.set(userId, jwt);
 
     // Heartbeat
     (ws as AliveWebSocket).isAlive = true;
@@ -1265,18 +1262,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       handleSolverMessage(userId, ws, parsed);
     });
 
-    // Close handler — remove from map but do NOT abort running solves
-    ws.on('close', () => {
-      if (solverConnections.get(userId) === ws) {
-        solverConnections.delete(userId);
-        solverJwts.delete(userId);
-        // Drop the user's deck cache entries (TTL would expire them anyway,
-        // but this keeps the map bounded under churn).
-        for (const key of solverDeckCache.keys()) {
-          if (key.startsWith(`${userId}:`)) solverDeckCache.delete(key);
-        }
-      }
-    });
+    // Close handler — release state; solver-handlers guards against the
+    // race where a replace already swapped this WS out (idempotent).
+    ws.on('close', () => detachSolverConnection(userId, ws));
 
     ws.on('error', (error) => {
       console.error('[Solver] ws error', { userId, error });

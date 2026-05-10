@@ -15,13 +15,18 @@ import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from '.
 import { EMPTY_BREAKDOWN } from './solver/solver-types.js';
 
 // =============================================================================
-// State (process-global, shared with the WS connection handler in server.ts)
+// State (private — H2 audit closure: encapsulated, never exported)
 // =============================================================================
+//
+// All four Maps below are private to this module. server.ts drives them
+// via the public attach/detach/get helpers further down. A future handler
+// that touches solver state and forgets to clean up via detach can no
+// longer leak silently — the Maps simply aren't reachable.
 
 /** Live WebSocket per userId. Drives both inbound `handleSolverMessage`
  *  dispatch and outbound progress/result emission resolved at fire time so a
  *  reconnect mid-solve still receives the result. */
-export const solverConnections = new Map<string, WebSocket>();
+const solverConnections = new Map<string, WebSocket>();
 
 /** Last solve start time per user (ms). Drives the rate-limit window. */
 const solverLastStart = new Map<string, number>();
@@ -32,12 +37,12 @@ const solverResultCache = new Map<string, CachedResult>();
 
 /** Per-user JWT captured at handshake. Forwarded to Spring Boot to fetch the
  *  authoritative deck (never trust the client deck array — C2 fix). */
-export const solverJwts = new Map<string, string>();
+const solverJwts = new Map<string, string>();
 
 /** Short-TTL cache for deck fetches keyed by `${userId}:${deckId}` to avoid
  *  hitting Spring Boot on every verify click. Cleared per-user on WS close. */
 interface DeckCacheEntry { main: number[]; extra: number[]; expiresAt: number }
-export const solverDeckCache = new Map<string, DeckCacheEntry>();
+const solverDeckCache = new Map<string, DeckCacheEntry>();
 
 // =============================================================================
 // Configuration (set via configureSolverHandlers at boot)
@@ -52,6 +57,9 @@ interface SolverHandlerConfig {
   timeBudgetFastMs: () => number;
   timeBudgetOptimalMs: () => number;
   maxHandtraps: () => number;
+  /** Connection-limit ceiling — getter so the runtime can re-read it
+   *  after `/api/update-data` reloads solver-config.json. */
+  maxSolverConnections: () => number;
   springBootApiUrl: string;
   fillerCardId: number;
   maxSolverCacheEntries: number;
@@ -63,6 +71,58 @@ const configurable = createConfigurable<SolverHandlerConfig>('solver-handlers');
 export const configureSolverHandlers = configurable.configure;
 export const isSolverHandlersConfigured = configurable.isConfigured;
 const getCfg = configurable.get;
+
+// =============================================================================
+// Connection lifecycle (H2 audit closure — exclusive Map writers)
+// =============================================================================
+
+/** Result of an `attachSolverConnection` attempt. The caller (server.ts)
+ *  decides what to send/close on the WebSockets — this module only mutates
+ *  state so close/send IO stays in the connection handler. */
+export type AttachResult =
+  /** Connection limit reached; server.ts must close ws with 4029. */
+  | { kind: 'limit' }
+  /** Attached. If `replaced` is non-null, server.ts must close it with 4001
+   *  (an older WS for the same userId was kicked out). */
+  | { kind: 'attached'; replaced: WebSocket | null };
+
+/** Register a new solver WS for `userId`. Atomic: limit check + replace +
+ *  set happen here so two concurrent attaches can't both pass the limit. */
+export function attachSolverConnection(userId: string, ws: WebSocket, jwt: string): AttachResult {
+  if (solverConnections.size >= getCfg().maxSolverConnections()) {
+    return { kind: 'limit' };
+  }
+  const previous = solverConnections.get(userId) ?? null;
+  solverConnections.set(userId, ws);
+  solverJwts.set(userId, jwt);
+  return { kind: 'attached', replaced: previous };
+}
+
+/** Remove `userId`'s solver state (connection, JWT, deck cache entries) iff
+ *  the live WS still matches `ws`. Idempotent — safe to call from a `close`
+ *  handler that races with a replace. Does NOT close `ws` (server.ts owns IO). */
+export function detachSolverConnection(userId: string, ws: WebSocket): void {
+  if (solverConnections.get(userId) !== ws) return;
+  solverConnections.delete(userId);
+  solverJwts.delete(userId);
+  // Drop the user's deck cache entries (TTL would expire them anyway,
+  // but this keeps the map bounded under churn).
+  for (const key of solverDeckCache.keys()) {
+    if (key.startsWith(`${userId}:`)) solverDeckCache.delete(key);
+  }
+}
+
+/** Live WS for `userId`, or undefined if disconnected. Resolved at every send
+ *  so a reconnect mid-solve still receives async progress/result. */
+export function getSolverConnection(userId: string): WebSocket | undefined {
+  return solverConnections.get(userId);
+}
+
+/** Captured handshake JWT for `userId`. Used by `fetchDeckCached` to
+ *  authenticate Spring Boot deck fetches (C2 fix). */
+export function getSolverJwt(userId: string): string | undefined {
+  return solverJwts.get(userId);
+}
 
 // =============================================================================
 // WebSocket emission helpers
