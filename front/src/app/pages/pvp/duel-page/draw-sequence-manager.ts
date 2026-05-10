@@ -10,6 +10,7 @@ import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
 import type { ZoneLock } from './rendered-board-state.service';
 import { duelAssert } from '../../../core/utilities/duel-assert';
+import { INITIAL_DRAW_PAIRING_ATTEMPTS, INITIAL_DRAW_PAIRING_POLL_MS } from './animation-constants';
 
 /**
  * Manages draw sequences: initial parallel draw, mid-game draws,
@@ -192,8 +193,8 @@ export class DrawSequenceManager {
       let otherMsg: DrawMsg | null = this.peekAndDequeueOtherInitialDraw(msg);
 
       // Fallback: poll briefly for slow network (up to ~200ms)
-      for (let attempt = 0; attempt < 5 && !otherMsg; attempt++) {
-        await new Promise<void>(r => setTimeout(r, 40));
+      for (let attempt = 0; attempt < INITIAL_DRAW_PAIRING_ATTEMPTS && !otherMsg; attempt++) {
+        await new Promise<void>(r => setTimeout(r, INITIAL_DRAW_PAIRING_POLL_MS));
         otherMsg = this.peekAndDequeueOtherInitialDraw(msg);
       }
 

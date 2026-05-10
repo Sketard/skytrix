@@ -51,6 +51,7 @@ import { SoloModeEffectsService } from './solo-mode-effects.service';
 import { DuelPromptEffectsService } from './duel-prompt-effects.service';
 import { DuelA11yEffectsService } from './duel-a11y-effects.service';
 import { DuelLoadingEffectsService } from './duel-loading-effects.service';
+import { SOLO_SWITCH_PLAYER_MS, ZONE_BROWSER_CLOSE_MS } from './ui-timing-constants';
 import { DuelAnimationBridgeService } from './duel-animation-bridge.service';
 import { DuelToastService } from './duel-toast.service';
 import { DebugLogService } from './debug-log.service';
@@ -575,7 +576,7 @@ export class DuelPageComponent implements OnInit {
     const zoneEl = document.querySelector('app-pvp-zone-browser-overlay');
     if (!zoneEl || !zoneEl.contains(event.target as Node)) {
       zoneEl?.querySelector('.zone-browser')?.classList.add('zone-browser--closing');
-      setTimeout(() => this.closeZoneBrowser(), 150);
+      setTimeout(() => this.closeZoneBrowser(), ZONE_BROWSER_CLOSE_MS);
     }
   }
 
@@ -598,7 +599,7 @@ export class DuelPageComponent implements OnInit {
     if (this.switching()) return;
     this.switching.set(true);
     this.orchestrator.switchPlayer();
-    this.switchTimer = setTimeout(() => this.switching.set(false), 200);
+    this.switchTimer = setTimeout(() => this.switching.set(false), SOLO_SWITCH_PLAYER_MS);
   }
 
   // --- Card Action Menu — thin delegations to CardActionMenuService ---

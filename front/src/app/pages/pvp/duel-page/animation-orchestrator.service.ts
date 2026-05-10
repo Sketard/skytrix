@@ -21,6 +21,7 @@ import {
   SHUFFLE_DECK_MS, SHUFFLE_DECK_MIN_MS,
   POSITION_ROTATE_MS, POSITION_ROTATE_MIN_MS,
   CHAIN_PULSE_BASE_MS,
+  EQUIP_LINE_MS, EQUIP_LINE_MIN_MS,
 } from './animation-constants';
 import { CardTravelEngine } from './card-travel-engine.service';
 import { BoardEffectsService } from './board-effects.service';
@@ -1018,7 +1019,7 @@ export class AnimationOrchestratorService {
     });
     if (!lineEl) return 0;
     this.activeEquipLines.push(lineEl);
-    const duration = this.ctx.scaledDuration(500, 250);
+    const duration = this.ctx.scaledDuration(EQUIP_LINE_MS, EQUIP_LINE_MIN_MS);
     lineEl.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], {
       duration: duration * 0.4, easing: 'ease-out', fill: 'forwards',
     });

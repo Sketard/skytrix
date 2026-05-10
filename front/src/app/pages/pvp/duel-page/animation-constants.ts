@@ -128,3 +128,13 @@ export const CHAIN_PULSE_BASE_MS = 600;
  * matches the longest CSS transition declared on the bar element. (L18)
  */
 export const TIMELINE_BAR_TRANSITION_FALLBACK_MS = 300;
+
+/** MSG_EQUIP target line draw + fade animation total budget. Drawn at 40% of
+ *  the budget, fades out at 30%. */
+export const EQUIP_LINE_MS = 500;
+export const EQUIP_LINE_MIN_MS = 250;
+
+/** Initial-draw pairing poll: how long to wait for the second player's draw
+ *  before falling back to single-player draw. ATTEMPTS × POLL_MS = ~200ms. */
+export const INITIAL_DRAW_PAIRING_ATTEMPTS = 5;
+export const INITIAL_DRAW_PAIRING_POLL_MS = 40;

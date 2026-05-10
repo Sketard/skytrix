@@ -7,6 +7,7 @@ import { RoomStateMachineService } from './room-state-machine.service';
 import { DuelCardArtService } from './duel-card-art.service';
 import { preloadCardImages } from '../pvp-card.utils';
 import type { RoomState } from './room-state-machine.service';
+import { RPS_DISMISS_DRAW_MS, RPS_DISMISS_WINNER_MS } from './ui-timing-constants';
 
 interface IndexedCardDetailDTO {
   card: {
@@ -105,13 +106,13 @@ export class DuelLoadingEffectsService {
       }
     });
 
-    // Story 2.3 — RPS result auto-dismiss (3s winner, 2s draw)
+    // Story 2.3 — RPS result auto-dismiss
     effect(() => {
       const rps = this.wsService.rpsResult();
       if (!rps) return;
       untracked(() => {
         if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
-        const duration = rps.winner !== null ? 3000 : 2000;
+        const duration = rps.winner !== null ? RPS_DISMISS_WINNER_MS : RPS_DISMISS_DRAW_MS;
         this.rpsAutoDismissTimeout = setTimeout(() => this.wsService.clearRpsResult(), duration);
       });
     });
