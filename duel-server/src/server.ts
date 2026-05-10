@@ -47,6 +47,7 @@ import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
+import { checkProtocolVersionPure } from './protocol-version-check.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
@@ -1164,18 +1165,17 @@ const wsRateLimitSweepTimer = startWsRateLimitSweep();
  * surface worth gating).
  */
 function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string): boolean {
-  const raw = url.searchParams.get('pv');
-  const clientVersion = raw === null ? null : Number(raw);
-  if (clientVersion !== PROTOCOL_VERSION) {
+  const result = checkProtocolVersionPure(url.searchParams.get('pv'));
+  if (!result.ok) {
     logger.warn('WS handshake rejected — protocol version mismatch', {
-      mode, clientVersion: raw, serverVersion: PROTOCOL_VERSION, ip,
+      mode, clientVersion: result.rawClientVersion, serverVersion: result.serverVersion, ip,
     });
     // Count protocol mismatch as a failed handshake — otherwise an attacker
     // can spam connections with `?pv=99` and bypass the rate limiter (which
     // only counts failed AUTH attempts via recordFailedWsAttempt). Audit
     // review 2026-05-09 H2.
     recordFailedWsAttempt(ip);
-    ws.close(4426, `Protocol version mismatch (server=${PROTOCOL_VERSION}, client=${raw ?? 'missing'})`);
+    ws.close(4426, `Protocol version mismatch (server=${result.serverVersion}, client=${result.rawClientVersion ?? 'missing'})`);
     return false;
   }
   return true;
