@@ -100,6 +100,8 @@ const FILLER_CARD_ID = 43096270; // Alexandrite Dragon — vanilla filler for go
 const startTime = Date.now();
 let totalDuelsServed = 0;
 let dataReady = false;
+/** Total WS handshakes rejected with close-code 4426 — surfaced via /status. */
+let protocolMismatchCount = 0;
 
 // =============================================================================
 // State
@@ -198,6 +200,7 @@ configureHttpRoutes({
   getValidationReason: () => validation.reason,
   activeDuelsSize: () => activeDuels.size,
   totalDuelsServed: () => totalDuelsServed,
+  protocolMismatchCount: () => protocolMismatchCount,
   startTime,
   dataDir: DATA_DIR,
   dbPath,
@@ -1175,6 +1178,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
     // only counts failed AUTH attempts via recordFailedWsAttempt). Audit
     // review 2026-05-09 H2.
     recordFailedWsAttempt(ip);
+    protocolMismatchCount++;
     ws.close(4426, `Protocol version mismatch (server=${result.serverVersion}, client=${result.rawClientVersion ?? 'missing'})`);
     return false;
   }

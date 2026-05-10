@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createConfigurable } from './configurable.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { validateData, findMissingPasscodes } from './ocg-scripts.js';
 import { updateData } from './data-updater.js';
@@ -26,6 +27,8 @@ export interface HttpRoutesConfig {
   activeDuelsSize: () => number;
   /** Total duels played since process start. */
   totalDuelsServed: () => number;
+  /** Total WS handshakes rejected with close-code 4426 (protocol mismatch). */
+  protocolMismatchCount: () => number;
   /** Process boot timestamp (ms). */
   startTime: number;
   /** Absolute path to the data dir (cards.cdb + scripts_full). */
@@ -41,16 +44,10 @@ export interface HttpRoutesConfig {
   setSolverOrchestrator: (orch: SolverOrchestrator | null) => void;
 }
 
-let cfg: HttpRoutesConfig | null = null;
-
-export function configureHttpRoutes(config: HttpRoutesConfig): void {
-  cfg = config;
-}
-
-function getCfg(): HttpRoutesConfig {
-  if (!cfg) throw new Error('http-routes: configureHttpRoutes() not called');
-  return cfg;
-}
+const configurable = createConfigurable<HttpRoutesConfig>('http-routes');
+export const configureHttpRoutes = configurable.configure;
+export const isHttpRoutesConfigured = configurable.isConfigured;
+const getCfg = configurable.get;
 
 function validateInternalAuth(req: IncomingMessage, res: ServerResponse): boolean {
   return validateInternalAuthBase(req, res, getCfg().internalApiKey);
@@ -72,6 +69,7 @@ export function handleStatus(_req: IncomingMessage, res: ServerResponse): void {
   json(res, 200, {
     activeDuels: c.activeDuelsSize(),
     totalDuelsServed: c.totalDuelsServed(),
+    protocolMismatchCount: c.protocolMismatchCount(),
     uptimeMs: Date.now() - c.startTime,
     memoryUsageMb: process.memoryUsage().rss / 1024 / 1024,
   });
