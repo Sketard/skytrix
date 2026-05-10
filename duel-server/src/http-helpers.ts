@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import type { WebSocket } from 'ws';
+import * as logger from './logger.js';
 import { MAX_HTTP_BODY_SIZE } from './types.js';
 
 /**
@@ -14,6 +16,21 @@ export function json(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(payload);
+}
+
+/**
+ * Send a JSON-serializable payload over a WebSocket iff it is OPEN.
+ * Catches send errors (e.g. socket closed between the readyState read and
+ * the actual send) and logs them. No-op when the socket is unset or not
+ * OPEN — saves callers the `if (ws?.readyState === WebSocket.OPEN)` guard.
+ */
+export function safeSend(ws: WebSocket | null | undefined, payload: unknown): void {
+  if (!ws || ws.readyState !== ws.OPEN) return;
+  try {
+    ws.send(JSON.stringify(payload));
+  } catch (err) {
+    logger.error('safeSend failed', { err: err instanceof Error ? err.message : String(err) });
+  }
 }
 
 /**

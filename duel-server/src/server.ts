@@ -50,7 +50,7 @@ import { applyChainTransition, emptyChainState, type ChainStateContainer } from 
 import { DuelSessionManager } from './duel-session-manager.js';
 import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
-import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
+import { json, readBody, safeSend, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes, isHttpRoutesConfigured } from './http-routes.js';
 import { createReplayCache } from './replay-cache.js';
 import { configureReplayHandlers, handleReplayConnection, cleanupAllReplayState, isReplayHandlersConfigured } from './replay-handlers.js';
@@ -1036,10 +1036,7 @@ function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): v
 }
 
 function sendToPlayer(session: ActiveDuelSession, playerIndex: 0 | 1, message: ServerMessage): void {
-  const ws = session.players[playerIndex].ws;
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(message));
-  }
+  safeSend(session.players[playerIndex].ws, message);
 }
 
 const SELECT_TYPES = new Set([
@@ -1551,10 +1548,7 @@ function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg
       // M28 — Validate promptType matches the expected prompt
       const expectedPrompt = session.lastSentPrompt[playerIndex];
       if (expectedPrompt && msg.promptType !== expectedPrompt.type) {
-        const ws = session.players[playerIndex].ws;
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'ERROR', message: `Expected prompt type ${expectedPrompt.type}, got ${msg.promptType}` }));
-        }
+        safeSend(session.players[playerIndex].ws, { type: 'ERROR', message: `Expected prompt type ${expectedPrompt.type}, got ${msg.promptType}` });
         return;
       }
 
@@ -1855,7 +1849,9 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
         session.awaitingResponse[targetPlayer] = true;
       }
 
-      // Apply message filter (omniscient) and send per player
+      // Apply message filter (omniscient) and send per player. The outer
+      // readyState gate is a perf fast-path (skips filterMessage for closed
+      // sockets); safeSend covers the close-between-check-and-send race.
       for (const [idx, ps] of session.players.entries()) {
         if (ps.ws?.readyState === WebSocket.OPEN) {
           const filtered = filterMessage(message, idx as 0 | 1, true);
@@ -1867,7 +1863,7 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
             if (message.type === 'MSG_HINT') {
               session.lastSentHint[idx] = filtered;
             }
-            ps.ws.send(JSON.stringify(filtered));
+            safeSend(ps.ws, filtered);
           }
         }
       }
@@ -1876,8 +1872,8 @@ function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): vo
     } else if (wmsg.type === 'WORKER_RETRY') {
       // Re-send last prompt to the relevant player
       for (const [idx, ps] of session.players.entries()) {
-        if (session.lastSentPrompt[idx] && ps.ws?.readyState === WebSocket.OPEN) {
-          ps.ws.send(JSON.stringify(session.lastSentPrompt[idx]));
+        if (session.lastSentPrompt[idx]) {
+          safeSend(ps.ws, session.lastSentPrompt[idx]);
         }
       }
     }

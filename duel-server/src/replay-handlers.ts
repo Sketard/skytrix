@@ -4,6 +4,7 @@ import { WebSocket } from 'ws';
 import * as logger from './logger.js';
 import { createConfigurable } from './configurable.js';
 import { recordFailedWsAttempt } from './ws-rate-limit.js';
+import { safeSend } from './http-helpers.js';
 import { extractCardCodes, type WorkerReplayPayload, type ReplayMetadata } from './types.js';
 import { validateWorkerMessage } from './validation/worker-message-validation.js';
 import { getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
@@ -282,9 +283,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
     if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
     conn.watchdogTimer = setTimeout(() => {
       logger.error('Replay watchdog timeout — terminating worker', { replayId: conn.replayId });
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Pre-computation timed out (30s inactivity)' }));
-      }
+      safeSend(conn.ws, { type: 'REPLAY_ERROR', message: 'Pre-computation timed out (30s inactivity)' });
       cleanupReplayConnection(conn);
     }, c.replayWorkerWatchdogMs);
   }
@@ -298,13 +297,11 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
     }
     if (wmsg.type === 'WORKER_REPLAY_BOARD_STATES') {
       resetWatchdog();
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({
-          type: 'REPLAY_BOARD_STATES',
-          turnNumber: wmsg.turnNumber,
-          states: wmsg.states,
-        }));
-      }
+      safeSend(conn.ws, {
+        type: 'REPLAY_BOARD_STATES',
+        turnNumber: wmsg.turnNumber,
+        states: wmsg.states,
+      });
     } else if (wmsg.type === 'WORKER_REPLAY_COMPLETE') {
       logger.log('Replay pre-computation complete', { replayId: conn.replayId });
       conn.state = 'ready';
@@ -315,9 +312,7 @@ function createReplayWorker(conn: ReplayConnection, replayData: WorkerReplayPayl
       onReplayWorkerDone();
     } else if (wmsg.type === 'WORKER_REPLAY_ERROR') {
       logger.error('Replay worker error', { replayId: conn.replayId, error: wmsg.message });
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
-      }
+      safeSend(conn.ws, { type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message });
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
       worker.removeAllListeners();
       worker.terminate();
@@ -366,9 +361,7 @@ function handleReplayFork(
   }
 
   if (typeof msg.responseCount !== 'number' || !Number.isInteger(msg.responseCount) || msg.responseCount < 0 || msg.responseCount > replayData.playerResponses.length) {
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Invalid responseCount' }));
-    }
+    safeSend(conn.ws, { type: 'REPLAY_ERROR', message: 'Invalid responseCount' });
     return;
   }
 
@@ -376,18 +369,30 @@ function handleReplayFork(
   if (!es || !Array.isArray(es.lp) || es.lp.length !== 2
     || typeof es.lp[0] !== 'number' || typeof es.lp[1] !== 'number'
     || typeof es.turnNumber !== 'number' || typeof es.phase !== 'number') {
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Invalid expectedState' }));
-    }
+    safeSend(conn.ws, { type: 'REPLAY_ERROR', message: 'Invalid expectedState' });
+    return;
+  }
+
+  // R9 + R11 — bound numeric inputs to prevent stale-cache divergence loops.
+  // Phase is a bitmask from PHASE_TO_NUM (max 512 = END). LP and turnNumber
+  // bounds are conservative — a real duel never exceeds ~99_999 LP or
+  // 100 turns. Out-of-range values almost certainly mean the client
+  // serialized a stale or corrupted board state.
+  const [lp0, lp1] = es.lp;
+  if (!Number.isFinite(lp0) || !Number.isFinite(lp1) || lp0 < 0 || lp1 < 0 || lp0 > 99_999 || lp1 > 99_999
+    || !Number.isInteger(es.turnNumber) || es.turnNumber < 1 || es.turnNumber > 100
+    || !Number.isInteger(es.phase) || es.phase < 0 || es.phase > 1023) {
+    safeSend(conn.ws, {
+      type: 'REPLAY_ERROR',
+      message: 'Invalid expectedState bounds — clear cache and retry',
+    });
     return;
   }
 
   // Auth re-check (defense in depth)
   const cached = c.replayCache.get(conn.replayId);
   if (cached && cached.playerIds[0] !== conn.userId && cached.playerIds[1] !== conn.userId) {
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Not authorized' }));
-    }
+    safeSend(conn.ws, { type: 'REPLAY_ERROR', message: 'Not authorized' });
     return;
   }
 
@@ -434,9 +439,7 @@ function createForkWorker(
   if (conn.watchdogTimer) clearTimeout(conn.watchdogTimer);
   conn.watchdogTimer = setTimeout(() => {
     logger.error('Fork watchdog timeout — terminating worker', { replayId: conn.replayId });
-    if (conn.ws.readyState === WebSocket.OPEN) {
-      conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', message: 'Fork reconstruction timed out (30s)' }));
-    }
+    safeSend(conn.ws, { type: 'REPLAY_ERROR', message: 'Fork reconstruction timed out (30s)' });
     worker.removeAllListeners();
     worker.terminate();
     conn.worker = null;
@@ -459,9 +462,7 @@ function createForkWorker(
         conn.state = 'fork_warning';
         logger.log('Fork sanity mismatch', { replayId: conn.replayId, details: wmsg.sanityResult.details });
         pendingForkWorkers.set(conn, { worker, replayData, forkDuelId });
-        if (conn.ws.readyState === WebSocket.OPEN) {
-          conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: 'FORK_DIVERGENCE_WARNING', message: wmsg.sanityResult.details ?? '' }));
-        }
+        safeSend(conn.ws, { type: 'REPLAY_ERROR', code: 'FORK_DIVERGENCE_WARNING', message: wmsg.sanityResult.details ?? '' });
       } else {
         // Sanity OK — hand off to host-supplied session manager
         conn.state = 'transitioning';
@@ -469,9 +470,7 @@ function createForkWorker(
       }
     } else if (wmsg.type === 'WORKER_FORK_ERROR') {
       logger.error('Fork worker error', { replayId: conn.replayId, error: wmsg.message });
-      if (conn.ws.readyState === WebSocket.OPEN) {
-        conn.ws.send(JSON.stringify({ type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message }));
-      }
+      safeSend(conn.ws, { type: 'REPLAY_ERROR', code: wmsg.code ?? 'REPLAY_COMPUTATION_ERROR', message: wmsg.message });
       if (conn.watchdogTimer) { clearTimeout(conn.watchdogTimer); conn.watchdogTimer = null; }
       worker.removeAllListeners();
       worker.terminate();
@@ -533,11 +532,17 @@ function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId
   conn.ws.removeAllListeners('error');
   conn.ws.removeAllListeners('message');
 
-  // M16 — Send REPLAY_FORK_READY with tokens, close after message is flushed (AC#3)
+  // M16 — Send REPLAY_FORK_READY with tokens, close after message is flushed (AC#3).
+  // The flush callback closes only on successful send. If the ws is no longer
+  // OPEN (client disconnected mid-transition) the callback path is unreachable,
+  // so close unconditionally to guarantee no leaked socket regardless of which
+  // branch fires. ws.close() on an already-closed socket is a no-op.
   if (conn.ws.readyState === WebSocket.OPEN) {
     conn.ws.send(JSON.stringify({ type: 'REPLAY_FORK_READY', token1, token2 }), () => {
       conn.ws.close();
     });
+  } else {
+    conn.ws.close();
   }
 
   // Clean up replay connection but PRESERVE cache (needed for return/re-fork)
