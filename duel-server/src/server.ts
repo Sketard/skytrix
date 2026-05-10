@@ -46,6 +46,7 @@ import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
+import { DuelSessionManager } from './duel-session-manager.js';
 import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
@@ -112,9 +113,7 @@ let protocolMismatchCount = 0;
 // ActiveDuelSession moved to types.ts (H1-suite phase 4) so the timer-
 // management module can reference it without re-importing server.ts.
 
-const activeDuels = new Map<string, ActiveDuelSession>();
-const pendingTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
-const reconnectTokens = new Map<string, { duelId: string; playerIndex: 0 | 1 }>();
+const sessionManager = new DuelSessionManager();
 // M1: gracePeriodTimers, timerContexts, inactivityTimers, raceWindowTimers
 // consolidated into ActiveDuelSession.timerContext and PlayerSession per-player timers.
 
@@ -200,7 +199,7 @@ configureHttpRoutes({
   isDataReady: () => dataReady,
   setDataReady: (ready) => { dataReady = ready; },
   getValidationReason: () => validation.reason,
-  activeDuelsSize: () => activeDuels.size,
+  activeDuelsSize: () => sessionManager.size(),
   totalDuelsServed: () => totalDuelsServed,
   protocolMismatchCount: () => protocolMismatchCount,
   startTime,
@@ -277,9 +276,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
 
   // GET /api/duels/active — List active duel IDs (internal, used by Spring Boot scheduler)
-  // Stays in server.ts: touches `activeDuels` map (H1-suite session-manager boundary).
+  // Stays in server.ts: bridges through DuelSessionManager (H1-suite phase 5).
   if (method === 'GET' && pathname === '/api/duels/active') {
-    json(res, 200, { duelIds: [...activeDuels.keys()] });
+    json(res, 200, { duelIds: sessionManager.listIds() });
     return;
   }
 
@@ -395,14 +394,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     };
 
     // Store in active duels and pending tokens
-    activeDuels.set(duelId, session);
-    pendingTokens.set(token0, { duelId, playerIndex: 0 });
-    pendingTokens.set(token1, { duelId, playerIndex: 1 });
+    sessionManager.register(session, [token0, token1]);
 
     // H17 — Connection timeout: if no players connect within 60s, clean up
     const CONNECTION_TIMEOUT_MS = 60_000;
     setTimeout(() => {
-      const s = activeDuels.get(duelId);
+      const s = sessionManager.get(duelId);
       if (s && s.players.every(p => !p.connected)) {
         logger.log('Connection timeout — no players connected, cleaning up', { duelId });
         safeTerminateWorker(s);
@@ -419,7 +416,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (method === 'DELETE' && parts.length === 3 && parts[0] === 'api' && parts[1] === 'duels') {
     if (!validateInternalAuth(req, res)) return;
     const deleteDuelId = parts[2];
-    const session = activeDuels.get(deleteDuelId);
+    const session = sessionManager.get(deleteDuelId);
     if (!session) {
       json(res, 404, { code: 'DUEL_NOT_FOUND', error: 'Duel not found' });
       return;
@@ -758,11 +755,7 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
     session.players = [p1, p0];
     session.players[0].playerIndex = 0;
     session.players[1].playerIndex = 1;
-    // Update reconnect token mappings
-    for (const p of [0, 1] as const) {
-      const tok = session.players[p].reconnectToken;
-      if (tok) reconnectTokens.set(tok, { duelId: session.duelId, playerIndex: p });
-    }
+    sessionManager.remapReconnectTokensAfterSwap(session);
   }
 
   // Tell each player their OCGCore index (after potential swap). Each side
@@ -1107,7 +1100,9 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
   // Clear all timer state (turn timer, inactivity, race windows)
   clearAllDuelTimers(session);
 
-  // Close WebSocket connections and clean up reconnect tokens
+  // Close WebSocket connections + per-player grace timers. Reconnect tokens
+  // are dropped by sessionManager.terminate() below (it nulls each player's
+  // reconnectToken back-pointer too, so this loop only handles WS + timers).
   for (const player of session.players) {
     if (player.ws && player.ws.readyState === WebSocket.OPEN) {
       player.ws.close(1000, 'Duel ended');
@@ -1115,27 +1110,17 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
     player.ws = null;
     player.connected = false;
 
-    // Clean up reconnect token
-    if (player.reconnectToken) {
-      reconnectTokens.delete(player.reconnectToken);
-      player.reconnectToken = null;
-    }
-
-    // Clean up grace period timer
     if (player.gracePeriodTimer) {
       clearTimeout(player.gracePeriodTimer);
       player.gracePeriodTimer = null;
     }
   }
 
-  // Clean up pending tokens for this duel
-  for (const [token, info] of pendingTokens) {
-    if (info.duelId === session.duelId) {
-      pendingTokens.delete(token);
-    }
-  }
-
-  activeDuels.delete(session.duelId);
+  // Drop the session from the manager (activeDuels + pendingTokens of this
+  // duel + every reconnectToken on either player). Idempotent — safe under
+  // the multi-call cleanup paths (worker exit, rematch expiry, both-disconnect,
+  // DELETE /api/duels, connection timeout, post-duel close, preservation).
+  sessionManager.terminate(session);
 }
 
 // =============================================================================
@@ -1318,23 +1303,19 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
   if (reconnect) {
     // --- Reconnection flow ---
-    const reconInfo = reconnectTokens.get(reconnect);
-    if (!reconInfo) {
+    const reconResult = sessionManager.consumeReconnectToken(reconnect);
+    if (reconResult.kind === 'unknown') {
       recordFailedWsAttempt(ip);
       ws.close(4001, 'Invalid or expired reconnect token');
       return;
     }
-    session = activeDuels.get(reconInfo.duelId);
-    if (!session) {
+    if (reconResult.kind === 'session-gone') {
       recordFailedWsAttempt(ip);
       ws.close(4001, 'Duel not found');
-      reconnectTokens.delete(reconnect);
       return;
     }
-    playerIndex = reconInfo.playerIndex;
-
-    // Invalidate old reconnect token
-    reconnectTokens.delete(reconnect);
+    session = reconResult.session;
+    playerIndex = reconResult.playerIndex;
 
     // Cancel grace period timer
     const reconPs = session.players[playerIndex];
@@ -1359,21 +1340,14 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     }
   } else {
     // --- Initial connection flow ---
-    const tokenInfo = pendingTokens.get(token!);
-    if (!tokenInfo) {
+    const tokenResult = sessionManager.consumePendingToken(token!);
+    if (!tokenResult) {
       recordFailedWsAttempt(ip);
       ws.close(4001, 'Invalid or expired token');
       return;
     }
-    session = activeDuels.get(tokenInfo.duelId);
-    if (!session) {
-      recordFailedWsAttempt(ip);
-      ws.close(4001, 'Duel not found');
-      pendingTokens.delete(token!);
-      return;
-    }
-    playerIndex = tokenInfo.playerIndex;
-    pendingTokens.delete(token!);
+    session = tokenResult.session;
+    playerIndex = tokenResult.playerIndex;
 
     logger.log('Player connected', { duelId: session.duelId, player: playerIndex });
   }
@@ -1389,13 +1363,10 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     session.forkConnectionTimeout = null;
   }
 
-  // Issue reconnect token
+  // Issue reconnect token (rotate: old token is dropped if any).
   const newReconnectToken = randomUUID();
-  // Invalidate previous reconnect token if any
-  const oldToken = session.players[playerIndex].reconnectToken;
-  if (oldToken) reconnectTokens.delete(oldToken);
+  sessionManager.rotateReconnectToken(session, playerIndex, newReconnectToken);
   session.players[playerIndex].reconnectToken = newReconnectToken;
-  reconnectTokens.set(newReconnectToken, { duelId: session.duelId, playerIndex });
 
   // Send SESSION_TOKEN to client
   sendToPlayer(session, playerIndex, { type: 'SESSION_TOKEN', token: newReconnectToken });
@@ -1833,9 +1804,7 @@ function createForkSoloSession({ forkDuelId, userId, worker, replayData }: {
     forkConnectionTimeout: null,
   };
 
-  activeDuels.set(forkDuelId, session);
-  pendingTokens.set(token1, { duelId: forkDuelId, playerIndex: 0 });
-  pendingTokens.set(token2, { duelId: forkDuelId, playerIndex: 1 });
+  sessionManager.register(session, [token1, token2]);
 
   // H2 — Clean up if no client connects within 30s
   session.forkConnectionTimeout = setTimeout(() => {
@@ -1933,7 +1902,7 @@ function shutdown(): void {
   clearInterval(wsRateLimitSweepTimer);
 
   // Terminate all active duel workers
-  for (const session of activeDuels.values()) {
+  for (const session of sessionManager.listAll()) {
     safeTerminateWorker(session);
   }
 
