@@ -339,3 +339,109 @@ describe('PvpPromptDialogComponent — lifecycle (C2.1+2)', () => {
     expect(component.portalOutlet.hasAttached()).toBe(false);
   });
 });
+
+// =============================================================================
+// Response dispatch specs (C2.2). Sub-component emits `response` —
+// dialog routes it to either the responseOverride input (replay mode) or
+// wsService.sendResponse() (live PvP). Pin the override-vs-default branch,
+// the isSending flag (anti-double-submit guard), and the longPressInspect
+// re-emission.
+// =============================================================================
+
+@Component({ selector: 'app-stub-yesno-with-outputs', standalone: true, template: '<div></div>', changeDetection: ChangeDetectionStrategy.OnPush })
+class StubYesNoWithOutputsComponent implements PromptSubComponent {
+  promptData: Prompt | null = null;
+  hintContext = null;
+  response = new EventEmitter<unknown>();
+  longPressInspect = new EventEmitter<{ cardCode: number }>();
+  preTargetCards = new EventEmitter<CardInfo[]>();
+  readOnly = false;
+  preSelectedResponse: unknown = undefined;
+}
+
+describe('PvpPromptDialogComponent — response dispatch (C2.2)', () => {
+  let ws: WsStub;
+  let fixture: ComponentFixture<PvpPromptDialogComponent>;
+  let component: PvpPromptDialogComponent;
+  let originalMap: Record<string, unknown>;
+
+  beforeEach(() => {
+    originalMap = { ...PROMPT_COMPONENT_MAP };
+    for (const k of Object.keys(PROMPT_COMPONENT_MAP)) delete PROMPT_COMPONENT_MAP[k];
+    PROMPT_COMPONENT_MAP['SELECT_YESNO'] = StubYesNoWithOutputsComponent;
+
+    ws = makeWsStub();
+
+    TestBed.configureTestingModule({
+      imports: [PvpPromptDialogComponent],
+      providers: [
+        { provide: DuelWebSocketService, useValue: ws },
+        { provide: TranslateService, useValue: {
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+        { provide: LiveAnnouncer, useValue: { announce: jasmine.createSpy('announce') } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpPromptDialogComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    for (const k of Object.keys(PROMPT_COMPONENT_MAP)) delete PROMPT_COMPONENT_MAP[k];
+    Object.assign(PROMPT_COMPONENT_MAP, originalMap);
+  });
+
+  function mountAndGetSubComponent(): StubYesNoWithOutputsComponent {
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+    const ref = component.portalOutlet.attachedRef as { instance: StubYesNoWithOutputsComponent };
+    return ref.instance;
+  }
+
+  it('routes response to wsService.sendResponse when no override is provided', () => {
+    const sub = mountAndGetSubComponent();
+    const payload = { yes: true };
+
+    sub.response.emit(payload);
+
+    expect(ws.sendResponse).toHaveBeenCalledTimes(1);
+    expect(ws.sendResponse).toHaveBeenCalledWith('SELECT_YESNO', payload);
+  });
+
+  it('routes response to responseOverride when input is set; wsService.sendResponse is NOT called', () => {
+    const override = jasmine.createSpy('responseOverride');
+    fixture.componentRef.setInput('responseOverride', override);
+    const sub = mountAndGetSubComponent();
+    const payload = { yes: false };
+
+    sub.response.emit(payload);
+
+    expect(override).toHaveBeenCalledTimes(1);
+    expect(override).toHaveBeenCalledWith(payload);
+    expect(ws.sendResponse).not.toHaveBeenCalled();
+  });
+
+  it('sets isSending=true after a response is emitted (anti-double-submit guard)', () => {
+    const sub = mountAndGetSubComponent();
+    expect(component.isSending()).toBe(false);
+
+    sub.response.emit({ yes: true });
+
+    expect(component.isSending()).toBe(true);
+  });
+
+  it('re-emits longPressInspect events from the sub-component as the dialog output', () => {
+    const sub = mountAndGetSubComponent();
+    const events: Array<{ cardCode: number }> = [];
+    component.longPressInspect.subscribe(e => events.push(e));
+
+    sub.longPressInspect.emit({ cardCode: 12345 });
+
+    expect(events).toEqual([{ cardCode: 12345 }]);
+  });
+});
