@@ -321,9 +321,9 @@ export interface DuelSession {
 /**
  * Server-owned in-flight duel state. Layered on top of `DuelSession` with
  * runtime fields (worker handle, RPS state, replay metadata, prompt cache,
- * timer context, chain-state tracker spread). Lives in the `activeDuels`
- * map in server.ts and is mutated freely by the message handlers /
- * timer-management module / replay-handlers fork bridge.
+ * timer context, chain-state tracker spread). Owned by the
+ * `DuelSessionManager` instance in server.ts and mutated freely by the
+ * message handlers / timer-management module / replay-handlers fork bridge.
  */
 export interface ActiveDuelSession extends DuelSession {
   phase: SessionPhase;

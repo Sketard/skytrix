@@ -1751,9 +1751,9 @@ const heartbeatTimer = setInterval(() => {
 // Fork Session Bridge
 // =============================================================================
 // `createForkSoloSession` is the bridge that replay-handlers calls when a
-// fork worker reports sanity OK. It owns everything that touches the session
-// manager state (activeDuels / pendingTokens / setupForkWorkerHandlers).
-// Replay-handlers stays unaware of `ActiveDuelSession` shape.
+// fork worker reports sanity OK. It builds the ActiveDuelSession, registers
+// it with sessionManager, and wires the fork worker handlers. Replay-handlers
+// stays unaware of `ActiveDuelSession` shape.
 
 function createForkSoloSession({ forkDuelId, userId, worker, replayData }: {
   forkDuelId: string;

@@ -20,10 +20,10 @@ import type { ReplayCache } from './replay-cache.js';
  *     transitions into a real solo `ActiveDuelSession` via the host-supplied
  *     `createForkSoloSession` callback.
  *
- * `createForkSoloSession` is the boundary towards the (still inline)
- * DuelSessionManager. It owns the actual `activeDuels` Map mutation and
+ * `createForkSoloSession` is the boundary towards the host's
+ * `DuelSessionManager`. It registers the new session and wires
  * `setupForkWorkerHandlers` — replay-handlers stays unaware of
- * `ActiveDuelSession` shape and `pendingTokens`.
+ * `ActiveDuelSession` shape and the manager's internal Maps.
  */
 
 export type ReplayConnectionState = 'loading' | 'ready' | 'fork_pending' | 'fork_warning' | 'transitioning' | 'closed';
@@ -77,9 +77,9 @@ export interface ReplayHandlersConfig {
    * Bridge to the DuelSessionManager. Called when a fork worker reports
    * `WORKER_FORK_READY` with a matching sanity check. The host owns the
    * full session lifecycle: it must
-   *  1. Allocate two reconnect tokens.
+   *  1. Allocate two pending wsTokens.
    *  2. Construct an `ActiveDuelSession` (solo mode) wrapping `worker`.
-   *  3. Register it in `activeDuels` + the tokens in `pendingTokens`.
+   *  3. Register both in the host's `DuelSessionManager`.
    *  4. Schedule a connection timeout (cleans up if no client connects).
    *  5. Re-wire the worker's message/exit/error handlers from the
    *     replay-handlers ones to the host's `setupForkWorkerHandlers`
@@ -498,9 +498,9 @@ function createForkWorker(
 function transitionForkToSolo(conn: ReplayConnection, worker: Worker, forkDuelId: string, replayData: WorkerReplayPayload): void {
   const c = getCfg();
 
-  // Hand off to the session manager: it allocates tokens, builds the
-  // ActiveDuelSession, registers it in activeDuels/pendingTokens, schedules
-  // its own connection-timeout, and wires the fork worker handlers.
+  // Hand off to the host: it allocates tokens, builds the ActiveDuelSession,
+  // registers it with DuelSessionManager, schedules its own connection-
+  // timeout, and wires the fork worker handlers.
   const { token1, token2 } = c.createForkSoloSession({
     forkDuelId,
     userId: conn.userId,

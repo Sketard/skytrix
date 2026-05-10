@@ -13,9 +13,9 @@ import * as logger from './logger.js';
  * state. Mutable bindings (dataReady, solverOrchestrator) are read/written via
  * getter/setter closures supplied at boot through `configureHttpRoutes`.
  *
- * Routes that touch `activeDuels` (POST /api/duels, DELETE /api/duels/:id,
+ * Routes that touch the session manager (POST /api/duels, DELETE /api/duels/:id,
  * GET /api/duels/active) stay in server.ts — they need direct access to the
- * session map, which is the H1-suite "DuelSessionManager" boundary.
+ * `DuelSessionManager` instance owned there.
  */
 export interface HttpRoutesConfig {
   /** Live data-validation gate (re-checked after /api/update-data). */
