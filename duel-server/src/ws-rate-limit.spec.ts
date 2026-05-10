@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
+  consumeWsAttempt,
   isWsRateLimited,
   recordFailedWsAttempt,
   startWsRateLimitSweep,
@@ -64,6 +65,34 @@ describe('ws-rate-limit', () => {
       recordFailedWsAttempt('ip-B');
       expect(isWsRateLimited('ip-A')).toBe(true);
       expect(isWsRateLimited('ip-B')).toBe(false);
+    });
+  });
+
+  describe('consumeWsAttempt', () => {
+    it('returns false for the first MAX attempts and true thereafter', () => {
+      for (let i = 0; i < MAX - 1; i++) {
+        expect(consumeWsAttempt('ip')).toBe(false);
+      }
+      // The MAX-th attempt itself crosses the threshold — already counted
+      expect(consumeWsAttempt('ip')).toBe(true);
+      // And every subsequent attempt stays rate-limited
+      expect(consumeWsAttempt('ip')).toBe(true);
+    });
+
+    it('closes the race where N concurrent reads at threshold-1 all pass', () => {
+      // Setup: 29 already-recorded fails (threshold-1)
+      for (let i = 0; i < MAX - 1; i++) recordFailedWsAttempt('ip');
+      // The legacy isWsRateLimited would return false for ALL 3 concurrent
+      // simultaneous calls (each sees 29 < 30) — race window. With
+      // consumeWsAttempt, each call increments before checking, so the
+      // first call sees the new count (30) and rejects.
+      const r1 = consumeWsAttempt('ip');
+      const r2 = consumeWsAttempt('ip');
+      const r3 = consumeWsAttempt('ip');
+      // First crosses threshold (30 ≥ 30 → true), and so do all subsequent
+      expect(r1).toBe(true);
+      expect(r2).toBe(true);
+      expect(r3).toBe(true);
     });
   });
 

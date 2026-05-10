@@ -48,7 +48,7 @@ import { validateResponseData } from './validation/response-validation.js';
 import { validateWorkerMessage } from './validation/worker-message-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { DuelSessionManager } from './duel-session-manager.js';
-import { isWsRateLimited, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
+import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
 import { checkProtocolVersionPure } from './protocol-version-check.js';
 import { json, readBody, validateInternalAuth as validateInternalAuthBase } from './http-helpers.js';
 import { configureHttpRoutes, handleHealth, handleStatus, handleUpdateData, handleValidatePasscodes, isHttpRoutesConfigured } from './http-routes.js';
@@ -1196,7 +1196,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   // Trust x-real-ip only behind a reverse proxy in production; fall back to socket IP otherwise
   const ip = (IS_PRODUCTION && req.headers['x-real-ip'] as string) || req.socket.remoteAddress || 'unknown';
 
-  if (IS_PRODUCTION && isWsRateLimited(ip)) {
+  // Atomic "count + check" closes the race where N concurrent handshakes
+  // from the same IP could all pass a stale read at threshold-1.
+  if (IS_PRODUCTION && consumeWsAttempt(ip)) {
     ws.close(4029, 'Too many connections');
     return;
   }
