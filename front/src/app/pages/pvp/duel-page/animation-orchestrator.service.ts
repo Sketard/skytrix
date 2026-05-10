@@ -207,6 +207,10 @@ export class AnimationOrchestratorService {
     // (speedMultiplier < 1) doesn't guard-fire mid-travel, and add the
     // 50% safety margin from DuelContext.safetyTimeout().
     this.rbs.getSafetyTimeoutMs = () => this.ctx.safetyTimeout(LOCK_SAFETY_TIMEOUT_MS);
+    // H1 — chain phase observer wiring. ChainResolutionManager.isResolving
+    // becomes a pure read of dataSource.chainPhase(); no parallel state to
+    // keep in sync.
+    this.chainManager.attachChainPhaseSource(() => this.dataSource.chainPhase());
     // Resume effect: when overlay signals ready, resume queue processing.
     // Handles the negated/no-buffer case where replayBuffer is NOT called.
     this.chainManager.initResumeEffect(() => {
@@ -308,7 +312,7 @@ export class AnimationOrchestratorService {
 
     // Mark drain start: events about to be replayed must NOT re-buffer back
     // into chainManager when they pass through processEvent (mid-chain
-    // pre-replay can fire while _insideChainResolution is still true). Cleared
+    // pre-replay can fire while chainPhase is still 'resolving'). Cleared
     // in batch-end resolve, in the reduced-motion path below, and as a safety
     // net by chainManager.reset().
     this.chainManager.beginDrain();
@@ -1184,6 +1188,14 @@ export class AnimationOrchestratorService {
    * path which filters its predicate to LP-class events (audit L21 — earlier
    * branches for MSG_CHAIN_SOLVING/SOLVED/END were unreachable after the
    * collapse predicate was tightened to LP-only; removed).
+   *
+   * H1 contract — chain events (MSG_CHAIN_SOLVING/SOLVED/END) MUST NEVER be
+   * collapsed here. They drive the chain overlay contract via async overlay
+   * signals; collapsing them would skip the resolve pulse + buffered-event
+   * replay. If a future change re-introduces a chain branch, it MUST also
+   * call `dataSource.applyChainSolving/Solved/End(...)` — otherwise the
+   * processor's `chainPhase` and the manager's `isResolving` (which now
+   * observes it) would both stay stuck. Refer to the audit's H1 closure.
    */
   private applyInstantAnimation(event: GameEvent): void {
     if (event.type === 'MSG_DAMAGE' || event.type === 'MSG_PAY_LPCOST'

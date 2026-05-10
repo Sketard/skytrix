@@ -1,4 +1,5 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { signal, type WritableSignal } from '@angular/core';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelLogger } from './duel-logger';
 import type { GameEvent } from '../types';
@@ -10,10 +11,37 @@ const solved = (chainIndex: number): GameEvent => ({ type: 'MSG_CHAIN_SOLVED', c
 const move = (): GameEvent => ({ type: 'MSG_MOVE' }) as any;
 const damage = (): GameEvent => ({ type: 'MSG_DAMAGE', player: 0, amount: 100 }) as any;
 const draw = (): GameEvent => ({ type: 'MSG_DRAW', player: 0, cards: [] }) as any;
-const chainEnd = (): GameEvent => ({ type: 'MSG_CHAIN_END' }) as any;
 
 describe('ChainResolutionManager', () => {
   let mgr: ChainResolutionManager;
+  /** Fake processor.chainPhase signal piloted by the test. The orchestrator
+   *  drives this via `dataSource.applyChainSolving/Solved/End` — here we set
+   *  it manually to mirror the call sequence. H1 invariant: handleSolving
+   *  no longer flips it; the test must do it (or use `enterResolving()`). */
+  let phaseSignal: WritableSignal<'idle' | 'building' | 'resolving'>;
+
+  /** Helper that mirrors the orchestrator's handleChainSolving sequence:
+   *  call mgr.handleSolving (overlay state + buffer reset) then flip the
+   *  processor phase to 'resolving'. Use this in tests that want to assert
+   *  post-condition `mgr.isResolving === true`. */
+  function enterResolving(chainIndex = 0): { deferred: boolean; isSingleLink: boolean } {
+    const result = mgr.handleSolving(solving(chainIndex));
+    if (!result.deferred) phaseSignal.set('resolving');
+    return result;
+  }
+
+  /** Mirrors handleChainSolved: orchestrator calls dataSource.applyChainSolved
+   *  (which keeps phase at 'resolving' until applyChainEnd) then handleSolved.
+   *  Phase doesn't change here; we just delegate. */
+  function exitLink(chainIndex = 0): 'async' {
+    return mgr.handleSolved(solved(chainIndex));
+  }
+
+  /** Mirrors handleChainEnd: phase back to 'idle' then handleEnd. */
+  function endChain(): void {
+    phaseSignal.set('idle');
+    mgr.handleEnd();
+  }
 
   beforeEach(() => {
     const mockLogger = { log: () => {}, warn: () => {} };
@@ -24,6 +52,8 @@ describe('ChainResolutionManager', () => {
       ],
     });
     mgr = TestBed.inject(ChainResolutionManager);
+    phaseSignal = signal<'idle' | 'building' | 'resolving'>('idle');
+    mgr.attachChainPhaseSource(() => phaseSignal());
   });
 
   describe('initial state', () => {
@@ -35,11 +65,57 @@ describe('ChainResolutionManager', () => {
       expect(mgr.hasBufferedEvents).toBeFalse();
       expect(mgr.deferredSolvingEvent).toBeNull();
     });
+
+    it('isResolving stays false when no phaseSource is attached', () => {
+      // Fresh manager without attach — getter must safely return false
+      const fresh = TestBed.inject(ChainResolutionManager);
+      // Detach by attaching a noop source that returns 'idle'
+      fresh.attachChainPhaseSource(() => 'idle');
+      expect(fresh.isResolving).toBeFalse();
+    });
+  });
+
+  // ─── H1: observer pattern — phase observation ──────────────────────────────
+
+  describe('H1 — chain phase observer', () => {
+    it('isResolving reflects phaseSource() === "resolving" without any handler call', () => {
+      expect(mgr.isResolving).toBeFalse();
+      phaseSignal.set('building');
+      expect(mgr.isResolving).toBeFalse();
+      phaseSignal.set('resolving');
+      expect(mgr.isResolving).toBeTrue();
+      phaseSignal.set('idle');
+      expect(mgr.isResolving).toBeFalse();
+    });
+
+    it('shouldBufferDuringChain follows phase transitions reactively', () => {
+      expect(mgr.shouldBufferDuringChain).toBeFalse();
+      phaseSignal.set('resolving');
+      expect(mgr.shouldBufferDuringChain).toBeTrue();
+      mgr.beginDrain();
+      expect(mgr.shouldBufferDuringChain).toBeFalse();
+      mgr.endDrain();
+      expect(mgr.shouldBufferDuringChain).toBeTrue();
+      phaseSignal.set('idle');
+      expect(mgr.shouldBufferDuringChain).toBeFalse();
+    });
+
+    it('handleSolving alone does NOT flip isResolving — processor must drive it', () => {
+      // Critical regression guard: if handleSolving accidentally re-acquires
+      // ownership of _insideChainResolution, this test catches it. The
+      // orchestrator pattern is: call handleSolving FIRST (gets deferred?
+      // returns early. Otherwise) THEN call dataSource.applyChainSolving.
+      const result = mgr.handleSolving(solving(0));
+      expect(result.deferred).toBeFalse();
+      expect(mgr.isResolving).toBeFalse(); // phase still idle
+      phaseSignal.set('resolving');
+      expect(mgr.isResolving).toBeTrue(); // now true via observer
+    });
   });
 
   describe('handleSolving — single-link chain', () => {
     it('should enter resolution for chainIndex 0 (single link)', () => {
-      const result = mgr.handleSolving(solving(0));
+      const result = enterResolving(0);
       expect(result.deferred).toBeFalse();
       expect(result.isSingleLink).toBeTrue();
       expect(mgr.isResolving).toBeTrue();
@@ -56,46 +132,47 @@ describe('ChainResolutionManager', () => {
 
     it('should not defer when solvedCount > 0 (subsequent links)', () => {
       // Simulate first link resolved
-      mgr.handleSolving(solving(0));
-      mgr.handleSolved(solved(0));
+      enterResolving(0);
+      exitLink(0);
       mgr.clearWaiting();
 
-      const result = mgr.handleSolving(solving(1));
+      const result = enterResolving(1);
       expect(result.deferred).toBeFalse();
       expect(result.isSingleLink).toBeFalse();
     });
   });
 
   describe('handleSolved', () => {
-    it('should exit resolution, increment solvedCount, set waitingForOverlay', () => {
-      mgr.handleSolving(solving(0));
-      const result = mgr.handleSolved(solved(0));
+    it('should increment solvedCount, set waitingForOverlay (phase stays resolving)', () => {
+      enterResolving(0);
+      const result = exitLink(0);
       expect(result).toBe('async');
-      expect(mgr.isResolving).toBeFalse();
+      // H1: phase stays at 'resolving' until orchestrator calls applyChainEnd
+      expect(mgr.isResolving).toBeTrue();
       expect(mgr.isWaitingForOverlay).toBeTrue();
       expect(mgr.chainSolvedCount).toBe(1);
     });
 
     it('should set chainOverlayBoardChanged when buffer has events', () => {
-      mgr.handleSolving(solving(0));
+      enterResolving(0);
       mgr.bufferIfResolving(move());
-      mgr.handleSolved(solved(0));
+      exitLink(0);
       expect(mgr.chainOverlayBoardChanged()).toBeTrue();
     });
 
     it('should set chainOverlayBoardChanged to false when buffer is empty', () => {
-      mgr.handleSolving(solving(0));
-      mgr.handleSolved(solved(0));
+      enterResolving(0);
+      exitLink(0);
       expect(mgr.chainOverlayBoardChanged()).toBeFalse();
     });
   });
 
   describe('handleEnd', () => {
-    it('should reset all chain state', () => {
-      mgr.handleSolving(solving(0));
+    it('should reset all chain state (phase flipped to idle by orchestrator)', () => {
+      enterResolving(0);
       mgr.bufferIfResolving(move());
-      mgr.handleSolved(solved(0));
-      mgr.handleEnd();
+      exitLink(0);
+      endChain();
       expect(mgr.isResolving).toBeFalse();
       expect(mgr.isWaitingForOverlay).toBeFalse();
       expect(mgr.chainSolvedCount).toBe(0);
@@ -106,7 +183,7 @@ describe('ChainResolutionManager', () => {
 
   describe('bufferIfResolving', () => {
     it('should buffer board-changing events during resolution', () => {
-      mgr.handleSolving(solving(0));
+      enterResolving(0);
       expect(mgr.bufferIfResolving(move())).toBeTrue();
       expect(mgr.bufferIfResolving(damage())).toBeTrue();
       expect(mgr.bufferIfResolving(draw())).toBeTrue();
@@ -119,13 +196,13 @@ describe('ChainResolutionManager', () => {
     });
 
     it('should not buffer non-board-changing events', () => {
-      mgr.handleSolving(solving(0));
+      enterResolving(0);
       const nonBoardEvent = { type: 'MSG_HINT' } as any;
       expect(mgr.bufferIfResolving(nonBoardEvent)).toBeFalse();
     });
 
     it('should not re-buffer events while a drain is in progress', () => {
-      mgr.handleSolving(solving(0));
+      enterResolving(0);
       mgr.bufferIfResolving(move());
       mgr.drainBuffer();
       mgr.beginDrain();
@@ -161,7 +238,7 @@ describe('ChainResolutionManager', () => {
 
   describe('drainBuffer', () => {
     it('should return buffered events and clear buffer', () => {
-      mgr.handleSolving(solving(0));
+      enterResolving(0);
       mgr.bufferIfResolving(move());
       mgr.bufferIfResolving(damage());
       const drained = mgr.drainBuffer();
@@ -213,8 +290,8 @@ describe('ChainResolutionManager', () => {
 
   describe('clearWaiting', () => {
     it('should clear the waiting-for-overlay flag', () => {
-      mgr.handleSolving(solving(0));
-      mgr.handleSolved(solved(0));
+      enterResolving(0);
+      exitLink(0);
       expect(mgr.isWaitingForOverlay).toBeTrue();
       mgr.clearWaiting();
       expect(mgr.isWaitingForOverlay).toBeFalse();
@@ -230,35 +307,18 @@ describe('ChainResolutionManager', () => {
     }));
   });
 
-  describe('instant (queue collapse)', () => {
-    it('applyInstantSolving should enter resolution and clear buffer', () => {
-      mgr.handleSolving(solving(0));
-      mgr.bufferIfResolving(move());
-      mgr.applyInstantSolving();
-      expect(mgr.isResolving).toBeTrue();
-      expect(mgr.hasBufferedEvents).toBeFalse();
-    });
-
-    it('applyInstantSolved should exit resolution and clear buffer', () => {
-      mgr.applyInstantSolving();
-      mgr.applyInstantSolved();
-      expect(mgr.isResolving).toBeFalse();
-      expect(mgr.hasBufferedEvents).toBeFalse();
-    });
-  });
-
   describe('reset', () => {
-    it('should clear everything', () => {
-      mgr.handleSolving(solving(0));
+    it('should clear everything except chain phase (phase owned by processor)', () => {
+      enterResolving(0);
       mgr.bufferIfResolving(move());
-      mgr.handleSolved(solved(0));
+      exitLink(0);
       mgr.addReplayTimeout(setTimeout(() => {}, 9999));
       mgr.chainEntryAnimating.set(true);
       mgr.chainPromptGateActive.set(true);
 
       mgr.reset();
 
-      expect(mgr.isResolving).toBeFalse();
+      // Manager state cleared
       expect(mgr.isWaitingForOverlay).toBeFalse();
       expect(mgr.chainSolvedCount).toBe(0);
       expect(mgr.hasBufferedEvents).toBeFalse();
@@ -269,6 +329,11 @@ describe('ChainResolutionManager', () => {
       expect(mgr.chainPromptGateActive()).toBeFalse();
       expect(mgr.chainOverlayBoardChanged()).toBeFalse();
       expect(mgr.chainOverlayReady()).toBeTrue();
+      // H1: phase is the processor's responsibility — reset() does NOT flip it.
+      // The orchestrator separately calls dataSource.applyChainEnd() / reset().
+      expect(mgr.isResolving).toBeTrue(); // still 'resolving' until phase flips
+      phaseSignal.set('idle');
+      expect(mgr.isResolving).toBeFalse();
     });
   });
 
@@ -283,15 +348,14 @@ describe('ChainResolutionManager', () => {
 
   describe('full chain lifecycle', () => {
     it('should handle a complete 3-link chain resolution', () => {
-      // Link CL0 solving (deferred because chainIndex=2 means 3-link chain resolves from top)
-      // Actually, first solving is chainIndex=2 (top of 3-link chain)
+      // Link CL2 solving (deferred because chainIndex=2 means 3-link chain resolves from top)
       const r0 = mgr.handleSolving(solving(2));
       expect(r0.deferred).toBeTrue();
 
       // Consume deferred, simulate banner, then re-process
       mgr.consumeDeferredSolving();
       mgr.chainResolutionAnnounce.set(true);
-      const r0b = mgr.handleSolving(solving(2));
+      const r0b = enterResolving(2);
       expect(r0b.deferred).toBeFalse();
       expect(mgr.isResolving).toBeTrue();
 
@@ -300,28 +364,28 @@ describe('ChainResolutionManager', () => {
       mgr.bufferIfResolving(damage());
 
       // CL2 solved
-      mgr.handleSolved(solved(2));
+      exitLink(2);
       expect(mgr.chainSolvedCount).toBe(1);
       expect(mgr.isWaitingForOverlay).toBeTrue();
       mgr.clearWaiting();
 
       // CL1 solving (not deferred, solvedCount > 0)
-      const r1 = mgr.handleSolving(solving(1));
+      const r1 = enterResolving(1);
       expect(r1.deferred).toBeFalse();
 
       // CL1 solved
-      mgr.handleSolved(solved(1));
+      exitLink(1);
       expect(mgr.chainSolvedCount).toBe(2);
       mgr.clearWaiting();
 
       // CL0 solving
-      mgr.handleSolving(solving(0));
-      mgr.handleSolved(solved(0));
+      enterResolving(0);
+      exitLink(0);
       expect(mgr.chainSolvedCount).toBe(3);
       mgr.clearWaiting();
 
       // Chain end
-      mgr.handleEnd();
+      endChain();
       expect(mgr.chainSolvedCount).toBe(0);
       expect(mgr.isResolving).toBeFalse();
     });
@@ -333,8 +397,8 @@ describe('ChainResolutionManager', () => {
       mgr.initResumeEffect(onResume);
 
       // Enter resolution → solved → waiting for overlay
-      mgr.handleSolving(solving(0));
-      mgr.handleSolved(solved(0));
+      enterResolving(0);
+      exitLink(0);
       expect(mgr.isWaitingForOverlay).toBeTrue();
 
       // Simulate overlay completing (ready goes false → true)

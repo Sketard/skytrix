@@ -9,6 +9,14 @@ import { DuelLogCategory, DuelLogger } from './duel-logger';
  * Manages chain resolution state: signals for the overlay contract,
  * board-event buffering during resolution, and replay timeout tracking.
  * Provided at component level (NOT root).
+ *
+ * H1 (audit pvp-replay-2026-05-08, observer pattern) — `isResolving` is a
+ * pure read of `DuelEventProcessor.chainPhase()` via `attachChainPhaseSource`.
+ * The manager NEVER owns its own `_insideChainResolution` flag; the processor
+ * is single source of truth. Orchestrator MUST call
+ * `dataSource.applyChainSolving/Solved/End` to drive the phase — calling
+ * `handleSolving/Solved/End` on this manager only handles overlay state,
+ * buffer, and counters.
  */
 @Injectable()
 export class ChainResolutionManager {
@@ -25,15 +33,17 @@ export class ChainResolutionManager {
   // --- Internal state ---
   private _chainSolvedCount = 0;
   private _waitingForOverlay = false;
-  private _insideChainResolution = false;
   private _drainingBuffer = false;
   private _bufferedBoardEvents: GameEvent[] = [];
   private _replayTimeouts: ReturnType<typeof setTimeout>[] = [];
   private _deferredSolvingEvent: GameEvent | null = null;
   private _bannerTimeouts: ReturnType<typeof setTimeout>[] = [];
+  /** Closure reading the processor's chainPhase signal — wired via
+   *  `attachChainPhaseSource()`. Lazy: returns 'idle' if not yet attached. */
+  private _phaseSource: (() => 'idle' | 'building' | 'resolving') | null = null;
 
   // --- State queries ---
-  get isResolving(): boolean { return this._insideChainResolution; }
+  get isResolving(): boolean { return this._phaseSource?.() === 'resolving'; }
   get isWaitingForOverlay(): boolean { return this._waitingForOverlay; }
   get chainSolvedCount(): number { return this._chainSolvedCount; }
   get deferredSolvingEvent(): GameEvent | null { return this._deferredSolvingEvent; }
@@ -48,7 +58,14 @@ export class ChainResolutionManager {
    * passed through `processEvent` get re-buffered into the same buffer they
    * were just drained from, causing an infinite loop.
    */
-  get shouldBufferDuringChain(): boolean { return this._insideChainResolution && !this._drainingBuffer; }
+  get shouldBufferDuringChain(): boolean { return this.isResolving && !this._drainingBuffer; }
+
+  /** Wire the processor's chainPhase signal. Called once by the orchestrator
+   *  during init. After this, `isResolving` reflects the processor by
+   *  construction — no parallel state machine to keep in sync. */
+  attachChainPhaseSource(source: () => 'idle' | 'building' | 'resolving'): void {
+    this._phaseSource = source;
+  }
 
   // --- Event handlers ---
 
@@ -68,7 +85,9 @@ export class ChainResolutionManager {
     }
 
     this.chainResolutionAnnounce.set(false);
-    this._insideChainResolution = true;
+    // H1 — phase flip is owned by the processor; orchestrator calls
+    // `dataSource.applyChainSolving(msg.chainIndex)` immediately after this
+    // method returns. Buffer is reset here because it's manager state.
     this._bufferedBoardEvents = [];
     const isSingleLink = this._chainSolvedCount === 0 && msg.chainIndex === 0;
     return { deferred: false, isSingleLink };
@@ -81,15 +100,19 @@ export class ChainResolutionManager {
     return tid;
   }
 
-  /** Handle MSG_CHAIN_SOLVED. Sets overlay state, returns 'async'. */
+  /** Handle MSG_CHAIN_SOLVED. Sets overlay state, returns 'async'.
+   *
+   *  H1 — phase stays at `'resolving'` after this returns; only `applyChainEnd`
+   *  flips it back to `'idle'`. The transition assertion reads
+   *  `processor.chainPhase()` via `isResolving`, so callers MUST have
+   *  applied `dataSource.applyChainSolving` before calling this. */
   handleSolved(event: GameEvent): 'async' {
-    this.assertTransition('SOLVED', this._insideChainResolution,
+    this.assertTransition('SOLVED', this.isResolving,
       'CHAIN_SOLVED without prior CHAIN_SOLVING — events arrived out of order?');
     this.assertTransition('SOLVED', !this._waitingForOverlay,
       'CHAIN_SOLVED while still waiting for overlay from previous link');
-    const msg = event as ChainSolvedMsg;
+    const _msg = event as ChainSolvedMsg;
     this.chainOverlayBoardChanged.set(this._bufferedBoardEvents.length > 0);
-    this._insideChainResolution = false;
     this._chainSolvedCount++;
     this._waitingForOverlay = true;
     return 'async';
@@ -155,18 +178,6 @@ export class ChainResolutionManager {
     this._replayTimeouts = [];
   }
 
-  // --- Instant (queue collapse) ---
-
-  applyInstantSolving(): void {
-    this._insideChainResolution = true;
-    this._bufferedBoardEvents = [];
-  }
-
-  applyInstantSolved(): void {
-    this._insideChainResolution = false;
-    this._bufferedBoardEvents = [];
-  }
-
   // --- Lifecycle ---
 
   /** Create the effect that watches chainOverlayReady and calls onResume. */
@@ -184,10 +195,11 @@ export class ChainResolutionManager {
     }, { injector: this.injector });
   }
 
-  /** Full reset — single source of truth for clearing all chain state + signals. */
+  /** Full reset — single source of truth for clearing all chain state + signals.
+   *  H1 — chain phase is the processor's responsibility; orchestrator must call
+   *  `dataSource.applyChainEnd()` separately to flip phase back to 'idle'. */
   reset(): void {
     this._waitingForOverlay = false;
-    this._insideChainResolution = false;
     this._drainingBuffer = false;
     this._bufferedBoardEvents = [];
     this._replayTimeouts.forEach(t => clearTimeout(t));
@@ -215,6 +227,6 @@ export class ChainResolutionManager {
 
   private assertTransition(transition: string, condition: boolean, message: string): void {
     duelAssert(condition, `CHAIN:${transition}`,
-      `${message} (solvedCount=${this._chainSolvedCount} resolving=${this._insideChainResolution} waitingOverlay=${this._waitingForOverlay})`);
+      `${message} (solvedCount=${this._chainSolvedCount} resolving=${this.isResolving} waitingOverlay=${this._waitingForOverlay})`);
   }
 }
