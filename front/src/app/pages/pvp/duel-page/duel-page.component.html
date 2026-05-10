@@ -67,17 +67,22 @@
     </div>
   }
 
-  <!-- Story 2.1 — Error State -->
+  <!-- Story 2.1 — Error State (room polling failed before WS handshake;
+       reuses connection-overlay--lost design for visual consistency with
+       mid-duel disconnect overlay) -->
   @if (roomState() === 'error') {
-    <div class="waiting-room" role="region" [attr.aria-label]="'a11y.connectionError' | translate">
-      <mat-icon class="waiting-room__error-icon">error_outline</mat-icon>
-      <p class="waiting-room__status">{{ 'duel.connection.lost' | translate }}</p>
-      <button mat-button
-              class="waiting-room__leave"
-              [attr.aria-label]="'duel.connection.backToLobby' | translate"
-              (click)="leaveRoom()">
-        {{ 'duel.connection.backToLobby' | translate }}
-      </button>
+    <div class="connection-overlay connection-overlay--lost"
+         role="alertdialog" aria-modal="true"
+         [attr.aria-label]="'a11y.connectionError' | translate" cdkTrapFocus>
+      <div class="connection-overlay__content">
+        <p class="connection-overlay__title">{{ 'duel.connection.lostTitle' | translate }}</p>
+        <p class="connection-overlay__subtitle">{{ 'duel.connection.lost' | translate }}</p>
+        <button class="connection-overlay__lobby connection-overlay__lobby--primary"
+                [attr.aria-label]="'duel.connection.backToLobby' | translate"
+                (click)="leaveRoom()">
+          {{ 'duel.connection.backToLobby' | translate }}
+        </button>
+      </div>
     </div>
   }
 
