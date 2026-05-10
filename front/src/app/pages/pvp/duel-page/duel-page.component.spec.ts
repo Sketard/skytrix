@@ -456,3 +456,91 @@ describe('DuelPageComponent — boardReady + duelLoadingReady (C1.1)', () => {
     expect(component.duelLoadingReady()).toBe(true);
   });
 });
+
+// =============================================================================
+// C1.2 — displayedTimerState multiplexing (PvP / solo / fallback)
+// =============================================================================
+
+/** Shape of the per-connection accessor the component reads in solo mode:
+ *  `conns[activeIdx].timerStatePerPlayer()[activeIdx]`. */
+type FakeSoloConnection = {
+  timerStatePerPlayer: () => readonly [TimerStateMsg | null, TimerStateMsg | null];
+};
+
+function makeTimer(label: string): TimerStateMsg {
+  // The component reads through `displayedTimerState()` and forwards the
+  // whole object — its inner shape doesn't matter for the multiplexing
+  // invariant. We tag with a unique label to assert *which* pool was read.
+  return { type: 'TIMER_STATE', tag: label } as unknown as TimerStateMsg;
+}
+
+function makeConnection(t0: TimerStateMsg | null, t1: TimerStateMsg | null): FakeSoloConnection {
+  const tuple = [t0, t1] as const;
+  return { timerStatePerPlayer: () => tuple };
+}
+
+describe('DuelPageComponent — displayedTimerState multiplexing (C1.2)', () => {
+  let fixture: ComponentFixture<DuelPageComponent>;
+  let component: DuelPageComponent;
+  let ws: StubWsService;
+  let solo: StubSoloOrchestrator;
+
+  beforeEach(() => {
+    setupTestBed();
+    fixture = TestBed.createComponent(DuelPageComponent);
+    component = fixture.componentInstance;
+    ws = wsOf(fixture);
+    solo = fixture.componentRef.injector.get(SoloDuelOrchestratorService) as unknown as StubSoloOrchestrator;
+  });
+
+  it('PvP + ocgPlayerIndex=null falls back to top-level timerState() (pre-handshake)', () => {
+    const fallback = makeTimer('fallback');
+    ws.timerState.set(fallback);
+    ws.ocgPlayerIndex.set(null);
+    // isSoloMode defaults to false — PvP path.
+    expect(component.displayedTimerState()).toBe(fallback);
+  });
+
+  it('PvP + ocgPlayerIndex=0 reads timerStatePerPlayer[0] (own pool, player 1 perspective)', () => {
+    const own = makeTimer('p0-own');
+    const opp = makeTimer('p1-opp');
+    ws.timerStatePerPlayer.set([own, opp]);
+    ws.ocgPlayerIndex.set(0);
+    expect(component.displayedTimerState()).toBe(own);
+  });
+
+  it('PvP + ocgPlayerIndex=1 reads timerStatePerPlayer[1] (perspective on player 2 side)', () => {
+    // The "each player sees their own pool" invariant is exactly what would
+    // regress if a future refactor simplified the multiplex to read by
+    // `turnPlayer` instead of `ocgPlayerIndex` — the opponent's pool
+    // would tick down on the local screen. Pin both indices.
+    const own = makeTimer('p1-own');
+    const opp = makeTimer('p0-opp');
+    ws.timerStatePerPlayer.set([opp, own]);
+    ws.ocgPlayerIndex.set(1);
+    expect(component.displayedTimerState()).toBe(own);
+  });
+
+  it('Solo + connections=null falls back to top-level timerState() (during init)', () => {
+    const fallback = makeTimer('solo-fallback');
+    ws.timerState.set(fallback);
+    (component.isSoloMode as WritableSignal<boolean>).set(true);
+    solo.connections.set(null);
+    expect(component.displayedTimerState()).toBe(fallback);
+  });
+
+  it('Solo + activePlayerIndex=1 reads connections[1].timerStatePerPlayer()[1]', () => {
+    // After switchPlayer(), the active connection is index 1 and its own
+    // timer pool is at index 1 (server broadcasts both pools to each
+    // connection). The active connection's pool — not the previous
+    // active one — drives the displayed timer.
+    const t0own = makeTimer('conn0-own');
+    const t1own = makeTimer('conn1-own');
+    const conn0 = makeConnection(t0own, makeTimer('conn0-opp'));
+    const conn1 = makeConnection(makeTimer('conn1-opp'), t1own);
+    (component.isSoloMode as WritableSignal<boolean>).set(true);
+    solo.connections.set([conn0, conn1] as unknown as ReturnType<typeof solo.connections>);
+    solo.activePlayerIndex.set(1);
+    expect(component.displayedTimerState()).toBe(t1own);
+  });
+});
