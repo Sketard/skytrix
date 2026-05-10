@@ -32,7 +32,11 @@ const solverConnections = new Map<string, WebSocket>();
 /** Last solve start time per user (ms). Drives the rate-limit window. */
 const solverLastStart = new Map<string, number>();
 
-/** TTL'd cached final result per user (last solve). Replayed on reconnect. */
+/** TTL'd cached final result per user (last solve). Replayed on reconnect.
+ *  TTL is NOT refreshed on hit — a re-emitted result extends nothing. The
+ *  fixed lifetime caps how long a stale solve can be served after the user
+ *  walked away (intentional, contrast with `replayCache.touch()` whose
+ *  contents are deterministic re-fetches not user-bound). */
 interface CachedResult { message: SolverResultMessage; timer: ReturnType<typeof setTimeout>; createdAt: number }
 const solverResultCache = new Map<string, CachedResult>();
 
@@ -197,6 +201,12 @@ function handleSolverInit(userId: string, ws: WebSocket): void {
  */
 async function fetchDeckCached(userId: string, deckId: string, jwt: string) {
   const c = getCfg();
+  // ':' as separator assumes userId never contains ':' — Spring Boot user IDs
+  // are alphanumeric (UUIDs in prod, numeric in dev). Assert in case auth
+  // ever shifts to a colon-bearing identifier (e.g. SAML tuples).
+  if (userId.includes(':')) {
+    throw new Error(`solver deck cache key collision risk — userId contains ':' (got '${userId}')`);
+  }
   const key = `${userId}:${deckId}`;
   const cached = solverDeckCache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
