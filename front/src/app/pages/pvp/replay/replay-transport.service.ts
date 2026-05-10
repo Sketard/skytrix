@@ -1,6 +1,5 @@
 import { Injectable, signal, type Signal } from '@angular/core';
 import type { ReplayDuelAdapter } from './replay-duel-adapter';
-import type { AnimationOrchestratorService } from '../duel-page/animation-orchestrator.service';
 import type { PhaseAnnouncementService } from '../duel-page/phase-announcement.service';
 import type { PreComputedState } from '../replay-ws.types';
 import { EMPTY_DUEL_STATE } from '../types';
@@ -18,10 +17,10 @@ import { EMPTY_DUEL_STATE } from '../types';
  *
  * The service is component-scoped (provided in `replay-page.component`).
  * It is configured at the component constructor via {@link configure}
- * with the dependencies it needs (adapter handle, orchestrator + phase
- * service for the auto-advance side-effects, and the upstream signals
- * `boardStates` / `computedUpTo` / `animationsEnabled` / `promptMode`
- * read at fire time so changes flow through naturally).
+ * with the dependencies it needs (adapter handle, phase service for the
+ * auto-advance guard, and the upstream signals `boardStates` /
+ * `computedUpTo` / `animationsEnabled` / `promptMode` read at fire time
+ * so changes flow through naturally).
  *
  * Cross-cutting cleanup of orchestrator/phase/adapter on user-driven
  * interruptions stays in the component as `abortAndClean()` — the
@@ -33,7 +32,6 @@ import { EMPTY_DUEL_STATE } from '../types';
 
 interface ReplayTransportConfig {
   adapter: ReplayDuelAdapter;
-  orchestrator: AnimationOrchestratorService; // unused at present; reserved for future hooks
   phaseService: PhaseAnnouncementService;
   boardStates: Signal<PreComputedState[]>;
   computedUpTo: Signal<number>;
