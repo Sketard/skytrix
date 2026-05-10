@@ -135,15 +135,16 @@ class StubWsService {
   onStateSync?: () => void;
 }
 
-/** Generic no-op stub for *EffectsService classes — `initEffects` is the
- *  only consumed surface; we intentionally do nothing. */
+/** Generic stub for *EffectsService classes — `initEffects` and the
+ *  bootstrap entry points are spies so C1.5 can assert which branch
+ *  the constructor entered. */
 class NoopEffectsStub {
-  initEffects(): void { /* no-op */ }
-  initSolo(): void { /* no-op */ }
-  initFork(): void { /* no-op */ }
-  silenceCurrentPhase(): void { /* no-op */ }
-  markAwaitingStateSync(): void { /* no-op */ }
-  clear(): void { /* no-op */ }
+  initEffects = jasmine.createSpy('initEffects');
+  initSolo = jasmine.createSpy('initSolo');
+  initFork = jasmine.createSpy('initFork');
+  silenceCurrentPhase = jasmine.createSpy('silenceCurrentPhase');
+  markAwaitingStateSync = jasmine.createSpy('markAwaitingStateSync');
+  clear = jasmine.createSpy('clear');
 }
 
 /** Stub for AnimationOrchestratorService — only the few signals/methods the
@@ -756,5 +757,138 @@ describe('DuelPageComponent — playerHand + chain badges + revealed merge (C1.4
 
     const out = component.opponentHandRevealedCards();
     expect(out.get(0)).toBe(999);
+  });
+});
+
+// =============================================================================
+// C1.5 — Bootstrap routing (fork / solo / pvp) + cleanup
+// =============================================================================
+
+/** Push a fake `history.state` for the duration of the next constructor
+ *  run. Using `history.replaceState` is safe in headless tests — we never
+ *  navigate the test URL. The previous state is restored after each test. */
+function withHistoryState<T extends object>(state: T, fn: () => void): void {
+  const prev = history.state;
+  history.replaceState(state, '');
+  try { fn(); } finally { history.replaceState(prev, ''); }
+}
+
+describe('DuelPageComponent — bootstrap routing + cleanup (C1.5)', () => {
+  // The constructor branches on route+history+sessionStorage *at
+  // createComponent time*. Each test sets up its preconditions, calls
+  // setupTestBed with a tailored route, then creates the fixture. We
+  // resist a shared beforeEach because the entire point is to pin
+  // distinct bootstrap branches.
+
+  afterEach(() => {
+    // Clean any sessionStorage spillover from solo mode tests.
+    try { sessionStorage.clear(); } catch { /* noop */ }
+  });
+
+  function pickSoloOrch(fixture: ComponentFixture<DuelPageComponent>): StubSoloOrchestrator {
+    return fixture.componentRef.injector.get(SoloDuelOrchestratorService) as unknown as StubSoloOrchestrator;
+  }
+  function pickRoom(fixture: ComponentFixture<DuelPageComponent>): StubRoomStateMachine {
+    return fixture.componentRef.injector.get(RoomStateMachineService) as unknown as StubRoomStateMachine;
+  }
+  function pickSoloEffects(fixture: ComponentFixture<DuelPageComponent>): NoopEffectsStub {
+    return fixture.componentRef.injector.get(SoloModeEffectsService) as unknown as NoopEffectsStub;
+  }
+  function pickTabGuard(fixture: ComponentFixture<DuelPageComponent>): StubDuelTabGuard {
+    return fixture.componentRef.injector.get(DuelTabGuardService) as unknown as StubDuelTabGuard;
+  }
+
+  it('fork mode + tokens in history.state → orchestrator.init + forceState("connecting") + initFork', () => {
+    // Fork branch: replay viewer hits the "duplicate as solo" entry, the
+    // tokens travel via history.state (set by router.navigate on the
+    // replay page, never persisted to sessionStorage).
+    setupTestBed(makeRouteStub({ roomCode: 'r1', query: { fork: 'true', replayId: 'abc', seekTo: '12' } }));
+    withHistoryState({ wsToken1: 'tok1', wsToken2: 'tok2' }, () => {
+      const fixture = TestBed.createComponent(DuelPageComponent);
+      const orch = pickSoloOrch(fixture);
+      const room = pickRoom(fixture);
+      const soloEff = pickSoloEffects(fixture);
+
+      expect(orch.init).toHaveBeenCalledOnceWith('tok1', 'tok2');
+      expect(room.forceState).toHaveBeenCalledWith('connecting');
+      expect(soloEff.initFork).toHaveBeenCalledTimes(1);
+      expect(fixture.componentInstance.forkReplayId).toBe('abc');
+      expect(fixture.componentInstance.forkSeekTo).toBe(12);
+    });
+  });
+
+  it('fork mode without tokens → notify.error + router.navigate(/pvp), no orchestrator.init', () => {
+    // Missing tokens means the user reloaded the fork URL after losing the
+    // history state — the constructor must surface SOLO_SESSION_EXPIRED
+    // and bounce them to the lobby instead of attempting a connect.
+    setupTestBed(makeRouteStub({ roomCode: 'r1', query: { fork: 'true' } }));
+    withHistoryState({}, () => {
+      const fixture = TestBed.createComponent(DuelPageComponent);
+      const orch = pickSoloOrch(fixture);
+      const notify = TestBed.inject(NotificationService) as unknown as StubNotification;
+      const router = TestBed.inject(Router) as unknown as StubRouter;
+
+      expect(notify.error).toHaveBeenCalledWith('error.SOLO_SESSION_EXPIRED');
+      expect(router.navigate).toHaveBeenCalledWith(['/pvp']);
+      expect(orch.init).not.toHaveBeenCalled();
+    });
+  });
+
+  it('solo mode falls back to sessionStorage tokens when history.state is empty', () => {
+    // After the very first navigation, F5 wipes history.state but the
+    // sessionStorage entry persists. The component must read from there
+    // so the duel survives reloads. Pin: tabGuard.init+broadcast and
+    // orchestrator.init both fire with the stored tokens.
+    sessionStorage.setItem('solo-duel-tokens-r2', JSON.stringify({
+      wsToken1: 'stored-tok-1', wsToken2: 'stored-tok-2', activePlayer: 0, decklistId: 42,
+    }));
+    setupTestBed(makeRouteStub({ roomCode: 'r2', query: { solo: 'true' } }));
+    withHistoryState({}, () => {
+      const fixture = TestBed.createComponent(DuelPageComponent);
+      const orch = pickSoloOrch(fixture);
+      const tab = pickTabGuard(fixture);
+      const room = pickRoom(fixture);
+
+      expect(tab.init).toHaveBeenCalledOnceWith('r2');
+      expect(tab.broadcast).toHaveBeenCalledTimes(1);
+      expect(orch.init).toHaveBeenCalledOnceWith('stored-tok-1', 'stored-tok-2');
+      expect(room.decklistId).toBe(42);
+      expect(orch.switchPlayer).not.toHaveBeenCalled(); // restoredPlayer=0
+    });
+  });
+
+  it('solo mode with stored activePlayer=1 → orchestrator.switchPlayer() called once', () => {
+    // After a tab survives a switch-to-player-2 mid-duel, the
+    // sessionStorage payload carries activePlayer=1. The component
+    // restores it by re-running switchPlayer once after init.
+    sessionStorage.setItem('solo-duel-tokens-r3', JSON.stringify({
+      wsToken1: 'tk1', wsToken2: 'tk2', activePlayer: 1, decklistId: null,
+    }));
+    setupTestBed(makeRouteStub({ roomCode: 'r3', query: { solo: 'true' } }));
+    withHistoryState({}, () => {
+      const fixture = TestBed.createComponent(DuelPageComponent);
+      const orch = pickSoloOrch(fixture);
+      expect(orch.switchPlayer).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('solo mode → destroy callback removes the solo-duel-tokens-* sessionStorage entry', () => {
+    // The cleanup invariant: when the component is destroyed (route change,
+    // navigate-away, hot-reload), the per-room solo-duel-tokens entry
+    // must be removed so the next navigation re-uses fresh tokens
+    // instead of replaying a stale duel. This is the only place the
+    // entry is removed; if a refactor moves it elsewhere by mistake,
+    // duels would resume with the wrong tokens after lobby round-trips.
+    sessionStorage.setItem('solo-duel-tokens-r4', JSON.stringify({
+      wsToken1: 'tk1', wsToken2: 'tk2', activePlayer: 0, decklistId: null,
+    }));
+    setupTestBed(makeRouteStub({ roomCode: 'r4', query: { solo: 'true' } }));
+    withHistoryState({}, () => {
+      const fixture = TestBed.createComponent(DuelPageComponent);
+      // The init wrote the canonical entry — confirm the precondition.
+      expect(sessionStorage.getItem('solo-duel-tokens-r4')).not.toBeNull();
+      fixture.destroy();
+      expect(sessionStorage.getItem('solo-duel-tokens-r4')).toBeNull();
+    });
   });
 });
