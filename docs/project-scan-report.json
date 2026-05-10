@@ -1,0 +1,81 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-05-10T00:00:00Z",
+    "last_updated": "2026-05-10T00:00:00Z",
+    "completed": "2026-05-10T00:00:00Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "c:/Users/Axel/Desktop/code/skytrix",
+  "project_knowledge": "docs",
+  "repository_type": "multi-part",
+  "project_types": [
+    { "part_id": "back", "project_type_id": "backend", "display_name": "Backend (Spring Boot)" },
+    { "part_id": "front", "project_type_id": "web", "display_name": "Frontend (Angular SPA)" },
+    { "part_id": "duel-server", "project_type_id": "backend", "display_name": "Duel Server (Node + ocgcore)" }
+  ],
+  "completed_steps": [
+    { "step": "step_1", "status": "completed", "summary": "Classified as multi-part with 3 parts (back / front / duel-server)" },
+    { "step": "step_2", "status": "completed", "summary": "Inventoried existing docs: README.md, CLAUDE.md, _bmad-output/project-context.md, _bmad-output/planning-artifacts/* (PRDs, architectures, UX, epics, R&D)" },
+    { "step": "step_3", "status": "completed", "summary": "Tech stack: Spring Boot 3.4.2 / Java 21 (back); Angular 19.1.3 / TS 5.5.4 (front); Node 24 / ocgcore-wasm / piscina (duel-server)" },
+    { "step": "step_4", "status": "completed", "summary": "Conditional analysis via 3 parallel Explore subagents — REST endpoints, JPA entities, Flyway migrations, security, components, services, WS protocol, solver layout, data files" },
+    { "step": "step_5", "status": "completed", "summary": "source-tree-analysis.md generated (annotated tree per part + critical paths)" },
+    { "step": "step_6", "status": "completed", "summary": "development-guide.md + deployment-guide.md generated (prereqs, env vars, scripts, Docker stack, TLS, network tiers)" },
+    { "step": "step_7", "status": "completed", "summary": "integration-architecture.md generated (component graph, network tiers, 7 integration points incl. shared ChainSnapshotTracker)" },
+    { "step": "step_8", "status": "completed", "summary": "architecture-back.md, architecture-front.md, architecture-duel-server.md generated" },
+    { "step": "step_9", "status": "completed", "summary": "api-contracts-back.md, api-contracts-duel-server.md, data-models-back.md, component-inventory-front.md generated" },
+    { "step": "step_10", "status": "completed", "summary": "Master index.md generated" },
+    { "step": "step_11", "status": "completed", "summary": "Validation: no _(To be generated)_ markers; project-context.md refreshed alongside" },
+    { "step": "step_12", "status": "completed", "summary": "Workflow complete" }
+  ],
+  "current_step": "completed",
+  "outputs_generated": [
+    "docs/index.md",
+    "docs/project-overview.md",
+    "docs/source-tree-analysis.md",
+    "docs/integration-architecture.md",
+    "docs/development-guide.md",
+    "docs/deployment-guide.md",
+    "docs/architecture-back.md",
+    "docs/architecture-front.md",
+    "docs/architecture-duel-server.md",
+    "docs/api-contracts-back.md",
+    "docs/api-contracts-duel-server.md",
+    "docs/data-models-back.md",
+    "docs/component-inventory-front.md",
+    "docs/project-parts.json",
+    "docs/project-scan-report.json",
+    "_bmad-output/project-context.md (refreshed)"
+  ],
+  "findings": {
+    "project_classification": "multi-part monorepo, 3 deployables; networks split into public (front), internal (front+back+duel-server), data-only (back+db)",
+    "technology_stack": {
+      "back": "Spring Boot 3.4.2 / Java 21 / PostgreSQL 16 / Flyway 11.2.0 / Spring Security + JWT",
+      "front": "Angular 19.1.3 standalone / signals / OnPush / Material + CDK / ngx-translate FR default",
+      "duel-server": "Node 24 / ocgcore-wasm sync mode / piscina pools / vitest / 4 createConfigurable<T> modules with boot invariant"
+    },
+    "feature_map": {
+      "back": "REST + JWT cookie auth + JPA + ygoprodeck.com sync + image storage + SSE + replay persistence + RoomCleanupScheduler",
+      "front": "deck mgmt + solo simulator + PvP duel UI + replay viewer + combo solver UI; AnimationOrchestratorService shared via AnimationDataSource",
+      "duel-server": "PvP runDuelLoop (worker thread) + replay precompute (Piscina) + solver pool (Piscina); ChainSnapshotTracker shared between live + replay for parity"
+    },
+    "integration_points_count": 7,
+    "shared_protocol_files": 6,
+    "anomalies_count_total": 15
+  },
+  "verification_summary": "Three Explore subagents enumerated source per part (back / front / duel-server). No source files were modified; only docs/ and _bmad-output/project-context.md were written. Documentation cross-checked against CLAUDE.md and existing project-context.md.",
+  "open_risks": [
+    "RoomService:73 pessimistic lock around external HTTP call (potential deadlock)",
+    "message-filter.ts:213 Story 4.2 absolute→relative player index conversion pending",
+    "Flyway out-of-order=true tolerable on single-node only",
+    "Image path traversal possible in DocumentService if user-controlled URLs are ever introduced",
+    "No pagination on /cards/favorites/remove; payload grows with collection",
+    "Dual auth state (signal + BehaviorSubject) — unify post-audit"
+  ],
+  "next_checks": [
+    "Re-run /bmad-document-project after any major architectural change",
+    "Verify scripts/check-ws-protocol-sync.mjs passes (duel-server prebuild)",
+    "Verify duelAssert / POLL-DROP REGRESSION watchdog is intact (CLAUDE.md regression fence)"
+  ]
+}

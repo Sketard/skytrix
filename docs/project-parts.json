@@ -1,0 +1,151 @@
+{
+  "repository_type": "multi-part",
+  "parts": [
+    {
+      "part_id": "back",
+      "display_name": "Backend (Spring Boot)",
+      "root_path": "back/",
+      "project_type_id": "backend",
+      "language": "Java 21",
+      "framework": "Spring Boot 3.4.2",
+      "build_tool": "Maven",
+      "database": "PostgreSQL 16",
+      "auth": "Stateless JWT (JJWT 0.12.6)",
+      "responsibilities": [
+        "REST API at /api",
+        "PostgreSQL via Spring Data JPA + Flyway",
+        "JWT auth (HTTP-only cookie refresh)",
+        "Card data ingest from ygoprodeck.com",
+        "Image storage and serving",
+        "Room/lobby coordination + SSE events",
+        "Replay persistence",
+        "Internal HTTP client to duel-server"
+      ],
+      "ports": [8080, 8081]
+    },
+    {
+      "part_id": "front",
+      "display_name": "Frontend (Angular SPA)",
+      "root_path": "front/",
+      "project_type_id": "web",
+      "language": "TypeScript 5.5.4",
+      "framework": "Angular 19.1.3",
+      "ui_kit": "Angular Material 19.1.1 + CDK",
+      "i18n": "ngx-translate (FR default, EN supported)",
+      "build_tool": "npm + Angular CLI",
+      "test_runners": ["Karma + Jasmine (unit)", "Playwright (e2e)"],
+      "responsibilities": [
+        "Single-page app for all 4 features",
+        "Deck management (search, builder, owned cards)",
+        "Solo Simulator (BoardState + CommandStack)",
+        "PvP duel UI (40+ scoped services, animation orchestrator)",
+        "Replay viewer (reuses duel-page services via AnimationDataSource)",
+        "Solver UI (pinned results, decision tree, history)"
+      ],
+      "ports": [80, 443]
+    },
+    {
+      "part_id": "duel-server",
+      "display_name": "Duel Server (Node + ocgcore)",
+      "root_path": "duel-server/",
+      "project_type_id": "backend",
+      "language": "TypeScript ES2022 strict",
+      "framework": "Node 24, ws, piscina",
+      "engine": "@n1xx1/ocgcore-wasm",
+      "build_tool": "tsc",
+      "test_runner": "vitest",
+      "responsibilities": [
+        "WebSocket server on :3001",
+        "PvP duel game loop (runDuelLoop, ocgcore in worker thread)",
+        "Replay precompute (Piscina pool)",
+        "Solver pool (Piscina, MCTS + DFS + ML rankers)",
+        "Internal HTTP API for backend (/api/duels, /api/update-data, ...)",
+        "Boot invariant: 4 createConfigurable<T> modules must be configured",
+        "WebSocket protocol version gate (close code 4426)"
+      ],
+      "ports": [3001]
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "front",
+      "to": "back",
+      "type": "REST + SSE",
+      "transport": "HTTP",
+      "auth": "JWT cookies (Access + Refresh, HTTP-only)",
+      "details": "All /api/** endpoints; SSE at /api/rooms/{roomCode}/events"
+    },
+    {
+      "from": "front",
+      "to": "duel-server",
+      "type": "WebSocket",
+      "transport": "WS (TLS in prod via nginx)",
+      "auth": "wsToken (PvP) / JWT (replay/solver) in query string",
+      "details": "?mode=replay|solver|<default-PvP>; ?pv=<protocolVersion> mandatory for PvP+replay; mismatch → close 4426"
+    },
+    {
+      "from": "back",
+      "to": "duel-server",
+      "type": "REST",
+      "transport": "HTTP (internal network)",
+      "auth": "X-Internal-Key header",
+      "details": "POST /api/duels (create), DELETE /api/duels/{id}, PUT /api/update-data, POST /api/validate-passcodes, GET /api/duels/active"
+    },
+    {
+      "from": "duel-server",
+      "to": "back",
+      "type": "REST",
+      "transport": "HTTP (internal network)",
+      "auth": "X-Internal-Key header",
+      "details": "POST /api/replays (persist), GET /api/internal/replays/{id} (read-back for fork)"
+    },
+    {
+      "from": "back",
+      "to": "db",
+      "type": "JDBC",
+      "transport": "TCP (internal-only network)",
+      "auth": "DB user/password",
+      "details": "Spring Data JPA + Flyway migrations on boot; skytrix-data Docker network has internal: true"
+    },
+    {
+      "from": "back",
+      "to": "ygoprodeck.com",
+      "type": "REST",
+      "transport": "HTTPS",
+      "auth": "none (public API)",
+      "details": "YugiproRequester; retry 3x with exponential backoff on 429/5xx; triggered from Paramètres admin UI"
+    },
+    {
+      "from": "duel-server",
+      "to": "cards.cdb (SQLite)",
+      "type": "FS read-only",
+      "transport": "local",
+      "auth": "n/a",
+      "details": "better-sqlite3, LRU cached in card-db-cache.ts; volume mounted at /app/data"
+    }
+  ],
+  "shared_protocol": {
+    "ws_protocol_files": [
+      "ws-protocol-shared.ts",
+      "ws-protocol-game.ts",
+      "ws-protocol-prompts.ts",
+      "ws-protocol-system.ts",
+      "ws-protocol-replay.ts",
+      "ws-protocol-solver.ts"
+    ],
+    "barrel_front": "front/src/app/pages/pvp/duel-ws.types.ts",
+    "barrel_back": "duel-server/src/ws-protocol.ts",
+    "sync_script": "scripts/check-ws-protocol-sync.mjs (runs as duel-server prebuild)",
+    "byte_sync_modulo": ".js import suffix on duel-server side"
+  },
+  "shared_chain_state": {
+    "snapshot_tracker_class": "ChainSnapshotTracker",
+    "file": "duel-server/src/chain-snapshot-tracker.ts",
+    "consumers": [
+      "duel-server/src/duel-worker.ts:runDuelLoop (live PvP)",
+      "duel-server/src/replay-precompute.ts:runReplayPreComputation (replay)"
+    ],
+    "purpose": "Identical boardStateAfter attachment predicate guarantees PvP↔Replay parity by construction",
+    "front_consumer": "front/src/app/pages/pvp/duel-page/animation-orchestrator.service.ts (via AnimationDataSource)"
+  }
+}
