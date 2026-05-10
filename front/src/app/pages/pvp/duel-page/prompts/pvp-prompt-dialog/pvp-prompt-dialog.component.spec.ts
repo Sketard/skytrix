@@ -445,3 +445,147 @@ describe('PvpPromptDialogComponent — response dispatch (C2.2)', () => {
     expect(events).toEqual([{ cardCode: 12345 }]);
   });
 });
+
+// =============================================================================
+// HostListener + readOnly specs (C2.3). Pin the keyboard shortcuts (`c`
+// toggle, ` ` confirm), the right-click cancel resolution order
+// (local `.btn--secondary` first, fallback `sendCancelPromptSequence`),
+// and the readOnly mode (contextmenu no-op + IDLECMD readonly path).
+// =============================================================================
+
+describe('PvpPromptDialogComponent — HostListeners + readOnly (C2.3)', () => {
+  let ws: WsStub;
+  let announcer: { announce: jasmine.Spy };
+  let fixture: ComponentFixture<PvpPromptDialogComponent>;
+  let component: PvpPromptDialogComponent;
+  let originalMap: Record<string, unknown>;
+
+  beforeEach(() => {
+    originalMap = { ...PROMPT_COMPONENT_MAP };
+    for (const k of Object.keys(PROMPT_COMPONENT_MAP)) delete PROMPT_COMPONENT_MAP[k];
+    PROMPT_COMPONENT_MAP['SELECT_YESNO'] = StubYesNoComponent;
+
+    ws = makeWsStub();
+    announcer = { announce: jasmine.createSpy('announce') };
+
+    TestBed.configureTestingModule({
+      imports: [PvpPromptDialogComponent],
+      providers: [
+        { provide: DuelWebSocketService, useValue: ws },
+        { provide: TranslateService, useValue: {
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+        { provide: LiveAnnouncer, useValue: announcer },
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpPromptDialogComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    for (const k of Object.keys(PROMPT_COMPONENT_MAP)) delete PROMPT_COMPONENT_MAP[k];
+    Object.assign(PROMPT_COMPONENT_MAP, originalMap);
+  });
+
+  function openDialog(): void {
+    fixture.componentRef.setInput('prompt', makeYesNoPrompt());
+    fixture.detectChanges();
+  }
+
+  it('keydown "c" toggles dialogState open <-> collapsed', () => {
+    openDialog();
+    expect(component.dialogState()).toBe('open');
+
+    component.handleKeydown({ key: 'c', target: document.body, preventDefault: () => undefined } as unknown as KeyboardEvent);
+    expect(component.dialogState()).toBe('collapsed');
+
+    component.handleKeydown({ key: 'c', target: document.body, preventDefault: () => undefined } as unknown as KeyboardEvent);
+    expect(component.dialogState()).toBe('open');
+  });
+
+  it('keydown is ignored when target is INPUT/TEXTAREA (typing in numeric input)', () => {
+    openDialog();
+    expect(component.dialogState()).toBe('open');
+
+    const input = document.createElement('input');
+    component.handleKeydown({ key: 'c', target: input, preventDefault: () => undefined } as unknown as KeyboardEvent);
+    expect(component.dialogState()).toBe('open');
+  });
+
+  it('keydown is no-op when dialogState is closed', () => {
+    expect(component.dialogState()).toBe('closed');
+    const prevent = jasmine.createSpy('preventDefault');
+    component.handleKeydown({ key: 'c', target: document.body, preventDefault: prevent } as unknown as KeyboardEvent);
+    expect(component.dialogState()).toBe('closed');
+    expect(prevent).not.toHaveBeenCalled();
+  });
+
+  it('contextmenu clicks the local .btn--secondary if present (no server cancel)', () => {
+    openDialog();
+
+    // Inject a Cancel button into the dialog DOM — same heuristic the dialog
+    // applies (querySelector('.btn--secondary') from elementRef.nativeElement).
+    const host = fixture.nativeElement as HTMLElement;
+    const btn = document.createElement('button');
+    btn.className = 'btn--secondary';
+    const localClick = jasmine.createSpy('localClick');
+    btn.addEventListener('click', localClick);
+    host.appendChild(btn);
+
+    const prevent = jasmine.createSpy('preventDefault');
+    component.handleContextMenu({ preventDefault: prevent } as unknown as MouseEvent);
+
+    expect(prevent).toHaveBeenCalled();
+    expect(localClick).toHaveBeenCalled();
+    expect(ws.sendCancelPromptSequence).not.toHaveBeenCalled();
+    expect(announcer.announce).not.toHaveBeenCalled();
+  });
+
+  it('contextmenu falls back to wsService.sendCancelPromptSequence when no local Cancel button exists', () => {
+    openDialog();
+
+    const prevent = jasmine.createSpy('preventDefault');
+    component.handleContextMenu({ preventDefault: prevent } as unknown as MouseEvent);
+
+    expect(prevent).toHaveBeenCalled();
+    expect(ws.sendCancelPromptSequence).toHaveBeenCalledTimes(1);
+    expect(announcer.announce).toHaveBeenCalled();
+  });
+
+  it('contextmenu is a no-op in readOnly mode (replay) — no cancel sent', () => {
+    fixture.componentRef.setInput('readOnly', true);
+    openDialog();
+
+    const prevent = jasmine.createSpy('preventDefault');
+    component.handleContextMenu({ preventDefault: prevent } as unknown as MouseEvent);
+
+    expect(prevent).not.toHaveBeenCalled();
+    expect(ws.sendCancelPromptSequence).not.toHaveBeenCalled();
+  });
+
+  it('contextmenu is a no-op when dialogState is not "open" (closed/collapsed)', () => {
+    expect(component.dialogState()).toBe('closed');
+
+    const prevent = jasmine.createSpy('preventDefault');
+    component.handleContextMenu({ preventDefault: prevent } as unknown as MouseEvent);
+
+    expect(prevent).not.toHaveBeenCalled();
+    expect(ws.sendCancelPromptSequence).not.toHaveBeenCalled();
+  });
+
+  it('readOnly=true + SELECT_IDLECMD opens dialog and mounts a sub-component (replay action-list path)', () => {
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.componentRef.setInput('prompt', makeIdleCmdPrompt());
+    fixture.detectChanges();
+
+    // In readOnly mode, IDLECMD is no longer ignored — it routes to
+    // PromptActionListReadonlyComponent. The dialog must open and mount.
+    expect(component.dialogState()).toBe('open');
+    expect(component.portalOutlet.hasAttached()).toBe(true);
+  });
+});
