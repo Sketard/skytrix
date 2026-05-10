@@ -197,6 +197,20 @@ export interface PlaceOption {
  * loop + replay precompute) and client (`chain-resolution-manager.ts`
  * buffering). Keep the contents in strict sync with any consumer that
  * reasons about "which events affect the board state during resolution".
+ *
+ * Two consumers gate on this set — adding a type affects BOTH:
+ *  1. **Back-end snapshot attach** — `ChainSnapshotTracker.process` (in
+ *     `chain-snapshot-tracker.ts`) attaches `boardStateAfter` when the
+ *     event type is in this set AND the chain is resolving. Used by both
+ *     `runDuelLoop` (live PvP) and `runReplayPreComputation`.
+ *  2. **Front-end buffer-and-replay** — `bufferIfResolving` (in
+ *     `animation-data-source.ts`) routes the event into
+ *     `ChainResolutionManager._bufferedBoardEvents` for replay after the
+ *     chain overlay hides.
+ *
+ * Remove a type and you silently lose snapshots + replay coverage; add one
+ * without updating handlers and you queue events the orchestrator can't
+ * dispatch. See CLAUDE.md "Chain Event Processing & State Machine" §4.
  */
 export const BOARD_CHANGING_EVENT_TYPES: ReadonlySet<string> = new Set([
   'MSG_MOVE', 'MSG_DRAW', 'MSG_DAMAGE', 'MSG_RECOVER', 'MSG_PAY_LPCOST',

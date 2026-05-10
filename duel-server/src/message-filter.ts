@@ -194,6 +194,10 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
       return message;
 
     // --- Default: DROP unknown types (fail-safe: prefer missing display over info leak) ---
+    // The drop is intentional even in omniscient mode — a new MSG_* added
+    // upstream without a matching case here will surface as a logger.error
+    // in tests + dev. Better to lose visibility on one event type than to
+    // forward an unsanitized payload that might leak opponent hand/deck.
 
     default:
       logger.error('Dropped unknown message type', { type: (message as { type: string }).type });
