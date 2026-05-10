@@ -3,7 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { PvpBoardContainerComponent } from './pvp-board-container.component';
 import { CardTravelEngine } from '../card-travel-engine.service';
 import { DuelCardArtService } from '../duel-card-art.service';
-import { DuelState, EMPTY_DUEL_STATE } from '../../types';
+import { ChainLinkState, DuelState, EMPTY_DUEL_STATE } from '../../types';
 import { BoardZone, CardOnField, ZoneId, POSITION, LOCATION, SelectIdleCmdMsg, SelectBattleCmdMsg, CardInfo } from '../../duel-ws.types';
 import { CardAction } from '../idle-action-codes';
 
@@ -419,5 +419,168 @@ describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () =>
     component.onZonePillClick({ currentTarget: document.createElement('button') } as unknown as MouseEvent, 'GY', 1);
 
     expect(events).toEqual([{ zoneId: 'GY', playerIndex: 1 }]);
+  });
+});
+
+// =============================================================================
+// C4.3 — Chain badges + linkedZoneMap + animation keys
+// =============================================================================
+
+function makeLink(overrides: Partial<ChainLinkState> = {}): ChainLinkState {
+  return {
+    chainIndex: 0,
+    cardCode: 11111,
+    cardName: 'Chain Card',
+    player: 0,
+    zoneId: 'M1',
+    location: LOCATION.MZONE,
+    sequence: 0,
+    resolving: false,
+    negated: false,
+    ...overrides,
+  };
+}
+
+describe('PvpBoardContainerComponent — chain/link badges + animation (C4.3)', () => {
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
+  let mockArt: jasmine.SpyObj<DuelCardArtService>;
+  let fixture: ComponentFixture<PvpBoardContainerComponent>;
+  let component: PvpBoardContainerComponent;
+
+  // Component-internal protected signals re-typed for direct access in tests.
+  type ProtectedSurface = {
+    chainBadges: () => Map<string, number>;
+    linkedZoneMap: () => Map<string, string[]>;
+    animatingZoneKeys: () => Set<string>;
+    animatingEmzKeys: () => Set<string>;
+  };
+
+  beforeEach(() => {
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>(
+      'CardTravelEngine',
+      ['registerZoneResolver', 'getZoneElement', 'createLineBetween'],
+    );
+    mockArt = jasmine.createSpyObj<DuelCardArtService>('DuelCardArtService', ['resolveUrl']);
+    mockArt.resolveUrl.and.returnValue('mock-url');
+
+    TestBed.configureTestingModule({
+      imports: [PvpBoardContainerComponent],
+      providers: [
+        { provide: CardTravelEngine, useValue: mockCardTravel },
+        { provide: DuelCardArtService, useValue: mockArt },
+        { provide: TranslateService, useValue: {
+          currentLang: 'en',
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpBoardContainerComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('preview', true);
+    fixture.componentRef.setInput('duelState', EMPTY_DUEL_STATE);
+  });
+
+  function getProtected(): ProtectedSurface {
+    return component as unknown as ProtectedSurface;
+  }
+
+  it('chainBadges() is empty when chain has < 2 links and phase is not "resolving"', () => {
+    fixture.componentRef.setInput('activeChainLinks', [makeLink({ chainIndex: 0 })]);
+    fixture.componentRef.setInput('chainPhase', 'building');
+    fixture.detectChanges();
+
+    expect(getProtected().chainBadges().size).toBe(0);
+  });
+
+  it('chainBadges() populates when chain has 2+ links (badge UI activates)', () => {
+    fixture.componentRef.setInput('activeChainLinks', [
+      makeLink({ chainIndex: 0, zoneId: 'M1', player: 0 }),
+      makeLink({ chainIndex: 1, zoneId: 'S2', player: 0 }),
+    ]);
+    fixture.componentRef.setInput('chainPhase', 'building');
+    fixture.detectChanges();
+
+    const badges = getProtected().chainBadges();
+    expect(badges.get('M1-0')).toBe(1); // chainIndex 0 → label 1
+    expect(badges.get('S2-0')).toBe(2); // chainIndex 1 → label 2
+  });
+
+  it('chainBadges() populates during "resolving" phase even with 1 link (last-link-resolving case)', () => {
+    fixture.componentRef.setInput('activeChainLinks', [makeLink({ chainIndex: 0, zoneId: 'M3', player: 0, resolving: true })]);
+    fixture.componentRef.setInput('chainPhase', 'resolving');
+    fixture.detectChanges();
+
+    expect(getProtected().chainBadges().get('M3-0')).toBe(1);
+  });
+
+  it('chainBadges() keeps the HIGHEST chainNum when multiple links target the same slot', () => {
+    // Two links land on M2-0 → keep chainIndex 2 → label 3.
+    fixture.componentRef.setInput('activeChainLinks', [
+      makeLink({ chainIndex: 0, zoneId: 'M2', player: 0 }),
+      makeLink({ chainIndex: 1, zoneId: 'S1', player: 0 }),
+      makeLink({ chainIndex: 2, zoneId: 'M2', player: 0 }), // same slot as link 0
+    ]);
+    fixture.componentRef.setInput('chainPhase', 'building');
+    fixture.detectChanges();
+
+    expect(getProtected().chainBadges().get('M2-0')).toBe(3);
+    expect(getProtected().chainBadges().get('S1-0')).toBe(2);
+  });
+
+  it('linkedZoneMap() is bidirectional (src→dst AND dst→src) for equip/target relations', () => {
+    // M1 (player 0) equipped to M3 (player 0) via linkedCards entry.
+    const equipped = makeCard({
+      cardCode: 11111,
+      linkedCards: [{ kind: 'equip', controller: 0, location: LOCATION.MZONE, sequence: 2 }],
+    });
+    const state = makeState([
+      makeZone('M1', [equipped]),
+      makeZone('M3', [makeCard({ cardCode: 22222 })]),
+    ]);
+    fixture.componentRef.setInput('duelState', state);
+    fixture.detectChanges();
+
+    const map = getProtected().linkedZoneMap();
+    expect(map.get('M1-0')).toEqual(['M3-0']);
+    expect(map.get('M3-0')).toEqual(['M1-0']); // reverse edge
+  });
+
+  it('linkedZoneMap() skips cards without linkedCards', () => {
+    const state = makeState([makeZone('M1', [makeCard({ cardCode: 11111 })])]);
+    fixture.componentRef.setInput('duelState', state);
+    fixture.detectChanges();
+
+    expect(getProtected().linkedZoneMap().size).toBe(0);
+  });
+
+  it('animatingZoneKeys() emits a single "zoneId-relPlayer-type" key when animatingZone is set', () => {
+    fixture.componentRef.setInput('animatingZone', { zoneId: 'M1', animationType: 'flip', relativePlayerIndex: 0 });
+    fixture.detectChanges();
+
+    expect(getProtected().animatingZoneKeys()).toEqual(new Set(['M1-0-flip']));
+  });
+
+  it('animatingZoneKeys() is empty when animatingZone is null', () => {
+    fixture.componentRef.setInput('animatingZone', null);
+    fixture.detectChanges();
+
+    expect(getProtected().animatingZoneKeys().size).toBe(0);
+  });
+
+  it('animatingEmzKeys() emits "zoneId-type" only for EMZ_L/R; non-EMZ animations are ignored', () => {
+    // EMZ animation → key included
+    fixture.componentRef.setInput('animatingZone', { zoneId: 'EMZ_L', animationType: 'activate', relativePlayerIndex: 0 });
+    fixture.detectChanges();
+    expect(getProtected().animatingEmzKeys()).toEqual(new Set(['EMZ_L-activate']));
+
+    // Non-EMZ animation → empty (the regular animatingZoneKeys handles it)
+    fixture.componentRef.setInput('animatingZone', { zoneId: 'M3', animationType: 'flip', relativePlayerIndex: 1 });
+    fixture.detectChanges();
+    expect(getProtected().animatingEmzKeys().size).toBe(0);
   });
 });
