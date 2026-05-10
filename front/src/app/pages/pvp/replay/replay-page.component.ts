@@ -295,7 +295,6 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     this.cardTravel.registerContainer(this.elementRef.nativeElement);
     this.transport.configure({
       adapter: this.adapter,
-      orchestrator: this.orchestrator,
       phaseService: this.phaseService,
       boardStates: this.boardStates,
       computedUpTo: this.computedUpTo,
@@ -458,9 +457,9 @@ export class ReplayPageComponent implements OnInit, OnDestroy {
     const next = !this.animationsEnabled();
     this.animationsEnabled.set(next);
     localStorage.setItem(ReplayPageComponent.PREF_ANIMATIONS, String(next));
-    if (this.isPlaying()) this.transport.restart();
     const state = this.boardStates()[this.currentIndex()];
     if (state) this.adapter.jumpToState(state);
+    if (this.isPlaying()) this.transport.restart();
   }
 
   onTogglePromptMode(): void {
