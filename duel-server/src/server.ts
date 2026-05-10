@@ -1212,6 +1212,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
   // Solver mode branch — separate flow from PvP duels (Story 1.4)
   if (mode === 'solver') {
+    if (!checkProtocolVersion(ws, url, 'solver', ip)) return;
     const jwt = url.searchParams.get('token');
     if (!jwt) {
       ws.close(4001, 'Missing token');

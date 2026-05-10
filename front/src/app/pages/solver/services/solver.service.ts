@@ -15,6 +15,7 @@ import type {
   SolverHandtrapsMessage,
 } from '../../pvp/duel-ws.types';
 import {
+  PROTOCOL_VERSION,
   SOLVER_INIT,
   SOLVER_START,
   SOLVER_CANCEL,
@@ -191,7 +192,7 @@ export class SolverService implements OnDestroy {
     }
 
     this.intentionalClose = false;
-    const url = `${environment.wsUrl}?mode=solver&token=${encodeURIComponent(token)}`;
+    const url = `${environment.wsUrl}?mode=solver&token=${encodeURIComponent(token)}&pv=${PROTOCOL_VERSION}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
@@ -213,8 +214,18 @@ export class SolverService implements OnDestroy {
       this.handleMessage(msg);
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       this.ws = null;
+      // 4426 = protocol version mismatch — server is running a newer
+      // PROTOCOL_VERSION than this client bundle. Stop retrying so we
+      // don't loop forever; surface a 'please refresh' error instead.
+      if (event.code === 4426) {
+        this.intentionalClose = true;
+        this.solverState.set('error');
+        this.error.set({ error: 'INTERNAL_ERROR', message: 'Outdated client — please refresh the page' });
+        console.warn('[SolverService] WS closed — protocol version mismatch (server bundle ahead of client)');
+        return;
+      }
       if (!this.intentionalClose && !this.destroyed) {
         this.attemptReconnect();
       }

@@ -16,9 +16,9 @@
  * new message types treated as unknown) do NOT require a bump.
  *
  * Both client and server pin this constant via the byte-synced
- * shared file. The client appends `?pv=${PROTOCOL_VERSION}` to every PvP
- * + replay WS handshake URL; the server compares and rejects mismatches
- * with close-code 4426 ("Upgrade Required" — analog to HTTP 426).
+ * shared file. The client appends `?pv=${PROTOCOL_VERSION}` to every PvP,
+ * replay, and solver WS handshake URL; the server compares and rejects
+ * mismatches with close-code 4426 ("Upgrade Required" — analog to HTTP 426).
  *
  * Version log:
  *   1 — initial baseline (PvP + Replay shipped, MR5 board, chain overlay,
