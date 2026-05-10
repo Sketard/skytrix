@@ -88,9 +88,12 @@ export type AttachResult =
   | { kind: 'attached'; replaced: WebSocket | null };
 
 /** Register a new solver WS for `userId`. Atomic: limit check + replace +
- *  set happen here so two concurrent attaches can't both pass the limit. */
+ *  set happen here so two concurrent attaches can't both pass the limit.
+ *  `maxConn` is read once so a concurrent `/api/update-data` reload can't
+ *  flip the threshold mid-attach. */
 export function attachSolverConnection(userId: string, ws: WebSocket, jwt: string): AttachResult {
-  if (solverConnections.size >= getCfg().maxSolverConnections()) {
+  const maxConn = getCfg().maxSolverConnections();
+  if (solverConnections.size >= maxConn) {
     return { kind: 'limit' };
   }
   const previous = solverConnections.get(userId) ?? null;
