@@ -4,7 +4,8 @@ import { PvpBoardContainerComponent } from './pvp-board-container.component';
 import { CardTravelEngine } from '../card-travel-engine.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { DuelState, EMPTY_DUEL_STATE } from '../../types';
-import { BoardZone, CardOnField, ZoneId, POSITION } from '../../duel-ws.types';
+import { BoardZone, CardOnField, ZoneId, POSITION, LOCATION, SelectIdleCmdMsg, SelectBattleCmdMsg, CardInfo } from '../../duel-ws.types';
+import { CardAction } from '../idle-action-codes';
 
 // =============================================================================
 // Helpers
@@ -198,5 +199,225 @@ describe('PvpBoardContainerComponent — field zones + EMZ (C4.1)', () => {
     fixture.detectChanges();
 
     expect(component.absoluteTurnPlayer()).toBe(0);
+  });
+});
+
+// =============================================================================
+// C4.2 — Action dispatch + click handlers
+// =============================================================================
+
+function makeCardInfo(overrides: Partial<CardInfo> = {}): CardInfo {
+  return {
+    cardCode: 12345,
+    name: 'Test Card',
+    player: 0,
+    location: LOCATION.MZONE,
+    sequence: 0,
+    ...overrides,
+  };
+}
+
+function makeIdleCmdPrompt(overrides: Partial<SelectIdleCmdMsg> = {}): SelectIdleCmdMsg {
+  return {
+    type: 'SELECT_IDLECMD',
+    player: 0,
+    summons: [],
+    specialSummons: [],
+    repositions: [],
+    setMonsters: [],
+    activations: [],
+    setSpellTraps: [],
+    canBattlePhase: true,
+    canEndPhase: true,
+    ...overrides,
+  };
+}
+
+function makeBattleCmdPrompt(overrides: Partial<SelectBattleCmdMsg> = {}): SelectBattleCmdMsg {
+  return {
+    type: 'SELECT_BATTLECMD',
+    player: 0,
+    attacks: [],
+    activations: [],
+    canMainPhase2: true,
+    canEndPhase: true,
+    ...overrides,
+  };
+}
+
+describe('PvpBoardContainerComponent — action dispatch + clicks (C4.2)', () => {
+  let mockCardTravel: jasmine.SpyObj<CardTravelEngine>;
+  let mockArt: jasmine.SpyObj<DuelCardArtService>;
+  let fixture: ComponentFixture<PvpBoardContainerComponent>;
+  let component: PvpBoardContainerComponent;
+
+  beforeEach(() => {
+    mockCardTravel = jasmine.createSpyObj<CardTravelEngine>(
+      'CardTravelEngine',
+      ['registerZoneResolver', 'getZoneElement', 'createLineBetween'],
+    );
+    mockArt = jasmine.createSpyObj<DuelCardArtService>('DuelCardArtService', ['resolveUrl']);
+    mockArt.resolveUrl.and.returnValue('mock-url');
+
+    TestBed.configureTestingModule({
+      imports: [PvpBoardContainerComponent],
+      providers: [
+        { provide: CardTravelEngine, useValue: mockCardTravel },
+        { provide: DuelCardArtService, useValue: mockArt },
+        { provide: TranslateService, useValue: {
+          currentLang: 'en',
+          instant: (k: string) => k,
+          get: (k: string) => ({ subscribe: (fn: (v: string) => void) => fn(k) }),
+          onLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onTranslationChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+          onDefaultLangChange: { subscribe: () => ({ unsubscribe: () => undefined }) },
+        } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(PvpBoardContainerComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('preview', true);
+    fixture.componentRef.setInput('duelState', EMPTY_DUEL_STATE);
+  });
+
+  it('actionableCards() is empty when readOnly=true, even with an active prompt', () => {
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.componentRef.setInput('actionablePrompt', makeIdleCmdPrompt({
+      summons: [makeCardInfo({ location: LOCATION.HAND, sequence: 0 })],
+    }));
+    fixture.detectChanges();
+
+    expect(component.actionableCards().size).toBe(0);
+    expect(component.activateZoneIds().size).toBe(0);
+    expect(component.nonActivateZoneIds().size).toBe(0);
+  });
+
+  it('actionableCards() is empty when no prompt is active (regardless of duelState)', () => {
+    fixture.componentRef.setInput('actionablePrompt', null);
+    fixture.detectChanges();
+    expect(component.actionableCards().size).toBe(0);
+  });
+
+  it('IDLECMD prompt builds actionableCards via buildActionableCardsFromIdle', () => {
+    // Place a summonable monster at MZONE seq 2 → key "4-2"
+    const card = makeCardInfo({ location: LOCATION.MZONE, sequence: 2 });
+    fixture.componentRef.setInput('actionablePrompt', makeIdleCmdPrompt({ summons: [card] }));
+    fixture.detectChanges();
+
+    const map = component.actionableCards();
+    const key = `${LOCATION.MZONE}-2`;
+    expect(map.has(key)).toBe(true);
+    expect(map.get(key)?.[0].label).toBe('Normal Summon');
+  });
+
+  it('BATTLECMD prompt builds actionableCards via buildActionableCardsFromBattle', () => {
+    // Attack from MZONE seq 0 → key "4-0"
+    const card = makeCardInfo({ location: LOCATION.MZONE, sequence: 0 });
+    fixture.componentRef.setInput('actionablePrompt', makeBattleCmdPrompt({ attacks: [card] }));
+    fixture.detectChanges();
+
+    const map = component.actionableCards();
+    const key = `${LOCATION.MZONE}-0`;
+    expect(map.has(key)).toBe(true);
+    expect(map.get(key)?.[0].label).toBe('Attack');
+  });
+
+  it('activateZoneIds contains only zones with isActivateAction (gold-glow filter)', () => {
+    // Mix: one summon (non-activate) on M3, one activation on S2
+    const summon = makeCardInfo({ location: LOCATION.MZONE, sequence: 2 });
+    const activation = makeCardInfo({ location: LOCATION.SZONE, sequence: 1, cardCode: 22222 });
+    fixture.componentRef.setInput('actionablePrompt', makeIdleCmdPrompt({
+      summons: [summon],
+      activations: [activation],
+    }));
+    fixture.detectChanges();
+
+    expect(component.activateZoneIds()).toEqual(new Set<ZoneId>(['S2']));
+    expect(component.nonActivateZoneIds()).toEqual(new Set<ZoneId>(['M3']));
+  });
+
+  it('onZoneCardClick emits cardInspectRequest when the zone has a card', () => {
+    fixture.detectChanges();
+    const events: Array<{ cardCode: number }> = [];
+    component.cardInspectRequest.subscribe(e => events.push({ cardCode: e.cardCode }));
+
+    const card = makeCard({ cardCode: 55555 });
+    const zone = { zoneId: 'M1' as ZoneId, card, cardCount: 1, renderMode: 'terrain' as const, gridArea: 'mz1' };
+    component.onZoneCardClick({ currentTarget: document.createElement('div') } as unknown as MouseEvent, zone);
+
+    expect(events).toEqual([{ cardCode: 55555 }]);
+  });
+
+  it('onZoneCardClick emits menuRequest when actions are available for the zone', () => {
+    // Make M1 actionable via SUMMON.
+    const card = makeCardInfo({ location: LOCATION.MZONE, sequence: 0 });
+    fixture.componentRef.setInput('actionablePrompt', makeIdleCmdPrompt({ summons: [card] }));
+    fixture.detectChanges();
+
+    const menuEvents: Array<{ zoneId: ZoneId; actions: CardAction[] }> = [];
+    component.menuRequest.subscribe(e => menuEvents.push({ zoneId: e.zoneId, actions: e.actions }));
+
+    const onFieldCard = makeCard({ cardCode: 99999 });
+    const zone = { zoneId: 'M1' as ZoneId, card: onFieldCard, cardCount: 1, renderMode: 'terrain' as const, gridArea: 'mz1' };
+    component.onZoneCardClick({ currentTarget: document.createElement('div') } as unknown as MouseEvent, zone);
+
+    expect(menuEvents.length).toBe(1);
+    expect(menuEvents[0].zoneId).toBe('M1');
+    expect(menuEvents[0].actions[0].label).toBe('Normal Summon');
+  });
+
+  it('onZoneCardClick in readOnly=true emits cardInspectRequest but NOT menuRequest', () => {
+    fixture.componentRef.setInput('readOnly', true);
+    // Even with an actionable prompt set, readOnly must short-circuit the
+    // menu open path (replay must never expose interactive actions).
+    const card = makeCardInfo({ location: LOCATION.MZONE, sequence: 0 });
+    fixture.componentRef.setInput('actionablePrompt', makeIdleCmdPrompt({ summons: [card] }));
+    fixture.detectChanges();
+
+    const inspectEvents: number[] = [];
+    const menuEvents: ZoneId[] = [];
+    component.cardInspectRequest.subscribe(e => inspectEvents.push(e.cardCode));
+    component.menuRequest.subscribe(e => menuEvents.push(e.zoneId));
+
+    const zone = { zoneId: 'M1' as ZoneId, card: makeCard({ cardCode: 55555 }), cardCount: 1, renderMode: 'terrain' as const, gridArea: 'mz1' };
+    component.onZoneCardClick({ currentTarget: document.createElement('div') } as unknown as MouseEvent, zone);
+
+    expect(inspectEvents).toEqual([55555]);
+    expect(menuEvents).toEqual([]);
+  });
+
+  it('onPhaseAction is no-op in readOnly mode (replay)', () => {
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.detectChanges();
+
+    const events: Array<{ action: number; index: number | null }> = [];
+    component.actionResponse.subscribe(e => events.push(e));
+
+    component.onPhaseAction({ action: 6, index: null }); // BATTLE_PHASE
+
+    expect(events).toEqual([]);
+  });
+
+  it('onPhaseAction emits actionResponse when not readOnly', () => {
+    fixture.detectChanges();
+
+    const events: Array<{ action: number; index: number | null }> = [];
+    component.actionResponse.subscribe(e => events.push(e));
+
+    component.onPhaseAction({ action: 7, index: null }); // END_TURN
+
+    expect(events).toEqual([{ action: 7, index: null }]);
+  });
+
+  it('onZonePillClick emits zonePillRequest unconditionally (readOnly + live)', () => {
+    fixture.detectChanges();
+
+    const events: Array<{ zoneId: ZoneId; playerIndex: number }> = [];
+    component.zonePillRequest.subscribe(e => events.push(e));
+
+    component.onZonePillClick({ currentTarget: document.createElement('button') } as unknown as MouseEvent, 'GY', 1);
+
+    expect(events).toEqual([{ zoneId: 'GY', playerIndex: 1 }]);
   });
 });
