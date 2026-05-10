@@ -1341,8 +1341,12 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   } else {
     // --- Initial connection flow ---
     const tokenResult = sessionManager.consumePendingToken(token!);
-    if (!tokenResult) {
+    if (tokenResult.kind !== 'ok') {
       recordFailedWsAttempt(ip);
+      const reason = tokenResult.kind === 'session-gone'
+        ? 'token-orphaned (duel ended before handshake)'
+        : 'token-unknown (never issued or already consumed)';
+      logger.warn('Initial handshake rejected', { reason });
       ws.close(4001, 'Invalid or expired token');
       return;
     }

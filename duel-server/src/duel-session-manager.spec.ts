@@ -91,42 +91,58 @@ describe('DuelSessionManager', () => {
 
       expect(mgr.has('a')).toBe(false);
       expect(mgr.has('b')).toBe(true);
-      expect(mgr.consumePendingToken('tb0')).not.toBeNull();
+      expect(mgr.consumePendingToken('tb0').kind).toBe('ok');
     });
   });
 
   describe('consumePendingToken', () => {
-    it('returns the resolved session+playerIndex and deletes the token', () => {
+    it('returns ok + session+playerIndex and deletes the token', () => {
       const s = makeSession();
       mgr.register(s, ['t0', 't1']);
 
       const r0 = mgr.consumePendingToken('t0');
-      expect(r0).toEqual({ session: s, playerIndex: 0 });
+      expect(r0).toEqual({ kind: 'ok', session: s, playerIndex: 0 });
 
-      // Second call: token already consumed.
-      expect(mgr.consumePendingToken('t0')).toBeNull();
+      // Second call: token already consumed → unknown.
+      expect(mgr.consumePendingToken('t0')).toEqual({ kind: 'unknown' });
     });
 
-    it('returns null for an unknown token', () => {
-      expect(mgr.consumePendingToken('never-issued')).toBeNull();
+    it('returns unknown for an unknown token', () => {
+      expect(mgr.consumePendingToken('never-issued')).toEqual({ kind: 'unknown' });
     });
 
-    it('returns null and drops the orphan token when its session is gone', () => {
+    it('returns session-gone and drops the orphan token when activeDuels lost the session before terminate()', () => {
       const s = makeSession();
       mgr.register(s, ['t0', 't1']);
-      // Simulate the duel being cleaned up while the second player hasn't
-      // consumed their pending token yet (e.g. connection-timeout).
+      // Simulate a desync: the activeDuels entry vanishes (e.g. an
+      // earlier code path forgot to register, or the entry was wiped
+      // bypassing terminate()). The pending token is still in the map.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mgr as any).activeDuels.delete(s.duelId);
+
+      const r = mgr.consumePendingToken('t1');
+      expect(r).toEqual({ kind: 'session-gone' });
+
+      // Orphan is dropped — second call is unknown.
+      expect(mgr.consumePendingToken('t1')).toEqual({ kind: 'unknown' });
+    });
+
+    it('returns unknown after terminate() prunes the pending tokens', () => {
+      const s = makeSession();
+      mgr.register(s, ['t0', 't1']);
+      // Simulate the duel being cleaned up the normal way (terminate()
+      // prunes pendingTokens by duelId). The token is gone before lookup,
+      // so this is the 'unknown' branch — the 'session-gone' branch only
+      // fires when the activeDuels entry vanished without terminate().
       mgr.terminate(s);
-      // terminate() prunes pendingTokens by duelId, so the orphan is already
-      // gone — `consumePendingToken` returns null with the unknown branch.
-      expect(mgr.consumePendingToken('t1')).toBeNull();
+      expect(mgr.consumePendingToken('t1')).toEqual({ kind: 'unknown' });
     });
 
     it('maps the second token to playerIndex 1', () => {
       const s = makeSession();
       mgr.register(s, ['t0', 't1']);
       const r1 = mgr.consumePendingToken('t1');
-      expect(r1?.playerIndex).toBe(1);
+      expect(r1).toEqual({ kind: 'ok', session: s, playerIndex: 1 });
     });
   });
 
@@ -251,7 +267,7 @@ describe('DuelSessionManager', () => {
       mgr.terminate(s);
 
       expect(mgr.has(s.duelId)).toBe(false);
-      expect(mgr.consumePendingToken('t1')).toBeNull(); // pruned
+      expect(mgr.consumePendingToken('t1').kind).toBe('unknown'); // pruned
       expect(mgr.consumeReconnectToken('rA').kind).toBe('unknown'); // dropped
       // Side-effect on player object: reconnectToken nulled so the player
       // record is consistent.
@@ -279,7 +295,9 @@ describe('DuelSessionManager', () => {
       mgr.terminate(a);
 
       expect(mgr.has('b')).toBe(true);
-      expect(mgr.consumePendingToken('tb0')?.session).toBe(b);
+      const r = mgr.consumePendingToken('tb0');
+      expect(r.kind).toBe('ok');
+      if (r.kind === 'ok') expect(r.session).toBe(b);
       expect(mgr.consumeReconnectToken('rB').kind).toBe('ok');
     });
   });

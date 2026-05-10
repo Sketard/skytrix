@@ -44,21 +44,27 @@ export class DuelSessionManager {
   }
 
   /**
-   * Atomically read + delete a pending wsToken. Returns `null` if the
-   * token is unknown, OR if the duel referenced by the token has been
-   * cleaned up between issuance and connection (orphan token — also
-   * dropped from the map).
+   * Atomically read + delete a pending wsToken. Three outcomes (mirror
+   * of `consumeReconnectToken` so callers can render distinct log lines):
+   *  - `'unknown'`: token was never issued or already consumed
+   *  - `'session-gone'`: token was valid but the duel has been cleaned
+   *    up between issuance and the handshake (the orphan token is
+   *    dropped from the map)
+   *  - `'ok'`: caller receives the resolved session + playerIndex
    */
-  consumePendingToken(token: string): { session: ActiveDuelSession; playerIndex: Player } | null {
+  consumePendingToken(token: string):
+    | { kind: 'ok'; session: ActiveDuelSession; playerIndex: Player }
+    | { kind: 'session-gone' }
+    | { kind: 'unknown' } {
     const info = this.pendingTokens.get(token);
-    if (!info) return null;
+    if (!info) return { kind: 'unknown' };
     const session = this.activeDuels.get(info.duelId);
     if (!session) {
       this.pendingTokens.delete(token);
-      return null;
+      return { kind: 'session-gone' };
     }
     this.pendingTokens.delete(token);
-    return { session, playerIndex: info.playerIndex };
+    return { kind: 'ok', session, playerIndex: info.playerIndex };
   }
 
   /**
