@@ -78,6 +78,15 @@ import {
   handlePreDuelResponse,
   disposeRps,
 } from './rps-coordinator.js';
+import {
+  configureWorkerLifecycle,
+  isWorkerLifecycleConfigured,
+  safeTerminateWorker,
+  attachWorkerHandlers,
+  handleDuelEnd,
+  requestReplayFromWorker,
+  getTotalDuelsServed,
+} from './worker-lifecycle.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -108,7 +117,8 @@ const SOLVER_RESULT_CACHE_TTL_MS = 5 * 60 * 1000;
 const FILLER_CARD_ID = 43096270; // Alexandrite Dragon — vanilla filler for goldfish opponent
 
 const startTime = Date.now();
-let totalDuelsServed = 0;
+// totalDuelsServed moved into worker-lifecycle.ts (single source of truth
+// for the worker-terminate counter — read via getTotalDuelsServed()).
 let dataReady = false;
 /** Total WS handshakes rejected with close-code 4426 — surfaced via /status. */
 let protocolMismatchCount = 0;
@@ -208,7 +218,7 @@ configureHttpRoutes({
   setDataReady: (ready) => { dataReady = ready; },
   getValidationReason: () => validation.reason,
   activeDuelsSize: () => sessionManager.size(),
-  totalDuelsServed: () => totalDuelsServed,
+  totalDuelsServed: getTotalDuelsServed,
   protocolMismatchCount: () => protocolMismatchCount,
   startTime,
   dataDir: DATA_DIR,
@@ -250,6 +260,14 @@ configureRpsCoordinator({
   startDuelWithOrder,
   rpsTimeoutMs: RPS_TIMEOUT_MS,
   tpTimeoutMs: TP_TIMEOUT_MS,
+});
+
+configureWorkerLifecycle({
+  handleWorkerMessage,
+  cleanupDuelSession,
+  clearAllDuelTimers,
+  rematchExpiryMs: 5 * 60 * 1000,
+  onRematchExpired: rematchExpired,
 });
 
 // =============================================================================
@@ -449,63 +467,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 }
 
 // =============================================================================
-// Safe Worker Termination (M4: prevent double-terminate)
+// Worker Lifecycle
 // =============================================================================
-
-function safeTerminateWorker(session: ActiveDuelSession): void {
-  if (!session.workerTerminated && session.worker) {
-    session.workerTerminated = true;
-    totalDuelsServed++;
-    session.worker.removeAllListeners();
-    session.worker.terminate();
-  }
-}
-
-// =============================================================================
-// Worker Handler Attachment (reused for initial creation + rematch)
-// =============================================================================
-
-function attachWorkerHandlers(session: ActiveDuelSession): void {
-  if (!session.worker) return;
-  session.worker.on('message', (raw: unknown) => {
-    const wmsg = validateWorkerMessage(raw);
-    if (!wmsg) {
-      logger.error('Dropping malformed worker message', { duelId: session.duelId, raw });
-      return;
-    }
-    handleWorkerMessage(session, wmsg);
-  });
-  session.worker!.on('exit', (code) => {
-    logger.log('Worker exited', { duelId: session.duelId, exitCode: code });
-    // Only count if not already counted by safeTerminateWorker
-    if (!session.workerTerminated) {
-      session.workerTerminated = true;
-      totalDuelsServed++;
-    }
-    // If duel ended normally (endedAt set), keep session alive for rematch
-    if (session.endedAt !== null) return;
-    // Unexpected worker exit — full cleanup
-    cleanupDuelSession(session);
-  });
-  session.worker!.on('error', (err: Error) => {
-    logger.error('Worker error', { duelId: session.duelId, error: err.message });
-  });
-}
-
-function handleDuelEnd(session: ActiveDuelSession): void {
-  session.endedAt = Date.now();
-  clearAllDuelTimers(session);
-  // M14 — Solo sessions have no rematch flow
-  if (!session.soloMode) {
-    session.rematchTimeout = setTimeout(() => rematchExpired(session), 5 * 60 * 1000);
-  }
-}
-
-function requestReplayFromWorker(session: ActiveDuelSession, resultOverride: string): void {
-  if (!session.worker || session.workerTerminated) return;
-  session.pendingReplayResult = resultOverride;
-  session.worker.postMessage({ type: 'EMIT_REPLAY_DATA' });
-}
+// safeTerminateWorker / attachWorkerHandlers / handleDuelEnd /
+// requestReplayFromWorker / totalDuelsServed counter live in
+// worker-lifecycle.ts (extracted at H1-suite phase 2.1). Server.ts keeps
+// the actual `new Worker(...)` calls (the host owns where the worker URL
+// resolves) — the module owns the listener wiring and lifecycle flags.
 
 async function persistReplay(session: ActiveDuelSession, payload: import('./types.js').WorkerReplayPayload): Promise<void> {
   const metadata = session.pendingReplayResult
@@ -1066,6 +1034,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isTimerManagementConfigured()) unconfigured.push('timer-management');
   if (!isSolverHandlersConfigured()) unconfigured.push('solver-handlers');
   if (!isRpsCoordinatorConfigured()) unconfigured.push('rps-coordinator');
+  if (!isWorkerLifecycleConfigured()) unconfigured.push('worker-lifecycle');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
