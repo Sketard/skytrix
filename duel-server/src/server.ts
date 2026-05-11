@@ -92,6 +92,13 @@ import {
   isReplayPersistConfigured,
   persistReplay,
 } from './replay-persist.js';
+import {
+  configureWorkerMessageRouter,
+  isWorkerMessageRouterConfigured,
+  handleWorkerMessage,
+  broadcastMessage,
+  isSelectMessage,
+} from './worker-message-router.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -278,6 +285,11 @@ configureWorkerLifecycle({
 configureReplayPersist({
   springBootApiUrl: SPRING_BOOT_API_URL,
   internalApiKey: INTERNAL_API_KEY,
+});
+
+configureWorkerMessageRouter({
+  sendToPlayer,
+  maxInvalidResponses: MAX_INVALID_RESPONSES,
 });
 
 // =============================================================================
@@ -610,256 +622,15 @@ function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): voi
 // Worker → Main Message Handler
 // =============================================================================
 
-function handleWorkerMessage(session: ActiveDuelSession, wmsg: WorkerToMainMessage): void {
-  switch (wmsg.type) {
-    case 'WORKER_DUEL_CREATED':
-      logger.log('Duel created in worker', { duelId: wmsg.duelId });
-      session.startedAt = Date.now();
-      // Initialize turn timer context
-      session.timerContext = {
-        pools: [session.turnTimeSecs * 1000, session.turnTimeSecs * 1000],
-        running: false,
-        activePlayer: 0,
-        intervalRef: null,
-        lastTickMs: 0,
-        turnCount: 0,
-        pendingPlayer: null,
-        pendingTimeout: null,
-      };
-      // Send initial TIMER_STATE for both players (clients display 5:00 from start)
-      // Note: no-ops if players haven't connected yet — sendTimerStateToPlayer covers on connection
-      sendTimerStateToAll(session);
-      break;
-
-    case 'WORKER_MESSAGE':
-      broadcastMessage(session, wmsg.message);
-      break;
-
-    case 'WORKER_RETRY': {
-      // OCGCore rejected the player's response — re-send the cached prompt.
-      // lastSentPrompt is intentionally NOT cleared on PLAYER_RESPONSE for exactly this case.
-      const p = wmsg.playerIndex;
-      const cached = session.lastSentPrompt[p];
-      if (cached) {
-        session.invalidResponseCount[p]++;
-        logger.warn('RETRY: re-sending prompt', { duelId: session.duelId, retryCount: session.invalidResponseCount[p], promptType: cached.type, player: p });
-
-        if (session.invalidResponseCount[p] >= MAX_INVALID_RESPONSES) {
-          const winner: Player = p === 0 ? 1 : 0;
-          const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
-          logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'too_many_invalid_responses' });
-          sendToPlayer(session, 0, endMsg);
-          sendToPlayer(session, 1, endMsg);
-          handleDuelEnd(session);
-          requestReplayFromWorker(session, 'TIMEOUT');
-          return;
-        }
-
-        // Re-open the response window so the player can answer again.
-        session.awaitingResponse[p] = true;
-        sendToPlayer(session, p, cached);
-      }
-      break;
-    }
-
-    case 'WORKER_CANCEL_DONE': {
-      // P0-3bis.3 — the worker has rolled back to the IDLECMD/BATTLECMD
-      // boundary. Re-broadcast the IDLECMD/BATTLECMD prompt (cached at
-      // the moment the player committed) so the client returns to the
-      // action menu. NOT counted as a retry.
-      //
-      // We use `cancelTargetPrompt` (snapshot at PLAYER_RESPONSE for
-      // IDLECMD/BATTLECMD) rather than `lastSentPrompt` because the
-      // latter was overwritten by intermediate SELECT_PLACE /
-      // SELECT_TRIBUTE / SELECT_POSITION between the commit and the
-      // cancel. Re-broadcasting the latest `lastSentPrompt` would
-      // diverge from the worker's restored ocgcore state.
-      //
-      // For the FULL inventory of state slots reset across the cancel
-      // flow (worker + server + client), see
-      // `_bmad-output/planning-artifacts/cancel-rollback-contract.md`.
-      // READ IT BEFORE ADDING A NEW MUTABLE FIELD TO ActiveDuelSession
-      // that diverges between an IDLECMD/BATTLECMD response and the
-      // next IDLECMD/BATTLECMD prompt.
-      const p = wmsg.playerIndex;
-      const cached = session.cancelTargetPrompt[p];
-      if (cached) {
-        logger.log('CANCEL: re-broadcasting IDLECMD/BATTLECMD prompt', { duelId: session.duelId, promptType: cached.type, player: p });
-
-        // P0-3bis.3 follow-up — the client may have built up animation
-        // queue + chain links + pending prompt between the commit and
-        // the cancel (e.g. an MSG_CHAINING that pushed a chain link badge
-        // into the overlay). The worker's WASM rollback has discarded
-        // all of that on the server side, but the client doesn't know.
-        // Send a STATE_SYNC + empty CHAIN_STATE so the client's
-        // `handleMessage` STATE_SYNC path runs `processor.reset()` +
-        // `commitAll()` + clears pendingPrompt, then restores the chain
-        // to empty. Same machinery as a reconnection re-sync.
-        if (session.lastBoardState && session.lastBoardState.type === 'BOARD_STATE') {
-          const stateSync: ServerMessage = { type: 'STATE_SYNC', data: session.lastBoardState.data };
-          const filtered = filterMessage(stateSync, p);
-          if (filtered) sendToPlayer(session, p, filtered);
-        }
-        // Empty CHAIN_STATE — the worker has discarded the chain links.
-        // The client's CHAIN_STATE handler calls
-        // `processor.restoreChainState([], 'idle')` which clears the
-        // overlay + activeChainLinks signal.
-        sendToPlayer(session, p, {
-          type: 'CHAIN_STATE',
-          links: [],
-          phase: 'idle',
-          negatedIndices: [],
-        } as ServerMessage);
-        // Mirror the server-side chain bookkeeping so a subsequent
-        // reconnect-resync sends the same empty chain.
-        session.activeChainLinks = [];
-        session.chainPhase = 'idle';
-        session.negatedChainIndices.clear();
-        session.currentSolvingChainIndex = null;
-
-        // P0-3bis follow-up — clear the cached hint for this player.
-        // It was set when the cancelled effect fired its MSG_HINT
-        // ("Select the card(s) to send to the GY", etc.) and would
-        // otherwise be replayed verbatim on a reconnect-resync after
-        // cancel — pointing at an effect that no longer exists.
-        session.lastSentHint[p] = null;
-
-        // P0-3bis follow-up — reset the invalid-response counter.
-        // Without this, a player who alternates "activate → cancel"
-        // with a few RETRY-inducing inputs would accumulate strikes
-        // toward MAX_INVALID_RESPONSES and lose the duel artificially
-        // (see `WORKER_RETRY` handler around line 936). Cancel is a
-        // legitimate user action and shouldn't carry retry stigma.
-        session.invalidResponseCount[p] = 0;
-
-        // Restore both `lastSentPrompt` and `awaitingResponse` so any
-        // subsequent disconnect/reconnect re-sync hands back the same
-        // prompt the worker is now waiting on.
-        session.lastSentPrompt[p] = cached;
-        session.awaitingResponse[p] = true;
-        sendToPlayer(session, p, cached);
-        // Drop the cache — the prompt is now in flight and a future
-        // commit will re-snapshot it.
-        session.cancelTargetPrompt[p] = null;
-      } else {
-        logger.warn('CANCEL: no cached IDLECMD/BATTLECMD to re-broadcast', { duelId: session.duelId, player: p });
-      }
-      break;
-    }
-
-    case 'WORKER_ERROR': {
-      logger.error('Worker error', { duelId: wmsg.duelId, error: wmsg.error });
-      const errorMsg: ServerMessage = { type: 'DUEL_END', winner: null, reason: 'worker_error' };
-      logger.log('DUEL_END', { duelId: session.duelId, winner: null, reason: 'engine_error' });
-      sendToPlayer(session, 0, errorMsg);
-      sendToPlayer(session, 1, errorMsg);
-      handleDuelEnd(session);
-      safeTerminateWorker(session);
-      break;
-    }
-
-    case 'WORKER_REPLAY_DATA': {
-      logger.log('Received WORKER_REPLAY_DATA', { duelId: wmsg.duelId, responses: wmsg.payload.playerResponses.length });
-      persistReplay(session, wmsg.payload).finally(() => {
-        safeTerminateWorker(session);
-      });
-      break;
-    }
-  }
-}
-
-function broadcastMessage(session: ActiveDuelSession, message: ServerMessage): void {
-  // Detect natural DUEL_END from worker (LP=0, deck-out, etc.)
-  if (message.type === 'DUEL_END') {
-    logger.log('DUEL_END', { duelId: session.duelId, winner: message.winner, reason: 'worker' });
-    handleDuelEnd(session);
-  }
-
-  // Detect natural game end via MSG_WIN — generate DUEL_END for clients
-  // The worker sends MSG_WIN (not DUEL_END) for LP=0, deck-out, Exodia, etc.
-  if (message.type === 'MSG_WIN') {
-    const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
-    logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win' });
-    sendToPlayer(session, 0, endMsg);
-    sendToPlayer(session, 1, endMsg);
-    handleDuelEnd(session);
-  }
-
-  // Track active chain state for reconnection (extracted to chain-state-tracker
-  // for unit testing — same 4 transitions as before, behavior unchanged).
-  applyChainTransition(session, message);
-
-  // M22 — Tag MSG_CONFIRM_CARDS with the currently-resolving link's chainIndex
-  // so the client can filter prompt reveals per-link. Without this, a reload
-  // mid-chain replays previous links' confirms into a later link's prompt
-  // header (e.g. Dracotail #1 reveal leaks into Dracotail #2 SELECT_CARD).
-  // applyChainTransition above already updated currentSolvingChainIndex.
-  if (message.type === 'MSG_CONFIRM_CARDS' && session.currentSolvingChainIndex !== null) {
-    (message as { chainIndex?: number }).chainIndex = session.currentSolvingChainIndex;
-  }
-
-  // Store last BOARD_STATE for late-connecting players
-  if (message.type === 'BOARD_STATE') {
-    session.lastBoardState = message;
-    // Detect turn changes via turnCount in BOARD_STATE
-    // (MSG_NEW_TURN is not emitted as a ServerMessage by the worker — turn info is embedded in BOARD_STATE)
-    handleTurnChange(session, message.data.turnPlayer, message.data.turnCount);
-  }
-
-  // Track awaitingResponse for SELECT_* messages + start timers
-  if (isSelectMessage(message)) {
-    const targetPlayer = (message as { player: Player }).player;
-    logger.debug('SELECT prompt sent', { duelId: session.duelId, type: message.type, player: targetPlayer, timerRunning: session.timerContext?.running });
-    session.awaitingResponse[targetPlayer] = true;
-    session.promptSentAt[targetPlayer] = Date.now();
-    const opponentOfTarget: 0 | 1 = targetPlayer === 0 ? 1 : 0;
-    sendToPlayer(session, opponentOfTarget, { type: 'WAITING_RESPONSE' });
-    // Park the timer: runs for the prompted player, starts only after ANIMATIONS_DONE.
-    scheduleTimerStart(session, targetPlayer);
-    startInactivityTimer(session, targetPlayer);
-    // P0-3bis.3 — a fresh IDLECMD/BATTLECMD = new rollback boundary.
-    // The worker drops its WASM snapshot here too (see duel-worker.ts
-    // around the dto emit path). Mirror that: drop our prompt cache so
-    // a stale post-rollback re-broadcast can never fire after a new
-    // boundary has been set.
-    if (message.type === 'SELECT_IDLECMD' || message.type === 'SELECT_BATTLECMD') {
-      session.cancelTargetPrompt[targetPlayer] = null;
-    }
-  }
-
-  // Apply message filter per player
-  for (const playerIndex of [0, 1] as const) {
-    const filtered = filterMessage(message, playerIndex);
-    if (filtered) {
-      // Cache filtered SELECT_* message for prompt re-send on reconnection
-      if (isSelectMessage(message) && (message as { player: Player }).player === playerIndex) {
-        session.lastSentPrompt[playerIndex] = filtered;
-      }
-      // Cache last MSG_HINT per player for re-send on reconnection (precedes SELECT_*)
-      if (message.type === 'MSG_HINT') {
-        session.lastSentHint[playerIndex] = filtered;
-      }
-      sendToPlayer(session, playerIndex, filtered);
-    }
-  }
-}
-
+// handleWorkerMessage + broadcastMessage + isSelectMessage + SELECT_TYPES
+// moved to worker-message-router.ts at H1-suite phase 2.3.
+// configureWorkerMessageRouter wires sendToPlayer + maxInvalidResponses
+// at boot. Server.ts keeps sendToPlayer as the WS-write helper (37
+// inline call sites depend on it).
 function sendToPlayer(session: ActiveDuelSession, playerIndex: 0 | 1, message: ServerMessage): void {
   safeSend(session.players[playerIndex].ws, message);
 }
 
-const SELECT_TYPES = new Set([
-  'SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_CARD', 'SELECT_CHAIN',
-  'SELECT_EFFECTYN', 'SELECT_YESNO', 'SELECT_PLACE', 'SELECT_DISFIELD',
-  'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE', 'SELECT_SUM',
-  'SELECT_UNSELECT_CARD', 'SELECT_COUNTER', 'SORT_CARD', 'SORT_CHAIN',
-  'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
-  'RPS_CHOICE',
-]);
-
-function isSelectMessage(message: ServerMessage): boolean {
-  return SELECT_TYPES.has(message.type);
-}
 
 // Response data validation (bounds checking before FFI) — extracted to
 // validation/response-validation.ts so it can be unit-tested in isolation
@@ -995,6 +766,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isRpsCoordinatorConfigured()) unconfigured.push('rps-coordinator');
   if (!isWorkerLifecycleConfigured()) unconfigured.push('worker-lifecycle');
   if (!isReplayPersistConfigured()) unconfigured.push('replay-persist');
+  if (!isWorkerMessageRouterConfigured()) unconfigured.push('worker-message-router');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
