@@ -87,6 +87,11 @@ import {
   requestReplayFromWorker,
   getTotalDuelsServed,
 } from './worker-lifecycle.js';
+import {
+  configureReplayPersist,
+  isReplayPersistConfigured,
+  persistReplay,
+} from './replay-persist.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -268,6 +273,11 @@ configureWorkerLifecycle({
   clearAllDuelTimers,
   rematchExpiryMs: 5 * 60 * 1000,
   onRematchExpired: rematchExpired,
+});
+
+configureReplayPersist({
+  springBootApiUrl: SPRING_BOOT_API_URL,
+  internalApiKey: INTERNAL_API_KEY,
 });
 
 // =============================================================================
@@ -467,66 +477,15 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 }
 
 // =============================================================================
-// Worker Lifecycle
+// Worker Lifecycle + Replay Persistence
 // =============================================================================
 // safeTerminateWorker / attachWorkerHandlers / handleDuelEnd /
 // requestReplayFromWorker / totalDuelsServed counter live in
-// worker-lifecycle.ts (extracted at H1-suite phase 2.1). Server.ts keeps
-// the actual `new Worker(...)` calls (the host owns where the worker URL
-// resolves) — the module owns the listener wiring and lifecycle flags.
-
-async function persistReplay(session: ActiveDuelSession, payload: import('./types.js').WorkerReplayPayload): Promise<void> {
-  const metadata = session.pendingReplayResult
-    ? { ...payload.metadata, result: session.pendingReplayResult }
-    : payload.metadata;
-  session.pendingReplayResult = null;
-
-  const player1Id = Number(session.players[0].playerId);
-  const player2Id = Number(session.players[1].playerId);
-  if (!Number.isFinite(player1Id) || !Number.isFinite(player2Id)) {
-    logger.error('Replay persist aborted: invalid player IDs', { duelId: session.duelId, p1: session.players[0].playerId, p2: session.players[1].playerId });
-    return;
-  }
-
-  const body = {
-    player1Id,
-    player2Id,
-    metadata,
-    replayData: {
-      seed: payload.seed,
-      decks: payload.decks,
-      playerResponses: payload.playerResponses,
-    },
-  };
-
-  const maxRetries = 3;
-  const jsonBody = JSON.stringify(body);
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(`${SPRING_BOOT_API_URL}/replays`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-Key': INTERNAL_API_KEY },
-        body: jsonBody,
-      });
-      if (response.ok) {
-        const data = await response.json() as { id: string };
-        logger.log('Replay persisted', { duelId: session.duelId, replayId: data.id });
-        return;
-      }
-      const errBody = await response.text().catch(() => '');
-      logger.error('Replay persist failed', { duelId: session.duelId, attempt, maxRetries, status: response.status, body: errBody });
-    } catch (err) {
-      logger.error('Replay persist error', { duelId: session.duelId, attempt, maxRetries, error: err instanceof Error ? err.message : String(err) });
-    }
-
-    if (attempt < maxRetries) {
-      const delay = Math.pow(3, attempt - 1) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  logger.error('All persist attempts failed — replay data lost', { duelId: session.duelId, maxRetries });
-}
+// worker-lifecycle.ts (extracted at H1-suite phase 2.1). persistReplay
+// lives in replay-persist.ts (phase 2.2). Server.ts keeps the actual
+// `new Worker(...)` calls (the host owns where the worker URL
+// resolves) — the modules own the listener wiring, lifecycle flags,
+// and HTTP retry loop.
 
 // =============================================================================
 // Rematch
@@ -1035,6 +994,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isSolverHandlersConfigured()) unconfigured.push('solver-handlers');
   if (!isRpsCoordinatorConfigured()) unconfigured.push('rps-coordinator');
   if (!isWorkerLifecycleConfigured()) unconfigured.push('worker-lifecycle');
+  if (!isReplayPersistConfigured()) unconfigured.push('replay-persist');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
