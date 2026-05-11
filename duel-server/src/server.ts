@@ -28,7 +28,6 @@ import type {
   TimerContext,
   SessionPhase,
   RpsState,
-  WorkerReplayPayload,
   ReplayMetadata,
 } from './types.js';
 import type {
@@ -45,7 +44,6 @@ import { filterMessage } from './message-filter.js';
 import { validateData, initScriptsHash, getScriptsHash, getOcgcoreVersion } from './ocg-scripts.js';
 import * as logger from './logger.js';
 import { validateResponseData } from './validation/response-validation.js';
-import { validateWorkerMessage } from './validation/worker-message-validation.js';
 import { applyChainTransition, emptyChainState, type ChainStateContainer } from './chain-state-tracker.js';
 import { DuelSessionManager } from './duel-session-manager.js';
 import { consumeWsAttempt, recordFailedWsAttempt, startWsRateLimitSweep } from './ws-rate-limit.js';
@@ -97,8 +95,12 @@ import {
   isWorkerMessageRouterConfigured,
   handleWorkerMessage,
   broadcastMessage,
-  isSelectMessage,
 } from './worker-message-router.js';
+import {
+  configureForkHandlers,
+  isForkHandlersConfigured,
+  createForkSoloSession,
+} from './fork-handlers.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -290,6 +292,13 @@ configureReplayPersist({
 configureWorkerMessageRouter({
   sendToPlayer,
   maxInvalidResponses: MAX_INVALID_RESPONSES,
+});
+
+configureForkHandlers({
+  sessionManager,
+  sendToPlayer,
+  cleanupDuelSession,
+  forkConnectionTimeoutMs: 30_000,
 });
 
 // =============================================================================
@@ -767,6 +776,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isWorkerLifecycleConfigured()) unconfigured.push('worker-lifecycle');
   if (!isReplayPersistConfigured()) unconfigured.push('replay-persist');
   if (!isWorkerMessageRouterConfigured()) unconfigured.push('worker-message-router');
+  if (!isForkHandlersConfigured()) unconfigured.push('fork-handlers');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
@@ -855,10 +865,10 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     ws.on('close', () => detachSolverConnection(userId, ws));
 
     ws.on('error', (error) => {
-      console.error('[Solver] ws error', { userId, error });
+      logger.error('[Solver] ws error', { userId, error: error instanceof Error ? error.message : String(error) });
     });
 
-    console.log('[Solver] connected', { userId });
+    logger.log('[Solver] connected', { userId });
     return;
   }
 
@@ -1327,150 +1337,9 @@ const heartbeatTimer = setInterval(() => {
 // =============================================================================
 // Fork Session Bridge
 // =============================================================================
-// `createForkSoloSession` is the bridge that replay-handlers calls when a
-// fork worker reports sanity OK. It builds the ActiveDuelSession, registers
-// it with sessionManager, and wires the fork worker handlers. Replay-handlers
-// stays unaware of `ActiveDuelSession` shape.
-
-function createForkSoloSession({ forkDuelId, userId, worker, replayData }: {
-  forkDuelId: string;
-  userId: string;
-  worker: Worker;
-  replayData: WorkerReplayPayload;
-}): { token1: string; token2: string } {
-  const token1 = randomUUID();
-  const token2 = randomUUID();
-
-  const session: ActiveDuelSession = {
-    duelId: forkDuelId,
-    phase: 'DUELING',
-    rpsState: null,
-    players: [
-      { playerId: userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
-      { playerId: userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
-    ],
-    createdAt: Date.now(),
-    startedAt: Date.now(),
-    endedAt: null,
-    worker,
-    workerTerminated: false,
-    awaitingResponse: [false, false],
-    lastBoardState: null,
-    lastSentPrompt: [null, null],
-    lastSentHint: [null, null],
-    decks: replayData.decks,
-    rematchRequested: [false, false],
-    rematchTimeout: null,
-    preservationTimer: null,
-    bothDisconnected: false,
-    combinedGraceTimer: null,
-    storedDuelResult: null,
-    lastStateSyncAt: [0, 0],
-    lastCancelAt: [0, 0],
-    cancelTargetPrompt: [null, null],
-    timerContext: null,
-    soloMode: true,
-    skipShuffle: true,
-    turnTimeSecs: 300,
-    invalidResponseCount: [0, 0],
-    promptSentAt: [0, 0],
-    ...emptyChainState(),
-    playerUsernames: replayData.metadata.playerUsernames,
-    deckNames: replayData.metadata.deckNames,
-    pendingReplayResult: null,
-    forkConnectionTimeout: null,
-  };
-
-  sessionManager.register(session, [token1, token2]);
-
-  // H2 — Clean up if no client connects within 30s
-  session.forkConnectionTimeout = setTimeout(() => {
-    if (!session.players[0].connected && !session.players[1].connected) {
-      logger.log('ForkSolo: no client connected within timeout — cleaning up', { duelId: forkDuelId });
-      safeTerminateWorker(session);
-      cleanupDuelSession(session);
-    }
-  }, 30_000);
-
-  // Re-wire the fork worker from the replay-handlers handlers to the session
-  // ones. Order matters: removeAllListeners FIRST, then attach.
-  worker.removeAllListeners('message');
-  worker.removeAllListeners('exit');
-  worker.removeAllListeners('error');
-  setupForkWorkerHandlers(session, worker);
-
-  return { token1, token2 };
-}
-
-function setupForkWorkerHandlers(session: ActiveDuelSession, worker: Worker): void {
-  worker.on('message', (raw: unknown) => {
-    const wmsg = validateWorkerMessage(raw);
-    if (!wmsg) {
-      logger.error('Dropping malformed fork worker message', { duelId: session.duelId, raw });
-      return;
-    }
-    if (wmsg.type === 'WORKER_MESSAGE') {
-      const message = wmsg.message;
-
-      // Detect natural game end via MSG_WIN — generate DUEL_END for clients (same as broadcastMessage)
-      if (message.type === 'MSG_WIN') {
-        const endMsg: ServerMessage = { type: 'DUEL_END', winner: message.player, reason: 'win' };
-        logger.log('DUEL_END', { duelId: session.duelId, winner: message.player, reason: 'win', mode: 'fork_solo' });
-        sendToPlayer(session, 0, endMsg);
-        sendToPlayer(session, 1, endMsg);
-        handleDuelEnd(session);
-      }
-
-      // Store last BOARD_STATE for reconnection
-      if (message.type === 'BOARD_STATE') {
-        session.lastBoardState = message;
-      }
-
-      // Track SELECT prompts for awaiting response + cache for reconnection
-      if (isSelectMessage(message)) {
-        const targetPlayer = (message as { player: Player }).player;
-        session.awaitingResponse[targetPlayer] = true;
-      }
-
-      // Apply message filter (omniscient) and send per player. The outer
-      // readyState gate is a perf fast-path (skips filterMessage for closed
-      // sockets); safeSend covers the close-between-check-and-send race.
-      for (const [idx, ps] of session.players.entries()) {
-        if (ps.ws?.readyState === WebSocket.OPEN) {
-          const filtered = filterMessage(message, idx as 0 | 1, true);
-          if (filtered) {
-            // Cache filtered SELECT prompt for re-send on reconnection
-            if (isSelectMessage(message) && (message as { player: Player }).player === idx) {
-              session.lastSentPrompt[idx] = filtered;
-            }
-            if (message.type === 'MSG_HINT') {
-              session.lastSentHint[idx] = filtered;
-            }
-            safeSend(ps.ws, filtered);
-          }
-        }
-      }
-    } else if (wmsg.type === 'WORKER_ERROR') {
-      logger.error('ForkSolo worker error', { duelId: session.duelId, error: wmsg.error });
-    } else if (wmsg.type === 'WORKER_RETRY') {
-      // Re-send last prompt to the relevant player
-      for (const [idx, ps] of session.players.entries()) {
-        if (session.lastSentPrompt[idx]) {
-          safeSend(ps.ws, session.lastSentPrompt[idx]);
-        }
-      }
-    }
-  });
-
-  worker.on('exit', (code) => {
-    logger.log('ForkSolo worker exited', { duelId: session.duelId, exitCode: code });
-    session.workerTerminated = true;
-  });
-
-  worker.on('error', (err: Error) => {
-    logger.error('ForkSolo worker thread error', { duelId: session.duelId, error: err.message });
-  });
-}
+// createForkSoloSession + setupForkWorkerHandlers moved to fork-handlers.ts
+// at H1-suite phase 3.1. Replay-handlers receives the imported
+// createForkSoloSession via the same configureReplayHandlers call below.
 
 // =============================================================================
 // Graceful Shutdown
