@@ -71,6 +71,13 @@ import {
   attachSolverConnection,
   detachSolverConnection,
 } from './solver-handlers.js';
+import {
+  configureRpsCoordinator,
+  isRpsCoordinatorConfigured,
+  startRpsPhase,
+  handlePreDuelResponse,
+  disposeRps,
+} from './rps-coordinator.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -235,6 +242,14 @@ configureTimerManagement({
   reconnectGraceMs: RECONNECT_GRACE_MS,
   bothDisconnectedCleanupMs: BOTH_DISCONNECTED_CLEANUP_MS,
   animationsDoneTimeoutMs: ANIMATIONS_DONE_TIMEOUT_MS,
+});
+
+configureRpsCoordinator({
+  sendToPlayer,
+  filterMessage,
+  startDuelWithOrder,
+  rpsTimeoutMs: RPS_TIMEOUT_MS,
+  tpTimeoutMs: TP_TIMEOUT_MS,
 });
 
 // =============================================================================
@@ -566,7 +581,7 @@ function startRematch(session: ActiveDuelSession): void {
   });
 
   session.phase = 'DUELING';
-  session.rpsState = null;
+  disposeRps(session);
   session.worker = worker;
   session.workerTerminated = false;
   session.awaitingResponse = [false, false];
@@ -610,146 +625,13 @@ function rematchExpired(session: ActiveDuelSession): void {
 // =============================================================================
 // Pre-Duel RPS & Turn Player Selection
 // =============================================================================
-
-function clearRpsTimers(session: ActiveDuelSession): void {
-  if (session.rpsState) {
-    for (const t of session.rpsState.timers) clearTimeout(t);
-    session.rpsState.timers = [];
-  }
-}
-
-const MAX_RPS_ROUNDS = 10;
-
-function startRpsPhase(session: ActiveDuelSession, round = 0): void {
-  session.phase = 'RPS';
-  session.rpsState = { choices: [null, null], timers: [], round };
-  session.awaitingResponse = [true, true];
-
-  const rps0: ServerMessage = { type: 'RPS_CHOICE', player: 0 };
-  const rps1: ServerMessage = { type: 'RPS_CHOICE', player: 1 };
-  session.lastSentPrompt = [rps0, rps1];
-  sendToPlayer(session, 0, rps0);
-  sendToPlayer(session, 1, rps1);
-
-  // Timeout: auto-pick random choice for players who don't respond
-  session.rpsState.timers.push(setTimeout(() => {
-    if (session.phase !== 'RPS' || !session.rpsState) return;
-    for (const p of [0, 1] as const) {
-      if (session.rpsState.choices[p] === null) {
-        session.rpsState.choices[p] = Math.floor(Math.random() * 3);
-        session.awaitingResponse[p] = false;
-      }
-    }
-    resolveRps(session);
-  }, RPS_TIMEOUT_MS));
-}
-
-function resolveRps(session: ActiveDuelSession): void {
-  if (!session.rpsState) return;
-  const [c0, c1] = session.rpsState.choices;
-  if (c0 === null || c1 === null) return;
-  const round = session.rpsState.round;
-
-  // Determine winner: 0=Rock, 1=Paper, 2=Scissors
-  let winner: Player | null = null;
-  if (c0 !== c1) {
-    // Rock(0) beats Scissors(2), Scissors(2) beats Paper(1), Paper(1) beats Rock(0)
-    winner = ((c1 + 1) % 3 === c0) ? 0 : 1;
-  } else if (round + 1 >= MAX_RPS_ROUNDS) {
-    // Force random winner after too many draws
-    winner = Math.random() < 0.5 ? 0 : 1;
-  }
-
-  // Send RPS_RESULT (perspective-corrected by filterMessage)
-  const result: ServerMessage = { type: 'RPS_RESULT', player1Choice: c0, player2Choice: c1, winner };
-  for (const p of [0, 1] as const) {
-    const filtered = filterMessage(result, p);
-    if (filtered) sendToPlayer(session, p, filtered);
-  }
-
-  if (winner === null) {
-    // Draw — restart RPS after 2s
-    setTimeout(() => {
-      if (session.phase !== 'RPS') return;
-      startRpsPhase(session, round + 1);
-    }, 2000);
-    return;
-  } else {
-    // Winner chooses turn order after 1.5s
-    const rpsWinner = winner;
-    setTimeout(() => {
-      if (session.phase !== 'RPS') return;
-      session.phase = 'CHOOSE_ORDER';
-      session.awaitingResponse = [false, false];
-      session.awaitingResponse[rpsWinner] = true;
-      const tpMsg: ServerMessage = { type: 'SELECT_TP', player: rpsWinner };
-      session.lastSentPrompt = [null, null];
-      session.lastSentPrompt[rpsWinner] = tpMsg;
-      sendToPlayer(session, rpsWinner, tpMsg);
-      sendToPlayer(session, rpsWinner === 0 ? 1 : 0, { type: 'WAITING_RESPONSE' });
-
-      // TP timeout: auto-select "Go first" → send TP_RESULT then start
-      if (session.rpsState) {
-        session.rpsState.timers.push(setTimeout(() => {
-          if (session.phase !== 'CHOOSE_ORDER') return;
-          sendToPlayer(session, 0, { type: 'TP_RESULT', goFirst: rpsWinner === 0 });
-          sendToPlayer(session, 1, { type: 'TP_RESULT', goFirst: rpsWinner === 1 });
-          session.phase = 'TP_RESULT';
-          if (session.rpsState) {
-            session.rpsState.timers.push(setTimeout(() => {
-              if (session.phase !== 'TP_RESULT') return;
-              startDuelWithOrder(session, rpsWinner);
-            }, 1000));
-          }
-        }, TP_TIMEOUT_MS));
-      }
-    }, 1500);
-  }
-}
-
-function handlePreDuelResponse(session: ActiveDuelSession, playerIndex: 0 | 1, promptType: string, data: Record<string, unknown>): boolean {
-  if (session.phase === 'RPS' && promptType === 'RPS_CHOICE' && session.rpsState) {
-    const choice = data['choice'] as number;
-    if (typeof choice !== 'number' || choice < 0 || choice > 2) return true; // ignore invalid
-    if (session.rpsState.choices[playerIndex] !== null) return true; // already answered
-
-    session.rpsState.choices[playerIndex] = choice;
-    session.awaitingResponse[playerIndex] = false;
-    session.lastSentPrompt[playerIndex] = null;
-
-    // If both have answered, resolve
-    if (session.rpsState.choices[0] !== null && session.rpsState.choices[1] !== null) {
-      clearRpsTimers(session);
-      resolveRps(session);
-    }
-    return true;
-  }
-
-  if (session.phase === 'CHOOSE_ORDER' && promptType === 'SELECT_TP' && session.rpsState) {
-    clearRpsTimers(session);
-    const goFirst = data['goFirst'] === true;
-    const firstPlayer: 0 | 1 = goFirst ? playerIndex : (playerIndex === 0 ? 1 : 0);
-    session.awaitingResponse[playerIndex] = false;
-    session.lastSentPrompt[playerIndex] = null;
-
-    // Tell both players who goes first, then start duel after delay
-    sendToPlayer(session, 0, { type: 'TP_RESULT', goFirst: firstPlayer === 0 });
-    sendToPlayer(session, 1, { type: 'TP_RESULT', goFirst: firstPlayer === 1 });
-    session.phase = 'TP_RESULT';
-    session.rpsState.timers.push(setTimeout(() => {
-      if (session.phase !== 'TP_RESULT') return;
-      startDuelWithOrder(session, firstPlayer);
-    }, 1000));
-    return true;
-  }
-
-  return false; // not a pre-duel response
-}
+// startRpsPhase / handlePreDuelResponse / disposeRps live in rps-coordinator.ts
+// (extracted at H1-suite phase 5). The bridge into worker spawning below
+// (startDuelWithOrder) is injected back into the coordinator via configure.
 
 function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
   session.phase = 'DUELING';
-  clearRpsTimers(session);
-  session.rpsState = null;
+  disposeRps(session);
 
   // Swap decks and player sessions so firstPlayer becomes OCGCore player 0
   let decks = session.decks;
@@ -1073,8 +955,7 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
   session.lastSentHint = [null, null];
 
   // Clear pre-duel RPS timeout
-  clearRpsTimers(session);
-  session.rpsState = null;
+  disposeRps(session);
 
   // Clear rematch timeout
   if (session.rematchTimeout) {
@@ -1184,6 +1065,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isReplayHandlersConfigured()) unconfigured.push('replay-handlers');
   if (!isTimerManagementConfigured()) unconfigured.push('timer-management');
   if (!isSolverHandlersConfigured()) unconfigured.push('solver-handlers');
+  if (!isRpsCoordinatorConfigured()) unconfigured.push('rps-coordinator');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
