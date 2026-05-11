@@ -101,6 +101,11 @@ import {
   isForkHandlersConfigured,
   createForkSoloSession,
 } from './fork-handlers.js';
+import {
+  configureClientMessageRouter,
+  isClientMessageRouterConfigured,
+  handleClientMessage,
+} from './client-message-router.js';
 import { loadSolverConfig, loadHandtraps } from './solver/solver-config-loader.js';
 import { SolverOrchestrator } from './solver/solver-orchestrator.js';
 import type { HandtrapConfig, DuelConfig, SolverConfig, SolverProgress } from './solver/solver-types.js';
@@ -299,6 +304,18 @@ configureForkHandlers({
   sendToPlayer,
   cleanupDuelSession,
   forkConnectionTimeoutMs: 30_000,
+});
+
+configureClientMessageRouter({
+  sendToPlayer,
+  startRematch,
+  onStateSyncRequested: (session, playerIndex) => {
+    sendStateSnapshot(session, playerIndex);
+    resendPendingPrompt(session, playerIndex);
+  },
+  maxInvalidResponses: MAX_INVALID_RESPONSES,
+  stateSyncRateLimitMs: STATE_SYNC_RATE_LIMIT_MS,
+  cancelPromptRateLimitMs: CANCEL_PROMPT_RATE_LIMIT_MS,
 });
 
 // =============================================================================
@@ -777,6 +794,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isReplayPersistConfigured()) unconfigured.push('replay-persist');
   if (!isWorkerMessageRouterConfigured()) unconfigured.push('worker-message-router');
   if (!isForkHandlersConfigured()) unconfigured.push('fork-handlers');
+  if (!isClientMessageRouterConfigured()) unconfigured.push('client-message-router');
   if (unconfigured.length > 0) {
     throw new Error(`Boot invariant failed — modules not configured: ${unconfigured.join(', ')}`);
   }
@@ -1120,196 +1138,11 @@ function sendStateSnapshot(session: ActiveDuelSession, playerIndex: 0 | 1): void
 // Client Message Handling
 // =============================================================================
 
-const ALLOWED_CLIENT_TYPES = new Set(['PLAYER_RESPONSE', 'SURRENDER', 'REMATCH_REQUEST', 'REQUEST_STATE_SYNC', 'ACTIVITY_PING', 'ANIMATIONS_DONE', 'CANCEL_PROMPT_SEQUENCE']);
-
-function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 | 1, msg: ClientMessage): void {
-  // Validate message type
-  if (!ALLOWED_CLIENT_TYPES.has(msg.type)) {
-    logger.error('Invalid message type', { duelId: session.duelId, player: playerIndex, type: msg.type });
-    return;
-  }
-
-  switch (msg.type) {
-    case 'PLAYER_RESPONSE': {
-      logger.debug('PLAYER_RESPONSE', { duelId: session.duelId, player: playerIndex, promptType: msg.promptType, awaiting: session.awaitingResponse.slice(), lastPrompt: session.lastSentPrompt[playerIndex]?.type });
-      // Check awaitingResponse flag — prevents spam/out-of-sequence responses
-      if (!session.awaitingResponse[playerIndex]) {
-        logger.error('Unexpected PLAYER_RESPONSE', { duelId: session.duelId, player: playerIndex });
-        return;
-      }
-
-      // M28 — Validate promptType matches the expected prompt
-      const expectedPrompt = session.lastSentPrompt[playerIndex];
-      if (expectedPrompt && msg.promptType !== expectedPrompt.type) {
-        safeSend(session.players[playerIndex].ws, { type: 'ERROR', message: `Expected prompt type ${expectedPrompt.type}, got ${msg.promptType}` });
-        return;
-      }
-
-      // Pre-duel RPS/TP — handled by application layer, not forwarded to worker
-      if (session.phase !== 'DUELING') {
-        if (handlePreDuelResponse(session, playerIndex, msg.promptType, msg.data as unknown as Record<string, unknown>)) return;
-      }
-
-      // Validate response data bounds before forwarding to worker (FFI safety)
-      if (expectedPrompt) {
-        const validation = validateResponseData(expectedPrompt, msg.data as unknown as Record<string, unknown>);
-        if (!validation.ok) {
-          logger.warn('Invalid response data — re-sending prompt', { duelId: session.duelId, player: playerIndex, reason: validation.error });
-          session.invalidResponseCount[playerIndex]++;
-          if (session.invalidResponseCount[playerIndex] >= MAX_INVALID_RESPONSES) {
-            const winner: Player = playerIndex === 0 ? 1 : 0;
-            const endMsg: ServerMessage = { type: 'DUEL_END', winner, reason: 'too_many_invalid_responses' };
-            logger.log('DUEL_END', { duelId: session.duelId, winner, reason: 'too_many_invalid_responses' });
-            sendToPlayer(session, 0, endMsg);
-            sendToPlayer(session, 1, endMsg);
-            handleDuelEnd(session);
-            requestReplayFromWorker(session, 'TIMEOUT');
-            return;
-          }
-          // Re-send prompt like a RETRY
-          sendToPlayer(session, playerIndex, expectedPrompt);
-          return;
-        }
-      }
-
-      session.invalidResponseCount[playerIndex] = 0;
-      session.awaitingResponse[playerIndex] = false;
-      // Keep lastSentPrompt set — WORKER_RETRY (OCGCore rejected response) needs it to re-send.
-      // It is overwritten when the next SELECT prompt is broadcast, or cleared on reconnect/reset.
-      session.lastSentHint[playerIndex] = null;
-
-      // P0-3bis.3 — when the player commits a SELECT_IDLECMD/BATTLECMD
-      // response, snapshot the prompt SO the cancel handler can restore
-      // it later. The worker takes its WASM snapshot at the same boundary.
-      // We mirror the worker's intent on the server side because
-      // `lastSentPrompt` will be overwritten by intermediate
-      // SELECT_PLACE / SELECT_TRIBUTE / SELECT_POSITION before the user
-      // can right-click to cancel.
-      if (msg.promptType === 'SELECT_IDLECMD' || msg.promptType === 'SELECT_BATTLECMD') {
-        session.cancelTargetPrompt[playerIndex] = expectedPrompt ?? null;
-      }
-
-      // Story 3.2 — Pause turn timer + clear inactivity/race timers on player response
-      pauseTurnTimer(session);
-      clearInactivityTimer(session, playerIndex as Player);
-
-      const forwardToWorker = () => {
-        if (session.endedAt || !session.worker) return;
-        session.worker.postMessage({
-          type: 'PLAYER_RESPONSE',
-          playerIndex,
-          promptType: msg.promptType,
-          data: msg.data,
-        });
-      };
-
-      // Bluff timer disabled — forward immediately.
-      forwardToWorker();
-      break;
-    }
-
-    case 'SURRENDER': {
-      const opponentIndex: Player = playerIndex === 0 ? 1 : 0;
-      const endMsg: ServerMessage = { type: 'DUEL_END', winner: opponentIndex, reason: 'surrender' };
-      logger.log('DUEL_END', { duelId: session.duelId, winner: opponentIndex, reason: 'surrender', player: playerIndex });
-      sendToPlayer(session, 0, endMsg);
-      sendToPlayer(session, 1, endMsg);
-      handleDuelEnd(session);
-      requestReplayFromWorker(session, 'SURRENDER');
-      break;
-    }
-
-    case 'REMATCH_REQUEST': {
-      if (session.endedAt === null) break;
-      session.rematchRequested[playerIndex] = true;
-      const opponentIdx: Player = playerIndex === 0 ? 1 : 0;
-      if (session.rematchRequested[opponentIdx]) {
-        startRematch(session);
-      } else {
-        sendToPlayer(session, opponentIdx, { type: 'REMATCH_INVITATION' });
-      }
-      break;
-    }
-
-    case 'ACTIVITY_PING': {
-      // Reset inactivity timer if player is being prompted
-      if (session.awaitingResponse[playerIndex]) {
-        clearInactivityTimer(session, playerIndex as Player);
-        startInactivityTimer(session, playerIndex as Player);
-      }
-      break;
-    }
-
-    case 'ANIMATIONS_DONE': {
-      const ctx = session.timerContext;
-      if (ctx && ctx.pendingPlayer === playerIndex) {
-        if (ctx.pendingTimeout) {
-          clearTimeout(ctx.pendingTimeout);
-          ctx.pendingTimeout = null;
-        }
-        ctx.pendingPlayer = null;
-        startTurnTimer(session);
-      }
-      break;
-    }
-
-    case 'REQUEST_STATE_SYNC': {
-      // Story 5.2 — Rate-limit: max 1 per 5s per player
-      const now = Date.now();
-      if (now - session.lastStateSyncAt[playerIndex] < STATE_SYNC_RATE_LIMIT_MS) break;
-      session.lastStateSyncAt[playerIndex] = now;
-
-      sendStateSnapshot(session, playerIndex);
-      resendPendingPrompt(session, playerIndex);
-      break;
-    }
-
-    case 'CANCEL_PROMPT_SEQUENCE': {
-      // P0-3bis.3 — Roll back the duel to the most recent
-      // IDLECMD/BATTLECMD snapshot the worker holds. The worker will
-      // re-emit the original prompt so the player can choose again.
-      //
-      // Guards (P0-3bis.3 hardening — code-review 2026-05-08):
-      //  1. Phase must be DUELING — pre-duel RPS / rematch / disconnect-grace
-      //     can have `awaitingResponse=true` without an active duel worker.
-      //  2. Rate-limit (CANCEL_PROMPT_RATE_LIMIT_MS) — bounds the cost of a
-      //     malicious flood. Each cancel triggers a worker restore +
-      //     prompt re-broadcast; without this guard, scripted spam could
-      //     saturate the worker.
-      //  3. `awaitingResponse[player]` — the player must currently have
-      //     an in-flight prompt to cancel.
-      //  4. Worker must exist and duel not ended — defensive.
-      if (session.phase !== 'DUELING') {
-        logger.warn('CANCEL_PROMPT_SEQUENCE rejected (non-DUELING phase)', { duelId: session.duelId, player: playerIndex, phase: session.phase });
-        break;
-      }
-      const now = Date.now();
-      if (now - session.lastCancelAt[playerIndex] < CANCEL_PROMPT_RATE_LIMIT_MS) {
-        logger.warn('CANCEL_PROMPT_SEQUENCE rate-limited', { duelId: session.duelId, player: playerIndex });
-        break;
-      }
-      if (!session.awaitingResponse[playerIndex]) {
-        logger.warn('CANCEL_PROMPT_SEQUENCE while not awaiting response', { duelId: session.duelId, player: playerIndex });
-        break;
-      }
-      if (!session.worker || session.endedAt) {
-        logger.warn('CANCEL_PROMPT_SEQUENCE with no active worker', { duelId: session.duelId, player: playerIndex });
-        break;
-      }
-      session.lastCancelAt[playerIndex] = now;
-      logger.log('CANCEL_PROMPT_SEQUENCE forwarded to worker', { duelId: session.duelId, player: playerIndex });
-      // The worker will re-emit BOARD_STATE + the previous IDLECMD/BATTLECMD;
-      // those messages flow through the existing WORKER_MESSAGE handling so
-      // `awaitingResponse` is reset by the prompt-broadcast path. Don't
-      // pre-flip it here — let the prompt arrival do it normally.
-      session.worker.postMessage({
-        type: 'CANCEL_PROMPT_SEQUENCE',
-        playerIndex,
-      });
-      break;
-    }
-  }
-}
+// handleClientMessage + ALLOWED_CLIENT_TYPES moved to client-message-router.ts
+// at H1-suite phase 4.1. configureClientMessageRouter wires sendToPlayer +
+// startRematch + onStateSyncRequested + the 3 rate-limit/strike constants
+// at boot. server.ts only keeps the WS message handler closure that calls
+// handleClientMessage with the live playerIndex.
 
 // =============================================================================
 // Heartbeat
