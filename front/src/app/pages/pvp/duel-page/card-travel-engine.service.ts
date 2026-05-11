@@ -2,6 +2,13 @@ import { Injectable, Injector, OnDestroy, inject } from '@angular/core';
 import { toCardRect, buildTravelKeyframes } from './card-travel-helpers';
 import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
+import {
+  TRAVEL_FLIP_MIDPOINT_FRACTION,
+  TRAVEL_DEPARTURE_GLOW_FRACTION,
+  TRAVEL_IMPACT_GLOW_ON_FRACTION,
+  TRAVEL_IMPACT_GLOW_HOLD_FRACTION,
+  TRAVEL_LANDING_IMPACT_FRACTION,
+} from './animation-constants';
 
 export interface TravelOptions {
   showBack?: boolean;
@@ -129,19 +136,7 @@ export class CardTravelEngine implements OnDestroy {
     // getBoundingClientRect() returns the AABB which has swapped width/height.
     // Strip the transform momentarily to read the true un-rotated rect.
     const srcRotateZ = options.srcRotateZ ?? 0;
-    let rawSourceRect: DOMRect;
-    if (srcRotateZ && sourceEl instanceof HTMLElement) {
-      const savedTransform = sourceEl.style.transform;
-      const savedTransition = sourceEl.style.transition;
-      sourceEl.style.transition = 'none';
-      sourceEl.style.transform = 'none';
-      rawSourceRect = sourceEl.getBoundingClientRect();
-      sourceEl.style.transform = savedTransform;
-      void sourceEl.offsetHeight;
-      sourceEl.style.transition = savedTransition;
-    } else {
-      rawSourceRect = sourceEl.getBoundingClientRect();
-    }
+    const rawSourceRect = this.readRect(sourceEl, !!srcRotateZ);
     const sourceRect = toCardRect(rawSourceRect);
 
     // Detect destination fan rotation BEFORE reading its rect.
@@ -157,19 +152,7 @@ export class CardTravelEngine implements OnDestroy {
       if (matchTY) destTranslateY = parseFloat(matchTY[1]);
     }
 
-    let rawDestRect: DOMRect;
-    if (destRotateZ && destEl instanceof HTMLElement) {
-      const savedTransform = destEl.style.transform;
-      const savedTransition = destEl.style.transition;
-      destEl.style.transition = 'none';
-      destEl.style.transform = 'none';
-      rawDestRect = destEl.getBoundingClientRect();
-      destEl.style.transform = savedTransform;
-      void destEl.offsetHeight;
-      destEl.style.transition = savedTransition;
-    } else {
-      rawDestRect = destEl.getBoundingClientRect();
-    }
+    const rawDestRect = this.readRect(destEl, !!destRotateZ);
 
     const cardDestRect = toCardRect(rawDestRect);
 
@@ -192,7 +175,9 @@ export class CardTravelEngine implements OnDestroy {
 
     this._container.appendChild(floatingEl);
 
-    // Flip: swap img src at the 90° midpoint (edge-on, visually invisible swap)
+    // Flip: swap img src at the 90° midpoint (edge-on, visually invisible swap).
+    // TRAVEL_FLIP_MIDPOINT_FRACTION must match the 90° rotateY point of the
+    // keyframe rotation built in `buildTravelKeyframes`.
     if (options.flipDuringTravel) {
       const img = floatingEl.querySelector('img')!;
       const showingBack = options.showBack ?? false;
@@ -201,7 +186,7 @@ export class CardTravelEngine implements OnDestroy {
         img.src = showingBack
           ? this.toAbsoluteUrl(cardImage)
           : this.toAbsoluteUrl('assets/images/card_back.jpg');
-      }, duration * 0.45);
+      }, duration * TRAVEL_FLIP_MIDPOINT_FRACTION);
       this._timers.add(flipId);
     }
 
@@ -226,7 +211,7 @@ export class CardTravelEngine implements OnDestroy {
     });
 
     if (options.departureGlowColor) {
-      this.applyGlow(sourceEl, options.departureGlowColor, duration * 0.15);
+      this.applyGlow(sourceEl, options.departureGlowColor, duration * TRAVEL_DEPARTURE_GLOW_FRACTION);
     }
     if (options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
@@ -236,26 +221,19 @@ export class CardTravelEngine implements OnDestroy {
         const filterOffId = window.setTimeout(() => {
           this._timers.delete(filterOffId);
           floatingEl.style.filter = '';
-        }, duration * 0.25);
+        }, duration * TRAVEL_IMPACT_GLOW_HOLD_FRACTION);
         this._timers.add(filterOffId);
-      }, duration * 0.75);
+      }, duration * TRAVEL_IMPACT_GLOW_ON_FRACTION);
       this._timers.add(filterOnId);
     }
 
-    if (options.landingStyle === 'soft' && options.impactGlowColor) {
+    const isImpactLanding = options.landingStyle === 'soft' || options.landingStyle === 'banish';
+    if (isImpactLanding && options.impactGlowColor) {
       const glowColor = options.impactGlowColor;
       const id = window.setTimeout(() => {
         this._timers.delete(id);
         this.boardEffects.zoneImpactEffect(rawDestRect, glowColor, duration);
-      }, duration * 0.70);
-      this._timers.add(id);
-    }
-    if (options.landingStyle === 'banish' && options.impactGlowColor) {
-      const glowColor = options.impactGlowColor;
-      const id = window.setTimeout(() => {
-        this._timers.delete(id);
-        this.boardEffects.zoneImpactEffect(rawDestRect, glowColor, duration);
-      }, duration * 0.70);
+      }, duration * TRAVEL_LANDING_IMPACT_FRACTION);
       this._timers.add(id);
     }
 
@@ -269,6 +247,28 @@ export class CardTravelEngine implements OnDestroy {
   ngOnDestroy(): void {
     for (const id of this._timers) clearTimeout(id);
     this._timers.clear();
+  }
+
+  /**
+   * Read an element's bounding rect, optionally stripping its inline transform
+   * first so a rotated element returns its true un-rotated rect rather than
+   * the AABB. Restores the transform synchronously after the measurement;
+   * `void offsetHeight` forces a reflow so the restore takes effect before the
+   * next frame paints (transition was nulled out so no visible flash).
+   */
+  private readRect(el: HTMLElement | Element, stripTransform: boolean): DOMRect {
+    if (!stripTransform || !(el instanceof HTMLElement)) {
+      return el.getBoundingClientRect();
+    }
+    const savedTransform = el.style.transform;
+    const savedTransition = el.style.transition;
+    el.style.transition = 'none';
+    el.style.transform = 'none';
+    const rect = el.getBoundingClientRect();
+    el.style.transform = savedTransform;
+    void el.offsetHeight;
+    el.style.transition = savedTransition;
+    return rect;
   }
 
   private createFloatingElement(sourceRect: DOMRect, cardImage: string, options: TravelOptions): HTMLDivElement {

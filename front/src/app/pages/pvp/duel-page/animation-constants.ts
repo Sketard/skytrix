@@ -138,3 +138,26 @@ export const EQUIP_LINE_MIN_MS = 250;
  *  before falling back to single-player draw. ATTEMPTS × POLL_MS = ~200ms. */
 export const INITIAL_DRAW_PAIRING_ATTEMPTS = 5;
 export const INITIAL_DRAW_PAIRING_POLL_MS = 40;
+
+// =============================================================================
+// CardTravelEngine timing ratios — fractions of the travel `duration` that
+// govern when secondary effects fire relative to the main A→B keyframes.
+// =============================================================================
+
+/** Fraction of travel duration at which the mid-travel face flip swaps the
+ *  image src — anchored on the 90° edge-on point of the keyframe rotation. */
+export const TRAVEL_FLIP_MIDPOINT_FRACTION = 0.45;
+
+/** Fraction of travel duration the departure glow stays visible on the
+ *  source element (lead-in). */
+export const TRAVEL_DEPARTURE_GLOW_FRACTION = 0.15;
+
+/** Fraction of travel duration at which the impact drop-shadow turns on. */
+export const TRAVEL_IMPACT_GLOW_ON_FRACTION = 0.75;
+
+/** Fraction of travel duration the impact drop-shadow stays on before clearing. */
+export const TRAVEL_IMPACT_GLOW_HOLD_FRACTION = 0.25;
+
+/** Fraction of travel duration at which soft/banish landings trigger the
+ *  zoneImpactEffect (radial glow + dark sink). */
+export const TRAVEL_LANDING_IMPACT_FRACTION = 0.70;
