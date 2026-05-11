@@ -204,18 +204,14 @@ touches `_inFlight`/`_landed` directly.
 `.finished.then()` callback does NOT asynchronously re-add the element
 to `_landed` after the registry was cleared.
 
-**DI graph:** Engine ↔ BoardEffects (cycle, resolved via Angular
-field-level `inject()`). Engine → FloatRegistry. BoardEffects → Engine
-(uses `getZoneElement` / `getContainer` / `toAbsoluteUrl`).
-FloatRegistry has zero cross-service deps. The Engine ↔ BoardEffects
-cycle is intentional — `travel()` calls back into
-`zoneImpactEffect` / `slamDustParticles` for soft / banish / slam
-landings, while BoardEffects consumes the Engine's zone registry
-rather than duplicating it.
+**DI graph:** Engine ↔ BoardEffects (intentional cycle, resolved via
+Angular field-level `inject()` — `travel()` calls into
+`zoneImpactEffect` / `slamDustParticles` for soft/banish/slam landings,
+while BoardEffects reuses Engine's zone registry rather than duplicating
+it). Engine → FloatRegistry. FloatRegistry has zero cross-service deps.
 
 `RenderedBoardStateService.attachFloatRegistry(svc)` wires the
-LOCK-ASSERT observer (replaces former `attachCardTravelService` —
-the assertion only ever needed `inFlightByZone()`).
+LOCK-ASSERT observer (the assertion only ever needed `inFlightByZone()`).
 
 ## Async Handler Lock Contract
 
@@ -446,70 +442,42 @@ single line "what does this gate" — most existing entries are 1-3 lines.
 
 ## Polling Removal — Regression Surface
 
-⚠️ **If you ever see `[POLL-DROP REGRESSION]` in console.error or a
-duelAssert fires with site `POLL-DROP-REGRESSION`, READ THIS SECTION
-BEFORE INVESTIGATING ANYTHING ELSE.**
+The legacy chain-poll back-off (`_pollTimeout` + 50→500ms exponential +
+ceiling=30) was removed 2026-05-10 after investigation found it
+unreachable since commit 89b761c4 — three event-driven re-wakes
+(`startProcessingIfIdle` on WS message, `advanceStep` on
+`setAnimating(false)`, `initResumeEffect` on `chainOverlayReady`) cover
+the "chain resolving, queue temporarily empty" gap. The
+`armPollDropWatchdog()` (fired in the `'finalize'` case when
+`chainPhase === 'resolving'`, cleared in `startProcessingIfIdle` +
+`clearTimersAndPolling`) is the safety net: after
+`POLL_DROP_REGRESSION_WATCHDOG_MS` (10s) it logs
+`[POLL-DROP REGRESSION]` (unfilterable, not through `DuelLogger`) and
+fires `duelAssert(false, 'POLL-DROP-REGRESSION', ...)`.
 
-**Context.** The orchestrator used to run a chain-poll back-off
-(`_pollTimeout` + exponential 50→500ms + ceiling=30 force-finalize) when
-the queue emptied during `chainPhase === 'resolving'`. Investigation on
-2026-05-10 (Phase 2 of the pvp-replay-2026-05-08 audit closure) found
-the poll branch was UNREACHABLE since commit 89b761c4 (2026-04-06):
-the wait gate (`isWaitingForOverlay || hasDrawsInFlight → return`) and
-the poll predicate (`commitMode === 'deferred' && isWaitingForOverlay`)
-were mutually exclusive in the same loop tick. ~5 weeks of dead code.
-
-**Why it never broke prod.** Three event-driven re-wake paths cover the
-"chain in progress, queue temporarily empty" gap:
-- **PvP**: next WS message → `startProcessingIfIdle()` re-launches queue
-- **Replay**: `setAnimating(false)` → `advanceStep()` feeds next step
-- **Overlay**: `chainOverlayReady` signal → `initResumeEffect` resumes
-
-The dropped poll mechanism was a redundant safety net for the
-pathological case "MSG_CHAIN_END never arrives". Replaced by:
-
-**The watchdog.** `armPollDropWatchdog()` is called inside the
-`'finalize'` case of `_processAnimationQueueInner` whenever
-`chainPhase === 'resolving'`. After `POLL_DROP_REGRESSION_WATCHDOG_MS`
-(10s — generous, since legitimate event-driven re-wakes complete in
-<2s), the watchdog re-checks state. If the chain is still resolving and
-the queue is still empty, it fires:
-- `console.error('[POLL-DROP REGRESSION] ...')` (unfilterable, NOT
-  through `DuelLogger` which has category-based filtering)
-- `duelAssert(false, 'POLL-DROP-REGRESSION', ...)` (throws in dev)
-
-The error log dumps `activeChainLinks`, `queueLen`,
-`isWaitingForOverlay`, `hasBufferedEvents` — enough to reproduce.
-
-**If you see the marker, investigate in this order:**
+**If you see the marker, investigate in this order before anything
+else:**
 1. Did MSG_CHAIN_END arrive? Check WS logs for the duel ID.
 2. Did `chainPhase` transition to `'idle'`? Grep `applyChainEnd` traces.
-3. Was the resume effect (`initResumeEffect` on `chainOverlayReady`)
-   ever fired? Check `[ANIM:CHAIN] resumeEffect` logs.
+3. Was `initResumeEffect` fired on `chainOverlayReady`? Check
+   `[ANIM:CHAIN] resumeEffect` logs.
 4. Did `startProcessingIfIdle` get called after the stall? Check
    `[ANIM:QUEUE] startProcessingIfIdle` traces.
 
 If none of (1-4) hold, the dropped poll mechanism was masking a real
-upstream bug. Re-introducing the poll is NOT the fix — find the missing
-event/signal first. If you confirm the case is genuine and unfixable
-upstream, the simplest restore is to re-add a single
-`setTimeout(processAnimationQueue, 500)` here (no back-off, no ceiling
-— the watchdog itself is the ceiling).
-
-**Clear paths.** `clearPollDropWatchdog()` is called in
-`startProcessingIfIdle()` (any new event activity) and
-`clearTimersAndPolling()` (destroy/resetForSwitch/onStateSync — wired
-through `_isProcessing=false` cleanup).
+upstream bug — find the missing event/signal first, do NOT re-introduce
+the poll. Last-resort restore: a single
+`setTimeout(processAnimationQueue, 500)` in the finalize case (no
+back-off, no ceiling — the watchdog is the ceiling).
 
 **Grep markers (do not change without updating this section):**
-- `POLL-DROP REGRESSION` — the console.error string
-- `POLL-DROP-REGRESSION` — the duelAssert site tag
+`POLL-DROP REGRESSION` (the console.error string) and
+`POLL-DROP-REGRESSION` (the duelAssert site tag).
 
 ## Server Module Configuration (`createConfigurable<T>`)
 
-Server-side modules extracted from `server.ts` (`http-routes`,
-`replay-handlers`, `timer-management`, `solver-handlers`) follow a
-two-phase init contract via `createConfigurable<T>(name)`
+Server-side modules extracted from `server.ts` follow a two-phase init
+contract via `createConfigurable<T>(name)`
 (`duel-server/src/configurable.ts`). The factory returns
 `{ configure(cfg), get(), isConfigured() }`. `get()` throws
 `"<name>: configure<Name>() not called"` if the module is read before
@@ -518,6 +486,45 @@ in `server.ts` (block just before `wss.on('connection')`), which throws
 with the list of unconfigured modules. New configurable modules MUST
 register their `isXxxConfigured()` in the boot block — that block is
 the regression fence for the whole pattern.
+
+**Current extracts** (10 modules, each owns its slice of `server.ts`):
+
+- **`http-routes`** — `/health`, `/status`, `/api/update-data`,
+  `/api/validate-passcodes`.
+- **`replay-handlers`** — replay WS connections + fork-solo
+  bridge-in (delegates session creation to `fork-handlers`).
+- **`timer-management`** — turn/inactivity/grace timers + clock-skew
+  clamp.
+- **`solver-handlers`** — solver WS attach/detach + deck cache +
+  per-userId SOLVER_START mutex.
+- **`rps-coordinator`** — pre-duel RPS + turn-player selection state
+  machine; spawns the OCGCore worker via injected `startDuelWithOrder`.
+- **`worker-lifecycle`** — per-session worker spawn handle, listener
+  attach, idempotent terminate, natural-end bookkeeping
+  (`endedAt`, `totalDuelsServed`, rematch timer arm). Owns the
+  `workerTerminated` flag.
+- **`worker-message-router`** — dispatches worker→main messages
+  (`WORKER_*`) + `broadcastMessage` outbound (chain-state update,
+  CONFIRM_CARDS chainIndex tag, BOARD_STATE cache, per-player
+  `filterMessage`).
+- **`client-message-router`** — dispatches client→server messages
+  (`PLAYER_RESPONSE`, `SURRENDER`, `REMATCH_REQUEST`,
+  `REQUEST_STATE_SYNC`, `ACTIVITY_PING`, `ANIMATIONS_DONE`,
+  `CANCEL_PROMPT_SEQUENCE`), invalid-response strike count,
+  cancelTargetPrompt snapshot.
+- **`fork-handlers`** — fork-solo `ActiveDuelSession` construction +
+  fork-specific worker handlers (omniscient filtering, no
+  chain/turn/inactivity tracking, MSG_WIN logged as `mode:
+  'fork_solo'`).
+- **`replay-persist`** — POST replay payload to Spring Boot with
+  `3^(attempt-1)s` back-off; consumes `pendingReplayResult` override
+  for TIMEOUT/SURRENDER/RESIGN cases.
+
+`server.ts` retains: WS server, session map drives (via
+`DuelSessionManager`), `cleanupDuelSession`, `safeSend`,
+`sendToPlayer`, `broadcastMessage` plumbing closures, the new-PvP
+duel POST handler. Everything that was a long inline closure now lives
+in one of the modules above.
 
 ## WS Protocol Module Split (barrel)
 
@@ -622,24 +629,10 @@ outdated, refresh" UX rather than a generic "connection lost". Losing
 this branch reads as a transient network error to the user and
 triggers an infinite reconnect loop on stale bundles.
 
-## Solver Interruption Tags Generation
+## Solver Interruption Tags
 
-`duel-server/data/interruption-tags.json` is the single source of truth for
-which cards count as end-board interruptions and how they score. Adding new
-cards (or revalidating existing entries) goes through an AI-assisted prompt
-persisted at `_bmad-output/solver-data/interruption-tag-generation-prompt.md`.
-
-To add cards: invoke Claude Code with the cardIds, ask it to read the prompt
-file, fetch oracle text from `https://db.ygoprodeck.com/api/v7/cardinfo.php?id={cardId}`
-via WebFetch, and produce schema-compliant JSON entries. The new entries are
-inserted into `interruption-tags.json` with `_validated: false`. A human must
-review and flip `_validated: true` for top-meta cards.
-
-The schema accepts `sharedOpt`, `totalUsesPerTurn`, per-effect `trigger`, and
-audit metadata (`_generatedBy`, `_oracleVersion`, `_validated`). Existing
-entries without these fields still load — the loader is forward-compatible.
-
-The `trigger` field is critical: the solver's OPT-aware scoring uses it to
-disambiguate which effect of a multi-effect card was activated at a given
-prompt context. Missing or wrong triggers fall back to index 0 with a runtime
-warning.
+`duel-server/data/interruption-tags.json` is the single source of truth
+for end-board interruption scoring. Adding/revalidating cards is a
+procedure (AI-assisted prompt + ygoprodeck oracle fetch + human
+validation flip) — see
+`_bmad-output/solver-data/interruption-tags-howto.md`.
