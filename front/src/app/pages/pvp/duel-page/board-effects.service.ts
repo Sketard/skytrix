@@ -255,6 +255,76 @@ export class BoardEffectsService implements OnDestroy {
   }
 
   /**
+   * Deck-top reveal (MSG_CONFIRM_CARDS with `location === DECK`): lifts a
+   * face-up card float from the deck, runs a caller-supplied highlight, holds
+   * briefly, then fades out. The float is tracked in `_overlayEls` so reset /
+   * disconnect / ngOnDestroy clears it like any other overlay — no DOM leak
+   * even if the duel page is destroyed mid-animation.
+   *
+   * Reduced-motion / missing zone → no-op (`Promise.resolve()`). All durations
+   * are passed scaled by the caller (DuelContext.scaledDuration).
+   */
+  async revealCardOnDeck(
+    zoneKey: string,
+    cardImageUrl: string,
+    liftY: number,
+    durations: { lift: number; hold: number; fade: number },
+    onHighlight: (el: HTMLDivElement) => Promise<void>,
+  ): Promise<void> {
+    if (this._reducedMotion) return;
+    const zoneEl = this.cardTravel.getZoneElement(zoneKey);
+    if (!zoneEl) return;
+    const rect = toCardRect(zoneEl.getBoundingClientRect());
+    if (rect.width === 0) return;
+
+    const div = document.createElement('div');
+    div.style.cssText = `
+      position: fixed; pointer-events: none;
+      z-index: 900;
+      left: ${rect.left}px; top: ${rect.top}px;
+      width: ${rect.width}px; height: ${rect.height}px;
+      border-radius: 4px; overflow: hidden;
+      will-change: transform, opacity;
+    `;
+    const img = document.createElement('img');
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    img.src = cardImageUrl;
+    div.appendChild(img);
+    this.cardTravel.getContainer().appendChild(div);
+    this._overlayEls.add(div);
+
+    const liftAnim = div.animate([
+      { transform: 'translateY(0px) scale(1)', opacity: '0' },
+      { transform: `translateY(${liftY}px) scale(1.3)`, opacity: '1' },
+    ], { duration: durations.lift, easing: 'ease-out', fill: 'forwards' });
+
+    try {
+      await liftAnim.finished;
+      await onHighlight(div);
+      await new Promise<void>(resolve => {
+        const tid = window.setTimeout(() => {
+          this._timers.delete(tid);
+          resolve();
+        }, durations.hold);
+        this._timers.add(tid);
+      });
+      await div.animate(
+        [{ opacity: '1' }, { opacity: '0' }],
+        { duration: durations.fade, fill: 'forwards' },
+      ).finished;
+    } catch {
+      // Animation cancelled (reset / destroy) — `ngOnDestroy` / future bulk
+      // cleanup removes the element; just stop awaiting.
+      return;
+    } finally {
+      if (this._overlayEls.has(div)) {
+        div.remove();
+        this._overlayEls.delete(div);
+      }
+    }
+  }
+
+  /**
    * Create a card-shaped float positioned above the given pile zone (GY, BANISHED, EXTRA),
    * sized to match the zone and offset by a cascade index. Used by `TargetIndicatorManager`
    * to surface MSG_BECOME_TARGET feedback when targets are inside a pile (the pile only

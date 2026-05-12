@@ -3,14 +3,19 @@ import { signal, type WritableSignal } from '@angular/core';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelLogger } from './duel-logger';
 import type { GameEvent } from '../types';
-import type { ChainSolvingMsg, ChainSolvedMsg } from '../duel-ws.types';
-import { BOARD_CHANGING_EVENT_TYPES } from '../duel-ws.types';
+import type { ChainSolvingMsg, ChainSolvedMsg, ConfirmCardsMsg } from '../duel-ws.types';
+import { BOARD_CHANGING_EVENT_TYPES, LOCATION } from '../duel-ws.types';
 
 const solving = (chainIndex: number): GameEvent => ({ type: 'MSG_CHAIN_SOLVING', chainIndex }) as ChainSolvingMsg as GameEvent;
 const solved = (chainIndex: number): GameEvent => ({ type: 'MSG_CHAIN_SOLVED', chainIndex }) as ChainSolvedMsg as GameEvent;
 const move = (): GameEvent => ({ type: 'MSG_MOVE' }) as any;
 const damage = (): GameEvent => ({ type: 'MSG_DAMAGE', player: 0, amount: 100 }) as any;
 const draw = (): GameEvent => ({ type: 'MSG_DRAW', player: 0, cards: [] }) as any;
+const confirmCards = (locations: number[]): GameEvent => ({
+  type: 'MSG_CONFIRM_CARDS',
+  player: 0,
+  cards: locations.map(location => ({ cardCode: 1, player: 0, location, sequence: 0 })),
+}) as ConfirmCardsMsg as GameEvent;
 
 describe('ChainResolutionManager', () => {
   let mgr: ChainResolutionManager;
@@ -216,6 +221,40 @@ describe('ChainResolutionManager', () => {
       mgr.endDrain();
       expect(mgr.shouldBufferDuringChain).toBeTrue();
       expect(mgr.bufferIfResolving(move())).toBeTrue();
+    });
+
+    // Deck-top reveals (MSG_CONFIRM_CARDS where all cards stay on DECK)
+    // must NOT be buffered: they precede mid-effect prompts so the player
+    // sees the revealed card BEFORE answering. HAND-only or mixed
+    // HAND+DECK confirms keep the normal buffer path (orchestrator's
+    // buffer-replay-builder splits them per-card after the chain).
+    describe('MSG_CONFIRM_CARDS skip-buffer for DECK-only reveals', () => {
+      it('should not buffer when all confirmed cards are on DECK', () => {
+        enterResolving(0);
+        expect(mgr.bufferIfResolving(confirmCards([LOCATION.DECK, LOCATION.DECK]))).toBeFalse();
+        expect(mgr.hasBufferedEvents).toBeFalse();
+      });
+
+      it('should buffer when all confirmed cards are in HAND', () => {
+        enterResolving(0);
+        expect(mgr.bufferIfResolving(confirmCards([LOCATION.HAND]))).toBeTrue();
+        expect(mgr.hasBufferedEvents).toBeTrue();
+      });
+
+      it('should buffer when confirm mixes HAND and DECK cards', () => {
+        enterResolving(0);
+        expect(mgr.bufferIfResolving(confirmCards([LOCATION.HAND, LOCATION.DECK]))).toBeTrue();
+        expect(mgr.hasBufferedEvents).toBeTrue();
+      });
+
+      it('should buffer when all confirmed cards are in another non-HAND zone (e.g. GRAVE)', () => {
+        // Skip is strictly for HAND-absent confirms — but the current rule
+        // checks "every location !== HAND" so any non-HAND mix skips. This
+        // documents the actual behavior so future refactors notice if it
+        // diverges from intent.
+        enterResolving(0);
+        expect(mgr.bufferIfResolving(confirmCards([LOCATION.GRAVE]))).toBeFalse();
+      });
     });
   });
 

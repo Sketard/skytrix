@@ -5,6 +5,7 @@ import { ANIMATION_DATA_SOURCE, peekAndDequeueMatching } from './animation-data-
 import { MoveAnimationRouter } from './move-animation-router';
 import { CardTravelEngine, type TravelOptions } from './card-travel-engine.service';
 import { FloatRegistryService } from './float-registry.service';
+import { BoardEffectsService } from './board-effects.service';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { DuelContext } from './duel-context';
 import { DuelLogCategory, DuelLogger } from './duel-logger';
@@ -36,6 +37,7 @@ import { INITIAL_DRAW_PAIRING_ATTEMPTS, INITIAL_DRAW_PAIRING_POLL_MS } from './a
 export class DrawSequenceManager {
   private readonly cardTravelEngine = inject(CardTravelEngine);
   private readonly floatRegistry = inject(FloatRegistryService);
+  private readonly boardEffects = inject(BoardEffectsService);
   private readonly dataSource = inject(ANIMATION_DATA_SOURCE);
   private readonly ctx = inject(DuelContext);
   private readonly logger = inject(DuelLogger);
@@ -645,8 +647,16 @@ export class DrawSequenceManager {
     this.ctx.announceEvent('Cards revealed', msg.player);
     const handCards = msg.cards.filter(c => c.location === LOCATION.HAND);
     const deckCards = msg.cards.filter(c => c.location === LOCATION.DECK);
-    if (handCards.length && deckCards.length)
-      return Promise.all([this.confirmCardsInHand(handCards), this.confirmCardsOnDeck(deckCards)]).then(() => {});
+    // Sequence: DECK reveal first (card is shown then hidden again, no logical
+    // state change), THEN HAND reveal (player materialization). Running both
+    // in parallel would overlap visually; the deck reveal sets context for
+    // any hand reveal that follows in the same MSG_CONFIRM_CARDS batch.
+    if (deckCards.length && handCards.length) {
+      return (async () => {
+        await this.confirmCardsOnDeck(deckCards);
+        await this.confirmCardsInHand(handCards);
+      })();
+    }
     if (deckCards.length) return this.confirmCardsOnDeck(deckCards);
     return this.confirmCardsInHand(handCards);
   }
@@ -704,38 +714,30 @@ export class DrawSequenceManager {
     this.logger.log(DuelLogCategory.SHUFFLE, 'confirmCardsInHand — done: animated=%d/%d', animatedCount, cards.length);
   }
 
-  /** Reveal cards that stay on the deck (CONFIRM_DECKTOP): float lifts from the deck, shows face, fades out. */
+  /** Reveal cards that stay on the deck (CONFIRM_DECKTOP): float lifts from the deck, shows face, fades out.
+   *  Lifecycle delegated to `BoardEffectsService.revealCardOnDeck` — the float is tracked as an overlay so
+   *  reset / disconnect / destroy clears it (no DOM leak). */
   async confirmCardsOnDeck(cards: readonly { cardCode: number; player: number }[]): Promise<void> {
-    const liftDuration = this.ctx.scaledDuration(250, 125);
+    const durations = {
+      lift: this.ctx.scaledDuration(250, 125),
+      hold: this.ctx.scaledDuration(800, 400),
+      fade: this.ctx.scaledDuration(200, 100),
+    };
     const highlightDuration = this.ctx.scaledDuration(600, 300);
-    const holdDuration = this.ctx.scaledDuration(800, 400);
-    const fadeDuration = this.ctx.scaledDuration(200, 100);
 
     for (const card of cards) {
       const relPlayer = this.ctx.relativePlayer(card.player);
       const deckKey = `DECK-${relPlayer}`;
       const cardFaceUrl = this.cardTravelEngine.toAbsoluteUrl(`/api/documents/small/code/${card.cardCode}`);
-
-      const floatEl = this.cardTravelEngine.spawnRevealFloat(deckKey, cardFaceUrl);
-      if (!floatEl) continue;
-
       // Own deck is at the bottom (negative Y lifts toward center); opponent deck at top (positive Y).
       const liftY = relPlayer === 0 ? -60 : 60;
-      await floatEl.animate([
-        { transform: 'translateY(0px) scale(1)', opacity: '0' },
-        { transform: `translateY(${liftY}px) scale(1.3)`, opacity: '1' },
-      ], { duration: liftDuration, easing: 'ease-out', fill: 'forwards' }).finished;
-
-      await this.highlightDrawnCard(floatEl, highlightDuration, relPlayer === 1);
-
-      await new Promise<void>(r => {
-        const tid = setTimeout(r, holdDuration);
-        this._drawTimeouts.push(tid);
-      });
-
-      await floatEl.animate([{ opacity: '1' }, { opacity: '0' }],
-        { duration: fadeDuration, fill: 'forwards' }).finished;
-      floatEl.remove();
+      await this.boardEffects.revealCardOnDeck(
+        deckKey,
+        cardFaceUrl,
+        liftY,
+        durations,
+        (el) => this.highlightDrawnCard(el, highlightDuration, relPlayer === 1),
+      );
     }
   }
 

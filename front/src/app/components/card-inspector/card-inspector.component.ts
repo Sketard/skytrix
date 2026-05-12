@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, HostListener, inject, input, model, output, signal, effect } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, HostListener, inject, input, model, output, signal, effect } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { MatIconButton } from '@angular/material/button';
@@ -52,7 +52,12 @@ export class CardInspectorComponent {
   private _pinchStartDist = 0;
   private _pinchStartZoom = 1;
 
+  // `wheel` and `touchmove` need passive: false to call e.preventDefault()
+  // (Chrome ignores it on default-passive listeners). @HostListener doesn't
+  // expose the passive option, so listeners are attached manually and torn
+  // down via DestroyRef.
   private readonly _lightboxWheelHandler = (e: WheelEvent): void => {
+    if (!this.lightboxOpen()) return;
     e.preventDefault();
     const delta = e.deltaY < 0
       ? CardInspectorComponent.LIGHTBOX_ZOOM_STEP
@@ -62,7 +67,7 @@ export class CardInspectorComponent {
   };
 
   private readonly _pinchStartHandler = (e: TouchEvent): void => {
-    if (e.touches.length !== 2) return;
+    if (!this.lightboxOpen() || e.touches.length !== 2) return;
     e.preventDefault();
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -71,7 +76,7 @@ export class CardInspectorComponent {
   };
 
   private readonly _pinchMoveHandler = (e: TouchEvent): void => {
-    if (e.touches.length !== 2) return;
+    if (!this.lightboxOpen() || e.touches.length !== 2 || this._pinchStartDist === 0) return;
     e.preventDefault();
     const dx = e.touches[0].clientX - e.touches[1].clientX;
     const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -98,6 +103,17 @@ export class CardInspectorComponent {
         ? c.images.findIndex(img => img.id === c.selectedImageId)
         : 0;
       this.currentImageIndex.set(idx >= 0 ? idx : 0);
+    });
+
+    // Attach lightbox zoom listeners once. Handlers self-guard on
+    // `lightboxOpen()`, so they no-op when the lightbox is closed.
+    document.addEventListener('wheel', this._lightboxWheelHandler, { passive: false });
+    document.addEventListener('touchstart', this._pinchStartHandler, { passive: false });
+    document.addEventListener('touchmove', this._pinchMoveHandler, { passive: false });
+    inject(DestroyRef).onDestroy(() => {
+      document.removeEventListener('wheel', this._lightboxWheelHandler);
+      document.removeEventListener('touchstart', this._pinchStartHandler);
+      document.removeEventListener('touchmove', this._pinchMoveHandler);
     });
   }
 
@@ -134,17 +150,11 @@ export class CardInspectorComponent {
 
   openLightbox(): void {
     this.lightboxOpen.set(true);
-    document.addEventListener('wheel', this._lightboxWheelHandler, { passive: false });
-    document.addEventListener('touchstart', this._pinchStartHandler, { passive: false });
-    document.addEventListener('touchmove', this._pinchMoveHandler, { passive: false });
   }
 
   closeLightbox(): void {
     this.lightboxOpen.set(false);
     this.lightboxZoom.set(1);
-    document.removeEventListener('wheel', this._lightboxWheelHandler);
-    document.removeEventListener('touchstart', this._pinchStartHandler);
-    document.removeEventListener('touchmove', this._pinchMoveHandler);
   }
 
   onLightboxImgClick(event: MouseEvent): void {

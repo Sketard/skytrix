@@ -271,21 +271,6 @@ export class CardTravelEngine implements OnDestroy {
     return rect;
   }
 
-  /**
-   * Spawn a float positioned at the given zone, face-up. Returns null if the zone
-   * element is not found. Caller owns the element lifecycle (animate, then remove).
-   */
-  spawnRevealFloat(zoneKey: string, cardImageUrl: string): HTMLDivElement | null {
-    if (!this._zoneResolver) return null;
-    const el = this._zoneResolver(zoneKey);
-    if (!el) return null;
-    const rect = toCardRect(el.getBoundingClientRect());
-    if (rect.width === 0) return null;
-    const div = this.createFloatingElement(rect, cardImageUrl, {});
-    this._container.appendChild(div);
-    return div;
-  }
-
   private createFloatingElement(sourceRect: DOMRect, cardImage: string, options: TravelOptions): HTMLDivElement {
     const div = document.createElement('div');
     div.style.cssText = `
