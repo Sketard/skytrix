@@ -360,13 +360,7 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
   mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
 
-  &::-webkit-scrollbar { width: 8px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb {
-    background: var(--gold-soft-30);
-    border-radius: 4px;
-    &:hover { background: var(--gold-soft-40); }
-  }
+  // Scrollbar = Ghost global (cf. _scrollbar.scss). Pas d'override ici.
 
   // CDK injects two helper layers — let them inherit our viewport sizing.
   ::ng-deep .cdk-virtual-scroll-content-wrapper {

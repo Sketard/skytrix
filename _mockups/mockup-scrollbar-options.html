@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mockup — Scrollbar Options (skytrix DS)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DS TOKENS — subset aligné sur front/src/app/styles/_tokens.scss
+   ============================================================ */
+:root {
+  --surface-bg:        #0a0a14;
+  --surface-bg-deep:   #0f0f1c;
+  --surface-card-ds:   rgba(30, 30, 46, 0.85);
+  --surface-card-low:  rgba(22, 22, 36, 0.85);
+  --surface-hover:     rgba(255, 255, 255, 0.06);
+  --border-soft:       rgba(255, 255, 255, 0.10);
+  --border-medium:     rgba(255, 255, 255, 0.18);
+
+  --gold:           #C9A84C;
+  --gold-50:        #ffe9a8;
+  --gold-soft-04:   rgba(201, 168, 76, 0.04);
+  --gold-soft-08:   rgba(201, 168, 76, 0.08);
+  --gold-soft-10:   rgba(201, 168, 76, 0.10);
+  --gold-soft-15:   rgba(201, 168, 76, 0.15);
+  --gold-soft-20:   rgba(201, 168, 76, 0.20);
+  --gold-soft-25:   rgba(201, 168, 76, 0.25);
+  --gold-soft-30:   rgba(201, 168, 76, 0.30);
+  --gold-soft-40:   rgba(201, 168, 76, 0.40);
+  --gold-soft-50:   rgba(201, 168, 76, 0.50);
+
+  --text-primary:   #EAEAEA;
+  --text-secondary: #9E9E9E;
+  --text-muted:     #6e6e6e;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-pill: 999px;
+
+  --transition-fast:   150ms;
+  --transition-normal: 250ms;
+  --ease-out: cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  --gradient-arena-radial: radial-gradient(ellipse at top, #1a1a2e 0%, var(--surface-bg-deep) 65%, var(--surface-bg) 100%);
+  --gradient-arena-grid:
+    linear-gradient(to right, var(--gold-soft-08) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gold-soft-08) 1px, transparent 1px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+body {
+  background-image:
+    var(--gradient-arena-grid),
+    var(--gradient-arena-radial);
+  background-size: 50px 50px, 100% 100%;
+  background-position: 0 0, 0 0;
+  padding: var(--space-7) var(--space-5);
+}
+
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  color: var(--gold-50);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+.page-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  margin-bottom: var(--space-7);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   Card de demo (un par option)
+   ============================================================ */
+.demo {
+  background: linear-gradient(135deg, var(--surface-card-ds), var(--surface-card-low));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.demo-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-soft);
+}
+.demo-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--gold-50);
+  letter-spacing: 0.04em;
+}
+.demo-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--gold-soft-15);
+  color: var(--gold-50);
+  border: 1px solid var(--gold-soft-30);
+}
+.demo-badge.reco {
+  background: var(--gold);
+  color: #1a1208;
+  border-color: var(--gold);
+}
+
+.demo-pitch {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  min-height: 60px;
+}
+
+.scroll-box {
+  height: 320px;
+  background: rgba(0, 0, 0, 0.25);
+  /* `outline` au lieu de `border` : la border 1px décale le thumb d'1px
+     vers le bas (le scrollbar est dessiné DANS la padding-box, donc sous
+     la border). Outline est hors layout = thumb collé au top pixel-perfect. */
+  outline: 1px solid var(--border-soft);
+  outline-offset: -1px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Tuer les boutons fléchés natifs Windows qui réservent un creux
+   en haut/bas même quand ils ne s'affichent pas. Il faut viser TOUTES
+   les variantes pseudo (start/end, single/double, vertical/horizontal)
+   sinon Chrome Windows en laisse passer. */
+.scroll-box::-webkit-scrollbar-button,
+.scroll-box::-webkit-scrollbar-button:vertical:start,
+.scroll-box::-webkit-scrollbar-button:vertical:end,
+.scroll-box::-webkit-scrollbar-button:vertical:start:decrement,
+.scroll-box::-webkit-scrollbar-button:vertical:end:increment,
+.scroll-box::-webkit-scrollbar-button:vertical:start:increment,
+.scroll-box::-webkit-scrollbar-button:vertical:end:decrement,
+.scroll-box::-webkit-scrollbar-button:horizontal:start,
+.scroll-box::-webkit-scrollbar-button:horizontal:end,
+.scroll-box::-webkit-scrollbar-button:start:decrement,
+.scroll-box::-webkit-scrollbar-button:end:increment,
+.scroll-box::-webkit-scrollbar-button:start:increment,
+.scroll-box::-webkit-scrollbar-button:end:decrement {
+  display: none;
+  height: 0;
+  width: 0;
+  background: transparent;
+}
+
+.scroll-item {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--gold-soft-08);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+.scroll-item:last-child { border-bottom: none; }
+.scroll-item small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.demo-code {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  color: var(--gold-50);
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ============================================================
+   OPTION A — Ghost Scrollbar (recommandée)
+   Très fine au repos (2px gold 8%), grossit au hover (6px gold 25%).
+   ============================================================ */
+.scroll--ghost {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-soft-08) transparent;
+  transition: scrollbar-color var(--transition-normal) var(--ease-out);
+}
+.scroll--ghost:hover,
+.scroll--ghost:focus-within {
+  scrollbar-color: var(--gold-soft-30) transparent;
+}
+.scroll--ghost::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll--ghost::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll--ghost::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-08);
+  /* Pas de border-radius : sinon le thumb a un creux en haut/bas
+     quand le scroll est au max et ne paraît pas collé au bord. */
+  border-radius: 0;
+  transition: background var(--transition-normal) var(--ease-out),
+              width var(--transition-fast) var(--ease-out);
+}
+.scroll--ghost:hover::-webkit-scrollbar-thumb,
+.scroll--ghost:focus-within::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-25);
+}
+.scroll--ghost::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-soft-40);
+}
+
+/* ============================================================
+   OPTION B — Holo Pill (assumée DS)
+   Pill gold 25%, glow au hover (raccord --pvp-actionable-glow).
+   ============================================================ */
+.scroll--holo {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-soft-30) var(--gold-soft-04);
+}
+.scroll--holo::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll--holo::-webkit-scrollbar-track {
+  background: var(--gold-soft-04);
+  /* Pas de margin : la piste va d'un bord à l'autre. */
+}
+.scroll--holo::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold-soft-40), var(--gold-soft-25));
+  /* Radius modeste — assez pour adoucir, pas assez pour décoller du bord. */
+  border-radius: 3px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: box-shadow var(--transition-fast) var(--ease-out),
+              background var(--transition-fast) var(--ease-out);
+}
+.scroll--holo::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--gold), var(--gold-soft-40));
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px var(--gold-soft-50),
+              0 0 6px var(--gold-soft-40);
+}
+.scroll--holo::-webkit-scrollbar-thumb:active {
+  background: var(--gold-50);
+  background-clip: padding-box;
+}
+
+/* ============================================================
+   OPTION C — Edge-fade (le plus discret)
+   2px collé au bord + mask fade en bas du contenu.
+   ============================================================ */
+.scroll--edge {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-soft-15) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+}
+.scroll--edge::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.scroll--edge::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll--edge::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-15);
+  border-radius: 0;
+  transition: background var(--transition-fast) var(--ease-out);
+}
+.scroll--edge:hover::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-30);
+}
+
+/* ============================================================
+   Comparaison bottom — état "repos" vs "hover" en visuel statique
+   ============================================================ */
+.compare {
+  margin-top: var(--space-7);
+  background: linear-gradient(135deg, var(--surface-card-ds), var(--surface-card-low));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+}
+.compare h2 {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  color: var(--gold-50);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-5);
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  gap: var(--space-4);
+  align-items: center;
+  font-size: 0.85rem;
+}
+.compare-grid > .row-label {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.compare-grid > .col-header {
+  color: var(--gold-50);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.bar {
+  height: 80px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.bar::before { /* simulated thumb — collé en haut comme un vrai scrollbar au repos */
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 32px;
+  border-radius: var(--radius-pill);
+}
+
+/* Ghost — repos */
+.bar.ghost-rest::before {
+  width: 2px;
+  right: 2px;
+  background: var(--gold-soft-08);
+}
+/* Ghost — hover */
+.bar.ghost-hover::before {
+  width: 6px;
+  right: 2px;
+  background: var(--gold-soft-25);
+}
+/* Holo — repos */
+.bar.holo-rest::before {
+  width: 10px;
+  right: 2px;
+  background: linear-gradient(180deg, var(--gold-soft-40), var(--gold-soft-25));
+}
+.bar.holo-rest::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background: var(--gold-soft-04);
+  z-index: -1;
+}
+/* Holo — hover */
+.bar.holo-hover::before {
+  width: 10px;
+  right: 2px;
+  background: linear-gradient(180deg, var(--gold), var(--gold-soft-40));
+  box-shadow: inset 0 0 0 1px var(--gold-soft-50),
+              0 0 6px var(--gold-soft-40);
+}
+/* Edge — repos */
+.bar.edge-rest::before {
+  width: 3px;
+  right: 0;
+  border-radius: 0;
+  background: var(--gold-soft-15);
+}
+/* Edge — hover */
+.bar.edge-hover::before {
+  width: 3px;
+  right: 0;
+  border-radius: 0;
+  background: var(--gold-soft-30);
+}
+
+footer {
+  margin-top: var(--space-7);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+footer code {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--gold-50);
+  font-family: 'JetBrains Mono', monospace;
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1 class="page-title">Scrollbar — 3 options DS</h1>
+  <p class="page-subtitle">
+    Trois propositions cohérentes avec le DS skytrix (gold-on-dark, tokens
+    <code>--gold-soft-*</code>). Survole chaque conteneur scrollable pour
+    voir l'état hover. Compare en bas en visuel statique.
+  </p>
+
+  <div class="grid">
+
+    <!-- ============ OPTION A — GHOST ============ -->
+    <section class="demo">
+      <header class="demo-header">
+        <span class="demo-title">A · Ghost</span>
+        <span class="demo-badge reco">Recommandée</span>
+      </header>
+      <p class="demo-pitch">
+        Quasi invisible au repos (2px gold 8%), se révèle au hover (6px gold 25%).
+        Pattern macOS / Linear / Notion. Pour usage global.
+      </p>
+
+      <div class="scroll-box scroll--ghost">
+        <div class="scroll-item">Snake-Eye Diabellstar <small>Lobby — il y a 2 min</small></div>
+        <div class="scroll-item">Branded Despia <small>Lobby — il y a 4 min</small></div>
+        <div class="scroll-item">Tearlaments Kashtira <small>Lobby — il y a 8 min</small></div>
+        <div class="scroll-item">Mathmech Superfactorial <small>Lobby — il y a 12 min</small></div>
+        <div class="scroll-item">Floowandereeze Empen <small>Lobby — il y a 15 min</small></div>
+        <div class="scroll-item">Runick Stalker <small>Lobby — il y a 20 min</small></div>
+        <div class="scroll-item">Spright Elf <small>Lobby — il y a 25 min</small></div>
+        <div class="scroll-item">Therion King Regulus <small>Lobby — il y a 30 min</small></div>
+        <div class="scroll-item">Vanquish Soul <small>Lobby — il y a 35 min</small></div>
+        <div class="scroll-item">Labrynth Welcome <small>Lobby — il y a 40 min</small></div>
+        <div class="scroll-item">Purrely Slothful <small>Lobby — il y a 45 min</small></div>
+        <div class="scroll-item">Rikka Petal <small>Lobby — il y a 50 min</small></div>
+      </div>
+
+      <pre class="demo-code">/* SCSS */
+.scroll--ghost {
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--gold-soft-08) transparent;
+}
+.scroll--ghost:hover {
+  scrollbar-color:
+    var(--gold-soft-30) transparent;
+}
+&amp;::-webkit-scrollbar { width: 6px; }
+&amp;::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-08);
+  border-radius: var(--radius-pill);
+}</pre>
+    </section>
+
+    <!-- ============ OPTION B — HOLO PILL ============ -->
+    <section class="demo">
+      <header class="demo-header">
+        <span class="demo-title">B · Holo Pill</span>
+        <span class="demo-badge">Assumée</span>
+      </header>
+      <p class="demo-pitch">
+        Pill gradient gold 25→40%, glow au hover (raccord
+        <code style="color:var(--gold)">--pvp-actionable-glow</code>).
+        Pour modales / panneaux gold-themed.
+      </p>
+
+      <div class="scroll-box scroll--holo">
+        <div class="scroll-item">Snake-Eye Diabellstar <small>Lobby — il y a 2 min</small></div>
+        <div class="scroll-item">Branded Despia <small>Lobby — il y a 4 min</small></div>
+        <div class="scroll-item">Tearlaments Kashtira <small>Lobby — il y a 8 min</small></div>
+        <div class="scroll-item">Mathmech Superfactorial <small>Lobby — il y a 12 min</small></div>
+        <div class="scroll-item">Floowandereeze Empen <small>Lobby — il y a 15 min</small></div>
+        <div class="scroll-item">Runick Stalker <small>Lobby — il y a 20 min</small></div>
+        <div class="scroll-item">Spright Elf <small>Lobby — il y a 25 min</small></div>
+        <div class="scroll-item">Therion King Regulus <small>Lobby — il y a 30 min</small></div>
+        <div class="scroll-item">Vanquish Soul <small>Lobby — il y a 35 min</small></div>
+        <div class="scroll-item">Labrynth Welcome <small>Lobby — il y a 40 min</small></div>
+        <div class="scroll-item">Purrely Slothful <small>Lobby — il y a 45 min</small></div>
+        <div class="scroll-item">Rikka Petal <small>Lobby — il y a 50 min</small></div>
+      </div>
+
+      <pre class="demo-code">/* SCSS */
+.scroll--holo::-webkit-scrollbar {
+  width: 10px;
+}
+.scroll--holo::-webkit-scrollbar-track {
+  background: var(--gold-soft-04);
+  border-radius: var(--radius-pill);
+}
+&amp;::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,
+    var(--gold-soft-40),
+    var(--gold-soft-25));
+  border-radius: var(--radius-pill);
+}
+&amp;:hover { box-shadow:
+  0 0 6px var(--gold-soft-40); }</pre>
+    </section>
+
+    <!-- ============ OPTION C — EDGE-FADE ============ -->
+    <section class="demo">
+      <header class="demo-header">
+        <span class="demo-title">C · Edge-fade</span>
+        <span class="demo-badge">Discrète max</span>
+      </header>
+      <p class="demo-pitch">
+        2px collé au bord, gold 15%, sans piste, combiné à un
+        <code style="color:var(--gold)">mask-image</code> qui estompe le
+        contenu en bas. Le scroll devient périphérique.
+      </p>
+
+      <div class="scroll-box scroll--edge">
+        <div class="scroll-item">Snake-Eye Diabellstar <small>Lobby — il y a 2 min</small></div>
+        <div class="scroll-item">Branded Despia <small>Lobby — il y a 4 min</small></div>
+        <div class="scroll-item">Tearlaments Kashtira <small>Lobby — il y a 8 min</small></div>
+        <div class="scroll-item">Mathmech Superfactorial <small>Lobby — il y a 12 min</small></div>
+        <div class="scroll-item">Floowandereeze Empen <small>Lobby — il y a 15 min</small></div>
+        <div class="scroll-item">Runick Stalker <small>Lobby — il y a 20 min</small></div>
+        <div class="scroll-item">Spright Elf <small>Lobby — il y a 25 min</small></div>
+        <div class="scroll-item">Therion King Regulus <small>Lobby — il y a 30 min</small></div>
+        <div class="scroll-item">Vanquish Soul <small>Lobby — il y a 35 min</small></div>
+        <div class="scroll-item">Labrynth Welcome <small>Lobby — il y a 40 min</small></div>
+        <div class="scroll-item">Purrely Slothful <small>Lobby — il y a 45 min</small></div>
+        <div class="scroll-item">Rikka Petal <small>Lobby — il y a 50 min</small></div>
+      </div>
+
+      <pre class="demo-code">/* SCSS */
+.scroll--edge {
+  scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%, #000 88%,
+    transparent 100%);
+}
+&amp;::-webkit-scrollbar { width: 3px; }
+&amp;::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-15);
+  border-radius: 0;
+}
+&amp;:hover ::-webkit-scrollbar-thumb {
+  background: var(--gold-soft-30);
+}</pre>
+    </section>
+
+  </div>
+
+  <!-- ============ COMPARE STATIQUE ============ -->
+  <section class="compare">
+    <h2>Comparaison côte-à-côte — état repos vs hover</h2>
+    <div class="compare-grid">
+      <div></div>
+      <div class="col-header">Repos</div>
+      <div class="col-header">Hover</div>
+
+      <div class="row-label">A · Ghost</div>
+      <div class="bar ghost-rest"></div>
+      <div class="bar ghost-hover"></div>
+
+      <div class="row-label">B · Holo</div>
+      <div class="bar holo-rest"></div>
+      <div class="bar holo-hover"></div>
+
+      <div class="row-label">C · Edge</div>
+      <div class="bar edge-rest"></div>
+      <div class="bar edge-hover"></div>
+    </div>
+  </section>
+
+  <footer>
+    Mockup standalone — à valider avant extraction vers
+    <code>front/src/app/styles/_scrollbar.scss</code>.
+    Reco : <strong>A globale + B en variante <code>.holo-scroll</code></strong>.
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,110 @@
+// =============================================================================
+// Scrollbar — Ghost (DS skytrix)
+// =============================================================================
+//
+// Discrète au repos (gold 8%), se révèle au hover/focus du conteneur (gold 25%).
+// Pattern macOS / Linear / Notion. Validé mockup `_mockups/mockup-scrollbar-options.html`.
+//
+// - Firefox : `scrollbar-width: thin` + `scrollbar-color`. C'est tout ce que
+//   Firefox supporte ; la barre garde un léger offset natif en haut/bas qu'on
+//   ne peut pas retirer. Accepté.
+// - Chrome/Edge/Safari : `::-webkit-scrollbar` custom, thumb sans radius pour
+//   coller pixel-perfect aux bords, boutons fléchés tués.
+//
+// Usage :
+//   1. Global (recommandé) : appliqué à `html` ci-dessous → toute la page.
+//   2. Opt-in : ajouter `.ghost-scroll` sur n'importe quel conteneur scrollable.
+//
+// Règles d'usage (cf. discussion 2026-05-13) :
+//   - Un conteneur scrollable ne doit PAS avoir `border-radius` sur la même
+//     boîte que `overflow: auto` — sinon Chrome rogne la piste. Mettre le
+//     radius + `overflow: hidden` sur un wrapper parent.
+//   - Un conteneur scrollable ne doit PAS avoir `padding-top` / `padding-bottom`
+//     — déplacer l'espacement sur les items, sinon la barre paraît flotter.
+//   - Préférer `outline` à `border` pour le contour — la border 1px décale le
+//     thumb d'1px vers le bas (le scrollbar est dessiné dans la padding-box).
+// =============================================================================
+
+@mixin ghost-scroll {
+  // Firefox (limité — la valeur s'applique en repos et hover indistinctement)
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-soft-08) transparent;
+  transition: scrollbar-color var(--transition-normal) var(--ease-out);
+
+  &:hover,
+  &:focus-within {
+    scrollbar-color: var(--gold-soft-30) transparent;
+  }
+
+  // Chromium / WebKit
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--gold-soft-08);
+    border-radius: 0;
+    transition:
+      background var(--transition-normal) var(--ease-out);
+  }
+
+  &:hover::-webkit-scrollbar-thumb,
+  &:focus-within::-webkit-scrollbar-thumb {
+    background: var(--gold-soft-25);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--gold-soft-40);
+  }
+
+  &::-webkit-scrollbar-thumb:active {
+    background: var(--gold-soft-50);
+  }
+
+  // Tuer les boutons fléchés natifs Windows qui réservent un creux
+  // en haut/bas même quand ils ne s'affichent pas.
+  &::-webkit-scrollbar-button,
+  &::-webkit-scrollbar-button:vertical:start,
+  &::-webkit-scrollbar-button:vertical:end,
+  &::-webkit-scrollbar-button:horizontal:start,
+  &::-webkit-scrollbar-button:horizontal:end,
+  &::-webkit-scrollbar-button:start:decrement,
+  &::-webkit-scrollbar-button:end:increment,
+  &::-webkit-scrollbar-button:start:increment,
+  &::-webkit-scrollbar-button:end:decrement {
+    display: none;
+    height: 0;
+    width: 0;
+    background: transparent;
+  }
+
+  // Coin où les deux scrollbars (v + h) se rencontrent
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+// --- Application globale ---
+// Le scroll de l'app n'est PAS sur `html` mais sur `.dark-theme-content`
+// (cf. app.component.scss : `.dark-theme` a `overflow: hidden`, le main a
+// `overflow: auto`).
+//
+// On applique le mixin via une règle séparée par sélecteur (et non un
+// sélecteur composé) pour garantir l'expansion correcte des pseudos
+// `::-webkit-scrollbar*` dans chaque scope.
+//
+// Pour tout conteneur custom non listé ici, utiliser la classe `.ghost-scroll`.
+
+// Universal — applique le mixin à TOUS les éléments. C'est inerte sur les
+// non-scrollables (scrollbar-color/scrollbar-width ne s'expriment que si
+// l'élément scroll réellement). Garantit une largeur uniforme partout
+// (6px Chrome, thin Firefox) sans avoir à lister chaque conteneur custom.
+*                                 { @include ghost-scroll; }
+
+// --- Opt-in : sémantique, équivalent à `*` mais auto-documente l'intention ---
+.ghost-scroll                     { @include ghost-scroll; }
