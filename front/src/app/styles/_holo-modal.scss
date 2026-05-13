@@ -128,6 +128,20 @@
     justify-content: stretch !important;
   }
 
+  // Material wraps the dialog component in a `<app-…-dialog
+  // class="mat-mdc-dialog-component-host">` host. Material 19's stylesheet
+  // declares `display: contents` for it, but in practice (verified via
+  // Playwright DOM inspection) the wrapper renders as `display: block`,
+  // breaking the flex chain — the wrapper takes its intrinsic content
+  // height and refuses to shrink, so the body never gets a scroll bound.
+  //
+  // Re-declare `display: contents` so the wrapper effectively disappears
+  // from layout, and header/content/actions become direct flex children
+  // of the surface.
+  .mat-mdc-dialog-component-host {
+    display: contents !important;
+  }
+
   .mat-mdc-dialog-surface {
     background: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%) !important;
     border: 1px solid var(--gold-soft-30) !important;
