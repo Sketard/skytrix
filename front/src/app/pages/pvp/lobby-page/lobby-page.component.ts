@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, filter, interval, switchMap } from 'rxjs';
+import { catchError, EMPTY, filter, interval, Subscription, switchMap } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -11,7 +11,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { TranslatePipe } from '@ngx-translate/core';
 import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
 import { RoomDTO } from '../room.types';
-import { RoomApiService } from '../room-api.service';
+import { RoomApiService, LobbyEvent } from '../room-api.service';
 import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dialog.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { RoomCardSkeletonComponent } from '../../../shared/skel';
@@ -20,7 +20,10 @@ import { RoomCardSkeletonComponent } from '../../../shared/skel';
 // is removed after this duration so the animation only plays once per room).
 const NEW_ROOM_FLASH_MS = 700;
 
-const POLL_INTERVAL_MS = 10_000;
+// Polling fallback interval — kicks in if the SSE lobby stream errors out
+// permanently. Same cadence as the legacy pre-SSE polling so we don't
+// surprise the backend with a different load shape on degradation.
+const POLL_FALLBACK_INTERVAL_MS = 10_000;
 
 @Component({
   selector: 'app-lobby-page',
@@ -48,14 +51,25 @@ export class LobbyPageComponent implements OnInit {
   readonly creatingRoom = signal(false);
   readonly searchQuery = signal('');
 
+  // True once the SSE `connected` event has fired and the stream stays
+  // alive. Flips to false on permanent SSE error → triggers the polling
+  // fallback + a "Synchro live indisponible" warning banner (front-side,
+  // not yet wired into the template; the signal is exposed so the
+  // template can read it).
+  readonly liveSyncAvailable = signal(false);
+
   // Room codes that appeared in the latest diff — used to flash `--new` once.
   // Drained via a setTimeout after NEW_ROOM_FLASH_MS so the flash never replays.
   readonly newRoomCodes = signal<ReadonlySet<string>>(new Set());
 
   // First fetch suppresses the flash: every room is "new" on init, animating
-  // all of them at once would look like a glitch. Real diffs (polling deltas)
-  // are the only legitimate flash trigger.
+  // all of them at once would look like a glitch. Real diffs are the only
+  // legitimate flash trigger.
   private hasFetchedOnce = false;
+
+  // Holds the polling fallback subscription so we can stop it if SSE
+  // reconnects (browser auto-reconnect of EventSource).
+  private pollFallbackSubscription: Subscription | null = null;
 
   readonly filteredRooms = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -86,8 +100,11 @@ export class LobbyPageComponent implements OnInit {
   };
 
   ngOnInit(): void {
+    // Initial snapshot via REST so the page renders the current state even
+    // before SSE delivers anything. SSE then keeps the snapshot in sync
+    // through diffs.
     this.fetchRooms();
-    this.startPolling();
+    this.startLobbyStream();
   }
 
   fetchRooms(): void {
@@ -95,7 +112,7 @@ export class LobbyPageComponent implements OnInit {
     this.error.set(null);
     this.roomApi.getRooms().subscribe({
       next: rooms => {
-        this.applyRoomDiff(rooms);
+        this.applySnapshot(rooms);
         this.loading.set(false);
       },
       error: () => {
@@ -109,22 +126,69 @@ export class LobbyPageComponent implements OnInit {
     });
   }
 
-  private startPolling(): void {
-    interval(POLL_INTERVAL_MS).pipe(
+  // Subscribes to the SSE lobby diff stream. On permanent error, falls back
+  // to REST polling. EventSource handles transient reconnects natively.
+  private startLobbyStream(): void {
+    this.roomApi.subscribeToLobbyEvents().pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: event => this.applyLobbyEvent(event),
+      error: () => {
+        this.liveSyncAvailable.set(false);
+        this.startPollingFallback();
+      },
+    });
+  }
+
+  private applyLobbyEvent(event: LobbyEvent): void {
+    switch (event.kind) {
+      case 'connected':
+        this.liveSyncAvailable.set(true);
+        this.stopPollingFallback();
+        // The first REST snapshot already ran in ngOnInit; we don't refetch
+        // here to avoid a double-load. A re-snapshot on reconnect could
+        // make sense in a future iteration (recover from missed events
+        // during the disconnect window).
+        break;
+      case 'created':
+        this.addRoom(event.room);
+        break;
+      case 'removed':
+        this.rooms.update(list => list.filter(r => r.roomCode !== event.roomCode));
+        break;
+      case 'updated':
+        this.rooms.update(list => list.map(r =>
+          r.roomCode === event.room.roomCode ? event.room : r,
+        ));
+        break;
+    }
+  }
+
+  private startPollingFallback(): void {
+    if (this.pollFallbackSubscription) return;
+    this.pollFallbackSubscription = interval(POLL_FALLBACK_INTERVAL_MS).pipe(
       filter(() => this.joiningRoomCode() === null),
       switchMap(() => this.roomApi.getRooms().pipe(
         catchError(() => EMPTY),
       )),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(rooms => {
-      this.applyRoomDiff(rooms);
+      this.applySnapshot(rooms);
     });
   }
 
-  // Replaces the room list and marks newly-appeared rooms for a one-shot
-  // `--new` flash animation. The flash class is removed after the animation
-  // window so subsequent polls don't restart it.
-  private applyRoomDiff(next: readonly RoomDTO[]): void {
+  private stopPollingFallback(): void {
+    if (this.pollFallbackSubscription) {
+      this.pollFallbackSubscription.unsubscribe();
+      this.pollFallbackSubscription = null;
+    }
+  }
+
+  // Snapshot replacement (REST fetch). Marks rooms newly-appeared since the
+  // previous snapshot for the one-shot --new flash animation. On the very
+  // first snapshot every room is "new" — we suppress the flash there to
+  // avoid the page-load glitch where every card animates at once.
+  private applySnapshot(next: readonly RoomDTO[]): void {
     const previousCodes = new Set(this.rooms().map(r => r.roomCode));
     const appearedCodes = new Set<string>();
     if (this.hasFetchedOnce) {
@@ -136,23 +200,34 @@ export class LobbyPageComponent implements OnInit {
     }
     this.hasFetchedOnce = true;
     this.rooms.set([...next]);
+    if (appearedCodes.size > 0) this.armNewRoomFlash(appearedCodes);
+  }
 
-    if (appearedCodes.size > 0) {
-      // Merge into the existing flash set in case multiple polls overlap.
-      this.newRoomCodes.update(prev => {
-        const merged = new Set(prev);
-        appearedCodes.forEach(code => merged.add(code));
-        return merged;
-      });
-      setTimeout(() => {
-        this.newRoomCodes.update(prev => {
-          if (prev.size === 0) return prev;
-          const next = new Set(prev);
-          appearedCodes.forEach(code => next.delete(code));
-          return next;
-        });
-      }, NEW_ROOM_FLASH_MS);
+  // SSE `room-created` diff. Idempotent: ignore if the room is already in
+  // the list (defensive — the server shouldn't double-broadcast but a
+  // reconnect race could replay an event).
+  private addRoom(room: RoomDTO): void {
+    if (this.rooms().some(r => r.roomCode === room.roomCode)) return;
+    this.rooms.update(list => [room, ...list]);
+    if (this.hasFetchedOnce) {
+      this.armNewRoomFlash(new Set([room.roomCode]));
     }
+  }
+
+  private armNewRoomFlash(appearedCodes: ReadonlySet<string>): void {
+    this.newRoomCodes.update(prev => {
+      const merged = new Set(prev);
+      appearedCodes.forEach(code => merged.add(code));
+      return merged;
+    });
+    setTimeout(() => {
+      this.newRoomCodes.update(prev => {
+        if (prev.size === 0) return prev;
+        const next = new Set(prev);
+        appearedCodes.forEach(code => next.delete(code));
+        return next;
+      });
+    }, NEW_ROOM_FLASH_MS);
   }
 
   onSearchInput(event: Event): void {

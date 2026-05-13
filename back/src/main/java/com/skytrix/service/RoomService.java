@@ -53,6 +53,7 @@ public class RoomService {
     private final DuelServerClient duelServerClient;
     private final RoomMapper roomMapper;
     private final RoomEventService roomEventService;
+    private final RoomLobbyEventService roomLobbyEventService;
 
     @Transactional
     public RoomDTO createRoom(CreateRoomDTO dto) {
@@ -67,6 +68,20 @@ public class RoomService {
 
         roomRepository.save(room);
         log.info("Room created: {} by user {}", room.getRoomCode(), user.getPseudo());
+
+        // Lobby live update — emit AFTER the tx commits. If we emitted now,
+        // a subscriber that immediately fetched `/api/rooms` could miss the
+        // row (read uncommitted). The DTO is built per-subscriber not here
+        // (we send the canonical viewer=null variant; the lobby client only
+        // reads pseudo + roomCode + status).
+        var dtoForBroadcast = roomMapper.toRoomDTO(room, null);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                roomLobbyEventService.broadcastRoomCreated(dtoForBroadcast);
+            }
+        });
+
         return roomMapper.toRoomDTO(room, user.getId());
     }
 
@@ -116,10 +131,13 @@ public class RoomService {
             roomRepository.save(room);
 
             var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
+            var roomCodeForBroadcast = room.getRoomCode();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    roomEventService.sendRoomReady(room.getRoomCode(), creatorDto);
+                    roomEventService.sendRoomReady(roomCodeForBroadcast, creatorDto);
+                    // Room left WAITING → drop it from every lobby listing.
+                    roomLobbyEventService.broadcastRoomRemoved(roomCodeForBroadcast);
                 }
             });
 
@@ -219,6 +237,7 @@ public class RoomService {
         if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CLOSED) {
             return;
         }
+        var wasListedInLobby = room.getStatus() == RoomStatus.WAITING;
         if (room.getDuelServerId() != null) {
             duelServerClient.terminateDuel(room.getDuelServerId());
         }
@@ -226,6 +245,15 @@ public class RoomService {
         roomRepository.save(room);
         roomEventService.evict(roomCode);
         log.info("Room {} ended by user {}", roomCode, userId);
+
+        if (wasListedInLobby) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    roomLobbyEventService.broadcastRoomRemoved(roomCode);
+                }
+            });
+        }
     }
 
     /**
@@ -242,6 +270,7 @@ public class RoomService {
         if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CLOSED) {
             return;
         }
+        var wasListedInLobby = room.getStatus() == RoomStatus.WAITING;
         if (room.getDuelServerId() != null) {
             duelServerClient.terminateDuel(room.getDuelServerId());
         }
@@ -249,6 +278,15 @@ public class RoomService {
         roomRepository.save(room);
         roomEventService.evict(roomCode);
         log.info("Room {} force-closed by admin {}", roomCode, adminId);
+
+        if (wasListedInLobby) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    roomLobbyEventService.broadcastRoomRemoved(roomCode);
+                }
+            });
+        }
     }
 
     private void validateDuelResponse(DuelCreationResponse response) {

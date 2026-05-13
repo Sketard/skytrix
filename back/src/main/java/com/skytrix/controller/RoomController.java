@@ -22,6 +22,7 @@ import com.skytrix.model.dto.room.JoinRoomDTO;
 import com.skytrix.model.dto.room.RoomDTO;
 import com.skytrix.security.AuthService;
 import com.skytrix.service.RoomEventService;
+import com.skytrix.service.RoomLobbyEventService;
 import com.skytrix.service.RoomService;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class RoomController {
     private final RoomService roomService;
     private final AuthService authService;
     private final RoomEventService roomEventService;
+    private final RoomLobbyEventService roomLobbyEventService;
 
     @PostMapping
     @ResponseStatus(code = HttpStatus.CREATED)
@@ -70,6 +72,16 @@ public class RoomController {
         var userId = authService.getConnectedUserId();
         var room = roomService.getRoom(roomCode, userId);
         return roomEventService.subscribe(roomCode, room, userId);
+    }
+
+    /**
+     * Live lobby diff stream. Emits `room-created`, `room-removed`,
+     * `room-updated` server-sent events so the lobby front can replace its
+     * 10s polling with a push model. Auth required (any logged-in user).
+     */
+    @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter lobbyEvents() {
+        return roomLobbyEventService.subscribe();
     }
 
     @PostMapping("/{roomCode}/end")

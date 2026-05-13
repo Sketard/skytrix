@@ -63,4 +63,56 @@ export class RoomApiService {
       return () => eventSource.close();
     });
   }
+
+  // Live lobby diff stream (Phase 2.11). Server-sent events:
+  //   - "connected" : initial signal, payload="ok"
+  //   - "room-created" : payload=RoomDTO
+  //   - "room-removed" : payload={ roomCode }
+  //   - "room-updated" : payload=RoomDTO  (reserved for future, e.g. admin badge change)
+  // Plus periodic SSE comments (kept-alive) which EventSource ignores.
+  //
+  // The observable surfaces a discriminated union; the LobbyPageComponent
+  // applies the diff onto `rooms()` and falls back to the 10s REST polling
+  // if the stream errors permanently.
+  subscribeToLobbyEvents(): Observable<LobbyEvent> {
+    return new Observable<LobbyEvent>(subscriber => {
+      const eventSource = new EventSource(`/api/rooms/events`);
+
+      eventSource.addEventListener('connected', () => {
+        subscriber.next({ kind: 'connected' });
+      });
+
+      eventSource.addEventListener('room-created', (event: MessageEvent) => {
+        const room: RoomDTO = JSON.parse(event.data);
+        subscriber.next({ kind: 'created', room });
+      });
+
+      eventSource.addEventListener('room-removed', (event: MessageEvent) => {
+        const payload = JSON.parse(event.data) as { roomCode: string };
+        subscriber.next({ kind: 'removed', roomCode: payload.roomCode });
+      });
+
+      eventSource.addEventListener('room-updated', (event: MessageEvent) => {
+        const room: RoomDTO = JSON.parse(event.data);
+        subscriber.next({ kind: 'updated', room });
+      });
+
+      eventSource.onerror = () => {
+        if (eventSource.readyState === EventSource.CLOSED) {
+          eventSource.close();
+          subscriber.error(new Error('Lobby SSE connection failed'));
+        }
+        // Transient: browser auto-reconnects; we surface a transient signal
+        // so the page can show "syncing live" status if it wants.
+      };
+
+      return () => eventSource.close();
+    });
+  }
 }
+
+export type LobbyEvent =
+  | { kind: 'connected' }
+  | { kind: 'created'; room: RoomDTO }
+  | { kind: 'removed'; roomCode: string }
+  | { kind: 'updated'; room: RoomDTO };
