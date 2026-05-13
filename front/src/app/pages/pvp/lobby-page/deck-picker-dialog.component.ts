@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialogActions, MatDialogClose, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
@@ -305,23 +306,58 @@ export class DeckPickerDialogComponent implements OnInit {
     this.activeSlot() === 'p1' ? this.selectedId() : this.selectedId2()
   );
 
+  private readonly destroyRef = inject(DestroyRef);
+  private fetchErrorTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.clearFetchErrorTimeout());
+  }
+
   ngOnInit(): void {
+    // Cache-first subscription — emits the current subject value synchronously
+    // (BehaviorSubject), then any subsequent refresh. While the cache is
+    // non-empty the dialog renders immediately; if it's empty we leave
+    // `loading=true` until the in-flight fetch lands.
+    this.deckBuildService.decks$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(decks => {
+        this.decks.set(decks);
+        if (decks.length > 0) {
+          this.loading.set(false);
+          this.fetchError.set(false);
+          this.clearFetchErrorTimeout();
+        }
+      });
+
     this.loadDecks();
   }
 
+  // Triggers (or retriggers) a deck list refresh. Called once on init, and
+  // bound to the "Retry" button when the empty-cache error path fires.
   loadDecks(): void {
-    this.loading.set(true);
     this.fetchError.set(false);
-    this.deckBuildService.getAllDecks().subscribe({
-      next: decks => {
-        this.decks.set(decks);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.loading.set(false);
-        this.fetchError.set(true);
-      },
-    });
+    this.loading.set(this.decks().length === 0);
+    this.deckBuildService.fetchDecks(true);
+
+    // Surface a fetch error only when we have nothing to show. If the cache
+    // already has data, a background refresh failure is silent — the user
+    // keeps seeing the last good list.
+    this.clearFetchErrorTimeout();
+    if (this.decks().length === 0) {
+      this.fetchErrorTimeout = setTimeout(() => {
+        if (this.decks().length === 0) {
+          this.loading.set(false);
+          this.fetchError.set(true);
+        }
+      }, 5000);
+    }
+  }
+
+  private clearFetchErrorTimeout(): void {
+    if (this.fetchErrorTimeout !== null) {
+      clearTimeout(this.fetchErrorTimeout);
+      this.fetchErrorTimeout = null;
+    }
   }
 
   onSlotChange(value: string): void {

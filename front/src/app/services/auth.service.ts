@@ -1,6 +1,6 @@
 // === Import : NPM
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -9,6 +9,7 @@ import { LoginDTO } from '../core/model/account/login-dto';
 import { UserDTO } from '../core/model/account/user';
 import { RefreshStep } from '../core/enums/refresh-step.enum';
 import { CreateUserDTO } from '../core/model/account/create-user-dto';
+import { DeckBuildService } from './deck-build.service';
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +20,10 @@ export class AuthService {
 
   private readonly refreshSubject = new BehaviorSubject(RefreshStep.FINISHED);
   public readonly refresh$ = this.refreshSubject.asObservable();
+
+  // User-scoped caches that must be wiped on logout. Keep this list small —
+  // when it grows past ~3 entries, extract a generic `UserScopedCache` token.
+  private readonly deckBuildService = inject(DeckBuildService);
 
   constructor(
     private readonly httpClient: HttpClient,
@@ -63,6 +68,7 @@ export class AuthService {
     if (this.isLoggedIn()) {
       this.userState.set(undefined);
       localStorage.removeItem(CURRENT_USER_KEY);
+      this.deckBuildService.clearDeckList();
       this.router.navigate(['login']);
     }
   }

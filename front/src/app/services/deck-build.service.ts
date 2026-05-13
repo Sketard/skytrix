@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, map, Observable, take } from 'rxjs';
+import { BehaviorSubject, finalize, map, Observable, Subject, take, takeUntil } from 'rxjs';
 import { Deck } from '../core/model/deck';
 import { CardDetail } from '../core/model/card-detail';
 import { CreateDeckDTO } from '../core/model/dto/create-deck-dto';
@@ -16,12 +16,28 @@ export enum DeckZone {
   SIDE = 'sideDeck',
 }
 
+// Cache TTL — short enough that another device editing decks shows up within
+// half a minute when the lobby is left open, long enough to make the lobby
+// → modale → close → modale loop feel instant. Tune here only.
+const DECK_LIST_TTL_MS = 30_000;
+
 @Injectable({
   providedIn: 'root',
 })
 export class DeckBuildService extends SearchServiceCore {
   public deckSubject: BehaviorSubject<Array<ShortDeck>> = new BehaviorSubject(new Array<ShortDeck>());
   public decks$: Observable<Array<ShortDeck>> = this.deckSubject.asObservable();
+
+  // Cache bookkeeping for the deck list. `_cachedAt` is null when the list has
+  // never been fetched OR was invalidated; `_isFetching` dedupes concurrent
+  // fetchDecks() calls. The subject keeps its last value across invalidation
+  // (UX: existing UI keeps showing the previous list until the refetch lands).
+  // `_cancelFetch$` lets a `force=true` call abort the in-flight request so a
+  // post-mutation refresh is never swallowed by an in-flight stale read.
+  private readonly _cachedAt = signal<number | null>(null);
+  private readonly _isFetching = signal(false);
+  private readonly _cancelFetch$ = new Subject<void>();
+
   private readonly deckState = signal<Deck>(new Deck());
   readonly deck = this.deckState.asReadonly();
   readonly deckEmpty = computed(() => !this.deck().hasCard);
@@ -113,6 +129,7 @@ export class DeckBuildService extends SearchServiceCore {
           this.deckState.set(new Deck(deck));
           this.resetDirty();
           this._isSaving.set(false);
+          this.fetchDecks(true);
           onSuccess?.();
         },
         error: (err: HttpErrorResponse) => {
@@ -122,12 +139,55 @@ export class DeckBuildService extends SearchServiceCore {
       });
   }
 
-  public getAllDecks(): Observable<Array<ShortDeck>> {
-    return this.httpClient.get<Array<ShortDeckDTO>>('/api/decks').pipe(take(1));
+  // Triggers a network refresh when needed. No-op when the cache is fresh
+  // (TTL not expired) unless `force=true`. A `force` call always lands: if a
+  // fetch is already in-flight, it is cancelled and replaced — so a save() or
+  // delete() that triggers `fetchDecks(true)` is never swallowed by an
+  // in-flight stale read. Subscribers consume `decks$`.
+  public fetchDecks(force = false): void {
+    if (!force && (this._isFetching() || this.isCacheFresh())) return;
+
+    if (this._isFetching()) {
+      this._cancelFetch$.next();
+    }
+    this._isFetching.set(true);
+    this.httpClient
+      .get<Array<ShortDeckDTO>>('/api/decks')
+      .pipe(
+        take(1),
+        takeUntil(this._cancelFetch$),
+        finalize(() => this._isFetching.set(false)),
+      )
+      .subscribe({
+        next: (decks: Array<ShortDeck>) => {
+          this.deckSubject.next(decks);
+          this._cachedAt.set(Date.now());
+        },
+        // On transient errors, the previous cache value stays visible —
+        // callers consuming `decks$` see the last good list. Mutation flows
+        // (save/delete) surface their own errors via their callbacks.
+        error: () => {},
+      });
   }
 
-  public fetchDecks(): void {
-    this.getAllDecks().subscribe((decks: Array<ShortDeck>) => this.deckSubject.next(decks));
+  // Marks the cache as stale without clearing the subject. The next
+  // `fetchDecks()` (with or without force) will hit the network. Subscribers
+  // keep seeing the last good value in the meantime.
+  public invalidateDeckList(): void {
+    this._cachedAt.set(null);
+  }
+
+  // Hard reset — wipes both the subject and the cache marker. Call on logout
+  // so a different user signing in does not briefly see the previous user's
+  // decks before the first fetch lands.
+  public clearDeckList(): void {
+    this.deckSubject.next([]);
+    this._cachedAt.set(null);
+  }
+
+  private isCacheFresh(): boolean {
+    const at = this._cachedAt();
+    return at !== null && Date.now() - at < DECK_LIST_TTL_MS;
   }
 
   public getById(id: number): Observable<Deck> {
@@ -143,7 +203,7 @@ export class DeckBuildService extends SearchServiceCore {
       .pipe(take(1))
       .subscribe({
         next: () => {
-          this.fetchDecks();
+          this.fetchDecks(true);
           onSuccess?.();
         },
         error: (err: HttpErrorResponse) => onError?.(err),
