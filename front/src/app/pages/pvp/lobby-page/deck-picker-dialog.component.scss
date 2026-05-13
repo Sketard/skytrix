@@ -44,7 +44,11 @@
 .picker-subtitle {
   font-size: var(--text-sm);
   color: var(--text-muted);
+  // Indent to align with the title's text (after the icon + gap, see
+  // .picker-title-icon clamp + .picker-title gap:10px). Same clamp()
+  // expression so the alignment scales with the icon size.
   margin: 6px 0 0;
+  padding-left: calc(clamp(22px, 5vw, 28px) + 10px);
   letter-spacing: 0.05em;
 }
 

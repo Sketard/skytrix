@@ -1,7 +1,7 @@
 <app-bottom-sheet-handle />
 
 <div class="picker-header">
-  <h2 mat-dialog-title class="picker-title">
+  <h2 class="picker-title" [id]="titleElementId">
     <mat-icon class="picker-title-icon">{{ titleIcon() }}</mat-icon>
     {{ title | translate }}
   </h2>

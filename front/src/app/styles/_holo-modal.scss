@@ -32,12 +32,31 @@
 }
 
 // ── Panel + surface ─────────────────────────────────────────────────────────
-// Width / height / position are passed via `dialogConfig` (LobbyPageComponent.
-// buildDialogConfig) — mobile uses `position: { bottom: '0' }` for the
-// bottom-sheet anchor, desktop relies on the default centered placement.
-// We only set the visual chrome (gradient, border, shadow) on the pane
-// surface and the inner 3-slot layout below.
+// Width / height / position are passed via `dialogConfig`
+// (LobbyPageComponent.buildDialogConfig) — mobile uses
+// `position: { bottom: '0' }` for the bottom-sheet anchor, desktop relies on
+// the default centered placement.
+//
+// DOM chain (Material 19):
+//   .cdk-overlay-pane.holo-modal-panel
+//     mat-dialog-container.mat-mdc-dialog-container
+//       .mat-mdc-dialog-surface
+//         <slot 1 — picker-header (free div)>
+//         mat-dialog-content.mat-mdc-dialog-content   ← scrollable
+//         mat-dialog-actions.mat-mdc-dialog-actions
+//
+// Each layer needs an explicit height + flex chain so the body slot can scroll
+// when content overflows. Without it the surface shrinks to content and the
+// `overflow-y: auto` has no constraint to push against.
 .holo-modal-panel {
+  // The pane itself: CDK sets `display: flex` by default. Force the inner
+  // container to take the pane's full height so the surface has a known box.
+  .mat-mdc-dialog-container {
+    height: 100% !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
   .mat-mdc-dialog-surface {
     background: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%) !important;
     border: 1px solid var(--gold-soft-30) !important;
@@ -49,15 +68,12 @@
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
-    // The pane has `display: flex; max-height: <dialogConfig.maxHeight>`
-    // (CDK default + our inline maxHeight). For the body's `overflow-y: auto`
-    // to engage when content exceeds the available height, the surface must
-    // expand to the pane's full flex slot — `flex: 1 1 auto` + min-height:0
-    // does that without forcing a fixed height (which would clip on short
-    // content).
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
+    // Match the container's full height so the 3-slot flex chain has a known
+    // box: header (flex-shrink:0) + body (flex:1 + overflow) + footer
+    // (flex-shrink:0). Without explicit height the surface defaults to
+    // intrinsic content size and the body never gets a scroll constraint.
     width: 100% !important;
+    height: 100% !important;
 
     @media (min-width: 768px) {
       border-radius: 18px !important;
@@ -67,8 +83,7 @@
     }
   }
 
-  // Dialog content is the SOLE scrollable slot. The host component owns its
-  // padding (this utility doesn't override it — see "padding contract" below).
+  // Body is the SOLE scrollable slot.
   .mat-mdc-dialog-content {
     flex: 1 1 auto;
     min-height: 0;
@@ -78,7 +93,8 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  // Header + footer don't scroll — they hug top/bottom of the surface.
+  // Header + footer hug top/bottom of the surface — they don't shrink and
+  // are not part of the scrollable area.
   .mat-mdc-dialog-title { flex-shrink: 0; }
   .mat-mdc-dialog-actions {
     flex-shrink: 0;

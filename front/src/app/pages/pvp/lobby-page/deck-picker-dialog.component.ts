@@ -14,7 +14,6 @@ import {
   MatDialogClose,
   MatDialogContent,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatIconButton } from '@angular/material/button';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
@@ -104,7 +103,7 @@ const TURN_TIME_PRESETS: readonly TurnTimePreset[] = TURN_TIME_PRESETS_SECS.map(
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
+    MatDialogContent, MatDialogActions, MatDialogClose,
     MatIconButton, MatSlideToggle, MatIcon,
     RouterLink, TranslatePipe,
     DeckCardSkeletonComponent, BottomSheetHandleComponent,
@@ -123,6 +122,12 @@ export class DeckPickerDialogComponent implements OnInit {
   readonly title = TITLES[this.data?.context ?? 'create'];
   readonly subtitle = SUBTITLES[this.data?.context ?? 'create'];
   readonly confirmLabel = CONFIRM_LABELS[this.data?.context ?? 'create'];
+  // Stable id for the title element so MatDialog's aria-labelledby can point
+  // at it — Material normally injects this via `mat-dialog-title`, but we
+  // dropped that directive to keep title/subtitle alignment under our own
+  // control (Material's default title padding doesn't apply to the sibling
+  // subtitle, so the two text blocks would drift apart).
+  readonly titleElementId = `deck-picker-title-${Math.random().toString(36).slice(2, 10)}`;
 
   readonly decks = signal<ShortDeck[]>([]);
   readonly loading = signal(true);
