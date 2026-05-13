@@ -1,11 +1,14 @@
+<!-- Screen background lives on the host (position: fixed; inset: 0), not
+     inside `.duel-container`, so it doesn't scroll with the waiting-room
+     content when the container becomes scrollable. -->
+@if (roomState() === 'waiting' || roomState() === 'creating-duel' || roomState() === 'loading') {
+  <div class="screen-bg" aria-hidden="true">
+    <div class="screen-bg-grid"></div>
+    <div class="screen-bg-glow screen-bg-glow--gold"></div>
+    <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+  </div>
+}
 <div class="duel-container" [class.duel-container--scrollable]="roomState() === 'waiting'">
-  @if (roomState() === 'waiting' || roomState() === 'creating-duel' || roomState() === 'loading') {
-    <div class="screen-bg" aria-hidden="true">
-      <div class="screen-bg-grid"></div>
-      <div class="screen-bg-glow screen-bg-glow--gold"></div>
-      <div class="screen-bg-glow screen-bg-glow--cyan"></div>
-    </div>
-  }
   <!-- Story 2.1 — Waiting Room State (Phase 1.7 refonte) -->
   @if (roomState() === 'waiting') {
     @if (room(); as r) {

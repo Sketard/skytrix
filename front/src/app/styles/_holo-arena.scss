@@ -15,12 +15,12 @@
 // =============================================================================
 
 .screen-bg {
-  // `fixed` (not `absolute`) so the holo grid + glow stay anchored to the
-  // viewport even when the host container becomes scrollable (waiting
-  // room landscape mobile, lobby with many rooms, etc.). With `absolute`,
-  // the background was clipped to the host's clientHeight and the user
-  // saw the bare `#1a1a2e` page background when scrolling.
-  position: fixed;
+  // Default: absolute. The parent must be `position: relative` (or
+  // similar) and either fill the viewport OR be the scroll container's
+  // direct parent (not a scrollable child). Using `fixed` here would let
+  // the background paint OVER sibling fixed elements (e.g. the sidebar
+  // navbar at z-index: auto in the shell context), so we keep absolute.
+  position: absolute;
   inset: 0;
   z-index: -1;
   overflow: hidden;
