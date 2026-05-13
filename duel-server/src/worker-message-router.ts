@@ -64,7 +64,9 @@ const SELECT_TYPES = new Set([
   'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE', 'SELECT_SUM',
   'SELECT_UNSELECT_CARD', 'SELECT_COUNTER', 'SORT_CARD', 'SORT_CHAIN',
   'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
-  'RPS_CHOICE',
+  // Pre-duel coordinator prompts (since 2026-05-13). They're not "select"
+  // in the OCGCore sense but they ride the same awaiting-response pipeline.
+  'DICE_ROLL', 'SELECT_FIRST_PLAYER',
 ]);
 
 export function isSelectMessage(message: ServerMessage): boolean {

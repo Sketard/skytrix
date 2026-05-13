@@ -65,7 +65,7 @@ describe('filterMessage', () => {
       'MSG_EQUIP', 'MSG_ADD_COUNTER', 'MSG_REMOVE_COUNTER',
       'MSG_SHUFFLE_SET_CARD', 'MSG_SWAP_GRAVE_DECK', 'MSG_WIN', 'DUEL_END',
       'TIMER_STATE', 'WORKER_ERROR', 'SESSION_TOKEN', 'OPPONENT_DISCONNECTED',
-      'OPPONENT_RECONNECTED', 'WAITING_RESPONSE', 'TP_RESULT', 'DUEL_STARTING',
+      'OPPONENT_RECONNECTED', 'WAITING_RESPONSE', 'FIRST_PLAYER_RESULT', 'DUEL_STARTING',
       'CHAIN_STATE', 'REMATCH_INVITATION', 'REMATCH_STARTING', 'REMATCH_CANCELLED',
     ];
 
@@ -204,7 +204,7 @@ describe('filterMessage', () => {
       'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE', 'SELECT_SUM',
       'SELECT_UNSELECT_CARD', 'SELECT_COUNTER', 'SORT_CARD', 'SORT_CHAIN',
       'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
-      'RPS_CHOICE', 'SELECT_TP',
+      'DICE_ROLL', 'SELECT_FIRST_PLAYER',
     ];
 
     for (const type of selectTypes) {
@@ -268,30 +268,34 @@ describe('filterMessage', () => {
     });
   });
 
-  // === RPS_RESULT ===
+  // === DICE_RESULT (pre-duel coordinator) ===
 
-  describe('RPS_RESULT', () => {
+  describe('DICE_RESULT', () => {
     const msg = {
-      type: 'RPS_RESULT', player1Choice: 'ROCK', player2Choice: 'SCISSORS', winner: 0,
+      type: 'DICE_RESULT', dice0: [6, 5], dice1: [3, 2], sum0: 11, sum1: 5, winner: 0,
     } as any;
 
     it('should not swap for player 0', () => {
       const result = filterMessage(msg, 0) as any;
-      expect(result.player1Choice).toBe('ROCK');
-      expect(result.player2Choice).toBe('SCISSORS');
+      expect(result.dice0).toEqual([6, 5]);
+      expect(result.dice1).toEqual([3, 2]);
+      expect(result.sum0).toBe(11);
+      expect(result.sum1).toBe(5);
       expect(result.winner).toBe(0);
     });
 
-    it('should swap choices and winner for player 1', () => {
+    it('should swap dice + sums and flip winner for player 1', () => {
       const result = filterMessage(msg, 1) as any;
-      expect(result.player1Choice).toBe('SCISSORS');
-      expect(result.player2Choice).toBe('ROCK');
+      expect(result.dice0).toEqual([3, 2]);
+      expect(result.dice1).toEqual([6, 5]);
+      expect(result.sum0).toBe(5);
+      expect(result.sum1).toBe(11);
       expect(result.winner).toBe(1);
     });
 
-    it('should preserve null winner (draw)', () => {
-      const drawMsg = { ...msg, winner: null } as any;
-      const result = filterMessage(drawMsg, 1) as any;
+    it('should preserve null winner (tie)', () => {
+      const tieMsg = { ...msg, winner: null } as any;
+      const result = filterMessage(tieMsg, 1) as any;
       expect(result.winner).toBeNull();
     });
   });

@@ -5,7 +5,7 @@ import { DuelEventProcessor } from './duel-event-processor';
 import { DuelLogCategory, type DuelLogger } from './duel-logger';
 import { duelAssert } from '../../../core/utilities/duel-assert';
 import { RenderedBoardStateService, type BoardStateView } from './rendered-board-state.service';
-import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DuelEndMsg, InactivityWarningMsg, PROTOCOL_VERSION, RpsResultMsg, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
+import { CardInfo, ChainStateMsg, ConfirmCardsMsg, DiceResultMsg, DuelEndMsg, InactivityWarningMsg, PROTOCOL_VERSION, SelectCardMsg, SelectChainMsg, SelectCounterMsg, SelectSumMsg, SelectTributeMsg, SelectUnselectCardMsg, ServerMessage, SessionTokenMsg, TimerStateMsg } from '../duel-ws.types';
 import { locationToZoneId } from '../pvp-zone.utils';
 
 export type ResponseData = Record<string, unknown>;
@@ -71,16 +71,19 @@ export class DuelConnection {
   private _opponentDisconnected = signal(false);
   private _disconnectGraceSec = signal(0);
   private _duelResult = signal<DuelEndMsg | null>(null);
-  private _rpsResult = signal<RpsResultMsg | null>(null);
-  private _rpsInProgress = signal(false);
+  // Pre-duel dice + first-player coordinator (since 2026-05-13). Replaces
+  // the legacy RPS pre-duel flow; OCGCore in-game RPS is short-circuited
+  // server-side via skipRps=true and never reaches the client.
+  private _diceResult = signal<DiceResultMsg | null>(null);
+  private _diceInProgress = signal(false);
   private _ocgPlayerIndex = signal<0 | 1 | null>(null);
   private _cardCodes = signal<number[]>([]);
   private _rematchState = signal<'idle' | 'requested' | 'invited' | 'opponent-left' | 'expired'>('idle');
   private _rematchStarting = signal(false);
   private _inactivityWarning = signal<InactivityWarningMsg | null>(null);
   private _waitingForOpponent = signal(false);
-  private _tpResult = signal<{ goFirst: boolean } | null>(null);
-  private _tpResponseSent = signal(false);
+  private _firstPlayerResult = signal<{ goFirst: boolean } | null>(null);
+  private _firstPlayerResponseSent = signal(false);
   private _boardActive = false;
 
   readonly pendingPrompt = this._pendingPrompt.asReadonly();
@@ -95,16 +98,16 @@ export class DuelConnection {
   readonly activeChainLinks = this.processor.activeChainLinks;
   readonly chainPhase = this.processor.chainPhase;
   readonly duelResult = this._duelResult.asReadonly();
-  readonly rpsResult = this._rpsResult.asReadonly();
-  readonly rpsInProgress = this._rpsInProgress.asReadonly();
+  readonly diceResult = this._diceResult.asReadonly();
+  readonly diceInProgress = this._diceInProgress.asReadonly();
   readonly ocgPlayerIndex = this._ocgPlayerIndex.asReadonly();
   readonly cardCodes = this._cardCodes.asReadonly();
   readonly rematchState = this._rematchState.asReadonly();
   readonly rematchStarting = this._rematchStarting.asReadonly();
   readonly inactivityWarning = this._inactivityWarning.asReadonly();
   readonly waitingForOpponent = this._waitingForOpponent.asReadonly();
-  readonly tpResult = this._tpResult.asReadonly();
-  readonly tpResponseSent = this._tpResponseSent.asReadonly();
+  readonly firstPlayerResult = this._firstPlayerResult.asReadonly();
+  readonly firstPlayerResponseSent = this._firstPlayerResponseSent.asReadonly();
 
   // --- Reconnect state ---
   private _retryCount = signal(0);
@@ -249,7 +252,7 @@ export class DuelConnection {
       this._lastConfirmedCards = [];
       this._confirmedCardsByChain.clear();
       this._hintCardConsumed = true;
-      if (promptType === 'SELECT_TP') this._tpResponseSent.set(true);
+      if (promptType === 'SELECT_FIRST_PLAYER') this._firstPlayerResponseSent.set(true);
       this.onResponse?.(promptType, data);
       this._pendingPrompt.set(null);
       this._inactivityWarning.set(null);
@@ -265,8 +268,8 @@ export class DuelConnection {
     this.safeSend({ type: 'ANIMATIONS_DONE' });
   }
 
-  clearRpsResult(): void {
-    this._rpsResult.set(null);
+  clearDiceResult(): void {
+    this._diceResult.set(null);
   }
 
   sendSurrender(): void {
@@ -615,30 +618,30 @@ export class DuelConnection {
         this._pendingPrompt.set(message);
         break;
 
-      case 'RPS_CHOICE':
-        this._rpsResult.set(null);
-        this._rpsInProgress.set(true);
+      case 'DICE_ROLL':
+        this._diceResult.set(null);
+        this._diceInProgress.set(true);
         this._pendingPrompt.set(message);
         break;
 
-      case 'RPS_RESULT':
-        this._rpsInProgress.set(false);
-        this._rpsResult.set(message as RpsResultMsg);
+      case 'DICE_RESULT':
+        this._diceInProgress.set(false);
+        this._diceResult.set(message);
         break;
 
-      case 'SELECT_TP':
+      case 'SELECT_FIRST_PLAYER':
         this._waitingForOpponent.set(false);
         this._pendingPrompt.set(message);
         break;
 
-      case 'TP_RESULT':
+      case 'FIRST_PLAYER_RESULT':
         this._waitingForOpponent.set(false);
-        this._tpResponseSent.set(false);
-        this._tpResult.set({ goFirst: (message as { goFirst: boolean }).goFirst });
+        this._firstPlayerResponseSent.set(false);
+        this._firstPlayerResult.set({ goFirst: message.goFirst });
         break;
 
       case 'DUEL_STARTING':
-        this._tpResult.set(null);
+        this._firstPlayerResult.set(null);
         this._ocgPlayerIndex.set(message.playerIndex as 0 | 1);
         if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
         this.logger?.setTraceId(message.traceId);
@@ -686,8 +689,8 @@ export class DuelConnection {
         this._pendingPrompt.set(null);
         this._inactivityWarning.set(null);
         this._waitingForOpponent.set(false);
-        this._tpResult.set(null);
-        this._tpResponseSent.set(false);
+        this._firstPlayerResult.set(null);
+        this._firstPlayerResponseSent.set(false);
         this._duelResult.set(message);
         this._opponentDisconnected.set(false);
         this._disconnectGraceSec.set(0);
@@ -713,8 +716,8 @@ export class DuelConnection {
         this.rbs.commitAll();
         this._pendingPrompt.set(null);
         this._waitingForOpponent.set(false);
-        this._tpResult.set(null);
-        this._tpResponseSent.set(false);
+        this._firstPlayerResult.set(null);
+        this._firstPlayerResponseSent.set(false);
         this._opponentDisconnected.set(false);
         this._disconnectGraceSec.set(0);
         this._rematchState.set('idle');

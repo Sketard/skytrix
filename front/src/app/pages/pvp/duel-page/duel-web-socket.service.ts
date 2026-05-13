@@ -56,16 +56,16 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
   readonly chainPhase = computed(() => this._activeConnection().chainPhase());
   readonly hasPendingChainEntry = computed(() => this._activeConnection().hasPendingChainEntry());
   readonly duelResult = computed(() => this._activeConnection().duelResult());
-  readonly rpsResult = computed(() => this._activeConnection().rpsResult());
-  readonly rpsInProgress = computed(() => this._activeConnection().rpsInProgress());
+  readonly diceResult = computed(() => this._activeConnection().diceResult());
+  readonly diceInProgress = computed(() => this._activeConnection().diceInProgress());
   readonly ocgPlayerIndex = computed(() => this._activeConnection().ocgPlayerIndex());
   readonly cardCodes = computed(() => this._activeConnection().cardCodes());
   readonly rematchState = computed(() => this._activeConnection().rematchState());
   readonly rematchStarting = computed(() => this._activeConnection().rematchStarting());
   readonly inactivityWarning = computed(() => this._activeConnection().inactivityWarning());
   readonly waitingForOpponent = computed(() => this._activeConnection().waitingForOpponent());
-  readonly tpResult = computed(() => this._activeConnection().tpResult());
-  readonly tpResponseSent = computed(() => this._activeConnection().tpResponseSent());
+  readonly firstPlayerResult = computed(() => this._activeConnection().firstPlayerResult());
+  readonly firstPlayerResponseSent = computed(() => this._activeConnection().firstPlayerResponseSent());
 
   readonly canRetry = computed(() => this._activeConnection().canRetry());
   readonly totalAutoRetries = computed(() => this._activeConnection().totalAutoRetries());
@@ -96,8 +96,8 @@ export class DuelWebSocketService implements AnimationDataSource, OnDestroy {
     return this._activeConnection().confirmedCardsForChainIndex(idx);
   }
 
-  clearRpsResult(): void {
-    this._activeConnection().clearRpsResult();
+  clearDiceResult(): void {
+    this._activeConnection().clearDiceResult();
   }
 
   sendSurrender(): void {

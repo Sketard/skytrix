@@ -13,8 +13,8 @@ import {
   BOTH_DISCONNECTED_CLEANUP_MS,
   STATE_SYNC_RATE_LIMIT_MS,
   CANCEL_PROMPT_RATE_LIMIT_MS,
-  RPS_TIMEOUT_MS,
-  TP_TIMEOUT_MS,
+  DICE_ROLL_TIMEOUT_MS,
+  FIRST_PLAYER_TIMEOUT_MS,
   REPLAY_WORKER_WATCHDOG_MS,
   MAX_REPLAY_WORKERS,
   ANIMATIONS_DONE_TIMEOUT_MS,
@@ -27,7 +27,7 @@ import type {
   Deck,
   TimerContext,
   SessionPhase,
-  RpsState,
+  FirstPlayerState,
   ReplayMetadata,
 } from './types.js';
 import type {
@@ -70,12 +70,12 @@ import {
   detachSolverConnection,
 } from './solver-handlers.js';
 import {
-  configureRpsCoordinator,
-  isRpsCoordinatorConfigured,
-  startRpsPhase,
+  configureFirstPlayerCoordinator,
+  isFirstPlayerCoordinatorConfigured,
+  startFirstPlayerPhase,
   handlePreDuelResponse,
-  disposeRps,
-} from './rps-coordinator.js';
+  disposeFirstPlayer,
+} from './first-player-coordinator.js';
 import {
   configureWorkerLifecycle,
   isWorkerLifecycleConfigured,
@@ -273,12 +273,12 @@ configureTimerManagement({
   animationsDoneTimeoutMs: ANIMATIONS_DONE_TIMEOUT_MS,
 });
 
-configureRpsCoordinator({
+configureFirstPlayerCoordinator({
   sendToPlayer,
   filterMessage,
   startDuelWithOrder,
-  rpsTimeoutMs: RPS_TIMEOUT_MS,
-  tpTimeoutMs: TP_TIMEOUT_MS,
+  diceRollTimeoutMs: DICE_ROLL_TIMEOUT_MS,
+  firstPlayerTimeoutMs: FIRST_PLAYER_TIMEOUT_MS,
 });
 
 configureWorkerLifecycle({
@@ -438,7 +438,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     const session: ActiveDuelSession = {
       duelId,
       phase: 'WAITING_PLAYERS',
-      rpsState: null,
+      firstPlayerState: null,
       players: [
         { playerId: parsed.player1.id, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
         { playerId: parsed.player2.id, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
@@ -546,7 +546,7 @@ function startRematch(session: ActiveDuelSession): void {
   });
 
   session.phase = 'DUELING';
-  disposeRps(session);
+  disposeFirstPlayer(session);
   session.worker = worker;
   session.workerTerminated = false;
   session.awaitingResponse = [false, false];
@@ -588,15 +588,15 @@ function rematchExpired(session: ActiveDuelSession): void {
 }
 
 // =============================================================================
-// Pre-Duel RPS & Turn Player Selection
+// Pre-Duel First-Player Coordinator (dice 2D6, since 2026-05-13)
 // =============================================================================
-// startRpsPhase / handlePreDuelResponse / disposeRps live in rps-coordinator.ts
-// (extracted at H1-suite phase 5). The bridge into worker spawning below
+// startFirstPlayerPhase / handlePreDuelResponse / disposeFirstPlayer live in
+// first-player-coordinator.ts. The bridge into worker spawning below
 // (startDuelWithOrder) is injected back into the coordinator via configure.
 
 function startDuelWithOrder(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
   session.phase = 'DUELING';
-  disposeRps(session);
+  disposeFirstPlayer(session);
 
   // Swap decks and player sessions so firstPlayer becomes OCGCore player 0
   let decks = session.decks;
@@ -679,7 +679,7 @@ function cleanupDuelSession(session: ActiveDuelSession): void {
   session.lastSentHint = [null, null];
 
   // Clear pre-duel RPS timeout
-  disposeRps(session);
+  disposeFirstPlayer(session);
 
   // Clear rematch timeout
   if (session.rematchTimeout) {
@@ -789,7 +789,7 @@ function checkProtocolVersion(ws: WebSocket, url: URL, mode: string, ip: string)
   if (!isReplayHandlersConfigured()) unconfigured.push('replay-handlers');
   if (!isTimerManagementConfigured()) unconfigured.push('timer-management');
   if (!isSolverHandlersConfigured()) unconfigured.push('solver-handlers');
-  if (!isRpsCoordinatorConfigured()) unconfigured.push('rps-coordinator');
+  if (!isFirstPlayerCoordinatorConfigured()) unconfigured.push('first-player-coordinator');
   if (!isWorkerLifecycleConfigured()) unconfigured.push('worker-lifecycle');
   if (!isReplayPersistConfigured()) unconfigured.push('replay-persist');
   if (!isWorkerMessageRouterConfigured()) unconfigured.push('worker-message-router');
@@ -1033,7 +1033,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         // Solo mode: backend already placed the first player at index 0
         startDuelWithOrder(session, 0);
       } else {
-        startRpsPhase(session);
+        startFirstPlayerPhase(session);
       }
     } else if (session.phase === 'DUELING' && session.duelId.startsWith('fork-')) {
       // Fork session: worker already reconstructed the duel, tell it to emit state + prompt

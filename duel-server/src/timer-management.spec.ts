@@ -61,7 +61,7 @@ function makeSession(initialPoolMs = 300_000): ActiveDuelSession {
     startedAt: 0,
     endedAt: null,
     phase: 'DUELING',
-    rpsState: null,
+    firstPlayerState: null,
     worker: null,
     workerTerminated: false,
     awaitingResponse: [false, false],

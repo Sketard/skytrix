@@ -69,7 +69,7 @@ export class DuelLoadingEffectsService {
     // Story 2.4 — Transition to 'duel-loading' on first BOARD_STATE
     effect(() => {
       const ready = config.boardReady();
-      const rpsVisible = this.wsService.rpsResult();
+      const rpsVisible = this.wsService.diceResult();
       if (ready && !rpsVisible && config.roomState() === 'connecting') {
         untracked(() => config.roomState.set('duel-loading'));
       }
@@ -108,12 +108,12 @@ export class DuelLoadingEffectsService {
 
     // Story 2.3 — RPS result auto-dismiss
     effect(() => {
-      const rps = this.wsService.rpsResult();
+      const rps = this.wsService.diceResult();
       if (!rps) return;
       untracked(() => {
         if (this.rpsAutoDismissTimeout) clearTimeout(this.rpsAutoDismissTimeout);
         const duration = rps.winner !== null ? RPS_DISMISS_WINNER_MS : RPS_DISMISS_DRAW_MS;
-        this.rpsAutoDismissTimeout = setTimeout(() => this.wsService.clearRpsResult(), duration);
+        this.rpsAutoDismissTimeout = setTimeout(() => this.wsService.clearDiceResult(), duration);
       });
     });
 

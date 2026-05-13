@@ -31,38 +31,45 @@ export interface ChoiceConfig<T = unknown> {
   maxWidth: string;
 }
 
-const RPS_CONFIG: ChoiceConfig<number> = {
-  title: 'duel.rps.title',
-  subtitle: 'duel.rps.subtitle',
-  waitingLabel: 'duel.rps.waitingOpponent',
+// Pre-duel dice roll (Phase 2.12, since 2026-05-13). A single "Lancer les
+// dés" choice — the server rolls 2D6 server-side as soon as the player
+// confirms, so there's nothing to actually pick. We keep the choice-based
+// component to reuse the timeout + keyboard wiring; the full dice-arena UI
+// with rolling animation will live in <app-dice-arena> (Phase 3.14).
+const DICE_ROLL_CONFIG: ChoiceConfig<true> = {
+  title: 'duel.dice.title',
+  subtitle: 'duel.dice.subtitle',
+  waitingLabel: 'duel.dice.waitingOpponent',
   choices: [
-    { value: 0, label: 'duel.rps.rock', icon: 'assets/images/icons/rps-rock.svg', key: '1' },
-    { value: 1, label: 'duel.rps.paper', icon: 'assets/images/icons/rps-paper.svg', key: '2' },
-    { value: 2, label: 'duel.rps.scissors', icon: 'assets/images/icons/rps-scissors.svg', key: '3' },
+    { value: true, label: 'duel.dice.roll', icon: 'assets/images/icons/dice.svg', key: '1' },
   ],
   timeoutSeconds: 30,
-  defaultValue: -1, // sentinel — triggers random pick
-  responseKey: 'choice',
-  maxWidth: '120px',
+  defaultValue: true,
+  // DICE_ROLL response is intentionally empty; the wrapper component will
+  // strip this key when forwarding (we keep the responseKey to make the
+  // generic component happy).
+  responseKey: '_confirm',
+  maxWidth: '160px',
 };
 
-const TP_CONFIG: ChoiceConfig<boolean> = {
-  title: 'duel.turnOrder.title',
-  subtitle: 'duel.turnOrder.subtitle',
-  waitingLabel: 'duel.turnOrder.waiting',
+// Pre-duel first-player pick — sent only to the dice winner.
+const FIRST_PLAYER_CONFIG: ChoiceConfig<boolean> = {
+  title: 'duel.firstPlayer.title',
+  subtitle: 'duel.firstPlayer.subtitle',
+  waitingLabel: 'duel.firstPlayer.waiting',
   choices: [
-    { value: true, label: 'duel.turnOrder.goFirst', icon: 'assets/images/icons/tp-first.svg', key: '1' },
-    { value: false, label: 'duel.turnOrder.goSecond', icon: 'assets/images/icons/tp-second.svg', key: '2' },
+    { value: true, label: 'duel.firstPlayer.youFirst', icon: 'assets/images/icons/tp-first.svg', key: '1' },
+    { value: false, label: 'duel.firstPlayer.youSecond', icon: 'assets/images/icons/tp-second.svg', key: '2' },
   ],
-  timeoutSeconds: 30,
+  timeoutSeconds: 15,
   defaultValue: true,
   responseKey: 'goFirst',
   maxWidth: '140px',
 };
 
 export const CHOICE_CONFIGS: Record<string, ChoiceConfig> = {
-  RPS_CHOICE: RPS_CONFIG,
-  SELECT_TP: TP_CONFIG,
+  DICE_ROLL: DICE_ROLL_CONFIG,
+  SELECT_FIRST_PLAYER: FIRST_PLAYER_CONFIG,
 };
 
 @Component({
@@ -89,7 +96,7 @@ export class PromptChoiceComponent implements PromptSubComponent, OnInit, OnDest
 
   ngOnInit(): void {
     const type = this.promptData?.type ?? '';
-    this.config = CHOICE_CONFIGS[type] ?? CHOICE_CONFIGS['RPS_CHOICE'];
+    this.config = CHOICE_CONFIGS[type] ?? CHOICE_CONFIGS['DICE_ROLL'];
     this.secondsLeft.set(this.config.timeoutSeconds);
     this.keyMap = Object.fromEntries(this.config.choices.map(c => [c.key, c.value]));
 
@@ -136,13 +143,7 @@ export class PromptChoiceComponent implements PromptSubComponent, OnInit, OnDest
 
   private onTimeout(): void {
     if (this.answered) return;
-    const def = this.config.defaultValue;
-    // RPS: sentinel -1 means pick random
-    if (typeof def === 'number' && def < 0) {
-      this.selectChoice(this.config.choices[Math.floor(Math.random() * this.config.choices.length)].value);
-    } else {
-      this.selectChoice(def);
-    }
+    this.selectChoice(this.config.defaultValue);
   }
 
   private clearTimer(): void {

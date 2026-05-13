@@ -234,11 +234,15 @@ export interface AnnounceResponse {
   value: number;
 }
 
-export interface RpsResponse {
-  choice: number; // 0 = Rock, 1 = Paper, 2 = Scissors (client convention)
+/** Empty payload — the client confirms readiness to roll; the server is the
+ *  source of truth for the random dice values themselves. */
+export interface DiceRollResponse {
+  // Intentionally empty. Kept as an interface (not `{}`) so future fields
+  // (e.g. animation-skip preference) can be added without a breaking change.
+  readonly _empty?: undefined;
 }
 
-export interface TpResponse {
+export interface SelectFirstPlayerResponse {
   goFirst: boolean;
 }
 
@@ -267,8 +271,8 @@ export type SelectPromptType =
   | 'ANNOUNCE_ATTRIB'
   | 'ANNOUNCE_CARD'
   | 'ANNOUNCE_NUMBER'
-  | 'RPS_CHOICE'
-  | 'SELECT_TP';
+  | 'DICE_ROLL'
+  | 'SELECT_FIRST_PLAYER';
 
 export type PlayerResponseMsg =
   | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_IDLECMD'; data: IdleCmdResponse }
@@ -291,5 +295,5 @@ export type PlayerResponseMsg =
   | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_ATTRIB'; data: AnnounceResponse }
   | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_CARD'; data: AnnounceResponse }
   | { type: 'PLAYER_RESPONSE'; promptType: 'ANNOUNCE_NUMBER'; data: AnnounceResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'RPS_CHOICE'; data: RpsResponse }
-  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_TP'; data: TpResponse };
+  | { type: 'PLAYER_RESPONSE'; promptType: 'DICE_ROLL'; data: DiceRollResponse }
+  | { type: 'PLAYER_RESPONSE'; promptType: 'SELECT_FIRST_PLAYER'; data: SelectFirstPlayerResponse };

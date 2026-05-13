@@ -6,7 +6,7 @@ import {
 } from './client-message-router.js';
 import { configureWorkerLifecycle, _resetTotalDuelsServedForTest } from './worker-lifecycle.js';
 import { configureTimerManagement } from './timer-management.js';
-import { configureRpsCoordinator } from './rps-coordinator.js';
+import { configureFirstPlayerCoordinator } from './first-player-coordinator.js';
 import type { ActiveDuelSession } from './types.js';
 import type { ServerMessage, ClientMessage, Player } from './ws-protocol.js';
 
@@ -68,7 +68,7 @@ function makeWs(): FakeWebSocket {
   return ws;
 }
 
-function makeSession(spy: SpyHooks, opts: { withWorker?: boolean; phase?: 'DUELING' | 'RPS' | 'WAITING_PLAYERS' } = {}): ActiveDuelSession & { worker: FakeWorker | null; players: ActiveDuelSession['players'] } {
+function makeSession(spy: SpyHooks, opts: { withWorker?: boolean; phase?: 'DUELING' | 'ROLLING_DICE' | 'WAITING_PLAYERS' } = {}): ActiveDuelSession & { worker: FakeWorker | null; players: ActiveDuelSession['players'] } {
   const worker = opts.withWorker !== false ? makeWorker(spy) : null;
   const ws0 = makeWs();
   const ws1 = makeWs();
@@ -82,7 +82,7 @@ function makeSession(spy: SpyHooks, opts: { withWorker?: boolean; phase?: 'DUELI
     startedAt: 0,
     endedAt: null,
     phase: opts.phase ?? 'DUELING',
-    rpsState: null,
+    firstPlayerState: null,
     worker: worker as unknown as ActiveDuelSession['worker'],
     workerTerminated: false,
     awaitingResponse: [false, false],
@@ -148,12 +148,12 @@ function wireUpstreams(): void {
     bothDisconnectedCleanupMs: 10_000,
     animationsDoneTimeoutMs: 30_000,
   });
-  configureRpsCoordinator({
+  configureFirstPlayerCoordinator({
     sendToPlayer: () => undefined,
     filterMessage: (m) => m,
     startDuelWithOrder: () => undefined,
-    rpsTimeoutMs: 10_000,
-    tpTimeoutMs: 30_000,
+    diceRollTimeoutMs: 30_000,
+    firstPlayerTimeoutMs: 15_000,
   });
 }
 
@@ -244,18 +244,18 @@ describe('client-message-router', () => {
     it('skips the worker forwarding when handlePreDuelResponse returns true', () => {
       const spy = makeSpy();
       configureClientMessageRouter(makeConfig(spy));
-      // RPS-phase session with a valid RPS state set up.
-      const s = makeSession(spy, { phase: 'RPS' });
-      s.rpsState = { choices: [null, null], timers: [], round: 0 };
+      // ROLLING_DICE-phase session with a valid first-player state set up.
+      const s = makeSession(spy, { phase: 'ROLLING_DICE' });
+      s.firstPlayerState = { rolls: [null, null], timers: [], round: 0 };
       s.awaitingResponse[0] = true;
 
       handleClientMessage(s, 0, {
-        type: 'PLAYER_RESPONSE', promptType: 'RPS_CHOICE', data: { choice: 1 },
+        type: 'PLAYER_RESPONSE', promptType: 'DICE_ROLL', data: {},
       } as unknown as ClientMessage);
 
-      // RPS handler consumed the response → not forwarded to the worker.
+      // Dice handler consumed the response → not forwarded to the worker.
       expect(spy.workerPosts).toHaveLength(0);
-      expect(s.rpsState!.choices[0]).toBe(1);
+      expect(s.firstPlayerState!.rolls[0]).not.toBeNull();
     });
   });
 
@@ -580,7 +580,7 @@ describe('client-message-router', () => {
       const spy = makeSpy();
       configureClientMessageRouter(makeConfig(spy));
       const s = setup(spy);
-      s.phase = 'RPS';
+      s.phase = 'ROLLING_DICE';
 
       handleClientMessage(s, 0, { type: 'CANCEL_PROMPT_SEQUENCE' } as ClientMessage);
 

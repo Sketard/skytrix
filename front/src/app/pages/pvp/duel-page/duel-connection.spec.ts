@@ -66,14 +66,14 @@ describe('DuelConnection — initial state', () => {
     expect(conn.opponentDisconnected()).toBeFalse();
     expect(conn.disconnectGraceSec()).toBe(0);
     expect(conn.duelResult()).toBeNull();
-    expect(conn.rpsResult()).toBeNull();
-    expect(conn.rpsInProgress()).toBeFalse();
+    expect(conn.diceResult()).toBeNull();
+    expect(conn.diceInProgress()).toBeFalse();
     expect(conn.timerState()).toBeNull();
     expect(conn.timerStatePerPlayer()).toEqual([null, null]);
     expect(conn.inactivityWarning()).toBeNull();
     expect(conn.waitingForOpponent()).toBeFalse();
-    expect(conn.tpResult()).toBeNull();
-    expect(conn.tpResponseSent()).toBeFalse();
+    expect(conn.firstPlayerResult()).toBeNull();
+    expect(conn.firstPlayerResponseSent()).toBeFalse();
     expect(conn.lastSelectedCards).toEqual([]);
     expect(conn.lastConfirmedCards).toEqual([]);
     expect(conn.justReconnected()).toBeFalse();
@@ -120,16 +120,16 @@ describe('DuelConnection — state setters', () => {
     expect(localStorage.getItem(storageKey)).toBeNull();
   });
 
-  it('clearRpsResult sets rpsResult signal to null', () => {
+  it('clearDiceResult sets diceResult signal to null', () => {
     const { conn } = makeConn();
     dispatch(conn, {
-      type: 'RPS_RESULT',
+      type: 'DICE_RESULT',
       winner: 0 as Player,
-      choices: [1, 2],
+      dice0: [6, 5], dice1: [3, 2], sum0: 11, sum1: 5,
     } as unknown as ServerMessage);
-    expect(conn.rpsResult()).not.toBeNull();
-    conn.clearRpsResult();
-    expect(conn.rpsResult()).toBeNull();
+    expect(conn.diceResult()).not.toBeNull();
+    conn.clearDiceResult();
+    expect(conn.diceResult()).toBeNull();
   });
 });
 
@@ -244,19 +244,21 @@ describe('DuelConnection — handleMessage: DUEL_END', () => {
 // handleMessage dispatch — RPS cycle
 // =============================================================================
 
-describe('DuelConnection — handleMessage: RPS', () => {
-  it('RPS_CHOICE sets rpsInProgress=true, RPS_RESULT clears it and stores result', () => {
+describe('DuelConnection — handleMessage: dice', () => {
+  it('DICE_ROLL sets diceInProgress=true, DICE_RESULT clears it and stores result', () => {
     const { conn } = makeConn();
     dispatch(conn, {
-      type: 'RPS_CHOICE',
+      type: 'DICE_ROLL', player: 0,
     } as unknown as ServerMessage);
-    expect(conn.rpsInProgress()).toBeTrue();
-    expect(conn.pendingPrompt()).toEqual({ type: 'RPS_CHOICE' } as never);
+    expect(conn.diceInProgress()).toBeTrue();
+    expect(conn.pendingPrompt()).toEqual({ type: 'DICE_ROLL', player: 0 } as never);
 
-    const result = { type: 'RPS_RESULT', winner: 0, choices: [1, 2] } as unknown as ServerMessage;
+    const result = {
+      type: 'DICE_RESULT', winner: 0, dice0: [6, 5], dice1: [3, 2], sum0: 11, sum1: 5,
+    } as unknown as ServerMessage;
     dispatch(conn, result);
-    expect(conn.rpsInProgress()).toBeFalse();
-    expect(conn.rpsResult()).toBe(result as never);
+    expect(conn.diceInProgress()).toBeFalse();
+    expect(conn.diceResult()).toBe(result as never);
   });
 });
 

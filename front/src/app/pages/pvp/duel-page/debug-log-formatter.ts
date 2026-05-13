@@ -25,8 +25,6 @@ export interface DebugPanelEntry {
 
 const SEP = ' \u00b7 '; // middle dot separator
 
-const RPS_LABELS: Record<number, string> = { 0: 'Rock', 1: 'Paper', 2: 'Scissors' };
-
 const IDLE_ACTION_LABELS: Record<number, string> = {
   [IDLE_ACTION.SUMMON]: 'Normal Summon',
   [IDLE_ACTION.SPECIAL_SUMMON]: 'Special Summon',
@@ -203,23 +201,23 @@ export function formatServerMessage(msg: ServerMessage): string | null {
       return `${p(msg.player)}${SEP}announce card (auto)`;
     case 'ANNOUNCE_NUMBER':
       return `${p(msg.player)}${SEP}announce number from ${msg.options.length} options`;
-    case 'RPS_CHOICE':
-      return `${p(msg.player)}${SEP}rock-paper-scissors`;
-    case 'SELECT_TP':
-      return `${p(msg.player)}${SEP}choose turn order`;
+    case 'DICE_ROLL':
+      return `${p(msg.player)}${SEP}roll the dice`;
+    case 'SELECT_FIRST_PLAYER':
+      return `${p(msg.player)}${SEP}choose who plays first`;
 
     // -- System --
     case 'DUEL_END':
       return msg.winner !== null
         ? `Duel ended \u2014 ${p(msg.winner)} wins (${msg.reason})`
         : `Duel ended \u2014 draw (${msg.reason})`;
-    case 'RPS_RESULT':
+    case 'DICE_RESULT':
       return (
-        `RPS: ${p(0)}=${RPS_LABELS[msg.player1Choice] ?? '?'}, ${p(1)}=${RPS_LABELS[msg.player2Choice] ?? '?'} \u2192 ` +
-        `${msg.winner !== null ? `${p(msg.winner)} wins` : 'draw'}`
+        `Dice: ${p(0)}=[${msg.dice0.join(',')}]=${msg.sum0}, ${p(1)}=[${msg.dice1.join(',')}]=${msg.sum1} \u2192 ` +
+        `${msg.winner !== null ? `${p(msg.winner)} wins` : 'tie'}`
       );
-    case 'TP_RESULT':
-      return `Turn order: ${msg.goFirst ? 'You go first' : 'You go second'}`;
+    case 'FIRST_PLAYER_RESULT':
+      return `First player: ${msg.goFirst ? 'You go first' : 'You go second'}`;
     case 'OPPONENT_DISCONNECTED':
       return 'Opponent disconnected';
     case 'OPPONENT_RECONNECTED':
@@ -305,13 +303,11 @@ export function formatPlayerResponse(promptType: string, data: Record<string, un
       const value = data['value'] as number;
       return `\u2192 announced ${value}`;
     }
-    case 'RPS_CHOICE': {
-      const choice = data['choice'] as number;
-      return `\u2192 ${RPS_LABELS[choice] ?? '?'}`;
-    }
-    case 'SELECT_TP': {
+    case 'DICE_ROLL':
+      return `\u2192 rolled`;
+    case 'SELECT_FIRST_PLAYER': {
       const goFirst = data['goFirst'] as boolean;
-      return `\u2192 ${goFirst ? 'Go First' : 'Go Second'}`;
+      return `\u2192 ${goFirst ? 'I go first' : 'Opponent goes first'}`;
     }
     default:
       return `\u2192 ${promptType}`;
@@ -327,13 +323,14 @@ export function categorizeMsg(type: string): 'event' | 'prompt' | 'system' {
     type.startsWith('SELECT_') ||
     type.startsWith('ANNOUNCE_') ||
     type.startsWith('SORT_') ||
-    type === 'RPS_CHOICE'
+    type === 'DICE_ROLL'
   ) {
     return 'prompt';
   }
   if (
     [
-      'DUEL_END', 'RPS_RESULT', 'OPPONENT_DISCONNECTED', 'OPPONENT_RECONNECTED',
+      'DUEL_END', 'DICE_RESULT', 'FIRST_PLAYER_RESULT', 'OPPONENT_DISCONNECTED',
+      'OPPONENT_RECONNECTED',
       'REMATCH_INVITATION', 'REMATCH_STARTING', 'REMATCH_CANCELLED', 'WORKER_ERROR',
     ].includes(type)
   ) {

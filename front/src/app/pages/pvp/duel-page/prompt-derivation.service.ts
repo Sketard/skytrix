@@ -15,7 +15,7 @@ import {
   isActivateAction,
 } from './idle-action-codes';
 
-interface TpResult { goFirst: boolean }
+interface FirstPlayerResult { goFirst: boolean }
 type ChainPhase = 'idle' | 'building' | 'resolving';
 
 interface PromptDerivationConfig {
@@ -28,9 +28,9 @@ interface PromptDerivationConfig {
   chainPromptGateActive: Signal<boolean>;
   ownPlayerIndex: Signal<number>;
   waitingForOpponent: Signal<boolean>;
-  tpResult: Signal<TpResult | null>;
-  rpsResult: () => unknown;
-  rpsInProgress: () => boolean;
+  firstPlayerResult: Signal<FirstPlayerResult | null>;
+  diceResult: () => unknown;
+  diceInProgress: () => boolean;
   ocgPlayerIndex: () => number | null;
 }
 
@@ -164,9 +164,9 @@ export class PromptDerivationService {
   // TP passive message: shown in prompt dialog during turn-order phase
   readonly tpPassiveMessage = computed(() => {
     const c = this.c;
-    const tpResult = c.tpResult();
-    if (tpResult) return {
-      title: tpResult.goFirst ? 'You go first!' : 'You go second!',
+    const firstPlayerResult = c.firstPlayerResult();
+    if (firstPlayerResult) return {
+      title: firstPlayerResult.goFirst ? 'You go first!' : 'You go second!',
       subtitle: 'The duel will begin shortly',
       style: 'result' as const,
     };
@@ -174,7 +174,7 @@ export class PromptDerivationService {
     const waiting = c.waitingForOpponent();
     const preDuel = c.ocgPlayerIndex() === null;
     const noPrompt = !c.pendingPrompt();
-    const noRps = !c.rpsResult() && !c.rpsInProgress();
+    const noRps = !c.diceResult() && !c.diceInProgress();
     if (waiting && preDuel && noPrompt && noRps) return {
       title: 'Opponent is choosing turn order...',
       style: 'waiting' as const,

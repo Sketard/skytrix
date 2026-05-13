@@ -24,7 +24,7 @@ import type { DuelToast } from '../duel-toast.service';
            aria-atomic="true">
         <div class="phase-announcement__band">
           @if (pa.isOpponent) {
-            <span class="phase-announcement__prefix">{{ 'duel.rps.opponent' | translate }}</span>
+            <span class="phase-announcement__prefix">{{ 'duel.opponent.label' | translate }}</span>
             <span class="phase-announcement__separator">&mdash;</span>
           }
           <span class="phase-announcement__label">{{ pa.label }}</span>

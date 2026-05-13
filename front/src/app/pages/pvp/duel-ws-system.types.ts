@@ -1,9 +1,9 @@
 // =============================================================================
 // ws-protocol-system.ts — Skytrix WS protocol — system + reconnect + client→server
-// Lifecycle messages (DUEL_END, RPS, TP, REMATCH, TIMER), reconnect snapshots
-// (STATE_SYNC, CHAIN_STATE, SESSION_TOKEN), client→server commands (SURRENDER,
-// REMATCH_REQUEST, REQUEST_STATE_SYNC, ACTIVITY_PING, ANIMATIONS_DONE,
-// CANCEL_PROMPT_SEQUENCE, INACTIVITY_WARNING, WAITING_RESPONSE).
+// Lifecycle messages (DUEL_END, DICE, FIRST_PLAYER, REMATCH, TIMER), reconnect
+// snapshots (STATE_SYNC, CHAIN_STATE, SESSION_TOKEN), client→server commands
+// (SURRENDER, REMATCH_REQUEST, REQUEST_STATE_SYNC, ACTIVITY_PING,
+// ANIMATIONS_DONE, CANCEL_PROMPT_SEQUENCE, INACTIVITY_WARNING, WAITING_RESPONSE).
 // Sync rule: same content as duel-server/src/ws-protocol-system.ts
 // (modulo `.js` import suffix).
 // =============================================================================
@@ -37,25 +37,52 @@ export interface TimerStateMsg {
   remainingMs: number;
 }
 
-export interface RpsChoiceMsg {
-  type: 'RPS_CHOICE';
+// =============================================================================
+// Pre-duel first-player coordinator (dice 2D6, since 2026-05-13). Replaces
+// the legacy RPS/SELECT_TP/TP_RESULT pre-duel flow. OCGCore's in-game RPS
+// (ROCK_PAPER_SCISSORS message type) is short-circuited via `skipRps=true`
+// at INIT_DUEL, so the legacy RPS_CHOICE/RPS_RESULT messages have no use
+// case in skytrix and are intentionally absent from the protocol.
+// State machine: WAITING_PLAYERS → ROLLING_DICE → DICE_RESOLVED →
+// CHOOSE_FIRST_PLAYER → FIRST_PLAYER_RESOLVED → DUELING.
+// =============================================================================
+
+/** Server → client prompt: "ready to roll your two dice". Sent to both
+ *  players simultaneously. The client confirms readiness with a
+ *  `PLAYER_RESPONSE { promptType: 'DICE_ROLL', data: {} }` payload; the
+ *  server is the source of truth for the random values themselves. */
+export interface DiceRollPromptMsg {
+  type: 'DICE_ROLL';
   player: Player;
 }
 
-export interface RpsResultMsg {
-  type: 'RPS_RESULT';
-  player1Choice: number;
-  player2Choice: number;
+/** Server → client result: per-player dice values + sums + winner. Each die
+ *  is a value in [1..6]; `sum0`/`sum1` are `dice0[0]+dice0[1]` etc. `winner`
+ *  is the OCGCore player index of the higher sum, or null on a tie (which
+ *  triggers an auto-reroll after a 1.8s suspense delay client-side). */
+export interface DiceResultMsg {
+  type: 'DICE_RESULT';
+  dice0: [number, number];
+  dice1: [number, number];
+  sum0: number;
+  sum1: number;
   winner: Player | null;
 }
 
-export interface SelectTpMsg {
-  type: 'SELECT_TP';
+/** Server → client prompt sent to the dice winner only. The other player
+ *  receives a `WAITING_RESPONSE`. Auto-resolves as "winner goes first"
+ *  after `firstPlayerTimeoutMs` if the winner stays silent. */
+export interface SelectFirstPlayerMsg {
+  type: 'SELECT_FIRST_PLAYER';
   player: Player;
 }
 
-export interface TpResultMsg {
-  type: 'TP_RESULT';
+/** Server → client final result (broadcast to both): perspective-flipped
+ *  `goFirst` boolean (true = the receiving player goes first). After this
+ *  message both clients show the "You go first / second" banner for a
+ *  short window (~2.5s) before the duel proper starts. */
+export interface FirstPlayerResultMsg {
+  type: 'FIRST_PLAYER_RESULT';
   goFirst: boolean;
 }
 

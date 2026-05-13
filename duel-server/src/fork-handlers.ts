@@ -73,7 +73,7 @@ export function createForkSoloSession({
   const session: ActiveDuelSession = {
     duelId: forkDuelId,
     phase: 'DUELING',
-    rpsState: null,
+    firstPlayerState: null,
     players: [
       { playerId: userId, playerIndex: 0, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },
       { playerId: userId, playerIndex: 1, ws: null, connected: false, disconnectedAt: null, reconnectToken: null, gracePeriodTimer: null, inactivitySlot: null },

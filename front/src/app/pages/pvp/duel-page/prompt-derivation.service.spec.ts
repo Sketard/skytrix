@@ -24,9 +24,9 @@ interface Harness {
   chainPromptGateActive: WritableSignal<boolean>;
   ownPlayerIndex: WritableSignal<number>;
   waitingForOpponent: WritableSignal<boolean>;
-  tpResult: WritableSignal<{ goFirst: boolean } | null>;
-  rpsResult: WritableSignal<unknown>;
-  rpsInProgress: WritableSignal<boolean>;
+  firstPlayerResult: WritableSignal<{ goFirst: boolean } | null>;
+  diceResult: WritableSignal<unknown>;
+  diceInProgress: WritableSignal<boolean>;
   ocgPlayerIndex: WritableSignal<number | null>;
 }
 
@@ -40,9 +40,9 @@ function makeHarness(): Harness {
   const chainPromptGateActive = signal(false);
   const ownPlayerIndex = signal(0);
   const waitingForOpponent = signal(false);
-  const tpResult = signal<{ goFirst: boolean } | null>(null);
-  const rpsResult = signal<unknown>(null);
-  const rpsInProgress = signal(false);
+  const firstPlayerResult = signal<{ goFirst: boolean } | null>(null);
+  const diceResult = signal<unknown>(null);
+  const diceInProgress = signal(false);
   const ocgPlayerIndex = signal<number | null>(0);
 
   TestBed.resetTestingModule();
@@ -58,16 +58,16 @@ function makeHarness(): Harness {
     chainPromptGateActive,
     ownPlayerIndex,
     waitingForOpponent,
-    tpResult,
-    rpsResult: () => rpsResult(),
-    rpsInProgress: () => rpsInProgress(),
+    firstPlayerResult,
+    diceResult: () => diceResult(),
+    diceInProgress: () => diceInProgress(),
     ocgPlayerIndex: () => ocgPlayerIndex(),
   });
 
   return {
     service, pendingPrompt, isAnimating, queueLength, chainPhase,
     hasPendingChainEntry, chainEntryAnimating, chainPromptGateActive,
-    ownPlayerIndex, waitingForOpponent, tpResult, rpsResult, rpsInProgress,
+    ownPlayerIndex, waitingForOpponent, firstPlayerResult, diceResult, diceInProgress,
     ocgPlayerIndex,
   };
 }
@@ -271,9 +271,9 @@ describe('PromptDerivationService', () => {
   // -------------------------------------------------------------------------
 
   describe('tpPassiveMessage', () => {
-    it('returns "You go first!" when tpResult.goFirst=true', () => {
+    it('returns "You go first!" when firstPlayerResult.goFirst=true', () => {
       const h = makeHarness();
-      h.tpResult.set({ goFirst: true });
+      h.firstPlayerResult.set({ goFirst: true });
       const msg = h.service.tpPassiveMessage();
       expect(msg).toEqual({
         title: 'You go first!',
@@ -282,9 +282,9 @@ describe('PromptDerivationService', () => {
       });
     });
 
-    it('returns "You go second!" when tpResult.goFirst=false', () => {
+    it('returns "You go second!" when firstPlayerResult.goFirst=false', () => {
       const h = makeHarness();
-      h.tpResult.set({ goFirst: false });
+      h.firstPlayerResult.set({ goFirst: false });
       expect(h.service.tpPassiveMessage()!.title).toBe('You go second!');
     });
 
@@ -292,7 +292,7 @@ describe('PromptDerivationService', () => {
       const h = makeHarness();
       h.waitingForOpponent.set(true);
       h.ocgPlayerIndex.set(null); // pre-duel
-      // pendingPrompt=null, rpsResult=null, rpsInProgress=false (defaults)
+      // pendingPrompt=null, diceResult=null, diceInProgress=false (defaults)
       const msg = h.service.tpPassiveMessage();
       expect(msg).toEqual({
         title: 'Opponent is choosing turn order...',
@@ -311,7 +311,7 @@ describe('PromptDerivationService', () => {
       const h = makeHarness();
       h.waitingForOpponent.set(true);
       h.ocgPlayerIndex.set(null);
-      h.rpsResult.set({ winner: 0 });
+      h.diceResult.set({ winner: 0 });
       expect(h.service.tpPassiveMessage()).toBeNull();
     });
   });

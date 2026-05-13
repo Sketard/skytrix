@@ -8,7 +8,7 @@ import {
   startInactivityTimer, clearInactivityTimer,
 } from './timer-management.js';
 import { handleDuelEnd, requestReplayFromWorker } from './worker-lifecycle.js';
-import { handlePreDuelResponse } from './rps-coordinator.js';
+import { handlePreDuelResponse } from './first-player-coordinator.js';
 import * as logger from './logger.js';
 
 /**
@@ -99,7 +99,7 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
         return;
       }
 
-      // Pre-duel RPS / TP responses are handled at the application layer.
+      // Pre-duel dice + first-player responses are handled at the application layer.
       if (session.phase !== 'DUELING') {
         if (handlePreDuelResponse(session, playerIndex, msg.promptType, msg.data as unknown as Record<string, unknown>)) return;
       }
@@ -219,7 +219,7 @@ export function handleClientMessage(session: ActiveDuelSession, playerIndex: 0 |
     case 'CANCEL_PROMPT_SEQUENCE': {
       // P0-3bis.3 — roll back to the most recent IDLECMD/BATTLECMD
       // snapshot. Four guards (cancel-rollback-contract.md):
-      //   1. Phase must be DUELING (pre-duel RPS can also have
+      //   1. Phase must be DUELING (pre-duel dice can also have
       //      awaitingResponse=true without an active worker).
       //   2. Per-player rate-limit (bounds malicious flood cost).
       //   3. awaitingResponse — must have an in-flight prompt to cancel.

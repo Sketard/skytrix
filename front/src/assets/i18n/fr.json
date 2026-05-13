@@ -194,26 +194,27 @@
       "title": "Duel actif dans un autre onglet",
       "takeControl": "Reprendre ici"
     },
-    "rps": {
-      "title": "PIERRE FEUILLE CISEAUX",
-      "subtitle": "Le gagnant choisit l'ordre",
-      "waitingOpponent": "En attente de l'adversaire...",
+    "dice": {
+      "title": "DÉS — QUI COMMENCE ?",
+      "subtitle": "Lancez les dés pour décider",
+      "waitingOpponent": "En attente du lancer adverse...",
+      "roll": "Lancer les dés",
       "you": "Vous",
       "opponent": "Adversaire",
       "vs": "VS",
       "youWin": "Vous gagnez !",
-      "youLose": "Vous perdez !",
-      "draw": "Égalité — on rejoue...",
-      "rock": "Pierre",
-      "paper": "Feuille",
-      "scissors": "Ciseaux"
+      "youLose": "L'adversaire gagne",
+      "draw": "Égalité — on relance les dés"
     },
-    "turnOrder": {
-      "title": "ORDRE DE JEU",
-      "subtitle": "Vous avez gagné — choisissez votre position",
-      "waiting": "En attente de confirmation...",
-      "goFirst": "Jouer en premier",
-      "goSecond": "Jouer en second"
+    "firstPlayer": {
+      "title": "QUI COMMENCE ?",
+      "subtitle": "Vous avez gagné — choisissez",
+      "waiting": "L'adversaire choisit qui commence...",
+      "youFirst": "Tu joues en premier",
+      "youSecond": "Tu joues en second"
+    },
+    "opponent": {
+      "label": "Adversaire"
     },
     "result": {
       "victory": "VICTOIRE",

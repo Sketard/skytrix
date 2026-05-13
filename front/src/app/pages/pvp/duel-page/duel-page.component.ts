@@ -385,9 +385,9 @@ export class DuelPageComponent implements OnInit {
       chainPromptGateActive: this.chainManager.chainPromptGateActive,
       ownPlayerIndex: this.ownPlayerIndex,
       waitingForOpponent: this.wsService.waitingForOpponent,
-      tpResult: this.wsService.tpResult,
-      rpsResult: () => this.wsService.rpsResult(),
-      rpsInProgress: () => this.wsService.rpsInProgress(),
+      firstPlayerResult: this.wsService.firstPlayerResult,
+      diceResult: () => this.wsService.diceResult(),
+      diceInProgress: () => this.wsService.diceInProgress(),
       ocgPlayerIndex: () => this.wsService.ocgPlayerIndex(),
     });
     this.duelCtx.configure({
@@ -825,17 +825,6 @@ export class DuelPageComponent implements OnInit {
     if (place) {
       this.wsService.sendResponse(prompt.type, { places: [place] });
     }
-  }
-
-  // Story 2.3 — Map RPS choice value to SVG icon path
-  readonly RPS_ICONS = [
-    'assets/images/icons/rps-rock.svg',
-    'assets/images/icons/rps-paper.svg',
-    'assets/images/icons/rps-scissors.svg',
-  ] as const;
-
-  rpsIcon(choice: number): string {
-    return this.RPS_ICONS[choice] ?? '';
   }
 
   // ---------------------------------------------------------------------------

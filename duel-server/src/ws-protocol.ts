@@ -36,9 +36,11 @@ import type {
 } from './ws-protocol-prompts.js';
 
 import type {
-  DuelEndMsg, TimerStateMsg, RpsChoiceMsg, RpsResultMsg, SelectTpMsg,
-  TpResultMsg, DuelStartingMsg, RematchInvitationMsg, RematchStartingMsg,
-  RematchCancelledMsg, WorkerErrorMsg, StateSyncMsg, ChainStateMsg,
+  DuelEndMsg, TimerStateMsg,
+  DiceRollPromptMsg, DiceResultMsg,
+  SelectFirstPlayerMsg, FirstPlayerResultMsg, DuelStartingMsg,
+  RematchInvitationMsg, RematchStartingMsg, RematchCancelledMsg,
+  WorkerErrorMsg, StateSyncMsg, ChainStateMsg,
   SessionTokenMsg, OpponentDisconnectedMsg, OpponentReconnectedMsg,
   InactivityWarningMsg, WaitingResponseMsg,
   SurrenderMsg, RematchRequestMsg, RequestStateSyncMsg,
@@ -116,10 +118,10 @@ export type ServerMessage =
   // System messages (18)
   | DuelEndMsg
   | TimerStateMsg
-  | RpsChoiceMsg
-  | RpsResultMsg
-  | SelectTpMsg
-  | TpResultMsg
+  | DiceRollPromptMsg
+  | DiceResultMsg
+  | SelectFirstPlayerMsg
+  | FirstPlayerResultMsg
   | DuelStartingMsg
   | RematchInvitationMsg
   | RematchStartingMsg

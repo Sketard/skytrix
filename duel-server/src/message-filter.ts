@@ -43,7 +43,7 @@ const SAFE_PUBLIC_HINT_TYPES: ReadonlySet<number> = new Set([1, 2, 6, 7, 9]);
  * @param omniscient When true, skips routing drops (SELECT_*, non-public
  *   MSG_HINT, MSG_CONFIRM_CARDS are returned instead of null) and field sanitization
  *   (card codes, hand contents, face-down stats preserved). Perspective
- *   transformations (RPS_RESULT swap, BOARD_STATE player remapping) still apply.
+ *   transformations (DICE_RESULT swap, BOARD_STATE player remapping) still apply.
  *   Default DROP for unknown message types is NOT bypassed.
  *   Used by replay pre-computation (Story 3.3) to produce omniscient view.
  */
@@ -100,7 +100,7 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
       }
       return message;
 
-    // --- SELECT_* (20 types) + RPS_CHOICE: routed to deciding player only (omniscient: never drop) ---
+    // --- SELECT_* (20 types) + DICE_ROLL + SELECT_FIRST_PLAYER: routed to deciding player only (omniscient: never drop) ---
 
     case 'SELECT_IDLECMD':
     case 'SELECT_BATTLECMD':
@@ -125,19 +125,21 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
       if (!omniscient && forPlayer !== message.player) return null;
       return message;
 
-    case 'RPS_CHOICE':
-    case 'SELECT_TP':
+    case 'DICE_ROLL':
+    case 'SELECT_FIRST_PLAYER':
       if (!omniscient && forPlayer !== message.player) return null;
       return message;
 
-    // --- RPS_RESULT: perspective-corrected (swap choices + winner for player 1) ---
+    // --- DICE_RESULT (pre-duel coordinator): perspective-corrected (swap dice + sums + winner for player 1) ---
 
-    case 'RPS_RESULT': {
+    case 'DICE_RESULT': {
       if (forPlayer === 0) return message;
       return {
-        type: 'RPS_RESULT' as const,
-        player1Choice: message.player2Choice,
-        player2Choice: message.player1Choice,
+        type: 'DICE_RESULT' as const,
+        dice0: message.dice1,
+        dice1: message.dice0,
+        sum0: message.sum1,
+        sum1: message.sum0,
         winner: message.winner === null ? null : (message.winner === 0 ? 1 : 0) as Player,
       };
     }
@@ -188,7 +190,7 @@ function filterMessageInner(message: ServerMessage, forPlayer: Player, omniscien
     case 'OPPONENT_DISCONNECTED':
     case 'OPPONENT_RECONNECTED':
     case 'WAITING_RESPONSE':
-    case 'TP_RESULT':
+    case 'FIRST_PLAYER_RESULT':
     case 'DUEL_STARTING':
     case 'CHAIN_STATE':
       return message;

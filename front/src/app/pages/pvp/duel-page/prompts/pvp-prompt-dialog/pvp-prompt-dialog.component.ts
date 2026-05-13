@@ -122,12 +122,13 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private preTargetSubscription: { unsubscribe(): void } | null = null;
 
   constructor() {
-    // Consolidated dialog lifecycle: reacts to prompt, passiveMessage, and rpsInProgress changes.
-    // Single effect avoids ordering issues when multiple signals change simultaneously.
+    // Consolidated dialog lifecycle: reacts to prompt, passiveMessage, and
+    // pre-duel dice-in-progress changes. Single effect avoids ordering
+    // issues when multiple signals change simultaneously.
     effect(() => {
       const prompt = this.prompt();
       const msg = this.passiveMessage();
-      const rpsIp = this.wsService.rpsInProgress();
+      const diceIp = this.wsService.diceInProgress();
       untracked(() => {
         if (prompt) {
           this.onPromptChange(prompt);
@@ -138,11 +139,11 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
           if (this.dialogState() === 'closed') {
             this.dialogState.set('open');
           }
-        } else if (!rpsIp && !this.wsService.tpResponseSent()) {
-          // No prompt, no passive message, RPS resolved → close
+        } else if (!diceIp && !this.wsService.firstPlayerResponseSent()) {
+          // No prompt, no passive message, dice resolved → close
           if (this.dialogState() !== 'closed') this.closeDialog();
         } else {
-          // RPS or TP in progress with no prompt/passive — handle null prompt
+          // Dice or first-player choice in progress with no prompt/passive
           this.onPromptChange(null);
         }
       });
@@ -251,7 +252,7 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
   private onPromptChange(prompt: Prompt | null): void {
     if (!prompt || (IGNORED_PROMPT_TYPES.has(prompt.type) && !this.readOnly())) {
       // Keep dialog open during: RPS waiting, TP response sent, or passive message active
-      if (this.wsService.rpsInProgress() || this.wsService.tpResponseSent() || this.passiveMessage()) return;
+      if (this.wsService.diceInProgress() || this.wsService.firstPlayerResponseSent() || this.passiveMessage()) return;
 
       if (this.dialogState() !== 'closed') {
         this.closeDialog();
@@ -477,8 +478,10 @@ export class PvpPromptDialogComponent implements AfterViewInit, OnDestroy {
         return act ? `It is the ${act}.` : null;
       case 'SELECT_YESNO':
         return descriptionText ? (q ? `${q} \u2014 ${descriptionText}` : descriptionText) : q || null;
-      case 'SELECT_TP':
-        return `${a('Choose')} your turn order`;
+      case 'SELECT_FIRST_PLAYER':
+        return `${a('Choose')} who plays first`;
+      case 'DICE_ROLL':
+        return `${a('Roll')} the dice`;
       default:
         return q || null;
     }

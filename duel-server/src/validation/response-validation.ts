@@ -208,6 +208,20 @@ export function validateResponseData(prompt: ServerMessage, data: Record<string,
       return OK;
     }
 
+    // Pre-duel coordinator prompts (since 2026-05-13). The server is the
+    // source of truth for the random dice values, so DICE_ROLL accepts any
+    // (typically empty) payload. SELECT_FIRST_PLAYER requires a boolean
+    // `goFirst` flag and is otherwise rejected so the coordinator never
+    // sees a malformed pick.
+    case 'DICE_ROLL':
+      return OK;
+
+    case 'SELECT_FIRST_PLAYER': {
+      const goFirst = data['goFirst'];
+      if (typeof goFirst !== 'boolean') return err('goFirst must be a boolean');
+      return OK;
+    }
+
     default:
       return OK;
   }

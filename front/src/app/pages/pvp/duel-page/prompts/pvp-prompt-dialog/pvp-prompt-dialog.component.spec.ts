@@ -129,8 +129,8 @@ class StubOptionComponent implements PromptSubComponent {
 interface WsStub {
   hintContext: WritableSignal<{ hintType: number; player: number; value: number; cardName: string; hintAction: string }>;
   activeChainLinks: WritableSignal<Array<{ chainIndex: number; resolving: boolean; negated: boolean; cardCode: number; cardName: string; player: number; zoneId: string; location: number; sequence: number }>>;
-  rpsInProgress: WritableSignal<boolean>;
-  tpResponseSent: WritableSignal<boolean>;
+  diceInProgress: WritableSignal<boolean>;
+  firstPlayerResponseSent: WritableSignal<boolean>;
   lastConfirmedCards: CardInfo[];
   lastSelectedCards: CardInfo[];
   confirmedCardsForChainIndex: jasmine.Spy;
@@ -142,8 +142,8 @@ function makeWsStub(): WsStub {
   return {
     hintContext: signal({ hintType: 0, player: 0, value: 0, cardName: '', hintAction: '' }),
     activeChainLinks: signal([] as WsStub['activeChainLinks'] extends WritableSignal<infer T> ? T : never),
-    rpsInProgress: signal(false),
-    tpResponseSent: signal(false),
+    diceInProgress: signal(false),
+    firstPlayerResponseSent: signal(false),
     lastConfirmedCards: [] as CardInfo[],
     lastSelectedCards: [] as CardInfo[],
     confirmedCardsForChainIndex: jasmine.createSpy('confirmedCardsForChainIndex').and.returnValue([] as CardInfo[]),
@@ -260,9 +260,9 @@ describe('PvpPromptDialogComponent — lifecycle (C2.1+2)', () => {
     expect(component.dialogState()).toBe('open');
   });
 
-  it('does not auto-close while rpsInProgress is true', () => {
+  it('does not auto-close while diceInProgress is true', () => {
     // Open via passive message during RPS.
-    ws.rpsInProgress.set(true);
+    ws.diceInProgress.set(true);
     fixture.componentRef.setInput('passiveMessage', { title: 'RPS', style: 'waiting' } as PassiveMessage);
     fixture.detectChanges();
     expect(component.dialogState()).toBe('open');

@@ -19,8 +19,8 @@ import {
   AnnounceAttribMsg,
   AnnounceCardMsg,
   AnnounceNumberMsg,
-  RpsChoiceMsg,
-  SelectTpMsg,
+  DiceRollPromptMsg,
+  SelectFirstPlayerMsg,
 } from '../duel-ws.types';
 
 export type Prompt =
@@ -44,5 +44,5 @@ export type Prompt =
   | AnnounceAttribMsg
   | AnnounceCardMsg
   | AnnounceNumberMsg
-  | RpsChoiceMsg
-  | SelectTpMsg;
+  | DiceRollPromptMsg
+  | SelectFirstPlayerMsg;

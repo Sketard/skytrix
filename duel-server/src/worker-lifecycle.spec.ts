@@ -50,7 +50,7 @@ function makeSession(worker: FakeWorker | null = makeWorker()): ActiveDuelSessio
     startedAt: 0,
     endedAt: null,
     phase: 'DUELING',
-    rpsState: null,
+    firstPlayerState: null,
     worker: worker as unknown as ActiveDuelSession['worker'],
     workerTerminated: false,
     awaitingResponse: [false, false],

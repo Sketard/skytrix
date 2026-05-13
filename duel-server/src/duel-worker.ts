@@ -550,18 +550,6 @@ function transformSelectUnselect(msg: any): ServerMessage {
   };
 }
 
-function transformHandRes(msg: any): ServerMessage {
-  // OCGCore RPS values: 1=scissors, 2=rock, 3=paper. Client format: 0=rock, 1=paper, 2=scissors.
-  const OCGCORE_TO_CLIENT: Record<number, number> = { 1: 2, 2: 0, 3: 1 };
-  const handRes = msg as unknown as { res1: number; res2: number; winner: number };
-  return {
-    type: 'RPS_RESULT',
-    player1Choice: OCGCORE_TO_CLIENT[handRes.res1] ?? handRes.res1,
-    player2Choice: OCGCORE_TO_CLIENT[handRes.res2] ?? handRes.res2,
-    winner: handRes.winner === 2 ? null : (handRes.winner as Player),
-  };
-}
-
 function transformMessage(msg: OcgMessage): ServerMessage | null {
   if (msg.type === OcgMessageType.MOVE) {
     const m = msg as any;
@@ -814,13 +802,23 @@ function transformMessage(msg: OcgMessage): ServerMessage | null {
       lastAnnounceNumberOptions = msg.options.map(Number);
       return { type: 'ANNOUNCE_NUMBER', player: msg.player as Player, options: lastAnnounceNumberOptions };
 
-    // --- RPS ---
+    // --- OCGCore in-game RPS — short-circuited via skipRps=true at INIT_DUEL.
+    // Pre-duel "who goes first" runs through the dice 2D6 first-player
+    // coordinator (see first-player-coordinator.ts) and is independent of
+    // OCGCore. If OCGCore emits a ROCK_PAPER_SCISSORS message despite
+    // skipRpsFlag, it's a regression (engine update? config drift?) — we
+    // drop it and log loudly so the next test run catches it.
     case OcgMessageType.ROCK_PAPER_SCISSORS:
-      if (skipRpsFlag) return null;
-      return { type: 'RPS_CHOICE', player: msg.player as Player };
+      if (!skipRpsFlag) {
+        dlog.error('Unexpected OCGCore ROCK_PAPER_SCISSORS message — skipRps was supposed to suppress it. Dropping.');
+      }
+      return null;
 
     case OcgMessageType.HAND_RES:
-      return skipRpsFlag ? null : transformHandRes(msg);
+      if (!skipRpsFlag) {
+        dlog.error('Unexpected OCGCore HAND_RES message — skipRps was supposed to suppress it. Dropping.');
+      }
+      return null;
 
     case OcgMessageType.RETRY:
       dlog.warn('OCGCore sent RETRY — previous response was invalid');

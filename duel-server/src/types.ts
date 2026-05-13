@@ -23,7 +23,9 @@ export const MAX_HTTP_BODY_SIZE = 16384;
 export const MAX_WS_FRAME_SIZE = 4096;
 export const RECONNECT_GRACE_MS = 60_000;
 export const WATCHDOG_TIMEOUT_MS = 30_000;
-export const RPS_TIMEOUT_MS = 30_000;
+// 30s player-side cap for "click to roll". The auto-resolve still rolls a
+// random 2D6 for that player (so a stalled opponent doesn't block the duel).
+export const DICE_ROLL_TIMEOUT_MS = 30_000;
 export const TURN_TIME_POOL_MS = 300_000;
 export const TURN_TIME_INCREMENT_MS = 40_000;
 export const INACTIVITY_TIMEOUT_MS = 120_000;
@@ -267,18 +269,36 @@ export type WorkerToMainMessage =
   | WorkerForkError;
 
 // =============================================================================
-// Pre-Duel RPS State
+// Pre-Duel First-Player Coordinator State (dice 2D6, since 2026-05-13)
 // =============================================================================
 
-export type SessionPhase = 'WAITING_PLAYERS' | 'RPS' | 'CHOOSE_ORDER' | 'TP_RESULT' | 'DUELING';
+export type SessionPhase =
+  | 'WAITING_PLAYERS'
+  | 'ROLLING_DICE'
+  | 'DICE_RESOLVED'
+  | 'CHOOSE_FIRST_PLAYER'
+  | 'FIRST_PLAYER_RESOLVED'
+  | 'DUELING';
 
-export interface RpsState {
-  choices: [number | null, number | null];
+/** Per-session state owned by `first-player-coordinator`. `rolls` is the
+ *  pair of 2D6 rolls for each player (null until that player has confirmed
+ *  readiness); `timers` collects every setTimeout so cleanup can clear them
+ *  in one sweep; `round` increments on ties for diagnostics. */
+export interface FirstPlayerState {
+  rolls: [DiceRoll | null, DiceRoll | null];
   timers: ReturnType<typeof setTimeout>[];
   round: number;
 }
 
-export const TP_TIMEOUT_MS = 30_000;
+/** A single 2D6 roll: two values in [1..6]. */
+export type DiceRoll = readonly [number, number];
+
+/** Sum convenience. */
+export function diceSum(roll: DiceRoll): number {
+  return roll[0] + roll[1];
+}
+
+export const FIRST_PLAYER_TIMEOUT_MS = 15_000;
 
 // =============================================================================
 // Session State
@@ -327,7 +347,7 @@ export interface DuelSession {
  */
 export interface ActiveDuelSession extends DuelSession {
   phase: SessionPhase;
-  rpsState: RpsState | null;
+  firstPlayerState: FirstPlayerState | null;
   worker: import('node:worker_threads').Worker | null;
   workerTerminated: boolean;
   awaitingResponse: [boolean, boolean];

@@ -64,7 +64,7 @@ function makeSession(worker: FakeWorker | null = makeWorker()): ActiveDuelSessio
     startedAt: 0,
     endedAt: null,
     phase: 'DUELING',
-    rpsState: null,
+    firstPlayerState: null,
     worker: worker as unknown as ActiveDuelSession['worker'],
     workerTerminated: false,
     awaitingResponse: [false, false],
@@ -174,14 +174,14 @@ describe('worker-message-router', () => {
   // ==========================================================================
 
   describe('isSelectMessage', () => {
-    it('recognizes every SELECT_*/SORT_*/ANNOUNCE_*/RPS_CHOICE type', () => {
+    it('recognizes every SELECT_*/SORT_*/ANNOUNCE_*/dice-prompt type', () => {
       const types = [
         'SELECT_IDLECMD', 'SELECT_BATTLECMD', 'SELECT_CARD', 'SELECT_CHAIN',
         'SELECT_EFFECTYN', 'SELECT_YESNO', 'SELECT_PLACE', 'SELECT_DISFIELD',
         'SELECT_POSITION', 'SELECT_OPTION', 'SELECT_TRIBUTE', 'SELECT_SUM',
         'SELECT_UNSELECT_CARD', 'SELECT_COUNTER', 'SORT_CARD', 'SORT_CHAIN',
         'ANNOUNCE_RACE', 'ANNOUNCE_ATTRIB', 'ANNOUNCE_CARD', 'ANNOUNCE_NUMBER',
-        'RPS_CHOICE',
+        'DICE_ROLL', 'SELECT_FIRST_PLAYER',
       ];
       for (const t of types) {
         expect(isSelectMessage({ type: t } as ServerMessage)).toBe(true);

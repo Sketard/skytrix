@@ -165,8 +165,8 @@
       </div>
     }
 
-    <!-- Story 2.3 — "Connecting to duel..." fallback (before RPS_CHOICE arrives) -->
-    @if (roomState() === 'connecting' && !wsService.pendingPrompt() && !wsService.rpsResult() && !wsService.rpsInProgress()) {
+    <!-- Story 2.3 — "Connecting to duel..." fallback (before DICE_ROLL arrives) -->
+    @if (roomState() === 'connecting' && !wsService.pendingPrompt() && !wsService.diceResult() && !wsService.diceInProgress()) {
       <div class="connecting-fallback" role="region" [attr.aria-label]="'duel.connection.connecting' | translate" aria-live="polite">
         <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.connection.connecting' | translate"></mat-progress-spinner>
         <p>{{ 'duel.connection.connecting' | translate }}</p>
@@ -332,28 +332,31 @@
 
     }
 
-    <!-- Story 2.3 — RPS Result Overlay -->
-    @if (wsService.rpsResult(); as rps) {
+    <!-- Pre-duel dice result overlay (placeholder for Phase 3.14 full
+         dice-arena UI with rolling animation, table-lit + first-player
+         banner). Today: minimal text readout so the flow stays
+         testable end-to-end without the visual overhaul. -->
+    @if (wsService.diceResult(); as dice) {
       <div class="rps-overlay" role="status" aria-live="polite">
         <div class="rps-overlay__content">
-          <h2 class="rps-overlay__title">{{ 'duel.rps.title' | translate }}</h2>
+          <h2 class="rps-overlay__title">{{ 'duel.dice.title' | translate }}</h2>
           <div class="rps-overlay__choices">
             <div class="rps-overlay__choice">
-              <img class="rps-overlay__icon" [src]="rpsIcon(rps.player1Choice)" alt="Your choice" aria-hidden="true">
-              <span class="rps-overlay__label">{{ 'duel.rps.you' | translate }}</span>
+              <span class="rps-overlay__icon" aria-hidden="true">{{ dice.dice0[0] }}+{{ dice.dice0[1] }}={{ dice.sum0 }}</span>
+              <span class="rps-overlay__label">{{ 'duel.dice.you' | translate }}</span>
             </div>
-            <span class="rps-overlay__vs">{{ 'duel.rps.vs' | translate }}</span>
+            <span class="rps-overlay__vs">{{ 'duel.dice.vs' | translate }}</span>
             <div class="rps-overlay__choice">
-              <img class="rps-overlay__icon" [src]="rpsIcon(rps.player2Choice)" alt="Opponent's choice" aria-hidden="true">
-              <span class="rps-overlay__label">{{ 'duel.rps.opponent' | translate }}</span>
+              <span class="rps-overlay__icon" aria-hidden="true">{{ dice.dice1[0] }}+{{ dice.dice1[1] }}={{ dice.sum1 }}</span>
+              <span class="rps-overlay__label">{{ 'duel.dice.opponent' | translate }}</span>
             </div>
           </div>
-          @if (rps.winner === 0) {
-            <p class="rps-overlay__result rps-overlay__result--win">{{ 'duel.rps.youWin' | translate }}</p>
-          } @else if (rps.winner === 1) {
-            <p class="rps-overlay__result rps-overlay__result--lose">{{ 'duel.rps.youLose' | translate }}</p>
+          @if (dice.winner === 0) {
+            <p class="rps-overlay__result rps-overlay__result--win">{{ 'duel.dice.youWin' | translate }}</p>
+          } @else if (dice.winner === 1) {
+            <p class="rps-overlay__result rps-overlay__result--lose">{{ 'duel.dice.youLose' | translate }}</p>
           } @else {
-            <p class="rps-overlay__result rps-overlay__result--draw">{{ 'duel.rps.draw' | translate }}</p>
+            <p class="rps-overlay__result rps-overlay__result--draw">{{ 'duel.dice.draw' | translate }}</p>
           }
         </div>
       </div>
