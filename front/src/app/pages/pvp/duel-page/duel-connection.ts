@@ -253,6 +253,10 @@ export class DuelConnection {
       this._confirmedCardsByChain.clear();
       this._hintCardConsumed = true;
       if (promptType === 'SELECT_FIRST_PLAYER') this._firstPlayerResponseSent.set(true);
+      // DICE_ROLL response just left the client; we are now waiting on the
+      // server to broadcast DICE_RESULT. Drive `diceInProgress=true` here so
+      // the dice arena transitions `'ready'` → `'rolling'`.
+      if (promptType === 'DICE_ROLL') this._diceInProgress.set(true);
       this.onResponse?.(promptType, data);
       this._pendingPrompt.set(null);
       this._inactivityWarning.set(null);
@@ -619,8 +623,13 @@ export class DuelConnection {
         break;
 
       case 'DICE_ROLL':
+        // DICE_ROLL is a *prompt* (server asking the client to roll). It is NOT
+        // "in progress" yet — `inProgress` flips to true only when the client
+        // sends its response (see sendResponse). Receiving DICE_ROLL is the
+        // signal to enter the `'ready'` stage of the dice arena (intro text +
+        // auto-roll countdown).
         this._diceResult.set(null);
-        this._diceInProgress.set(true);
+        this._diceInProgress.set(false);
         this._pendingPrompt.set(message);
         break;
 

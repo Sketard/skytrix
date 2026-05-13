@@ -32,19 +32,12 @@
 }
 
 // ── Panel + surface ─────────────────────────────────────────────────────────
+// Width / height / position are passed via `dialogConfig` (LobbyPageComponent.
+// buildDialogConfig) — mobile uses `position: { bottom: '0' }` for the
+// bottom-sheet anchor, desktop relies on the default centered placement.
+// We only set the visual chrome (gradient, border, shadow) on the pane
+// surface and the inner 3-slot layout below.
 .holo-modal-panel {
-  // Mobile : full-width bottom-sheet.
-  width: 100% !important;
-  max-width: 100vw !important;
-  height: 95vh;
-  max-height: 95vh;
-
-  @media (min-width: 768px) {
-    width: min(620px, 92vw) !important;
-    height: auto;
-    max-height: 88vh;
-  }
-
   .mat-mdc-dialog-surface {
     background: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%) !important;
     border: 1px solid var(--gold-soft-30) !important;
@@ -56,6 +49,15 @@
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
+    // The pane has `display: flex; max-height: <dialogConfig.maxHeight>`
+    // (CDK default + our inline maxHeight). For the body's `overflow-y: auto`
+    // to engage when content exceeds the available height, the surface must
+    // expand to the pane's full flex slot — `flex: 1 1 auto` + min-height:0
+    // does that without forcing a fixed height (which would clip on short
+    // content).
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
 
     @media (min-width: 768px) {
       border-radius: 18px !important;

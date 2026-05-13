@@ -245,13 +245,20 @@ describe('DuelConnection — handleMessage: DUEL_END', () => {
 // =============================================================================
 
 describe('DuelConnection — handleMessage: dice', () => {
-  it('DICE_ROLL sets diceInProgress=true, DICE_RESULT clears it and stores result', () => {
-    const { conn } = makeConn();
+  it('DICE_ROLL is a prompt (diceInProgress stays false); sendResponse flips it to true; DICE_RESULT clears it', () => {
+    // Inject an open mock WS so `sendResponse` reaches the `if (safeSend(...))`
+    // branch that flips diceInProgress (no-op when WS is missing).
+    const { conn } = makeConn({ ws: makeMockWs(true) });
     dispatch(conn, {
       type: 'DICE_ROLL', player: 0,
     } as unknown as ServerMessage);
-    expect(conn.diceInProgress()).toBeTrue();
+    // Receiving the prompt does NOT mean "rolling" — the user still has to
+    // confirm their roll (auto-roll timer or manual click).
+    expect(conn.diceInProgress()).toBeFalse();
     expect(conn.pendingPrompt()).toEqual({ type: 'DICE_ROLL', player: 0 } as never);
+
+    conn.sendResponse('DICE_ROLL', {});
+    expect(conn.diceInProgress()).toBeTrue();
 
     const result = {
       type: 'DICE_RESULT', winner: 0, dice0: [6, 5], dice1: [3, 2], sum0: 11, sum1: 5,

@@ -110,7 +110,7 @@
           [attr.aria-disabled]="!deck.valid"
           [attr.data-invalid-reason]="deck.valid ? null : invalidReason(deck)"
           [disabled]="!deck.valid"
-          [title]="deck.valid ? null : invalidReason(deck)"
+          [attr.title]="deck.valid ? null : invalidReason(deck)"
           (click)="selectDeck(deck.id)">
           <div class="deck-thumb">
             <img
