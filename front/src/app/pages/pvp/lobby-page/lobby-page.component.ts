@@ -89,9 +89,15 @@ export class LobbyPageComponent implements OnInit {
     !this.store.loading() && !this.store.error()
     && this.store.rooms().length > 0 && this.filteredRooms().length === 0);
 
+  // Sizing handled by the holo-modal-panel utility (mobile = full bottom-sheet,
+  // desktop = min(620px, 92vw) / max-height 88vh). The width/maxHeight options
+  // here are kept conservative as a safety net for browsers that ignore !important
+  // panel-class overrides; the utility wins in practice.
   private readonly dialogConfig = {
-    width: 'min(520px, 85dvw)',
-    maxHeight: '80dvh',
+    panelClass: 'holo-modal-panel',
+    backdropClass: 'holo-modal-backdrop',
+    width: '100vw',
+    maxWidth: '100vw',
   };
 
   ngOnInit(): void {

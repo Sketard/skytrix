@@ -85,13 +85,17 @@
   } @else if (fetchError()) {
     <div class="picker-message">
       <p>{{ 'deckPicker.loadError' | translate }}</p>
-      <button mat-button (click)="loadDecks()">{{ 'common.retry' | translate }}</button>
+      <button type="button" class="btn-secondary" (click)="loadDecks()">
+        {{ 'common.retry' | translate }}
+      </button>
     </div>
   } @else if (decks().length === 0) {
     <div class="picker-message">
       <p>{{ 'deckPicker.emptyTitle' | translate }}</p>
       <p class="picker-hint">{{ 'deckPicker.emptyHint' | translate }}</p>
-      <a [routerLink]="['/decks']" mat-button (click)="dialogRef.close()">{{ 'deckPicker.goToDeckBuilder' | translate }}</a>
+      <a [routerLink]="['/decks']" class="btn-secondary" (click)="dialogRef.close()">
+        {{ 'deckPicker.goToDeckBuilder' | translate }}
+      </a>
     </div>
   } @else if (showDeckGrid()) {
     <div class="deck-grid" role="listbox" [attr.aria-label]="'deckPicker.decks' | translate">
@@ -208,11 +212,13 @@
   }
 </mat-dialog-content>
 
-<mat-dialog-actions class="picker-actions" align="end">
-  <button mat-button mat-dialog-close>{{ 'common.cancel' | translate }}</button>
+<mat-dialog-actions class="picker-actions">
+  <button type="button" class="btn-secondary" mat-dialog-close>
+    {{ 'common.cancel' | translate }}
+  </button>
   <button
-    mat-raised-button
-    class="confirm-btn"
+    type="button"
+    class="btn-primary"
     [disabled]="!canConfirm()"
     (click)="confirm()">
     {{ confirmLabel | translate }}

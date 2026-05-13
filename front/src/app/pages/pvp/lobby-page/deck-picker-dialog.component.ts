@@ -16,7 +16,7 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
-import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIconButton } from '@angular/material/button';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -105,7 +105,7 @@ const TURN_TIME_PRESETS: readonly TurnTimePreset[] = TURN_TIME_PRESETS_SECS.map(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
-    MatButton, MatIconButton, MatSlideToggle, MatIcon,
+    MatIconButton, MatSlideToggle, MatIcon,
     RouterLink, TranslatePipe,
     DeckCardSkeletonComponent, BottomSheetHandleComponent,
   ],

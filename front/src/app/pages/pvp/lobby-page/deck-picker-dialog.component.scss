@@ -103,8 +103,9 @@
 }
 
 // ── Body ────────────────────────────────────────────────────────────────────
+// The holo-modal-panel utility makes `.mat-mdc-dialog-content` the sole
+// scrollable slot (overflow-y: auto). We only paint padding here.
 .picker-content {
-  // Override Material's default min-height that creates dead space.
   display: block !important;
   padding: clamp(12px, 3vw, 16px) clamp(14px, 4vw, 20px) clamp(6px, 2vw, 8px) !important;
 }
@@ -187,7 +188,9 @@
   gap: 14px;
   padding: clamp(14px, 3vw, 16px) clamp(14px, 3vw, 18px);
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--gold-soft-08), var(--cyan-soft-15));
+  // Subtle gold→cyan gradient (mockup l. 2098): rgba(201,168,76,0.08) →
+  // rgba(74,144,217,0.05). cyan-soft-06 (≈0.05) is the closest token.
+  background: linear-gradient(135deg, var(--gold-soft-08), var(--cyan-soft-06));
   border: 1px solid var(--gold-soft-30);
   margin-bottom: 18px;
 
@@ -272,6 +275,46 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-subtle);
   margin-bottom: 10px;
+}
+
+// Custom skin for Angular Material's slide-toggle to match the mockup's
+// `.qd-switch` (ll. 2136-2143): 44×24 white rail, 20px thumb, gold-on. The
+// MDC slot widths/colors are forced via component-scoped vars; ::ng-deep
+// scopes to nodes that Material renders inside our <mat-slide-toggle>.
+.qd-row mat-slide-toggle {
+  // Reset Material's outer track size to mockup's compact 44×24.
+  --mdc-switch-track-width: 44px;
+  --mdc-switch-track-height: 24px;
+  --mdc-switch-track-shape: 12px;
+  --mdc-switch-handle-width: 20px;
+  --mdc-switch-handle-height: 20px;
+  --mdc-switch-handle-shape: 50%;
+  // OFF rail = neutral white-on-dark, ON rail = gold.
+  --mdc-switch-unselected-track-color: rgba(255, 255, 255, 0.1);
+  --mdc-switch-unselected-hover-track-color: rgba(255, 255, 255, 0.14);
+  --mdc-switch-unselected-focus-track-color: rgba(255, 255, 255, 0.14);
+  --mdc-switch-unselected-pressed-track-color: rgba(255, 255, 255, 0.18);
+  --mdc-switch-selected-track-color: var(--gold);
+  --mdc-switch-selected-hover-track-color: var(--gold);
+  --mdc-switch-selected-focus-track-color: var(--gold);
+  --mdc-switch-selected-pressed-track-color: var(--gold);
+  // Thumb stays pure white in both states (mockup pattern).
+  --mdc-switch-unselected-handle-color: #fff;
+  --mdc-switch-unselected-hover-handle-color: #fff;
+  --mdc-switch-unselected-focus-handle-color: #fff;
+  --mdc-switch-selected-handle-color: #fff;
+  --mdc-switch-selected-hover-handle-color: #fff;
+  --mdc-switch-selected-focus-handle-color: #fff;
+  // Material draws icons inside the thumb — the mockup has none.
+  --mdc-switch-selected-icon-color: transparent;
+  --mdc-switch-unselected-icon-color: transparent;
+
+  ::ng-deep {
+    .mdc-switch__icons { display: none; }
+    // Material's focus ring overflows the compact rail by ~12px — tighten it.
+    .mdc-switch__ripple,
+    .mdc-switch__focus-ring { display: none; }
+  }
 }
 
 .qd-row-text {
@@ -643,19 +686,32 @@
 }
 
 // ── Footer (actions) ────────────────────────────────────────────────────────
+// Layout follows the mockup: column-reverse on mobile (primary at bottom for
+// thumb-reach), row right-aligned on desktop. `.btn-secondary` / `.btn-primary`
+// children are styled by the shared `holo-modal-panel` utility.
 .picker-actions {
+  display: flex !important;
+  flex-direction: column-reverse;
+  gap: 10px;
+  padding: clamp(12px, 3vw, 14px) clamp(14px, 4vw, 20px) clamp(14px, 4vw, 20px) !important;
+  padding-bottom: max(clamp(14px, 4vw, 20px), env(safe-area-inset-bottom, 14px)) !important;
   border-top: 1px solid var(--border-subtle);
   background: linear-gradient(to top, rgba(20, 20, 31, 0.95), transparent);
-  padding: clamp(12px, 3vw, 14px) clamp(14px, 4vw, 20px) clamp(14px, 4vw, 20px);
-  padding-bottom: max(clamp(14px, 4vw, 20px), env(safe-area-inset-bottom, 14px));
-}
 
-.confirm-btn {
-  background: linear-gradient(135deg, var(--gold-100), var(--gold)) !important;
-  color: var(--text-inverse) !important;
-  font-weight: var(--weight-bold);
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: flex-end;
+    padding-bottom: clamp(14px, 4vw, 20px) !important;
+  }
 
-  &:disabled {
-    opacity: var(--pvp-disabled-opacity);
+  // Stretch buttons full-width on mobile (column layout), shrink to content
+  // on desktop (row layout).
+  .btn-secondary,
+  .btn-primary {
+    width: 100%;
+
+    @media (min-width: 768px) {
+      width: auto;
+    }
   }
 }
