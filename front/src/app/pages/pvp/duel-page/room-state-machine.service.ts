@@ -12,7 +12,7 @@ import { RoomApiService } from '../room-api.service';
 import { AuthService } from '../../../services/auth.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
 import { DuelTabGuardService } from './duel-tab-guard.service';
-import { DeckPickerDialogComponent } from '../lobby-page/deck-picker-dialog.component';
+import { DeckPickerDialogComponent, deckPickerDialogConfig } from '../lobby-page/deck-picker-dialog.component';
 
 export type RoomState = 'loading' | 'waiting' | 'creating-duel' | 'connecting' | 'duel-loading' | 'active' | 'error';
 
@@ -173,7 +173,10 @@ export class RoomStateMachineService {
       this.redirectWithError('error.TOO_MANY_ATTEMPTS');
       return;
     }
-    const dialogRef = this.dialog.open(DeckPickerDialogComponent);
+    const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
+      ...deckPickerDialogConfig(),
+      data: { context: 'join' },
+    });
     dialogRef.afterClosed().pipe(
       switchMap(decklistId => {
         if (decklistId === undefined || decklistId === null) {

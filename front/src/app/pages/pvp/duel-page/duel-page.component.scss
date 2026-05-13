@@ -19,6 +19,15 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  // Pre-duel states (waiting room) need the page itself to scroll on short
+  // viewports (landscape mobile, etc.) — the duel board uses absolute-
+  // positioned hand rows that can't tolerate `overflow: auto`, but the
+  // waiting screen is a normal flow layout.
+  &--scrollable {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 // === Hand Rows ===

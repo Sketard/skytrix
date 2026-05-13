@@ -31,6 +31,46 @@
   -webkit-backdrop-filter: blur(8px);
 }
 
+// ── Live-responsive positioning ─────────────────────────────────────────────
+// We size and position the panel purely via CSS media queries so the modal
+// reacts to viewport changes (devtools responsive toggle, rotation) while
+// it's open — passing `width` / `maxHeight` / `position` via dialogConfig
+// would freeze them at open-time as inline styles.
+//
+// The pane lives inside `.cdk-global-overlay-wrapper` which CDK sets to
+// `display:flex` by default (with center alignment via the global position
+// strategy). On mobile we override `align-items` to anchor the pane to the
+// bottom edge (bottom-sheet) and stretch it to full width.
+.cdk-global-overlay-wrapper:has(.holo-modal-panel) {
+  align-items: flex-end !important;
+  justify-content: stretch !important;
+
+  @media (min-width: 768px) {
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+.holo-modal-panel {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  max-height: 95vh !important;
+  // `position: static` overrides CDK's inline `position: absolute` so the
+  // flex alignment from the wrapper actually moves the pane.
+  position: static !important;
+  transform: none !important;
+  // CDK pane default is `display: flex` (row). We force column so the
+  // intermediate container can grow vertically to its `max-height` and
+  // the content slot can flex-shrink with overflow.
+  flex-direction: column !important;
+
+  @media (min-width: 768px) {
+    width: min(620px, 92vw) !important;
+    max-width: min(620px, 92vw) !important;
+    max-height: 88vh !important;
+  }
+}
+
 // ── Panel + surface ─────────────────────────────────────────────────────────
 // Width / height / position are passed via `dialogConfig`
 // (LobbyPageComponent.buildDialogConfig) — mobile uses
@@ -49,12 +89,16 @@
 // when content overflows. Without it the surface shrinks to content and the
 // `overflow-y: auto` has no constraint to push against.
 .holo-modal-panel {
-  // The pane itself: CDK sets `display: flex` by default. Force the inner
-  // container to take the pane's full height so the surface has a known box.
+  // ── Flex chain pane → container → surface → content ──────────────────
+  // Every layer needs `min-height: 0` so flex shrinking actually engages
+  // (browsers' default min-height: auto for flex items refuses to shrink
+  // below content size, which is what kills the scroll on content overflow).
   .mat-mdc-dialog-container {
-    height: 100% !important;
-    width: 100% !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
   }
 
   .mat-mdc-dialog-surface {
@@ -64,16 +108,13 @@
     border-radius: 16px 16px 0 0 !important;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6),
                 0 0 0 1px var(--gold-soft-12) !important;
-    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important; // override Material default `height: 100%`
     padding: 0 !important;
-    // Match the container's full height so the 3-slot flex chain has a known
-    // box: header (flex-shrink:0) + body (flex:1 + overflow) + footer
-    // (flex-shrink:0). Without explicit height the surface defaults to
-    // intrinsic content size and the body never gets a scroll constraint.
-    width: 100% !important;
-    height: 100% !important;
+    overflow: hidden !important;
 
     @media (min-width: 768px) {
       border-radius: 18px !important;
@@ -83,21 +124,23 @@
     }
   }
 
-  // Body is the SOLE scrollable slot.
+  // Body is the SOLE scrollable slot. `flex: 1 1 auto` makes it take the
+  // remaining vertical space after header + footer; `min-height: 0` lets
+  // it shrink below content size; `overflow-y: auto` then scrolls.
   .mat-mdc-dialog-content {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     max-height: none !important;
-    overflow-y: auto;
+    overflow-y: auto !important;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
 
-  // Header + footer hug top/bottom of the surface — they don't shrink and
-  // are not part of the scrollable area.
-  .mat-mdc-dialog-title { flex-shrink: 0; }
+  // Footer hugs the bottom — host components own their header styling via
+  // their own class (e.g. `.picker-header { flex-shrink: 0 }`) since header
+  // markup is free-form (we don't enforce a `mat-dialog-title` directive).
   .mat-mdc-dialog-actions {
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
     min-height: auto !important;
   }
 }

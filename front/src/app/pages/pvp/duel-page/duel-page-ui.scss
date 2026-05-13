@@ -92,6 +92,10 @@
 // =============================================================================
 .waiting-container {
   position: relative;
+  // Natural flow: the `.duel-container--scrollable` parent owns the page-
+  // level scroll (overflow-y: auto), so this container just lays out its
+  // children with margin auto + max-width. The scrollbar appears on the
+  // page itself, not inside this container.
   max-width: 560px;
   margin: 0 auto;
   display: flex;
@@ -190,14 +194,18 @@
 // ── Duelists card ──────────────────────────────────────────────────────────
 .duelists-card {
   width: 100%;
-  padding: 28px;
+  // Pad shrinks on narrow viewports so the duelist slots (76px avatars +
+  // names + VS separator) keep enough horizontal room and don't get clipped.
+  padding: clamp(16px, 4vw, 28px);
   border-radius: var(--radius-xl);
   background: var(--gradient-card-ds);
   border: 1px solid var(--gold-soft-30);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--gold-soft-12);
   backdrop-filter: blur(10px);
   position: relative;
-  overflow: hidden;
+  // `overflow: hidden` was clipping duelist names + VS separator on narrow
+  // viewports — the radial-gradient pseudo we paint is bounded by `inset: 0`
+  // so it can't escape, no need for a clipping context here.
 
   &::before {
     content: '';
@@ -205,6 +213,7 @@
     inset: 0;
     background: radial-gradient(circle at center, var(--gold-soft-08), transparent 60%);
     pointer-events: none;
+    border-radius: inherit;
   }
 }
 

@@ -14,7 +14,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
 import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
-import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dialog.component';
+import { DeckPickerDialogComponent, DeckPickerContext, deckPickerDialogConfig } from './deck-picker-dialog.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { RoomCardSkeletonComponent } from '../../../shared/skel';
 import { ErrorBannerComponent } from '../../../shared/error-banner';
@@ -89,26 +89,6 @@ export class LobbyPageComponent implements OnInit {
     !this.store.loading() && !this.store.error()
     && this.store.rooms().length > 0 && this.filteredRooms().length === 0);
 
-  /** Build the dialog config once per `open()` call — `position.bottom`
-   *  drives the mobile bottom-sheet anchor (CDK applies it via inline style
-   *  on the pane). Desktop keeps the default centered positioning. */
-  private buildDialogConfig() {
-    const mobile = window.matchMedia('(max-width: 767.98px)').matches;
-    return {
-      panelClass: 'holo-modal-panel',
-      backdropClass: 'holo-modal-backdrop',
-      width: mobile ? '100vw' : 'min(620px, 92vw)',
-      maxWidth: '100vw',
-      // Explicit height (not just max-height) gives the holo-modal surface a
-      // flex parent of known size — required for `.mat-mdc-dialog-content
-      // { overflow-y: auto }` to engage on long content. Without it, the
-      // pane sizes to content and the body never gets a scroll constraint.
-      height: mobile ? '95vh' : '85vh',
-      maxHeight: mobile ? '95vh' : '88vh',
-      ...(mobile ? { position: { bottom: '0' } } : {}),
-    };
-  }
-
   ngOnInit(): void {
     this.store.start();
   }
@@ -146,7 +126,7 @@ export class LobbyPageComponent implements OnInit {
 
   createRoom(): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
-      ...this.buildDialogConfig(),
+      ...deckPickerDialogConfig(),
       data: { context: 'create' satisfies DeckPickerContext },
     });
 
@@ -170,7 +150,7 @@ export class LobbyPageComponent implements OnInit {
 
   quickDuel(): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
-      ...this.buildDialogConfig(),
+      ...deckPickerDialogConfig(),
       data: { context: 'quickDuel' satisfies DeckPickerContext },
     });
 
@@ -195,7 +175,7 @@ export class LobbyPageComponent implements OnInit {
 
   joinRoom(room: RoomDTO): void {
     const dialogRef = this.dialog.open(DeckPickerDialogComponent, {
-      ...this.buildDialogConfig(),
+      ...deckPickerDialogConfig(),
       data: { context: 'join' satisfies DeckPickerContext },
     });
 

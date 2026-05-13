@@ -32,6 +32,20 @@ interface DeckPickerDialogData {
   context: DeckPickerContext;
 }
 
+/** Shared dialog config for the deck picker — used by every caller (lobby
+ *  CTAs + direct-URL join via the room state machine). Sizing + position
+ *  are intentionally NOT set here: the `holo-modal-panel` SCSS utility
+ *  drives both via media queries, so the modal reacts live to viewport
+ *  changes (devtools responsive toggle, device rotation) instead of being
+ *  frozen to whatever the breakpoint was at `dialog.open()` time. */
+export function deckPickerDialogConfig() {
+  return {
+    panelClass: 'holo-modal-panel',
+    backdropClass: 'holo-modal-backdrop',
+    maxWidth: '100vw',
+  };
+}
+
 const TITLES: Record<DeckPickerContext, string> = {
   create: 'deckPicker.title.create',
   join: 'deckPicker.title.join',
