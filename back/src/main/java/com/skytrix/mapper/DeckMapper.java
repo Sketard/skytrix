@@ -85,6 +85,19 @@ public abstract class DeckMapper {
 			urls.add(RouteUtils.getSampleImageRoute());
 		}
 		target.setUrls(urls);
+
+		// Count + validity (Phase 2.10) — same rules as RoomService.validateDeck:
+		// MAIN ∈ [40, 60], EXTRA ≤ 15, SIDE ≤ 15. Source of truth for bounds
+		// lives in DeckKeyword to avoid drift.
+		var mainCount = source.getMainDeckIndexed().size();
+		var extraCount = source.getExtraDeckIndexed().size();
+		var sideCount = source.getSideDeckIndexed().size();
+		target.setMainDeckCount(mainCount);
+		target.setValid(
+				mainCount >= MAIN.getMinSize() && mainCount <= MAIN.getMaxSize()
+				&& extraCount <= EXTRA.getMaxSize()
+				&& sideCount <= SIDE.getMaxSize()
+		);
 		return target;
 	}
 
