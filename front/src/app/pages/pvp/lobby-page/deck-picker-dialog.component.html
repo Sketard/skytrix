@@ -1,0 +1,186 @@
+<div class="picker-header">
+  <h2 mat-dialog-title class="picker-title">
+    <mat-icon class="picker-title-icon">{{ titleIcon() }}</mat-icon>
+    {{ title | translate }}
+  </h2>
+  <p class="picker-subtitle">{{ subtitle | translate }}</p>
+
+  @if (showSearch()) {
+    <label class="picker-search">
+      <mat-icon class="picker-search-icon">search</mat-icon>
+      <input
+        type="text"
+        [placeholder]="'deckPicker.searchPlaceholder' | translate"
+        [value]="searchQuery()"
+        (input)="onSearchInput($event)"
+        [attr.aria-label]="'deckPicker.searchPlaceholder' | translate" />
+      @if (searchQuery()) {
+        <button
+          mat-icon-button
+          type="button"
+          class="picker-search-clear"
+          [attr.aria-label]="'common.clear' | translate"
+          (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </label>
+  }
+</div>
+
+<mat-dialog-content class="picker-content">
+  @if (isQuickDuel()) {
+    <div class="qd-section">
+      <div class="qd-section-header">
+        <span class="qd-section-label">{{ 'deckPicker.section.decks' | translate }}</span>
+        <span class="qd-section-hint">{{ 'deckPicker.section.decksHint' | translate }}</span>
+      </div>
+      <div class="qd-toggle-group" role="tablist">
+        <button
+          type="button"
+          class="qd-toggle"
+          role="tab"
+          [class.active]="activeSlot() === 'p1'"
+          [attr.aria-selected]="activeSlot() === 'p1'"
+          (click)="onSlotChange('p1')">
+          <mat-icon>person</mat-icon>
+          {{ 'deckPicker.player1' | translate }}
+        </button>
+        <button
+          type="button"
+          class="qd-toggle"
+          role="tab"
+          [class.active]="activeSlot() === 'p2'"
+          [attr.aria-selected]="activeSlot() === 'p2'"
+          (click)="onSlotChange('p2')">
+          <mat-icon>person_outline</mat-icon>
+          {{ 'deckPicker.player2' | translate }}
+        </button>
+      </div>
+    </div>
+
+    @if (showP2Mirror()) {
+      <div class="qd-mirror-card">
+        <div class="qd-mirror-icon">
+          <mat-icon>link</mat-icon>
+        </div>
+        <div class="qd-mirror-text">
+          <span class="qd-mirror-title">{{ 'sandbox.p2.mirrorTitle' | translate }}</span>
+          <span class="qd-mirror-desc">{{ 'sandbox.p2.mirrorDesc' | translate }}</span>
+        </div>
+        <button type="button" class="qd-mirror-btn" (click)="customizeP2()">
+          <mat-icon>tune</mat-icon>
+          {{ 'sandbox.p2.customize' | translate }}
+        </button>
+      </div>
+    }
+  }
+
+  @if (loading()) {
+    <div class="deck-grid" role="status" aria-busy="true">
+      <app-deck-card-skeleton [count]="6"></app-deck-card-skeleton>
+    </div>
+  } @else if (fetchError()) {
+    <div class="picker-message">
+      <p>{{ 'deckPicker.loadError' | translate }}</p>
+      <button mat-button (click)="loadDecks()">{{ 'common.retry' | translate }}</button>
+    </div>
+  } @else if (decks().length === 0) {
+    <div class="picker-message">
+      <p>{{ 'deckPicker.emptyTitle' | translate }}</p>
+      <p class="picker-hint">{{ 'deckPicker.emptyHint' | translate }}</p>
+      <a [routerLink]="['/decks']" mat-button (click)="dialogRef.close()">{{ 'deckPicker.goToDeckBuilder' | translate }}</a>
+    </div>
+  } @else if (showDeckGrid()) {
+    <div class="deck-grid" role="listbox" [attr.aria-label]="'deckPicker.decks' | translate">
+      @for (deck of filteredDecks(); track deck.id) {
+        <button
+          type="button"
+          class="deck-card"
+          role="option"
+          [class.selected]="activeSelectedId() === deck.id"
+          [attr.aria-selected]="activeSelectedId() === deck.id"
+          (click)="selectDeck(deck.id)">
+          <div class="deck-thumb">
+            <img
+              [src]="deck.urls.length > 0 ? deck.urls[0] : 'assets/images/card_back.jpg'"
+              alt=""
+              loading="lazy"
+              (error)="onThumbError($event)" />
+          </div>
+          <span class="deck-card-name">{{ deck.name }}</span>
+        </button>
+      } @empty {
+        <p class="picker-no-results">{{ 'deckPicker.noResults' | translate: { query: searchQuery() } }}</p>
+      }
+    </div>
+  }
+
+  @if (isQuickDuel()) {
+    <div class="qd-divider"></div>
+
+    <div class="qd-section">
+      <div class="qd-section-header">
+        <span class="qd-section-label">{{ 'deckPicker.firstPlayer' | translate }}</span>
+      </div>
+      <div class="qd-toggle-group">
+        <button
+          type="button"
+          class="qd-toggle"
+          [class.active]="firstPlayer() === 'p1'"
+          (click)="firstPlayer.set('p1')">
+          <mat-icon>flag</mat-icon>
+          {{ 'deckPicker.firstPlayerStartsP1' | translate }}
+        </button>
+        <button
+          type="button"
+          class="qd-toggle"
+          [class.active]="firstPlayer() === 'p2'"
+          (click)="firstPlayer.set('p2')">
+          <mat-icon>flag</mat-icon>
+          {{ 'deckPicker.firstPlayerStartsP2' | translate }}
+        </button>
+      </div>
+    </div>
+
+    <div class="qd-section">
+      <div class="qd-section-header">
+        <span class="qd-section-label">{{ 'deckPicker.section.options' | translate }}</span>
+      </div>
+      <div class="qd-row">
+        <div class="qd-row-text">
+          <span class="qd-row-label">{{ 'deckPicker.randomHand' | translate }}</span>
+          <span class="qd-row-desc">{{ 'deckPicker.randomHandDesc' | translate }}</span>
+        </div>
+        <mat-slide-toggle
+          [checked]="randomHand()"
+          (change)="randomHand.set($event.checked)"
+          [attr.aria-label]="'deckPicker.randomHand' | translate">
+        </mat-slide-toggle>
+      </div>
+      <div class="qd-section qd-section--row">
+        <span class="qd-row-label">{{ 'deckPicker.turnTime' | translate }}</span>
+        <input
+          class="qd-time-input"
+          type="number"
+          min="30"
+          max="3600"
+          step="30"
+          [ngModel]="turnTimeSecs()"
+          (ngModelChange)="turnTimeSecs.set(+$event)"
+          [attr.aria-label]="'deckPicker.turnTime' | translate" />
+      </div>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions class="picker-actions" align="end">
+  <button mat-button mat-dialog-close>{{ 'common.cancel' | translate }}</button>
+  <button
+    mat-raised-button
+    class="confirm-btn"
+    [disabled]="!canConfirm()"
+    (click)="confirm()">
+    {{ confirmLabel | translate }}
+  </button>
+</mat-dialog-actions>

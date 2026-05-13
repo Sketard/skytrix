@@ -73,6 +73,7 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "close": "Close",
+    "clear": "Clear",
     "retry": "Retry",
     "back": "Back",
     "delete": "Delete",
@@ -301,22 +302,43 @@
       "join": "Choose your deck to join",
       "quickDuel": "Sandbox"
     },
+    "subtitle": {
+      "create": "Pick the deck you want to play",
+      "join": "Pick the deck you want to play",
+      "quickDuel": "Configure a local duel against yourself"
+    },
     "confirm": {
       "create": "Create room",
       "join": "Join",
       "quickDuel": "Start duel"
     },
+    "searchPlaceholder": "Search a deck...",
+    "section": {
+      "decks": "Decks",
+      "decksHint": "Pick one deck per player",
+      "options": "Options"
+    },
     "decks": "Decks",
     "player1": "Player 1",
     "player2": "Player 2",
-    "mirrorHint": "Mirror Player 1",
     "firstPlayer": "First player",
+    "firstPlayerStartsP1": "Player 1 starts",
+    "firstPlayerStartsP2": "Player 2 starts",
     "randomHand": "Random hand",
+    "randomHandDesc": "Shuffle the deck before the opening hand",
     "turnTime": "Turn time (seconds)",
     "loadError": "Unable to load decks",
     "emptyTitle": "No decks available",
     "emptyHint": "Create a deck in Deck Builder to get started.",
+    "noResults": "No deck matches \"{{query}}\"",
     "goToDeckBuilder": "Go to Deck Builder"
+  },
+  "sandbox": {
+    "p2": {
+      "mirrorTitle": "Same as Player 1",
+      "mirrorDesc": "Player 2 will use Player 1's deck. Click below to customise.",
+      "customize": "Customise"
+    }
   },
   "login": {
     "username": "Username",

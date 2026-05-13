@@ -1,16 +1,30 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MAT_DIALOG_DATA, MatDialogActions, MatDialogClose, MatDialogContent, MatDialogRef, MatDialogTitle } from '@angular/material/dialog';
-import { MatButton } from '@angular/material/button';
-import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatIcon } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { ShortDeck } from '../../../core/model/short-deck';
+import { DeckCardSkeletonComponent } from '../../../shared/skel';
 
 export type DeckPickerContext = 'create' | 'join' | 'quickDuel';
 
@@ -24,271 +38,51 @@ const TITLES: Record<DeckPickerContext, string> = {
   quickDuel: 'deckPicker.title.quickDuel',
 };
 
+const SUBTITLES: Record<DeckPickerContext, string> = {
+  create: 'deckPicker.subtitle.create',
+  join: 'deckPicker.subtitle.join',
+  quickDuel: 'deckPicker.subtitle.quickDuel',
+};
+
+const TITLE_ICONS: Record<DeckPickerContext, string> = {
+  create: 'style',
+  join: 'style',
+  quickDuel: 'bolt',
+};
+
 const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
   create: 'deckPicker.confirm.create',
   join: 'deckPicker.confirm.join',
   quickDuel: 'deckPicker.confirm.quickDuel',
 };
 
+const TURN_TIME_MIN_SECS = 30;
+const TURN_TIME_MAX_SECS = 3600;
+const FETCH_ERROR_TIMEOUT_MS = 5000;
+const CARD_BACK_FALLBACK = 'assets/images/card_back.jpg';
+
 @Component({
   selector: 'app-deck-picker-dialog',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, MatButton,
-    MatProgressSpinner, MatIcon, RouterLink, MatButtonToggle, MatButtonToggleGroup, MatSlideToggle,
-    FormsModule, TranslatePipe,
+    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
+    MatButton, MatIconButton, MatSlideToggle, MatIcon,
+    RouterLink, FormsModule, TranslatePipe,
+    DeckCardSkeletonComponent,
   ],
-  template: `
-    <h2 mat-dialog-title>{{ title | translate }}</h2>
-    <mat-dialog-content>
-      @if (isQuickDuel()) {
-        <div class="qd-section">
-          <span class="qd-label">{{ 'deckPicker.decks' | translate }}</span>
-          <mat-button-toggle-group [value]="activeSlot()" (change)="onSlotChange($event.value)"
-                                   class="slot-toggle">
-            <mat-button-toggle value="p1">{{ 'deckPicker.player1' | translate }}</mat-button-toggle>
-            <mat-button-toggle value="p2">{{ 'deckPicker.player2' | translate }}</mat-button-toggle>
-          </mat-button-toggle-group>
-          @if (activeSlot() === 'p2' && selectedId2() === null) {
-            <p class="mirror-hint">{{ 'deckPicker.mirrorHint' | translate }}</p>
-          }
-        </div>
-        <div class="qd-section">
-          <span class="qd-label">{{ 'deckPicker.firstPlayer' | translate }}</span>
-          <mat-button-toggle-group [value]="firstPlayer()" (change)="firstPlayer.set($event.value)"
-                                   class="slot-toggle">
-            <mat-button-toggle value="p1">{{ 'deckPicker.player1' | translate }}</mat-button-toggle>
-            <mat-button-toggle value="p2">{{ 'deckPicker.player2' | translate }}</mat-button-toggle>
-          </mat-button-toggle-group>
-        </div>
-        <div class="qd-section qd-section--row">
-          <span class="qd-label">{{ 'deckPicker.randomHand' | translate }}</span>
-          <mat-slide-toggle [checked]="randomHand()" (change)="randomHand.set($event.checked)"></mat-slide-toggle>
-        </div>
-        <div class="qd-section qd-section--row">
-          <span class="qd-label">{{ 'deckPicker.turnTime' | translate }}</span>
-          <input class="qd-time-input"
-                 type="number"
-                 min="30"
-                 max="3600"
-                 step="30"
-                 [ngModel]="turnTimeSecs()"
-                 (ngModelChange)="turnTimeSecs.set(+$event)" />
-        </div>
-      }
-      @if (loading()) {
-        <div class="picker-loading">
-          <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
-        </div>
-      } @else if (fetchError()) {
-        <div class="picker-message">
-          <p>{{ 'deckPicker.loadError' | translate }}</p>
-          <button mat-button (click)="loadDecks()">{{ 'common.retry' | translate }}</button>
-        </div>
-      } @else if (decks().length === 0) {
-        <div class="picker-message">
-          <p>{{ 'deckPicker.emptyTitle' | translate }}</p>
-          <p class="picker-hint">{{ 'deckPicker.emptyHint' | translate }}</p>
-          <a [routerLink]="['/decks']" mat-button (click)="dialogRef.close()">{{ 'deckPicker.goToDeckBuilder' | translate }}</a>
-        </div>
-      } @else {
-        <div class="deck-list" role="listbox" [attr.aria-label]="'deckPicker.decks' | translate">
-          @for (deck of decks(); track deck.id) {
-            <button class="deck-item"
-                    role="option"
-                    [attr.aria-selected]="activeSelectedId() === deck.id"
-                    [class.selected]="activeSelectedId() === deck.id"
-                    (click)="selectDeck(deck.id)">
-              <img class="deck-thumb"
-                   [src]="deck.urls.length > 0 ? deck.urls[0] : 'assets/images/card_back.jpg'"
-                   alt=""
-                   loading="lazy"
-                   (error)="$any($event.target).src='assets/images/card_back.jpg'" />
-              <span class="deck-name">{{ deck.name }}</span>
-              @if (activeSelectedId() === deck.id) {
-                <mat-icon class="deck-check">check_circle</mat-icon>
-              }
-            </button>
-          }
-        </div>
-      }
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>{{ 'common.cancel' | translate }}</button>
-      <button mat-raised-button
-              class="confirm-btn"
-              [disabled]="selectedId() === null"
-              (click)="confirm()">
-        {{ confirmLabel | translate }}
-      </button>
-    </mat-dialog-actions>
-  `,
-  styles: [`
-    :host {
-      display: block;
-    }
-
-    .qd-section {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 12px;
-    }
-
-    .qd-label {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .slot-toggle {
-      display: flex;
-      width: 100%;
-
-      mat-button-toggle {
-        flex: 1;
-      }
-    }
-
-    .qd-section--row {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .qd-time-input {
-      width: 72px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background: var(--surface-card);
-      color: var(--text-primary);
-      font: inherit;
-      font-size: 0.95rem;
-      text-align: right;
-
-      &:focus {
-        outline: 2px solid var(--pvp-accent);
-        outline-offset: -1px;
-      }
-    }
-
-    .mirror-hint {
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 0.8rem;
-      font-style: italic;
-      margin: 0;
-    }
-
-    .picker-loading {
-      display: flex;
-      justify-content: center;
-      padding: 32px 0;
-    }
-
-    .picker-message {
-      text-align: center;
-      padding: 24px 0;
-
-      p {
-        margin: 0 0 4px;
-        color: var(--text-secondary);
-      }
-    }
-
-    .picker-hint {
-      font-size: 0.85rem;
-      margin-bottom: 12px !important;
-    }
-
-    .deck-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 50dvh;
-      overflow-y: auto;
-      padding: 2px;
-    }
-
-    .deck-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      min-height: 48px;
-      border-radius: var(--pvp-radius-lg);
-      border: 2px solid transparent;
-      background: var(--surface-card);
-      color: var(--text-primary);
-      cursor: pointer;
-      transition: background 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
-      text-align: left;
-      width: 100%;
-      font: inherit;
-      font-size: 0.95rem;
-
-      &:hover {
-        background: var(--surface-card-hover);
-      }
-
-      &.selected {
-        border-color: var(--pvp-accent);
-        box-shadow: var(--pvp-selection-glow);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--pvp-accent);
-        outline-offset: 2px;
-      }
-    }
-
-    .deck-thumb {
-      height: 36px;
-      aspect-ratio: 59 / 86;
-      border-radius: var(--pvp-radius-md);
-      object-fit: cover;
-      flex-shrink: 0;
-    }
-
-    .deck-name {
-      flex: 1;
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .deck-check {
-      color: var(--pvp-accent);
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
-      flex-shrink: 0;
-    }
-
-    .confirm-btn {
-      background: var(--pvp-accent) !important;
-      color: #121212 !important;
-      font-weight: 600;
-
-      &:disabled {
-        opacity: var(--pvp-disabled-opacity);
-      }
-    }
-  `],
+  templateUrl: './deck-picker-dialog.component.html',
+  styleUrl: './deck-picker-dialog.component.scss',
 })
 export class DeckPickerDialogComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<DeckPickerDialogComponent>);
   private readonly deckBuildService = inject(DeckBuildService);
-  private readonly translate = inject(TranslateService);
   private readonly data: DeckPickerDialogData | null = inject(MAT_DIALOG_DATA, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly context = computed<DeckPickerContext>(() => this.data?.context ?? 'create');
   readonly title = TITLES[this.data?.context ?? 'create'];
+  readonly subtitle = SUBTITLES[this.data?.context ?? 'create'];
   readonly confirmLabel = CONFIRM_LABELS[this.data?.context ?? 'create'];
 
   readonly decks = signal<ShortDeck[]>([]);
@@ -300,13 +94,45 @@ export class DeckPickerDialogComponent implements OnInit {
   readonly firstPlayer = signal<'p1' | 'p2'>('p1');
   readonly randomHand = signal(false);
   readonly turnTimeSecs = signal(300);
-  readonly isQuickDuel = computed(() => this.context() === 'quickDuel');
+  readonly searchQuery = signal('');
 
-  readonly activeSelectedId = computed(() =>
-    this.activeSlot() === 'p1' ? this.selectedId() : this.selectedId2()
+  // Sandbox-only: P2 starts in "mirror" mode (uses P1's deck). The mirror
+  // card collapses when the user explicitly opts into customizing P2, or
+  // implicitly when a P2 deck is selected.
+  readonly p2Customizing = signal(false);
+
+  readonly isQuickDuel = computed(() => this.context() === 'quickDuel');
+  readonly titleIcon = computed(() => TITLE_ICONS[this.context()]);
+
+  readonly showP2Mirror = computed(() =>
+    this.isQuickDuel()
+      && this.activeSlot() === 'p2'
+      && !this.p2Customizing()
+      && this.selectedId2() === null,
   );
 
-  private readonly destroyRef = inject(DestroyRef);
+  // The deck grid is hidden while the sandbox is showing the mirror card
+  // (P2 + no deck chosen yet) — clicking "Customise" reveals it.
+  readonly showDeckGrid = computed(() => !this.showP2Mirror());
+
+  // Search bar is always visible (cohérence cross-context, plan Phase 1.4).
+  readonly showSearch = computed(() => this.showDeckGrid());
+
+  readonly activeSelectedId = computed(() =>
+    this.activeSlot() === 'p1' ? this.selectedId() : this.selectedId2(),
+  );
+
+  readonly filteredDecks = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return this.decks();
+    return this.decks().filter(d => d.name.toLowerCase().includes(query));
+  });
+
+  // P1 deck is mandatory in every context. The confirm-btn is disabled until
+  // one is selected — no other validation runs here (count + validity move
+  // in Phase 1.9 when the back exposes mainDeckCount + isValid).
+  readonly canConfirm = computed(() => this.selectedId() !== null);
+
   private fetchErrorTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -314,10 +140,8 @@ export class DeckPickerDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Cache-first subscription — emits the current subject value synchronously
-    // (BehaviorSubject), then any subsequent refresh. While the cache is
-    // non-empty the dialog renders immediately; if it's empty we leave
-    // `loading=true` until the in-flight fetch lands.
+    // Cache-first subscription — BehaviorSubject emits the current value
+    // synchronously, then any subsequent refresh.
     this.deckBuildService.decks$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(decks => {
@@ -332,16 +156,11 @@ export class DeckPickerDialogComponent implements OnInit {
     this.loadDecks();
   }
 
-  // Triggers (or retriggers) a deck list refresh. Called once on init, and
-  // bound to the "Retry" button when the empty-cache error path fires.
   loadDecks(): void {
     this.fetchError.set(false);
     this.loading.set(this.decks().length === 0);
     this.deckBuildService.fetchDecks(true);
 
-    // Surface a fetch error only when we have nothing to show. If the cache
-    // already has data, a background refresh failure is silent — the user
-    // keeps seeing the last good list.
     this.clearFetchErrorTimeout();
     if (this.decks().length === 0) {
       this.fetchErrorTimeout = setTimeout(() => {
@@ -349,19 +168,12 @@ export class DeckPickerDialogComponent implements OnInit {
           this.loading.set(false);
           this.fetchError.set(true);
         }
-      }, 5000);
+      }, FETCH_ERROR_TIMEOUT_MS);
     }
   }
 
-  private clearFetchErrorTimeout(): void {
-    if (this.fetchErrorTimeout !== null) {
-      clearTimeout(this.fetchErrorTimeout);
-      this.fetchErrorTimeout = null;
-    }
-  }
-
-  onSlotChange(value: string): void {
-    this.activeSlot.set(value as 'p1' | 'p2');
+  onSlotChange(slot: 'p1' | 'p2'): void {
+    this.activeSlot.set(slot);
   }
 
   selectDeck(id: number): void {
@@ -369,7 +181,25 @@ export class DeckPickerDialogComponent implements OnInit {
       this.selectedId.set(id);
     } else {
       this.selectedId2.set(id);
+      this.p2Customizing.set(true);
     }
+  }
+
+  customizeP2(): void {
+    this.p2Customizing.set(true);
+  }
+
+  onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchQuery.set(value);
+  }
+
+  clearSearch(): void {
+    this.searchQuery.set('');
+  }
+
+  onThumbError(event: Event): void {
+    (event.target as HTMLImageElement).src = CARD_BACK_FALLBACK;
   }
 
   confirm(): void {
@@ -377,16 +207,25 @@ export class DeckPickerDialogComponent implements OnInit {
     if (id === null) return;
 
     if (this.isQuickDuel()) {
+      const turnTime = Math.min(TURN_TIME_MAX_SECS, Math.max(TURN_TIME_MIN_SECS, this.turnTimeSecs()));
       this.dialogRef.close({
         decklistId1: id,
         decklistId2: this.selectedId2() ?? id,
         firstPlayer: this.firstPlayer() === 'p1' ? 1 : 2,
         skipShuffle: !this.randomHand(),
-        turnTimeSecs: Math.min(3600, Math.max(30, this.turnTimeSecs())),
+        turnTimeSecs: turnTime,
       });
-    } else {
-      const name = this.decks().find(d => d.id === id)?.name ?? '';
-      this.dialogRef.close({ id, name });
+      return;
+    }
+
+    const name = this.decks().find(d => d.id === id)?.name ?? '';
+    this.dialogRef.close({ id, name });
+  }
+
+  private clearFetchErrorTimeout(): void {
+    if (this.fetchErrorTimeout !== null) {
+      clearTimeout(this.fetchErrorTimeout);
+      this.fetchErrorTimeout = null;
     }
   }
 }

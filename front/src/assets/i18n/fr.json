@@ -73,6 +73,7 @@
     "cancel": "Annuler",
     "confirm": "Confirmer",
     "close": "Fermer",
+    "clear": "Effacer",
     "retry": "Réessayer",
     "back": "Retour",
     "delete": "Supprimer",
@@ -301,22 +302,43 @@
       "join": "Choisis ton deck pour rejoindre",
       "quickDuel": "Bac à sable"
     },
+    "subtitle": {
+      "create": "Sélectionne le deck que tu veux jouer",
+      "join": "Sélectionne le deck que tu veux jouer",
+      "quickDuel": "Configure un duel local contre toi-même"
+    },
     "confirm": {
       "create": "Créer la room",
       "join": "Rejoindre",
       "quickDuel": "Lancer le duel"
     },
+    "searchPlaceholder": "Rechercher un deck...",
+    "section": {
+      "decks": "Decks",
+      "decksHint": "Sélectionne un deck par joueur",
+      "options": "Options"
+    },
     "decks": "Decks",
     "player1": "Joueur 1",
     "player2": "Joueur 2",
-    "mirrorHint": "Miroir du Joueur 1",
     "firstPlayer": "Premier joueur",
+    "firstPlayerStartsP1": "Joueur 1 commence",
+    "firstPlayerStartsP2": "Joueur 2 commence",
     "randomHand": "Main aléatoire",
+    "randomHandDesc": "Mélange le deck avant la pioche initiale",
     "turnTime": "Temps par tour (secondes)",
     "loadError": "Impossible de charger les decks",
     "emptyTitle": "Aucun deck disponible",
     "emptyHint": "Crée un deck dans le Deck Builder pour commencer.",
+    "noResults": "Aucun deck ne correspond à \"{{query}}\"",
     "goToDeckBuilder": "Aller au Deck Builder"
+  },
+  "sandbox": {
+    "p2": {
+      "mirrorTitle": "Identique au Joueur 1",
+      "mirrorDesc": "Le Joueur 2 utilisera le même deck que le Joueur 1. Clique ci-dessous pour personnaliser.",
+      "customize": "Personnaliser"
+    }
   },
   "login": {
     "username": "Pseudo",

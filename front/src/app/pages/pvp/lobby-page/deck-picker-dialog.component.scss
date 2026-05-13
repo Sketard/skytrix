@@ -1,0 +1,443 @@
+// =============================================================================
+// Deck picker dialog — refonte Phase 1.4 lobby rework
+// Mirror of _mockups/mockup-1-holo-arena.html (deck-picker + sandbox modals).
+// Tokens DS consumed: --gold*, --space-*, --text-*, --radius-*, --elevation-*.
+// =============================================================================
+
+:host {
+  display: block;
+}
+
+// ── Header (title + subtitle + search) ──────────────────────────────────────
+.picker-header {
+  position: relative;
+  padding: clamp(14px, 4vw, 22px) clamp(16px, 4vw, 24px) clamp(12px, 3vw, 16px);
+  border-bottom: 1px solid var(--border-subtle);
+  background:
+    radial-gradient(circle at top, var(--gold-soft-12), transparent 70%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent);
+  flex-shrink: 0;
+}
+
+.picker-title {
+  font: var(--weight-bold) var(--text-xl) / 1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.03em;
+  margin: 0;
+  background: linear-gradient(135deg, var(--gold-50), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.picker-title-icon {
+  color: var(--gold);
+  font-size: clamp(22px, 5vw, 28px);
+  width: clamp(22px, 5vw, 28px);
+  height: clamp(22px, 5vw, 28px);
+  -webkit-text-fill-color: var(--gold);
+  filter: drop-shadow(0 0 8px var(--gold-soft-50));
+}
+
+.picker-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: 6px 0 0;
+  letter-spacing: 0.05em;
+}
+
+.picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-normal, 200ms) var(--ease-inout);
+
+  &:focus-within {
+    border-color: var(--gold-soft-50);
+  }
+}
+
+.picker-search-icon {
+  color: var(--text-muted);
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.picker-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: var(--weight-normal) 0.9rem / 1 'Inter', sans-serif;
+  color: var(--text-primary);
+  min-width: 0;
+
+  &::placeholder {
+    color: var(--text-disabled);
+  }
+}
+
+.picker-search-clear {
+  // Reduced size for the inline clear button — Material's default 48x48 is
+  // visually overweight inside the search bar.
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+
+  ::ng-deep .mat-mdc-button-touch-target { width: 32px; height: 32px; }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// ── Body ────────────────────────────────────────────────────────────────────
+.picker-content {
+  // Override Material's default min-height that creates dead space.
+  display: block !important;
+  padding: clamp(12px, 3vw, 16px) clamp(14px, 4vw, 20px) clamp(6px, 2vw, 8px) !important;
+}
+
+// ── Quick-duel sections (sandbox) ───────────────────────────────────────────
+.qd-section {
+  margin-bottom: 18px;
+
+  &--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.qd-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  justify-content: space-between;
+}
+
+.qd-section-label {
+  font: var(--weight-bold) 0.72rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.qd-section-hint {
+  font-size: 0.72rem;
+  color: var(--text-disabled);
+  font-style: italic;
+}
+
+.qd-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.qd-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  min-height: var(--touch-target-min);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid var(--border-subtle);
+  color: #c0c0c0;
+  font: var(--weight-semibold) 0.9rem / 1 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-normal, 200ms) var(--ease-inout);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    border-color: var(--border-medium);
+  }
+
+  &.active {
+    background: var(--gold-soft-12);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+}
+
+// ── Sandbox P2 mirror state ─────────────────────────────────────────────────
+.qd-mirror-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: clamp(14px, 3vw, 16px) clamp(14px, 3vw, 18px);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--gold-soft-08), var(--cyan-soft-15));
+  border: 1px solid var(--gold-soft-30);
+  margin-bottom: 18px;
+
+  @media (min-width: 480px) {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.qd-mirror-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-soft-12);
+  border: 1px solid var(--gold-soft-40);
+  color: var(--gold);
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.qd-mirror-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qd-mirror-title {
+  font: var(--weight-bold) 0.95rem / 1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.03em;
+  color: var(--gold);
+}
+
+.qd-mirror-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.qd-mirror-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  min-height: var(--touch-target-min);
+  border-radius: 8px;
+  background: transparent;
+  color: #c0c0c0;
+  border: 1px solid var(--border-medium);
+  font: var(--weight-semibold) 0.78rem / 1 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-normal, 200ms) var(--ease-inout);
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-soft);
+  }
+}
+
+.qd-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 10px;
+}
+
+.qd-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qd-row-label {
+  font-weight: var(--weight-semibold);
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.qd-row-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.qd-time-input {
+  width: 80px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: right;
+
+  &:focus {
+    outline: 2px solid var(--gold);
+    outline-offset: -1px;
+  }
+}
+
+.qd-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 18px 0;
+}
+
+// ── Deck grid ───────────────────────────────────────────────────────────────
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: clamp(8px, 2vw, 12px);
+  padding-bottom: 8px;
+
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+.deck-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all var(--transition-normal, 200ms) var(--ease-inout);
+  overflow: hidden;
+  // Reset Material button-like baseline since we keep `<button>` for a11y.
+  font: inherit;
+  color: inherit;
+  text-align: center;
+
+  &:hover {
+    background: var(--surface-hover);
+    transform: translateY(-2px);
+  }
+
+  &.selected {
+    border-color: var(--gold);
+    background: linear-gradient(
+      135deg,
+      rgba(201, 168, 76, 0.18),
+      rgba(201, 168, 76, 0.04)
+    );
+    box-shadow:
+      0 6px 20px var(--gold-soft-30),
+      inset 0 0 0 1px var(--gold-soft-30);
+
+    &::after {
+      content: 'check_circle';
+      font-family: 'Material Icons Round';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      color: var(--gold);
+      font-size: 22px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    }
+  }
+}
+
+.deck-thumb {
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2a2640, #1a1830);
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--elevation-2);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.deck-card-name {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ── Empty / error / no-results message ─────────────────────────────────────
+.picker-message {
+  text-align: center;
+  padding: 24px 0;
+
+  p {
+    margin: 0 0 4px;
+    color: var(--text-muted);
+  }
+}
+
+.picker-hint {
+  font-size: 0.85rem;
+  margin-bottom: 12px !important;
+}
+
+.picker-no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 24px 12px;
+  margin: 0;
+}
+
+// ── Footer (actions) ────────────────────────────────────────────────────────
+.picker-actions {
+  border-top: 1px solid var(--border-subtle);
+  background: linear-gradient(to top, rgba(20, 20, 31, 0.95), transparent);
+  padding: clamp(12px, 3vw, 14px) clamp(14px, 4vw, 20px) clamp(14px, 4vw, 20px);
+  padding-bottom: max(clamp(14px, 4vw, 20px), env(safe-area-inset-bottom, 14px));
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, var(--gold-100), var(--gold)) !important;
+  color: var(--text-inverse) !important;
+  font-weight: var(--weight-bold);
+
+  &:disabled {
+    opacity: var(--pvp-disabled-opacity);
+  }
+}
