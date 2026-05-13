@@ -20,7 +20,7 @@ import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { ShortDeck } from '../../../core/model/short-deck';
 import { DeckCardSkeletonComponent } from '../../../shared/skel';
@@ -54,6 +54,13 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
   join: 'deckPicker.confirm.join',
   quickDuel: 'deckPicker.confirm.quickDuel',
 };
+
+// Mirror of back/src/main/java/com/skytrix/model/enums/DeckKeyword.java —
+// MAIN ∈ [40, 60], EXTRA ≤ 15, SIDE ≤ 15. Backend is the source of truth
+// (deck.valid is the authoritative gate), front-only constants are kept here
+// solely to format a human-readable "why invalid" tooltip without a round-trip.
+const MAIN_DECK_MIN_SIZE = 40;
+const MAIN_DECK_MAX_SIZE = 60;
 
 const TURN_TIME_MIN_SECS = 30;
 const TURN_TIME_MAX_SECS = 3600;
@@ -107,6 +114,7 @@ const TURN_TIME_PRESETS: readonly TurnTimePreset[] = TURN_TIME_PRESETS_SECS.map(
 export class DeckPickerDialogComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<DeckPickerDialogComponent>);
   private readonly deckBuildService = inject(DeckBuildService);
+  private readonly translate = inject(TranslateService);
   private readonly data: DeckPickerDialogData | null = inject(MAT_DIALOG_DATA, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
 
@@ -221,12 +229,40 @@ export class DeckPickerDialogComponent implements OnInit {
   }
 
   selectDeck(id: number): void {
+    // Defense-in-depth: the button is `[disabled]` when !deck.valid so click
+    // shouldn't fire, but if a caller bypasses the disabled state (e.g.
+    // assistive tech, keyboard `Enter` on a focused-but-disabled button in
+    // some browsers) we drop the selection.
+    const deck = this.decks().find(d => d.id === id);
+    if (!deck || !deck.valid) return;
+
     if (this.activeSlot() === 'p1') {
       this.selectedId.set(id);
     } else {
       this.selectedId2.set(id);
       this.p2Customizing.set(true);
     }
+  }
+
+  // Human-readable reason for an invalid deck, used as the click-blocked
+  // tooltip in the picker grid. Today the back only flags valid:boolean
+  // without a reason string, so we infer from mainDeckCount (the most common
+  // case: "deck incomplet : N/40 cartes minimum"). If multiple rules fail at
+  // once, we report the main count one — it's the user-actionable signal.
+  invalidReason(deck: ShortDeck): string {
+    if (deck.mainDeckCount < MAIN_DECK_MIN_SIZE) {
+      return this.translate.instant('deckPicker.invalidReason.mainTooSmall', {
+        count: deck.mainDeckCount,
+        min: MAIN_DECK_MIN_SIZE,
+      });
+    }
+    if (deck.mainDeckCount > MAIN_DECK_MAX_SIZE) {
+      return this.translate.instant('deckPicker.invalidReason.mainTooLarge', {
+        count: deck.mainDeckCount,
+        max: MAIN_DECK_MAX_SIZE,
+      });
+    }
+    return this.translate.instant('deckPicker.invalidReason.generic');
   }
 
   customizeP2(): void {

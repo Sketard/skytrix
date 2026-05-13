@@ -99,7 +99,12 @@
           class="deck-card"
           role="option"
           [class.selected]="activeSelectedId() === deck.id"
+          [class.invalid]="!deck.valid"
           [attr.aria-selected]="activeSelectedId() === deck.id"
+          [attr.aria-disabled]="!deck.valid"
+          [attr.data-invalid-reason]="deck.valid ? null : invalidReason(deck)"
+          [disabled]="!deck.valid"
+          [title]="deck.valid ? null : invalidReason(deck)"
           (click)="selectDeck(deck.id)">
           <div class="deck-thumb">
             <img
@@ -109,6 +114,10 @@
               (error)="onThumbError($event)" />
           </div>
           <span class="deck-card-name">{{ deck.name }}</span>
+          <span class="deck-card-meta">
+            <mat-icon aria-hidden="true">style</mat-icon>
+            {{ 'deckPicker.cardCount' | translate: { count: deck.mainDeckCount } }}
+          </span>
         </button>
       } @empty {
         <p class="picker-no-results">{{ 'deckPicker.noResults' | translate: { query: searchQuery() } }}</p>

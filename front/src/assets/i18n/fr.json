@@ -360,6 +360,12 @@
     "emptyTitle": "Aucun deck disponible",
     "emptyHint": "Crée un deck dans le Deck Builder pour commencer.",
     "noResults": "Aucun deck ne correspond à \"{{query}}\"",
+    "cardCount": "{{count}} cartes",
+    "invalidReason": {
+      "mainTooSmall": "Deck incomplet : {{count}}/{{min}} cartes minimum",
+      "mainTooLarge": "Deck trop grand : {{count}}/{{max}} cartes maximum",
+      "generic": "Deck invalide"
+    },
     "goToDeckBuilder": "Aller au Deck Builder"
   },
   "sandbox": {
