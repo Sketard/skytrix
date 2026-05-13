@@ -1,0 +1,4117 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Mockup 1 — Holographic Arena</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+/* ============================================================
+   DS TOKENS — mockup-autonomous mirror of front/src/app/styles/_tokens.scss
+   ============================================================
+   Names aligned with project_design_system_strategy.md. Phase 1
+   Angular reprendra ces noms à l'extraction vers SCSS. Les valeurs
+   inline existantes ci-dessous ne sont PAS encore refactorisées
+   vers ces tokens (effort/gain) — seuls les nouveaux blocs DS et
+   les futurs patches d'écran les consomment. */
+:root {
+  /* Typo — fluide via clamp(min, preferred, max) */
+  --text-xs:  clamp(0.65rem, 0.62rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.78rem, 0.74rem + 0.20vw, 0.85rem);
+  --text-md:  clamp(0.92rem, 0.88rem + 0.20vw, 1.00rem);
+  --text-lg:  clamp(1.10rem, 1.00rem + 0.50vw, 1.25rem);
+  --text-xl:  clamp(1.35rem, 1.20rem + 0.75vw, 1.60rem);
+  --text-2xl: clamp(1.70rem, 1.40rem + 1.50vw, 2.20rem);
+  --text-3xl: clamp(2.00rem, 1.60rem + 2.00vw, 2.80rem);
+
+  --line-tight:   1.1;
+  --line-normal:  1.4;
+  --line-relaxed: 1.6;
+
+  --weight-normal:   400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-black:    800;
+
+  /* Spacing — fixed scale (8px-based with finer steps) */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+  --space-9:  48px;
+  --space-10: 64px;
+  --space-11: 80px;
+  --space-12: 96px;
+
+  /* Espacement fluide pour conteneurs page */
+  --space-fluid-sm: clamp(8px, 1.5vw, 12px);
+  --space-fluid-md: clamp(16px, 3vw, 24px);
+  --space-fluid-lg: clamp(24px, 5vw, 48px);
+
+  /* Radius */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   18px;
+  --radius-pill: 999px;
+
+  /* Élévation (shadows progressives) */
+  --elevation-0: none;
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.30);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.40);
+  --elevation-4: 0 16px 48px rgba(0, 0, 0, 0.50);
+
+  /* Couleurs — Gold Millennium accent */
+  --gold-50:   #ffe9a8;
+  --gold-100:  #d4b25a;
+  --gold:      #C9A84C;
+  --gold-700:  #a8862e;
+  --gold-900:  #8a6a20;
+  --gold-soft-08: rgba(201, 168, 76, 0.08);
+  --gold-soft-12: rgba(201, 168, 76, 0.12);
+  --gold-soft-30: rgba(201, 168, 76, 0.30);
+  --gold-soft-40: rgba(201, 168, 76, 0.40);
+  --gold-soft-50: rgba(201, 168, 76, 0.50);
+
+  /* Couleurs — Cyan accent (secondaire / "second player") */
+  --cyan-300: #79b8ff;
+  --cyan-500: #4a90d9;
+  --cyan-soft-15: rgba(74, 144, 217, 0.15);
+  --cyan-soft-25: rgba(74, 144, 217, 0.25);
+  --cyan-soft-40: rgba(74, 144, 217, 0.40);
+
+  /* Couleurs — sémantiques */
+  --success:       #4caf50;
+  --success-soft:  rgba(76, 175, 80, 0.15);
+  --warning:       #ffc107;
+  --warning-soft:  rgba(255, 193, 7, 0.12);
+  --danger:        #ff5252;
+  --danger-soft:   rgba(255, 82, 82, 0.15);
+
+  /* Surfaces */
+  --surface-bg:        #0a0a14;
+  --surface-bg-deep:   #0f0f1c;
+  --surface-card:      rgba(30, 30, 46, 0.85);
+  --surface-card-low:  rgba(22, 22, 36, 0.85);
+  --surface-overlay:   rgba(255, 255, 255, 0.04);
+  --surface-hover:     rgba(255, 255, 255, 0.06);
+  --border-subtle:     rgba(255, 255, 255, 0.06);
+  --border-soft:       rgba(255, 255, 255, 0.10);
+  --border-medium:     rgba(255, 255, 255, 0.18);
+
+  /* Text */
+  --text-primary:   #eaeaea;
+  --text-secondary: #c0c0c0;
+  --text-muted:     #9e9e9e;
+  --text-disabled:  #6e6e6e;
+  --text-inverse:   #1a1208;
+
+  /* Transitions */
+  --transition-fast:   150ms;
+  --transition-normal: 250ms;
+  --transition-slow:   400ms;
+
+  /* Easings */
+  --ease-out:    cubic-bezier(0.25, 0.8, 0.25, 1);
+  --ease-inout:  cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in:     cubic-bezier(0.5, 0, 0.85, 0.35);
+
+  /* Focus ring DS — outline doré 2px + offset 2px */
+  --focus-ring-color:  var(--gold);
+  --focus-ring-width:  2px;
+  --focus-ring-offset: 2px;
+
+  /* Touch targets */
+  --touch-target-min: 44px;
+  --touch-target-primary: 48px;
+}
+
+/* ============================================================
+   Focus-visible global — DS standard, partout
+   ============================================================
+   Cible UNIQUEMENT la navigation clavier (Tab / arrow keys),
+   pas les clics souris. Les boutons et liens DS auront tous
+   ce ring visible sans qu'on l'ajoute composant par composant. */
+*:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: inherit;
+}
+*:focus:not(:focus-visible) { outline: none; }
+
+/* ============================================================
+   Reduced-motion global — couvre TOUTES les animations
+   ============================================================
+   Convention skytrix : on garde les transitions <100ms pour le
+   feedback immédiat (hover, focus, click), on supprime tout le
+   reste. Toggle manuel possible via body.test-reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Conserver les transitions <100ms pour feedback essentiel */
+  .room-card, .deck-card, .lobby-cta, .dice-launch-btn,
+  .room-join-btn, .code-copy-btn, .qd-toggle, .qd-mirror-btn,
+  .section-refresh-btn, .lobby-section-filter,
+  .waiting-back-btn, .waiting-cancel-btn, .code-action-btn,
+  .dice-turn-option, .modal .btn-primary, .modal .btn-secondary,
+  .lobby-search-clear, .qd-slider-tick {
+    transition-duration: 100ms !important;
+  }
+}
+/* Toggle manuel pour tester sans changer les settings OS */
+body.test-reduced-motion *,
+body.test-reduced-motion *::before,
+body.test-reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 100ms !important;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0a0a14;
+  color: #eaeaea;
+  overflow-x: hidden;
+}
+.material-icons-round { font-family: 'Material Icons Round'; user-select: none; }
+
+/* ============================================================
+   Toolbar
+   ============================================================ */
+.preview-toolbar { position: fixed; top: 12px; right: 12px; display: flex; gap: 6px;
+  z-index: 100; background: rgba(10, 10, 20, 0.85); padding: 6px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); flex-wrap: wrap; max-width: calc(100vw - 24px); }
+.preview-toolbar a, .preview-toolbar button { font: inherit; font-size: 0.78rem;
+  font-weight: 600; padding: 6px 10px; border-radius: 6px; background: transparent;
+  color: #c0c0c0; border: none; cursor: pointer; text-decoration: none; }
+
+/* Compact toolbar on small viewports — toolbar can still wrap, but takes less room.
+   .screen padding-top override is defined LATER in the file (after the base .screen rule)
+   to win the cascade — see the second @media block below the .screen definition. */
+@media (max-width: 520px) {
+  .preview-toolbar {
+    top: 8px; right: 8px; left: 8px; max-width: none;
+    padding: 4px; gap: 4px;
+    justify-content: flex-end;
+  }
+  .preview-toolbar a, .preview-toolbar button, .preview-toolbar .device-select {
+    font-size: 0.7rem; padding: 5px 7px;
+  }
+  .preview-toolbar .sep { display: none; }
+}
+.preview-toolbar .active { background: rgba(201, 168, 76, 0.15); color: #C9A84C; }
+.preview-toolbar .sep { width: 1px; height: 18px; background: rgba(255,255,255,0.1); align-self: center; }
+.preview-toolbar .device-select {
+  font: inherit; font-size: 0.74rem; font-weight: 600;
+  padding: 6px 8px; border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  color: #c0c0c0; border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+}
+.preview-toolbar .device-select:focus-visible {
+  outline: 2px solid #C9A84C; outline-offset: 2px;
+}
+
+/* Device-preview "viewport simulator" — contraint le body à une largeur cible.
+   On utilise un attribut data-device sur <html> pour pouvoir styler facilement. */
+html[data-device="360"]  body { max-width: 360px;  margin: 0 auto; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 32px rgba(201, 168, 76, 0.15); }
+html[data-device="414"]  body { max-width: 414px;  margin: 0 auto; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 32px rgba(201, 168, 76, 0.15); }
+html[data-device="768"]  body { max-width: 768px;  margin: 0 auto; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 32px rgba(201, 168, 76, 0.15); }
+html[data-device="1024"] body { max-width: 1024px; margin: 0 auto; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 32px rgba(201, 168, 76, 0.15); }
+html[data-device="1280"] body { max-width: 1280px; margin: 0 auto; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 32px rgba(201, 168, 76, 0.15); }
+html[data-device="1920"] body { max-width: 1920px; margin: 0 auto; box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4), 0 0 32px rgba(201, 168, 76, 0.15); }
+html[data-device]:not([data-device="auto"]) body {
+  min-height: 100vh;
+  background: #0a0a14; /* préserve le fond hors viewport */
+}
+html[data-device]:not([data-device="auto"]) {
+  background: #050509; /* fond légèrement plus sombre pour distinguer la zone hors viewport */
+}
+
+/* ============================================================
+   Arena background
+   ============================================================ */
+.screen { position: relative; min-height: 100vh; isolation: isolate;
+  padding: 32px 16px 40px; display: none; }
+.screen.active { display: block; }
+/* Push content below the wrapped fixed toolbar on small viewports.
+   Placed AFTER the base .screen rule so it wins the cascade. */
+@media (max-width: 520px) {
+  .screen { padding-top: 120px; }
+}
+.screen-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: radial-gradient(ellipse at top, #1a1a2e 0%, #0f0f1c 65%, #0a0a14 100%); }
+.screen-bg-grid {
+  position: absolute; inset: -10% -10% -20% -10%;
+  background-image:
+    linear-gradient(to right, rgba(201, 168, 76, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(201, 168, 76, 0.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: perspective(900px) rotateX(60deg) translateY(-5%);
+  transform-origin: 50% 30%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
+  opacity: 0.6;
+  animation: grid-drift 24s linear infinite;
+}
+@keyframes grid-drift { from { background-position: 0 0; } to { background-position: 48px 48px; } }
+.screen-bg-glow { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; }
+.screen-bg-glow--gold { top: -20%; left: -10%; width: 60vw; height: 60vw; max-width: 600px; max-height: 600px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.55), transparent 70%); opacity: 0.4; }
+.screen-bg-glow--cyan { bottom: -20%; right: -10%; width: 60vw; height: 60vw; max-width: 600px; max-height: 600px;
+  background: radial-gradient(circle, rgba(74, 144, 217, 0.45), transparent 70%); opacity: 0.35; }
+
+/* ============================================================
+   Container
+   ============================================================ */
+.lobby-container { position: relative; display: flex; flex-direction: column; gap: 22px;
+  max-width: 580px; margin: 0 auto; }
+
+/* ============================================================
+   Header
+   ============================================================ */
+.lobby-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lobby-header-title { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.lobby-title-icon { font-size: 38px; color: #C9A84C;
+  filter: drop-shadow(0 0 14px rgba(201, 168, 76, 0.6)); }
+.lobby-header-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lobby-header-text h1 {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  margin: 0;
+  font-size: clamp(1.4rem, 5vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: 0.04em; line-height: 1.1;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  text-wrap: balance;
+  background: linear-gradient(135deg, #ffe9a8 0%, #C9A84C 50%, #b88828 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.lobby-subtitle { font-size: 0.72rem; color: #9e9e9e;
+  letter-spacing: 0.15em; text-transform: uppercase; }
+.alpha-chip { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+  background: #e67e22; color: #fff; padding: 3px 8px; border-radius: 4px; line-height: 1;
+  -webkit-text-fill-color: #fff; box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4); }
+
+/* ============================================================
+   CTA — primary (Create) + secondary (Solo)
+   ============================================================ */
+.cta-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 480px) { .cta-row { grid-template-columns: 1.4fr 1fr; } }
+
+.lobby-cta { position: relative; min-height: 58px; padding: 0 24px;
+  font: 700 1rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 14px; border: none; cursor: pointer; overflow: hidden;
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+  display: flex; align-items: center; justify-content: center; gap: 10px; }
+.lobby-cta--primary {
+  background: linear-gradient(135deg, #d4b25a 0%, #C9A84C 50%, #a8862e 100%);
+  color: #1a1208;
+  box-shadow: 0 6px 24px rgba(201, 168, 76, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.2); }
+.lobby-cta--primary::before { content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.4), transparent 70%);
+  background-size: 200% 200%; animation: shimmer 4s ease-in-out infinite; pointer-events: none; }
+.lobby-cta--primary:hover { transform: translateY(-1px); filter: brightness(1.08);
+  box-shadow: 0 10px 32px rgba(201, 168, 76, 0.5),
+    inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.2); }
+.lobby-cta--solo {
+  background: rgba(74, 144, 217, 0.1);
+  color: #79b8ff;
+  border: 1px solid rgba(74, 144, 217, 0.4); }
+.lobby-cta--solo:hover { background: rgba(74, 144, 217, 0.2);
+  border-color: rgba(74, 144, 217, 0.7);
+  box-shadow: 0 6px 20px rgba(74, 144, 217, 0.25); }
+@keyframes shimmer {
+  0%, 100% { background-position: 200% 200%; opacity: 0; }
+  50% { background-position: -50% -50%; opacity: 1; }
+}
+.lobby-cta .material-icons-round { font-size: 22px; position: relative; z-index: 1; }
+.lobby-cta-label { position: relative; z-index: 1; }
+
+/* ============================================================
+   Section header (with refresh button)
+   ============================================================ */
+.lobby-section-header { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 4px; }
+.lobby-section-title-group { display: flex; align-items: center; gap: 10px; }
+.lobby-section-title { font: 700 0.75rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #9e9e9e;
+  position: relative; padding-left: 14px; }
+.lobby-section-title::before { content: ''; position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%); width: 4px; height: 14px;
+  background: #C9A84C; border-radius: 2px;
+  box-shadow: 0 0 8px rgba(201, 168, 76, 0.7); }
+.lobby-section-count { font: 700 0.7rem/1 'Inter', sans-serif;
+  color: #C9A84C; background: rgba(201, 168, 76, 0.12);
+  padding: 4px 10px; border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, 0.3); }
+
+.lobby-search-bar { display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  transition: border-color 200ms ease; }
+.lobby-search-bar:focus-within { border-color: rgba(201, 168, 76, 0.5);
+  background: rgba(255,255,255,0.06); }
+.lobby-search-bar .material-icons-round { color: #9e9e9e; font-size: 18px; }
+.lobby-search-bar input { background: transparent; border: none; outline: none;
+  flex: 1; font: 400 0.88rem/1 'Inter', sans-serif; color: #eaeaea; }
+.lobby-search-bar input::placeholder { color: #6e6e6e; }
+.lobby-search-clear { background: transparent; border: none; cursor: pointer;
+  color: #9e9e9e; padding: 4px; border-radius: 4px; display: flex; align-items: center;
+  transition: color 200ms ease; }
+.lobby-search-clear:hover { color: #eaeaea; }
+.lobby-search-clear .material-icons-round { font-size: 16px; }
+.section-refresh-btn { width: 32px; height: 32px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  color: #9e9e9e; cursor: pointer; transition: all 200ms ease;
+  display: flex; align-items: center; justify-content: center; }
+.section-refresh-btn .material-icons-round { font-size: 18px; transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1); }
+.section-refresh-btn:hover { color: #C9A84C; border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(201, 168, 76, 0.08); }
+.section-refresh-btn:hover .material-icons-round { transform: rotate(180deg); }
+.section-refresh-btn.spinning .material-icons-round { animation: spin 800ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.lobby-section-filter { font: 600 0.75rem/1 'Inter', sans-serif;
+  color: #9e9e9e; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 8px;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: all 200ms ease; }
+.lobby-section-filter:hover { color: #C9A84C; border-color: rgba(201, 168, 76, 0.4); }
+.lobby-section-filter .material-icons-round { font-size: 16px; }
+
+/* ============================================================
+   Room list — virtual scroll viewport
+   ============================================================ */
+.room-list-viewport { max-height: 65vh;
+  overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 4px; }
+.room-list-viewport::-webkit-scrollbar { width: 8px; }
+.room-list-viewport::-webkit-scrollbar-track { background: transparent; }
+.room-list-viewport::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.2); border-radius: 4px; }
+.room-list-viewport::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 76, 0.4); }
+.room-list { display: flex; flex-direction: column; gap: 12px; }
+/* Room card responsive layout :
+   Mobile (<480px) : 2 rangées
+     Row 1 : [avatar 44px] [info flex] [admin-btn 30px]    ← admin tjs visible mobile
+     Row 2 : [join button full width]
+   Tablet+ (≥480px) : 1 rangée [avatar | info | admin (hover) | join] */
+.room-card { position: relative; display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "avatar info admin"
+    "join   join join";
+  align-items: center; gap: 10px 12px;
+  padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(30, 30, 46, 0.85) 0%, rgba(22, 22, 36, 0.85) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  overflow: hidden;
+}
+.room-card > .room-avatar     { grid-area: avatar; }
+.room-card > .room-info       { grid-area: info; }
+.room-card > .room-admin-btn  { grid-area: admin; }
+.room-card > .room-join-btn   { grid-area: join; }
+@media (min-width: 480px) {
+  .room-card {
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas: "avatar info admin join";
+    gap: 14px;
+    padding: 14px 16px;
+  }
+}
+.room-card::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 3px;
+  background: linear-gradient(to bottom, transparent, #C9A84C, transparent);
+  opacity: 0.7; transition: opacity 200ms ease, width 200ms ease; }
+.room-card:hover { transform: translateY(-1px); border-color: rgba(201, 168, 76, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.15); }
+.room-card:hover::before { opacity: 1; width: 4px; }
+/* admin-btn hover reveal is defined in the .room-admin-btn block (desktop @media) */
+.room-card--new { animation: room-card-new 600ms ease-out; }
+@keyframes room-card-new {
+  from { opacity: 0; transform: translateY(-10px); box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.6); }
+}
+
+.room-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font: 700 1.1rem/1 'Rajdhani', sans-serif; color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); flex-shrink: 0; position: relative; }
+.room-avatar-badge { position: absolute; bottom: -2px; right: -2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #C9A84C; color: #1a1208;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 900;
+  border: 2px solid #181828;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.room-avatar-badge .material-icons-round { font-size: 10px; }
+
+.room-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.room-info-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.room-creator { font-weight: 600; font-size: 1rem; color: #eaeaea;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-time { font-size: 0.75rem; color: #9e9e9e; white-space: nowrap; flex-shrink: 0; }
+.room-status { display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; color: #9e9e9e; }
+.room-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.7); position: relative; flex-shrink: 0; }
+.room-status-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  background: rgba(76, 175, 80, 0.4); animation: pulse-dot 1.6s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.8); opacity: 0; }
+}
+.room-status-text { font-style: italic; }
+
+.room-join-btn {
+  min-height: 44px; /* touch target full sur mobile */
+  padding: 0 16px;
+  font: 700 0.82rem/1 'Rajdhani', sans-serif; letter-spacing: 0.06em;
+  text-transform: uppercase; border-radius: 8px;
+  background: rgba(201, 168, 76, 0.12); color: #C9A84C;
+  border: 1px solid rgba(201, 168, 76, 0.4); cursor: pointer;
+  transition: all 200ms ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  width: 100%; /* full-width sur mobile (row 2 entière) */
+}
+.room-join-btn .material-icons-round { font-size: 16px; transition: transform 200ms ease; }
+.room-join-btn:hover { background: #C9A84C; color: #1a1208;
+  box-shadow: 0 4px 16px rgba(201, 168, 76, 0.4); }
+.room-join-btn:hover .material-icons-round { transform: translateX(3px); }
+@media (min-width: 480px) {
+  .room-join-btn {
+    min-height: 38px; width: auto; flex-shrink: 0; /* compact inline sur desktop */
+  }
+}
+
+/* Admin button :
+   Mobile : tjs visible (pas de hover possible), 36×36 touch-friendly
+   Desktop : visible au hover de la card (pattern existant pour rester discret) */
+.room-admin-btn { width: 36px; height: 36px; border-radius: 6px;
+  background: transparent; border: 1px solid rgba(255,255,255,0.08);
+  color: #9e9e9e; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 200ms ease; flex-shrink: 0;
+  opacity: 1; pointer-events: auto;
+}
+.room-admin-btn:hover { background: rgba(255, 82, 82, 0.15);
+  border-color: rgba(255, 82, 82, 0.5); color: #ff5252; }
+.room-admin-btn .material-icons-round { font-size: 18px; }
+@media (min-width: 480px) {
+  .room-admin-btn {
+    width: 30px; height: 30px;
+    opacity: 0; pointer-events: none;
+  }
+  .room-admin-btn .material-icons-round { font-size: 16px; }
+  /* Hover on parent card reveals admin button (desktop only) */
+  .room-card:hover .room-admin-btn,
+  .room-card:focus-within .room-admin-btn {
+    opacity: 1; pointer-events: auto;
+  }
+}
+
+/* ============================================================
+   WAITING ROOM (creator side)
+   ============================================================ */
+.waiting-container { position: relative; max-width: 560px; margin: 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+  padding-top: 24px; }
+
+.waiting-back-btn { align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: 8px;
+  background: transparent; border: 1px solid rgba(255,255,255,0.08);
+  color: #9e9e9e; cursor: pointer; font: 600 0.85rem/1 'Inter', sans-serif;
+  transition: all 200ms ease; }
+.waiting-back-btn:hover { color: #eaeaea; border-color: rgba(255,255,255,0.18); }
+.waiting-back-btn .material-icons-round { font-size: 18px; }
+
+.waiting-status-tag { display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 999px;
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  font: 700 0.72rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: #C9A84C; }
+.waiting-status-tag .pulse-dot { width: 8px; height: 8px; border-radius: 50%;
+  background: #C9A84C; box-shadow: 0 0 8px rgba(201, 168, 76, 0.8);
+  position: relative; }
+.waiting-status-tag .pulse-dot::after { content: ''; position: absolute; inset: -3px;
+  border-radius: 50%; background: rgba(201, 168, 76, 0.4);
+  animation: pulse-dot 1.6s ease-in-out infinite; }
+
+.waiting-title {
+  /* Fluide via clamp() : 1.4rem @ mobile → 2rem @ desktop.
+     text-wrap: balance évite les retours à la ligne mal balancés.
+     Compat balance : Chrome 114+, Firefox 121+, Safari 17.5+ — fallback no-op. */
+  font: 700 clamp(1.4rem, 5vw, 2rem)/1.15 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em; text-align: center;
+  text-wrap: balance;
+  max-width: 100%;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.waiting-subtitle { font-size: 0.95rem; color: #9e9e9e; text-align: center;
+  max-width: 360px; line-height: 1.4; margin-top: -16px; }
+
+/* Duelists card — big visual centerpiece */
+.duelists-card { width: 100%; padding: 28px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(30, 30, 46, 0.85) 0%, rgba(22, 22, 36, 0.85) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.1);
+  backdrop-filter: blur(10px);
+  position: relative; overflow: hidden;
+}
+.duelists-card::before { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(201, 168, 76, 0.08), transparent 60%);
+  pointer-events: none; }
+.duelists-row { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  position: relative; z-index: 1; }
+.duelist-slot { display: flex; flex-direction: column; align-items: center; gap: 10px;
+  flex: 1; min-width: 0; }
+.duelist-avatar { width: 76px; height: 76px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font: 800 2rem/1 'Rajdhani', sans-serif; color: #fff;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  position: relative; }
+.duelist-avatar--empty {
+  background: rgba(255,255,255,0.03);
+  border: 3px dashed rgba(255, 255, 255, 0.2);
+  color: rgba(255,255,255,0.3);
+}
+.duelist-avatar--empty .material-icons-round { font-size: 36px; }
+.duelist-avatar--ready {
+  border-color: #C9A84C;
+  box-shadow: 0 4px 24px rgba(201, 168, 76, 0.4),
+              0 0 0 4px rgba(201, 168, 76, 0.15);
+  animation: duelist-pulse 2.2s ease-in-out infinite;
+}
+@keyframes duelist-pulse {
+  0%, 100% { box-shadow: 0 4px 24px rgba(201, 168, 76, 0.4), 0 0 0 4px rgba(201, 168, 76, 0.15); }
+  50% { box-shadow: 0 4px 32px rgba(201, 168, 76, 0.6), 0 0 0 6px rgba(201, 168, 76, 0.25); }
+}
+.duelist-name { font: 700 1rem/1.2 'Rajdhani', sans-serif;
+  color: #eaeaea; text-align: center;
+  letter-spacing: 0.03em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.duelist-deck { font-size: 0.78rem; color: #9e9e9e; text-align: center;
+  display: flex; align-items: center; gap: 4px; }
+.duelist-deck .material-icons-round { font-size: 14px; color: #C9A84C; }
+.duelist-state { font: 700 0.65rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 4px; }
+.duelist-state--ready { background: rgba(76, 175, 80, 0.15); color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3); }
+.duelist-state--waiting { background: rgba(255, 193, 7, 0.12); color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  animation: state-blink 1.5s ease-in-out infinite; }
+.duelist-state--searching { background: rgba(255,255,255,0.06); color: #9e9e9e;
+  border: 1px solid rgba(255,255,255,0.1);
+  animation: state-blink 1.5s ease-in-out infinite; }
+@keyframes state-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.duelist-vs {
+  font: 800 2.4rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C, #8a6a20);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(201, 168, 76, 0.5);
+  flex-shrink: 0;
+  position: relative;
+}
+.duelist-vs::before, .duelist-vs::after {
+  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.5), transparent);
+}
+.duelist-vs::before { right: 100%; margin-right: 8px; }
+.duelist-vs::after { left: 100%; margin-left: 8px; }
+
+/* Room code section — responsive layout
+   Mobile (<480px) : code en ligne pleine au-dessus, puis row [Copier (flex:1) + Share fixe].
+   Tablet+ (≥480px) : tout sur une ligne [Code (flex:1) + Copier + Share]. */
+.room-code-section { width: 100%;
+  padding: clamp(14px, 4vw, 20px);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(30, 30, 46, 0.6), rgba(22, 22, 36, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.06); }
+.room-code-label { font: 700 0.7rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #9e9e9e;
+  margin-bottom: 10px; }
+.room-code-value-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.room-code-value {
+  flex: 1 1 100%;
+  /* Font scale via clamp + min-width 0 + safe overflow */
+  font: 700 clamp(1.3rem, 6vw, 2rem)/1 'JetBrains Mono', 'Courier New', monospace;
+  letter-spacing: clamp(0.08em, 0.5vw, 0.18em);
+  color: #ffe9a8;
+  padding: 14px 12px;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.4);
+  text-align: center;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  user-select: all;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 480px) {
+  .room-code-value { flex: 1 1 auto; padding: 14px 18px; }
+}
+.code-copy-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 16px;
+  flex: 1 1 auto;
+  border-radius: 10px;
+  background: rgba(201, 168, 76, 0.15);
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  color: #C9A84C; cursor: pointer;
+  font: 700 0.85rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  transition: all 200ms ease;
+}
+@media (min-width: 480px) {
+  .code-copy-btn { flex: 0 0 auto; padding: 0 20px; }
+}
+.code-copy-btn:hover { background: rgba(201, 168, 76, 0.25);
+  border-color: #C9A84C; }
+.code-copy-btn.copied { background: rgba(76, 175, 80, 0.15);
+  border-color: rgba(76, 175, 80, 0.6); color: #66bb6a; }
+.code-copy-btn .material-icons-round { font-size: 18px; }
+.code-action-btn { width: 48px; height: 48px; border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #c0c0c0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 200ms ease; flex-shrink: 0; }
+.code-action-btn:hover { background: rgba(255,255,255,0.08);
+  color: #eaeaea; }
+.code-action-btn .material-icons-round { font-size: 20px; }
+.room-code-hint { margin-top: 10px; font-size: 0.78rem; color: #9e9e9e;
+  text-align: center; text-wrap: balance; }
+
+/* Cancel button — neutral style (not red, not destructive) */
+.waiting-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.waiting-cancel-btn { width: 100%; min-height: 44px;
+  font: 600 0.85rem/1 'Inter', sans-serif;
+  background: transparent; color: #9e9e9e;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 200ms ease; }
+.waiting-cancel-btn:hover { background: rgba(255,255,255,0.04);
+  color: #eaeaea; border-color: rgba(255,255,255,0.22); }
+.waiting-cancel-btn .material-icons-round { font-size: 18px; }
+
+/* Countdown timer */
+.waiting-countdown {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  font: 600 0.82rem/1 'Inter', sans-serif; color: #c0c0c0;
+}
+.waiting-countdown.urgent { color: #ffc107; border-color: rgba(255, 193, 7, 0.3);
+  background: rgba(255, 193, 7, 0.06); }
+.waiting-countdown .material-icons-round { font-size: 16px; color: #C9A84C; }
+.waiting-countdown.urgent .material-icons-round { color: #ffc107; }
+.waiting-countdown strong { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+/* Search beam animation (for searching state) */
+.search-beam {
+  width: 100%; height: 56px;
+  position: relative; overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  display: flex; align-items: center; justify-content: center;
+  font: 600 0.85rem/1 'Inter', sans-serif;
+  color: #9e9e9e;
+  gap: 10px;
+}
+.search-beam::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.2), transparent);
+  animation: beam-sweep 2.4s ease-in-out infinite;
+}
+@keyframes beam-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.search-beam .material-icons-round { color: #C9A84C; font-size: 20px; }
+.search-beam-text { position: relative; z-index: 1; }
+
+
+/* ============================================================
+   DICE SCREEN — layout + arena container
+   ============================================================ */
+.dice-screen-container { position: relative; max-width: 720px; margin: 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  padding-top: 16px; }
+
+.dice-screen-tag { display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 999px;
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  font: 700 0.72rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: #C9A84C; }
+.dice-screen-tag .material-icons-round { font-size: 14px; }
+
+.dice-screen-title {
+  font: 800 clamp(1.5rem, 6vw, 2.2rem)/1.15 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em; text-align: center;
+  text-wrap: balance;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; }
+.dice-screen-subtitle { font-size: 0.95rem; color: #9e9e9e; text-align: center;
+  max-width: 460px; line-height: 1.4; margin-top: -12px; }
+
+.dice-screen-arena { width: 100%;
+  padding: clamp(20px, 5cqw, 36px) clamp(14px, 4cqw, 28px);
+  border-radius: clamp(14px, 3cqw, 20px);
+  min-height: clamp(260px, 55cqw, 380px);
+  background:
+    radial-gradient(ellipse at center top, rgba(201, 168, 76, 0.15), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.85) 0%, rgba(15, 15, 28, 0.85) 100%);
+  /* Container query context: tous les enfants (stage, pair, dés) scalent
+     d'après cette largeur réelle, pas du viewport. Compat 100% (Chrome 105+/Firefox 110+/Safari 16+).
+     --dice-size et --dice-table-bottom sont définis ici (level container) pour que
+     .dice-pair ET .dice-table partagent la même source — la table reste alignée
+     avec le bas des dés à toutes les tailles. */
+  container-type: inline-size;
+  container-name: dice-arena;
+  --dice-size: clamp(56px, 22cqw, 110px);
+  /* Bottom de la table = même bottom que le pair, plus une marge fixe (4% du dé)
+     pour que le dé apparaisse posé SUR la table sans être à cheval. */
+  --dice-table-bottom: calc(var(--dice-size) * 0.6 - var(--dice-size) * 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.1);
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: 24px; justify-content: center; }
+.dice-screen-arena-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(201, 168, 76, 0.08) 1px, transparent 1px);
+  background-size: 30px 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  opacity: 0.4;
+}
+.dice-screen-arena-content { position: relative; z-index: 1;
+  display: flex; flex-direction: column; gap: 20px; align-items: center; }
+
+/* Big CTA button (Launch dice / Launch duel) */
+.dice-launch-btn { min-height: 56px; padding: 0 32px;
+  font: 800 1rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border-radius: 14px; border: none; cursor: pointer; overflow: hidden;
+  background: linear-gradient(135deg, #d4b25a 0%, #C9A84C 50%, #a8862e 100%);
+  color: #1a1208;
+  box-shadow: 0 6px 24px rgba(201, 168, 76, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  transition: all 200ms ease;
+  display: inline-flex; align-items: center; gap: 10px; }
+.dice-launch-btn:hover { transform: translateY(-2px); filter: brightness(1.08);
+  box-shadow: 0 12px 36px rgba(201, 168, 76, 0.55),
+    inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.2); }
+.dice-launch-btn .material-icons-round { font-size: 22px; }
+
+/* Turn order choice */
+.dice-turn-choice { width: 100%; max-width: 480px;
+  display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.dice-turn-choice-label { font: 700 0.72rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #C9A84C; }
+.dice-turn-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+.dice-turn-option { padding: 18px 16px; border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(255,255,255,0.06);
+  cursor: pointer; transition: all 200ms ease;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  font-family: inherit; color: inherit; }
+.dice-turn-option:hover { border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(201, 168, 76, 0.06);
+  transform: translateY(-2px); }
+.dice-turn-option.selected { border-color: #C9A84C;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.04));
+  box-shadow: 0 6px 20px rgba(201, 168, 76, 0.25); }
+.dice-turn-option .material-icons-round { font-size: 28px; color: #C9A84C; }
+.dice-turn-option-title { font: 700 0.95rem/1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em; color: #eaeaea; }
+
+/* ============================================================
+   DICE TABLE — physical-looking play surface (RESPONSIVE)
+   ============================================================
+   Le dé scale via --dice-size (clamp 70 → 110px). Tous les
+   sub-elements (cube edge, mover, shadow, translations, faces)
+   dérivent de cette variable via calc(). Le pair gap, la table
+   bottom-offset et la min-height du stage scalent en parallèle. */
+.dice-pair {
+  /* --dice-size inherits from .dice-screen-arena (container level).
+     Derived geometry: half (for translateZ), land/start offsets, fall height. */
+  --dice-half: calc(var(--dice-size) / 2);
+  /* Land offset = ~36% of dice-size (40/110 ratio) — keeps the visual pair tight */
+  --dice-land-offset: calc(var(--dice-size) * 0.36);
+  /* Start offset (off-screen entry) = ~145% of dice-size (160/110 ratio) */
+  --dice-start-offset: calc(var(--dice-size) * 1.45);
+  /* Start Y (fall height above table) = ~235% of dice-size (260/110 ratio) */
+  --dice-start-y: calc(var(--dice-size) * -2.35);
+
+  position: absolute;
+  left: 0; right: 0; bottom: calc(var(--dice-size) * 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: clamp(16px, 6cqw, 48px);
+  z-index: 1;
+}
+
+.dice-stage {
+  width: 100%;
+  min-height: clamp(220px, 55cqw, 360px);
+  position: relative;
+  perspective: clamp(700px, 120cqw, 1200px);
+  perspective-origin: 50% 30%;
+  padding: clamp(10px, 3cqw, 20px);
+  overflow: hidden;
+}
+
+/* The "table" surface — a glowing horizontal bar at the bottom */
+.dice-table {
+  position: absolute;
+  /* Bottom = bottom du pair - marge (4% du dé), garantit le dé "posé sur" la table */
+  left: 8%; right: 8%; bottom: var(--dice-table-bottom);
+  height: 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(201, 168, 76, 0.6) 20%,
+    rgba(255, 233, 168, 0.9) 50%,
+    rgba(201, 168, 76, 0.6) 80%,
+    transparent 100%);
+  box-shadow:
+    0 0 14px rgba(201, 168, 76, 0.55),
+    0 0 32px rgba(201, 168, 76, 0.25);
+  z-index: 0;
+}
+.dice-table::before {
+  content: '';
+  position: absolute;
+  left: -8%; right: -8%;
+  bottom: 100%;
+  height: 90px;
+  background:
+    radial-gradient(ellipse at bottom, rgba(201, 168, 76, 0.18), transparent 70%);
+  pointer-events: none;
+}
+.dice-table::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 100%;
+  height: 80px;
+  background:
+    linear-gradient(180deg, rgba(201, 168, 76, 0.06), transparent 80%);
+  pointer-events: none;
+}
+
+.dice-scene {
+  position: relative;
+  width: var(--dice-size); height: var(--dice-size);
+  flex-shrink: 0;
+}
+
+/* Custom property hooks for each scene to drive the physics animation.
+   Values are now derived from --dice-size for full responsiveness. */
+.dice-scene--a {
+  --start-x: calc(var(--dice-start-offset) * -1);
+  --start-y: var(--dice-start-y);
+  --land-x: calc(var(--dice-land-offset) * -1);
+  --side-tilt: 8deg;
+  --bounce-rot: 420deg;
+}
+.dice-scene--b {
+  --start-x: var(--dice-start-offset);
+  --start-y: var(--dice-start-y);
+  --land-x: var(--dice-land-offset);
+  --side-tilt: -6deg;
+  --bounce-rot: -480deg;
+}
+
+/* === Two-layer animation strategy (inspired by magnars.com/alea-iacta-est):
+   - .dice-mover handles TRANSLATION (fall + bounce + roll horizontally)
+   - .dice handles ROTATION (tumble) — runs slightly shorter than the mover,
+     so the cube stops spinning BEFORE it stops moving â†’ "gently settles". */
+
+.dice-mover {
+  position: absolute;
+  left: 50%; bottom: 0;
+  width: var(--dice-size); height: var(--dice-size);
+  margin-left: calc(var(--dice-half) * -1);
+  will-change: transform;
+}
+.dice-mover.animating {
+  animation: dice-fall-roll 1.8s cubic-bezier(.55, 0, .35, 1) forwards;
+}
+
+.dice {
+  width: var(--dice-size); height: var(--dice-size);
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Resting poses (each face camera-facing) */
+.dice.result-1 { transform: rotateX(0deg) rotateY(0deg); }
+.dice.result-2 { transform: rotateX(90deg) rotateY(0deg); }
+.dice.result-3 { transform: rotateX(0deg) rotateY(-90deg); }
+.dice.result-4 { transform: rotateX(0deg) rotateY(90deg); }
+.dice.result-5 { transform: rotateX(-90deg) rotateY(0deg); }
+.dice.result-6 { transform: rotateX(0deg) rotateY(180deg); }
+
+/* Tumble: rotation only, ease-in-out, ends 400ms before the mover */
+.dice.tumble-1 { animation: dice-tumble-1 1.4s ease-in-out forwards; }
+.dice.tumble-2 { animation: dice-tumble-2 1.4s ease-in-out forwards; }
+.dice.tumble-3 { animation: dice-tumble-3 1.4s ease-in-out forwards; }
+.dice.tumble-4 { animation: dice-tumble-4 1.4s ease-in-out forwards; }
+.dice.tumble-5 { animation: dice-tumble-5 1.4s ease-in-out forwards; }
+.dice.tumble-6 { animation: dice-tumble-6 1.4s ease-in-out forwards; }
+
+/* 2 full X rotations + 2 full Y rotations + land on face.
+   Final transform must match .result-N so we can snap-freeze. */
+@keyframes dice-tumble-1 {
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(720deg) rotateY(720deg) rotateZ(360deg); }
+}
+@keyframes dice-tumble-2 {
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(810deg) rotateY(720deg) rotateZ(360deg); }
+}
+@keyframes dice-tumble-3 {
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(720deg) rotateY(630deg) rotateZ(360deg); }
+}
+@keyframes dice-tumble-4 {
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(720deg) rotateY(810deg) rotateZ(360deg); }
+}
+@keyframes dice-tumble-5 {
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(630deg) rotateY(720deg) rotateZ(360deg); }
+}
+@keyframes dice-tumble-6 {
+  from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  to   { transform: rotateX(720deg) rotateY(900deg) rotateZ(360deg); }
+}
+
+/* Mover keyframes: each horizontal step moves linearly toward --land-x.
+   --start-x / --start-y / --land-x are defined on .dice-scene--a/--b
+   above and derive from --dice-size for responsiveness.
+   Bounce heights also scale with --dice-size (33% then 9% of size). */
+@keyframes dice-fall-roll {
+  0% {
+    transform: translate3d(var(--start-x), var(--start-y), 0);
+    animation-timing-function: cubic-bezier(.5, 0, .85, .35); /* gravity ease-in */
+  }
+  45% {
+    transform: translate3d(var(--land-x), 0, 0);
+    animation-timing-function: cubic-bezier(.3, 0, .4, 1); /* spring out */
+  }
+  60% {
+    transform: translate3d(var(--land-x), calc(var(--dice-size) * -0.33), 0);
+    animation-timing-function: cubic-bezier(.5, 0, .5, 1); /* fall again */
+  }
+  73% {
+    transform: translate3d(var(--land-x), 0, 0);
+    animation-timing-function: cubic-bezier(.3, 0, .4, 1);
+  }
+  82% {
+    transform: translate3d(var(--land-x), calc(var(--dice-size) * -0.09), 0);
+    animation-timing-function: cubic-bezier(.5, 0, .5, 1);
+  }
+  100% {
+    transform: translate3d(var(--land-x), 0, 0);
+  }
+}
+
+.dice-face {
+  position: absolute; width: var(--dice-size); height: var(--dice-size);
+  /* Radius scales with dice size: 14px @ 110px → 12.7% */
+  border-radius: calc(var(--dice-size) * 0.127);
+  display: grid;
+  /* Padding/gap scale with dice size: 18px @ 110px → 16% / 6px @ 110px → 5.5% */
+  padding: calc(var(--dice-size) * 0.16);
+  gap: calc(var(--dice-size) * 0.055);
+}
+
+/* ========== STYLE 1 — GOLD (default) ========== */
+.dice-style-gold .dice-face {
+  background:
+    radial-gradient(circle at 25% 25%, #fff4d6 0%, #ffe9a8 30%, #C9A84C 100%);
+  border: 3px solid #b88828;
+  box-shadow:
+    inset 0 0 18px rgba(0,0,0,0.15),
+    inset 0 2px 0 rgba(255,255,255,0.4),
+    0 0 0 1px rgba(255,255,255,0.1);
+}
+.dice-style-gold .pip {
+  background: radial-gradient(circle at 30% 30%, #5a3a08, #2a1808);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.2);
+}
+
+/* ========== STYLE 2 — OBSIDIAN (dark, violet, gold pips) ========== */
+.dice-style-obsidian .dice-face {
+  background:
+    radial-gradient(circle at 30% 25%, #4a2870 0%, #2a1240 35%, #15071f 100%);
+  border: 2px solid #6a3a98;
+  box-shadow:
+    inset 0 0 24px rgba(168, 100, 220, 0.18),
+    inset 0 2px 0 rgba(180, 120, 220, 0.35),
+    inset 0 -2px 8px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(180, 120, 220, 0.15);
+}
+.dice-style-obsidian .pip {
+  background: radial-gradient(circle at 30% 30%, #ffe9a8 0%, #C9A84C 60%, #8a6a20 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.4),
+    0 0 8px rgba(201, 168, 76, 0.7),
+    0 0 16px rgba(201, 168, 76, 0.35);
+}
+@media (max-width: 480px) {
+  .dice-style-obsidian .pip {
+    box-shadow:
+      inset 0 1px 2px rgba(255,255,255,0.45),
+      0 0 4px rgba(201, 168, 76, 0.9);
+  }
+}
+
+/* ========== STYLE 3 — CRYSTAL (translucent cyan glow) ========== */
+.dice-style-crystal .dice-face {
+  background:
+    linear-gradient(135deg, rgba(160, 220, 255, 0.18) 0%, rgba(74, 144, 217, 0.32) 100%),
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 60%);
+  border: 1.5px solid rgba(160, 220, 255, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  box-shadow:
+    inset 0 0 30px rgba(120, 200, 255, 0.35),
+    inset 0 2px 0 rgba(255,255,255,0.45),
+    inset 0 -2px 8px rgba(0, 60, 120, 0.4),
+    0 0 24px rgba(120, 200, 255, 0.25),
+    0 0 0 1px rgba(255,255,255,0.1);
+}
+.dice-style-crystal .pip {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #aee2ff 50%, #4a90d9 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.6),
+    0 0 10px rgba(120, 200, 255, 0.85),
+    0 0 20px rgba(120, 200, 255, 0.45);
+}
+/* Pip layouts */
+.dice-face--1 { grid-template: 1fr / 1fr; place-items: center; }
+.dice-face--2 { grid-template: 1fr 1fr / 1fr 1fr; }
+.dice-face--3 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+.dice-face--4 { grid-template: 1fr 1fr / 1fr 1fr; }
+.dice-face--5 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+.dice-face--6 { grid-template: 1fr 1fr 1fr / 1fr 1fr; }
+
+.pip {
+  /* Pip size scales with dice: 14px @ 110px → 12.7% */
+  width: calc(var(--dice-size) * 0.127);
+  height: calc(var(--dice-size) * 0.127);
+  border-radius: 50%;
+  align-self: center; justify-self: center;
+}
+
+/* Face 2: top-left + bottom-right */
+.dice-face--2 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--2 .pip:nth-child(2) { grid-area: 2 / 2; }
+
+/* Face 3: top-left, center, bottom-right */
+.dice-face--3 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--3 .pip:nth-child(2) { grid-area: 2 / 2; }
+.dice-face--3 .pip:nth-child(3) { grid-area: 3 / 3; }
+
+/* Face 4: 4 corners */
+.dice-face--4 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--4 .pip:nth-child(2) { grid-area: 1 / 2; }
+.dice-face--4 .pip:nth-child(3) { grid-area: 2 / 1; }
+.dice-face--4 .pip:nth-child(4) { grid-area: 2 / 2; }
+
+/* Face 5: 4 corners + center */
+.dice-face--5 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--5 .pip:nth-child(2) { grid-area: 1 / 3; }
+.dice-face--5 .pip:nth-child(3) { grid-area: 2 / 2; }
+.dice-face--5 .pip:nth-child(4) { grid-area: 3 / 1; }
+.dice-face--5 .pip:nth-child(5) { grid-area: 3 / 3; }
+
+/* Face 6: 2 columns of 3 — denser padding (12.7% × 20% vs 16% × 16% standard) */
+.dice-face--6 {
+  padding: calc(var(--dice-size) * 0.127) calc(var(--dice-size) * 0.20);
+  gap: calc(var(--dice-size) * 0.036);
+}
+.dice-face--6 .pip:nth-child(odd) { grid-column: 1; }
+.dice-face--6 .pip:nth-child(even) { grid-column: 2; }
+
+/* Face positions in 3D space (cube edge = --dice-size → translate Z = --dice-half) */
+.dice-face--1 { transform: translateZ(var(--dice-half)); }
+.dice-face--6 { transform: rotateY(180deg) translateZ(var(--dice-half)); }
+.dice-face--3 { transform: rotateY(90deg)  translateZ(var(--dice-half)); }
+.dice-face--4 { transform: rotateY(-90deg) translateZ(var(--dice-half)); }
+.dice-face--5 { transform: rotateX(90deg)  translateZ(var(--dice-half)); }
+.dice-face--2 { transform: rotateX(-90deg) translateZ(var(--dice-half)); }
+
+/* Shadow on the table, anchored to the dice scene.
+   Width pulses to match bounces; X position tracks the mover.
+   Sizes scale with --dice-size: 92px @ 110px → ~84%, 12px → ~11%. */
+.dice-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--dice-size) * -0.055);
+  width: calc(var(--dice-size) * 0.84);
+  height: calc(var(--dice-size) * 0.11);
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55), transparent 70%);
+  filter: blur(6px);
+  transform: translateX(-50%);
+  opacity: 0.5;
+  margin-left: calc(var(--dice-size) * -0.42);
+}
+.dice-shadow.animating {
+  animation: dice-shadow-fall 1.8s cubic-bezier(.55, 0, .35, 1) forwards;
+}
+
+/* Shadow widths scale with --dice-size: 40/96/70/92/82/92 @ 110 = 36/87/64/84/75/84% */
+@keyframes dice-shadow-fall {
+  0%   { transform: translateX(var(--start-x)); width: calc(var(--dice-size) * 0.36); opacity: 0.18; }
+  45%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.87); opacity: 0.58; }
+  60%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.64); opacity: 0.35; }
+  73%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.84); opacity: 0.55; }
+  82%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.75); opacity: 0.45; }
+  100% { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.84); opacity: 0.55; }
+}
+
+/* High-contrast value badge after roll */
+.roll-result-banner {
+  padding: 14px 28px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.18), rgba(76, 175, 80, 0.06));
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  display: flex; align-items: center; gap: 14px;
+  animation: reveal-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.roll-result-banner.lost {
+  background: linear-gradient(135deg, rgba(255, 82, 82, 0.12), rgba(255, 82, 82, 0.04));
+  border-color: rgba(255, 82, 82, 0.3);
+}
+.roll-result-banner.draw {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 193, 7, 0.04));
+  border-color: rgba(255, 193, 7, 0.3);
+}
+.roll-result-banner.draw .roll-result-icon { background: #ffc107; color: #1a1208; }
+
+/* Opponent timer at stage 2 */
+.opponent-timer {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  font: 600 0.82rem/1 'Inter', sans-serif; color: #c0c0c0;
+  margin-top: 8px;
+}
+.opponent-timer.urgent { color: #ffc107; border-color: rgba(255, 193, 7, 0.4);
+  background: rgba(255, 193, 7, 0.06); animation: state-blink 1s ease-in-out infinite; }
+.opponent-timer .material-icons-round { font-size: 16px; color: #C9A84C; }
+.opponent-timer.urgent .material-icons-round { color: #ffc107; }
+.opponent-timer strong { font-family: 'JetBrains Mono', monospace; }
+
+/* Lost state: opponent choosing */
+.opponent-choosing {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 24px 20px; border-radius: 12px;
+  background: rgba(74, 144, 217, 0.06);
+  border: 1px solid rgba(74, 144, 217, 0.25);
+  width: 100%; max-width: 400px;
+}
+.opponent-choosing-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(74, 144, 217, 0.2);
+  border-top-color: #79b8ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.opponent-choosing-title { font: 700 1rem/1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em; color: #eaeaea; text-align: center; }
+.opponent-choosing-desc { font-size: 0.82rem; color: #9e9e9e; text-align: center;
+  max-width: 320px; line-height: 1.4; }
+.opponent-choosing-timer { font-size: 0.72rem; color: #79b8ff;
+  font-family: 'JetBrains Mono', monospace; }
+
+/* Final order announcement (you go first / you go second) */
+.dice-final-announce {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  padding: 32px 24px; border-radius: 16px;
+  width: 100%; max-width: 480px;
+  background:
+    radial-gradient(ellipse at top, rgba(201, 168, 76, 0.2), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.7), rgba(15, 15, 28, 0.7));
+  border: 1.5px solid rgba(201, 168, 76, 0.45);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(201, 168, 76, 0.15);
+  animation: announce-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dice-final-announce--second {
+  background:
+    radial-gradient(ellipse at top, rgba(74, 144, 217, 0.2), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.7), rgba(15, 15, 28, 0.7));
+  border-color: rgba(74, 144, 217, 0.45);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(74, 144, 217, 0.15);
+}
+@keyframes announce-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+}
+
+.dice-final-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208;
+  box-shadow: 0 6px 20px rgba(201, 168, 76, 0.5),
+    inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.dice-final-announce--second .dice-final-icon {
+  background: linear-gradient(135deg, #79b8ff, #4a90d9);
+  color: #0a1428;
+  box-shadow: 0 6px 20px rgba(74, 144, 217, 0.5),
+    inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.dice-final-icon .material-icons-round { font-size: 32px; }
+
+.dice-final-headline {
+  font: 800 clamp(1.4rem, 5.5vw, 2rem)/1.15 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em; text-align: center;
+  text-wrap: balance;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.dice-final-announce--second .dice-final-headline {
+  background: linear-gradient(135deg, #d8ecff, #79b8ff);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dice-final-sub {
+  font-size: 0.92rem; color: #c0c0c0; text-align: center; max-width: 360px; }
+
+.dice-final-progress { width: 100%; max-width: 280px; height: 3px;
+  border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.dice-final-progress-bar {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, #C9A84C, #ffe9a8);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(201, 168, 76, 0.6);
+  animation: final-progress 2.5s linear forwards;
+}
+.dice-final-announce--second .dice-final-progress-bar {
+  background: linear-gradient(90deg, #4a90d9, #79b8ff);
+  box-shadow: 0 0 10px rgba(74, 144, 217, 0.6);
+}
+@keyframes final-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.dice-final-hint {
+  font-size: 0.78rem; color: #9e9e9e; display: flex; align-items: center; gap: 6px;
+}
+.dice-final-hint .material-icons-round { font-size: 14px; color: #C9A84C; }
+.dice-final-announce--second .dice-final-hint .material-icons-round { color: #79b8ff; }
+.roll-result-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #4caf50; color: #1a1208;
+  font: 800 1.5rem/1 'Rajdhani', sans-serif;
+  box-shadow: 0 0 16px rgba(76, 175, 80, 0.5);
+}
+.roll-result-banner.lost .roll-result-icon { background: #ff5252; color: #fff; }
+.roll-result-text { font: 800 1.05rem/1.1 'Rajdhani', sans-serif;
+  letter-spacing: 0.04em; color: #eaeaea; text-align: left; }
+.roll-result-text small { display: block; font-size: 0.78rem; font-weight: 600;
+  color: #9e9e9e; letter-spacing: 0.04em; margin-top: 2px; }
+
+/* Dice players hint (which value = whose) — wraps on narrow viewports */
+.roll-vs-strip {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap;
+  gap: clamp(10px, 3vw, 20px);
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  font: 600 0.8rem/1.2 'Inter', sans-serif;
+  color: #c0c0c0;
+  text-align: center;
+}
+.roll-vs-strip strong { color: #C9A84C; font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem; font-weight: 800; }
+.roll-vs-strip-sep { color: #6e6e6e; }
+
+/* ============================================================
+   SKELETON SCREENS — wireframe loading state (no spinner)
+   ============================================================
+   Convention : remplace les spinners pendant le fetch. Donne la
+   structure visuelle du contenu à venir + shimmer subtil pour
+   indiquer "en cours". */
+
+.skel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.skel::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skel-sweep {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel::after { animation: none; }
+}
+
+/* Shape variants */
+.skel--circle { border-radius: 50%; }
+.skel--pill { border-radius: 999px; }
+.skel--text-sm { height: 10px; }
+.skel--text-md { height: 14px; }
+.skel--text-lg { height: 20px; }
+.skel--w-25 { width: 25%; }
+.skel--w-40 { width: 40%; }
+.skel--w-60 { width: 60%; }
+.skel--w-80 { width: 80%; }
+
+/* === Lobby room-card skeleton === */
+.room-card-skel {
+  display: grid; grid-template-columns: auto 1fr auto auto;
+  align-items: center; gap: 14px; padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(30, 30, 46, 0.85) 0%, rgba(22, 22, 36, 0.85) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.room-card-skel .skel-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  position: relative; overflow: hidden;
+}
+.room-card-skel .skel-avatar::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+.room-card-skel .skel-lines { display: flex; flex-direction: column; gap: 8px; }
+.room-card-skel .skel-btn {
+  width: 80px; height: 38px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  position: relative; overflow: hidden;
+}
+.room-card-skel .skel-btn::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+
+/* === Deck-card skeleton (modale) === */
+.deck-card-skel {
+  display: flex; flex-direction: column; padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.04);
+}
+.deck-card-skel .skel-thumb {
+  width: 100%; aspect-ratio: 59 / 86;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  position: relative; overflow: hidden;
+  margin-bottom: 10px;
+}
+.deck-card-skel .skel-thumb::after,
+.deck-card-skel .skel--text-md::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+.deck-card-skel .skel-name {
+  height: 14px; margin: 0 auto 6px;
+  width: 70%; background: rgba(255,255,255,0.06);
+  border-radius: 4px; position: relative; overflow: hidden;
+}
+.deck-card-skel .skel-meta {
+  height: 10px; margin: 0 auto;
+  width: 45%; background: rgba(255,255,255,0.06);
+  border-radius: 4px; position: relative; overflow: hidden;
+}
+.deck-card-skel .skel-name::after, .deck-card-skel .skel-meta::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+
+/* === Sandbox modal skeleton === */
+.qd-skel-section { margin-bottom: 18px; }
+.qd-skel-section-label {
+  width: 100px; height: 12px; border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+  margin-bottom: 10px;
+}
+.qd-skel-toggle-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qd-skel-toggle {
+  height: 42px; border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.qd-skel-row {
+  height: 56px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.qd-skel-slider-card {
+  height: 110px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.qd-skel-section-label::after,
+.qd-skel-toggle::after,
+.qd-skel-row::after,
+.qd-skel-slider-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+
+/* === Dice arena skeleton (reconnect WS DICE_STATE) === */
+.dice-arena-skel {
+  width: 100%;
+  min-height: clamp(220px, 55cqw, 360px);
+  border-radius: clamp(14px, 3cqw, 20px);
+  background:
+    radial-gradient(ellipse at center top, rgba(201, 168, 76, 0.08), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.5) 0%, rgba(15, 15, 28, 0.5) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  display: flex; align-items: center; justify-content: center;
+  gap: clamp(16px, 6cqw, 48px);
+  padding: clamp(20px, 5cqw, 36px);
+  position: relative; overflow: hidden;
+  container-type: inline-size;
+}
+.dice-arena-skel::before {
+  content: '';
+  position: absolute;
+  left: 8%; right: 8%;
+  /* Same table-bottom logic as live arena (~14% of dice-size below pair-bottom).
+     dice-size declared on this container via clamp() so the skeleton aligns. */
+  bottom: calc(clamp(56px, 22cqw, 110px) * 0.56);
+  height: 6px; border-radius: 6px;
+  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.2), transparent);
+}
+.dice-arena-skel .skel-die {
+  width: clamp(56px, 22cqw, 110px);
+  aspect-ratio: 1;
+  border-radius: calc(clamp(56px, 22cqw, 110px) * 0.127);
+  background: rgba(255, 255, 255, 0.06);
+  position: relative; overflow: hidden;
+}
+.dice-arena-skel .skel-die::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+
+/* === Waiting room skeleton === */
+.waiting-skel-tag {
+  width: 120px; height: 26px; border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-title {
+  width: 280px; height: 32px; border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-card {
+  width: 100%; padding: 28px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(30, 30, 46, 0.85) 0%, rgba(22, 22, 36, 0.85) 100%);
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.waiting-skel-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1;
+}
+.waiting-skel-avatar-big {
+  width: 76px; height: 76px; border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-name {
+  width: 80px; height: 14px; border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-vs {
+  width: 60px; height: 36px; border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-tag::after,
+.waiting-skel-title::after,
+.waiting-skel-avatar-big::after,
+.waiting-skel-name::after,
+.waiting-skel-vs::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+.waiting-skel-code {
+  width: 100%; padding: 20px;
+  border-radius: 14px;
+  background: rgba(30, 30, 46, 0.4);
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.waiting-skel-code-label {
+  width: 100px; height: 10px; border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-code-value {
+  width: 100%; height: 56px; border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  position: relative; overflow: hidden;
+}
+.waiting-skel-code-label::after, .waiting-skel-code-value::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  animation: skel-sweep 1.4s ease-in-out infinite;
+}
+
+/* ============================================================
+   EMPTY STATES — Material Icons xxl + opacité réduite + CTA
+   ============================================================
+   Convention skytrix : pas de boîte vide, toujours une voie de sortie.
+   Material Icons 96px opacité 30% gold-soft, titre + sous-titre + CTA. */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: clamp(40px, 8vw, 64px) clamp(20px, 5vw, 32px);
+  gap: 16px;
+  min-height: 280px;
+  animation: empty-state-in 360ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+@keyframes empty-state-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.empty-state-icon {
+  font-size: 96px !important;
+  color: rgba(201, 168, 76, 0.3);
+  filter: drop-shadow(0 4px 16px rgba(201, 168, 76, 0.2));
+  margin-bottom: 8px;
+}
+.empty-state-title {
+  font: 700 clamp(1.1rem, 4vw, 1.35rem)/1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+.empty-state-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 320px;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.empty-state-cta {
+  margin-top: 8px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 22px;
+  min-height: 44px;
+  font: 700 0.85rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 10px;
+  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  color: var(--gold);
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+.empty-state-cta:hover {
+  background: var(--gold); color: var(--text-inverse);
+  box-shadow: 0 6px 20px rgba(201, 168, 76, 0.35);
+}
+.empty-state-cta .material-icons-round { font-size: 18px; }
+
+/* ============================================================
+   TOAST NOTIFICATIONS — top-center mobile, top-right desktop
+   ============================================================
+   Convention :
+     - Stack max 3 visibles (overflow scroll silent)
+     - Auto-dismiss 4s (success/info) / 8s (error)
+     - Swipe right pour dismiss (mobile)
+     - Variants : success / error / info / warning
+     - Animation slide-down + fade-in entry, slide-out exit */
+.toast-stack {
+  position: fixed; top: 16px;
+  left: 50%; transform: translateX(-50%);
+  z-index: 300;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; /* container ne bloque pas les clics */
+  width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+@media (min-width: 768px) {
+  .toast-stack {
+    top: 20px; left: auto; right: 20px;
+    transform: none;
+    width: 380px;
+  }
+}
+.toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(30, 30, 46, 0.96) 0%, rgba(22, 22, 36, 0.96) 100%);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--elevation-3);
+  backdrop-filter: blur(12px);
+  font-size: var(--text-sm); line-height: 1.4;
+  color: var(--text-primary);
+  animation: toast-in 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative; overflow: hidden;
+  touch-action: pan-y;
+}
+.toast.dismissing { animation: toast-out 200ms ease-out forwards; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: translateX(120%); height: 0; padding: 0; margin: 0; border-width: 0; }
+}
+.toast-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.toast-icon .material-icons-round { font-size: 18px; }
+.toast-body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.toast-title {
+  font-weight: 700; font-size: var(--text-md);
+  letter-spacing: 0.01em;
+}
+.toast-desc {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.toast-action {
+  font: 700 0.78rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 6px 10px; margin: -4px 0 -4px 4px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--gold);
+  cursor: pointer;
+  align-self: center;
+  transition: all 150ms ease;
+}
+.toast-action:hover { background: rgba(201, 168, 76, 0.12); border-color: var(--gold); }
+.toast-close {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-muted); border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 150ms ease;
+}
+.toast-close:hover { color: var(--text-primary); }
+.toast-close .material-icons-round { font-size: 18px; }
+/* Progress bar (auto-dismiss timer visualizer) */
+.toast::after {
+  content: ''; position: absolute; bottom: 0; left: 0;
+  height: 2px; width: 100%;
+  background: currentColor;
+  transform-origin: left;
+  animation: toast-progress var(--toast-dismiss-ms, 4000ms) linear forwards;
+  opacity: 0.3;
+}
+@keyframes toast-progress {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+.toast.toast--persistent::after { display: none; } /* sans auto-dismiss */
+
+/* Variants */
+.toast--success .toast-icon { background: var(--success-soft); color: var(--success); }
+.toast--success { border-color: rgba(76, 175, 80, 0.3); color: var(--success); }
+.toast--error   .toast-icon { background: var(--danger-soft); color: var(--danger); }
+.toast--error   { border-color: rgba(255, 82, 82, 0.3); color: var(--danger); }
+.toast--info    .toast-icon { background: var(--gold-soft-12); color: var(--gold); }
+.toast--info    { border-color: var(--gold-soft-30); color: var(--gold); }
+.toast--warning .toast-icon { background: var(--warning-soft); color: var(--warning); }
+.toast--warning { border-color: rgba(255, 193, 7, 0.3); color: var(--warning); }
+/* Toast text content stays neutral; only icon/border/progress use variant color */
+.toast .toast-title, .toast .toast-desc { color: var(--text-primary); }
+.toast .toast-desc { color: var(--text-secondary); }
+
+/* ============================================================
+   ERROR BANNERS — inline warnings (non-toast errors)
+   ============================================================
+   Usage : WS lost (lobby), opponent disconnected (waiting), etc.
+   Affiché dans le flow normal (pas overlay). Plus persistant qu'un toast. */
+.error-banner {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 82, 82, 0.06);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: var(--text-primary);
+}
+.error-banner--warning {
+  background: rgba(255, 193, 7, 0.06);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+.error-banner--info {
+  background: var(--gold-soft-08);
+  border-color: var(--gold-soft-30);
+}
+.error-banner-icon {
+  flex-shrink: 0; color: var(--danger);
+  display: flex; align-items: center; justify-content: center;
+}
+.error-banner--warning .error-banner-icon { color: var(--warning); }
+.error-banner--info .error-banner-icon { color: var(--gold); }
+.error-banner-icon .material-icons-round { font-size: 22px; }
+.error-banner-body { flex: 1; min-width: 0; }
+.error-banner-title {
+  font-weight: 700; font-size: var(--text-md);
+  margin-bottom: 2px;
+}
+.error-banner-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.error-banner-action {
+  margin-left: auto;
+  padding: 6px 12px; min-height: 32px;
+  font: 700 0.78rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+  align-self: center;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+.error-banner-action:hover { background: rgba(255, 255, 255, 0.06); border-color: var(--border-medium); }
+
+/* ============================================================
+   DISABLED STATES — buttons, inputs, modals
+   ============================================================
+   Convention skytrix : opacity 0.5 + cursor: not-allowed + pointer-events: none
+   pour les éléments interactifs disabled. Pour les CTA cruciaux (Créer la room),
+   ajouter un tooltip explicatif sur hover sur le parent. */
+.lobby-cta:disabled, .lobby-cta.is-disabled,
+.dice-launch-btn:disabled, .dice-launch-btn.is-disabled,
+.btn-primary:disabled, .btn-primary.is-disabled,
+.btn-secondary:disabled, .btn-secondary.is-disabled,
+.room-join-btn:disabled, .room-join-btn.is-disabled,
+.code-copy-btn:disabled, .code-copy-btn.is-disabled,
+.empty-state-cta:disabled, .empty-state-cta.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+  transform: none !important;
+  box-shadow: none !important;
+}
+.lobby-cta:disabled:hover, .lobby-cta.is-disabled:hover,
+.dice-launch-btn:disabled:hover, .dice-launch-btn.is-disabled:hover,
+.btn-primary:disabled:hover, .btn-primary.is-disabled:hover {
+  filter: grayscale(0.4);
+  background: linear-gradient(135deg, #d4b25a 0%, #C9A84C 50%, #a8862e 100%);
+  transform: none;
+}
+/* Tooltip d'aide pour les CTA disabled : utiliser data-disabled-reason */
+[data-disabled-reason] {
+  position: relative;
+}
+[data-disabled-reason].is-disabled:hover::after {
+  content: attr(data-disabled-reason);
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: rgba(20, 10, 10, 0.95); color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  padding: 8px 12px; border-radius: 8px;
+  font: 600 0.78rem/1.3 'Inter', sans-serif;
+  white-space: nowrap; z-index: 10;
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
+}
+
+/* ============================================================
+   MODAL-SHEET — Pattern 1 : bottom sheet mobile + centered desktop
+   ============================================================
+   Mirror of future <app-modal-sheet> Angular component.
+   Breakpoint mobile/desktop = 768px (aligned with $bp-tablet).
+
+   Mobile (<768px) :
+     - Bottom sheet anchored at bottom
+     - Height 95vh (~95% screen)
+     - Border-radius 16px top only
+     - Drag handle visible (40×4px gold), swipe-down close at 40% drag OR velocity > 0.5px/ms
+     - Animation slide-up from bottom (300ms ease-out)
+   Desktop (≥768px) :
+     - Centered modal, max-width 620px, max-height 88vh
+     - Border-radius 18px (all corners)
+     - Handle hidden, animation fade + scale 0.96→1
+     - Backdrop click + Escape close
+
+   Structure interne (3 slots) :
+     .modal-sheet-header (sticky top)
+     .modal-sheet-body   (scrollable middle, -webkit-overflow-scrolling: touch)
+     .modal-sheet-footer (sticky bottom, mandatory) */
+
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: none; align-items: flex-end; justify-content: center;
+  z-index: 200;
+  padding: 0;
+  /* Animation in/out gérées par l'ouverture (display) — pas de keyframes ici, juste fade */
+}
+.modal-backdrop.open { display: flex; }
+
+@media (min-width: 768px) {
+  .modal-backdrop { align-items: center; padding: 16px; }
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 100vw;
+  height: 95vh; /* mobile : full bottom sheet */
+  max-height: 95vh;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-bottom: none;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(201, 168, 76, 0.15);
+  display: flex; flex-direction: column;
+  animation: sheet-slide-up 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* JS drag : transform overridden inline */
+  will-change: transform;
+  --sheet-drag-y: 0px;
+  transform: translateY(var(--sheet-drag-y));
+}
+/* Desktop : modale centrée, animation différente, pas de drag */
+@media (min-width: 768px) {
+  .modal {
+    width: min(620px, 92vw);
+    height: auto;
+    max-height: 88vh;
+    border-radius: 18px;
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(201, 168, 76, 0.15);
+    animation: modal-fade-scale-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    --sheet-drag-y: 0px;
+    transform: none; /* no drag on desktop */
+  }
+}
+
+/* Sheet drag : suspends transition pendant drag actif */
+.modal.dragging {
+  animation: none;
+  transition: none;
+}
+.modal:not(.dragging) {
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+}
+@keyframes modal-fade-scale-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+}
+
+/* Drag handle — mobile uniquement */
+.modal-handle {
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px 0;
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+  /* Étend la zone tactile pour drag (44px touch target) */
+  min-height: 28px;
+}
+.modal-handle:active { cursor: grabbing; }
+.modal-handle-bar {
+  width: 40px; height: 4px;
+  border-radius: 2px;
+  background: rgba(201, 168, 76, 0.5);
+  transition: background 200ms ease;
+}
+.modal-handle:hover .modal-handle-bar { background: rgba(201, 168, 76, 0.8); }
+
+/* Hide handle on desktop */
+@media (min-width: 768px) {
+  .modal-handle { display: none; }
+}
+
+/* === MODAL SHEET — 3 slots (header / body / footer) === */
+.modal-sheet-header, .modal-header {
+  position: relative;
+  padding: clamp(14px, 4vw, 22px) clamp(16px, 4vw, 24px) clamp(12px, 3vw, 16px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background:
+    radial-gradient(circle at top, rgba(201, 168, 76, 0.14), transparent 70%),
+    linear-gradient(to bottom, rgba(255,255,255,0.02), transparent);
+  flex-shrink: 0; /* sticky-like : ne jamais se compresser */
+}
+.modal-title { font: 700 var(--text-xl)/1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.03em;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex; align-items: center; gap: 10px;
+}
+.modal-title .material-icons-round { color: #C9A84C;
+  font-size: clamp(22px, 5vw, 28px);
+  -webkit-text-fill-color: #C9A84C;
+  filter: drop-shadow(0 0 8px rgba(201, 168, 76, 0.5)); }
+.modal-subtitle { font-size: var(--text-sm); color: #9e9e9e; margin-top: 6px;
+  letter-spacing: 0.05em; }
+
+.modal-search { display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 0; padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+  transition: border-color 200ms ease; }
+.modal-search:focus-within { border-color: rgba(201, 168, 76, 0.5); }
+.modal-search .material-icons-round { color: #9e9e9e; font-size: 20px; }
+.modal-search input { background: transparent; border: none; outline: none;
+  flex: 1; font: 400 0.9rem/1 'Inter', sans-serif; color: #eaeaea; }
+.modal-search input::placeholder { color: #6e6e6e; }
+
+.modal-sheet-body, .modal-content {
+  padding: clamp(12px, 3vw, 16px) clamp(14px, 4vw, 20px) clamp(6px, 2vw, 8px);
+  overflow-y: auto; flex: 1 1 auto; min-height: 0;
+  /* iOS momentum scroll + safe scroll within sheet */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.qd-section { margin-bottom: 18px; }
+.qd-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  justify-content: space-between; }
+.qd-section-label { font: 700 0.72rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #C9A84C; }
+.qd-section-hint { font-size: 0.72rem; color: #6e6e6e; font-style: italic; }
+.qd-toggle-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qd-toggle { padding: 10px 14px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid rgba(255,255,255,0.06);
+  color: #c0c0c0; font: 600 0.9rem/1 'Inter', sans-serif;
+  cursor: pointer; transition: all 200ms ease;
+  display: flex; align-items: center; justify-content: center; gap: 6px; }
+.qd-toggle:hover { border-color: rgba(255,255,255,0.15); }
+.qd-toggle.active { background: rgba(201, 168, 76, 0.12);
+  border-color: #C9A84C; color: #C9A84C; }
+.qd-toggle .material-icons-round { font-size: 16px; }
+
+/* Mirror state card (P2 = identique à P1).
+   Mobile: stacked (icon top, text middle, button bottom-full-width).
+   Tablet+: horizontal row. */
+.qd-mirror-card {
+  display: flex; align-items: stretch; gap: 14px;
+  flex-direction: column;
+  padding: clamp(14px, 3vw, 16px) clamp(14px, 3vw, 18px);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.08), rgba(74, 144, 217, 0.05));
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  margin-bottom: 18px;
+}
+@media (min-width: 480px) {
+  .qd-mirror-card { flex-direction: row; align-items: center; }
+}
+.qd-mirror-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(201, 168, 76, 0.15);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  color: #C9A84C; flex-shrink: 0;
+}
+.qd-mirror-icon .material-icons-round { font-size: 22px; }
+.qd-mirror-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.qd-mirror-title { font: 700 0.95rem/1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.03em; color: #C9A84C; }
+.qd-mirror-desc { font-size: 0.78rem; color: #9e9e9e; }
+.qd-mirror-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px;
+  background: transparent; color: #c0c0c0;
+  border: 1px solid rgba(255,255,255,0.15);
+  font: 600 0.78rem/1 'Inter', sans-serif; cursor: pointer;
+  transition: all 200ms ease; flex-shrink: 0;
+}
+.qd-mirror-btn:hover { background: rgba(255,255,255,0.06); color: #eaeaea;
+  border-color: rgba(255,255,255,0.25); }
+.qd-mirror-btn .material-icons-round { font-size: 16px; }
+
+.qd-row { display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06); }
+.qd-row-text { display: flex; flex-direction: column; gap: 2px; }
+.qd-row-label { font-weight: 600; font-size: 0.92rem; color: #eaeaea; }
+.qd-row-desc { font-size: 0.75rem; color: #9e9e9e; }
+.qd-switch { position: relative; width: 44px; height: 24px;
+  background: rgba(255,255,255,0.1); border-radius: 12px;
+  cursor: pointer; transition: background 200ms ease; flex-shrink: 0; }
+.qd-switch::after { content: ''; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  transition: transform 200ms ease; }
+.qd-switch.on { background: #C9A84C; }
+.qd-switch.on::after { transform: translateX(20px); }
+
+/* Slider for turn time */
+.qd-slider-card { padding: 14px 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06); }
+.qd-slider-header { display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px; }
+.qd-slider-header-text { display: flex; flex-direction: column; gap: 2px; }
+.qd-slider-value { display: flex; align-items: baseline; gap: 6px;
+  padding: 6px 12px; border-radius: 8px;
+  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid rgba(201, 168, 76, 0.3); }
+.qd-slider-value-num { font: 800 1.2rem/1 'Rajdhani', sans-serif;
+  color: #C9A84C; letter-spacing: 0.02em; min-width: 28px; text-align: right; }
+.qd-slider-value-unit { font: 600 0.72rem/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase; color: #C9A84C; opacity: 0.7; }
+.qd-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px; border-radius: 3px; outline: none;
+  background: linear-gradient(to right, #C9A84C 0%, #C9A84C var(--slider-percent, 35%), rgba(255,255,255,0.1) var(--slider-percent, 35%));
+  cursor: pointer;
+  margin: 0;
+}
+.qd-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  border: 2px solid #1a1a2e;
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.5), 0 0 0 4px rgba(201, 168, 76, 0.15);
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.qd-slider::-webkit-slider-thumb:hover { transform: scale(1.1);
+  box-shadow: 0 2px 12px rgba(201, 168, 76, 0.7), 0 0 0 6px rgba(201, 168, 76, 0.25); }
+.qd-slider::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  border: 2px solid #1a1a2e;
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.5);
+  cursor: pointer;
+}
+.qd-slider-ticks { display: flex; justify-content: space-between;
+  margin-top: 10px; padding: 0 4px; gap: 4px;
+  font: 600 0.7rem/1 'Inter', sans-serif; color: #6e6e6e; flex-wrap: wrap; }
+.qd-slider-tick {
+  cursor: pointer; transition: color 200ms ease;
+  /* Touch target ≥ 32px tall on mobile (44 idéal mais densité OK ici) */
+  padding: 8px 8px;
+  min-height: 32px;
+  display: inline-flex; align-items: center;
+  border-radius: 4px;
+}
+.qd-slider-tick:hover { color: #C9A84C; background: rgba(201, 168, 76, 0.08); }
+
+.qd-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 18px 0; }
+
+/* Deck-grid : 2 cols sur 360px (minmax 110px → ~144px @ 360px viewport),
+   3+ cols sur tablette/desktop. Gap réduit sur mobile pour densité. */
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: clamp(8px, 2vw, 12px);
+  padding-bottom: 8px;
+}
+@media (min-width: 480px) {
+  .deck-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}
+.deck-card { position: relative; display: flex; flex-direction: column;
+  padding: 10px; border-radius: 12px; border: 2px solid transparent;
+  background: rgba(255,255,255,0.03);
+  cursor: pointer; transition: all 200ms ease; overflow: hidden; }
+.deck-card:hover { background: rgba(255,255,255,0.06);
+  transform: translateY(-2px); }
+.deck-card.selected { border-color: #C9A84C;
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.04));
+  box-shadow: 0 6px 20px rgba(201, 168, 76, 0.25), inset 0 0 0 1px rgba(201, 168, 76, 0.3); }
+.deck-card.selected::after { content: 'check_circle'; font-family: 'Material Icons Round';
+  position: absolute; top: 8px; right: 8px; color: #C9A84C; font-size: 22px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+.deck-thumb { width: 100%; aspect-ratio: 59 / 86; border-radius: 8px;
+  background: linear-gradient(135deg, #2a2640, #1a1830);
+  overflow: hidden; position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.deck-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-card-name { margin-top: 8px; font-size: 0.85rem; font-weight: 600;
+  color: #eaeaea; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-card-meta { font-size: 0.7rem; color: #9e9e9e; text-align: center; margin-top: 2px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+
+/* Invalid deck state: dimmed + ban icon + tooltip */
+.deck-card.invalid {
+  opacity: 0.55;
+  cursor: not-allowed;
+  position: relative;
+}
+.deck-card.invalid:hover { transform: none; background: rgba(255,255,255,0.03); }
+.deck-card.invalid::before {
+  content: 'do_not_disturb_on'; font-family: 'Material Icons Round';
+  position: absolute; top: 8px; right: 8px; color: #ff5252; font-size: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  z-index: 1;
+}
+.deck-card.invalid .deck-card-meta {
+  color: #ff8a80;
+}
+.deck-card.invalid .deck-thumb { filter: grayscale(0.7); }
+.deck-card.invalid:hover::after {
+  content: attr(data-invalid-reason);
+  position: absolute; bottom: -8px; left: 50%; transform: translate(-50%, 100%);
+  background: rgba(20, 10, 10, 0.95); color: #ff8a80;
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  padding: 6px 10px; border-radius: 6px;
+  font: 600 0.72rem/1.3 'Inter', sans-serif;
+  white-space: nowrap; z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Modal-sheet footer = sticky bottom actions (mandatory slot).
+   Mobile : column-reverse (primary action en bas = pouce reach), full-width.
+   Tablet+ : row aligned right, compact. */
+.modal-sheet-footer, .modal-actions {
+  padding: clamp(12px, 3vw, 14px) clamp(14px, 4vw, 20px) clamp(14px, 4vw, 20px);
+  /* Safe area bottom inset pour iPhone notch / home indicator */
+  padding-bottom: max(clamp(14px, 4vw, 20px), env(safe-area-inset-bottom, 14px));
+  display: flex; flex-direction: column-reverse; gap: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  background: linear-gradient(to top, rgba(20, 20, 31, 0.95), transparent);
+}
+@media (min-width: 768px) {
+  .modal-sheet-footer, .modal-actions {
+    flex-direction: row; justify-content: flex-end;
+    padding-bottom: clamp(14px, 4vw, 20px); /* desktop : no safe-area */
+  }
+}
+.btn-secondary {
+  padding: 12px 20px; min-height: 44px;
+  font-weight: 600; font-size: var(--text-sm);
+  background: transparent; color: #c0c0c0; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; cursor: pointer; transition: all 200ms ease;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.06); color: #eaeaea; }
+.btn-primary {
+  padding: 12px 24px; min-height: 44px;
+  font: 700 var(--text-sm)/1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208; border: none; border-radius: 8px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(201, 168, 76, 0.35);
+  transition: all 200ms ease;
+}
+.btn-primary:hover { transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(201, 168, 76, 0.5); }
+</style>
+</head>
+<body>
+
+<div class="preview-toolbar">
+  <a href="./index.html">&larr;</a>
+  <span class="sep"></span>
+  <button class="active" id="btn-lobby" onclick="showScreen('lobby')">Lobby</button>
+  <button id="btn-waiting" onclick="showScreen('waiting')">Waiting Room</button>
+  <button id="btn-dice" onclick="showScreen('dice')">Dés (qui commence)</button>
+  <span class="sep"></span>
+  <button id="btn-modal-deck" onclick="showModal('deck')">Modale: Deck</button>
+  <button id="btn-modal-solo" onclick="showModal('solo')">Modale: Bac à sable</button>
+  <span class="sep"></span>
+  <button class="style-btn" id="btn-skel" onclick="toggleSkeletonState()" title="Voir l'état skeleton">Skeleton</button>
+  <button class="style-btn" id="btn-reduced" onclick="toggleReducedMotion()" title="Simuler prefers-reduced-motion">Reduced</button>
+  <span class="sep"></span>
+  <select class="device-select" id="device-select" onchange="setDevicePreview(this.value)" title="Simuler la largeur d'écran">
+    <option value="auto">Auto</option>
+    <option value="360">📱 360</option>
+    <option value="414">📱 414</option>
+    <option value="768">📊 768</option>
+    <option value="1024">💻 1024</option>
+    <option value="1280">🖥️ 1280</option>
+    <option value="1920">🖥️ 1920</option>
+  </select>
+  <select class="device-select" id="state-select" onchange="setDemoState(this.value)" title="Démonstrateur d'états">
+    <option value="normal">État : Normal</option>
+    <optgroup label="Empty">
+      <option value="empty-rooms">Empty — 0 rooms</option>
+      <option value="empty-decks">Empty — 0 decks</option>
+      <option value="empty-search">Empty — Recherche vide</option>
+    </optgroup>
+    <optgroup label="Error">
+      <option value="error-network">Error — Network drop</option>
+      <option value="error-room-closed">Error — Room fermée admin</option>
+      <option value="error-deck-deleted">Error — Deck supprimé</option>
+    </optgroup>
+    <optgroup label="Disabled">
+      <option value="disabled-create">Disabled — Créer sans deck</option>
+    </optgroup>
+    <optgroup label="Toast demos">
+      <option value="toast-success">Toast — Success</option>
+      <option value="toast-error">Toast — Error</option>
+      <option value="toast-info">Toast — Info</option>
+    </optgroup>
+  </select>
+</div>
+
+<!-- ============================================================
+     TOAST STACK — top-center mobile, top-right desktop
+     ============================================================ -->
+<div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ============================================================
+     i18n KEYS MAPPING — handoff Phase 1 Angular
+     ============================================================
+     Toutes les chaînes UI utilisateur du mockup → clé ngx-translate.
+     Fichiers cible : front/src/assets/i18n/{en,fr}.json (sections lobby,
+     waiting, dice, deckPicker, sandbox, common, error, toast).
+     Le mockup est en FR (langue source). EN à dériver à l'implémentation.
+
+     === LOBBY ===
+       PvP Arena                           → lobby.title
+       ALPHA                               → lobby.alphaChip
+       Affronte les duellistes en ligne    → lobby.subtitle
+       Créer une room                      → lobby.cta.create
+       Bac à sable                         → lobby.cta.sandbox
+       Rooms ouvertes                      → lobby.section.openRooms
+       Plus récentes                       → lobby.sort.newest
+       Filtrer par pseudo...               → lobby.filterPlaceholder
+       à l'instant                         → lobby.time.justNow
+       1 min, 5 min...                     → lobby.time.minutes (param: n)
+       En attente d'un adversaire...       → lobby.room.waitingForOpponent
+       Rejoindre                           → lobby.room.join
+       Fermer la room (admin)              → lobby.room.adminClose
+
+     === LOBBY EMPTY STATES ===
+       Aucune room ouverte pour l'instant  → lobby.empty.noRooms.title
+       Sois le premier à lancer une partie — un duelliste te rejoindra
+                                           → lobby.empty.noRooms.desc
+       Créer la première room              → lobby.empty.noRooms.cta
+       Aucun duelliste trouvé              → lobby.empty.noResults.title
+       Essaie un autre pseudo, ou efface la recherche pour voir toutes les rooms
+                                           → lobby.empty.noResults.desc
+       Effacer la recherche                → lobby.empty.noResults.cta
+
+     === LOBBY ERROR ===
+       Synchro live indisponible           → lobby.error.wsDown.title
+       Les rooms se rafraîchissent toutes les 10 secondes en attendant
+                                           → lobby.error.wsDown.desc
+       OK                                  → common.ok
+
+     === WAITING ROOM ===
+       Retour au lobby                     → waiting.backToLobby
+       Room créée                          → waiting.statusTag
+       En attente d'un adversaire          → waiting.title
+       Ta room est en ligne. Partage le code ci-dessous, ou laisse-la apparaître dans le lobby — quelqu'un te rejoindra.
+                                           → waiting.subtitle
+       Prêt                                → waiting.duelist.state.ready
+       En attente...                       → waiting.duelist.empty.label
+       Recherche                           → waiting.duelist.state.searching
+       Code de la room                     → waiting.code.label
+       Copier                              → waiting.code.copy
+       Copié ✓                             → common.copied
+       Partager le lien                    → waiting.code.share
+       Partage ce code à un ami pour le faire rejoindre directement
+                                           → waiting.code.hint
+       Fermeture automatique dans          → waiting.countdown.prefix
+       Annuler la room                     → waiting.cancel
+
+     === DICE SCREEN ===
+       Lancé de dé                         → dice.tag
+       Plus haut score                     → dice.title.ready
+       Les dés roulent…                    → dice.title.rolling
+       Résultat                            → dice.title.result
+       Chaque joueur lance deux dés. La somme la plus haute choisit qui ouvre le duel.
+                                           → dice.subtitle.ready
+       Suspense.                           → dice.subtitle.rolling
+       Verdict.                            → dice.subtitle.result
+       Lancer les dés                      → dice.launch
+       Toi                                 → dice.you
+       Adversaire                          → dice.opponent
+       Tu as gagné le lancer               → dice.banner.won.title
+       Choisis qui ouvre le duel           → dice.banner.won.desc
+       L'adversaire a gagné                → dice.banner.lost.title
+       Il choisit qui commence             → dice.banner.lost.desc
+       Égalité — on relance les dés        → dice.banner.draw.title
+       Tirage automatique dans un instant  → dice.banner.draw.desc
+       Qui commence ?                      → dice.turnChoice.label
+       Je commence                         → dice.turnChoice.me
+       L'adversaire commence               → dice.turnChoice.opponent
+       Lancer le duel                      → dice.launchDuel
+       L'adversaire choisit qui commence…  → dice.opponentChoosing.title
+       Tu vas être informé du choix dans un instant.
+                                           → dice.opponentChoosing.desc
+       Le tirage recommence automatiquement.
+                                           → dice.draw.desc
+       You go first                        → dice.final.first   (idem clé en EN)
+       You go second                       → dice.final.second  (idem clé en EN)
+       Préparation du plateau…             → dice.final.preparing
+
+     === MODAL DECK PICKER ===
+       Choisis ton deck                    → deckPicker.title
+       Sélectionne le deck que tu veux jouer
+                                           → deckPicker.subtitle
+       Rechercher un deck...               → deckPicker.searchPlaceholder
+       40 cartes                           → deckPicker.cardCount (param: n)
+       Deck incomplet : 35/40 cartes minimum
+                                           → deckPicker.invalid.minCards (param: have, min)
+       Aucun deck disponible               → deckPicker.empty.title
+       Construis ton premier deck dans le builder pour pouvoir jouer en ligne.
+                                           → deckPicker.empty.desc
+       Ouvrir le Deck Builder              → deckPicker.empty.cta
+       Annuler                             → common.cancel
+       Créer la room                       → deckPicker.create
+       Sélectionne d'abord un deck valide  → deckPicker.disabled.noDeck
+
+     === MODAL SANDBOX (Bac à sable) ===
+       Bac à sable                         → sandbox.title
+       Configure un duel local contre toi-même
+                                           → sandbox.subtitle
+       Decks                               → sandbox.section.decks
+       Sélectionne un deck par joueur      → sandbox.section.decks.hint
+       Joueur 1                            → sandbox.player.1
+       Joueur 2                            → sandbox.player.2
+       Identique au Joueur 1               → sandbox.p2.mirror.title
+       Le Joueur 2 utilisera le même deck que le Joueur 1. Clique ci-dessous pour personnaliser.
+                                           → sandbox.p2.mirror.desc
+       Personnaliser                       → common.customize
+       Premier joueur                      → sandbox.section.firstPlayer
+       Joueur 1 commence                   → sandbox.firstPlayer.p1
+       Joueur 2 commence                   → sandbox.firstPlayer.p2
+       Options                             → sandbox.section.options
+       Main aléatoire                      → sandbox.option.randomHand
+       Mélange le deck avant la pioche initiale
+                                           → sandbox.option.randomHand.desc
+       Temps par tour                      → sandbox.option.turnTime
+       De 30 secondes à 1 heure            → sandbox.option.turnTime.desc
+       Lancer le duel                      → sandbox.launch
+
+     === TOASTS ===
+       Room créée                          → toast.success.roomCreated.title
+       En attente d'un adversaire…         → toast.success.roomCreated.desc
+       Impossible de créer la room         → toast.error.roomCreateFailed.title
+       Erreur réseau. Réessaie dans quelques secondes.
+                                           → toast.error.roomCreateFailed.desc
+       Réessayer                           → common.retry
+       Adversaire trouvé                   → toast.info.opponentFound.title
+       Yamuchi a rejoint la room. Lancement du tirage…
+                                           → toast.info.opponentFound.desc (param: pseudo)
+       Connexion live perdue               → toast.warning.wsLost.title
+       Reconnexion automatique en cours…   → toast.warning.wsLost.desc
+       Room fermée par un admin            → toast.error.roomClosedByAdmin.title
+       La room a été fermée pendant que tu rejoignais.
+                                           → toast.error.roomClosedByAdmin.desc
+       Deck supprimé                       → toast.error.deckDeleted.title
+       Le deck sélectionné n'existe plus. La liste a été rafraîchie.
+                                           → toast.error.deckDeleted.desc
+       Rafraîchir                          → common.refresh
+       Fermer                              → common.close (aria-label)
+
+     === A11Y (aria-labels) ===
+       Chargement des rooms                → a11y.loading.rooms
+       Initialisation de la room           → a11y.loading.waitingRoom
+       Chargement des decks                → a11y.loading.decks
+       Chargement du configurateur         → a11y.loading.sandbox
+       Connexion à la table de dés         → a11y.loading.dice
+       Faire glisser pour fermer           → a11y.modalSheet.dragHint
+       Effacer                             → a11y.search.clear
+
+     === NOTES IMPLÉMENTATION ===
+     - Toutes les clés `common.*` sont partagées entre lobby + duel + autres pages.
+     - Les sections `lobby.*`, `deckPicker.*`, `duel.rps.*` existent déjà partiellement
+       dans front/src/assets/i18n/{en,fr}.json — étendre/renommer.
+     - `duel.rps.*` → `dice.*` (RPS retiré, dés uniquement, cf. plan).
+     - Le countdown numérique (29:38) NE PASSE PAS par ngx-translate (formaté JS).
+     - Les pseudos joueurs (Axel, Yamuchi, BlueEyes_Maniac) sont des data, pas du copy.
+============================================================ -->
+
+<!-- ============================================================
+     SCREEN 1: LOBBY
+     ============================================================ -->
+<div class="screen active" id="screen-lobby">
+  <div class="screen-bg">
+    <div class="screen-bg-grid"></div>
+    <div class="screen-bg-glow screen-bg-glow--gold"></div>
+    <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+  </div>
+
+  <div class="lobby-container">
+    <header class="lobby-header">
+      <div class="lobby-header-title">
+        <span class="material-icons-round lobby-title-icon">sports_esports</span>
+        <div class="lobby-header-text">
+          <h1>PvP Arena <span class="alpha-chip">ALPHA</span></h1>
+          <span class="lobby-subtitle">Affronte les duellistes en ligne</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="cta-row">
+      <button class="lobby-cta lobby-cta--primary" onclick="showModal('deck')">
+        <span class="material-icons-round">add_circle</span>
+        <span class="lobby-cta-label">Créer une room</span>
+      </button>
+      <button class="lobby-cta lobby-cta--solo" onclick="showModal('solo')">
+        <span class="material-icons-round">bolt</span>
+        <span class="lobby-cta-label">Bac à sable</span>
+      </button>
+    </div>
+
+    <div class="lobby-section-header">
+      <div class="lobby-section-title-group">
+        <span class="lobby-section-title">Rooms ouvertes</span>
+        <span class="lobby-section-count">14</span>
+      </div>
+      <button class="lobby-section-filter">
+        <span class="material-icons-round">sort</span>
+        Plus récentes
+      </button>
+    </div>
+
+    <div class="lobby-search-bar">
+      <span class="material-icons-round">search</span>
+      <input type="text" placeholder="Filtrer par pseudo..." oninput="filterRooms(this.value)">
+      <button class="lobby-search-clear" onclick="document.querySelector('.lobby-search-bar input').value=''; filterRooms('');" title="Effacer">
+        <span class="material-icons-round">close</span>
+      </button>
+    </div>
+
+    <!-- Skeleton state (visible pendant le fetch initial) -->
+    <div class="room-list-viewport" id="lobby-skel"
+         role="status" aria-busy="true" aria-label="Chargement des rooms"
+         style="display: none;">
+      <div class="room-list">
+        <div class="room-card-skel">
+          <div class="skel-avatar"></div>
+          <div class="skel-lines">
+            <div class="skel skel--text-md skel--w-40"></div>
+            <div class="skel skel--text-sm skel--w-60"></div>
+          </div>
+          <div class="skel skel--pill" style="width: 70px; height: 24px;"></div>
+          <div class="skel-btn"></div>
+        </div>
+        <div class="room-card-skel">
+          <div class="skel-avatar"></div>
+          <div class="skel-lines">
+            <div class="skel skel--text-md skel--w-60"></div>
+            <div class="skel skel--text-sm skel--w-40"></div>
+          </div>
+          <div class="skel skel--pill" style="width: 70px; height: 24px;"></div>
+          <div class="skel-btn"></div>
+        </div>
+        <div class="room-card-skel">
+          <div class="skel-avatar"></div>
+          <div class="skel-lines">
+            <div class="skel skel--text-md skel--w-25"></div>
+            <div class="skel skel--text-sm skel--w-60"></div>
+          </div>
+          <div class="skel skel--pill" style="width: 70px; height: 24px;"></div>
+          <div class="skel-btn"></div>
+        </div>
+        <div class="room-card-skel">
+          <div class="skel-avatar"></div>
+          <div class="skel-lines">
+            <div class="skel skel--text-md skel--w-40"></div>
+            <div class="skel skel--text-sm skel--w-60"></div>
+          </div>
+          <div class="skel skel--pill" style="width: 70px; height: 24px;"></div>
+          <div class="skel-btn"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state — 0 rooms ouvertes -->
+    <div class="empty-state" id="lobby-empty-rooms" style="display: none;">
+      <span class="material-icons-round empty-state-icon">groups</span>
+      <div class="empty-state-title">Aucune room ouverte pour l'instant</div>
+      <div class="empty-state-desc">Sois le premier à lancer une partie — un duelliste te rejoindra.</div>
+      <button class="empty-state-cta" onclick="showModal('deck')">
+        <span class="material-icons-round">add_circle</span>
+        Créer la première room
+      </button>
+    </div>
+
+    <!-- Empty state — Recherche sans résultat -->
+    <div class="empty-state" id="lobby-empty-search" style="display: none;">
+      <span class="material-icons-round empty-state-icon">search_off</span>
+      <div class="empty-state-title">Aucun duelliste trouvé</div>
+      <div class="empty-state-desc">Essaie un autre pseudo, ou efface la recherche pour voir toutes les rooms.</div>
+      <button class="empty-state-cta" onclick="clearLobbySearch()">
+        <span class="material-icons-round">backspace</span>
+        Effacer la recherche
+      </button>
+    </div>
+
+    <!-- Error banner — WS lobby drop, fallback polling 10s (cf. plan edge case #10)
+         Trigger : WS lobby connection lost OR initial WS handshake failed durably.
+         Le toast "Reconnexion automatique en cours…" se déclenche en parallèle
+         pendant les tentatives de reconnect WS. Si la reconnexion échoue,
+         le polling 10s prend le relais et ce banner reste affiché. -->
+    <div class="error-banner error-banner--warning" id="lobby-error-network" style="display: none; margin-bottom: 12px;">
+      <div class="error-banner-icon"><span class="material-icons-round">wifi_off</span></div>
+      <div class="error-banner-body">
+        <div class="error-banner-title">Synchro live indisponible</div>
+        <div class="error-banner-desc">Les rooms se rafraîchissent toutes les 10 secondes en attendant.</div>
+      </div>
+      <button class="error-banner-action" onclick="dismissError('lobby-error-network')">OK</button>
+    </div>
+
+    <!-- Real content -->
+    <div class="room-list-viewport" id="lobby-real">
+      <div class="room-list">
+        <div class="room-card room-card--new">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(200, 65%, 45%), hsl(230, 70%, 30%)); border-color: hsl(200, 60%, 55%);">A</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Axel</span><span class="room-time">à l'instant</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn" title="Fermer la room (admin)"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn" onclick="showScreen('dice')">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(340, 65%, 45%), hsl(370, 70%, 30%));">Y
+            <span class="room-avatar-badge" title="Admin"><span class="material-icons-round">shield</span></span>
+          </div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Yamuchi</span><span class="room-time">1 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(150, 65%, 45%), hsl(180, 70%, 30%));">B</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">BlueEyes_Maniac</span><span class="room-time">3 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(25, 65%, 45%), hsl(55, 70%, 30%));">Z</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Zack</span><span class="room-time">5 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(60, 65%, 45%), hsl(90, 70%, 30%));">K</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">KaibaCorp</span><span class="room-time">7 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(280, 65%, 45%), hsl(310, 70%, 30%));">P</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">PharaohKing</span><span class="room-time">9 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(175, 65%, 45%), hsl(200, 70%, 30%));">T</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">TearGod</span><span class="room-time">11 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(5, 65%, 45%), hsl(30, 70%, 30%));">M</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">MillenniumEye</span><span class="room-time">14 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(220, 65%, 45%), hsl(250, 70%, 30%));">S</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">SnakeEyeAddict</span><span class="room-time">18 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(120, 65%, 45%), hsl(150, 70%, 30%));">R</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Ryzeal_Player</span><span class="room-time">22 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(50, 65%, 45%), hsl(80, 70%, 30%));">D</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">DraconianForce</span><span class="room-time">28 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(310, 65%, 45%), hsl(340, 70%, 30%));">L</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">LabyrinthMaster</span><span class="room-time">34 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(190, 65%, 45%), hsl(220, 70%, 30%));">F</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Fluffal_Frog</span><span class="room-time">41 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(0, 65%, 45%), hsl(20, 70%, 30%));">C</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">ChaosKnight</span><span class="room-time">56 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">En attente d'un adversaire...</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 2: WAITING ROOM (creator side)
+     ============================================================ -->
+<div class="screen" id="screen-waiting">
+  <div class="screen-bg">
+    <div class="screen-bg-grid"></div>
+    <div class="screen-bg-glow screen-bg-glow--gold"></div>
+    <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+  </div>
+
+  <!-- Skeleton state (visible pendant l'init de la room) -->
+  <div class="waiting-container" id="waiting-skel"
+       role="status" aria-busy="true" aria-label="Initialisation de la room"
+       style="display: none;">
+    <div class="waiting-skel-tag" style="margin-top: 32px;"></div>
+    <div class="waiting-skel-title"></div>
+    <div class="waiting-skel-card">
+      <div class="waiting-skel-slot">
+        <div class="waiting-skel-avatar-big"></div>
+        <div class="waiting-skel-name"></div>
+      </div>
+      <div class="waiting-skel-vs"></div>
+      <div class="waiting-skel-slot">
+        <div class="waiting-skel-avatar-big"></div>
+        <div class="waiting-skel-name"></div>
+      </div>
+    </div>
+    <div class="waiting-skel-code">
+      <div class="waiting-skel-code-label"></div>
+      <div class="waiting-skel-code-value"></div>
+    </div>
+  </div>
+
+  <div class="waiting-container" id="waiting-real">
+    <button class="waiting-back-btn" onclick="showScreen('lobby')">
+      <span class="material-icons-round">arrow_back</span>
+      Retour au lobby
+    </button>
+
+    <span class="waiting-status-tag">
+      <span class="pulse-dot"></span>
+      Room créée
+    </span>
+
+    <h1 class="waiting-title">En attente d'un adversaire</h1>
+    <p class="waiting-subtitle">Ta room est en ligne. Partage le code ci-dessous, ou laisse-la apparaître dans le lobby — quelqu'un te rejoindra.</p>
+
+    <div class="duelists-card">
+      <div class="duelists-row">
+        <div class="duelist-slot">
+          <div class="duelist-avatar duelist-avatar--ready"
+               style="background: linear-gradient(135deg, hsl(200, 65%, 45%), hsl(230, 70%, 30%));">A</div>
+          <span class="duelist-name">Axel</span>
+          <span class="duelist-state duelist-state--ready">Prêt</span>
+        </div>
+
+        <div class="duelist-vs">VS</div>
+
+        <div class="duelist-slot">
+          <div class="duelist-avatar duelist-avatar--empty">
+            <span class="material-icons-round">person_add</span>
+          </div>
+          <span class="duelist-name" style="color: rgba(255,255,255,0.4);">En attente...</span>
+          <span class="duelist-state duelist-state--searching">Recherche</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="room-code-section">
+      <div class="room-code-label">Code de la room</div>
+      <div class="room-code-value-row">
+        <div class="room-code-value" id="waiting-room-code">7HM42K9</div>
+        <button class="code-copy-btn" id="waiting-copy-btn" onclick="copyRoomCode(this)">
+          <span class="material-icons-round">content_copy</span>
+          <span id="waiting-copy-label">Copier</span>
+        </button>
+        <button class="code-action-btn" title="Partager le lien">
+          <span class="material-icons-round">share</span>
+        </button>
+      </div>
+      <div class="room-code-hint">Partage ce code à un ami pour le faire rejoindre directement</div>
+    </div>
+
+    <!-- Countdown : room TTL = 30 min (cf. room-state-machine.service.ts:72).
+         expiresAt = createdAt + 30min ; couleur passe vert→jaune <60s→rouge <30s. -->
+    <div class="waiting-countdown" id="waiting-countdown">
+      <span class="material-icons-round">schedule</span>
+      <span>Fermeture automatique dans <strong>29:38</strong></span>
+    </div>
+
+    <div class="waiting-actions">
+      <button class="waiting-cancel-btn" onclick="showScreen('lobby')">
+        <span class="material-icons-round">close</span>
+        Annuler la room
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN 3: DICE ROLL — qui commence ? (Pre-Duel fusionné)
+     ============================================================ -->
+<div class="screen" id="screen-dice">
+  <div class="screen-bg">
+    <div class="screen-bg-grid"></div>
+    <div class="screen-bg-glow screen-bg-glow--gold"></div>
+    <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+  </div>
+
+  <div class="dice-screen-container">
+    <span class="dice-screen-tag">
+      <span class="material-icons-round">casino</span>
+      Lancé de dé
+    </span>
+
+    <h1 class="dice-screen-title" id="dice-title">Plus haut score</h1>
+    <p class="dice-screen-subtitle" id="dice-subtitle">Chaque joueur lance deux dés. La somme la plus haute choisit qui ouvre le duel.</p>
+
+    <div class="dice-screen-arena">
+      <div class="dice-screen-arena-grid"></div>
+      <div class="dice-screen-arena-content">
+
+        <!-- Skeleton state (visible pendant reconnect WS DICE_STATE) -->
+        <div id="dice-skel"
+             role="status" aria-busy="true" aria-label="Connexion à la table de dés"
+             style="display: none; width: 100%;">
+          <div class="dice-arena-skel">
+            <div class="skel-die"></div>
+            <div class="skel-die"></div>
+          </div>
+        </div>
+
+        <!-- Stage 1 : Ready -->
+        <div id="dice-stage-1" style="display: contents;">
+          <div class="dice-stage">
+            <div class="dice-table"></div>
+            <div class="dice-pair dice-style-obsidian">
+              <div class="dice-scene dice-scene--a">
+                <div class="dice-mover" style="transform: translate3d(var(--land-x), 0, 0);">
+                  <div class="dice result-3">
+                    <div class="dice-face dice-face--1"><span class="pip"></span></div>
+                    <div class="dice-face dice-face--2"><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--3"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--4"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--5"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--6"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                  </div>
+                </div>
+                <div class="dice-shadow" style="transform: translateX(var(--land-x));"></div>
+              </div>
+              <div class="dice-scene dice-scene--b">
+                <div class="dice-mover" style="transform: translate3d(var(--land-x), 0, 0);">
+                  <div class="dice result-5">
+                    <div class="dice-face dice-face--1"><span class="pip"></span></div>
+                    <div class="dice-face dice-face--2"><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--3"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--4"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--5"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--6"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                  </div>
+                </div>
+                <div class="dice-shadow" style="transform: translateX(var(--land-x));"></div>
+              </div>
+            </div>
+          </div>
+          <button class="dice-launch-btn" onclick="launchDiceRoll()">
+            <span class="material-icons-round">casino</span>
+            <span>Lancer les dés</span>
+          </button>
+        </div>
+
+        <!-- Stage 2 : Rolling -->
+        <div id="dice-stage-2" style="display: none;">
+          <div class="dice-stage">
+            <div class="dice-table"></div>
+            <div class="dice-pair dice-style-obsidian">
+              <div class="dice-scene dice-scene--a">
+                <div class="dice-mover" id="dice-mover-a">
+                  <div class="dice" id="dice-rolling-a">
+                    <div class="dice-face dice-face--1"><span class="pip"></span></div>
+                    <div class="dice-face dice-face--2"><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--3"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--4"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--5"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--6"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                  </div>
+                </div>
+                <div class="dice-shadow" id="dice-shadow-a"></div>
+              </div>
+              <div class="dice-scene dice-scene--b">
+                <div class="dice-mover" id="dice-mover-b">
+                  <div class="dice" id="dice-rolling-b">
+                    <div class="dice-face dice-face--1"><span class="pip"></span></div>
+                    <div class="dice-face dice-face--2"><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--3"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--4"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--5"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--6"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                  </div>
+                </div>
+                <div class="dice-shadow" id="dice-shadow-b"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 3 : Result -->
+        <div id="dice-stage-3" style="display: none;">
+          <div class="dice-stage" style="min-height: 220px;">
+            <div class="dice-table"></div>
+            <div class="dice-pair dice-style-obsidian">
+              <div class="dice-scene dice-scene--a">
+                <div class="dice-mover" style="transform: translate3d(var(--land-x), 0, 0);">
+                  <div class="dice" id="dice-result-a">
+                    <div class="dice-face dice-face--1"><span class="pip"></span></div>
+                    <div class="dice-face dice-face--2"><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--3"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--4"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--5"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--6"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                  </div>
+                </div>
+                <div class="dice-shadow" style="transform: translateX(var(--land-x));"></div>
+              </div>
+              <div class="dice-scene dice-scene--b">
+                <div class="dice-mover" style="transform: translate3d(var(--land-x), 0, 0);">
+                  <div class="dice" id="dice-result-b">
+                    <div class="dice-face dice-face--1"><span class="pip"></span></div>
+                    <div class="dice-face dice-face--2"><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--3"><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--4"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--5"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                    <div class="dice-face dice-face--6"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+                  </div>
+                </div>
+                <div class="dice-shadow" style="transform: translateX(var(--land-x));"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="roll-vs-strip">
+            Toi
+            <strong>
+              <span id="dice-my-a">5</span>+<span id="dice-my-b">3</span>=<span id="dice-my-total" style="font-size: 1.3rem;">8</span>
+            </strong>
+            <span class="roll-vs-strip-sep">vs</span>
+            <strong style="color: #79b8ff;">
+              <span id="dice-opp-a">2</span>+<span id="dice-opp-b">4</span>=<span id="dice-opp-total" style="font-size: 1.3rem;">6</span>
+            </strong>
+            Adversaire
+          </div>
+
+          <div class="roll-result-banner" id="dice-result-banner">
+            <div class="roll-result-icon">
+              <span class="material-icons-round">emoji_events</span>
+            </div>
+            <div class="roll-result-text" id="dice-result-text">
+              Tu as gagné le lancer
+              <small>Choisis qui ouvre le duel</small>
+            </div>
+          </div>
+
+          <!-- WON state: choose turn order -->
+          <div id="dice-won-block" style="display: contents;">
+            <div class="dice-turn-choice">
+              <span class="dice-turn-choice-label">Qui commence ?</span>
+              <div class="dice-turn-options">
+                <button class="dice-turn-option selected" onclick="selectTurnOrder(this)">
+                  <span class="material-icons-round">play_circle</span>
+                  <span class="dice-turn-option-title">Je commence</span>
+                </button>
+                <button class="dice-turn-option" onclick="selectTurnOrder(this)">
+                  <span class="material-icons-round">skip_next</span>
+                  <span class="dice-turn-option-title">L'adversaire commence</span>
+                </button>
+              </div>
+            </div>
+
+            <button class="dice-launch-btn" onclick="confirmTurnOrderAndLaunch()">
+              <span class="material-icons-round">bolt</span>
+              <span>Lancer le duel</span>
+            </button>
+          </div>
+
+          <!-- LOST state: opponent is choosing -->
+          <div id="dice-lost-block" style="display: none;">
+            <div class="opponent-choosing">
+              <div class="opponent-choosing-spinner"></div>
+              <div class="opponent-choosing-title">L'adversaire choisit qui commence…</div>
+              <div class="opponent-choosing-desc">Tu vas être informé du choix dans un instant.</div>
+            </div>
+          </div>
+
+          <!-- DRAW state: auto-replay -->
+          <div id="dice-draw-block" style="display: none;">
+            <div class="opponent-choosing" style="background: rgba(255, 193, 7, 0.06); border-color: rgba(255, 193, 7, 0.3);">
+              <div class="opponent-choosing-spinner" style="border-color: rgba(255, 193, 7, 0.2); border-top-color: #ffc107;"></div>
+              <div class="opponent-choosing-title">Égalité — on relance les dés</div>
+              <div class="opponent-choosing-desc">Le tirage recommence automatiquement.</div>
+            </div>
+          </div>
+
+          <!-- FINAL state: turn order decided, transition to game -->
+          <div id="dice-final-block" style="display: none;">
+            <div class="dice-final-announce" id="dice-final-card">
+              <div class="dice-final-icon">
+                <span class="material-icons-round" id="dice-final-icon-glyph">play_circle</span>
+              </div>
+              <div class="dice-final-headline" id="dice-final-headline">You go first</div>
+              <div class="dice-final-progress"><div class="dice-final-progress-bar"></div></div>
+              <div class="dice-final-hint">
+                <span class="material-icons-round">bolt</span>
+                Préparation du plateau…
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Deck picker (uses modal-sheet pattern)
+     ============================================================ -->
+<div class="modal-backdrop" id="modal-deck" role="dialog" aria-modal="true" aria-labelledby="modal-deck-title">
+  <div class="modal">
+    <div class="modal-handle"
+         role="slider" tabindex="0" aria-orientation="vertical"
+         aria-label="Faire glisser pour fermer">
+      <div class="modal-handle-bar"></div>
+    </div>
+    <div class="modal-header">
+      <div class="modal-title" id="modal-deck-title">
+        <span class="material-icons-round">style</span>
+        Choisis ton deck
+      </div>
+      <div class="modal-subtitle">Sélectionne le deck que tu veux jouer</div>
+      <div class="modal-search">
+        <span class="material-icons-round">search</span>
+        <input type="text" placeholder="Rechercher un deck...">
+      </div>
+    </div>
+    <div class="modal-content">
+      <!-- Skeleton state -->
+      <div class="deck-grid" id="modal-deck-skel"
+           role="status" aria-busy="true" aria-label="Chargement des decks"
+           style="display: none;">
+        <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+        <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+        <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+        <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+        <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+        <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+      </div>
+      <!-- Empty state — 0 decks disponibles -->
+      <div class="empty-state" id="modal-deck-empty" style="display: none;">
+        <span class="material-icons-round empty-state-icon">style</span>
+        <div class="empty-state-title">Aucun deck disponible</div>
+        <div class="empty-state-desc">Construis ton premier deck dans le builder pour pouvoir jouer en ligne.</div>
+        <button class="empty-state-cta" onclick="hideModal();">
+          <span class="material-icons-round">construction</span>
+          Ouvrir le Deck Builder
+        </button>
+      </div>
+
+      <!-- Real content -->
+      <div class="deck-grid" id="modal-deck-real">
+        <div class="deck-card selected" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/89631139.jpg"></div><div class="deck-card-name">Blue-Eyes</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/46986414.jpg"></div><div class="deck-card-name">Dark Magician</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/74677422.jpg"></div><div class="deck-card-name">Red-Eyes</div><div class="deck-card-meta">42 cartes</div></div>
+        <div class="deck-card invalid" data-invalid-reason="Deck incomplet : 35/40 cartes minimum" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/10000000.jpg"></div><div class="deck-card-name">Egyptian Gods</div><div class="deck-card-meta"><span class="material-icons-round" style="font-size:12px">style</span>35 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/65367484.jpg"></div><div class="deck-card-name">Tearlaments</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/9748752.jpg"></div><div class="deck-card-name">Snake-Eye</div><div class="deck-card-meta">41 cartes</div></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal()">Annuler</button>
+      <button class="btn-primary" onclick="hideModal(); showScreen('waiting');">Créer la room</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Bac à sable — uses modal-sheet pattern + slider
+     ============================================================ -->
+<div class="modal-backdrop" id="modal-solo" role="dialog" aria-modal="true" aria-labelledby="modal-solo-title">
+  <div class="modal">
+    <div class="modal-handle"
+         role="slider" tabindex="0" aria-orientation="vertical"
+         aria-label="Faire glisser pour fermer">
+      <div class="modal-handle-bar"></div>
+    </div>
+    <div class="modal-header">
+      <div class="modal-title" id="modal-solo-title">
+        <span class="material-icons-round">bolt</span>
+        Bac à sable
+      </div>
+      <div class="modal-subtitle">Configure un duel local contre toi-même</div>
+    </div>
+    <div class="modal-content">
+
+      <!-- Skeleton state (visible pendant le fetch decks) -->
+      <div id="modal-solo-skel"
+           role="status" aria-busy="true" aria-label="Chargement du configurateur"
+           style="display: none;">
+        <div class="qd-skel-section">
+          <div class="qd-skel-section-label"></div>
+          <div class="qd-skel-toggle-group">
+            <div class="qd-skel-toggle"></div>
+            <div class="qd-skel-toggle"></div>
+          </div>
+        </div>
+        <div class="deck-grid" style="margin-bottom: 18px;">
+          <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+          <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+          <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+          <div class="deck-card-skel"><div class="skel-thumb"></div><div class="skel-name"></div><div class="skel-meta"></div></div>
+        </div>
+        <div class="qd-divider"></div>
+        <div class="qd-skel-section">
+          <div class="qd-skel-section-label"></div>
+          <div class="qd-skel-toggle-group">
+            <div class="qd-skel-toggle"></div>
+            <div class="qd-skel-toggle"></div>
+          </div>
+        </div>
+        <div class="qd-skel-section">
+          <div class="qd-skel-section-label"></div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="qd-skel-row"></div>
+            <div class="qd-skel-slider-card"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real content -->
+      <div id="modal-solo-real">
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <span class="qd-section-label">Decks</span>
+          <span class="qd-section-hint">Sélectionne un deck par joueur</span>
+        </div>
+        <div class="qd-toggle-group">
+          <button class="qd-toggle active" onclick="switchQdSlot('p1', this)">
+            <span class="material-icons-round">person</span>
+            Joueur 1
+          </button>
+          <button class="qd-toggle qd-toggle--p2" onclick="switchQdSlot('p2', this)">
+            <span class="material-icons-round">person_outline</span>
+            Joueur 2
+          </button>
+        </div>
+      </div>
+
+      <!-- P2 mirror state (default when P2 selected, no deck chosen for P2 yet) -->
+      <div class="qd-mirror-card" id="qd-mirror-card" style="display: none;">
+        <div class="qd-mirror-icon">
+          <span class="material-icons-round">link</span>
+        </div>
+        <div class="qd-mirror-text">
+          <div class="qd-mirror-title">Identique au Joueur 1</div>
+          <div class="qd-mirror-desc">Le Joueur 2 utilisera le même deck que le Joueur 1. Clique ci-dessous pour personnaliser.</div>
+        </div>
+        <button class="qd-mirror-btn" onclick="customizeP2()">
+          <span class="material-icons-round">tune</span>
+          Personnaliser
+        </button>
+      </div>
+
+      <div class="deck-grid" id="qd-deck-grid">
+        <div class="deck-card selected" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/89631139.jpg"></div><div class="deck-card-name">Blue-Eyes</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/46986414.jpg"></div><div class="deck-card-name">Dark Magician</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/65367484.jpg"></div><div class="deck-card-name">Tearlaments</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/9748752.jpg"></div><div class="deck-card-name">Snake-Eye</div><div class="deck-card-meta">41 cartes</div></div>
+      </div>
+
+      <div class="qd-divider"></div>
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <span class="qd-section-label">Premier joueur</span>
+        </div>
+        <div class="qd-toggle-group">
+          <button class="qd-toggle active">
+            <span class="material-icons-round">flag</span>
+            Joueur 1 commence
+          </button>
+          <button class="qd-toggle">
+            <span class="material-icons-round">flag</span>
+            Joueur 2 commence
+          </button>
+        </div>
+      </div>
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <span class="qd-section-label">Options</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="qd-row">
+            <div class="qd-row-text">
+              <span class="qd-row-label">Main aléatoire</span>
+              <span class="qd-row-desc">Mélange le deck avant la pioche initiale</span>
+            </div>
+            <div class="qd-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+
+          <div class="qd-slider-card">
+            <div class="qd-slider-header">
+              <div class="qd-slider-header-text">
+                <span class="qd-row-label">Temps par tour</span>
+                <span class="qd-row-desc">De 30 secondes à 1 heure</span>
+              </div>
+              <div class="qd-slider-value">
+                <span class="qd-slider-value-num" id="slider-value-num">5</span>
+                <span class="qd-slider-value-unit" id="slider-value-unit">min</span>
+              </div>
+            </div>
+            <input type="range" class="qd-slider" id="turn-slider"
+                   min="30" max="3600" step="30" value="300"
+                   oninput="updateSlider(this)">
+            <div class="qd-slider-ticks">
+              <span class="qd-slider-tick" onclick="setSliderValue(60)">1m</span>
+              <span class="qd-slider-tick" onclick="setSliderValue(180)">3m</span>
+              <span class="qd-slider-tick" onclick="setSliderValue(300)">5m</span>
+              <span class="qd-slider-tick" onclick="setSliderValue(600)">10m</span>
+              <span class="qd-slider-tick" onclick="setSliderValue(1800)">30m</span>
+              <span class="qd-slider-tick" onclick="setSliderValue(3600)">1h</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div><!-- /modal-solo-real -->
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal()">Annuler</button>
+      <button class="btn-primary">Lancer le duel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  document.querySelectorAll('.preview-toolbar button:not(.style-btn)').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + name).classList.add('active');
+
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  // Reset demo state when switching screens manually (sauf si déjà dans un état demo en cours)
+  // Note : setDemoState appelle showScreen, donc on n'écrase pas si on est en plein dispatch.
+  if (!window._inDemoStateDispatch) {
+    const sel = document.getElementById('state-select');
+    if (sel && sel.value !== 'normal') sel.value = 'normal';
+    resetDemoStates();
+  }
+  window.scrollTo(0, 0);
+}
+function showModal(kind) {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.preview-toolbar button:not(.style-btn)').forEach(b => b.classList.remove('active'));
+  if (kind === 'deck') {
+    document.getElementById('modal-deck').classList.add('open');
+    document.getElementById('btn-modal-deck').classList.add('active');
+  } else {
+    document.getElementById('modal-solo').classList.add('open');
+    document.getElementById('btn-modal-solo').classList.add('active');
+  }
+}
+function hideModal() {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.preview-toolbar button:not(.style-btn)').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-lobby').classList.add('active');
+  // Reset drag state on close
+  document.querySelectorAll('.modal').forEach(m => {
+    m.classList.remove('dragging');
+    m.style.setProperty('--sheet-drag-y', '0px');
+  });
+}
+
+// === Bottom sheet drag-to-close ===
+// Mobile only (handle hidden on desktop). Mirror of future <app-modal-sheet> Angular drag logic.
+// Threshold : close if drag > 40% of sheet height OR velocity > 0.5px/ms downwards.
+(function initModalSheetDrag() {
+  const VELOCITY_THRESHOLD = 0.5;   // px/ms
+  const DRAG_CLOSE_RATIO = 0.40;    // 40% of sheet height
+  const MAX_HISTORY = 5;
+
+  document.querySelectorAll('.modal-handle').forEach(handle => {
+    const modal = handle.closest('.modal');
+    if (!modal) return;
+
+    let activePointerId = null;
+    let startY = 0;
+    let currentY = 0;
+    let history = [];
+    let rafId = 0;
+    let sheetHeight = 0;
+
+    function onPointerDown(e) {
+      // Drag only enabled on mobile (handle is display:none on ≥768px)
+      if (window.matchMedia('(min-width: 768px)').matches) return;
+      if (activePointerId !== null) return;
+      activePointerId = e.pointerId;
+      handle.setPointerCapture(e.pointerId);
+      startY = e.clientY;
+      currentY = e.clientY;
+      sheetHeight = modal.getBoundingClientRect().height;
+      history = [{ y: e.clientY, time: e.timeStamp }];
+      modal.classList.add('dragging');
+      e.preventDefault();
+    }
+
+    function onPointerMove(e) {
+      if (e.pointerId !== activePointerId) return;
+      currentY = e.clientY;
+      history.push({ y: e.clientY, time: e.timeStamp });
+      if (history.length > MAX_HISTORY) history.shift();
+
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        // Clamp : ne peut pas glisser vers le haut au-delà de position ouverte
+        const dragY = Math.max(0, currentY - startY);
+        modal.style.setProperty('--sheet-drag-y', dragY + 'px');
+      });
+    }
+
+    function onPointerUp(e) {
+      if (e.pointerId !== activePointerId) return;
+      try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
+      activePointerId = null;
+      cancelAnimationFrame(rafId);
+
+      const dragY = Math.max(0, currentY - startY);
+      const ratio = sheetHeight > 0 ? dragY / sheetHeight : 0;
+
+      // Velocity over last samples
+      let velocity = 0;
+      if (history.length >= 2) {
+        const last = history[history.length - 1];
+        const first = history[0];
+        const dt = last.time - first.time;
+        if (dt > 0) velocity = (last.y - first.y) / dt;
+      }
+
+      const shouldClose = ratio > DRAG_CLOSE_RATIO || velocity > VELOCITY_THRESHOLD;
+      modal.classList.remove('dragging');
+
+      if (shouldClose) {
+        // Animation slide-out vers le bas
+        modal.style.setProperty('--sheet-drag-y', '100vh');
+        setTimeout(() => {
+          hideModal();
+        }, 280); // slightly less than transition (300ms) to feel snappy
+      } else {
+        // Snap back to open position
+        modal.style.setProperty('--sheet-drag-y', '0px');
+      }
+    }
+
+    function onPointerCancel(e) {
+      if (e.pointerId !== activePointerId) return;
+      activePointerId = null;
+      cancelAnimationFrame(rafId);
+      modal.classList.remove('dragging');
+      modal.style.setProperty('--sheet-drag-y', '0px');
+    }
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('pointermove', onPointerMove);
+    handle.addEventListener('pointerup', onPointerUp);
+    handle.addEventListener('pointercancel', onPointerCancel);
+  });
+
+  // Backdrop click close (mobile + desktop)
+  document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', e => {
+      if (e.target === backdrop) hideModal();
+    });
+  });
+
+  // Escape key close
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const open = document.querySelector('.modal-backdrop.open');
+      if (open) hideModal();
+    }
+  });
+})();
+function selectDeck(el) {
+  if (el.classList.contains('invalid')) return; // can't select invalid decks
+  const grid = el.closest('.deck-grid');
+  grid.querySelectorAll('.deck-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// Bac à sable: P1/P2 slot switch
+let qdP2Customized = false;
+function switchQdSlot(slot, btn) {
+  document.querySelectorAll('.qd-toggle').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const mirrorCard = document.getElementById('qd-mirror-card');
+  const deckGrid = document.getElementById('qd-deck-grid');
+  if (slot === 'p2' && !qdP2Customized) {
+    mirrorCard.style.display = 'flex';
+    deckGrid.style.display = 'none';
+  } else {
+    mirrorCard.style.display = 'none';
+    deckGrid.style.display = 'grid';
+  }
+}
+function customizeP2() {
+  qdP2Customized = true;
+  document.getElementById('qd-mirror-card').style.display = 'none';
+  document.getElementById('qd-deck-grid').style.display = 'grid';
+}
+
+function copyRoomCode(btn) {
+  const code = document.getElementById('waiting-room-code').textContent;
+  navigator.clipboard?.writeText(code);
+  btn.classList.add('copied');
+  const label = document.getElementById('waiting-copy-label');
+  label.textContent = 'Copié ✓';
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    label.textContent = 'Copier';
+  }, 1800);
+}
+
+// === Slider ===
+function formatTurnTime(seconds) {
+  if (seconds < 60) return { num: seconds, unit: 'sec' };
+  if (seconds < 3600) {
+    const m = seconds / 60;
+    return { num: Number.isInteger(m) ? m : m.toFixed(1), unit: 'min' };
+  }
+  if (seconds === 3600) return { num: 1, unit: 'h' };
+  const h = (seconds / 3600).toFixed(1);
+  return { num: h, unit: 'h' };
+}
+function updateSlider(slider) {
+  const v = parseInt(slider.value, 10);
+  const min = parseInt(slider.min, 10);
+  const max = parseInt(slider.max, 10);
+  const pct = ((v - min) / (max - min)) * 100;
+  slider.style.setProperty('--slider-percent', pct + '%');
+  const fmt = formatTurnTime(v);
+  document.getElementById('slider-value-num').textContent = fmt.num;
+  document.getElementById('slider-value-unit').textContent = fmt.unit;
+}
+function setSliderValue(v) {
+  const slider = document.getElementById('turn-slider');
+  slider.value = v;
+  updateSlider(slider);
+}
+// Init slider + default dice style on load
+window.addEventListener('DOMContentLoaded', () => {
+  updateSlider(document.getElementById('turn-slider'));
+  const obsBtn = document.getElementById('btn-style-obsidian');
+  if (obsBtn) obsBtn.classList.add('active');
+});
+// === Device preview (simule un viewport cible) ===
+function setDevicePreview(value) {
+  const html = document.documentElement;
+  if (value === 'auto') {
+    html.removeAttribute('data-device');
+  } else {
+    html.setAttribute('data-device', value);
+  }
+}
+
+// === Reduced-motion toggle (simule la pref OS sans changer settings) ===
+let reducedMotionOn = false;
+function toggleReducedMotion() {
+  reducedMotionOn = !reducedMotionOn;
+  document.body.classList.toggle('test-reduced-motion', reducedMotionOn);
+  document.getElementById('btn-reduced').classList.toggle('active', reducedMotionOn);
+}
+
+// ============================================================
+// TOAST API — show/dismiss with variants and auto-dismiss
+// ============================================================
+// Usage : showToast({ variant, title, desc?, action?, persistent? })
+// Mirror of future <app-toast> Angular component (à créer Phase 1).
+const TOAST_DEFAULT_DISMISS_MS = 4000;
+const TOAST_ERROR_DISMISS_MS = 8000;
+
+function showToast({ variant = 'info', title, desc, action, persistent = false }) {
+  const stack = document.getElementById('toast-stack');
+  if (!stack) return;
+
+  // Cap stack size : max 3 toasts visibles
+  while (stack.children.length >= 3) stack.removeChild(stack.firstChild);
+
+  const dismissMs = persistent ? 0 : (variant === 'error' ? TOAST_ERROR_DISMISS_MS : TOAST_DEFAULT_DISMISS_MS);
+  const iconMap = {
+    success: 'check_circle',
+    error:   'error',
+    info:    'info',
+    warning: 'warning',
+  };
+  const toast = document.createElement('div');
+  toast.className = `toast toast--${variant}${persistent ? ' toast--persistent' : ''}`;
+  toast.style.setProperty('--toast-dismiss-ms', dismissMs + 'ms');
+  toast.setAttribute('role', variant === 'error' ? 'alert' : 'status');
+
+  let actionHTML = '';
+  if (action) {
+    actionHTML = `<button class="toast-action" data-toast-action>${action.label}</button>`;
+  }
+
+  toast.innerHTML = `
+    <div class="toast-icon"><span class="material-icons-round">${iconMap[variant] || 'info'}</span></div>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      ${desc ? `<div class="toast-desc">${desc}</div>` : ''}
+    </div>
+    ${actionHTML}
+    <button class="toast-close" aria-label="Fermer">
+      <span class="material-icons-round">close</span>
+    </button>
+  `;
+
+  // Close button
+  toast.querySelector('.toast-close').addEventListener('click', () => dismissToast(toast));
+  // Action button
+  if (action) {
+    toast.querySelector('[data-toast-action]').addEventListener('click', () => {
+      if (typeof action.onClick === 'function') action.onClick();
+      dismissToast(toast);
+    });
+  }
+
+  // Auto-dismiss
+  if (!persistent && dismissMs > 0) {
+    setTimeout(() => dismissToast(toast), dismissMs);
+  }
+
+  // Swipe-right to dismiss (mobile)
+  initToastSwipe(toast);
+
+  stack.appendChild(toast);
+  return toast;
+}
+
+function dismissToast(toast) {
+  if (!toast || !toast.parentElement || toast.classList.contains('dismissing')) return;
+  toast.classList.add('dismissing');
+  setTimeout(() => {
+    if (toast.parentElement) toast.parentElement.removeChild(toast);
+  }, 200);
+}
+
+function initToastSwipe(toast) {
+  let startX = 0;
+  let currentX = 0;
+  let dragging = false;
+  let activeId = null;
+
+  toast.addEventListener('pointerdown', e => {
+    if (activeId !== null) return;
+    // Ignore drag start on action/close buttons
+    if (e.target.closest('button')) return;
+    activeId = e.pointerId;
+    startX = e.clientX;
+    currentX = e.clientX;
+    dragging = true;
+    toast.setPointerCapture(e.pointerId);
+    toast.style.transition = 'none';
+  });
+  toast.addEventListener('pointermove', e => {
+    if (!dragging || e.pointerId !== activeId) return;
+    currentX = e.clientX;
+    const dx = Math.max(0, currentX - startX);
+    toast.style.transform = `translateX(${dx}px)`;
+    toast.style.opacity = String(Math.max(0, 1 - dx / 200));
+  });
+  toast.addEventListener('pointerup', e => {
+    if (!dragging || e.pointerId !== activeId) return;
+    activeId = null; dragging = false;
+    const dx = currentX - startX;
+    toast.style.transition = '';
+    if (dx > 100) {
+      dismissToast(toast);
+    } else {
+      toast.style.transform = '';
+      toast.style.opacity = '';
+    }
+  });
+  toast.addEventListener('pointercancel', () => {
+    activeId = null; dragging = false;
+    toast.style.transition = '';
+    toast.style.transform = '';
+    toast.style.opacity = '';
+  });
+}
+
+// ============================================================
+// DEMO STATE DISPATCHER — driven by toolbar "État" select
+// ============================================================
+// Applique un cas de figure pour démonstration. Permet d'auditer
+// les empty/error/disabled/toast states sans avoir à coder le backend. */
+function setDemoState(state) {
+  // Reset all demo states first
+  resetDemoStates();
+  // Guard pour que showScreen() ne reset pas pendant le dispatch
+  window._inDemoStateDispatch = true;
+  try {
+
+  switch (state) {
+    case 'normal':
+      // default state, rien à faire (déjà reset)
+      break;
+
+    case 'empty-rooms':
+      showScreen('lobby');
+      document.getElementById('lobby-real').style.display = 'none';
+      document.getElementById('lobby-empty-rooms').style.display = 'flex';
+      // Compteur passe à 0
+      const cnt = document.querySelector('.lobby-section-count');
+      if (cnt) cnt.textContent = '0';
+      break;
+
+    case 'empty-decks':
+      showModal('deck');
+      document.getElementById('modal-deck-real').style.display = 'none';
+      document.getElementById('modal-deck-empty').style.display = 'flex';
+      break;
+
+    case 'empty-search':
+      showScreen('lobby');
+      // Simule une recherche qui ne match rien
+      const input = document.querySelector('.lobby-search-bar input');
+      if (input) {
+        input.value = 'XyzNonExistent';
+        filterRooms('XyzNonExistent'); // hides all rooms
+      }
+      document.getElementById('lobby-real').style.display = 'none';
+      document.getElementById('lobby-empty-search').style.display = 'flex';
+      break;
+
+    case 'error-network':
+      showScreen('lobby');
+      document.getElementById('lobby-error-network').style.display = 'flex';
+      showToast({
+        variant: 'warning',
+        title: 'Connexion live perdue',
+        desc: 'Reconnexion automatique en cours…',
+        persistent: true,
+      });
+      break;
+
+    case 'error-room-closed':
+      showScreen('lobby');
+      showToast({
+        variant: 'error',
+        title: 'Room fermée par un admin',
+        desc: 'La room a été fermée pendant que tu rejoignais.',
+      });
+      break;
+
+    case 'error-deck-deleted':
+      showModal('deck');
+      showToast({
+        variant: 'error',
+        title: 'Deck supprimé',
+        desc: 'Le deck sélectionné n\'existe plus. La liste a été rafraîchie.',
+        action: { label: 'Rafraîchir', onClick: () => {} },
+      });
+      break;
+
+    case 'disabled-create':
+      showModal('deck');
+      // Désélectionner tous les decks
+      document.querySelectorAll('#modal-deck-real .deck-card.selected')
+        .forEach(c => c.classList.remove('selected'));
+      // Disabled le bouton Créer
+      const createBtn = document.querySelector('#modal-deck .btn-primary');
+      if (createBtn) {
+        createBtn.classList.add('is-disabled');
+        createBtn.setAttribute('data-disabled-reason', 'Sélectionne d\'abord un deck valide');
+      }
+      break;
+
+    case 'toast-success':
+      showToast({
+        variant: 'success',
+        title: 'Room créée',
+        desc: 'En attente d\'un adversaire…',
+      });
+      break;
+
+    case 'toast-error':
+      showToast({
+        variant: 'error',
+        title: 'Impossible de créer la room',
+        desc: 'Erreur réseau. Réessaie dans quelques secondes.',
+        action: { label: 'Réessayer', onClick: () => {} },
+      });
+      break;
+
+    case 'toast-info':
+      showToast({
+        variant: 'info',
+        title: 'Adversaire trouvé',
+        desc: 'Yamuchi a rejoint la room. Lancement du tirage…',
+      });
+      break;
+  }
+
+  } finally {
+    window._inDemoStateDispatch = false;
+  }
+}
+
+function resetDemoStates() {
+  // Restaurer les contenus normaux
+  document.getElementById('lobby-real').style.display = '';
+  document.getElementById('lobby-empty-rooms').style.display = 'none';
+  document.getElementById('lobby-empty-search').style.display = 'none';
+  document.getElementById('lobby-error-network').style.display = 'none';
+  document.getElementById('modal-deck-real').style.display = '';
+  document.getElementById('modal-deck-empty').style.display = 'none';
+  // Effacer recherche lobby si en cours
+  const input = document.querySelector('.lobby-search-bar input');
+  if (input && input.value) {
+    input.value = '';
+    filterRooms('');
+  }
+  // Restaurer compteur
+  const cnt = document.querySelector('.lobby-section-count');
+  if (cnt) cnt.textContent = '14';
+  // Nettoyer disabled states
+  document.querySelectorAll('.is-disabled').forEach(el => {
+    el.classList.remove('is-disabled');
+    el.removeAttribute('data-disabled-reason');
+  });
+  // Restaurer sélection deck par défaut (1er deck)
+  const firstDeck = document.querySelector('#modal-deck-real .deck-card:not(.invalid)');
+  if (firstDeck && !firstDeck.classList.contains('selected')) {
+    firstDeck.classList.add('selected');
+  }
+  // Vider stack toasts
+  const stack = document.getElementById('toast-stack');
+  if (stack) stack.innerHTML = '';
+}
+
+function clearLobbySearch() {
+  const input = document.querySelector('.lobby-search-bar input');
+  if (input) { input.value = ''; filterRooms(''); }
+  document.getElementById('lobby-empty-search').style.display = 'none';
+  document.getElementById('lobby-real').style.display = '';
+  // Reset selector
+  const sel = document.getElementById('state-select');
+  if (sel) sel.value = 'normal';
+}
+
+function dismissError(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+// === DICE ROLL ===
+let skeletonOn = false;
+function toggleSkeletonState() {
+  skeletonOn = !skeletonOn;
+  document.getElementById('btn-skel').classList.toggle('active', skeletonOn);
+
+  // Lobby
+  const lobbySkel = document.getElementById('lobby-skel');
+  const lobbyReal = document.getElementById('lobby-real');
+  if (lobbySkel) lobbySkel.style.display = skeletonOn ? '' : 'none';
+  if (lobbyReal) lobbyReal.style.display = skeletonOn ? 'none' : '';
+
+  // Waiting Room
+  const waitingSkel = document.getElementById('waiting-skel');
+  const waitingReal = document.getElementById('waiting-real');
+  if (waitingSkel) waitingSkel.style.display = skeletonOn ? 'flex' : 'none';
+  if (waitingReal) waitingReal.style.display = skeletonOn ? 'none' : '';
+
+  // Modale deck (always toggle even si modale fermée — l'état sera pris quand on ouvrira)
+  const deckSkel = document.getElementById('modal-deck-skel');
+  const deckReal = document.getElementById('modal-deck-real');
+  if (deckSkel) deckSkel.style.display = skeletonOn ? 'grid' : 'none';
+  if (deckReal) deckReal.style.display = skeletonOn ? 'none' : 'grid';
+
+  // Modale Sandbox
+  const soloSkel = document.getElementById('modal-solo-skel');
+  const soloReal = document.getElementById('modal-solo-real');
+  if (soloSkel) soloSkel.style.display = skeletonOn ? 'block' : 'none';
+  if (soloReal) soloReal.style.display = skeletonOn ? 'none' : 'block';
+
+  // Dice arena (reconnect WS DICE_STATE state)
+  const diceSkel = document.getElementById('dice-skel');
+  const diceStage1 = document.getElementById('dice-stage-1');
+  const diceStage2 = document.getElementById('dice-stage-2');
+  const diceStage3 = document.getElementById('dice-stage-3');
+  if (diceSkel) diceSkel.style.display = skeletonOn ? 'block' : 'none';
+  if (diceStage1) diceStage1.style.display = skeletonOn ? 'none' : 'contents';
+  if (diceStage2) diceStage2.style.display = 'none';
+  if (diceStage3) diceStage3.style.display = 'none';
+}
+
+function filterRooms(query) {
+  const q = (query || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('.room-list .room-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const creator = (card.querySelector('.room-creator')?.textContent || '').toLowerCase();
+    const match = !q || creator.includes(q);
+    card.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  const countEl = document.querySelector('.lobby-section-count');
+  if (countEl) countEl.textContent = visible;
+}
+
+function selectTurnOrder(btn) {
+  document.querySelectorAll('.dice-turn-option').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function rollD6() { return 1 + Math.floor(Math.random() * 6); }
+
+let currentDiceStyle = 'gold';
+function setDiceStyle(style) {
+  currentDiceStyle = style;
+  document.querySelectorAll('.dice-pair').forEach(p => {
+    p.classList.remove('dice-style-gold', 'dice-style-obsidian', 'dice-style-crystal');
+    p.classList.add('dice-style-' + style);
+  });
+  ['gold', 'obsidian', 'crystal'].forEach(s => {
+    const b = document.getElementById('btn-style-' + s);
+    if (b) b.classList.toggle('active', s === style);
+  });
+  // Auto-switch to dice screen if not already there
+  if (!document.getElementById('screen-dice').classList.contains('active')) {
+    showScreen('dice');
+  }
+}
+
+function launchDiceRoll() {
+  document.getElementById('dice-stage-1').style.display = 'none';
+  document.getElementById('dice-stage-2').style.display = 'contents';
+  document.getElementById('dice-stage-3').style.display = 'none';
+  document.getElementById('dice-title').textContent = 'Les dés roulent…';
+  document.getElementById('dice-subtitle').textContent = 'Suspense.';
+
+  const myA = rollD6(), myB = rollD6();
+  const oppA = rollD6(), oppB = rollD6();
+
+  const moverA = document.getElementById('dice-mover-a');
+  const moverB = document.getElementById('dice-mover-b');
+  const diceA = document.getElementById('dice-rolling-a');
+  const diceB = document.getElementById('dice-rolling-b');
+  const shadowA = document.getElementById('dice-shadow-a');
+  const shadowB = document.getElementById('dice-shadow-b');
+
+  // Reset + retrigger animation
+  [moverA, moverB].forEach(el => { el.classList.remove('animating'); el.style.transform = ''; });
+  [diceA, diceB].forEach(el => { el.className = 'dice'; el.style.transform = ''; });
+  [shadowA, shadowB].forEach(el => { el.classList.remove('animating'); el.style.transform = ''; });
+  void moverA.offsetWidth; void moverB.offsetWidth;
+
+  // Trigger animations (rotation 1.4s, translation 1.8s — rotation lands first)
+  moverA.classList.add('animating');
+  moverB.classList.add('animating');
+  diceA.className = 'dice tumble-' + myA;
+  diceB.className = 'dice tumble-' + myB;
+  shadowA.classList.add('animating');
+  shadowB.classList.add('animating');
+
+  // Total animation = 1.8s (translation is the longest)
+  setTimeout(() => {
+    // Freeze on final pose
+    moverA.style.transform = 'translate3d(var(--land-x), 0, 0)';
+    moverB.style.transform = 'translate3d(var(--land-x), 0, 0)';
+    diceA.className = 'dice result-' + myA;
+    diceB.className = 'dice result-' + myB;
+    shadowA.style.transform = 'translateX(var(--land-x))';
+    shadowB.style.transform = 'translateX(var(--land-x))';
+
+    document.getElementById('dice-stage-2').style.display = 'none';
+    document.getElementById('dice-stage-3').style.display = 'contents';
+    document.getElementById('dice-title').textContent = 'Résultat';
+    document.getElementById('dice-subtitle').textContent = 'Verdict.';
+
+    // Result-stage dice
+    document.getElementById('dice-result-a').className = 'dice result-' + myA;
+    document.getElementById('dice-result-b').className = 'dice result-' + myB;
+
+    const myTotal = myA + myB;
+    const oppTotal = oppA + oppB;
+    document.getElementById('dice-my-a').textContent = myA;
+    document.getElementById('dice-my-b').textContent = myB;
+    document.getElementById('dice-my-total').textContent = myTotal;
+    document.getElementById('dice-opp-a').textContent = oppA;
+    document.getElementById('dice-opp-b').textContent = oppB;
+    document.getElementById('dice-opp-total').textContent = oppTotal;
+
+    const banner = document.getElementById('dice-result-banner');
+    const text = document.getElementById('dice-result-text');
+    const wonBlock = document.getElementById('dice-won-block');
+    const lostBlock = document.getElementById('dice-lost-block');
+    const drawBlock = document.getElementById('dice-draw-block');
+    const finalBlock = document.getElementById('dice-final-block');
+
+    banner.classList.remove('lost', 'draw');
+    finalBlock.style.display = 'none';
+
+    if (myTotal > oppTotal) {
+      // WON: show turn-order choice
+      text.innerHTML = 'Tu as gagné le lancer<small>Choisis qui ouvre le duel</small>';
+      wonBlock.style.display = 'contents';
+      lostBlock.style.display = 'none';
+      drawBlock.style.display = 'none';
+    } else if (myTotal < oppTotal) {
+      // LOST: opponent is choosing — no visible timer
+      banner.classList.add('lost');
+      text.innerHTML = "L'adversaire a gagné<small>Il choisit qui commence</small>";
+      wonBlock.style.display = 'none';
+      lostBlock.style.display = 'block';
+      drawBlock.style.display = 'none';
+      // Simulate opponent decision after ~3.5s (could also be timeout fallback after 15s in real flow)
+      simulatedOpponentDecisionHandle = setTimeout(() => {
+        // Simulate: opponent picks randomly (in real flow, server sends FIRST_PLAYER message)
+        const opponentGoesFirst = Math.random() < 0.5;
+        showFinalAnnounce(opponentGoesFirst ? 'second' : 'first');
+      }, 3500);
+    } else {
+      // DRAW: auto-replay
+      banner.classList.add('draw');
+      text.innerHTML = "Égalité — on relance les dés<small>Tirage automatique dans un instant</small>";
+      wonBlock.style.display = 'none';
+      lostBlock.style.display = 'none';
+      drawBlock.style.display = 'block';
+      setTimeout(() => { launchDiceRoll(); }, 1800);
+    }
+  }, 1800);
+}
+
+// Called by 'Lancer le duel' button (WON path) — user confirmed turn order
+function confirmTurnOrderAndLaunch() {
+  const selected = document.querySelector('.dice-turn-option.selected');
+  const myChoice = selected && selected.textContent.includes('Je') ? 'first' : 'second';
+  showFinalAnnounce(myChoice);
+}
+
+// Final announcement: 'first' or 'second' — visible to both players in real flow
+let simulatedOpponentDecisionHandle = null;
+function showFinalAnnounce(order) {
+  // Hide all other result sub-blocks, show only the final card
+  document.getElementById('dice-won-block').style.display = 'none';
+  document.getElementById('dice-lost-block').style.display = 'none';
+  document.getElementById('dice-draw-block').style.display = 'none';
+  document.getElementById('dice-result-banner').style.display = 'none';
+
+  const block = document.getElementById('dice-final-block');
+  const card = document.getElementById('dice-final-card');
+  const headline = document.getElementById('dice-final-headline');
+  const glyph = document.getElementById('dice-final-icon-glyph');
+
+  if (order === 'first') {
+    card.classList.remove('dice-final-announce--second');
+    headline.textContent = 'You go first';
+    glyph.textContent = 'play_circle';
+  } else {
+    card.classList.add('dice-final-announce--second');
+    headline.textContent = 'You go second';
+    glyph.textContent = 'skip_next';
+  }
+  block.style.display = 'contents';
+
+  // Auto-transition to board after the progress bar finishes (2.5s)
+  setTimeout(() => {
+    // In real Angular flow: router.navigate(['/pvp/duel/:code'])
+    // alert('→ Transition vers le plateau');
+  }, 2500);
+}
+
+// Reset state when entering screens
+const originalShowScreen = showScreen;
+showScreen = function(name) {
+  originalShowScreen(name);
+  if (name === 'dice') {
+    if (simulatedOpponentDecisionHandle) { clearTimeout(simulatedOpponentDecisionHandle); simulatedOpponentDecisionHandle = null; }
+    document.getElementById('dice-stage-1').style.display = 'contents';
+    document.getElementById('dice-stage-2').style.display = 'none';
+    document.getElementById('dice-stage-3').style.display = 'none';
+    document.getElementById('dice-title').textContent = 'Plus haut score';
+    document.getElementById('dice-subtitle').textContent = 'Chaque joueur lance deux dés. La somme la plus haute choisit qui ouvre le duel.';
+    // Reset result sub-blocks so final-block is not stuck visible
+    const banner = document.getElementById('dice-result-banner');
+    if (banner) banner.style.display = '';
+    ['dice-won-block', 'dice-lost-block', 'dice-draw-block', 'dice-final-block'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    ['dice-rolling-a', 'dice-rolling-b'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.className = 'dice'; el.style.transform = ''; }
+    });
+    ['dice-mover-a', 'dice-mover-b'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('animating'); el.style.transform = ''; }
+    });
+    ['dice-shadow-a', 'dice-shadow-b'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('animating'); el.style.transform = ''; }
+    });
+  }
+};
+</script>
+</body>
+</html>

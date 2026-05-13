@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup 3 — Tournament Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #07091a;
+  color: #eaeaea;
+  overflow-x: hidden;
+}
+.material-icons-round { font-family: 'Material Icons Round'; user-select: none; }
+
+.preview-toolbar { position: fixed; top: 12px; right: 12px; display: flex; gap: 6px;
+  z-index: 100; background: rgba(7, 9, 26, 0.85); padding: 6px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px); flex-wrap: wrap; max-width: calc(100vw - 24px); }
+.preview-toolbar a, .preview-toolbar button { font: inherit; font-size: 0.78rem;
+  font-weight: 600; padding: 6px 10px; border-radius: 6px; background: transparent;
+  color: #a0a8c0; border: none; cursor: pointer; text-decoration: none; }
+.preview-toolbar .active { background: rgba(201, 168, 76, 0.15); color: #C9A84C; }
+
+.lobby-shell { position: relative; min-height: 100vh; isolation: isolate;
+  padding: 32px 16px 48px; }
+.lobby-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: linear-gradient(180deg, #0a0e24 0%, #07091a 80%); }
+.lobby-bg-banner { position: absolute; top: 0; left: 0; right: 0; height: 320px;
+  background:
+    linear-gradient(180deg, rgba(201, 168, 76, 0.15) 0%, transparent 100%),
+    radial-gradient(ellipse at 30% 40%, rgba(74, 144, 217, 0.25), transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(201, 168, 76, 0.2), transparent 50%);
+}
+.lobby-bg-pattern { position: absolute; top: 0; left: 0; right: 0; height: 320px;
+  background-image: repeating-linear-gradient(45deg,
+      rgba(255,255,255,0.025) 0, rgba(255,255,255,0.025) 1px,
+      transparent 1px, transparent 12px);
+  opacity: 0.5;
+}
+
+.lobby-container { position: relative; display: flex; flex-direction: column; gap: 20px;
+  max-width: 660px; margin: 0 auto; }
+
+/* Hero header */
+.lobby-hero { position: relative; padding: 8px 4px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lobby-hero-content { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+.lobby-breadcrumb { font: 600 0.7rem/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.2em; text-transform: uppercase; color: #6a7090;
+  display: flex; align-items: center; gap: 8px; }
+.lobby-breadcrumb-dot { width: 4px; height: 4px; border-radius: 50%;
+  background: #C9A84C; box-shadow: 0 0 6px rgba(201, 168, 76, 0.7); }
+
+.lobby-hero h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(2rem, 5vw + 1rem, 2.6rem);
+  font-weight: 700; letter-spacing: -0.02em; line-height: 1;
+  color: #fff;
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.lobby-hero h1 .accent { color: #C9A84C; }
+.alpha-chip { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em;
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  color: #fff; padding: 4px 10px; border-radius: 6px; line-height: 1;
+  vertical-align: middle; box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4); }
+
+.lobby-hero-meta { display: flex; align-items: center; gap: 16px;
+  font-size: 0.82rem; color: #a0a8c0; flex-wrap: wrap; }
+.lobby-hero-meta-item { display: flex; align-items: center; gap: 6px; }
+.lobby-hero-meta .material-icons-round { font-size: 16px; color: #C9A84C; }
+.lobby-hero-meta strong { color: #fff; font-weight: 700; }
+
+.lobby-header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.lobby-icon-btn { width: 44px; height: 44px; border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); cursor: pointer; color: #a0a8c0;
+  transition: all 200ms ease; display: flex; align-items: center; justify-content: center;
+  position: relative; }
+.lobby-icon-btn:hover { color: #C9A84C; border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(201, 168, 76, 0.08); }
+.lobby-icon-btn .admin-dot { position: absolute; top: 8px; right: 8px;
+  width: 7px; height: 7px; border-radius: 50%; background: #ff5252;
+  box-shadow: 0 0 4px rgba(255, 82, 82, 0.7); }
+
+/* Action bar — 2 tiles + admin tile */
+.action-bar { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 4px; }
+@media (min-width: 540px) { .action-bar { grid-template-columns: 1.6fr 1fr 1fr; } }
+
+.action-tile { position: relative;
+  padding: 16px 18px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(135deg, #14172e, #0f1124);
+  cursor: pointer; transition: all 200ms ease;
+  display: flex; align-items: center; gap: 12px;
+  overflow: hidden; text-align: left;
+  font-family: inherit; }
+.action-tile-icon { width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; }
+.action-tile-icon .material-icons-round { font-size: 22px; }
+.action-tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.action-tile-title { font: 700 0.95rem/1.2 'Space Grotesk', sans-serif;
+  color: #fff; letter-spacing: -0.01em; }
+.action-tile-sub { font-size: 0.75rem; color: #a0a8c0; }
+
+.action-tile--primary {
+  background:
+    radial-gradient(ellipse at top right, rgba(201, 168, 76, 0.2), transparent 60%),
+    linear-gradient(135deg, #2a2010 0%, #1a1408 100%);
+  border-color: rgba(201, 168, 76, 0.35);
+}
+.action-tile--primary:hover { transform: translateY(-2px);
+  border-color: rgba(201, 168, 76, 0.6);
+  box-shadow: 0 12px 32px rgba(201, 168, 76, 0.2); }
+.action-tile--primary .action-tile-icon {
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208;
+  box-shadow: 0 4px 14px rgba(201, 168, 76, 0.35); }
+.action-tile--primary::after { content: 'arrow_forward';
+  font-family: 'Material Icons Round';
+  margin-left: auto; color: #C9A84C; font-size: 22px;
+  transition: transform 200ms ease; }
+.action-tile--primary:hover::after { transform: translateX(4px); }
+
+.action-tile--solo .action-tile-icon {
+  background: rgba(74, 144, 217, 0.15);
+  color: #79b8ff;
+  border: 1px solid rgba(74, 144, 217, 0.3); }
+.action-tile--solo:hover { transform: translateY(-2px);
+  border-color: rgba(74, 144, 217, 0.4);
+  background: linear-gradient(135deg, #14182f, #10142a); }
+
+.action-tile--secondary .action-tile-icon {
+  background: rgba(255,255,255,0.06);
+  color: #a0a8c0;
+  border: 1px solid rgba(255,255,255,0.1); }
+.action-tile--secondary:hover { transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.18); }
+
+/* Section header */
+.lobby-section-header { display: flex; align-items: center; justify-content: space-between;
+  margin-top: 16px; gap: 12px; flex-wrap: wrap; }
+.lobby-section-title-group { display: flex; align-items: center; gap: 12px; }
+.lobby-section-title { font: 700 1rem/1 'Space Grotesk', sans-serif;
+  color: #fff; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.lobby-section-count { font-size: 0.72rem; font-weight: 700; color: #C9A84C;
+  background: rgba(201, 168, 76, 0.12); padding: 3px 8px;
+  border-radius: 6px; border: 1px solid rgba(201, 168, 76, 0.25); }
+.lobby-section-tools { display: flex; gap: 6px; }
+.lobby-section-chip { font-size: 0.78rem; color: #a0a8c0;
+  background: rgba(255,255,255,0.04); padding: 6px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06); cursor: pointer;
+  display: flex; align-items: center; gap: 6px; font: 600 0.78rem/1 'Inter', sans-serif; }
+.lobby-section-chip:hover { color: #fff; border-color: rgba(255,255,255,0.18); }
+.lobby-section-chip.active { color: #C9A84C; border-color: rgba(201, 168, 76, 0.35);
+  background: rgba(201, 168, 76, 0.08); }
+.lobby-section-chip .material-icons-round { font-size: 16px; }
+
+/* Virtual scroll viewport */
+.room-list-viewport { max-height: 60vh; overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin; scrollbar-color: rgba(201, 168, 76, 0.3) transparent; }
+.room-list-viewport::-webkit-scrollbar { width: 8px; }
+.room-list-viewport::-webkit-scrollbar-track { background: transparent; }
+.room-list-viewport::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.25); border-radius: 4px; }
+.room-list-viewport::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 76, 0.5); }
+
+.room-list { display: flex; flex-direction: column; gap: 10px; }
+.room-card { position: relative; display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center; gap: 12px; padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #14172e 0%, #10122a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 200ms ease; overflow: hidden; }
+.room-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: #C9A84C; opacity: 0; transition: opacity 200ms ease; }
+.room-card:hover { transform: translateX(2px);
+  border-color: rgba(201, 168, 76, 0.3);
+  background: linear-gradient(135deg, #181c36, #131634); }
+.room-card:hover::before { opacity: 1; }
+.room-card:hover .room-admin-btn { opacity: 1; pointer-events: auto; }
+.room-card--new { animation: room-card-new 600ms ease-out; }
+@keyframes room-card-new {
+  from { opacity: 0; transform: translateY(-10px);
+    box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.7), 0 8px 24px rgba(201, 168, 76, 0.3); }
+}
+
+.room-avatar { width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 1rem/1 'Space Grotesk', sans-serif; color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3); flex-shrink: 0; position: relative; }
+.room-avatar-badge { position: absolute; bottom: -3px; right: -3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #C9A84C; color: #1a1208;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #14172e;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+.room-avatar-badge .material-icons-round { font-size: 11px; }
+
+.room-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.room-creator { font: 700 0.98rem/1.2 'Space Grotesk', sans-serif;
+  color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; }
+.room-creator .admin-tag { font: 700 0.6rem/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: #C9A84C; background: rgba(201, 168, 76, 0.12);
+  padding: 2px 6px; border-radius: 3px;
+  border: 1px solid rgba(201, 168, 76, 0.3); }
+.room-meta { display: flex; align-items: center; gap: 10px;
+  font-size: 0.75rem; color: #a0a8c0; flex-wrap: wrap; }
+.room-meta-item { display: flex; align-items: center; gap: 4px; }
+.room-meta-item .material-icons-round { font-size: 14px; opacity: 0.7; }
+
+.room-status-badge { display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 6px;
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.25);
+  font-size: 0.7rem; font-weight: 700;
+  color: #66bb6a; letter-spacing: 0.04em; text-transform: uppercase;
+  flex-shrink: 0; }
+.room-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #66bb6a;
+  box-shadow: 0 0 6px rgba(102, 187, 106, 0.8); position: relative; }
+.room-status-dot::after { content: ''; position: absolute; inset: -2px; border-radius: 50%;
+  background: rgba(102, 187, 106, 0.5);
+  animation: pulse-dot 1.6s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(2); opacity: 0; }
+}
+
+.room-admin-btn { width: 32px; height: 32px;
+  background: transparent; border: 1px solid rgba(255,255,255,0.08);
+  color: #a0a8c0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: all 200ms ease; flex-shrink: 0; pointer-events: none;
+  border-radius: 8px; }
+.room-admin-btn:hover { background: rgba(255, 82, 82, 0.15);
+  border-color: rgba(255, 82, 82, 0.5); color: #ff5252; }
+.room-admin-btn .material-icons-round { font-size: 16px; }
+
+.room-join-btn { min-height: 38px; padding: 0 16px;
+  font: 700 0.84rem/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208;
+  border: none; cursor: pointer;
+  transition: all 200ms ease;
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.25); }
+.room-join-btn .material-icons-round { font-size: 16px; transition: transform 200ms ease; }
+.room-join-btn:hover { transform: translateY(-1px); filter: brightness(1.05);
+  box-shadow: 0 6px 18px rgba(201, 168, 76, 0.45); }
+.room-join-btn:hover .material-icons-round { transform: translateX(3px); }
+
+/* ============================================================
+   MODAL — Clean modern panel
+   ============================================================ */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(7, 9, 26, 0.85);
+  backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center;
+  z-index: 200; padding: 16px; }
+.modal-backdrop.open { display: flex; }
+.modal { width: min(640px, 92vw); max-height: 90vh;
+  border-radius: 16px; overflow: hidden;
+  background: linear-gradient(180deg, #14172e 0%, #0f1124 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7),
+              0 0 0 1px rgba(201, 168, 76, 0.1);
+  display: flex; flex-direction: column;
+  animation: modal-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes modal-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+
+.modal-header {
+  position: relative; padding: 24px 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: radial-gradient(circle at top right, rgba(201, 168, 76, 0.1), transparent 60%);
+}
+.modal-header-top { display: flex; justify-content: space-between; align-items: start; gap: 14px; }
+.modal-title-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.modal-tag { font: 700 0.7rem/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #C9A84C; display: flex; align-items: center; gap: 6px; }
+.modal-tag .material-icons-round { font-size: 14px; }
+.modal-title { font: 700 1.4rem/1.2 'Space Grotesk', sans-serif;
+  color: #fff; letter-spacing: -0.02em; }
+.modal-subtitle { font-size: 0.85rem; color: #a0a8c0; margin-top: 4px; }
+.modal-close { width: 36px; height: 36px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+  color: #a0a8c0; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; transition: all 200ms ease; flex-shrink: 0; }
+.modal-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+.modal-search { display: flex; align-items: center; gap: 10px;
+  margin-top: 16px; padding: 11px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+  transition: all 200ms ease; }
+.modal-search:focus-within { border-color: rgba(201, 168, 76, 0.5);
+  background: rgba(255,255,255,0.06); }
+.modal-search .material-icons-round { color: #6a7090; font-size: 20px; }
+.modal-search input { background: transparent; border: none; outline: none;
+  flex: 1; font: 500 0.92rem/1 'Inter', sans-serif; color: #eaeaea; }
+.modal-search input::placeholder { color: #6a7090; }
+
+.modal-content { padding: 18px 22px 10px; overflow-y: auto; flex: 1; min-height: 0; }
+
+/* Quick Duel section blocks */
+.qd-section { margin-bottom: 18px; }
+.qd-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  justify-content: space-between; }
+.qd-section-label { font: 700 0.72rem/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #C9A84C;
+  display: flex; align-items: center; gap: 6px; }
+.qd-section-label .material-icons-round { font-size: 14px; }
+.qd-section-hint { font-size: 0.72rem; color: #6a7090; font-style: italic; }
+
+.qd-card { padding: 14px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; }
+
+.qd-toggle-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qd-toggle { padding: 11px 14px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px solid rgba(255,255,255,0.06);
+  color: #c0c0c0; font: 700 0.88rem/1 'Space Grotesk', sans-serif;
+  cursor: pointer; transition: all 200ms ease;
+  display: flex; align-items: center; justify-content: center; gap: 6px; }
+.qd-toggle:hover { border-color: rgba(255,255,255,0.18); }
+.qd-toggle.active { background: rgba(201, 168, 76, 0.12);
+  border-color: #C9A84C; color: #C9A84C; }
+.qd-toggle .material-icons-round { font-size: 16px; }
+
+.qd-row { display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06); }
+.qd-row + .qd-row { margin-top: 8px; }
+.qd-row-text { display: flex; flex-direction: column; gap: 2px; }
+.qd-row-label { font-weight: 700; font-size: 0.92rem; color: #eaeaea;
+  font-family: 'Space Grotesk', sans-serif; }
+.qd-row-desc { font-size: 0.74rem; color: #a0a8c0; }
+.qd-switch { position: relative; width: 44px; height: 24px;
+  background: rgba(255,255,255,0.1); border-radius: 12px;
+  cursor: pointer; transition: background 200ms ease; flex-shrink: 0; }
+.qd-switch::after { content: ''; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  transition: transform 200ms ease; }
+.qd-switch.on { background: #C9A84C; }
+.qd-switch.on::after { transform: translateX(20px); }
+.qd-input { background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; padding: 6px 10px; color: #eaeaea;
+  font: 500 0.92rem/1 'Inter', sans-serif; width: 80px; text-align: right;
+  outline: none; }
+.qd-input:focus { border-color: #C9A84C; }
+
+.deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px; padding-bottom: 8px; }
+.deck-card { position: relative; display: flex; flex-direction: column;
+  padding: 12px; border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  cursor: pointer; transition: all 200ms ease; overflow: hidden; }
+.deck-card:hover { background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-2px); }
+.deck-card.selected {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.04));
+  border-color: #C9A84C;
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.2); }
+.deck-card.selected::after { content: 'check'; font-family: 'Material Icons Round';
+  position: absolute; top: 8px; right: 8px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #C9A84C; color: #1a1208;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.5); }
+.deck-thumb { width: 100%; aspect-ratio: 59 / 86; border-radius: 8px;
+  background: linear-gradient(135deg, #1a1d3a, #14172e); overflow: hidden;
+  position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.5); }
+.deck-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-card-name { margin-top: 10px;
+  font: 700 0.88rem/1.2 'Space Grotesk', sans-serif;
+  color: #fff; text-align: center; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-card-meta { font-size: 0.72rem; color: #a0a8c0;
+  text-align: center; margin-top: 3px;
+  display: flex; align-items: center; justify-content: center; gap: 4px; }
+.deck-card-meta .material-icons-round { font-size: 12px; }
+
+.modal-actions { padding: 16px 22px 20px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.15); flex-wrap: wrap; }
+.modal-actions-info { font-size: 0.78rem; color: #a0a8c0;
+  display: flex; align-items: center; gap: 8px; }
+.modal-actions-info .material-icons-round { font-size: 16px; color: #C9A84C; }
+.modal-actions-buttons { display: flex; gap: 10px; }
+.btn-secondary { padding: 10px 20px; font: 600 0.88rem/1 'Space Grotesk', sans-serif;
+  background: rgba(255,255,255,0.04); color: #a0a8c0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; cursor: pointer; transition: all 200ms ease; }
+.btn-secondary:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.btn-primary { padding: 10px 24px;
+  font: 700 0.9rem/1 'Space Grotesk', sans-serif;
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208; border: none; border-radius: 8px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(201, 168, 76, 0.35);
+  transition: all 200ms ease;
+  display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary .material-icons-round { font-size: 18px; }
+.btn-primary:hover { transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(201, 168, 76, 0.5); }
+</style>
+</head>
+<body>
+
+<div class="preview-toolbar">
+  <a href="./index.html">&larr; Index</a>
+  <button class="active" id="btn-lobby" onclick="showLobby()">Lobby</button>
+  <button id="btn-modal-deck" onclick="showModal('deck')">Modale: Choisir deck</button>
+  <button id="btn-modal-solo" onclick="showModal('solo')">Modale: Quick Duel (Solo)</button>
+</div>
+
+<div class="lobby-shell">
+  <div class="lobby-bg">
+    <div class="lobby-bg-banner"></div>
+    <div class="lobby-bg-pattern"></div>
+  </div>
+
+  <div class="lobby-container">
+    <header class="lobby-hero">
+      <div class="lobby-hero-content">
+        <div class="lobby-breadcrumb">
+          <span>PvP</span>
+          <span class="lobby-breadcrumb-dot"></span>
+          <span>Lobby</span>
+        </div>
+        <h1>
+          PvP <span class="accent">Arena</span>
+          <span class="alpha-chip">ALPHA</span>
+        </h1>
+        <div class="lobby-hero-meta">
+          <span class="lobby-hero-meta-item"><span class="material-icons-round">people</span><strong>32</strong> en ligne</span>
+          <span class="lobby-hero-meta-item"><span class="material-icons-round">sports_kabaddi</span><strong>14</strong> rooms ouvertes</span>
+          <span class="lobby-hero-meta-item"><span class="material-icons-round">trending_up</span><strong>+5</strong> ce soir</span>
+        </div>
+      </div>
+      <div class="lobby-header-actions">
+        <button class="lobby-icon-btn" title="Rafraîchir"><span class="material-icons-round">refresh</span></button>
+        <button class="lobby-icon-btn" title="Vue admin">
+          <span class="material-icons-round">admin_panel_settings</span>
+          <span class="admin-dot"></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="action-bar">
+      <button class="action-tile action-tile--primary" onclick="showModal('deck')">
+        <div class="action-tile-icon"><span class="material-icons-round">add</span></div>
+        <div class="action-tile-text">
+          <div class="action-tile-title">Créer une room</div>
+          <div class="action-tile-sub">Choisis un deck et attend un challenger</div>
+        </div>
+      </button>
+      <button class="action-tile action-tile--solo" onclick="showModal('solo')">
+        <div class="action-tile-icon"><span class="material-icons-round">bolt</span></div>
+        <div class="action-tile-text">
+          <div class="action-tile-title">Quick Duel</div>
+          <div class="action-tile-sub">Solo / Mirror</div>
+        </div>
+      </button>
+      <button class="action-tile action-tile--secondary">
+        <div class="action-tile-icon"><span class="material-icons-round">qr_code_2</span></div>
+        <div class="action-tile-text">
+          <div class="action-tile-title">Code</div>
+          <div class="action-tile-sub">Rejoindre par code</div>
+        </div>
+      </button>
+    </div>
+
+    <div class="lobby-section-header">
+      <div class="lobby-section-title-group">
+        <span class="lobby-section-title">Rooms ouvertes</span>
+        <span class="lobby-section-count">14</span>
+      </div>
+      <div class="lobby-section-tools">
+        <button class="lobby-section-chip active">
+          <span class="material-icons-round">schedule</span>Plus récentes
+        </button>
+        <button class="lobby-section-chip">
+          <span class="material-icons-round">tune</span>Filtrer
+        </button>
+      </div>
+    </div>
+
+    <div class="room-list-viewport">
+      <div class="room-list">
+        <div class="room-card room-card--new">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(200, 65%, 45%), hsl(230, 70%, 30%));">A</div>
+          <div class="room-info">
+            <div class="room-creator">Axel</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>à l'instant</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn" title="Fermer la room (admin)"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(340, 65%, 45%), hsl(370, 70%, 30%));">Y
+            <span class="room-avatar-badge" title="Admin"><span class="material-icons-round">shield</span></span>
+          </div>
+          <div class="room-info">
+            <div class="room-creator">Yamuchi <span class="admin-tag">Admin</span></div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>1 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn" title="Fermer la room (admin)"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(150, 65%, 45%), hsl(180, 70%, 30%));">B</div>
+          <div class="room-info">
+            <div class="room-creator">BlueEyes_Maniac</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>3 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>3 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(25, 65%, 45%), hsl(55, 70%, 30%));">Z</div>
+          <div class="room-info">
+            <div class="room-creator">Zack</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>5 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>10 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(60, 65%, 45%), hsl(90, 70%, 30%));">K</div>
+          <div class="room-info">
+            <div class="room-creator">KaibaCorp</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>7 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(280, 65%, 45%), hsl(310, 70%, 30%));">P</div>
+          <div class="room-info">
+            <div class="room-creator">PharaohKing</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>9 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(175, 65%, 45%), hsl(200, 70%, 30%));">T</div>
+          <div class="room-info">
+            <div class="room-creator">TearGod</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>11 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(5, 65%, 45%), hsl(30, 70%, 30%));">M</div>
+          <div class="room-info">
+            <div class="room-creator">MillenniumEye</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>14 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>3 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(220, 65%, 45%), hsl(250, 70%, 30%));">S</div>
+          <div class="room-info">
+            <div class="room-creator">SnakeEyeAddict</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>18 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(120, 65%, 45%), hsl(150, 70%, 30%));">R</div>
+          <div class="room-info">
+            <div class="room-creator">Ryzeal_Player</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>22 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(50, 65%, 45%), hsl(80, 70%, 30%));">D</div>
+          <div class="room-info">
+            <div class="room-creator">DraconianForce</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>28 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>10 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(310, 65%, 45%), hsl(340, 70%, 30%));">L</div>
+          <div class="room-info">
+            <div class="room-creator">LabyrinthMaster</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>34 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(190, 65%, 45%), hsl(220, 70%, 30%));">F</div>
+          <div class="room-info">
+            <div class="room-creator">Fluffal_Frog</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>41 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>3 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar" style="background: linear-gradient(135deg, hsl(0, 65%, 45%), hsl(20, 70%, 30%));">C</div>
+          <div class="room-info">
+            <div class="room-creator">ChaosKnight</div>
+            <div class="room-meta">
+              <span class="room-meta-item"><span class="material-icons-round">schedule</span>56 min</span>
+              <span class="room-meta-item"><span class="material-icons-round">timer</span>5 min/tour</span>
+            </div>
+          </div>
+          <div class="room-status-badge"><span class="room-status-dot"></span>Ouverte</div>
+          <button class="room-admin-btn"><span class="material-icons-round">delete_outline</span></button>
+          <button class="room-join-btn">Rejoindre<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Deck picker -->
+<div class="modal-backdrop" id="modal-deck">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-top">
+        <div class="modal-title-group">
+          <span class="modal-tag"><span class="material-icons-round">add_circle</span>Étape 1/1 · Création de room</span>
+          <div class="modal-title">Choisis ton deck</div>
+          <div class="modal-subtitle">Le deck sélectionné sera verrouillé une fois la room créée</div>
+        </div>
+        <button class="modal-close" onclick="hideModal()" aria-label="Fermer">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <div class="modal-search">
+        <span class="material-icons-round">search</span>
+        <input type="text" placeholder="Rechercher un deck...">
+      </div>
+    </div>
+    <div class="modal-content">
+      <div class="deck-grid">
+        <div class="deck-card selected" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/89631139.jpg"></div><div class="deck-card-name">Blue-Eyes</div><div class="deck-card-meta"><span class="material-icons-round">style</span>40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/46986414.jpg"></div><div class="deck-card-name">Dark Magician</div><div class="deck-card-meta"><span class="material-icons-round">style</span>40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/74677422.jpg"></div><div class="deck-card-name">Red-Eyes</div><div class="deck-card-meta"><span class="material-icons-round">style</span>42 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/10000000.jpg"></div><div class="deck-card-name">Egyptian Gods</div><div class="deck-card-meta"><span class="material-icons-round">style</span>45 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/65367484.jpg"></div><div class="deck-card-name">Tearlaments</div><div class="deck-card-meta"><span class="material-icons-round">style</span>40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/9748752.jpg"></div><div class="deck-card-name">Snake-Eye</div><div class="deck-card-meta"><span class="material-icons-round">style</span>41 cartes</div></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <div class="modal-actions-info">
+        <span class="material-icons-round">info</span>
+        Tu pourras quitter avant le début du duel
+      </div>
+      <div class="modal-actions-buttons">
+        <button class="btn-secondary" onclick="hideModal()">Annuler</button>
+        <button class="btn-primary">Créer la room<span class="material-icons-round">arrow_forward</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Quick Duel (Solo) -->
+<div class="modal-backdrop" id="modal-solo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-header-top">
+        <div class="modal-title-group">
+          <span class="modal-tag"><span class="material-icons-round">bolt</span>Quick Duel · Solo</span>
+          <div class="modal-title">Configure ton duel local</div>
+          <div class="modal-subtitle">Tu contrôleras les deux joueurs — idéal pour tester un combo ou un matchup</div>
+        </div>
+        <button class="modal-close" onclick="hideModal()" aria-label="Fermer">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+    </div>
+    <div class="modal-content">
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <span class="qd-section-label"><span class="material-icons-round">style</span>Decks</span>
+          <span class="qd-section-hint">Sélectionne un deck pour chaque joueur</span>
+        </div>
+        <div class="qd-card">
+          <div class="qd-toggle-group" style="margin-bottom: 12px;">
+            <button class="qd-toggle active"><span class="material-icons-round">person</span>Joueur 1 · Blue-Eyes</button>
+            <button class="qd-toggle"><span class="material-icons-round">person_outline</span>Joueur 2 · (miroir)</button>
+          </div>
+          <div class="deck-grid">
+            <div class="deck-card selected" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/89631139.jpg"></div><div class="deck-card-name">Blue-Eyes</div><div class="deck-card-meta"><span class="material-icons-round">style</span>40</div></div>
+            <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/46986414.jpg"></div><div class="deck-card-name">Dark Magician</div><div class="deck-card-meta"><span class="material-icons-round">style</span>40</div></div>
+            <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/65367484.jpg"></div><div class="deck-card-name">Tearlaments</div><div class="deck-card-meta"><span class="material-icons-round">style</span>40</div></div>
+            <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/9748752.jpg"></div><div class="deck-card-name">Snake-Eye</div><div class="deck-card-meta"><span class="material-icons-round">style</span>41</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <span class="qd-section-label"><span class="material-icons-round">flag</span>Premier joueur</span>
+          <span class="qd-section-hint">Qui commence ?</span>
+        </div>
+        <div class="qd-toggle-group">
+          <button class="qd-toggle active"><span class="material-icons-round">looks_one</span>Joueur 1</button>
+          <button class="qd-toggle"><span class="material-icons-round">looks_two</span>Joueur 2</button>
+        </div>
+      </div>
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <span class="qd-section-label"><span class="material-icons-round">tune</span>Options</span>
+        </div>
+        <div>
+          <div class="qd-row">
+            <div class="qd-row-text">
+              <span class="qd-row-label">Main aléatoire</span>
+              <span class="qd-row-desc">Mélange le deck avant la pioche initiale</span>
+            </div>
+            <div class="qd-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="qd-row">
+            <div class="qd-row-text">
+              <span class="qd-row-label">Temps par tour</span>
+              <span class="qd-row-desc">Entre 30 et 3600 secondes</span>
+            </div>
+            <input type="number" class="qd-input" value="300" min="30" max="3600">
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <div class="modal-actions-info">
+        <span class="material-icons-round">info</span>
+        Aucune room n'est créée pour le mode solo
+      </div>
+      <div class="modal-actions-buttons">
+        <button class="btn-secondary" onclick="hideModal()">Annuler</button>
+        <button class="btn-primary">Lancer le duel<span class="material-icons-round">play_arrow</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showLobby() {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.getElementById('btn-lobby').classList.add('active');
+  document.getElementById('btn-modal-deck').classList.remove('active');
+  document.getElementById('btn-modal-solo').classList.remove('active');
+}
+function showModal(kind) {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.getElementById('btn-lobby').classList.remove('active');
+  document.getElementById('btn-modal-deck').classList.remove('active');
+  document.getElementById('btn-modal-solo').classList.remove('active');
+  if (kind === 'deck') {
+    document.getElementById('modal-deck').classList.add('open');
+    document.getElementById('btn-modal-deck').classList.add('active');
+  } else {
+    document.getElementById('modal-solo').classList.add('open');
+    document.getElementById('btn-modal-solo').classList.add('active');
+  }
+}
+function hideModal() { showLobby(); }
+function selectDeck(el) {
+  const grid = el.closest('.deck-grid');
+  grid.querySelectorAll('.deck-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+</script>
+</body>
+</html>

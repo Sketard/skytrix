@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup 2 — Millennium Ritual</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0d0a05;
+  color: #ebe0c8;
+  overflow-x: hidden;
+}
+.material-icons-round { font-family: 'Material Icons Round'; user-select: none; }
+
+.preview-toolbar { position: fixed; top: 12px; right: 12px; display: flex; gap: 6px;
+  z-index: 100; background: rgba(20, 15, 5, 0.85); padding: 6px; border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.2); backdrop-filter: blur(10px); flex-wrap: wrap; max-width: calc(100vw - 24px); }
+.preview-toolbar a, .preview-toolbar button { font: inherit; font-size: 0.78rem;
+  font-weight: 600; padding: 6px 10px; border-radius: 6px; background: transparent;
+  color: #b0a080; border: none; cursor: pointer; text-decoration: none; }
+.preview-toolbar .active { background: rgba(201, 168, 76, 0.2); color: #ffd96b; }
+
+.lobby-shell { position: relative; min-height: 100vh; isolation: isolate;
+  padding: 32px 16px 40px; }
+.lobby-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0%, #2a1f0a 0%, #1a1208 30%, #0d0a05 70%),
+    #0d0a05;
+}
+.lobby-bg-glyphs { position: absolute; inset: 0; opacity: 0.04;
+  background-image:
+    radial-gradient(circle at 20% 30%, #C9A84C 0px, transparent 1.5px),
+    radial-gradient(circle at 80% 70%, #C9A84C 0px, transparent 1.5px),
+    radial-gradient(circle at 50% 90%, #C9A84C 0px, transparent 1.5px);
+  background-size: 60px 60px, 80px 80px, 100px 100px;
+}
+.lobby-bg-vignette { position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.6) 100%); }
+.lobby-bg-glow { position: absolute; border-radius: 50%; filter: blur(100px); }
+.lobby-bg-glow--top { top: -25%; left: 50%; transform: translateX(-50%);
+  width: 80vw; height: 60vw; max-width: 700px; max-height: 500px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.45), transparent 65%); opacity: 0.6; }
+.lobby-bg-eye {
+  position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
+  width: min(320px, 60vw); height: min(320px, 60vw); opacity: 0.06;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%23C9A84C' stroke-width='1.5'><circle cx='50' cy='50' r='38'/><circle cx='50' cy='50' r='28'/><circle cx='50' cy='50' r='8' fill='%23C9A84C'/><path d='M50 4 L52 50 L50 96 L48 50 Z' fill='%23C9A84C'/><path d='M4 50 L50 52 L96 50 L50 48 Z' fill='%23C9A84C'/></svg>") center/contain no-repeat;
+  animation: eye-pulse 6s ease-in-out infinite;
+}
+@keyframes eye-pulse {
+  0%, 100% { opacity: 0.05; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.10; transform: translateX(-50%) scale(1.05); }
+}
+
+.lobby-container { position: relative; display: flex; flex-direction: column; gap: 24px;
+  max-width: 580px; margin: 0 auto; }
+
+/* Header */
+.lobby-header { display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 16px 0 8px; position: relative; text-align: center; }
+.lobby-header::before, .lobby-header::after {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 1px;
+  background: linear-gradient(to right, transparent, #C9A84C, transparent);
+}
+.lobby-header::before { top: 0; }
+.lobby-header::after { bottom: 0; }
+.lobby-header h1 {
+  font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 700;
+  letter-spacing: 0.15em; color: #C9A84C;
+  text-shadow: 0 0 20px rgba(201, 168, 76, 0.5);
+  display: flex; align-items: center; gap: 14px;
+}
+.lobby-header h1 .ornament { color: #C9A84C; font-size: 1.4rem; opacity: 0.8; }
+.lobby-subtitle { font-family: 'Cinzel', serif; font-size: 0.7rem;
+  letter-spacing: 0.4em; text-transform: uppercase; color: #b0a080;
+  margin-top: 4px; }
+.alpha-chip { display: inline-block; font-size: 0.55rem; font-weight: 700;
+  letter-spacing: 0.2em; color: #C9A84C; background: rgba(201, 168, 76, 0.12);
+  padding: 3px 10px; border-radius: 2px; line-height: 1;
+  border: 1px solid rgba(201, 168, 76, 0.4); margin-top: 6px; }
+
+.lobby-header-actions { position: absolute; top: 12px; right: 0; display: flex; gap: 4px; }
+.lobby-icon-btn { width: 40px; height: 40px; border-radius: 50%; background: transparent;
+  border: 1px solid rgba(201, 168, 76, 0.2); cursor: pointer; color: #b0a080;
+  transition: all 200ms ease; display: flex; align-items: center; justify-content: center;
+  position: relative; }
+.lobby-icon-btn:hover { color: #ffd96b; border-color: rgba(201, 168, 76, 0.6);
+  background: rgba(201, 168, 76, 0.1); }
+.lobby-icon-btn .admin-dot { position: absolute; top: 4px; right: 4px;
+  width: 7px; height: 7px; border-radius: 50%; background: #ff5252;
+  box-shadow: 0 0 4px rgba(255, 82, 82, 0.7); }
+
+/* CTA row — primary ritual + secondary solo */
+.cta-row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 480px) { .cta-row { grid-template-columns: 1.4fr 1fr; } }
+
+.lobby-cta { position: relative; min-height: 62px; padding: 0 24px;
+  font: 700 0.95rem/1 'Cinzel', serif;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  cursor: pointer; overflow: hidden;
+  transition: all 200ms ease;
+  display: flex; align-items: center; justify-content: center; gap: 14px; }
+
+.lobby-cta--primary {
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#1a1208, #1a1208) padding-box,
+    linear-gradient(135deg, #d4b25a, #C9A84C, #8a6a20, #C9A84C, #d4b25a) border-box;
+  color: #ffd96b;
+  box-shadow:
+    0 0 0 1px rgba(201, 168, 76, 0.2),
+    0 8px 32px rgba(201, 168, 76, 0.2),
+    inset 0 0 40px rgba(201, 168, 76, 0.08);
+}
+.lobby-cta--primary::before, .lobby-cta--primary::after { content: ''; width: 8px; height: 8px;
+  border: 1px solid #C9A84C; transform: rotate(45deg); opacity: 0.7; flex-shrink: 0; }
+.lobby-cta--primary:hover { color: #ffe9a8;
+  box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.4),
+    0 12px 40px rgba(201, 168, 76, 0.35),
+    inset 0 0 60px rgba(201, 168, 76, 0.12); }
+
+.lobby-cta--solo {
+  border-radius: 4px;
+  border: 1px dashed rgba(201, 168, 76, 0.4);
+  background: rgba(40, 28, 10, 0.4);
+  color: #C9A84C;
+  font-size: 0.85rem;
+}
+.lobby-cta--solo:hover { border-color: rgba(201, 168, 76, 0.8);
+  background: rgba(60, 42, 14, 0.5); color: #ffd96b;
+  box-shadow: 0 0 20px rgba(201, 168, 76, 0.2); }
+.lobby-cta--solo .material-icons-round { font-size: 20px; }
+
+.lobby-cta-label { display: flex; align-items: center; gap: 10px; }
+.lobby-cta .material-icons-round { font-size: 22px; }
+
+/* Section header */
+.lobby-section-header { display: flex; align-items: center; justify-content: center;
+  gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+.lobby-section-title { font: 600 0.85rem/1 'Cinzel', serif;
+  letter-spacing: 0.3em; text-transform: uppercase; color: #C9A84C; }
+.lobby-section-line { flex: 0 0 60px; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.6), transparent); }
+.lobby-section-count { font-size: 0.75rem; font-weight: 700; color: #1a1208;
+  background: #C9A84C; padding: 2px 8px; border-radius: 2px; margin-left: 4px; }
+.lobby-section-filter { font: 600 0.7rem/1 'Cinzel', serif;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #b0a080; background: transparent;
+  border: 1px solid rgba(201, 168, 76, 0.3); padding: 6px 12px;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.lobby-section-filter:hover { color: #ffd96b; border-color: #C9A84C; }
+.lobby-section-filter .material-icons-round { font-size: 16px; }
+
+/* Virtual scroll viewport */
+.room-list-viewport { max-height: 65vh; overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 4px; }
+.room-list-viewport::-webkit-scrollbar { width: 8px; }
+.room-list-viewport::-webkit-scrollbar-track { background: transparent; }
+.room-list-viewport::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.3); border-radius: 2px; }
+.room-list-viewport::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 76, 0.5); }
+
+/* Room cards — cartouche */
+.room-list { display: flex; flex-direction: column; gap: 14px; }
+.room-card { position: relative;
+  display: grid; grid-template-columns: auto 1fr auto auto;
+  align-items: center; gap: 14px; padding: 16px 20px;
+  background:
+    linear-gradient(135deg, rgba(40, 28, 10, 0.7) 0%, rgba(25, 18, 6, 0.7) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: 2px;
+  transition: all 250ms ease;
+  overflow: hidden;
+}
+.room-card::before, .room-card::after {
+  content: ''; position: absolute; width: 12px; height: 12px;
+  border: 1.5px solid #C9A84C; opacity: 0.6;
+}
+.room-card::before { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+.room-card::after { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+.room-card:hover { border-color: rgba(201, 168, 76, 0.6);
+  background: linear-gradient(135deg, rgba(60, 42, 14, 0.7), rgba(40, 28, 10, 0.7));
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 32px rgba(201, 168, 76, 0.1); }
+.room-card:hover::before, .room-card:hover::after { opacity: 1; }
+.room-card:hover .room-admin-btn { opacity: 1; pointer-events: auto; }
+.room-card--new { animation: room-card-new 600ms ease-out; }
+@keyframes room-card-new {
+  from { opacity: 0; transform: scale(0.96);
+    box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.7), 0 0 40px rgba(201, 168, 76, 0.4); }
+}
+
+.room-avatar { width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 1.1rem/1 'Cinzel', serif; color: #1a1208;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 50%),
+    linear-gradient(135deg, #d4b25a, #C9A84C);
+  border: 2px solid #C9A84C;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px rgba(201, 168, 76, 0.15),
+    0 4px 12px rgba(0,0,0,0.4);
+  flex-shrink: 0; position: relative;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+.room-avatar-badge { position: absolute; bottom: -2px; right: -2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #1a1208; color: #ffd96b;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #C9A84C; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+.room-avatar-badge .material-icons-round { font-size: 10px; }
+
+.room-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.room-info-top { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; min-width: 0; }
+.room-creator { font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.05rem;
+  letter-spacing: 0.04em; color: #ffd96b;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-time { font-size: 0.72rem; color: #8a7a5a;
+  letter-spacing: 0.1em; text-transform: uppercase; flex-shrink: 0; }
+.room-status { display: flex; align-items: center; gap: 8px;
+  font-size: 0.8rem; color: #a09078; }
+.room-status-dot { width: 7px; height: 7px; border-radius: 50%;
+  background: #C9A84C; box-shadow: 0 0 8px rgba(201, 168, 76, 0.8);
+  position: relative; flex-shrink: 0; }
+.room-status-dot::after { content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  background: rgba(201, 168, 76, 0.4);
+  animation: pulse-dot 1.8s ease-in-out infinite; }
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.8); opacity: 0; }
+}
+
+.room-join-btn { min-height: 38px; padding: 0 16px;
+  font: 700 0.74rem/1 'Cinzel', serif; letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: transparent; color: #C9A84C;
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  border-radius: 2px; cursor: pointer; transition: all 200ms ease;
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.room-join-btn .material-icons-round { font-size: 16px; }
+.room-join-btn:hover { background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208; border-color: #C9A84C;
+  box-shadow: 0 0 24px rgba(201, 168, 76, 0.4); }
+
+.room-admin-btn { width: 30px; height: 30px;
+  background: transparent; border: 1px solid rgba(201, 168, 76, 0.2);
+  color: #8a7a5a; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: all 200ms ease; flex-shrink: 0; pointer-events: none;
+  border-radius: 2px; }
+.room-admin-btn:hover { background: rgba(255, 82, 82, 0.15);
+  border-color: rgba(255, 82, 82, 0.5); color: #ff8a8a; }
+.room-admin-btn .material-icons-round { font-size: 16px; }
+
+/* ============================================================
+   MODAL — Ritual scroll style
+   ============================================================ */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px); display: none; align-items: center;
+  justify-content: center; z-index: 200; padding: 16px; }
+.modal-backdrop.open { display: flex; }
+.modal { width: min(620px, 92vw); max-height: 88vh;
+  border-radius: 4px; overflow: hidden;
+  background: linear-gradient(160deg, #1a1208 0%, #14100a 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+  box-shadow:
+    0 0 0 1px #C9A84C,
+    0 0 0 2px rgba(201, 168, 76, 0.4),
+    0 24px 80px rgba(0,0,0,0.7),
+    inset 0 0 60px rgba(201, 168, 76, 0.05);
+  display: flex; flex-direction: column;
+  animation: modal-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.modal::before, .modal::after {
+  content: ''; position: absolute; width: 20px; height: 20px;
+  border: 2px solid #C9A84C; z-index: 1;
+}
+.modal::before { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+.modal::after { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(20px) scale(0.96); } }
+
+.modal-header { padding: 28px 28px 20px; border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+  text-align: center; position: relative; }
+.modal-title { font: 700 1.5rem/1.2 'Cinzel', serif;
+  letter-spacing: 0.12em; color: #ffd96b;
+  text-shadow: 0 0 20px rgba(201, 168, 76, 0.4);
+  display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.modal-title .ornament { color: #C9A84C; opacity: 0.7; font-size: 1.2rem; }
+.modal-subtitle { font: 600 0.7rem/1 'Cinzel', serif;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  color: #a09078; margin-top: 8px; }
+
+.modal-search { display: flex; align-items: center; gap: 10px;
+  margin: 18px auto 0; padding: 10px 14px; max-width: 360px;
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: 2px;
+  transition: all 200ms ease; }
+.modal-search:focus-within { border-color: rgba(201, 168, 76, 0.6);
+  background: rgba(201, 168, 76, 0.1); }
+.modal-search .material-icons-round { color: #C9A84C; font-size: 18px; opacity: 0.7; }
+.modal-search input { background: transparent; border: none; outline: none;
+  flex: 1; font: 400 0.85rem/1 'Inter', sans-serif; color: #ebe0c8;
+  letter-spacing: 0.04em; }
+.modal-search input::placeholder { color: #6e6048; font-style: italic; }
+
+.modal-content { padding: 20px 24px 12px; overflow-y: auto; flex: 1; min-height: 0; }
+
+/* Quick Duel sections */
+.qd-section { margin-bottom: 20px; }
+.qd-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  justify-content: center; }
+.qd-section-label { font: 700 0.72rem/1 'Cinzel', serif;
+  letter-spacing: 0.25em; text-transform: uppercase; color: #C9A84C; }
+.qd-section-line { flex: 0 0 40px; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.4), transparent); }
+.qd-toggle-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qd-toggle { padding: 12px 14px;
+  background: rgba(201, 168, 76, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  color: #a09078;
+  font: 600 0.82rem/1 'Cinzel', serif; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: all 200ms ease;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 2px; }
+.qd-toggle:hover { border-color: rgba(201, 168, 76, 0.5); color: #C9A84C; }
+.qd-toggle.active { background: linear-gradient(135deg, rgba(201, 168, 76, 0.25), rgba(201, 168, 76, 0.1));
+  border-color: #C9A84C; color: #ffd96b;
+  box-shadow: 0 0 20px rgba(201, 168, 76, 0.2); }
+.qd-toggle .material-icons-round { font-size: 16px; }
+
+.qd-row { display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  background: rgba(201, 168, 76, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.2); border-radius: 2px; }
+.qd-row-text { display: flex; flex-direction: column; gap: 2px; }
+.qd-row-label { font: 600 0.92rem/1 'Cinzel', serif; color: #ffd96b; letter-spacing: 0.03em; }
+.qd-row-desc { font-size: 0.72rem; color: #a09078; }
+.qd-switch { position: relative; width: 44px; height: 24px;
+  background: rgba(201, 168, 76, 0.15); border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 12px; cursor: pointer; transition: all 200ms ease; flex-shrink: 0; }
+.qd-switch::after { content: ''; position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #C9A84C; transition: transform 200ms ease; }
+.qd-switch.on { background: rgba(201, 168, 76, 0.4); border-color: #C9A84C; }
+.qd-switch.on::after { transform: translateX(20px); background: #ffd96b; }
+.qd-input { background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  border-radius: 2px; padding: 6px 10px; color: #ffd96b;
+  font: 500 0.9rem/1 'Cinzel', serif; width: 80px; text-align: right;
+  outline: none; }
+.qd-input:focus { border-color: #C9A84C; }
+
+.qd-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; }
+.qd-divider::before, .qd-divider::after { content: ''; flex: 1; height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.4), transparent); }
+.qd-divider span { color: #C9A84C; opacity: 0.6; }
+
+.deck-grid { display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 14px; padding-bottom: 8px; }
+.deck-card { position: relative; display: flex; flex-direction: column;
+  padding: 10px; border-radius: 2px;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  background: rgba(201, 168, 76, 0.04);
+  cursor: pointer; transition: all 200ms ease; overflow: hidden; }
+.deck-card:hover { background: rgba(201, 168, 76, 0.1);
+  border-color: rgba(201, 168, 76, 0.5);
+  transform: translateY(-2px); }
+.deck-card.selected {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.2), rgba(201, 168, 76, 0.06));
+  border-color: #C9A84C;
+  box-shadow: 0 0 24px rgba(201, 168, 76, 0.3),
+              inset 0 0 30px rgba(201, 168, 76, 0.1); }
+.deck-card.selected::after { content: 'check_circle'; font-family: 'Material Icons Round';
+  position: absolute; top: 8px; right: 8px; color: #ffd96b;
+  font-size: 22px; filter: drop-shadow(0 0 6px rgba(201, 168, 76, 0.6)); }
+.deck-thumb { width: 100%; aspect-ratio: 59 / 86; border-radius: 2px;
+  background: #1a1208; overflow: hidden; position: relative;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+.deck-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-card-name { margin-top: 10px;
+  font: 600 0.85rem/1.2 'Cinzel', serif;
+  color: #ffd96b; text-align: center;
+  letter-spacing: 0.03em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-card-meta { font-size: 0.7rem; color: #8a7a5a;
+  text-align: center; margin-top: 4px;
+  letter-spacing: 0.1em; text-transform: uppercase; }
+
+.modal-actions { padding: 16px 24px 20px;
+  display: flex; justify-content: center; gap: 12px;
+  border-top: 1px solid rgba(201, 168, 76, 0.15); }
+.btn-secondary { padding: 10px 24px;
+  font: 600 0.78rem/1 'Cinzel', serif;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  background: transparent; color: #a09078;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: 2px; cursor: pointer; transition: all 200ms ease; }
+.btn-secondary:hover { color: #ebe0c8; border-color: rgba(201, 168, 76, 0.5); }
+.btn-primary { padding: 10px 28px;
+  font: 700 0.8rem/1 'Cinzel', serif;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208; border: 1px solid #C9A84C; border-radius: 2px;
+  cursor: pointer; box-shadow: 0 4px 14px rgba(201, 168, 76, 0.4);
+  transition: all 200ms ease; }
+.btn-primary:hover { transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(201, 168, 76, 0.6); }
+</style>
+</head>
+<body>
+
+<div class="preview-toolbar">
+  <a href="./index.html">&larr; Index</a>
+  <button class="active" id="btn-lobby" onclick="showLobby()">Lobby</button>
+  <button id="btn-modal-deck" onclick="showModal('deck')">Modale: Choisir deck</button>
+  <button id="btn-modal-solo" onclick="showModal('solo')">Modale: Quick Duel (Solo)</button>
+</div>
+
+<div class="lobby-shell">
+  <div class="lobby-bg">
+    <div class="lobby-bg-glyphs"></div>
+    <div class="lobby-bg-eye"></div>
+    <div class="lobby-bg-vignette"></div>
+    <div class="lobby-bg-glow lobby-bg-glow--top"></div>
+  </div>
+
+  <div class="lobby-container">
+    <header class="lobby-header">
+      <h1><span class="ornament">◆</span>Arène PvP<span class="ornament">◆</span></h1>
+      <span class="lobby-subtitle">L'ombre du défi t'attend</span>
+      <span class="alpha-chip">ALPHA</span>
+      <div class="lobby-header-actions">
+        <button class="lobby-icon-btn" title="Rafraîchir"><span class="material-icons-round">refresh</span></button>
+        <button class="lobby-icon-btn" title="Vue admin">
+          <span class="material-icons-round">shield</span>
+          <span class="admin-dot"></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="cta-row">
+      <button class="lobby-cta lobby-cta--primary" onclick="showModal('deck')">
+        <span class="lobby-cta-label">
+          <span class="material-icons-round">add</span>
+          Invoquer une room
+        </span>
+      </button>
+      <button class="lobby-cta lobby-cta--solo" onclick="showModal('solo')">
+        <span class="material-icons-round">flash_on</span>
+        Duel solo
+      </button>
+    </div>
+
+    <div class="lobby-section-header">
+      <div class="lobby-section-line"></div>
+      <span class="lobby-section-title">Duels en attente</span>
+      <span class="lobby-section-count">14</span>
+      <div class="lobby-section-line"></div>
+      <button class="lobby-section-filter">
+        <span class="material-icons-round">filter_list</span>
+        Trier
+      </button>
+    </div>
+
+    <div class="room-list-viewport">
+      <div class="room-list">
+        <div class="room-card room-card--new">
+          <div class="room-avatar">A</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Axel</span><span class="room-time">à l'instant</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn" title="Bannir la room (admin)"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">Y
+            <span class="room-avatar-badge" title="Admin"><span class="material-icons-round">shield</span></span>
+          </div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Yamuchi</span><span class="room-time">1 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">B</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">BlueEyes_Maniac</span><span class="room-time">3 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">Z</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Zack</span><span class="room-time">5 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">K</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">KaibaCorp</span><span class="room-time">7 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">P</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">PharaohKing</span><span class="room-time">9 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">T</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">TearGod</span><span class="room-time">11 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">M</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">MillenniumEye</span><span class="room-time">14 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">S</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">SnakeEyeAddict</span><span class="room-time">18 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">R</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Ryzeal_Player</span><span class="room-time">22 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">D</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">DraconianForce</span><span class="room-time">28 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">L</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">LabyrinthMaster</span><span class="room-time">34 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">F</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">Fluffal_Frog</span><span class="room-time">41 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+
+        <div class="room-card">
+          <div class="room-avatar">C</div>
+          <div class="room-info">
+            <div class="room-info-top"><span class="room-creator">ChaosKnight</span><span class="room-time">56 min</span></div>
+            <div class="room-status"><span class="room-status-dot"></span><span class="room-status-text">Attend un adversaire</span></div>
+          </div>
+          <button class="room-admin-btn"><span class="material-icons-round">block</span></button>
+          <button class="room-join-btn">Défier<span class="material-icons-round">arrow_forward</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Deck picker -->
+<div class="modal-backdrop" id="modal-deck">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><span class="ornament">◆</span>Choisis ton deck<span class="ornament">◆</span></div>
+      <div class="modal-subtitle">Le grimoire des duellistes</div>
+      <div class="modal-search">
+        <span class="material-icons-round">search</span>
+        <input type="text" placeholder="Rechercher un deck...">
+      </div>
+    </div>
+    <div class="modal-content">
+      <div class="deck-grid">
+        <div class="deck-card selected" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/89631139.jpg"></div><div class="deck-card-name">Blue-Eyes</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/46986414.jpg"></div><div class="deck-card-name">Dark Magician</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/74677422.jpg"></div><div class="deck-card-name">Red-Eyes</div><div class="deck-card-meta">42 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/10000000.jpg"></div><div class="deck-card-name">Egyptian Gods</div><div class="deck-card-meta">45 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/65367484.jpg"></div><div class="deck-card-name">Tearlaments</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/9748752.jpg"></div><div class="deck-card-name">Snake-Eye</div><div class="deck-card-meta">41 cartes</div></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal()">Annuler</button>
+      <button class="btn-primary">Sceller le pacte</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Quick Duel (Solo) -->
+<div class="modal-backdrop" id="modal-solo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><span class="ornament">◆</span>Duel solitaire<span class="ornament">◆</span></div>
+      <div class="modal-subtitle">Affronte ton propre reflet</div>
+    </div>
+    <div class="modal-content">
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <div class="qd-section-line"></div>
+          <span class="qd-section-label">Decks des duellistes</span>
+          <div class="qd-section-line"></div>
+        </div>
+        <div class="qd-toggle-group">
+          <button class="qd-toggle active"><span class="material-icons-round">person</span>Joueur 1</button>
+          <button class="qd-toggle"><span class="material-icons-round">person_outline</span>Joueur 2 (miroir)</button>
+        </div>
+      </div>
+
+      <div class="deck-grid">
+        <div class="deck-card selected" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/89631139.jpg"></div><div class="deck-card-name">Blue-Eyes</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/46986414.jpg"></div><div class="deck-card-name">Dark Magician</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/65367484.jpg"></div><div class="deck-card-name">Tearlaments</div><div class="deck-card-meta">40 cartes</div></div>
+        <div class="deck-card" onclick="selectDeck(this)"><div class="deck-thumb"><img src="https://images.ygoprodeck.com/images/cards_small/9748752.jpg"></div><div class="deck-card-name">Snake-Eye</div><div class="deck-card-meta">41 cartes</div></div>
+      </div>
+
+      <div class="qd-divider"><span>◆</span></div>
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <div class="qd-section-line"></div>
+          <span class="qd-section-label">Premier à invoquer</span>
+          <div class="qd-section-line"></div>
+        </div>
+        <div class="qd-toggle-group">
+          <button class="qd-toggle active"><span class="material-icons-round">flag</span>Joueur 1</button>
+          <button class="qd-toggle"><span class="material-icons-round">flag</span>Joueur 2</button>
+        </div>
+      </div>
+
+      <div class="qd-section">
+        <div class="qd-section-header">
+          <div class="qd-section-line"></div>
+          <span class="qd-section-label">Rituels optionnels</span>
+          <div class="qd-section-line"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="qd-row">
+            <div class="qd-row-text">
+              <span class="qd-row-label">Main aléatoire</span>
+              <span class="qd-row-desc">Mélanger le deck avant la pioche</span>
+            </div>
+            <div class="qd-switch on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="qd-row">
+            <div class="qd-row-text">
+              <span class="qd-row-label">Temps par tour</span>
+              <span class="qd-row-desc">30 — 3600 secondes</span>
+            </div>
+            <input type="number" class="qd-input" value="300" min="30" max="3600">
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="hideModal()">Annuler</button>
+      <button class="btn-primary">Commencer le rituel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showLobby() {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.getElementById('btn-lobby').classList.add('active');
+  document.getElementById('btn-modal-deck').classList.remove('active');
+  document.getElementById('btn-modal-solo').classList.remove('active');
+}
+function showModal(kind) {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.getElementById('btn-lobby').classList.remove('active');
+  document.getElementById('btn-modal-deck').classList.remove('active');
+  document.getElementById('btn-modal-solo').classList.remove('active');
+  if (kind === 'deck') {
+    document.getElementById('modal-deck').classList.add('open');
+    document.getElementById('btn-modal-deck').classList.add('active');
+  } else {
+    document.getElementById('modal-solo').classList.add('open');
+    document.getElementById('btn-modal-solo').classList.add('active');
+  }
+}
+function hideModal() { showLobby(); }
+function selectDeck(el) {
+  const grid = el.closest('.deck-grid');
+  grid.querySelectorAll('.deck-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+</script>
+</body>
+</html>
