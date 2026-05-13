@@ -108,7 +108,16 @@
       <div *cdkVirtualFor="let room of filteredRooms(); trackBy: trackByRoomCode"
            class="room-card"
            [class.room-card--new]="isNewRoom(room.roomCode)">
-        <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
+        <div class="room-avatar-wrap">
+          <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
+          @if (room.player1.role === 'ADMIN') {
+            <span class="room-admin-badge"
+                  [attr.aria-label]="'lobby.adminBadge' | translate"
+                  [matTooltip]="'lobby.adminBadge' | translate">
+              <mat-icon>shield</mat-icon>
+            </span>
+          }
+        </div>
         <div class="room-info">
           <div class="room-info-top">
             <span class="room-creator">{{ room.player1.pseudo }}</span>
@@ -119,6 +128,20 @@
             <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
           </div>
         </div>
+        @if (isAdmin()) {
+          <button type="button"
+                  class="room-admin-delete"
+                  [attr.aria-label]="'lobby.adminDeleteRoom' | translate"
+                  [matTooltip]="'lobby.adminDeleteRoom' | translate"
+                  [disabled]="deletingRoomCode() !== null"
+                  (click)="adminDeleteRoom(room, $event)">
+            @if (deletingRoomCode() === room.roomCode) {
+              <mat-progress-spinner mode="indeterminate" diameter="16"></mat-progress-spinner>
+            } @else {
+              <mat-icon>delete_outline</mat-icon>
+            }
+          </button>
+        }
         <button mat-raised-button
                 class="room-join-btn"
                 [disabled]="joiningRoomCode() !== null"

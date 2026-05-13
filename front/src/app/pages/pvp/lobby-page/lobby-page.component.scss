@@ -364,10 +364,12 @@
 .room-card {
   position: relative;
   display: grid;
+  // Mobile (default) — admin trash (last col, auto-collapsed when absent)
+  // sits beside the avatar so it doesn't crowd the stacked CTA row.
   grid-template-columns: auto 1fr auto;
   grid-template-areas:
-    'avatar info'
-    'join   join';
+    'avatar info trash'
+    'join   join join';
   align-items: center;
   gap: 10px 12px;
   margin-bottom: 12px;
@@ -383,13 +385,14 @@
               box-shadow var(--transition-normal) var(--ease-inout);
   overflow: hidden;
 
-  > .room-avatar { grid-area: avatar; }
+  > .room-avatar-wrap { grid-area: avatar; }
   > .room-info { grid-area: info; }
   > .room-join-btn { grid-area: join; }
+  > .room-admin-delete { grid-area: trash; }
 
   @media (min-width: 480px) {
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas: 'avatar info join';
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas: 'avatar info trash join';
     gap: 14px;
     padding: 14px 16px;
   }
@@ -421,6 +424,87 @@
 
   &--new {
     animation: room-card-new 600ms var(--ease-out);
+  }
+
+  // Reveal the admin trash on row hover/focus. Keyboard users get it as
+  // soon as they tab onto the button (focus-within) — they don't need
+  // hover to opt-in.
+  .room-admin-delete {
+    opacity: 0;
+    transition: opacity var(--transition-fast, 120ms) var(--ease-inout);
+  }
+  &:hover .room-admin-delete,
+  &:focus-within .room-admin-delete {
+    opacity: 1;
+  }
+}
+
+// ── Admin badge (creator avatar shield) ────────────────────────────────────
+.room-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.room-admin-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  color: #1a1208;
+  border: 2px solid rgba(15, 15, 28, 0.92);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+
+  mat-icon {
+    font-size: 11px !important;
+    width: 11px !important;
+    height: 11px !important;
+    line-height: 11px;
+  }
+}
+
+// ── Admin force-close trash button (hover-revealed) ────────────────────────
+.room-admin-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgba(255, 82, 82, 0.06);
+  color: rgba(255, 120, 120, 0.85);
+  cursor: pointer;
+  transition: background var(--transition-fast, 120ms) var(--ease-inout),
+              border-color var(--transition-fast, 120ms) var(--ease-inout),
+              color var(--transition-fast, 120ms) var(--ease-inout),
+              opacity var(--transition-fast, 120ms) var(--ease-inout);
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 82, 82, 0.16);
+    border-color: rgba(255, 82, 82, 0.45);
+    color: #ff7777;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 82, 82, 0.6);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+
+  mat-icon {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 }
 

@@ -7,8 +7,10 @@ import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../services/auth.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
 import { RoomDTO } from '../room.types';
@@ -39,7 +41,7 @@ const ROOM_CARD_ITEM_SIZE_PX = 104;
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatButton, MatIcon, MatProgressSpinner,
+    MatButton, MatIcon, MatProgressSpinner, MatTooltipModule,
     ScrollingModule,
     RelativeTimePipe, TranslatePipe,
     AvatarComponent, RoomCardSkeletonComponent,
@@ -51,6 +53,16 @@ export class LobbyPageComponent implements OnInit {
   private readonly roomApi = inject(RoomApiService);
   private readonly notify = inject(NotificationService);
   private readonly dialog = inject(MatDialog);
+  private readonly auth = inject(AuthService);
+
+  // Admin gate for the force-close trash button + admin badge on creator
+  // avatars. Read as a computed off the auth signal so role changes
+  // (logout → login) flip the UI without a manual refresh.
+  readonly isAdmin = computed(() => this.auth.user()?.role === 'ADMIN');
+
+  // Pending DELETE — disables the trash buttons + suppresses re-clicks while
+  // we wait for the back to confirm + the SSE `removed` diff to land.
+  readonly deletingRoomCode = signal<string | null>(null);
 
   readonly roomCardItemSize = ROOM_CARD_ITEM_SIZE_PX;
   readonly rooms = signal<RoomDTO[]>([]);
@@ -264,6 +276,27 @@ export class LobbyPageComponent implements OnInit {
 
   trackByRoomCode(_index: number, room: RoomDTO): string {
     return room.roomCode;
+  }
+
+  /** Admin-only force-close. Backend RoomService.forceCloseRoom emits the
+   *  SSE `removed` diff once the room is gone, so we just let the existing
+   *  diff stream update the UI — no optimistic removal. Click is swallowed
+   *  while a previous DELETE is in flight to avoid double-fire (the trash
+   *  button is also disabled in the template). */
+  adminDeleteRoom(room: RoomDTO, event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.deletingRoomCode() !== null) return;
+    this.deletingRoomCode.set(room.roomCode);
+    this.roomApi.adminDeleteRoom(room.roomCode).subscribe({
+      next: () => {
+        this.deletingRoomCode.set(null);
+        // SSE `removed` will drop the card from the list. No-op otherwise.
+      },
+      error: () => {
+        this.deletingRoomCode.set(null);
+        this.notify.error('error.ROOM_ADMIN_DELETE_FAILED');
+      },
+    });
   }
 
   createRoom(): void {
