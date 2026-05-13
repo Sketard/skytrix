@@ -68,28 +68,3 @@
   line-height: 1.4;
 }
 
-.error-banner-action {
-  flex-shrink: 0;
-  align-self: center;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: transparent;
-  border: 1px solid var(--border-medium);
-  color: var(--gold);
-  cursor: pointer;
-  font: var(--weight-bold) 0.78rem / 1 'Rajdhani', sans-serif;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transition: background var(--transition-fast) var(--ease-inout),
-              border-color var(--transition-fast) var(--ease-inout);
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.28);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--gold-soft-50);
-    outline-offset: 2px;
-  }
-}

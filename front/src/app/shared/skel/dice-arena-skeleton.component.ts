@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { i18nAttr } from '../i18n';
 
 @Component({
   selector: 'app-dice-arena-skeleton',
@@ -8,7 +9,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     role: 'status',
     'aria-live': 'polite',
     'aria-busy': 'true',
-    'aria-label': 'Chargement de l\'arène de dés',
+    '[attr.aria-label]': 'ariaLabel()',
   },
   template: `
     <div class="dice-arena-skel" aria-hidden="true">
@@ -18,4 +19,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   `,
   styles: [`:host { display: block; width: 100%; }`],
 })
-export class DiceArenaSkeletonComponent {}
+export class DiceArenaSkeletonComponent {
+  protected readonly ariaLabel = i18nAttr('a11y.loadingDiceArena');
+}

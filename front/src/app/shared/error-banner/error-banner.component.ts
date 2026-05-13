@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Output, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -6,9 +6,7 @@ import { TranslatePipe } from '@ngx-translate/core';
  *  than a toast. Spec source: `_mockups/mockup-1-holo-arena.html` `.error-banner`
  *  (ll. 1826-1875).
  *
- *  Three variants: `error` (red, default), `warning` (amber), `info` (gold).
- *  Pass `dismissLabelKey` to render the trailing action button; emit
- *  `(dismiss)` when the user taps it. */
+ *  Three variants: `error` (red, default), `warning` (amber), `info` (gold). */
 export type ErrorBannerVariant = 'error' | 'warning' | 'info';
 
 @Component({
@@ -19,7 +17,10 @@ export type ErrorBannerVariant = 'error' | 'warning' | 'info';
   host: {
     role: 'status',
     'aria-live': 'polite',
-    '[class]': 'hostClass()',
+    'class': 'error-banner',
+    '[class.error-banner--error]':   "variant() === 'error'",
+    '[class.error-banner--warning]': "variant() === 'warning'",
+    '[class.error-banner--info]':    "variant() === 'info'",
   },
   template: `
     <div class="error-banner-icon">
@@ -31,11 +32,6 @@ export type ErrorBannerVariant = 'error' | 'warning' | 'info';
         <div class="error-banner-desc">{{ key | translate }}</div>
       }
     </div>
-    @if (dismissLabelKey(); as label) {
-      <button type="button" class="error-banner-action" (click)="dismiss.emit()">
-        {{ label | translate }}
-      </button>
-    }
   `,
   styleUrl: './error-banner.component.scss',
 })
@@ -44,9 +40,4 @@ export class ErrorBannerComponent {
   readonly titleKey = input.required<string>();
   readonly descKey = input<string | null>(null);
   readonly icon = input<string>('error_outline');
-  readonly dismissLabelKey = input<string | null>(null);
-
-  @Output() readonly dismiss = new EventEmitter<void>();
-
-  readonly hostClass = computed(() => `error-banner error-banner--${this.variant()}`);
 }

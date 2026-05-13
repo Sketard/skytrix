@@ -538,7 +538,12 @@
     "refreshRooms": "Rafraîchir la liste des rooms",
     "sandbox": "Bac à sable",
     "createRoom": "Créer une room",
-    "solveDeck": "Résoudre le deck {{name}}"
+    "solveDeck": "Résoudre le deck {{name}}",
+    "dragToClose": "Glisser vers le bas pour fermer",
+    "loadingDiceArena": "Chargement de l'arène de dés",
+    "loadingRooms": "Chargement des rooms",
+    "loadingDecks": "Chargement des decks",
+    "loadingWaitingRoom": "Chargement de la salle d'attente"
   },
   "solver": {
     "pageTitle": "Solveur",

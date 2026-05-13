@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { i18nAttr } from '../i18n';
 
 @Component({
   selector: 'app-waiting-room-skeleton',
@@ -8,7 +9,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     role: 'status',
     'aria-live': 'polite',
     'aria-busy': 'true',
-    'aria-label': 'Chargement de la salle d\'attente',
+    '[attr.aria-label]': 'ariaLabel()',
   },
   template: `
     <div class="waiting-skel-tag"></div>
@@ -41,4 +42,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     }
   `],
 })
-export class WaitingRoomSkeletonComponent {}
+export class WaitingRoomSkeletonComponent {
+  protected readonly ariaLabel = i18nAttr('a11y.loadingWaitingRoom');
+}

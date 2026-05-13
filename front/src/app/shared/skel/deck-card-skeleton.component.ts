@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { i18nAttr } from '../i18n';
 
 @Component({
   selector: 'app-deck-card-skeleton',
@@ -8,7 +9,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
     role: 'status',
     'aria-live': 'polite',
     'aria-busy': 'true',
-    'aria-label': 'Chargement des decks',
+    '[attr.aria-label]': 'ariaLabel()',
   },
   template: `
     @for (i of placeholders(); track i) {
@@ -26,4 +27,5 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 export class DeckCardSkeletonComponent {
   readonly count = input<number>(6);
   readonly placeholders = computed(() => Array.from({ length: this.count() }, (_, i) => i));
+  protected readonly ariaLabel = i18nAttr('a11y.loadingDecks');
 }

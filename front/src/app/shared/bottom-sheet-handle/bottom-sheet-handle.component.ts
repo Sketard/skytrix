@@ -6,6 +6,7 @@ import {
   inject,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
+import { i18nAttr } from '../i18n';
 
 /** Bottom-sheet drag handle — mobile-only gesture to dismiss a MatDialog by
  *  swiping it down. Visible <768px (mockup convention), hidden on desktop.
@@ -21,16 +22,19 @@ import { MatDialogRef } from '@angular/material/dialog';
  *  Threshold: drag past 30% of the dialog surface height OR release with
  *  velocity > 0.5 px/ms (downward) → dialog closes. Otherwise snap-back.
  *  Honors `prefers-reduced-motion` by disabling the snap-back transition.
+ *
+ *  A11y: rendered as `role=button` because the activation effect is "close
+ *  the dialog" — `role=slider` (the mockup's choice) would require
+ *  aria-valuenow/min/max which don't make sense for a binary close gesture.
  */
 @Component({
   selector: 'app-bottom-sheet-handle',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    role: 'slider',
+    role: 'button',
     tabindex: '0',
-    'aria-orientation': 'vertical',
-    'aria-label': 'Faire glisser pour fermer',
+    '[attr.aria-label]': 'ariaLabel()',
   },
   template: `<div class="bottom-sheet-handle-bar" aria-hidden="true"></div>`,
   styleUrl: './bottom-sheet-handle.component.scss',
@@ -38,6 +42,11 @@ import { MatDialogRef } from '@angular/material/dialog';
 export class BottomSheetHandleComponent {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly dialogRef = inject(MatDialogRef, { optional: true });
+
+  // Resolved via i18nAttr (TranslateService.instant + onLangChange) because
+  // host bindings can't run the `| translate` pipe — pipes only work in the
+  // component's view template, not on the host element.
+  protected readonly ariaLabel = i18nAttr('a11y.dragToClose');
 
   private surface: HTMLElement | null = null;
   private dragStartY = 0;

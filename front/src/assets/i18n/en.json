@@ -538,7 +538,12 @@
     "refreshRooms": "Refresh room list",
     "sandbox": "Sandbox",
     "createRoom": "Create a room",
-    "solveDeck": "Solve deck {{name}}"
+    "solveDeck": "Solve deck {{name}}",
+    "dragToClose": "Drag down to close",
+    "loadingDiceArena": "Loading dice arena",
+    "loadingRooms": "Loading rooms",
+    "loadingDecks": "Loading decks",
+    "loadingWaitingRoom": "Loading waiting room"
   },
   "solver": {
     "pageTitle": "Solver",
