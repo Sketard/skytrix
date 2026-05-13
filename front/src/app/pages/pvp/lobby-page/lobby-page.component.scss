@@ -293,14 +293,46 @@
   }
 }
 
-// ── Room list viewport (fade scroll mask, scrollable) ───────────────────────
+// ── Live-sync fallback banner (SSE down → polling) ─────────────────────────
+.lobby-live-fallback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 193, 7, 0.08);
+  border: 1px solid rgba(255, 193, 7, 0.28);
+  font-size: 0.85rem;
+  color: rgba(255, 213, 79, 0.92);
+  animation: lobby-live-fallback-in 220ms var(--ease-out) both;
+
+  &__icon {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    color: #ffc107;
+  }
+}
+
+@keyframes lobby-live-fallback-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ── Room list viewport (CDK virtual scroll + fade scroll mask) ─────────────
+// Phase 3.13: ported from a plain scrollable <div> to <cdk-virtual-scroll-viewport>.
+// CDK positions each row absolutely at multiples of `itemSize` (104px, see
+// ROOM_CARD_ITEM_SIZE_PX). The flex/gap layout no longer applies — row
+// spacing is the slack between the card height and itemSize, plus an
+// explicit margin-bottom on .room-card to keep the inter-card visual gap.
 .room-list-viewport {
+  display: block;
+  height: 65vh;
   max-height: 65vh;
-  overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 4px;
-  // Fade scroll : mask au bas du viewport pour indiquer scrollable.
-  // Suppression du fade au top — la search bar reste lisible.
+  // Fade scroll: mask the bottom of the viewport to hint scrollability.
+  // Top is left clear so the search bar above stays crisp.
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
   mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
 
@@ -311,17 +343,24 @@
     border-radius: 4px;
     &:hover { background: var(--gold-soft-40); }
   }
+
+  // CDK injects two helper layers — let them inherit our viewport sizing.
+  ::ng-deep .cdk-virtual-scroll-content-wrapper {
+    width: 100%;
+  }
 }
 
-.room-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  // Bottom padding so the fade scroll mask doesn't truncate the last card.
-  padding-bottom: 24px;
+// Skeleton wrapper shown during the initial fetch — no virtual scroll, just
+// reserves the same horizontal padding as the real list so the layout
+// doesn't shift when rooms land.
+.room-list-skeleton {
+  padding-right: 4px;
 }
 
 // ── Room card ──────────────────────────────────────────────────────────────
+// Sized to fit inside the virtual-scroll 104px slot (= ROOM_CARD_ITEM_SIZE_PX).
+// margin-bottom: 12px gives the inter-row visual gap; the remaining slack
+// (~4-12px) absorbs height variance across breakpoints.
 .room-card {
   position: relative;
   display: grid;
@@ -331,6 +370,7 @@
     'join   join';
   align-items: center;
   gap: 10px 12px;
+  margin-bottom: 12px;
   padding: 12px 14px;
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, rgba(30, 30, 46, 0.85) 0%, rgba(22, 22, 36, 0.85) 100%);
@@ -558,6 +598,7 @@
   }
 
   .room-list-viewport {
+    height: 50vh;
     max-height: 50vh;
   }
 }

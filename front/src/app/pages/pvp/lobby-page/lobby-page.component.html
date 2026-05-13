@@ -40,6 +40,13 @@
     </div>
   </div>
 
+  @if (showLiveSyncBanner()) {
+    <div class="lobby-live-fallback" role="status" aria-live="polite">
+      <mat-icon class="lobby-live-fallback__icon">cloud_off</mat-icon>
+      <span class="lobby-live-fallback__text">{{ 'lobby.liveSyncUnavailable' | translate }}</span>
+    </div>
+  }
+
   <label class="lobby-search-bar">
     <mat-icon>search</mat-icon>
     <input
@@ -60,7 +67,7 @@
   </label>
 
   @if (loading() && rooms().length === 0) {
-    <div class="room-list-viewport">
+    <div class="room-list-skeleton">
       <app-room-card-skeleton [count]="4"></app-room-card-skeleton>
     </div>
   } @else if (error()) {
@@ -93,37 +100,39 @@
       </button>
     </div>
   } @else {
-    <div class="room-list-viewport">
-      <div class="room-list">
-        @for (room of filteredRooms(); track room.roomCode) {
-          <div class="room-card" [class.room-card--new]="isNewRoom(room.roomCode)">
-            <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
-            <div class="room-info">
-              <div class="room-info-top">
-                <span class="room-creator">{{ room.player1.pseudo }}</span>
-                <span class="room-time">{{ room.createdAt | relativeTime }}</span>
-              </div>
-              <div class="room-status">
-                <span class="room-status-dot" aria-hidden="true"></span>
-                <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
-              </div>
-            </div>
-            <button mat-raised-button
-                    class="room-join-btn"
-                    [disabled]="joiningRoomCode() !== null"
-                    (click)="joinRoom(room)">
-              @if (joiningRoomCode() === room.roomCode) {
-                <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
-              } @else {
-                <span class="room-join-label">
-                  {{ 'lobby.join' | translate }}
-                  <mat-icon iconPositionEnd>arrow_forward</mat-icon>
-                </span>
-              }
-            </button>
+    <cdk-virtual-scroll-viewport
+        class="room-list-viewport"
+        [itemSize]="roomCardItemSize"
+        minBufferPx="240"
+        maxBufferPx="480">
+      <div *cdkVirtualFor="let room of filteredRooms(); trackBy: trackByRoomCode"
+           class="room-card"
+           [class.room-card--new]="isNewRoom(room.roomCode)">
+        <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
+        <div class="room-info">
+          <div class="room-info-top">
+            <span class="room-creator">{{ room.player1.pseudo }}</span>
+            <span class="room-time">{{ room.createdAt | relativeTime }}</span>
           </div>
-        }
+          <div class="room-status">
+            <span class="room-status-dot" aria-hidden="true"></span>
+            <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
+          </div>
+        </div>
+        <button mat-raised-button
+                class="room-join-btn"
+                [disabled]="joiningRoomCode() !== null"
+                (click)="joinRoom(room)">
+          @if (joiningRoomCode() === room.roomCode) {
+            <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
+          } @else {
+            <span class="room-join-label">
+              {{ 'lobby.join' | translate }}
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </span>
+          }
+        </button>
       </div>
-    </div>
+    </cdk-virtual-scroll-viewport>
   }
 </div>

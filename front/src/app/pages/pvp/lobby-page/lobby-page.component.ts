@@ -7,6 +7,7 @@ import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { NotificationService } from '../../../core/services/notification.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
@@ -25,6 +26,12 @@ const NEW_ROOM_FLASH_MS = 700;
 // surprise the backend with a different load shape on degradation.
 const POLL_FALLBACK_INTERVAL_MS = 10_000;
 
+// Fixed virtual-scroll item size: rendered .room-card height (~88-92px on
+// desktop, ~96px on mobile w/ stacked CTA) + 12px row gap. Matches the
+// `--room-card-row` SCSS token so the viewport and the cards stay aligned.
+// Audit: if the room-card layout grows a new row, bump this AND the token.
+const ROOM_CARD_ITEM_SIZE_PX = 104;
+
 @Component({
   selector: 'app-lobby-page',
   templateUrl: './lobby-page.component.html',
@@ -33,6 +40,7 @@ const POLL_FALLBACK_INTERVAL_MS = 10_000;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatButton, MatIcon, MatProgressSpinner,
+    ScrollingModule,
     RelativeTimePipe, TranslatePipe,
     AvatarComponent, RoomCardSkeletonComponent,
   ],
@@ -44,6 +52,7 @@ export class LobbyPageComponent implements OnInit {
   private readonly notify = inject(NotificationService);
   private readonly dialog = inject(MatDialog);
 
+  readonly roomCardItemSize = ROOM_CARD_ITEM_SIZE_PX;
   readonly rooms = signal<RoomDTO[]>([]);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
@@ -53,10 +62,19 @@ export class LobbyPageComponent implements OnInit {
 
   // True once the SSE `connected` event has fired and the stream stays
   // alive. Flips to false on permanent SSE error → triggers the polling
-  // fallback + a "Synchro live indisponible" warning banner (front-side,
-  // not yet wired into the template; the signal is exposed so the
-  // template can read it).
+  // fallback + the "Synchro live indisponible" banner (gated on
+  // sseEverConnected so the banner doesn't flash during the cold-start
+  // window between ngOnInit and the first SSE `connected` event).
   readonly liveSyncAvailable = signal(false);
+
+  // Latches on the first successful SSE `connected` event so the
+  // showLiveSyncBanner computed can distinguish "never connected yet"
+  // (cold start — no banner) from "connected then dropped" (banner on).
+  private readonly sseEverConnected = signal(false);
+
+  readonly showLiveSyncBanner = computed(() =>
+    this.sseEverConnected() && !this.liveSyncAvailable(),
+  );
 
   // Room codes that appeared in the latest diff — used to flash `--new` once.
   // Drained via a setTimeout after NEW_ROOM_FLASH_MS so the flash never replays.
@@ -144,6 +162,7 @@ export class LobbyPageComponent implements OnInit {
     switch (event.kind) {
       case 'connected':
         this.liveSyncAvailable.set(true);
+        this.sseEverConnected.set(true);
         this.stopPollingFallback();
         // The first REST snapshot already ran in ngOnInit; we don't refetch
         // here to avoid a double-load. A re-snapshot on reconnect could
@@ -241,6 +260,10 @@ export class LobbyPageComponent implements OnInit {
 
   isNewRoom(roomCode: string): boolean {
     return this.newRoomCodes().has(roomCode);
+  }
+
+  trackByRoomCode(_index: number, room: RoomDTO): string {
+    return room.roomCode;
   }
 
   createRoom(): void {

@@ -318,6 +318,7 @@
     "sandbox": "Bac à sable",
     "openRooms": "Rooms ouvertes",
     "roomsCount": "{{count}} rooms ouvertes",
+    "liveSyncUnavailable": "Synchro live indisponible — mises à jour toutes les 10s",
     "filterPlaceholder": "Filtrer par pseudo...",
     "createFirstRoom": "Créer la première room",
     "noResultsTitle": "Aucun duelliste trouvé",

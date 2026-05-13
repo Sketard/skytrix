@@ -318,6 +318,7 @@
     "sandbox": "Sandbox",
     "openRooms": "Open rooms",
     "roomsCount": "{{count}} open rooms",
+    "liveSyncUnavailable": "Live sync unavailable — refreshing every 10s",
     "filterPlaceholder": "Filter by username...",
     "createFirstRoom": "Create the first room",
     "noResultsTitle": "No duellist found",
