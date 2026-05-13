@@ -178,13 +178,19 @@ export class RoomStateMachineService {
       data: { context: 'join' },
     });
     dialogRef.afterClosed().pipe(
-      switchMap(decklistId => {
-        if (decklistId === undefined || decklistId === null) {
+      switchMap((result: { id: number; name: string } | undefined) => {
+        // DeckPickerDialogComponent.confirm() closes with `{ id, name }` for
+        // 'create'/'join' contexts. Passing the raw object to joinRoom (which
+        // expects a number) hits the back-end with an unparseable payload and
+        // triggers the 500 "Impossible de rejoindre la room" Axel observed
+        // on direct-URL deep-links.
+        if (!result) {
           this.router.navigate(['/pvp']);
           return EMPTY;
         }
-        this.decklistId = decklistId;
-        return this.roomApiService.joinRoom(roomCode, decklistId);
+        this.decklistId = result.id;
+        this.deckName.set(result.name);
+        return this.roomApiService.joinRoom(roomCode, result.id);
       }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
