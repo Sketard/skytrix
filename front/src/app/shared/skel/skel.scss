@@ -218,3 +218,47 @@
   height: 56px;
   border-radius: 10px;
 }
+
+// =============================================================================
+// COMPOSITE — Dice arena skeleton (pre-duel arena, before DICE_ROLL prompt)
+// Mirrors _mockups/mockup-1-holo-arena.html `.dice-arena-skel` (ll. 1540-1576).
+// Geometry uses the same clamp() cqw scale as the live `.dice-screen-arena`
+// so the skeleton aligns when swapped for the real arena.
+// =============================================================================
+.dice-arena-skel {
+  width: 100%;
+  min-height: clamp(220px, 55cqw, 360px);
+  border-radius: clamp(14px, 3cqw, 20px);
+  background:
+    radial-gradient(ellipse at center top, rgba(201, 168, 76, 0.08), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.5) 0%, rgba(15, 15, 28, 0.5) 100%);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 6cqw, 48px);
+  padding: clamp(20px, 5cqw, 36px);
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+
+  // Glowing horizontal "table" surface — same geometry as the live arena's
+  // .dice-table, derived from --dice-size for vertical alignment.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: calc(clamp(56px, 22cqw, 110px) * 0.56);
+    height: 6px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.2), transparent);
+  }
+
+  .skel-die {
+    @extend %skel-block;
+    width: clamp(56px, 22cqw, 110px);
+    aspect-ratio: 1;
+    border-radius: calc(clamp(56px, 22cqw, 110px) * 0.127);
+  }
+}

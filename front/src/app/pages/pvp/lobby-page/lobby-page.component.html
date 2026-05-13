@@ -44,13 +44,39 @@
         {{ roomsCount() }}
       </span>
     </div>
+    <button type="button"
+            class="lobby-section-filter"
+            [attr.aria-label]="'lobby.sort.label' | translate"
+            [matMenuTriggerFor]="sortMenu">
+      <mat-icon>sort</mat-icon>
+      <span>{{ sortLabelKey() | translate }}</span>
+    </button>
+    <mat-menu #sortMenu="matMenu" xPosition="before">
+      <button mat-menu-item type="button"
+              [class.is-active]="sortMode() === 'newest'"
+              (click)="setSortMode('newest')">
+        {{ 'lobby.sort.newest' | translate }}
+      </button>
+      <button mat-menu-item type="button"
+              [class.is-active]="sortMode() === 'oldest'"
+              (click)="setSortMode('oldest')">
+        {{ 'lobby.sort.oldest' | translate }}
+      </button>
+      <button mat-menu-item type="button"
+              [class.is-active]="sortMode() === 'pseudoAsc'"
+              (click)="setSortMode('pseudoAsc')">
+        {{ 'lobby.sort.pseudoAsc' | translate }}
+      </button>
+    </mat-menu>
   </div>
 
   @if (store.showLiveSyncBanner()) {
-    <div class="lobby-live-fallback" role="status" aria-live="polite">
-      <mat-icon class="lobby-live-fallback__icon">cloud_off</mat-icon>
-      <span class="lobby-live-fallback__text">{{ 'lobby.liveSyncUnavailable' | translate }}</span>
-    </div>
+    <app-error-banner
+      variant="warning"
+      icon="wifi_off"
+      titleKey="lobby.liveSyncUnavailableTitle"
+      descKey="lobby.liveSyncUnavailableDesc">
+    </app-error-banner>
   }
 
   <label class="lobby-search-bar">
@@ -77,18 +103,21 @@
       <app-room-card-skeleton [count]="4"></app-room-card-skeleton>
     </div>
   } @else if (store.error()) {
-    <div class="lobby-empty">
-      <mat-icon class="lobby-empty-icon">wifi_off</mat-icon>
-      <p class="lobby-empty-title">{{ 'lobby.emptyError' | translate }}</p>
-      <button mat-raised-button class="lobby-cta-secondary" (click)="store.fetchSnapshot()">{{ 'common.retry' | translate }}</button>
+    <div class="empty-state empty-state--error">
+      <mat-icon class="empty-state-icon">wifi_off</mat-icon>
+      <p class="empty-state-title">{{ 'lobby.emptyError' | translate }}</p>
+      <button type="button" class="empty-state-cta" (click)="store.fetchSnapshot()">
+        <mat-icon>refresh</mat-icon>
+        {{ 'common.retry' | translate }}
+      </button>
     </div>
   } @else if (showEmptyState()) {
-    <div class="lobby-empty">
-      <mat-icon class="lobby-empty-icon">groups</mat-icon>
-      <p class="lobby-empty-title">{{ 'lobby.emptyTitle' | translate }}</p>
-      <p class="lobby-empty-subtitle">{{ 'lobby.emptySubtitle' | translate }}</p>
-      <button mat-raised-button
-              class="lobby-cta-secondary"
+    <div class="empty-state">
+      <mat-icon class="empty-state-icon">groups</mat-icon>
+      <p class="empty-state-title">{{ 'lobby.emptyTitle' | translate }}</p>
+      <p class="empty-state-desc">{{ 'lobby.emptySubtitle' | translate }}</p>
+      <button type="button"
+              class="empty-state-cta"
               [disabled]="creatingRoom()"
               (click)="createRoom()">
         <mat-icon>add_circle</mat-icon>
@@ -96,11 +125,11 @@
       </button>
     </div>
   } @else if (showNoResultsState()) {
-    <div class="lobby-empty">
-      <mat-icon class="lobby-empty-icon">search_off</mat-icon>
-      <p class="lobby-empty-title">{{ 'lobby.noResultsTitle' | translate }}</p>
-      <p class="lobby-empty-subtitle">{{ 'lobby.noResultsSubtitle' | translate }}</p>
-      <button mat-raised-button class="lobby-cta-secondary" (click)="clearSearch()">
+    <div class="empty-state">
+      <mat-icon class="empty-state-icon">search_off</mat-icon>
+      <p class="empty-state-title">{{ 'lobby.noResultsTitle' | translate }}</p>
+      <p class="empty-state-desc">{{ 'lobby.noResultsSubtitle' | translate }}</p>
+      <button type="button" class="empty-state-cta" (click)="clearSearch()">
         <mat-icon>backspace</mat-icon>
         {{ 'lobby.clearSearch' | translate }}
       </button>

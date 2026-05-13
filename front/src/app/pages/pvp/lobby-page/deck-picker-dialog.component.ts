@@ -24,6 +24,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { ShortDeck } from '../../../core/model/short-deck';
 import { DeckCardSkeletonComponent } from '../../../shared/skel';
+import { BottomSheetHandleComponent } from '../../../shared/bottom-sheet-handle';
 import { DECK_FETCH_ERROR_TIMEOUT_MS } from '../pvp-timings';
 
 export type DeckPickerContext = 'create' | 'join' | 'quickDuel';
@@ -106,7 +107,7 @@ const TURN_TIME_PRESETS: readonly TurnTimePreset[] = TURN_TIME_PRESETS_SECS.map(
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
     MatButton, MatIconButton, MatSlideToggle, MatIcon,
     RouterLink, TranslatePipe,
-    DeckCardSkeletonComponent,
+    DeckCardSkeletonComponent, BottomSheetHandleComponent,
   ],
   templateUrl: './deck-picker-dialog.component.html',
   styleUrl: './deck-picker-dialog.component.scss',

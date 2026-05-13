@@ -1,0 +1,108 @@
+// =============================================================================
+// Empty State — shared "no boîte vide, toujours une voie de sortie" utility.
+// Spec source: _mockups/mockup-1-holo-arena.html (EMPTY STATES block, ll. 1648-1702).
+// Convention skytrix: Material Icons xxl + opacity réduite + titre + sous-titre + CTA.
+//
+// Usage:
+//   <div class="empty-state">
+//     <mat-icon class="empty-state-icon">groups</mat-icon>
+//     <p class="empty-state-title">...</p>
+//     <p class="empty-state-desc">...</p>
+//     <button class="empty-state-cta">...</button>
+//   </div>
+//
+// Use --error variant for failure states (icon red-shifted, message tone shifts).
+// =============================================================================
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(40px, 8vw, 64px) clamp(20px, 5vw, 32px);
+  gap: 16px;
+  min-height: 280px;
+  animation: empty-state-in 360ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@keyframes empty-state-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-state { animation: none; }
+}
+
+.empty-state-icon {
+  font-size: 96px !important;
+  width: 96px !important;
+  height: 96px !important;
+  color: rgba(201, 168, 76, 0.3);
+  filter: drop-shadow(0 4px 16px rgba(201, 168, 76, 0.2));
+  margin-bottom: 8px;
+}
+
+.empty-state--error .empty-state-icon {
+  color: rgba(255, 82, 82, 0.4);
+  filter: drop-shadow(0 4px 16px rgba(255, 82, 82, 0.2));
+}
+
+.empty-state-title {
+  margin: 0;
+  font: var(--weight-bold) clamp(1.1rem, 4vw, 1.35rem) / 1.2 'Rajdhani', sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.empty-state-desc {
+  margin: 0;
+  font-size: var(--text-sm, 0.9rem);
+  color: var(--text-muted);
+  max-width: 320px;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.empty-state-cta {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  min-height: 44px;
+  font: var(--weight-bold) 0.85rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 10px;
+  background: var(--gold-soft-12);
+  border: 1px solid var(--gold-soft-40);
+  color: var(--gold);
+  cursor: pointer;
+  transition: background var(--transition-normal) var(--ease-inout),
+              color var(--transition-normal) var(--ease-inout),
+              box-shadow var(--transition-normal) var(--ease-inout);
+
+  mat-icon {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--gold);
+    color: var(--text-inverse);
+    box-shadow: 0 6px 20px var(--gold-soft-40);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold-soft-50);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: var(--pvp-disabled-opacity, 0.5);
+    cursor: not-allowed;
+  }
+}

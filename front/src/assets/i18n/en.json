@@ -320,6 +320,8 @@
     "openRooms": "Open rooms",
     "roomsCount": "{{count}} open rooms",
     "liveSyncUnavailable": "Live sync unavailable — refreshing every 10s",
+    "liveSyncUnavailableTitle": "Live sync unavailable",
+    "liveSyncUnavailableDesc": "Rooms refresh every 10 seconds in the meantime.",
     "adminBadge": "Admin",
     "adminDeleteRoom": "Close this room",
     "filterPlaceholder": "Filter by username...",
@@ -331,7 +333,13 @@
     "emptyTitle": "No open rooms yet",
     "emptySubtitle": "Be the first to start a duel — someone will join you.",
     "waitingOpponent": "Waiting for an opponent...",
-    "join": "Join"
+    "join": "Join",
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "pseudoAsc": "Username A→Z"
+    }
   },
   "deckPicker": {
     "title": {

@@ -1,0 +1,95 @@
+// =============================================================================
+// Error banner — inline (non-toast) warning component.
+// Spec source: _mockups/mockup-1-holo-arena.html (ERROR BANNERS, ll. 1826-1875).
+// =============================================================================
+:host.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md, 12px);
+  background: rgba(255, 82, 82, 0.06);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: var(--text-primary);
+  animation: error-banner-in 220ms var(--ease-out, ease-out) both;
+}
+
+@keyframes error-banner-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host.error-banner { animation: none; }
+}
+
+:host.error-banner--warning {
+  background: rgba(255, 193, 7, 0.06);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+:host.error-banner--info {
+  background: var(--gold-soft-08, rgba(201, 168, 76, 0.08));
+  border-color: var(--gold-soft-30);
+}
+
+.error-banner-icon {
+  flex-shrink: 0;
+  color: #ff5252;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 22px !important;
+    width: 22px !important;
+    height: 22px !important;
+  }
+}
+
+:host.error-banner--warning .error-banner-icon { color: #ffc107; }
+:host.error-banner--info    .error-banner-icon { color: var(--gold); }
+
+.error-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-banner-title {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md, 0.95rem);
+  margin-bottom: 2px;
+  color: var(--text-primary);
+}
+
+.error-banner-desc {
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--text-secondary, var(--text-muted));
+  line-height: 1.4;
+}
+
+.error-banner-action {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.16));
+  color: var(--gold);
+  cursor: pointer;
+  font: var(--weight-bold) 0.78rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background var(--transition-fast, 150ms) var(--ease-inout),
+              border-color var(--transition-fast, 150ms) var(--ease-inout);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-medium-strong, rgba(255, 255, 255, 0.28));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold-soft-50);
+    outline-offset: 2px;
+  }
+}

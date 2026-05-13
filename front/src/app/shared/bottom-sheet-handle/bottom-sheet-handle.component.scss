@@ -1,0 +1,42 @@
+// =============================================================================
+// Bottom-sheet drag handle — mobile-only modal dismiss affordance.
+// Spec source: _mockups/mockup-1-holo-arena.html `.modal-handle` (ll. 2005-2027).
+// =============================================================================
+
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+  min-height: 28px;
+  user-select: none;
+
+  &:active { cursor: grabbing; }
+
+  // Desktop : the modal is centered and dismissable via backdrop/Escape —
+  // hide the handle to avoid a meaningless visual on pointer devices.
+  @media (min-width: 768px) {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold-soft-50);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+}
+
+.bottom-sheet-handle-bar {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gold-soft-50);
+  transition: background var(--transition-normal, 200ms) var(--ease-inout);
+}
+
+:host:hover .bottom-sheet-handle-bar {
+  background: rgba(201, 168, 76, 0.8);
+}

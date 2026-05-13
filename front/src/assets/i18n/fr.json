@@ -320,6 +320,8 @@
     "openRooms": "Rooms ouvertes",
     "roomsCount": "{{count}} rooms ouvertes",
     "liveSyncUnavailable": "Synchro live indisponible — mises à jour toutes les 10s",
+    "liveSyncUnavailableTitle": "Synchro live indisponible",
+    "liveSyncUnavailableDesc": "Les rooms se rafraîchissent toutes les 10 secondes en attendant.",
     "adminBadge": "Admin",
     "adminDeleteRoom": "Fermer cette room",
     "filterPlaceholder": "Filtrer par pseudo...",
@@ -331,7 +333,13 @@
     "emptyTitle": "Aucune room ouverte pour l'instant",
     "emptySubtitle": "Sois le premier à lancer une partie — un duelliste te rejoindra.",
     "waitingOpponent": "En attente d'un adversaire...",
-    "join": "Rejoindre"
+    "join": "Rejoindre",
+    "sort": {
+      "label": "Trier",
+      "newest": "Plus récentes",
+      "oldest": "Plus anciennes",
+      "pseudoAsc": "Pseudo A→Z"
+    }
   },
   "deckPicker": {
     "title": {

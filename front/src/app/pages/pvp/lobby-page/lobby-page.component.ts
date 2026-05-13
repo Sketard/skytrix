@@ -6,6 +6,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AuthService } from '../../../services/auth.service';
@@ -16,6 +17,7 @@ import { RoomApiService } from '../room-api.service';
 import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dialog.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { RoomCardSkeletonComponent } from '../../../shared/skel';
+import { ErrorBannerComponent } from '../../../shared/error-banner';
 import { LobbyRoomsStore } from './lobby-rooms-store';
 
 // Fixed virtual-scroll item size: rendered .room-card height (~88-92px on
@@ -23,6 +25,8 @@ import { LobbyRoomsStore } from './lobby-rooms-store';
 // `--room-card-row` SCSS token so the viewport and the cards stay aligned.
 // Audit: if the room-card layout grows a new row, bump this AND the token.
 const ROOM_CARD_ITEM_SIZE_PX = 104;
+
+export type LobbySortMode = 'newest' | 'oldest' | 'pseudoAsc';
 
 @Component({
   selector: 'app-lobby-page',
@@ -32,10 +36,10 @@ const ROOM_CARD_ITEM_SIZE_PX = 104;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [LobbyRoomsStore],
   imports: [
-    MatButton, MatIcon, MatProgressSpinner, MatTooltipModule,
+    MatButton, MatIcon, MatProgressSpinner, MatTooltipModule, MatMenuModule,
     ScrollingModule,
     RelativeTimePipe, TranslatePipe,
-    AvatarComponent, RoomCardSkeletonComponent,
+    AvatarComponent, RoomCardSkeletonComponent, ErrorBannerComponent,
   ],
 })
 export class LobbyPageComponent implements OnInit {
@@ -51,14 +55,27 @@ export class LobbyPageComponent implements OnInit {
   readonly joiningRoomCode = signal<string | null>(null);
   readonly creatingRoom = signal(false);
   readonly searchQuery = signal('');
+  readonly sortMode = signal<LobbySortMode>('newest');
   readonly roomCardItemSize = ROOM_CARD_ITEM_SIZE_PX;
 
   readonly filteredRooms = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
-    const rooms = this.store.rooms();
-    if (!query) return rooms;
-    return rooms.filter(r => r.player1.pseudo.toLowerCase().includes(query));
+    const mode = this.sortMode();
+    const rooms = query
+      ? this.store.rooms().filter(r => r.player1.pseudo.toLowerCase().includes(query))
+      : [...this.store.rooms()];
+    switch (mode) {
+      case 'newest':
+        return rooms.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      case 'oldest':
+        return rooms.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      case 'pseudoAsc':
+        return rooms.sort((a, b) =>
+          a.player1.pseudo.localeCompare(b.player1.pseudo, undefined, { sensitivity: 'base' }));
+    }
   });
+
+  readonly sortLabelKey = computed(() => `lobby.sort.${this.sortMode()}`);
 
   readonly roomsCount = computed(() => this.filteredRooms().length);
   readonly hasSearchActive = computed(() => this.searchQuery().trim().length > 0);
@@ -85,6 +102,10 @@ export class LobbyPageComponent implements OnInit {
 
   clearSearch(): void {
     this.searchQuery.set('');
+  }
+
+  setSortMode(mode: LobbySortMode): void {
+    this.sortMode.set(mode);
   }
 
   trackByRoomCode(_index: number, room: RoomDTO): string {

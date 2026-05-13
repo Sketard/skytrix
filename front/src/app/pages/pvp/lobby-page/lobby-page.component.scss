@@ -235,6 +235,53 @@
   border: 1px solid var(--gold-soft-30);
 }
 
+// ── Sort filter button (Plus récentes / oldest / pseudo A→Z) ───────────────
+// Mirrors mockup-1-holo-arena.html `.lobby-section-filter` (ll. 393-399).
+// The title-group on the left is allowed to grow; this button stays at the
+// right edge of the section header.
+.lobby-section-title-group { margin-right: auto; }
+
+.lobby-section-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--weight-semibold) 0.75rem / 1 'Inter', sans-serif;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color var(--transition-normal) var(--ease-inout),
+              border-color var(--transition-normal) var(--ease-inout),
+              background var(--transition-normal) var(--ease-inout);
+
+  mat-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  &:hover,
+  &[aria-expanded='true'] {
+    color: var(--gold);
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-08, rgba(201, 168, 76, 0.08));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold-soft-50);
+    outline-offset: 2px;
+  }
+}
+
+// Mark the currently-selected sort option in the Material menu with the
+// gold accent so the user can read it at a glance when re-opening.
+::ng-deep .mat-mdc-menu-item.is-active {
+  color: var(--gold) !important;
+  font-weight: var(--weight-semibold);
+}
+
 // ── Search bar (filter by pseudo) ───────────────────────────────────────────
 .lobby-search-bar {
   display: flex;
@@ -294,32 +341,6 @@
     width: 16px !important;
     height: 16px !important;
   }
-}
-
-// ── Live-sync fallback banner (SSE down → polling) ─────────────────────────
-.lobby-live-fallback {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 193, 7, 0.08);
-  border: 1px solid rgba(255, 193, 7, 0.28);
-  font-size: 0.85rem;
-  color: rgba(255, 213, 79, 0.92);
-  animation: lobby-live-fallback-in 220ms var(--ease-out) both;
-
-  &__icon {
-    font-size: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
-    color: #ffc107;
-  }
-}
-
-@keyframes lobby-live-fallback-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 // ── Room list viewport (CDK virtual scroll + fade scroll mask) ─────────────
@@ -429,69 +450,81 @@
     animation: room-card-new 600ms var(--ease-out);
   }
 
-  // Reveal the admin trash on row hover/focus. Keyboard users get it as
-  // soon as they tab onto the button (focus-within) — they don't need
-  // hover to opt-in.
-  .room-admin-delete {
-    opacity: 0;
-    transition: opacity var(--transition-fast, 120ms) var(--ease-inout);
-  }
-  &:hover .room-admin-delete,
-  &:focus-within .room-admin-delete {
-    opacity: 1;
+  // Admin trash : always visible on mobile (no hover possible on touch),
+  // hover-revealed on desktop (≥480px). Keyboard users get it on focus.
+  @media (min-width: 480px) {
+    .room-admin-delete {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-fast, 120ms) var(--ease-inout);
+    }
+    &:hover .room-admin-delete,
+    &:focus-within .room-admin-delete {
+      opacity: 1;
+      pointer-events: auto;
+    }
   }
 }
 
 // ── Admin badge (creator avatar shield) ────────────────────────────────────
+// The mockup positions the badge directly on `.room-avatar` (which sets
+// position:relative on itself), but our shared <app-avatar> component does
+// not expose its inner root for absolute positioning. We wrap it with
+// `.room-avatar-wrap` and anchor the badge there instead — same visual
+// result, no leak into the avatar component's encapsulation.
 .room-avatar-wrap {
   position: relative;
   display: inline-flex;
 }
 
 .room-admin-badge {
+  // Mirrors mockup .room-avatar-badge (l. 461-468). Flat gold pur, no gradient.
   position: absolute;
-  right: -4px;
-  bottom: -4px;
+  right: -2px;
+  bottom: -2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d4b25a, #C9A84C);
+  background: var(--gold);
   color: #1a1208;
-  border: 2px solid rgba(15, 15, 28, 0.92);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  border: 2px solid #181828;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 
   mat-icon {
-    font-size: 11px !important;
-    width: 11px !important;
-    height: 11px !important;
-    line-height: 11px;
+    font-size: 10px !important;
+    width: 10px !important;
+    height: 10px !important;
+    line-height: 10px;
   }
 }
 
-// ── Admin force-close trash button (hover-revealed) ────────────────────────
+// ── Admin force-close trash button ─────────────────────────────────────────
+// Mockup spec : mobile always visible (36×36, no hover possible), desktop
+// hover-revealed (30×30). Transparent at rest, red-tinted on hover only.
 .room-admin-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: rgba(255, 82, 82, 0.06);
-  color: rgba(255, 120, 120, 0.85);
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
+  flex-shrink: 0;
   transition: background var(--transition-fast, 120ms) var(--ease-inout),
               border-color var(--transition-fast, 120ms) var(--ease-inout),
               color var(--transition-fast, 120ms) var(--ease-inout),
               opacity var(--transition-fast, 120ms) var(--ease-inout);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 82, 82, 0.16);
-    border-color: rgba(255, 82, 82, 0.45);
-    color: #ff7777;
+    background: rgba(255, 82, 82, 0.15);
+    border-color: rgba(255, 82, 82, 0.5);
+    color: #ff5252;
   }
 
   &:focus-visible {
@@ -508,6 +541,18 @@
     font-size: 18px !important;
     width: 18px !important;
     height: 18px !important;
+  }
+
+  // Desktop : shrink + hover-revealed inside the parent card.
+  @media (min-width: 480px) {
+    width: 30px;
+    height: 30px;
+
+    mat-icon {
+      font-size: 16px !important;
+      width: 16px !important;
+      height: 16px !important;
+    }
   }
 }
 
@@ -630,58 +675,13 @@
   gap: 6px;
 }
 
-// ── Empty / error / no-results states ───────────────────────────────────────
-.lobby-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 48px 16px;
-  text-align: center;
-}
-
-.lobby-empty-icon {
-  font-size: 64px !important;
-  width: 64px !important;
-  height: 64px !important;
-  color: var(--gold);
-  opacity: 0.4;
-  filter: drop-shadow(0 0 16px var(--gold-soft-30));
-}
-
-.lobby-empty-title {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-}
-
-.lobby-empty-subtitle {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.lobby-cta-secondary {
-  min-height: 44px;
-  font-weight: var(--weight-semibold);
-  margin-top: 4px;
-}
+// ── Empty/error/no-results states use the shared `.empty-state` utility
+//    from `app/styles/_empty-state.scss` — no lobby-specific overrides needed.
 
 @media (orientation: landscape) and (max-height: 500px) {
   :host {
     padding: 12px;
     max-width: 100%;
-  }
-
-  .lobby-empty {
-    padding: 24px 16px;
-  }
-
-  .lobby-empty-icon {
-    font-size: 40px !important;
-    width: 40px !important;
-    height: 40px !important;
   }
 
   .room-list-viewport {
