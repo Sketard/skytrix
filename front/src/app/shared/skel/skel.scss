@@ -1,0 +1,228 @@
+// =============================================================================
+// Skeleton Screens — shared CSS for <app-skel> + composites.
+// Imported once globally via styles.scss so composites can use class selectors
+// (the composites' templates target these classes directly; emulated view
+// encapsulation does not alter class names, only adds attribute scopes).
+//
+// Spec source: _mockups/mockup-1-holo-arena.html (SKELETON SCREENS block).
+// Convention: project_skeleton_screens_convention.md.
+// =============================================================================
+
+// Single shimmer source — every shape that animates references this @keyframes.
+@keyframes skel-sweep {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+// Shared placeholder block: position container + sweep overlay via ::after.
+// Used on every skeleton primitive so the shimmer rule lives in one place.
+%skel-block {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: skel-sweep 1.4s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel::after,
+  [class*='skel-']::after,
+  [class*='-skel']::after {
+    animation: none;
+  }
+}
+
+// =============================================================================
+// Primitive — <app-skel> base + variants
+// =============================================================================
+.skel {
+  @extend %skel-block;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.skel--rect    { border-radius: var(--radius-sm, 6px); }
+.skel--circle  { border-radius: 50%; }
+.skel--pill    { border-radius: 999px; }
+.skel--text-sm { height: 10px; }
+.skel--text-md { height: 14px; }
+.skel--text-lg { height: 20px; }
+
+.skel--w-25 { width: 25%; }
+.skel--w-40 { width: 40%; }
+.skel--w-60 { width: 60%; }
+.skel--w-80 { width: 80%; }
+
+// =============================================================================
+// COMPOSITE — Room card skeleton (lobby room list placeholder)
+// =============================================================================
+.room-card-skel {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg, 14px);
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 46, 0.85) 0%,
+    rgba(22, 22, 36, 0.85) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--elevation-2, 0 4px 16px rgba(0, 0, 0, 0.25));
+
+  .skel-avatar {
+    @extend %skel-block;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+
+  .skel-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .skel-btn {
+    @extend %skel-block;
+    width: 80px;
+    height: 38px;
+    border-radius: 8px;
+  }
+}
+
+// =============================================================================
+// COMPOSITE — Deck card skeleton (deck picker modal placeholder)
+// =============================================================================
+.deck-card-skel {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.04);
+
+  .skel-thumb {
+    @extend %skel-block;
+    width: 100%;
+    aspect-ratio: 59 / 86;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  .skel-name {
+    @extend %skel-block;
+    height: 14px;
+    margin: 0 auto 6px;
+    width: 70%;
+    border-radius: 4px;
+  }
+
+  .skel-meta {
+    @extend %skel-block;
+    height: 10px;
+    margin: 0 auto;
+    width: 45%;
+    border-radius: 4px;
+  }
+}
+
+// =============================================================================
+// COMPOSITE — Waiting room skeleton (creator side, awaiting opponent)
+// =============================================================================
+.waiting-skel-tag {
+  @extend %skel-block;
+  width: 120px;
+  height: 26px;
+  border-radius: 999px;
+}
+
+.waiting-skel-title {
+  @extend %skel-block;
+  width: 280px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.waiting-skel-card {
+  width: 100%;
+  padding: 28px;
+  border-radius: 18px;
+  background: linear-gradient(
+    160deg,
+    rgba(30, 30, 46, 0.85) 0%,
+    rgba(22, 22, 36, 0.85) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.waiting-skel-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.waiting-skel-avatar-big {
+  @extend %skel-block;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+}
+
+.waiting-skel-name {
+  @extend %skel-block;
+  width: 80px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.waiting-skel-vs {
+  @extend %skel-block;
+  width: 60px;
+  height: 36px;
+  border-radius: 6px;
+}
+
+.waiting-skel-code {
+  width: 100%;
+  padding: 20px;
+  border-radius: 14px;
+  background: rgba(30, 30, 46, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.waiting-skel-code-label {
+  @extend %skel-block;
+  width: 100px;
+  height: 10px;
+  border-radius: 4px;
+}
+
+.waiting-skel-code-value {
+  @extend %skel-block;
+  width: 100%;
+  height: 56px;
+  border-radius: 10px;
+}
