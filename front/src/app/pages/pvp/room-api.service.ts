@@ -33,6 +33,13 @@ export class RoomApiService {
     return this.http.post<QuickDuelResponse>('/api/rooms/quick-duel', { decklistId1, decklistId2, firstPlayer, skipShuffle, turnTimeSecs });
   }
 
+  // Admin-only: force-close a room from the lobby (typically a stale or
+  // abusive WAITING room). Backend gates with @Secured("ROLE_ADMIN") and
+  // returns 403 if the caller is not ADMIN.
+  adminDeleteRoom(roomCode: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/rooms/${roomCode}`);
+  }
+
   subscribeToRoomEvents(roomCode: string): Observable<RoomDTO> {
     return new Observable<RoomDTO>(subscriber => {
       const eventSource = new EventSource(`/api/rooms/${roomCode}/events`);

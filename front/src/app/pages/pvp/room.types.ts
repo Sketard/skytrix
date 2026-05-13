@@ -1,6 +1,12 @@
+export type UserRole = 'USER' | 'ADMIN';
+
 export interface PlayerInfo {
   id: number;
   pseudo: string;
+  // Mirrors Spring's ShortUserDTO.role (Role enum: USER | ADMIN). Exposed so
+  // the lobby can flag admin-owned rooms with the shield badge + reveal the
+  // admin delete button on hover.
+  role: UserRole;
 }
 
 export interface RoomDTO {

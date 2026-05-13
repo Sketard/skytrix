@@ -228,6 +228,29 @@ public class RoomService {
         log.info("Room {} ended by user {}", roomCode, userId);
     }
 
+    /**
+     * Admin-only force-close. Skips the participant check so an admin can shut
+     * down any room (typically a stale or abusive WAITING room sitting in the
+     * lobby). Caller MUST be ROLE_ADMIN — enforced upstream via
+     * {@code @Secured("ROLE_ADMIN")} on the controller.
+     */
+    @Transactional
+    public void forceCloseRoom(String roomCode) {
+        var adminId = authService.getConnectedUserId();
+        var room = roomRepository.findByRoomCode(roomCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+        if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CLOSED) {
+            return;
+        }
+        if (room.getDuelServerId() != null) {
+            duelServerClient.terminateDuel(room.getDuelServerId());
+        }
+        room.setStatus(RoomStatus.ENDED);
+        roomRepository.save(room);
+        roomEventService.evict(roomCode);
+        log.info("Room {} force-closed by admin {}", roomCode, adminId);
+    }
+
     private void validateDuelResponse(DuelCreationResponse response) {
         if (response == null || response.getWsTokens() == null || response.getWsTokens().length < 2) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Invalid duel server response");
