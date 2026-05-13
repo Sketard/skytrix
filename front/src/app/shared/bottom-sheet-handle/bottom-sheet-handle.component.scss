@@ -34,7 +34,7 @@
   height: 4px;
   border-radius: 2px;
   background: var(--gold-soft-50);
-  transition: background var(--transition-normal, 200ms) var(--ease-inout);
+  transition: background var(--transition-normal) var(--ease-inout);
 }
 
 :host:hover .bottom-sheet-handle-bar {

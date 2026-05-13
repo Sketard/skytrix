@@ -319,7 +319,6 @@
     "sandbox": "Sandbox",
     "openRooms": "Open rooms",
     "roomsCount": "{{count}} open rooms",
-    "liveSyncUnavailable": "Live sync unavailable — refreshing every 10s",
     "liveSyncUnavailableTitle": "Live sync unavailable",
     "liveSyncUnavailableDesc": "Rooms refresh every 10 seconds in the meantime.",
     "adminBadge": "Admin",

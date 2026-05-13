@@ -52,21 +52,13 @@
       <span>{{ sortLabelKey() | translate }}</span>
     </button>
     <mat-menu #sortMenu="matMenu" xPosition="before">
-      <button mat-menu-item type="button"
-              [class.is-active]="sortMode() === 'newest'"
-              (click)="setSortMode('newest')">
-        {{ 'lobby.sort.newest' | translate }}
-      </button>
-      <button mat-menu-item type="button"
-              [class.is-active]="sortMode() === 'oldest'"
-              (click)="setSortMode('oldest')">
-        {{ 'lobby.sort.oldest' | translate }}
-      </button>
-      <button mat-menu-item type="button"
-              [class.is-active]="sortMode() === 'pseudoAsc'"
-              (click)="setSortMode('pseudoAsc')">
-        {{ 'lobby.sort.pseudoAsc' | translate }}
-      </button>
+      @for (mode of sortModes; track mode) {
+        <button mat-menu-item type="button"
+                [class.is-active]="sortMode() === mode"
+                (click)="setSortMode(mode)">
+          {{ 'lobby.sort.' + mode | translate }}
+        </button>
+      }
     </mat-menu>
   </div>
 

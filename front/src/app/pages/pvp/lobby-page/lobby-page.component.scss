@@ -266,7 +266,7 @@
   &[aria-expanded='true'] {
     color: var(--gold);
     border-color: var(--gold-soft-40);
-    background: var(--gold-soft-08, rgba(201, 168, 76, 0.08));
+    background: var(--gold-soft-08);
   }
 
   &:focus-visible {
@@ -456,7 +456,7 @@
     .room-admin-delete {
       opacity: 0;
       pointer-events: none;
-      transition: opacity var(--transition-fast, 120ms) var(--ease-inout);
+      transition: opacity var(--transition-fast) var(--ease-inout);
     }
     &:hover .room-admin-delete,
     &:focus-within .room-admin-delete {
@@ -516,10 +516,10 @@
   color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background var(--transition-fast, 120ms) var(--ease-inout),
-              border-color var(--transition-fast, 120ms) var(--ease-inout),
-              color var(--transition-fast, 120ms) var(--ease-inout),
-              opacity var(--transition-fast, 120ms) var(--ease-inout);
+  transition: background var(--transition-fast) var(--ease-inout),
+              border-color var(--transition-fast) var(--ease-inout),
+              color var(--transition-fast) var(--ease-inout),
+              opacity var(--transition-fast) var(--ease-inout);
 
   &:hover:not(:disabled) {
     background: rgba(255, 82, 82, 0.15);

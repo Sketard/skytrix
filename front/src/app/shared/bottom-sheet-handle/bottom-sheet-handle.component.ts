@@ -41,9 +41,13 @@ export class BottomSheetHandleComponent {
 
   private surface: HTMLElement | null = null;
   private dragStartY = 0;
-  private dragStartTime = 0;
-  private lastY = 0;
-  private lastTime = 0;
+  // Last move sample — used to compute the release velocity (px/ms) over the
+  // most recent frame, not since drag start. Sampling per-move keeps the
+  // signal "what the finger was doing right before lift" instead of an
+  // average over the whole drag.
+  private prevY = 0;
+  private prevTime = 0;
+  private lastVelocityPxPerMs = 0;
   private dragging = false;
   private pointerId: number | null = null;
 
@@ -61,9 +65,9 @@ export class BottomSheetHandleComponent {
     this.dragging = true;
     this.pointerId = event.pointerId;
     this.dragStartY = event.clientY;
-    this.lastY = event.clientY;
-    this.dragStartTime = performance.now();
-    this.lastTime = this.dragStartTime;
+    this.prevY = event.clientY;
+    this.prevTime = performance.now();
+    this.lastVelocityPxPerMs = 0;
     this.surface.style.transition = 'none';
     this.host.nativeElement.setPointerCapture(event.pointerId);
     event.preventDefault();
@@ -74,8 +78,12 @@ export class BottomSheetHandleComponent {
     if (!this.dragging || event.pointerId !== this.pointerId || !this.surface) return;
     const dy = Math.max(0, event.clientY - this.dragStartY);
     this.surface.style.transform = `translateY(${dy}px)`;
-    this.lastY = event.clientY;
-    this.lastTime = performance.now();
+
+    const now = performance.now();
+    const dt = now - this.prevTime;
+    if (dt > 0) this.lastVelocityPxPerMs = (event.clientY - this.prevY) / dt;
+    this.prevY = event.clientY;
+    this.prevTime = now;
   }
 
   @HostListener('pointerup', ['$event'])
@@ -83,15 +91,14 @@ export class BottomSheetHandleComponent {
   onPointerUp(event: PointerEvent): void {
     if (!this.dragging || event.pointerId !== this.pointerId || !this.surface) return;
     const dy = Math.max(0, event.clientY - this.dragStartY);
-    const elapsed = Math.max(1, performance.now() - this.lastTime);
-    const velocity = (event.clientY - this.lastY) / elapsed;
     const heightThreshold = this.surface.offsetHeight * this.closeThresholdRatio;
+    const flickedDown = this.lastVelocityPxPerMs >= this.closeVelocityPxPerMs;
 
     this.dragging = false;
     this.pointerId = null;
     this.host.nativeElement.releasePointerCapture(event.pointerId);
 
-    if (dy >= heightThreshold || velocity >= this.closeVelocityPxPerMs) {
+    if (dy >= heightThreshold || flickedDown) {
       this.dialogRef!.close();
       return;
     }
@@ -108,10 +115,20 @@ export class BottomSheetHandleComponent {
   }
 
   private snapBack(): void {
-    if (!this.surface) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.surface.style.transition = reduced ? 'none' : 'transform 200ms ease-out';
-    this.surface.style.transform = 'translateY(0)';
+    const surface = this.surface;
     this.surface = null;
+    if (!surface) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    surface.style.transition = reduced ? 'none' : 'transform 200ms ease-out';
+    surface.style.transform = 'translateY(0)';
+    // Drop the inline styles once the animation completes so the next drag
+    // starts from a clean slate (MatDialog reuses the surface across opens).
+    const cleanup = () => {
+      surface.style.transition = '';
+      surface.style.transform = '';
+      surface.removeEventListener('transitionend', cleanup);
+    };
+    if (reduced) cleanup();
+    else surface.addEventListener('transitionend', cleanup);
   }
 }

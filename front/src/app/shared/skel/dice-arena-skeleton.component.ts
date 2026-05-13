@@ -16,13 +16,6 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       <div class="skel-die"></div>
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-      width: 100%;
-      max-width: 720px;
-      margin: 0 auto;
-    }
-  `],
+  styles: [`:host { display: block; width: 100%; }`],
 })
 export class DiceArenaSkeletonComponent {}

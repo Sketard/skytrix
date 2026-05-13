@@ -27,6 +27,7 @@ import { LobbyRoomsStore } from './lobby-rooms-store';
 const ROOM_CARD_ITEM_SIZE_PX = 104;
 
 export type LobbySortMode = 'newest' | 'oldest' | 'pseudoAsc';
+const LOBBY_SORT_MODES: readonly LobbySortMode[] = ['newest', 'oldest', 'pseudoAsc'];
 
 @Component({
   selector: 'app-lobby-page',
@@ -56,6 +57,7 @@ export class LobbyPageComponent implements OnInit {
   readonly creatingRoom = signal(false);
   readonly searchQuery = signal('');
   readonly sortMode = signal<LobbySortMode>('newest');
+  readonly sortModes = LOBBY_SORT_MODES;
   readonly roomCardItemSize = ROOM_CARD_ITEM_SIZE_PX;
 
   readonly filteredRooms = computed(() => {

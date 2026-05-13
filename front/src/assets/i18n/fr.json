@@ -319,7 +319,6 @@
     "sandbox": "Bac à sable",
     "openRooms": "Rooms ouvertes",
     "roomsCount": "{{count}} rooms ouvertes",
-    "liveSyncUnavailable": "Synchro live indisponible — mises à jour toutes les 10s",
     "liveSyncUnavailableTitle": "Synchro live indisponible",
     "liveSyncUnavailableDesc": "Les rooms se rafraîchissent toutes les 10 secondes en attendant.",
     "adminBadge": "Admin",
