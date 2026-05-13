@@ -2,7 +2,7 @@ import type { ActiveDuelSession } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import type { DiceRoll } from './types.js';
-import { diceSum } from './types.js';
+import { diceSum, extractCardCodesForPlayer } from './types.js';
 
 /**
  * Pre-duel first-player coordinator (2D6 dice mechanic, since 2026-05-13).
@@ -205,6 +205,15 @@ function resolveDiceRound(session: ActiveDuelSession): void {
  */
 function broadcastFinalAndBridge(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
   const cfg = getCfg();
+  // Phase 3.16: prefetch hint — give each player their own decklist's card
+  // codes ahead of FIRST_PLAYER_RESULT so the 2.5s announce window doubles
+  // as a browser image-cache warmup. session.decks is still in pre-swap
+  // order at this point (the player-0/1 swap inside startDuelWithOrder
+  // hasn't happened yet), and session.players[i].deck matches session.decks[i],
+  // so player i receives the deck they actually own. No info leak: each side
+  // gets only its own deck.
+  cfg.sendToPlayer(session, 0, { type: 'DECK_PREFETCH', cardCodes: extractCardCodesForPlayer(session.decks, 0) });
+  cfg.sendToPlayer(session, 1, { type: 'DECK_PREFETCH', cardCodes: extractCardCodesForPlayer(session.decks, 1) });
   cfg.sendToPlayer(session, 0, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 0 });
   cfg.sendToPlayer(session, 1, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 1 });
   session.phase = 'FIRST_PLAYER_RESOLVED';

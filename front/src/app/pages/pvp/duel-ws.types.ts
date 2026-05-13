@@ -38,7 +38,7 @@ import type {
 import type {
   DuelEndMsg, TimerStateMsg,
   DiceRollPromptMsg, DiceResultMsg,
-  SelectFirstPlayerMsg, FirstPlayerResultMsg, DuelStartingMsg,
+  SelectFirstPlayerMsg, FirstPlayerResultMsg, DuelStartingMsg, DeckPrefetchMsg,
   RematchInvitationMsg, RematchStartingMsg, RematchCancelledMsg,
   WorkerErrorMsg, StateSyncMsg, ChainStateMsg,
   SessionTokenMsg, OpponentDisconnectedMsg, OpponentReconnectedMsg,
@@ -123,6 +123,7 @@ export type ServerMessage =
   | SelectFirstPlayerMsg
   | FirstPlayerResultMsg
   | DuelStartingMsg
+  | DeckPrefetchMsg
   | RematchInvitationMsg
   | RematchStartingMsg
   | RematchCancelledMsg

@@ -94,6 +94,18 @@ export interface DuelStartingMsg {
   cardCodes: number[];
 }
 
+/** Server → client warmup hint emitted right before FIRST_PLAYER_RESULT.
+ *  Carries the receiving player's own deck card codes so the client can
+ *  prime the browser image cache during the 2.5s "You go first/second"
+ *  announce window, before DUEL_STARTING + the first BOARD_STATE arrive.
+ *  Each side gets ONLY its own deck (no info leak about the opponent's
+ *  composition). Idempotent: re-emitting on reconnect is a no-op
+ *  client-side. */
+export interface DeckPrefetchMsg {
+  type: 'DECK_PREFETCH';
+  cardCodes: number[];
+}
+
 export interface RematchInvitationMsg {
   type: 'REMATCH_INVITATION';
 }

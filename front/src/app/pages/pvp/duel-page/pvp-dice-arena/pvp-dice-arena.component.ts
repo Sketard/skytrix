@@ -11,6 +11,7 @@ import {
 import { NgClass } from '@angular/common';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DuelWebSocketService } from '../duel-web-socket.service';
+import { DuelCardArtService } from '../duel-card-art.service';
 import { DiceResultMsg } from '../../duel-ws.types';
 
 /** Pre-duel dice arena (Phase 3.14, since 2026-05-13). Owns the full
@@ -43,7 +44,9 @@ const FINAL_ANNOUNCE_MS = 2500;
 })
 export class PvpDiceArenaComponent {
   private readonly ws = inject(DuelWebSocketService);
+  private readonly artService = inject(DuelCardArtService);
   private readonly destroyRef = inject(DestroyRef);
+  private prewarmedForDuel = false;
 
   readonly stage = signal<Stage>('idle');
   readonly turnChoice = signal<TurnChoice>('first');
@@ -104,6 +107,12 @@ export class PvpDiceArenaComponent {
       if (this.stage() !== 'final') {
         this.stage.set('final');
         this.scheduleFinalDismiss();
+        // Phase 3.16: piggyback the 2.5s announce window to warm the browser
+        // image cache for the local deck. DUEL_STARTING has already landed
+        // (it precedes FIRST_PLAYER_RESULT), so ws.cardCodes() is populated.
+        // prefetchCard is idempotent + fire-and-forget so this is safe even
+        // if any code is already cached or the announce gets dismissed early.
+        this.prewarmDeckArt();
       }
       return;
     }
@@ -141,6 +150,9 @@ export class PvpDiceArenaComponent {
       this.animationStartedFor = null;
       this.resultMy.set(null);
       this.resultOpp.set(null);
+      // Rematch: a new dice flow starts → reset the prewarm latch so the
+      // next `final` stage can re-prefetch (the deck may have changed).
+      this.prewarmedForDuel = false;
       if (this.stage() !== 'ready') {
         this.stage.set('ready');
         this.scheduleAutoRoll();
@@ -168,6 +180,19 @@ export class PvpDiceArenaComponent {
       // and the board takes over. We just yield the visual to idle.
       this.stage.set('idle');
     }, FINAL_ANNOUNCE_MS);
+  }
+
+  /** Fire-and-forget warmup for the deck card art during the 2.5s announce.
+   *  DuelCardArtService.prefetchCard is per-code idempotent so re-entering
+   *  `final` after a reconnect mid-window is a no-op. We additionally gate
+   *  on a local flag so the call is made at most once per dice-arena
+   *  lifecycle, keeping the hot path cheap. */
+  private prewarmDeckArt(): void {
+    if (this.prewarmedForDuel) return;
+    const codes = this.ws.cardCodes();
+    if (!codes.length) return;
+    this.prewarmedForDuel = true;
+    this.artService.prefetchCards(codes);
   }
 
   private clearTimers(): void {

@@ -640,6 +640,15 @@ export class DuelConnection {
         this._firstPlayerResult.set({ goFirst: message.goFirst });
         break;
 
+      case 'DECK_PREFETCH':
+        // Phase 3.16: warmup hint sent right before FIRST_PLAYER_RESULT.
+        // Populate _cardCodes early so the dice-arena's `final` stage can
+        // prime the browser image cache during the 2.5s announce window.
+        // DUEL_STARTING will overwrite this with the same data (post-swap)
+        // a moment later — idempotent.
+        if (message.cardCodes?.length) this._cardCodes.set(message.cardCodes);
+        break;
+
       case 'DUEL_STARTING':
         this._firstPlayerResult.set(null);
         this._ocgPlayerIndex.set(message.playerIndex as 0 | 1);
