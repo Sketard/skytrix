@@ -1,53 +1,97 @@
 <div class="duel-container">
-  <!-- Story 2.1 — Waiting Room State -->
+  <!-- Story 2.1 — Waiting Room State (Phase 1.7 refonte) -->
   @if (roomState() === 'waiting') {
-    <div class="waiting-room" role="region" [attr.aria-label]="'duel.waiting.title' | translate">
-      <h1 class="waiting-room__title">{{ 'duel.waiting.title' | translate }}</h1>
-
-      @if (room(); as r) {
-        <p class="waiting-room__deck-name">{{ 'duel.waiting.yourDeck' | translate }} {{ deckName() || r.player1.pseudo }}</p>
-        <p class="waiting-room__code" [attr.aria-label]="'a11y.roomCode' | translate">{{ r.roomCode }}</p>
-      }
-
-      <div class="waiting-room__actions">
-        @if (canShare) {
-          <button mat-button
-                  class="waiting-room__btn"
-                  [attr.aria-label]="'a11y.shareRoomCode' | translate"
-                  (click)="shareRoom()">
-            <mat-icon>share</mat-icon>
-            {{ 'duel.waiting.share' | translate }}
-          </button>
-        }
-        <button mat-button
-                class="waiting-room__btn"
-                [attr.aria-label]="'a11y.copyRoomLink' | translate"
-                (click)="copyRoomLink()">
-          <mat-icon>content_copy</mat-icon>
-          {{ 'duel.waiting.copyLink' | translate }}
+    @if (room(); as r) {
+      <div class="waiting-container" role="region" [attr.aria-label]="'duel.waiting.title' | translate">
+        <button type="button" class="waiting-back-btn"
+                [attr.aria-label]="'duel.waiting.backToLobby' | translate"
+                (click)="leaveRoom()">
+          <mat-icon>arrow_back</mat-icon>
+          {{ 'duel.waiting.backToLobby' | translate }}
         </button>
+
+        <span class="waiting-status-tag">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          {{ 'duel.waiting.roomCreated' | translate }}
+        </span>
+
+        <h1 class="waiting-title">{{ 'duel.waiting.title' | translate }}</h1>
+        <p class="waiting-subtitle">{{ 'duel.waiting.subtitleLong' | translate }}</p>
+
+        <div class="duelists-card">
+          <div class="duelists-row">
+            <div class="duelist-slot">
+              <app-avatar class="duelist-avatar-wrapper duelist-avatar--ready"
+                          [pseudo]="r.player1.pseudo"
+                          size="xl">
+              </app-avatar>
+              <span class="duelist-name">{{ r.player1.pseudo }}</span>
+              <span class="duelist-state duelist-state--ready">{{ 'duel.waiting.ready' | translate }}</span>
+            </div>
+
+            <div class="duelist-vs" aria-hidden="true">VS</div>
+
+            <div class="duelist-slot">
+              <div class="duelist-avatar duelist-avatar--empty" aria-hidden="true">
+                <mat-icon>person_add</mat-icon>
+              </div>
+              <span class="duelist-name duelist-name--empty">{{ 'duel.waiting.opponentSearching' | translate }}</span>
+              <span class="duelist-state duelist-state--searching">{{ 'duel.waiting.searching' | translate }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="room-code-section">
+          <div class="room-code-label">{{ 'duel.waiting.roomCodeLabel' | translate }}</div>
+          <div class="room-code-value-row">
+            <div class="room-code-value"
+                 [attr.aria-label]="'a11y.roomCode' | translate">{{ r.roomCode }}</div>
+            <button type="button"
+                    class="code-copy-btn"
+                    [class.copied]="justCopied()"
+                    [attr.aria-label]="'a11y.copyRoomCode' | translate"
+                    (click)="copyRoomCode()">
+              <mat-icon>{{ justCopied() ? 'check' : 'content_copy' }}</mat-icon>
+              <span>{{ (justCopied() ? 'common.copied' : 'common.copy') | translate }}</span>
+            </button>
+            @if (canShare) {
+              <button type="button"
+                      class="code-action-btn"
+                      [attr.aria-label]="'a11y.shareRoomCode' | translate"
+                      [title]="'duel.waiting.shareLinkTitle' | translate"
+                      (click)="shareRoom()">
+                <mat-icon>share</mat-icon>
+              </button>
+            }
+          </div>
+          <div class="room-code-hint">{{ 'duel.waiting.shareHint' | translate }}</div>
+        </div>
+
+        @if (countdown(); as cd) {
+          <div class="waiting-countdown"
+               [class.urgent]="cd.color === 'yellow' || cd.color === 'red'"
+               aria-live="polite">
+            <mat-icon>schedule</mat-icon>
+            <span>
+              {{ 'duel.waiting.autoCloseIn' | translate }}
+              <strong>{{ cd.display }}</strong>
+            </span>
+          </div>
+        }
+
+        <div class="waiting-actions">
+          <button type="button"
+                  class="waiting-cancel-btn"
+                  [attr.aria-label]="'duel.leaveRoom' | translate"
+                  (click)="leaveRoom()">
+            <mat-icon>close</mat-icon>
+            {{ 'duel.waiting.cancelRoom' | translate }}
+          </button>
+        </div>
       </div>
-
-      <mat-progress-spinner mode="indeterminate" diameter="48" [attr.aria-label]="'duel.waiting.subtitle' | translate"></mat-progress-spinner>
-      <p class="waiting-room__status">{{ 'duel.waiting.subtitle' | translate }}</p>
-
-      @if (countdown(); as cd) {
-        <p class="waiting-room__timer"
-           [class.waiting-room__timer--green]="cd.color === 'green'"
-           [class.waiting-room__timer--yellow]="cd.color === 'yellow'"
-           [class.waiting-room__timer--red]="cd.color === 'red'"
-           aria-live="polite">
-          {{ cd.display }}
-        </p>
-      }
-
-      <button mat-button
-              class="waiting-room__leave"
-              [attr.aria-label]="'duel.leaveRoom' | translate"
-              (click)="leaveRoom()">
-        {{ 'duel.leaveRoom' | translate }}
-      </button>
-    </div>
+    } @else {
+      <app-waiting-room-skeleton></app-waiting-room-skeleton>
+    }
   }
 
   <!-- Story 2.1 — Creating Duel Transitional State -->

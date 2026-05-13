@@ -60,6 +60,8 @@ import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
 import { SystemOverlayComponent } from '../../../components/system-overlay/system-overlay.component';
+import { AvatarComponent } from '../../../shared/avatar';
+import { WaitingRoomSkeletonComponent } from '../../../shared/skel';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { environment } from '../../../../environments/environment';
 
@@ -88,6 +90,7 @@ import { environment } from '../../../../environments/environment';
     PvpChainOverlayComponent,
     PvpDuelOverlaysComponent,
     SystemOverlayComponent,
+    AvatarComponent, WaitingRoomSkeletonComponent,
     TranslatePipe,
   ],
 })
@@ -462,6 +465,7 @@ export class DuelPageComponent implements OnInit {
         try { sessionStorage.removeItem(`solo-duel-tokens-${code}`); } catch {}
       }
       if (this.switchTimer) clearTimeout(this.switchTimer);
+      if (this.copyResetTimeout !== null) clearTimeout(this.copyResetTimeout);
       this.phaseService.clear();
       this.cardDataCache.clearCache();
     });
@@ -526,6 +530,36 @@ export class DuelPageComponent implements OnInit {
 
   copyRoomLink(): void {
     this.roomService.copyRoomLink();
+  }
+
+  // Phase 1.7 — Waiting Room copy feedback: flashes the button as "Copied ✓"
+  // for COPY_FEEDBACK_MS, then reverts. setTimeout fires after the duel page
+  // is gone? No risk: the signal write on a detached component is a no-op
+  // beyond a single Angular tick, and no DOM is updated. Cheap enough not
+  // to need explicit DestroyRef teardown.
+  copyRoomCode(): void {
+    this.copyRoomCodeAction();
+  }
+
+  readonly justCopied = signal(false);
+  private copyResetTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  private copyRoomCodeAction(): void {
+    const code = this.room()?.roomCode;
+    if (!code) return;
+    try {
+      navigator.clipboard?.writeText(code);
+    } catch {
+      // Older browsers / restrictive permissions — silent: the value is
+      // visible on screen for the user to select manually.
+      return;
+    }
+    this.justCopied.set(true);
+    if (this.copyResetTimeout !== null) clearTimeout(this.copyResetTimeout);
+    this.copyResetTimeout = setTimeout(() => {
+      this.justCopied.set(false);
+      this.copyResetTimeout = null;
+    }, 1800);
   }
 
   shareRoom(): void {

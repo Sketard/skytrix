@@ -74,6 +74,8 @@
     "confirm": "Confirmer",
     "close": "Fermer",
     "clear": "Effacer",
+    "copy": "Copier",
+    "copied": "Copié ✓",
     "retry": "Réessayer",
     "back": "Retour",
     "delete": "Supprimer",
@@ -151,8 +153,19 @@
   "duel": {
     "leaveRoom": "Quitter la room",
     "waiting": {
-      "title": "EN ATTENTE DE L'ADVERSAIRE",
+      "title": "En attente d'un adversaire",
       "subtitle": "En attente de l'adversaire...",
+      "subtitleLong": "Ta room est en ligne. Partage le code ci-dessous, ou laisse-la apparaître dans le lobby — quelqu'un te rejoindra.",
+      "backToLobby": "Retour au lobby",
+      "roomCreated": "Room créée",
+      "ready": "Prêt",
+      "searching": "Recherche",
+      "opponentSearching": "En attente...",
+      "roomCodeLabel": "Code de la room",
+      "shareHint": "Partage ce code à un ami pour le faire rejoindre directement",
+      "shareLinkTitle": "Partager le lien",
+      "autoCloseIn": "Fermeture automatique dans",
+      "cancelRoom": "Annuler la room",
       "yourDeck": "Votre Deck :",
       "share": "Partager",
       "copyLink": "Copier le lien"
@@ -474,6 +487,7 @@
   "a11y": {
     "roomCode": "Code de la room",
     "shareRoomCode": "Partager le code de la room",
+    "copyRoomCode": "Copier le code de la room",
     "copyRoomLink": "Copier le lien de la room",
     "connectionError": "Erreur de connexion",
     "cardActions": "Actions de carte",
