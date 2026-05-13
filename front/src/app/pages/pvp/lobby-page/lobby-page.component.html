@@ -1,38 +1,67 @@
 <div class="lobby-container">
-  <div class="lobby-header">
-    <h1>
-      <mat-icon class="lobby-title-icon">gamepad</mat-icon>
-      {{ 'lobby.title' | translate }}
-      <span class="alpha-chip">{{ 'lobby.alpha' | translate }}</span>
-    </h1>
-    <div class="lobby-header-actions">
-      <button mat-icon-button
-              [attr.aria-label]="'a11y.refreshRooms' | translate"
-              (click)="fetchRooms()"
-              [disabled]="loading()">
-        <mat-icon>refresh</mat-icon>
-      </button>
-      <button mat-icon-button
-              [attr.aria-label]="'a11y.sandbox' | translate"
-              [disabled]="creatingRoom()"
-              (click)="quickDuel()">
-        <mat-icon>bolt</mat-icon>
-      </button>
+  <header class="lobby-header">
+    <div class="lobby-header-title">
+      <mat-icon class="lobby-title-icon">sports_esports</mat-icon>
+      <div class="lobby-header-text">
+        <h1>
+          {{ 'lobby.title' | translate }}
+          <span class="alpha-chip">{{ 'lobby.alpha' | translate }}</span>
+        </h1>
+        <span class="lobby-subtitle">{{ 'lobby.subtitle' | translate }}</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="cta-row">
+    <button mat-raised-button
+            class="lobby-cta lobby-cta--primary"
+            [attr.aria-label]="'a11y.createRoom' | translate"
+            [disabled]="creatingRoom()"
+            (click)="createRoom()">
+      <mat-icon>add_circle</mat-icon>
+      <span class="lobby-cta-label">{{ 'lobby.createRoom' | translate }}</span>
+    </button>
+    <button mat-stroked-button
+            class="lobby-cta lobby-cta--solo"
+            [attr.aria-label]="'a11y.sandbox' | translate"
+            [disabled]="creatingRoom()"
+            (click)="quickDuel()">
+      <mat-icon>bolt</mat-icon>
+      <span class="lobby-cta-label">{{ 'lobby.sandbox' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="lobby-section-header">
+    <div class="lobby-section-title-group">
+      <span class="lobby-section-title">{{ 'lobby.openRooms' | translate }}</span>
+      <span class="lobby-section-count" [attr.aria-label]="'lobby.roomsCount' | translate: { count: roomsCount() }">
+        {{ roomsCount() }}
+      </span>
     </div>
   </div>
 
-  <button mat-raised-button
-          class="lobby-cta"
-          [attr.aria-label]="'a11y.createRoom' | translate"
-          [disabled]="creatingRoom()"
-          (click)="createRoom()">
-    <mat-icon>add</mat-icon>
-    {{ 'lobby.createRoom' | translate }}
-  </button>
+  <label class="lobby-search-bar">
+    <mat-icon>search</mat-icon>
+    <input
+      type="text"
+      [placeholder]="'lobby.filterPlaceholder' | translate"
+      [value]="searchQuery()"
+      (input)="onSearchInput($event)"
+      [attr.aria-label]="'lobby.filterPlaceholder' | translate" />
+    @if (hasSearchActive()) {
+      <button
+        type="button"
+        class="lobby-search-clear"
+        [attr.aria-label]="'common.clear' | translate"
+        (click)="clearSearch()">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </label>
 
   @if (loading() && rooms().length === 0) {
-    <div class="lobby-loading">
-      <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <div class="room-list-viewport">
+      <app-room-card-skeleton [count]="4"></app-room-card-skeleton>
     </div>
   } @else if (error()) {
     <div class="lobby-empty">
@@ -40,40 +69,61 @@
       <p class="lobby-empty-title">{{ 'lobby.emptyError' | translate }}</p>
       <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">{{ 'common.retry' | translate }}</button>
     </div>
-  } @else if (rooms().length === 0) {
+  } @else if (showEmptyState()) {
     <div class="lobby-empty">
-      <mat-icon class="lobby-empty-icon">gamepad</mat-icon>
+      <mat-icon class="lobby-empty-icon">groups</mat-icon>
       <p class="lobby-empty-title">{{ 'lobby.emptyTitle' | translate }}</p>
       <p class="lobby-empty-subtitle">{{ 'lobby.emptySubtitle' | translate }}</p>
       <button mat-raised-button
               class="lobby-cta-secondary"
               [disabled]="creatingRoom()"
               (click)="createRoom()">
-        <mat-icon>add</mat-icon>
-        {{ 'lobby.createRoom' | translate }}
+        <mat-icon>add_circle</mat-icon>
+        {{ 'lobby.createFirstRoom' | translate }}
+      </button>
+    </div>
+  } @else if (showNoResultsState()) {
+    <div class="lobby-empty">
+      <mat-icon class="lobby-empty-icon">search_off</mat-icon>
+      <p class="lobby-empty-title">{{ 'lobby.noResultsTitle' | translate }}</p>
+      <p class="lobby-empty-subtitle">{{ 'lobby.noResultsSubtitle' | translate }}</p>
+      <button mat-raised-button class="lobby-cta-secondary" (click)="clearSearch()">
+        <mat-icon>backspace</mat-icon>
+        {{ 'lobby.clearSearch' | translate }}
       </button>
     </div>
   } @else {
-    <div class="room-list">
-      @for (room of rooms(); track room.roomCode) {
-        <div class="room-card">
-          <div class="room-info">
-            <span class="room-creator">{{ room.player1.pseudo }}</span>
-            <span class="room-time">{{ room.createdAt | relativeTime }}</span>
+    <div class="room-list-viewport">
+      <div class="room-list">
+        @for (room of filteredRooms(); track room.roomCode) {
+          <div class="room-card" [class.room-card--new]="isNewRoom(room.roomCode)">
+            <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
+            <div class="room-info">
+              <div class="room-info-top">
+                <span class="room-creator">{{ room.player1.pseudo }}</span>
+                <span class="room-time">{{ room.createdAt | relativeTime }}</span>
+              </div>
+              <div class="room-status">
+                <span class="room-status-dot" aria-hidden="true"></span>
+                <span class="room-status-text">{{ 'lobby.waitingOpponent' | translate }}</span>
+              </div>
+            </div>
+            <button mat-raised-button
+                    class="room-join-btn"
+                    [disabled]="joiningRoomCode() !== null"
+                    (click)="joinRoom(room)">
+              @if (joiningRoomCode() === room.roomCode) {
+                <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
+              } @else {
+                <span class="room-join-label">
+                  {{ 'lobby.join' | translate }}
+                  <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+                </span>
+              }
+            </button>
           </div>
-          <p class="room-status">{{ 'lobby.waitingOpponent' | translate }}</p>
-          <button mat-raised-button
-                  class="room-join-btn"
-                  [disabled]="joiningRoomCode() !== null"
-                  (click)="joinRoom(room)">
-            @if (joiningRoomCode() === room.roomCode) {
-              <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
-            } @else {
-              {{ 'lobby.join' | translate }}
-            }
-          </button>
-        </div>
-      }
+        }
+      </div>
     </div>
   }
 </div>

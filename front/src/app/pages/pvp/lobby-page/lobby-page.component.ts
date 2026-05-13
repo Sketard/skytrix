@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, filter, interval, switchMap } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
@@ -13,6 +13,14 @@ import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
 import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
 import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dialog.component';
+import { AvatarComponent } from '../../../shared/avatar';
+import { RoomCardSkeletonComponent } from '../../../shared/skel';
+
+// Animation flash-in for rooms appearing in the diff (CSS class `room-card--new`
+// is removed after this duration so the animation only plays once per room).
+const NEW_ROOM_FLASH_MS = 700;
+
+const POLL_INTERVAL_MS = 10_000;
 
 @Component({
   selector: 'app-lobby-page',
@@ -20,7 +28,11 @@ import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dial
   styleUrl: './lobby-page.component.scss',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButton, MatIconButton, MatIcon, MatProgressSpinner, RelativeTimePipe, TranslatePipe],
+  imports: [
+    MatButton, MatIcon, MatProgressSpinner,
+    RelativeTimePipe, TranslatePipe,
+    AvatarComponent, RoomCardSkeletonComponent,
+  ],
 })
 export class LobbyPageComponent implements OnInit {
   private readonly router = inject(Router);
@@ -34,6 +46,39 @@ export class LobbyPageComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly joiningRoomCode = signal<string | null>(null);
   readonly creatingRoom = signal(false);
+  readonly searchQuery = signal('');
+
+  // Room codes that appeared in the latest diff — used to flash `--new` once.
+  // Drained via a setTimeout after NEW_ROOM_FLASH_MS so the flash never replays.
+  readonly newRoomCodes = signal<ReadonlySet<string>>(new Set());
+
+  // First fetch suppresses the flash: every room is "new" on init, animating
+  // all of them at once would look like a glitch. Real diffs (polling deltas)
+  // are the only legitimate flash trigger.
+  private hasFetchedOnce = false;
+
+  readonly filteredRooms = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return this.rooms();
+    return this.rooms().filter(r => r.player1.pseudo.toLowerCase().includes(query));
+  });
+
+  readonly roomsCount = computed(() => this.filteredRooms().length);
+
+  readonly hasSearchActive = computed(() => this.searchQuery().trim().length > 0);
+
+  readonly showEmptyState = computed(() =>
+    !this.loading()
+    && !this.error()
+    && this.rooms().length === 0,
+  );
+
+  readonly showNoResultsState = computed(() =>
+    !this.loading()
+    && !this.error()
+    && this.rooms().length > 0
+    && this.filteredRooms().length === 0,
+  );
 
   private readonly dialogConfig = {
     width: 'min(520px, 85dvw)',
@@ -50,7 +95,7 @@ export class LobbyPageComponent implements OnInit {
     this.error.set(null);
     this.roomApi.getRooms().subscribe({
       next: rooms => {
-        this.rooms.set(rooms);
+        this.applyRoomDiff(rooms);
         this.loading.set(false);
       },
       error: () => {
@@ -65,15 +110,62 @@ export class LobbyPageComponent implements OnInit {
   }
 
   private startPolling(): void {
-    interval(10000).pipe(
+    interval(POLL_INTERVAL_MS).pipe(
       filter(() => this.joiningRoomCode() === null),
       switchMap(() => this.roomApi.getRooms().pipe(
         catchError(() => EMPTY),
       )),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(rooms => {
-      this.rooms.set(rooms);
+      this.applyRoomDiff(rooms);
     });
+  }
+
+  // Replaces the room list and marks newly-appeared rooms for a one-shot
+  // `--new` flash animation. The flash class is removed after the animation
+  // window so subsequent polls don't restart it.
+  private applyRoomDiff(next: readonly RoomDTO[]): void {
+    const previousCodes = new Set(this.rooms().map(r => r.roomCode));
+    const appearedCodes = new Set<string>();
+    if (this.hasFetchedOnce) {
+      for (const room of next) {
+        if (!previousCodes.has(room.roomCode)) {
+          appearedCodes.add(room.roomCode);
+        }
+      }
+    }
+    this.hasFetchedOnce = true;
+    this.rooms.set([...next]);
+
+    if (appearedCodes.size > 0) {
+      // Merge into the existing flash set in case multiple polls overlap.
+      this.newRoomCodes.update(prev => {
+        const merged = new Set(prev);
+        appearedCodes.forEach(code => merged.add(code));
+        return merged;
+      });
+      setTimeout(() => {
+        this.newRoomCodes.update(prev => {
+          if (prev.size === 0) return prev;
+          const next = new Set(prev);
+          appearedCodes.forEach(code => next.delete(code));
+          return next;
+        });
+      }, NEW_ROOM_FLASH_MS);
+    }
+  }
+
+  onSearchInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchQuery.set(value);
+  }
+
+  clearSearch(): void {
+    this.searchQuery.set('');
+  }
+
+  isNewRoom(roomCode: string): boolean {
+    return this.newRoomCodes().has(roomCode);
   }
 
   createRoom(): void {

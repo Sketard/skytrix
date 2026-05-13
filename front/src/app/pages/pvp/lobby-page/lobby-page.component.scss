@@ -1,103 +1,509 @@
 @use '../../../styles/responsive' as r;
 
+// =============================================================================
+// Lobby page — Phase 1.6 refonte visuelle (mockup-1-holo-arena).
+// Tokens DS Phase 1.1 consumed: --gold-*, --cyan-*, --space-*, --text-*,
+// --radius-*, --elevation-*, --transition-*, --ease-*, --weight-*.
+// =============================================================================
+
 :host {
   display: block;
-  padding: 16px;
-  max-width: 480px;
+  padding: var(--space-fluid-md, 16px);
+  max-width: 580px;
   margin: 0 auto;
 
   @include r.respond-above(r.$bp-tablet) {
-    padding: 24px;
-    max-width: 600px;
+    padding: var(--space-fluid-lg, 24px);
   }
 }
 
 .lobby-container {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 
-// --- Header ---
-
+// ── Header ──────────────────────────────────────────────────────────────────
 .lobby-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
 
-  h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-primary);
-  }
+.lobby-header-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 
 .lobby-title-icon {
-  color: var(--pvp-accent);
-  font-size: 28px;
-  width: 28px;
-  height: 28px;
+  color: var(--gold);
+  font-size: 38px !important;
+  width: 38px !important;
+  height: 38px !important;
+  filter: drop-shadow(0 0 14px var(--gold-soft-50));
 }
 
-.lobby-header-actions {
+.lobby-header-text {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 4px;
+  min-width: 0;
+
+  h1 {
+    font-family: 'Rajdhani', 'Inter', sans-serif;
+    margin: 0;
+    font-size: clamp(1.4rem, 5vw, 1.85rem);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    text-wrap: balance;
+    background: linear-gradient(135deg, var(--gold-50) 0%, var(--gold) 50%, var(--gold-900) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+.lobby-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 .alpha-chip {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 0.6rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
   background: var(--alpha-badge-bg);
   color: #fff;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
-  vertical-align: middle;
   line-height: 1;
+  -webkit-text-fill-color: #fff;
+  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.4);
 }
 
+// ── CTA row (Create + Sandbox) ──────────────────────────────────────────────
+.cta-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
 
-// --- CTA Button ---
+  @media (min-width: 480px) {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
 
 .lobby-cta {
-  width: 100%;
-  min-height: 48px;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: var(--pvp-radius-lg);
-  background: var(--pvp-lobby-cta-bg) !important;
-  color: var(--pvp-lobby-cta-color) !important;
-  transition: filter 200ms ease-out;
+  position: relative;
+  min-height: 58px !important;
+  padding: 0 24px !important;
+  font: var(--weight-bold) 1rem / 1 'Rajdhani', sans-serif !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 14px !important;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--transition-normal) var(--ease-inout),
+              box-shadow var(--transition-normal) var(--ease-inout),
+              filter var(--transition-normal) var(--ease-inout);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  mat-icon {
+    font-size: 22px !important;
+    width: 22px !important;
+    height: 22px !important;
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.lobby-cta-label {
+  position: relative;
+  z-index: 1;
+}
+
+.lobby-cta--primary {
+  background: linear-gradient(135deg, var(--gold-100) 0%, var(--gold) 50%, var(--gold-700) 100%) !important;
+  color: var(--text-inverse) !important;
+  border: none !important;
+  box-shadow:
+    0 6px 24px var(--gold-soft-30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.4), transparent 70%);
+    background-size: 200% 200%;
+    animation: lobby-cta-shimmer 4s ease-in-out infinite;
+    pointer-events: none;
+  }
 
   &:hover:not(:disabled) {
-    filter: brightness(1.1);
-  }
-
-  &:disabled {
-    opacity: var(--pvp-disabled-opacity);
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow:
+      0 10px 32px var(--gold-soft-50),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.2);
   }
 }
 
-.lobby-cta-secondary {
-  min-height: 44px;
-  font-weight: 500;
+.lobby-cta--solo {
+  background: var(--cyan-soft-15) !important;
+  color: var(--cyan-300) !important;
+  border: 1px solid var(--cyan-soft-40) !important;
+
+  &:hover:not(:disabled) {
+    background: var(--cyan-soft-25) !important;
+    border-color: var(--cyan-500) !important;
+    box-shadow: 0 6px 20px var(--cyan-soft-25);
+  }
 }
 
-// --- Loading ---
+.lobby-cta:disabled {
+  opacity: var(--pvp-disabled-opacity);
+  cursor: not-allowed;
+}
 
-.lobby-loading {
+@keyframes lobby-cta-shimmer {
+  0%, 100% { background-position: 200% 200%; opacity: 0; }
+  50%      { background-position: -50% -50%; opacity: 1; }
+}
+
+// ── Section header (title + count) ──────────────────────────────────────────
+.lobby-section-header {
   display: flex;
-  justify-content: center;
-  padding: 48px 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
 }
 
-// --- Empty / Error State ---
+.lobby-section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
+.lobby-section-title {
+  font: var(--weight-bold) 0.75rem / 1 'Rajdhani', sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  position: relative;
+  padding-left: 14px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 14px;
+    background: var(--gold);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--gold-soft-50);
+  }
+}
+
+.lobby-section-count {
+  font: var(--weight-bold) 0.7rem / 1 'Inter', sans-serif;
+  color: var(--gold);
+  background: var(--gold-soft-12);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--gold-soft-30);
+}
+
+// ── Search bar (filter by pseudo) ───────────────────────────────────────────
+.lobby-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-normal) var(--ease-inout),
+              background var(--transition-normal) var(--ease-inout);
+
+  &:focus-within {
+    border-color: var(--gold-soft-50);
+    background: var(--surface-hover);
+  }
+
+  mat-icon {
+    color: var(--text-muted);
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font: var(--weight-normal) 0.88rem / 1 'Inter', sans-serif;
+    color: var(--text-primary);
+    min-width: 0;
+
+    &::placeholder {
+      color: var(--text-disabled);
+    }
+  }
+}
+
+.lobby-search-clear {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color var(--transition-normal) var(--ease-inout);
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  mat-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
+// ── Room list viewport (fade scroll mask, scrollable) ───────────────────────
+.room-list-viewport {
+  max-height: 65vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  // Fade scroll : mask au bas du viewport pour indiquer scrollable.
+  // Suppression du fade au top — la search bar reste lisible.
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+  mask-image:         linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--gold-soft-30);
+    border-radius: 4px;
+    &:hover { background: var(--gold-soft-40); }
+  }
+}
+
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  // Bottom padding so the fade scroll mask doesn't truncate the last card.
+  padding-bottom: 24px;
+}
+
+// ── Room card ──────────────────────────────────────────────────────────────
+.room-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'avatar info'
+    'join   join';
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(30, 30, 46, 0.85) 0%, rgba(22, 22, 36, 0.85) 100%);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--elevation-2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform var(--transition-normal) var(--ease-inout),
+              border-color var(--transition-normal) var(--ease-inout),
+              box-shadow var(--transition-normal) var(--ease-inout);
+  overflow: hidden;
+
+  > .room-avatar { grid-area: avatar; }
+  > .room-info { grid-area: info; }
+  > .room-join-btn { grid-area: join; }
+
+  @media (min-width: 480px) {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'avatar info join';
+    gap: 14px;
+    padding: 14px 16px;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10%;
+    bottom: 10%;
+    width: 3px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+    opacity: 0.7;
+    transition: opacity var(--transition-normal) var(--ease-inout),
+                width var(--transition-normal) var(--ease-inout);
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: var(--gold-soft-40);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+                0 0 0 1px var(--gold-soft-12);
+
+    &::before {
+      opacity: 1;
+      width: 4px;
+    }
+  }
+
+  &--new {
+    animation: room-card-new 600ms var(--ease-out);
+  }
+}
+
+@keyframes room-card-new {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+    box-shadow: 0 0 0 2px var(--gold-soft-50);
+  }
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.room-info-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.room-creator {
+  font-weight: var(--weight-semibold);
+  font-size: 1rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.room-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.room-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.7);
+  position: relative;
+  flex-shrink: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: rgba(76, 175, 80, 0.4);
+    animation: room-status-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes room-status-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%      { transform: scale(1.8); opacity: 0; }
+}
+
+.room-status-text {
+  font-style: italic;
+}
+
+// ── Join button ────────────────────────────────────────────────────────────
+.room-join-btn {
+  min-height: 44px !important;
+  padding: 0 16px !important;
+  font: var(--weight-bold) 0.82rem / 1 'Rajdhani', sans-serif !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 8px !important;
+  background: var(--gold-soft-12) !important;
+  color: var(--gold) !important;
+  border: 1px solid var(--gold-soft-40) !important;
+  transition: all var(--transition-normal) var(--ease-inout);
+  width: 100%;
+
+  mat-icon {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    transition: transform var(--transition-normal) var(--ease-inout);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--gold) !important;
+    color: var(--text-inverse) !important;
+    box-shadow: 0 4px 16px var(--gold-soft-40);
+
+    mat-icon {
+      transform: translateX(3px);
+    }
+  }
+
+  @media (min-width: 480px) {
+    min-height: 38px !important;
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
+.room-join-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// ── Empty / error / no-results states ───────────────────────────────────────
 .lobby-empty {
   display: flex;
   flex-direction: column;
@@ -108,82 +514,31 @@
 }
 
 .lobby-empty-icon {
-  font-size: 64px;
-  width: 64px;
-  height: 64px;
-  color: var(--pvp-accent);
-  opacity: 0.3;
+  font-size: 64px !important;
+  width: 64px !important;
+  height: 64px !important;
+  color: var(--gold);
+  opacity: 0.4;
+  filter: drop-shadow(0 0 16px var(--gold-soft-30));
 }
 
 .lobby-empty-title {
   margin: 0;
   font-size: 1.1rem;
-  font-weight: 500;
+  font-weight: var(--weight-semibold);
   color: var(--text-primary);
 }
 
 .lobby-empty-subtitle {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-// --- Room List ---
-
-.room-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-// --- Room Card ---
-
-.room-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: var(--pvp-radius-lg);
-  background: var(--pvp-lobby-card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: var(--pvp-lobby-accent-border);
-  transition: background 200ms ease-out, box-shadow 200ms ease-out;
-
-  &:hover {
-    background: var(--pvp-lobby-card-hover);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-}
-
-.room-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.room-creator {
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--text-primary);
-}
-
-.room-time {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.room-status {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-.room-join-btn {
-  align-self: stretch;
+.lobby-cta-secondary {
   min-height: 44px;
-  font-weight: 600;
-  border-radius: var(--pvp-radius-lg);
+  font-weight: var(--weight-semibold);
+  margin-top: 4px;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
@@ -197,8 +552,12 @@
   }
 
   .lobby-empty-icon {
-    font-size: 40px;
-    width: 40px;
-    height: 40px;
+    font-size: 40px !important;
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .room-list-viewport {
+    max-height: 50vh;
   }
 }
