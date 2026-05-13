@@ -195,23 +195,33 @@
       "takeControl": "Reprendre ici"
     },
     "dice": {
-      "title": "DÉS — QUI COMMENCE ?",
-      "subtitle": "Lancez les dés pour décider",
-      "waitingOpponent": "En attente du lancer adverse...",
-      "roll": "Lancer les dés",
-      "you": "Vous",
+      "tag": "Lancé de dé",
+      "titleReady": "Plus haut score",
+      "titleRolling": "Les dés roulent…",
+      "titleResult": "Résultat",
+      "subtitleReady": "Chaque joueur lance deux dés. La somme la plus haute choisit qui ouvre le duel.",
+      "subtitleRolling": "Suspense.",
+      "subtitleResult": "Verdict.",
+      "you": "Toi",
       "opponent": "Adversaire",
-      "vs": "VS",
-      "youWin": "Vous gagnez !",
-      "youLose": "L'adversaire gagne",
-      "draw": "Égalité — on relance les dés"
+      "vs": "vs",
+      "youWon": "Tu as gagné le lancer",
+      "youLost": "L'adversaire a gagné",
+      "chooseOpener": "Choisis qui ouvre le duel",
+      "opponentChoosing": "Il choisit qui commence",
+      "draw": "Égalité — on relance les dés",
+      "drawAutoRetry": "Tirage automatique dans un instant",
+      "whoStarts": "Qui commence ?",
+      "launchDuel": "Lancer le duel"
     },
     "firstPlayer": {
-      "title": "QUI COMMENCE ?",
-      "subtitle": "Vous avez gagné — choisissez",
-      "waiting": "L'adversaire choisit qui commence...",
+      "iStart": "Je commence",
+      "opponentStarts": "L'adversaire commence",
+      "opponentChoosing": "L'adversaire choisit qui commence…",
+      "opponentChoosingDesc": "Tu vas être informé du choix dans un instant.",
       "youFirst": "Tu joues en premier",
-      "youSecond": "Tu joues en second"
+      "youSecond": "Tu joues en second",
+      "boardLoading": "Préparation du plateau…"
     },
     "opponent": {
       "label": "Adversaire"

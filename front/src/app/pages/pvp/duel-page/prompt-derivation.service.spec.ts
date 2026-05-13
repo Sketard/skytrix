@@ -271,46 +271,21 @@ describe('PromptDerivationService', () => {
   // -------------------------------------------------------------------------
 
   describe('tpPassiveMessage', () => {
-    it('returns "You go first!" when firstPlayerResult.goFirst=true', () => {
+    // Since Phase 3.14, the whole pre-duel UX (dice + first-player + announce)
+    // is owned by <app-pvp-dice-arena>. tpPassiveMessage is intentionally a
+    // no-op so the prompt-dialog stays out of the way during the dice flow.
+    it('returns null in every dice/first-player state', () => {
       const h = makeHarness();
-      h.firstPlayerResult.set({ goFirst: true });
-      const msg = h.service.tpPassiveMessage();
-      expect(msg).toEqual({
-        title: 'You go first!',
-        subtitle: 'The duel will begin shortly',
-        style: 'result',
-      });
-    });
-
-    it('returns "You go second!" when firstPlayerResult.goFirst=false', () => {
-      const h = makeHarness();
-      h.firstPlayerResult.set({ goFirst: false });
-      expect(h.service.tpPassiveMessage()!.title).toBe('You go second!');
-    });
-
-    it('returns waiting message when pre-duel + waitingForOpponent + no prompt + no rps', () => {
-      const h = makeHarness();
-      h.waitingForOpponent.set(true);
-      h.ocgPlayerIndex.set(null); // pre-duel
-      // pendingPrompt=null, diceResult=null, diceInProgress=false (defaults)
-      const msg = h.service.tpPassiveMessage();
-      expect(msg).toEqual({
-        title: 'Opponent is choosing turn order...',
-        style: 'waiting',
-      });
-    });
-
-    it('returns null when ocgPlayerIndex is set (no longer pre-duel)', () => {
-      const h = makeHarness();
-      h.waitingForOpponent.set(true);
-      h.ocgPlayerIndex.set(0);
       expect(h.service.tpPassiveMessage()).toBeNull();
-    });
 
-    it('returns null when an RPS result is present', () => {
-      const h = makeHarness();
+      h.firstPlayerResult.set({ goFirst: true });
+      expect(h.service.tpPassiveMessage()).toBeNull();
+
+      h.firstPlayerResult.set(null);
       h.waitingForOpponent.set(true);
       h.ocgPlayerIndex.set(null);
+      expect(h.service.tpPassiveMessage()).toBeNull();
+
       h.diceResult.set({ winner: 0 });
       expect(h.service.tpPassiveMessage()).toBeNull();
     });

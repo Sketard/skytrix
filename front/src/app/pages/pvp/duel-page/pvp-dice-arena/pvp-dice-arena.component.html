@@ -1,0 +1,178 @@
+@if (stage() !== 'idle') {
+  <div class="dice-arena-overlay" role="status" aria-live="polite">
+    <div class="dice-screen-container">
+      <span class="dice-screen-tag">
+        <span class="material-icons-round" aria-hidden="true">casino</span>
+        <span>{{ 'duel.dice.tag' | translate }}</span>
+      </span>
+
+      <h1 class="dice-screen-title">
+        @switch (stage()) {
+          @case ('ready')   { {{ 'duel.dice.titleReady' | translate }} }
+          @case ('rolling') { {{ 'duel.dice.titleRolling' | translate }} }
+          @case ('result')  { {{ 'duel.dice.titleResult' | translate }} }
+          @case ('final')   { {{ 'duel.dice.titleResult' | translate }} }
+        }
+      </h1>
+      <p class="dice-screen-subtitle">
+        @switch (stage()) {
+          @case ('ready')   { {{ 'duel.dice.subtitleReady' | translate }} }
+          @case ('rolling') { {{ 'duel.dice.subtitleRolling' | translate }} }
+          @case ('result')  { {{ 'duel.dice.subtitleResult' | translate }} }
+          @case ('final')   { {{ 'duel.dice.subtitleResult' | translate }} }
+        }
+      </p>
+
+      <div class="dice-screen-arena">
+        <div class="dice-screen-arena-grid" aria-hidden="true"></div>
+        <div class="dice-screen-arena-content">
+
+          <!-- Dice stage: stays mounted across ready/rolling/result so the
+               physics animation isn't restarted by mount/unmount cycles. -->
+          <div class="dice-stage">
+            <div class="dice-table" aria-hidden="true"></div>
+            <div class="dice-pair dice-style-obsidian">
+              <!-- Player A (own side) -->
+              <div class="dice-scene dice-scene--a">
+                <div class="dice-mover" [class.animating]="stage() === 'rolling'"
+                     [class.landed]="stage() === 'result' || stage() === 'final'">
+                  <div class="dice" [ngClass]="diceVariantClass(resultMy()?.[0])">
+                    @for (face of DICE_FACES; track face) {
+                      <div class="dice-face" [class]="'dice-face--' + face">
+                        @for (p of FACE_PIPS[face]; track $index) {
+                          <span class="pip"></span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+                <div class="dice-shadow" [class.animating]="stage() === 'rolling'"
+                     [class.landed]="stage() === 'result' || stage() === 'final'"></div>
+              </div>
+              <div class="dice-scene dice-scene--b">
+                <div class="dice-mover" [class.animating]="stage() === 'rolling'"
+                     [class.landed]="stage() === 'result' || stage() === 'final'">
+                  <div class="dice" [ngClass]="diceVariantClass(resultMy()?.[1])">
+                    @for (face of DICE_FACES; track face) {
+                      <div class="dice-face" [class]="'dice-face--' + face">
+                        @for (p of FACE_PIPS[face]; track $index) {
+                          <span class="pip"></span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+                <div class="dice-shadow" [class.animating]="stage() === 'rolling'"
+                     [class.landed]="stage() === 'result' || stage() === 'final'"></div>
+              </div>
+            </div>
+          </div>
+
+          @if (stage() === 'result' || stage() === 'final') {
+            @if (resultMy(); as my) {
+              @if (resultOpp(); as opp) {
+                <div class="dice-roll-strip">
+                  <span class="dice-roll-strip__label">{{ 'duel.dice.you' | translate }}</span>
+                  <strong class="dice-roll-strip__total">
+                    <span>{{ my[0] }}</span>+<span>{{ my[1] }}</span>=<span class="dice-roll-strip__sum">{{ myTotal() }}</span>
+                  </strong>
+                  <span class="dice-roll-strip__sep">{{ 'duel.dice.vs' | translate }}</span>
+                  <strong class="dice-roll-strip__total dice-roll-strip__total--opp">
+                    <span>{{ opp[0] }}</span>+<span>{{ opp[1] }}</span>=<span class="dice-roll-strip__sum">{{ oppTotal() }}</span>
+                  </strong>
+                  <span class="dice-roll-strip__label">{{ 'duel.dice.opponent' | translate }}</span>
+                </div>
+              }
+            }
+          }
+
+          @if (stage() === 'result') {
+            <!-- Outcome banner -->
+            @switch (outcome()) {
+              @case ('won') {
+                <div class="dice-banner dice-banner--win">
+                  <div class="dice-banner__icon">
+                    <span class="material-icons-round" aria-hidden="true">emoji_events</span>
+                  </div>
+                  <div class="dice-banner__text">
+                    {{ 'duel.dice.youWon' | translate }}
+                    <small>{{ 'duel.dice.chooseOpener' | translate }}</small>
+                  </div>
+                </div>
+
+                <div class="dice-turn-choice">
+                  <span class="dice-turn-choice__label">{{ 'duel.dice.whoStarts' | translate }}</span>
+                  <div class="dice-turn-options">
+                    <button type="button" class="dice-turn-option"
+                            [class.selected]="turnChoice() === 'first'"
+                            (click)="selectTurnChoice('first')">
+                      <span class="material-icons-round" aria-hidden="true">play_circle</span>
+                      <span class="dice-turn-option__title">{{ 'duel.firstPlayer.iStart' | translate }}</span>
+                    </button>
+                    <button type="button" class="dice-turn-option"
+                            [class.selected]="turnChoice() === 'second'"
+                            (click)="selectTurnChoice('second')">
+                      <span class="material-icons-round" aria-hidden="true">skip_next</span>
+                      <span class="dice-turn-option__title">{{ 'duel.firstPlayer.opponentStarts' | translate }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button type="button" class="dice-launch-btn" (click)="confirmTurnChoice()">
+                  <span class="material-icons-round" aria-hidden="true">bolt</span>
+                  <span>{{ 'duel.dice.launchDuel' | translate }}</span>
+                </button>
+              }
+              @case ('lost') {
+                <div class="dice-banner dice-banner--lost">
+                  <div class="dice-banner__icon">
+                    <span class="material-icons-round" aria-hidden="true">close</span>
+                  </div>
+                  <div class="dice-banner__text">
+                    {{ 'duel.dice.youLost' | translate }}
+                    <small>{{ 'duel.dice.opponentChoosing' | translate }}</small>
+                  </div>
+                </div>
+                <div class="dice-opponent-choosing">
+                  <div class="dice-opponent-choosing__spinner" aria-hidden="true"></div>
+                  <div class="dice-opponent-choosing__title">{{ 'duel.firstPlayer.opponentChoosing' | translate }}</div>
+                  <div class="dice-opponent-choosing__desc">{{ 'duel.firstPlayer.opponentChoosingDesc' | translate }}</div>
+                </div>
+              }
+              @case ('draw') {
+                <div class="dice-banner dice-banner--draw">
+                  <div class="dice-banner__icon">
+                    <span class="material-icons-round" aria-hidden="true">refresh</span>
+                  </div>
+                  <div class="dice-banner__text">
+                    {{ 'duel.dice.draw' | translate }}
+                    <small>{{ 'duel.dice.drawAutoRetry' | translate }}</small>
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          @if (stage() === 'final' && firstPlayerResult(); as fp) {
+            <div class="dice-final-announce" [class.dice-final-announce--second]="!fp.goFirst">
+              <div class="dice-final-announce__icon">
+                <span class="material-icons-round" aria-hidden="true">{{ fp.goFirst ? 'play_circle' : 'skip_next' }}</span>
+              </div>
+              <div class="dice-final-announce__headline">
+                {{ (fp.goFirst ? 'duel.firstPlayer.youFirst' : 'duel.firstPlayer.youSecond') | translate }}
+              </div>
+              <div class="dice-final-announce__progress" aria-hidden="true">
+                <div class="dice-final-announce__progress-bar"></div>
+              </div>
+              <div class="dice-final-announce__hint">
+                <span class="material-icons-round" aria-hidden="true">bolt</span>
+                {{ 'duel.firstPlayer.boardLoading' | translate }}
+              </div>
+            </div>
+          }
+
+        </div>
+      </div>
+    </div>
+  </div>
+}

@@ -195,23 +195,33 @@
       "takeControl": "Take control here"
     },
     "dice": {
-      "title": "DICE — WHO STARTS?",
-      "subtitle": "Roll the dice to decide",
-      "waitingOpponent": "Waiting for opponent's roll...",
-      "roll": "Roll the dice",
+      "tag": "Dice roll",
+      "titleReady": "Highest score wins",
+      "titleRolling": "Dice are rolling…",
+      "titleResult": "Result",
+      "subtitleReady": "Each player rolls two dice. Highest sum picks who opens the duel.",
+      "subtitleRolling": "Suspense.",
+      "subtitleResult": "Verdict.",
       "you": "You",
       "opponent": "Opponent",
-      "vs": "VS",
-      "youWin": "You win!",
-      "youLose": "Opponent wins",
-      "draw": "Tie — rolling again"
+      "vs": "vs",
+      "youWon": "You won the roll",
+      "youLost": "Opponent won",
+      "chooseOpener": "Choose who opens the duel",
+      "opponentChoosing": "They are choosing who starts",
+      "draw": "Tie — rolling again",
+      "drawAutoRetry": "Auto-retry in a moment",
+      "whoStarts": "Who starts?",
+      "launchDuel": "Launch the duel"
     },
     "firstPlayer": {
-      "title": "WHO STARTS?",
-      "subtitle": "You won — pick",
-      "waiting": "Opponent is choosing who goes first...",
+      "iStart": "I start",
+      "opponentStarts": "Opponent starts",
+      "opponentChoosing": "Opponent is choosing who starts…",
+      "opponentChoosingDesc": "You'll be notified of the choice in a moment.",
       "youFirst": "You go first",
-      "youSecond": "You go second"
+      "youSecond": "You go second",
+      "boardLoading": "Preparing the board…"
     },
     "opponent": {
       "label": "Opponent"

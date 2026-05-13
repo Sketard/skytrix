@@ -5,10 +5,11 @@ import { PromptCardGridComponent } from './prompt-card-grid/prompt-card-grid.com
 import { PromptOptionListComponent } from './prompt-option-list/prompt-option-list.component';
 import { PromptPositionSelectComponent } from './prompt-position-select/prompt-position-select.component';
 import { PromptNumericInputComponent } from './prompt-numeric-input/prompt-numeric-input.component';
-import { PromptChoiceComponent } from './prompt-choice/prompt-choice.component';
 import { PromptSortCardComponent } from './prompt-sort-card/prompt-sort-card.component';
 import { PromptAnnounceCardComponent } from './prompt-announce-card/prompt-announce-card.component';
 // PromptZoneHighlightComponent uses Pattern A (no sheet) — not registered in map
+// DICE_ROLL + SELECT_FIRST_PLAYER are owned by <app-pvp-dice-arena> (Phase 3.14) and
+// intentionally NOT registered here — see prompts/prompt.types.ts:DICE_ARENA_PROMPT_TYPES.
 
 const REGISTRY: [string, Type<PromptSubComponent>][] = [
   ['SELECT_YESNO', PromptYesNoComponent],
@@ -24,8 +25,6 @@ const REGISTRY: [string, Type<PromptSubComponent>][] = [
   ['ANNOUNCE_ATTRIB', PromptOptionListComponent],
   ['ANNOUNCE_NUMBER', PromptNumericInputComponent],
   ['SELECT_COUNTER', PromptNumericInputComponent],
-  ['DICE_ROLL', PromptChoiceComponent],
-  ['SELECT_FIRST_PLAYER', PromptChoiceComponent],
   ['SORT_CARD', PromptSortCardComponent],
   ['SORT_CHAIN', PromptSortCardComponent],
   ['ANNOUNCE_CARD', PromptAnnounceCardComponent],

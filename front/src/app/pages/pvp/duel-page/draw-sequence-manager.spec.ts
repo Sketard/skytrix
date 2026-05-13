@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { DrawSequenceManager } from './draw-sequence-manager';
 import { ChainResolutionManager } from './chain-resolution-manager';
 import { CardTravelEngine } from './card-travel-engine.service';
+import { BoardEffectsService } from './board-effects.service';
 import { FloatRegistryService } from './float-registry.service';
 import { DuelContext } from './duel-context';
 import { DuelLogger } from './duel-logger';
@@ -102,6 +103,12 @@ describe('DrawSequenceManager', () => {
     ]);
     mockFloatRegistry.getLandedFloatsByDstPrefix.and.returnValue([]);
 
+    // Only revealCardOnDeck is invoked by DrawSequenceManager (during reveal-on-deck draws).
+    const mockBoardEffects = jasmine.createSpyObj<BoardEffectsService>('BoardEffectsService', [
+      'revealCardOnDeck',
+    ]);
+    mockBoardEffects.revealCardOnDeck.and.returnValue(Promise.resolve());
+
     const mockLogger = jasmine.createSpyObj<DuelLogger>('DuelLogger', ['log', 'warn']);
 
     TestBed.configureTestingModule({
@@ -109,6 +116,7 @@ describe('DrawSequenceManager', () => {
         DrawSequenceManager,
         { provide: ANIMATION_DATA_SOURCE, useValue: mockDataSource },
         { provide: CardTravelEngine, useValue: mockCardTravel },
+        { provide: BoardEffectsService, useValue: mockBoardEffects },
         { provide: FloatRegistryService, useValue: mockFloatRegistry },
         { provide: DuelContext, useValue: mockCtx as unknown as DuelContext },
         { provide: DuelLogger, useValue: mockLogger },

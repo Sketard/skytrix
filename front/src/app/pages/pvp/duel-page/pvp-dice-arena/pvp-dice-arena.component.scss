@@ -1,0 +1,729 @@
+@use '../../../../styles/z-layers' as z;
+
+// ============================================================
+// Pre-duel dice arena — full-screen overlay (Phase 3.14)
+// Style derived from _mockups/mockup-1-holo-arena.html (#screen-dice).
+// Obsidian dice style (dark/violet faces, gold-glowing pips) is the
+// only style shipped in v1 — gold/crystal variants kept out until
+// the user surfaces a toggle.
+// ============================================================
+
+:host { display: contents; }
+
+.dice-arena-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: z.$z-pvp-rps-overlay; // same band as the legacy RPS overlay
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(16px, 4vw, 48px);
+  background:
+    radial-gradient(ellipse at center, rgba(15, 15, 28, 0.85), rgba(0, 0, 0, 0.92) 70%);
+  animation: dice-arena-fade-in 220ms ease both;
+}
+
+@keyframes dice-arena-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.dice-screen-container {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.dice-screen-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  font: 700 0.72rem/1 'Rajdhani', 'Inter', sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #C9A84C;
+
+  .material-icons-round { font-size: 14px; }
+}
+
+.dice-screen-title {
+  margin: 0;
+  font: 800 clamp(1.5rem, 6vw, 2.2rem)/1.15 'Rajdhani', 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-wrap: balance;
+  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dice-screen-subtitle {
+  margin: -12px 0 0;
+  font-size: 0.95rem;
+  color: #9e9e9e;
+  text-align: center;
+  max-width: 460px;
+  line-height: 1.4;
+}
+
+.dice-screen-arena {
+  width: 100%;
+  padding: clamp(20px, 5cqw, 36px) clamp(14px, 4cqw, 28px);
+  border-radius: clamp(14px, 3cqw, 20px);
+  min-height: clamp(260px, 55cqw, 380px);
+  background:
+    radial-gradient(ellipse at center top, rgba(201, 168, 76, 0.15), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.85) 0%, rgba(15, 15, 28, 0.85) 100%);
+  container-type: inline-size;
+  container-name: dice-arena;
+  --dice-size: clamp(56px, 22cqw, 110px);
+  --dice-table-bottom: calc(var(--dice-size) * 0.6 - var(--dice-size) * 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  justify-content: center;
+}
+
+.dice-screen-arena-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, rgba(201, 168, 76, 0.08) 1px, transparent 1px);
+  background-size: 30px 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  opacity: 0.4;
+}
+
+.dice-screen-arena-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+// ============================================================
+// Dice table + 3D cubes — derived from --dice-size
+// ============================================================
+.dice-stage {
+  width: 100%;
+  min-height: clamp(220px, 55cqw, 360px);
+  position: relative;
+  perspective: clamp(700px, 120cqw, 1200px);
+  perspective-origin: 50% 30%;
+  padding: clamp(10px, 3cqw, 20px);
+  overflow: hidden;
+}
+
+.dice-table {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: var(--dice-table-bottom);
+  height: 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(201, 168, 76, 0.6) 20%,
+    rgba(255, 233, 168, 0.9) 50%,
+    rgba(201, 168, 76, 0.6) 80%,
+    transparent 100%);
+  box-shadow:
+    0 0 14px rgba(201, 168, 76, 0.55),
+    0 0 32px rgba(201, 168, 76, 0.25);
+  z-index: 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -8%;
+    right: -8%;
+    bottom: 100%;
+    height: 90px;
+    background: radial-gradient(ellipse at bottom, rgba(201, 168, 76, 0.18), transparent 70%);
+    pointer-events: none;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 80px;
+    background: linear-gradient(180deg, rgba(201, 168, 76, 0.06), transparent 80%);
+    pointer-events: none;
+  }
+}
+
+.dice-pair {
+  --dice-half: calc(var(--dice-size) / 2);
+  --dice-land-offset: calc(var(--dice-size) * 0.36);
+  --dice-start-offset: calc(var(--dice-size) * 1.45);
+  --dice-start-y: calc(var(--dice-size) * -2.35);
+
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--dice-size) * 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: clamp(16px, 6cqw, 48px);
+  z-index: 1;
+}
+
+.dice-scene {
+  position: relative;
+  width: var(--dice-size);
+  height: var(--dice-size);
+  flex-shrink: 0;
+
+  &--a {
+    --start-x: calc(var(--dice-start-offset) * -1);
+    --start-y: var(--dice-start-y);
+    --land-x: calc(var(--dice-land-offset) * -1);
+  }
+  &--b {
+    --start-x: var(--dice-start-offset);
+    --start-y: var(--dice-start-y);
+    --land-x: var(--dice-land-offset);
+  }
+}
+
+.dice-mover {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: var(--dice-size);
+  height: var(--dice-size);
+  margin-left: calc(var(--dice-half) * -1);
+  will-change: transform;
+  transform: translate3d(var(--start-x), var(--start-y), 0);
+
+  &.animating { animation: dice-fall-roll 1.8s cubic-bezier(.55, 0, .35, 1) forwards; }
+  &.landed    { transform: translate3d(var(--land-x), 0, 0); }
+}
+
+.dice {
+  width: var(--dice-size);
+  height: var(--dice-size);
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+
+  &.result-1 { transform: rotateX(0deg)   rotateY(0deg); }
+  &.result-2 { transform: rotateX(90deg)  rotateY(0deg); }
+  &.result-3 { transform: rotateX(0deg)   rotateY(-90deg); }
+  &.result-4 { transform: rotateX(0deg)   rotateY(90deg); }
+  &.result-5 { transform: rotateX(-90deg) rotateY(0deg); }
+  &.result-6 { transform: rotateX(0deg)   rotateY(180deg); }
+
+  &.tumble-1 { animation: dice-tumble-1 1.4s ease-in-out forwards; }
+  &.tumble-2 { animation: dice-tumble-2 1.4s ease-in-out forwards; }
+  &.tumble-3 { animation: dice-tumble-3 1.4s ease-in-out forwards; }
+  &.tumble-4 { animation: dice-tumble-4 1.4s ease-in-out forwards; }
+  &.tumble-5 { animation: dice-tumble-5 1.4s ease-in-out forwards; }
+  &.tumble-6 { animation: dice-tumble-6 1.4s ease-in-out forwards; }
+}
+
+@keyframes dice-tumble-1 { from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); } to { transform: rotateX(720deg) rotateY(720deg) rotateZ(360deg); } }
+@keyframes dice-tumble-2 { from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); } to { transform: rotateX(810deg) rotateY(720deg) rotateZ(360deg); } }
+@keyframes dice-tumble-3 { from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); } to { transform: rotateX(720deg) rotateY(630deg) rotateZ(360deg); } }
+@keyframes dice-tumble-4 { from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); } to { transform: rotateX(720deg) rotateY(810deg) rotateZ(360deg); } }
+@keyframes dice-tumble-5 { from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); } to { transform: rotateX(630deg) rotateY(720deg) rotateZ(360deg); } }
+@keyframes dice-tumble-6 { from { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); } to { transform: rotateX(720deg) rotateY(900deg) rotateZ(360deg); } }
+
+@keyframes dice-fall-roll {
+  0% {
+    transform: translate3d(var(--start-x), var(--start-y), 0);
+    animation-timing-function: cubic-bezier(.5, 0, .85, .35);
+  }
+  45% {
+    transform: translate3d(var(--land-x), 0, 0);
+    animation-timing-function: cubic-bezier(.3, 0, .4, 1);
+  }
+  60% {
+    transform: translate3d(var(--land-x), calc(var(--dice-size) * -0.33), 0);
+    animation-timing-function: cubic-bezier(.5, 0, .5, 1);
+  }
+  73% {
+    transform: translate3d(var(--land-x), 0, 0);
+    animation-timing-function: cubic-bezier(.3, 0, .4, 1);
+  }
+  82% {
+    transform: translate3d(var(--land-x), calc(var(--dice-size) * -0.09), 0);
+    animation-timing-function: cubic-bezier(.5, 0, .5, 1);
+  }
+  100% {
+    transform: translate3d(var(--land-x), 0, 0);
+  }
+}
+
+.dice-face {
+  position: absolute;
+  width: var(--dice-size);
+  height: var(--dice-size);
+  border-radius: calc(var(--dice-size) * 0.127);
+  display: grid;
+  padding: calc(var(--dice-size) * 0.16);
+  gap: calc(var(--dice-size) * 0.055);
+}
+
+// Obsidian style (dark / violet faces + gold-glowing pips)
+.dice-style-obsidian {
+  .dice-face {
+    background:
+      radial-gradient(circle at 30% 25%, #4a2870 0%, #2a1240 35%, #15071f 100%);
+    border: 2px solid #6a3a98;
+    box-shadow:
+      inset 0 0 24px rgba(168, 100, 220, 0.18),
+      inset 0 2px 0 rgba(180, 120, 220, 0.35),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(180, 120, 220, 0.15);
+  }
+  .pip {
+    background: radial-gradient(circle at 30% 30%, #ffe9a8 0%, #C9A84C 60%, #8a6a20 100%);
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.4),
+      0 0 8px rgba(201, 168, 76, 0.7),
+      0 0 16px rgba(201, 168, 76, 0.35);
+  }
+  @media (max-width: 480px) {
+    // Tight glow on small screens — keeps the pips crisp instead of bleeding.
+    .pip {
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.45),
+        0 0 4px rgba(201, 168, 76, 0.9);
+    }
+  }
+}
+
+// Pip layout per face — matches the mockup's grid-area placement.
+.dice-face--1 { grid-template: 1fr / 1fr; place-items: center; }
+.dice-face--2 { grid-template: 1fr 1fr / 1fr 1fr; }
+.dice-face--3 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+.dice-face--4 { grid-template: 1fr 1fr / 1fr 1fr; }
+.dice-face--5 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+.dice-face--6 {
+  grid-template: 1fr 1fr 1fr / 1fr 1fr;
+  padding: calc(var(--dice-size) * 0.127) calc(var(--dice-size) * 0.20);
+  gap: calc(var(--dice-size) * 0.036);
+}
+
+.pip {
+  width: calc(var(--dice-size) * 0.127);
+  height: calc(var(--dice-size) * 0.127);
+  border-radius: 50%;
+  align-self: center;
+  justify-self: center;
+}
+
+.dice-face--2 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--2 .pip:nth-child(2) { grid-area: 2 / 2; }
+
+.dice-face--3 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--3 .pip:nth-child(2) { grid-area: 2 / 2; }
+.dice-face--3 .pip:nth-child(3) { grid-area: 3 / 3; }
+
+.dice-face--4 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--4 .pip:nth-child(2) { grid-area: 1 / 2; }
+.dice-face--4 .pip:nth-child(3) { grid-area: 2 / 1; }
+.dice-face--4 .pip:nth-child(4) { grid-area: 2 / 2; }
+
+.dice-face--5 .pip:nth-child(1) { grid-area: 1 / 1; }
+.dice-face--5 .pip:nth-child(2) { grid-area: 1 / 3; }
+.dice-face--5 .pip:nth-child(3) { grid-area: 2 / 2; }
+.dice-face--5 .pip:nth-child(4) { grid-area: 3 / 1; }
+.dice-face--5 .pip:nth-child(5) { grid-area: 3 / 3; }
+
+.dice-face--6 .pip:nth-child(odd)  { grid-column: 1; }
+.dice-face--6 .pip:nth-child(even) { grid-column: 2; }
+
+// Face positions in 3D space.
+.dice-face--1 { transform: translateZ(var(--dice-half)); }
+.dice-face--6 { transform: rotateY(180deg) translateZ(var(--dice-half)); }
+.dice-face--3 { transform: rotateY(90deg)  translateZ(var(--dice-half)); }
+.dice-face--4 { transform: rotateY(-90deg) translateZ(var(--dice-half)); }
+.dice-face--5 { transform: rotateX(90deg)  translateZ(var(--dice-half)); }
+.dice-face--2 { transform: rotateX(-90deg) translateZ(var(--dice-half)); }
+
+.dice-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--dice-size) * -0.055);
+  width: calc(var(--dice-size) * 0.84);
+  height: calc(var(--dice-size) * 0.11);
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55), transparent 70%);
+  filter: blur(6px);
+  transform: translateX(var(--start-x));
+  opacity: 0.18;
+  margin-left: calc(var(--dice-size) * -0.42);
+
+  &.animating { animation: dice-shadow-fall 1.8s cubic-bezier(.55, 0, .35, 1) forwards; }
+  &.landed    { transform: translateX(var(--land-x)); opacity: 0.55; width: calc(var(--dice-size) * 0.84); }
+}
+
+@keyframes dice-shadow-fall {
+  0%   { transform: translateX(var(--start-x)); width: calc(var(--dice-size) * 0.36); opacity: 0.18; }
+  45%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.87); opacity: 0.58; }
+  60%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.64); opacity: 0.35; }
+  73%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.84); opacity: 0.55; }
+  82%  { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.75); opacity: 0.45; }
+  100% { transform: translateX(var(--land-x));  width: calc(var(--dice-size) * 0.84); opacity: 0.55; }
+}
+
+// ============================================================
+// Result strip (you vs opponent numeric summary)
+// ============================================================
+.dice-roll-strip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font: 600 0.9rem/1 'Rajdhani', 'Inter', sans-serif;
+  letter-spacing: 0.04em;
+  color: #c0c0c0;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+
+  &__label { font-size: 0.78rem; color: #9e9e9e; }
+  &__total { font: 700 1rem/1 'Rajdhani', sans-serif; color: #eaeaea; }
+  &__total--opp { color: #79b8ff; }
+  &__sum   { font-size: 1.3rem; }
+  &__sep   { font-size: 0.7rem; color: #6a6a6a; padding: 0 6px; }
+}
+
+// ============================================================
+// Outcome banner (win / lost / draw)
+// ============================================================
+.dice-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 28px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.18), rgba(76, 175, 80, 0.06));
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  animation: dice-reveal-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  &--lost {
+    background: linear-gradient(135deg, rgba(255, 82, 82, 0.12), rgba(255, 82, 82, 0.04));
+    border-color: rgba(255, 82, 82, 0.3);
+    .dice-banner__icon { background: #ff5252; color: #fff; }
+  }
+  &--draw {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 193, 7, 0.04));
+    border-color: rgba(255, 193, 7, 0.3);
+    .dice-banner__icon { background: #ffc107; color: #1a1208; }
+  }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #4caf50;
+    color: #1a1208;
+    box-shadow: 0 0 16px rgba(76, 175, 80, 0.5);
+    flex-shrink: 0;
+    .material-icons-round { font-size: 24px; }
+  }
+  &__text {
+    font: 800 1.05rem/1.1 'Rajdhani', 'Inter', sans-serif;
+    letter-spacing: 0.04em;
+    color: #eaeaea;
+    text-align: left;
+
+    small {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #9e9e9e;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+  }
+}
+
+@keyframes dice-reveal-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+// ============================================================
+// Turn-order choice (winner path)
+// ============================================================
+.dice-turn-choice {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+
+  &__label {
+    font: 700 0.72rem/1 'Rajdhani', 'Inter', sans-serif;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #C9A84C;
+  }
+}
+
+.dice-turn-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.dice-turn-option {
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 200ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  color: inherit;
+
+  &:hover {
+    border-color: rgba(201, 168, 76, 0.4);
+    background: rgba(201, 168, 76, 0.06);
+    transform: translateY(-2px);
+  }
+  &.selected {
+    border-color: #C9A84C;
+    background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.04));
+    box-shadow: 0 6px 20px rgba(201, 168, 76, 0.25);
+  }
+
+  .material-icons-round { font-size: 28px; color: #C9A84C; }
+
+  &__title {
+    font: 700 0.95rem/1.2 'Rajdhani', 'Inter', sans-serif;
+    letter-spacing: 0.04em;
+    color: #eaeaea;
+  }
+}
+
+// ============================================================
+// Launch / confirm CTA
+// ============================================================
+.dice-launch-btn {
+  min-height: 56px;
+  padding: 0 32px;
+  font: 800 1rem/1 'Rajdhani', 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  background: linear-gradient(135deg, #d4b25a 0%, #C9A84C 50%, #a8862e 100%);
+  color: #1a1208;
+  box-shadow:
+    0 6px 24px rgba(201, 168, 76, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  transition: all 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  &:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow:
+      0 12px 36px rgba(201, 168, 76, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .material-icons-round { font-size: 22px; }
+}
+
+// ============================================================
+// Lost state — opponent choosing (NO visible countdown by design,
+// see pvp-lobby-rework-plan memory).
+// ============================================================
+.dice-opponent-choosing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 20px;
+  border-radius: 12px;
+  background: rgba(74, 144, 217, 0.06);
+  border: 1px solid rgba(74, 144, 217, 0.25);
+  width: 100%;
+  max-width: 400px;
+
+  &__spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(74, 144, 217, 0.2);
+    border-top-color: #79b8ff;
+    border-radius: 50%;
+    animation: dice-spin 1s linear infinite;
+  }
+  &__title {
+    font: 700 1rem/1.2 'Rajdhani', 'Inter', sans-serif;
+    letter-spacing: 0.05em;
+    color: #eaeaea;
+    text-align: center;
+  }
+  &__desc {
+    font-size: 0.82rem;
+    color: #9e9e9e;
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.4;
+  }
+}
+
+@keyframes dice-spin {
+  to { transform: rotate(360deg); }
+}
+
+// ============================================================
+// Final announce — "You go first / second"
+// ============================================================
+.dice-final-announce {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 24px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  background:
+    radial-gradient(ellipse at top, rgba(201, 168, 76, 0.2), transparent 70%),
+    linear-gradient(160deg, rgba(30, 30, 46, 0.7), rgba(15, 15, 28, 0.7));
+  border: 1.5px solid rgba(201, 168, 76, 0.45);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.15);
+  animation: dice-announce-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  &--second {
+    background:
+      radial-gradient(ellipse at top, rgba(74, 144, 217, 0.2), transparent 70%),
+      linear-gradient(160deg, rgba(30, 30, 46, 0.7), rgba(15, 15, 28, 0.7));
+    border-color: rgba(74, 144, 217, 0.45);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(74, 144, 217, 0.15);
+  }
+
+  &__icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #d4b25a, #C9A84C);
+    color: #1a1208;
+    box-shadow: 0 6px 20px rgba(201, 168, 76, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+
+    .material-icons-round { font-size: 32px; }
+  }
+  &--second &__icon {
+    background: linear-gradient(135deg, #79b8ff, #4a90d9);
+    color: #0a1428;
+    box-shadow: 0 6px 20px rgba(74, 144, 217, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  &__headline {
+    font: 800 clamp(1.4rem, 5.5vw, 2rem)/1.15 'Rajdhani', 'Inter', sans-serif;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-wrap: balance;
+    background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  &--second &__headline {
+    background: linear-gradient(135deg, #d8ecff, #79b8ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  &__progress {
+    width: 100%;
+    max-width: 280px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+  }
+  &__progress-bar {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #C9A84C, #ffe9a8);
+    border-radius: 2px;
+    box-shadow: 0 0 10px rgba(201, 168, 76, 0.6);
+    animation: dice-final-progress 2.5s linear forwards;
+  }
+  &--second &__progress-bar {
+    background: linear-gradient(90deg, #4a90d9, #79b8ff);
+    box-shadow: 0 0 10px rgba(74, 144, 217, 0.6);
+  }
+
+  &__hint {
+    font-size: 0.78rem;
+    color: #9e9e9e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .material-icons-round { font-size: 14px; color: #C9A84C; }
+  }
+  &--second &__hint .material-icons-round { color: #79b8ff; }
+}
+
+@keyframes dice-announce-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+@keyframes dice-final-progress {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-mover.animating,
+  .dice-shadow.animating,
+  .dice[class*='tumble-'] {
+    animation: none;
+  }
+  .dice-mover.animating { transform: translate3d(var(--land-x), 0, 0); }
+  .dice-shadow.animating { transform: translateX(var(--land-x)); opacity: 0.55; }
+  .dice-final-announce__progress-bar { animation: none; width: 100%; }
+  .dice-banner,
+  .dice-final-announce { animation: none; }
+}

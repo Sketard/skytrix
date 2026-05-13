@@ -332,35 +332,10 @@
 
     }
 
-    <!-- Pre-duel dice result overlay (placeholder for Phase 3.14 full
-         dice-arena UI with rolling animation, table-lit + first-player
-         banner). Today: minimal text readout so the flow stays
-         testable end-to-end without the visual overhaul. -->
-    @if (wsService.diceResult(); as dice) {
-      <div class="rps-overlay" role="status" aria-live="polite">
-        <div class="rps-overlay__content">
-          <h2 class="rps-overlay__title">{{ 'duel.dice.title' | translate }}</h2>
-          <div class="rps-overlay__choices">
-            <div class="rps-overlay__choice">
-              <span class="rps-overlay__icon" aria-hidden="true">{{ dice.dice0[0] }}+{{ dice.dice0[1] }}={{ dice.sum0 }}</span>
-              <span class="rps-overlay__label">{{ 'duel.dice.you' | translate }}</span>
-            </div>
-            <span class="rps-overlay__vs">{{ 'duel.dice.vs' | translate }}</span>
-            <div class="rps-overlay__choice">
-              <span class="rps-overlay__icon" aria-hidden="true">{{ dice.dice1[0] }}+{{ dice.dice1[1] }}={{ dice.sum1 }}</span>
-              <span class="rps-overlay__label">{{ 'duel.dice.opponent' | translate }}</span>
-            </div>
-          </div>
-          @if (dice.winner === 0) {
-            <p class="rps-overlay__result rps-overlay__result--win">{{ 'duel.dice.youWin' | translate }}</p>
-          } @else if (dice.winner === 1) {
-            <p class="rps-overlay__result rps-overlay__result--lose">{{ 'duel.dice.youLose' | translate }}</p>
-          } @else {
-            <p class="rps-overlay__result rps-overlay__result--draw">{{ 'duel.dice.draw' | translate }}</p>
-          }
-        </div>
-      </div>
-    }
+    <!-- Pre-duel dice arena (Phase 3.14): owns the full pre-duel UX
+         between waiting-room → board — auto-roll, dice physics, result
+         banner, first-player pick, "You go first/second" announce. -->
+    <app-pvp-dice-arena />
 
     <!-- Story 5.2 — Blocked tab overlay (single-tab enforcement) -->
     @if (tabGuard.isBlocked()) {

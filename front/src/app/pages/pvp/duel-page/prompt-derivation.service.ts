@@ -161,24 +161,11 @@ export class PromptDerivationService {
     return indices;
   });
 
-  // TP passive message: shown in prompt dialog during turn-order phase
-  readonly tpPassiveMessage = computed(() => {
-    const c = this.c;
-    const firstPlayerResult = c.firstPlayerResult();
-    if (firstPlayerResult) return {
-      title: firstPlayerResult.goFirst ? 'You go first!' : 'You go second!',
-      subtitle: 'The duel will begin shortly',
-      style: 'result' as const,
-    };
-    // Pre-duel waiting (loser waits for winner to choose TP)
-    const waiting = c.waitingForOpponent();
-    const preDuel = c.ocgPlayerIndex() === null;
-    const noPrompt = !c.pendingPrompt();
-    const noRps = !c.diceResult() && !c.diceInProgress();
-    if (waiting && preDuel && noPrompt && noRps) return {
-      title: 'Opponent is choosing turn order...',
-      style: 'waiting' as const,
-    };
-    return null;
-  });
+  // TP passive message: legacy hook for the prompt-dialog passive banner during
+  // the turn-order phase. The full pre-duel UX (dice + first-player + announce)
+  // is owned by <app-pvp-dice-arena> since Phase 3.14, so this returns null in
+  // every dice-related state to keep the dialog out of the way. Kept as a
+  // signal-shaped no-op so the dialog input wiring (and replay readOnly mode,
+  // which never enters the pre-duel flow) stays unchanged.
+  readonly tpPassiveMessage = computed(() => null);
 }

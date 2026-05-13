@@ -7,7 +7,6 @@ import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog';
-import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { NotificationService } from '../../../core/services/notification.service';
 import { NavbarCollapseService } from '../../../services/navbar-collapse.service';
 import { DuelWebSocketService } from './duel-web-socket.service';
@@ -59,6 +58,7 @@ import { DebugLogPanelComponent } from './debug-log-panel/debug-log-panel.compon
 import { SoloDuelOrchestratorService } from './solo-duel-orchestrator.service';
 import { PvpChainOverlayComponent } from './pvp-chain-overlay/pvp-chain-overlay.component';
 import { PvpDuelOverlaysComponent } from './pvp-duel-overlays/pvp-duel-overlays.component';
+import { PvpDiceArenaComponent } from './pvp-dice-arena/pvp-dice-arena.component';
 import { SystemOverlayComponent } from '../../../components/system-overlay/system-overlay.component';
 import { AvatarComponent } from '../../../shared/avatar';
 import { WaitingRoomSkeletonComponent } from '../../../shared/skel';
@@ -85,10 +85,11 @@ import { environment } from '../../../../environments/environment';
     PvpBoardContainerComponent, PvpHandRowComponent, PvpPromptDialogComponent, PromptZoneHighlightComponent,
     PvpZoneBrowserOverlayComponent, PvpCardInspectorWrapperComponent, PvpActivationToggleComponent,
     MatButton, MatIcon, MatProgressSpinner,
-    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose, CdkTrapFocus,
+    MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
     DebugLogPanelComponent,
     PvpChainOverlayComponent,
     PvpDuelOverlaysComponent,
+    PvpDiceArenaComponent,
     SystemOverlayComponent,
     AvatarComponent, WaitingRoomSkeletonComponent,
     TranslatePipe,

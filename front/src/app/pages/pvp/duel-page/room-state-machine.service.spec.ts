@@ -20,7 +20,7 @@ function makeRoom(overrides: Partial<RoomDTO> = {}): RoomDTO {
     id: 1,
     roomCode: 'ABC123',
     status: 'WAITING',
-    player1: { id: 100, pseudo: 'p1' },
+    player1: { id: 100, pseudo: 'p1', role: 'USER' },
     player2: null,
     duelId: null,
     wsToken: null,
@@ -184,7 +184,7 @@ describe('RoomStateMachineService', () => {
   describe('handleRoomStatus — non-participant joining', () => {
     it('WAITING + non-participant → opens deck picker dialog', () => {
       auth.user.set({ id: 999 });
-      const room = makeRoom({ status: 'WAITING', player1: { id: 100, pseudo: 'p1' }, player2: null });
+      const room = makeRoom({ status: 'WAITING', player1: { id: 100, pseudo: 'p1', role: 'USER' }, player2: null });
       const afterClosed = new Subject<number | null>();
       dialog.open.and.returnValue({ afterClosed: () => afterClosed.asObservable() } as never);
       roomApi.getRoom.and.returnValue(of(room));
@@ -200,7 +200,7 @@ describe('RoomStateMachineService', () => {
     it('non-participant accepts deck → joinRoom → re-runs handleRoomStatus', () => {
       auth.user.set({ id: 999 });
       const initialRoom = makeRoom({ status: 'WAITING', player2: null });
-      const joinedRoom = makeRoom({ status: 'CREATING_DUEL', player2: { id: 999, pseudo: 'p2' } });
+      const joinedRoom = makeRoom({ status: 'CREATING_DUEL', player2: { id: 999, pseudo: 'p2', role: 'USER' } });
 
       const afterClosed = new Subject<number>();
       dialog.open.and.returnValue({ afterClosed: () => afterClosed.asObservable() } as never);
