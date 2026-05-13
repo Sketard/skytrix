@@ -326,7 +326,14 @@
     "firstPlayerStartsP2": "Player 2 starts",
     "randomHand": "Random hand",
     "randomHandDesc": "Shuffle the deck before the opening hand",
-    "turnTime": "Turn time (seconds)",
+    "turnTime": "Turn time",
+    "turnTimeRange": "30 seconds to 1 hour",
+    "turnTimePresets": "Turn time presets",
+    "turnTimeUnit": {
+      "sec": "sec",
+      "min": "min",
+      "h": "h"
+    },
     "loadError": "Unable to load decks",
     "emptyTitle": "No decks available",
     "emptyHint": "Create a deck in Deck Builder to get started.",

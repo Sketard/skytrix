@@ -158,17 +158,40 @@
           [attr.aria-label]="'deckPicker.randomHand' | translate">
         </mat-slide-toggle>
       </div>
-      <div class="qd-section qd-section--row">
-        <span class="qd-row-label">{{ 'deckPicker.turnTime' | translate }}</span>
+
+      <div class="qd-slider-card">
+        <div class="qd-slider-header">
+          <div class="qd-slider-header-text">
+            <span class="qd-row-label">{{ 'deckPicker.turnTime' | translate }}</span>
+            <span class="qd-row-desc">{{ 'deckPicker.turnTimeRange' | translate }}</span>
+          </div>
+          <div class="qd-slider-value">
+            <span class="qd-slider-value-num">{{ sliderLabel().num }}</span>
+            <span class="qd-slider-value-unit">{{ 'deckPicker.turnTimeUnit.' + sliderLabel().unit | translate }}</span>
+          </div>
+        </div>
         <input
-          class="qd-time-input"
-          type="number"
-          min="30"
-          max="3600"
-          step="30"
-          [ngModel]="turnTimeSecs()"
-          (ngModelChange)="turnTimeSecs.set(+$event)"
-          [attr.aria-label]="'deckPicker.turnTime' | translate" />
+          type="range"
+          class="qd-slider"
+          [min]="turnTimeMin"
+          [max]="turnTimeMax"
+          [step]="turnTimeStep"
+          [value]="turnTimeSecs()"
+          (input)="onSliderInput($event)"
+          [attr.aria-label]="'deckPicker.turnTime' | translate"
+          [attr.aria-valuetext]="sliderLabel().num + ' ' + ('deckPicker.turnTimeUnit.' + sliderLabel().unit | translate)"
+          [style.--slider-percent.%]="sliderPercent()" />
+        <div class="qd-slider-ticks" role="group" [attr.aria-label]="'deckPicker.turnTimePresets' | translate">
+          @for (preset of turnTimePresets; track preset.secs) {
+            <button
+              type="button"
+              class="qd-slider-tick"
+              [class.active]="turnTimeSecs() === preset.secs"
+              (click)="setTurnTimePreset(preset.secs)">
+              {{ preset.label }}
+            </button>
+          }
+        </div>
       </div>
     </div>
   }

@@ -19,7 +19,6 @@ import {
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatIcon } from '@angular/material/icon';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DeckBuildService } from '../../../services/deck-build.service';
@@ -58,8 +57,39 @@ const CONFIRM_LABELS: Record<DeckPickerContext, string> = {
 
 const TURN_TIME_MIN_SECS = 30;
 const TURN_TIME_MAX_SECS = 3600;
+const TURN_TIME_STEP_SECS = 30;
+// Preset shortcuts (in seconds). Order matches the visual ticks under the slider.
+const TURN_TIME_PRESETS_SECS: readonly number[] = [60, 180, 300, 600, 1800, 3600];
 const FETCH_ERROR_TIMEOUT_MS = 5000;
 const CARD_BACK_FALLBACK = 'assets/images/card_back.jpg';
+
+interface TurnTimeLabel {
+  readonly num: string;
+  readonly unit: 'sec' | 'min' | 'h';
+}
+
+// Mirror of mockup formatTurnTime — keep snapshot-stable across both sides.
+function formatTurnTime(seconds: number): TurnTimeLabel {
+  if (seconds < 60) return { num: String(seconds), unit: 'sec' };
+  if (seconds < 3600) {
+    const m = seconds / 60;
+    return { num: Number.isInteger(m) ? String(m) : m.toFixed(1), unit: 'min' };
+  }
+  if (seconds === 3600) return { num: '1', unit: 'h' };
+  return { num: (seconds / 3600).toFixed(1), unit: 'h' };
+}
+
+interface TurnTimePreset {
+  readonly secs: number;
+  readonly label: string;
+}
+
+const TURN_TIME_PRESETS: readonly TurnTimePreset[] = TURN_TIME_PRESETS_SECS.map(secs => {
+  const fmt = formatTurnTime(secs);
+  // Compact tick label: "1m", "1h" (no space, lowercase unit initial).
+  const unitChar = fmt.unit === 'sec' ? 's' : fmt.unit[0];
+  return { secs, label: `${fmt.num}${unitChar}` };
+});
 
 @Component({
   selector: 'app-deck-picker-dialog',
@@ -68,7 +98,7 @@ const CARD_BACK_FALLBACK = 'assets/images/card_back.jpg';
   imports: [
     MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose,
     MatButton, MatIconButton, MatSlideToggle, MatIcon,
-    RouterLink, FormsModule, TranslatePipe,
+    RouterLink, TranslatePipe,
     DeckCardSkeletonComponent,
   ],
   templateUrl: './deck-picker-dialog.component.html',
@@ -127,6 +157,20 @@ export class DeckPickerDialogComponent implements OnInit {
     if (!query) return this.decks();
     return this.decks().filter(d => d.name.toLowerCase().includes(query));
   });
+
+  // Slider — `--slider-percent` drives the CSS gradient fill, label is split
+  // num/unit so the unit pill in the mockup can style them independently.
+  readonly turnTimeMin = TURN_TIME_MIN_SECS;
+  readonly turnTimeMax = TURN_TIME_MAX_SECS;
+  readonly turnTimeStep = TURN_TIME_STEP_SECS;
+  readonly turnTimePresets = TURN_TIME_PRESETS;
+
+  readonly sliderPercent = computed(() => {
+    const v = this.turnTimeSecs();
+    return ((v - TURN_TIME_MIN_SECS) / (TURN_TIME_MAX_SECS - TURN_TIME_MIN_SECS)) * 100;
+  });
+
+  readonly sliderLabel = computed<TurnTimeLabel>(() => formatTurnTime(this.turnTimeSecs()));
 
   // P1 deck is mandatory in every context. The confirm-btn is disabled until
   // one is selected — no other validation runs here (count + validity move
@@ -200,6 +244,15 @@ export class DeckPickerDialogComponent implements OnInit {
 
   onThumbError(event: Event): void {
     (event.target as HTMLImageElement).src = CARD_BACK_FALLBACK;
+  }
+
+  onSliderInput(event: Event): void {
+    const value = +(event.target as HTMLInputElement).value;
+    this.turnTimeSecs.set(value);
+  }
+
+  setTurnTimePreset(secs: number): void {
+    this.turnTimeSecs.set(secs);
   }
 
   confirm(): void {

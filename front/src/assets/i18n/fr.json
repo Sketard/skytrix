@@ -326,7 +326,14 @@
     "firstPlayerStartsP2": "Joueur 2 commence",
     "randomHand": "Main aléatoire",
     "randomHandDesc": "Mélange le deck avant la pioche initiale",
-    "turnTime": "Temps par tour (secondes)",
+    "turnTime": "Temps par tour",
+    "turnTimeRange": "De 30 secondes à 1 heure",
+    "turnTimePresets": "Préréglages de temps par tour",
+    "turnTimeUnit": {
+      "sec": "sec",
+      "min": "min",
+      "h": "h"
+    },
     "loadError": "Impossible de charger les decks",
     "emptyTitle": "Aucun deck disponible",
     "emptyHint": "Crée un deck dans le Deck Builder pour commencer.",
