@@ -91,24 +91,42 @@
 // when content overflows. Without it the surface shrinks to content and the
 // `overflow-y: auto` has no constraint to push against.
 .holo-modal-panel {
-  // ── Material DOM (default styles from @angular/material/dialog 19) ────
-  //   .mat-mdc-dialog-container { display:block; width/height:100%;
-  //     max-height/min-height/min-width/max-width: inherit }
-  //   .mat-mdc-dialog-surface { display:flex; flex-direction:column;
-  //     flex-grow:0; flex-shrink:0; width:100%; height:100%; overflow-y:auto;
-  //     max-height/min-height/max-width/min-width: inherit }
-  //   .mat-mdc-dialog-content { display:block; flex-grow:1; overflow:auto;
-  //     max-height: 65vh }
+  // ── Real Material 19 DOM (read from compiled source) ──────────────────
+  //   .cdk-overlay-pane.mat-mdc-dialog-panel
+  //     mat-dialog-container.mat-mdc-dialog-container
+  //                          { display:block; width/height:100% }
+  //       .mat-mdc-dialog-inner-container.mdc-dialog__container
+  //                          { display:flex; flex-direction:ROW;
+  //                            align-items:center; justify-content:space-around;
+  //                            height:100% }   ← INTERMEDIATE LAYER
+  //         .mat-mdc-dialog-surface
+  //                          { display:flex; flex-direction:column;
+  //                            flex-grow:0; flex-shrink:0;
+  //                            width:100%; height:100%; overflow-y:auto }
+  //           [ng-content from <ng-template cdkPortalOutlet />]
+  //             .picker-header
+  //             .mat-mdc-dialog-content { flex-grow:1; overflow:auto;
+  //                                       max-height: 65vh }
+  //             .mat-mdc-dialog-actions { flex-shrink: 0 }
   //
-  // The chain ALREADY supports scrolling on long content via `flex-grow:1`
-  // on the content + its `max-height: 65vh`. We just need to:
-  // - paint chrome (gradient/border/shadow) on the surface;
-  // - replace Material's `max-height: 65vh` with something that tracks our
-  //   own panel max-height (95vh mobile / 88vh desktop) minus header+footer.
-  // - NOT touch the flex chain or `min-height: auto` rules — Material's
-  //   defaults already work.
+  // The previously-overlooked culprit is `.mat-mdc-dialog-inner-container`:
+  // its default `align-items: center` keeps the surface vertically centered
+  // and shrinks it to intrinsic content size — so the surface NEVER takes
+  // the pane's full height even when we set `height: 95vh` on the pane.
+  // That's why the footer scrolls out: content's max-height/flex chain
+  // operates against an unbounded surface.
+  //
+  // Fix: force the inner container to `align-items: stretch` so the
+  // surface fills the pane vertically; then surface's flex column makes
+  // header + content + footer share the height correctly.
 
   .mat-mdc-dialog-container { background: transparent !important; }
+
+  .mat-mdc-dialog-inner-container,
+  .mdc-dialog__container {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
 
   .mat-mdc-dialog-surface {
     background: linear-gradient(160deg, #1a1a2e 0%, #14141f 100%) !important;
@@ -132,16 +150,19 @@
   }
 
   // Body is the SOLE scrollable slot. Material defaults: `flex-grow: 1;
-  // overflow: auto; max-height: 65vh`. The 65vh cap conflicts with our own
-  // panel max-height (95vh/88vh) and lets the content match the panel size,
-  // pushing the footer out of view. Replace it with `0` (works with
-  // `min-height: 0`) so flex actually distributes remaining space between
-  // header, content, and footer — content shrinks and scrolls while header
-  // and footer stay pinned at the surface edges.
+  // overflow: auto; max-height: 65vh`. The 65vh cap is wrong for us (it
+  // matches the panel size and pushes the footer out of view) — replace it
+  // with `none` so the flex chain governs the height.
+  //
+  // `flex: 1 1 auto` (basis: auto, not 0) means the content starts at its
+  // natural size, then grows or shrinks within the surface as needed.
+  // `min-height: 0` is critical: it unlocks shrink-below-content-size,
+  // without which long content would push the footer past the bottom.
   .mat-mdc-dialog-content {
-    flex: 1 1 0 !important;
+    flex: 1 1 auto !important;
     min-height: 0 !important;
     max-height: none !important;
+    overflow: auto !important;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
