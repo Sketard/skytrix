@@ -10,7 +10,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { NotificationService } from '../../../core/services/notification.service';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RelativeTimePipe } from '../../../core/pipes/relative-time.pipe';
-import { environment } from '../../../../environments/environment';
 import { RoomDTO } from '../room.types';
 import { RoomApiService } from '../room-api.service';
 import { DeckPickerDialogComponent, DeckPickerContext } from './deck-picker-dialog.component';
@@ -35,7 +34,6 @@ export class LobbyPageComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly joiningRoomCode = signal<string | null>(null);
   readonly creatingRoom = signal(false);
-  readonly showDebugTools = environment.debugTools;
 
   private readonly dialogConfig = {
     width: 'min(520px, 85dvw)',

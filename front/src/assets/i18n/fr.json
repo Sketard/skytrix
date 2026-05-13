@@ -299,7 +299,7 @@
     "title": {
       "create": "Choisis ton deck",
       "join": "Choisis ton deck pour rejoindre",
-      "quickDuel": "Duel rapide"
+      "quickDuel": "Bac à sable"
     },
     "confirm": {
       "create": "Créer la room",
@@ -456,7 +456,7 @@
     "closeMaterialPeek": "Fermer l'aperçu des matériels",
     "dragActivated": "Glisser activé",
     "refreshRooms": "Rafraîchir la liste des rooms",
-    "quickDuelDebug": "Duel rapide - mode debug",
+    "sandbox": "Bac à sable",
     "createRoom": "Créer une room",
     "solveDeck": "Résoudre le deck {{name}}"
   },

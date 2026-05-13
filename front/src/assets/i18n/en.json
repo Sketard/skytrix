@@ -299,7 +299,7 @@
     "title": {
       "create": "Choose your deck",
       "join": "Choose your deck to join",
-      "quickDuel": "Quick duel"
+      "quickDuel": "Sandbox"
     },
     "confirm": {
       "create": "Create room",
@@ -456,7 +456,7 @@
     "closeMaterialPeek": "Close material peek",
     "dragActivated": "Drag activated",
     "refreshRooms": "Refresh room list",
-    "quickDuelDebug": "Quick duel - debug mode",
+    "sandbox": "Sandbox",
     "createRoom": "Create a room",
     "solveDeck": "Solve deck {{name}}"
   },

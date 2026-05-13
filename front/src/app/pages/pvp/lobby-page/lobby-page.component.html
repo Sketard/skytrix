@@ -12,14 +12,12 @@
               [disabled]="loading()">
         <mat-icon>refresh</mat-icon>
       </button>
-      @if (showDebugTools) {
-        <button mat-icon-button
-                [attr.aria-label]="'a11y.quickDuelDebug' | translate"
-                [disabled]="creatingRoom()"
-                (click)="quickDuel()">
-          <mat-icon>bolt</mat-icon>
-        </button>
-      }
+      <button mat-icon-button
+              [attr.aria-label]="'a11y.sandbox' | translate"
+              [disabled]="creatingRoom()"
+              (click)="quickDuel()">
+        <mat-icon>bolt</mat-icon>
+      </button>
     </div>
   </div>
 
