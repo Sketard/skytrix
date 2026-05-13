@@ -1149,11 +1149,10 @@ function transformResponse(promptType: string, data: Record<string, unknown>): u
       const idx = lastAnnounceNumberOptions.indexOf(val);
       return { type: 19, value: idx >= 0 ? idx : val };
     }
-    case 'RPS_CHOICE': {
-      // Client sends 0=rock, 1=paper, 2=scissors. OCGCore expects 1=scissors, 2=rock, 3=paper.
-      const CLIENT_TO_OCGCORE = [2, 3, 1] as const;
-      return { type: 20, value: CLIENT_TO_OCGCORE[data['choice'] as number] };
-    }
+    // RPS_CHOICE used to map the in-game OCGCore RPS prompt; the pre-duel
+    // first-player flow switched to dice 2D6 (2026-05-13) and INIT_DUEL
+    // sets skipRps=true so OCGCore never asks. The auto-respond in
+    // runDuelLoop handles the (regression-only) case where it does.
     default:
       dlog.error('Unknown promptType', { promptType });
       return null;

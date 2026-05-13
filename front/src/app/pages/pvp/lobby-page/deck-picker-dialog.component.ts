@@ -24,6 +24,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DeckBuildService } from '../../../services/deck-build.service';
 import { ShortDeck } from '../../../core/model/short-deck';
 import { DeckCardSkeletonComponent } from '../../../shared/skel';
+import { DECK_FETCH_ERROR_TIMEOUT_MS } from '../pvp-timings';
 
 export type DeckPickerContext = 'create' | 'join' | 'quickDuel';
 
@@ -67,7 +68,6 @@ const TURN_TIME_MAX_SECS = 3600;
 const TURN_TIME_STEP_SECS = 30;
 // Preset shortcuts (in seconds). Order matches the visual ticks under the slider.
 const TURN_TIME_PRESETS_SECS: readonly number[] = [60, 180, 300, 600, 1800, 3600];
-const FETCH_ERROR_TIMEOUT_MS = 5000;
 const CARD_BACK_FALLBACK = 'assets/images/card_back.jpg';
 
 interface TurnTimeLabel {
@@ -220,7 +220,7 @@ export class DeckPickerDialogComponent implements OnInit {
           this.loading.set(false);
           this.fetchError.set(true);
         }
-      }, FETCH_ERROR_TIMEOUT_MS);
+      }, DECK_FETCH_ERROR_TIMEOUT_MS);
     }
   }
 

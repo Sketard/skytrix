@@ -222,47 +222,57 @@ console.log('\n=== S1e: pending token consumed twice (initial handshake) ===');
   } catch (e) { ko('duel cleanup', e.message); }
 }
 
-// ─── S2: RPS + SELECT_TP happy path ─────────────────────────────────────────
-console.log('\n=== S2: RPS phase + winner picks turn order ===');
+// ─── S2: Dice 2D6 + SELECT_FIRST_PLAYER happy path ──────────────────────────
+console.log('\n=== S2: Dice phase + winner picks turn order ===');
 {
-  // Fresh duel — RPS state requires the session to be in 'RPS' phase, which
-  // only happens after BOTH WS handshakes complete on a freshly-created session.
+  // Fresh duel — pre-duel dice runs only after BOTH WS handshakes complete.
   const duel2 = await createDuel(cookie);
   const cA = connectWs(`${WS_URL}/ws?token=${duel2.wsToken1}&pv=1`, 's2-p0');
   const cB = connectWs(`${WS_URL}/ws?token=${duel2.wsToken2}&pv=1`, 's2-p1');
   await Promise.all([cA.open(), cB.open()]);
 
-  // Both players receive RPS_CHOICE prompts (player-scoped) once the second
-  // handshake completes. We wait for the prompt rather than send blindly —
-  // the server emits AFTER both handshakes register session.phase = 'RPS'.
-  const rpsP0 = await cA.waitFor(m => m.type === 'RPS_CHOICE', 5000).catch(() => null);
-  const rpsP1 = await cB.waitFor(m => m.type === 'RPS_CHOICE', 5000).catch(() => null);
-  if (rpsP0 && rpsP1) ok('both players received RPS_CHOICE');
-  else ko('both players received RPS_CHOICE', `p0=${JSON.stringify(rpsP0)} p1=${JSON.stringify(rpsP1)}`);
+  // Both players receive DICE_ROLL prompts once the coordinator enters
+  // ROLLING_DICE. They roll concurrently — there's no winner condition
+  // baked into the choice (the dice are server-generated).
+  const diceP0 = await cA.waitFor(m => m.type === 'DICE_ROLL', 5000).catch(() => null);
+  const diceP1 = await cB.waitFor(m => m.type === 'DICE_ROLL', 5000).catch(() => null);
+  if (diceP0 && diceP1) ok('both players received DICE_ROLL');
+  else ko('both players received DICE_ROLL', `p0=${JSON.stringify(diceP0)} p1=${JSON.stringify(diceP1)}`);
 
-  // Send choices: P0=Rock(0), P1=Scissors(2) → P0 wins (Rock crushes Scissors).
-  cA.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 0 } });
-  cB.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 2 } });
+  // Loop until one round resolves with a winner (ties trigger an auto-reroll
+  // after 1.8s; we just keep responding).
+  let winnerIdx = null;
+  for (let attempt = 0; attempt < 10 && winnerIdx === null; attempt++) {
+    cA.sendType('PLAYER_RESPONSE', { promptType: 'DICE_ROLL', data: {} });
+    cB.sendType('PLAYER_RESPONSE', { promptType: 'DICE_ROLL', data: {} });
+    const diceResA = await cA.waitFor(m => m.type === 'DICE_RESULT', 5000).catch(() => null);
+    if (diceResA && diceResA.winner !== null && diceResA.winner !== undefined) {
+      winnerIdx = diceResA.winner;
+      break;
+    }
+    // Tie — coordinator re-emits DICE_ROLL after 1.8s.
+    await Promise.all([
+      cA.waitFor(m => m.type === 'DICE_ROLL', 3000).catch(() => null),
+      cB.waitFor(m => m.type === 'DICE_ROLL', 3000).catch(() => null),
+    ]);
+  }
+  if (winnerIdx !== null) ok(`DICE_RESULT resolved with winner=${winnerIdx}`);
+  else ko('DICE_RESULT resolved with a winner', 'looped past MAX_ROUNDS');
 
-  // Both clients receive RPS_RESULT after server resolves.
-  const rpsResultA = await cA.waitFor(m => m.type === 'RPS_RESULT', 5000).catch(() => null);
-  const rpsResultB = await cB.waitFor(m => m.type === 'RPS_RESULT', 5000).catch(() => null);
-  if (rpsResultA?.winner === 0 && rpsResultB?.winner === 0) ok('RPS_RESULT winner=0 (Rock vs Scissors)');
-  else ko('RPS_RESULT winner=0 (Rock vs Scissors)', `A=${JSON.stringify(rpsResultA)} B=${JSON.stringify(rpsResultB)}`);
+  // Winner socket gets SELECT_FIRST_PLAYER after the 1.5s suspense.
+  const winnerWs = winnerIdx === 0 ? cA : cB;
+  const fpPrompt = await winnerWs.waitFor(m => m.type === 'SELECT_FIRST_PLAYER', 4000).catch(() => null);
+  if (fpPrompt) ok('winner received SELECT_FIRST_PLAYER');
+  else ko('winner received SELECT_FIRST_PLAYER', `got ${JSON.stringify(fpPrompt)}`);
 
-  // Winner (P0) gets SELECT_TP after a 1.5s delay.
-  // (We don't assert WAITING_RESPONSE on P1 — the RPS phase itself emits
-  // WAITING_RESPONSE messages already, so a waitFor would match noise.)
-  const tpPrompt = await cA.waitFor(m => m.type === 'SELECT_TP', 4000).catch(() => null);
-  if (tpPrompt?.player === 0) ok('winner received SELECT_TP');
-  else ko('winner received SELECT_TP', `got ${JSON.stringify(tpPrompt)}`);
-
-  // P0 chooses goFirst=true → both get TP_RESULT.
-  cA.sendType('PLAYER_RESPONSE', { promptType: 'SELECT_TP', data: { goFirst: true } });
-  const tpResA = await cA.waitFor(m => m.type === 'TP_RESULT', 4000).catch(() => null);
-  const tpResB = await cB.waitFor(m => m.type === 'TP_RESULT', 4000).catch(() => null);
-  if (tpResA?.goFirst === true && tpResB?.goFirst === false) ok('TP_RESULT: P0=goFirst, P1=goSecond (perspective-correct)');
-  else ko('TP_RESULT perspective', `A=${JSON.stringify(tpResA)} B=${JSON.stringify(tpResB)}`);
+  // Winner chooses goFirst=true → both get FIRST_PLAYER_RESULT.
+  winnerWs.sendType('PLAYER_RESPONSE', { promptType: 'SELECT_FIRST_PLAYER', data: { goFirst: true } });
+  const fpResA = await cA.waitFor(m => m.type === 'FIRST_PLAYER_RESULT', 4000).catch(() => null);
+  const fpResB = await cB.waitFor(m => m.type === 'FIRST_PLAYER_RESULT', 4000).catch(() => null);
+  const expA = winnerIdx === 0;
+  const expB = winnerIdx === 1;
+  if (fpResA?.goFirst === expA && fpResB?.goFirst === expB) ok('FIRST_PLAYER_RESULT perspective-correct');
+  else ko('FIRST_PLAYER_RESULT perspective', `A=${JSON.stringify(fpResA)} B=${JSON.stringify(fpResB)} winner=${winnerIdx}`);
 
   cA.close(); cB.close();
   await new Promise(r => setTimeout(r, 300));
@@ -279,19 +289,33 @@ console.log('\n=== S3: REMATCH after surrender → REMATCH_STARTING ===');
   const cB = connectWs(`${WS_URL}/ws?token=${duel3.wsToken2}&pv=1`, 's3-p1');
   await Promise.all([cA.open(), cB.open()]);
 
-  // Resolve RPS quickly so the duel reaches the 'PLAYING' state where SURRENDER
-  // is meaningful (REMATCH_REQUEST is gated on `endedAt !== null`).
+  // Resolve the dice round + pick turn so the duel reaches the 'PLAYING'
+  // state where SURRENDER is meaningful (REMATCH_REQUEST is gated on
+  // `endedAt !== null`).
   await Promise.all([
-    cA.waitFor(m => m.type === 'RPS_CHOICE', 5000),
-    cB.waitFor(m => m.type === 'RPS_CHOICE', 5000),
+    cA.waitFor(m => m.type === 'DICE_ROLL', 5000),
+    cB.waitFor(m => m.type === 'DICE_ROLL', 5000),
   ]);
-  cA.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 0 } });
-  cB.sendType('PLAYER_RESPONSE', { promptType: 'RPS_CHOICE', data: { choice: 2 } });
-  await cA.waitFor(m => m.type === 'SELECT_TP', 5000).catch(() => null);
-  cA.sendType('PLAYER_RESPONSE', { promptType: 'SELECT_TP', data: { goFirst: true } });
+  let winnerIdxS3 = null;
+  for (let attempt = 0; attempt < 10 && winnerIdxS3 === null; attempt++) {
+    cA.sendType('PLAYER_RESPONSE', { promptType: 'DICE_ROLL', data: {} });
+    cB.sendType('PLAYER_RESPONSE', { promptType: 'DICE_ROLL', data: {} });
+    const diceRes = await cA.waitFor(m => m.type === 'DICE_RESULT', 5000).catch(() => null);
+    if (diceRes && diceRes.winner !== null && diceRes.winner !== undefined) {
+      winnerIdxS3 = diceRes.winner;
+      break;
+    }
+    await Promise.all([
+      cA.waitFor(m => m.type === 'DICE_ROLL', 3000).catch(() => null),
+      cB.waitFor(m => m.type === 'DICE_ROLL', 3000).catch(() => null),
+    ]);
+  }
+  const winnerWsS3 = winnerIdxS3 === 0 ? cA : cB;
+  await winnerWsS3.waitFor(m => m.type === 'SELECT_FIRST_PLAYER', 5000).catch(() => null);
+  winnerWsS3.sendType('PLAYER_RESPONSE', { promptType: 'SELECT_FIRST_PLAYER', data: { goFirst: true } });
   await Promise.all([
-    cA.waitFor(m => m.type === 'TP_RESULT', 5000).catch(() => null),
-    cB.waitFor(m => m.type === 'TP_RESULT', 5000).catch(() => null),
+    cA.waitFor(m => m.type === 'FIRST_PLAYER_RESULT', 5000).catch(() => null),
+    cB.waitFor(m => m.type === 'FIRST_PLAYER_RESULT', 5000).catch(() => null),
   ]);
 
   // Wait a beat for the worker to spin up + send DUEL_STARTING + initial BOARD_STATE.

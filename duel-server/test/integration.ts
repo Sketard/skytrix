@@ -158,32 +158,34 @@ describe('Duel Server Integration Tests', { timeout: 30_000 }, () => {
       const session1 = await session1Promise;
       assert.ok(session1, 'Player 1 should receive SESSION_TOKEN');
 
-      // 4. Handle RPS flow (may require multiple rounds if tie)
+      // 4. Pre-duel dice flow (DICE_ROLL → DICE_RESULT → SELECT_FIRST_PLAYER
+      // → FIRST_PLAYER_RESULT). Loop on ties; the coordinator caps at
+      // MAX_ROUNDS=10 internally so we never deadlock.
       let boardStateReceived = false;
-      let rpsRounds = 0;
-      const MAX_RPS_ROUNDS = 5;
+      let diceRounds = 0;
+      const MAX_DICE_ROUNDS = 5;
 
-      while (!boardStateReceived && rpsRounds < MAX_RPS_ROUNDS) {
-        rpsRounds++;
+      while (!boardStateReceived && diceRounds < MAX_DICE_ROUNDS) {
+        diceRounds++;
 
-        // Player 0 gets RPS_CHOICE prompt (OCGCore asks player 0 first)
-        await waitForMessage(ws0, m => m.type === 'RPS_CHOICE');
-        ws0.send(JSON.stringify({
+        await waitForMessage(ws0, m => m.type === 'DICE_ROLL');
+        ws0.send(JSON.stringify({ type: 'PLAYER_RESPONSE', promptType: 'DICE_ROLL', data: {} }));
+        await waitForMessage(ws1, m => m.type === 'DICE_ROLL');
+        ws1.send(JSON.stringify({ type: 'PLAYER_RESPONSE', promptType: 'DICE_ROLL', data: {} }));
+
+        // The winner receives SELECT_FIRST_PLAYER. We race both sockets so
+        // the test stays winner-agnostic.
+        const winnerWs = await Promise.race([
+          waitForMessage(ws0, m => m.type === 'SELECT_FIRST_PLAYER').then(() => ws0).catch(() => null),
+          waitForMessage(ws1, m => m.type === 'SELECT_FIRST_PLAYER').then(() => ws1).catch(() => null),
+        ]);
+        if (!winnerWs) continue; // tie → coordinator auto-rerolls after 1.8s
+        winnerWs.send(JSON.stringify({
           type: 'PLAYER_RESPONSE',
-          promptType: 'RPS_CHOICE',
-          data: { choice: 2 }, // Rock
+          promptType: 'SELECT_FIRST_PLAYER',
+          data: { goFirst: true },
         }));
 
-        // Player 1 gets RPS_CHOICE prompt
-        await waitForMessage(ws1, m => m.type === 'RPS_CHOICE');
-        ws1.send(JSON.stringify({
-          type: 'PLAYER_RESPONSE',
-          promptType: 'RPS_CHOICE',
-          data: { choice: 1 }, // Scissors — player 0 should win
-        }));
-
-        // Wait for BOARD_STATE with LP > 0 (duel started, hands drawn)
-        // After RPS, OCGCore runs draw phase automatically
         try {
           await waitForMessage(ws0, m => {
             if (m.type !== 'BOARD_STATE') return false;
@@ -193,12 +195,11 @@ describe('Duel Server Integration Tests', { timeout: 30_000 }, () => {
           }, 10_000);
           boardStateReceived = true;
         } catch {
-          // RPS might have been a tie (shouldn't happen with Rock vs Scissors)
-          // or OCGCore hasn't reached BOARD_STATE yet — retry
+          // OCGCore hasn't reached BOARD_STATE yet — retry the dice round.
         }
       }
 
-      assert.ok(boardStateReceived, `BOARD_STATE with LP > 0 should be received within ${MAX_RPS_ROUNDS} RPS rounds`);
+      assert.ok(boardStateReceived, `BOARD_STATE with LP > 0 should be received within ${MAX_DICE_ROUNDS} dice rounds`);
 
       // 5. Player 0 surrenders
       ws0.send(JSON.stringify({ type: 'SURRENDER' }));

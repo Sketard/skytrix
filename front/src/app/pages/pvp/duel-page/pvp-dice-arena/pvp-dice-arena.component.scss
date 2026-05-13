@@ -1,4 +1,5 @@
 @use '../../../../styles/z-layers' as z;
+@use '../../../../styles/die' as die;
 
 // ============================================================
 // Pre-duel dice arena — full-screen overlay (Phase 3.14)
@@ -18,8 +19,11 @@
   justify-content: center;
   align-items: center;
   padding: clamp(16px, 4vw, 48px);
-  background:
-    radial-gradient(ellipse at center, rgba(15, 15, 28, 0.85), rgba(0, 0, 0, 0.92) 70%);
+  // Solid dim — the holo-arena `.screen-bg` layer (z-index:-1) renders the
+  // animated grid + glow on top of it. Backdrop kept dark enough so duel
+  // board behind doesn't bleed through.
+  background: rgba(0, 0, 0, 0.85);
+  isolation: isolate;
   animation: dice-arena-fade-in 220ms ease both;
 }
 
@@ -44,12 +48,12 @@
   gap: 8px;
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(201, 168, 76, 0.1);
-  border: 1px solid rgba(201, 168, 76, 0.3);
+  background: var(--gold-soft-10);
+  border: 1px solid var(--gold-soft-30);
   font: 700 0.72rem/1 'Rajdhani', 'Inter', sans-serif;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #C9A84C;
+  color: var(--gold);
 
   .material-icons-round { font-size: 14px; }
 }
@@ -60,7 +64,7 @@
   letter-spacing: 0.02em;
   text-align: center;
   text-wrap: balance;
-  background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+  background: linear-gradient(135deg, var(--gold-50), var(--gold));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -69,7 +73,7 @@
 .dice-screen-subtitle {
   margin: -12px 0 0;
   font-size: 0.95rem;
-  color: #9e9e9e;
+  color: var(--text-muted);
   text-align: center;
   max-width: 460px;
   line-height: 1.4;
@@ -81,14 +85,14 @@
   border-radius: clamp(14px, 3cqw, 20px);
   min-height: clamp(260px, 55cqw, 380px);
   background:
-    radial-gradient(ellipse at center top, rgba(201, 168, 76, 0.15), transparent 70%),
-    linear-gradient(160deg, rgba(30, 30, 46, 0.85) 0%, rgba(15, 15, 28, 0.85) 100%);
+    radial-gradient(ellipse at center top, var(--gold-soft-15), transparent 70%),
+    var(--gradient-card-ds);
   container-type: inline-size;
   container-name: dice-arena;
   --dice-size: clamp(56px, 22cqw, 110px);
   --dice-table-bottom: calc(var(--dice-size) * 0.6 - var(--dice-size) * 0.04);
-  border: 1px solid rgba(201, 168, 76, 0.3);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.1);
+  border: 1px solid var(--gold-soft-30);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--gold-soft-10);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -100,7 +104,7 @@
 .dice-screen-arena-grid {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(to right, rgba(201, 168, 76, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(to right, var(--gold-soft-08) 1px, transparent 1px);
   background-size: 30px 100%;
   -webkit-mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
@@ -138,13 +142,13 @@
   border-radius: 6px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(201, 168, 76, 0.6) 20%,
+    var(--gold-soft-60) 20%,
     rgba(255, 233, 168, 0.9) 50%,
-    rgba(201, 168, 76, 0.6) 80%,
+    var(--gold-soft-60) 80%,
     transparent 100%);
   box-shadow:
-    0 0 14px rgba(201, 168, 76, 0.55),
-    0 0 32px rgba(201, 168, 76, 0.25);
+    0 0 14px var(--gold-soft-55),
+    0 0 32px var(--gold-soft-25);
   z-index: 0;
 
   &::before {
@@ -154,7 +158,7 @@
     right: -8%;
     bottom: 100%;
     height: 90px;
-    background: radial-gradient(ellipse at bottom, rgba(201, 168, 76, 0.18), transparent 70%);
+    background: radial-gradient(ellipse at bottom, var(--gold-soft-18), transparent 70%);
     pointer-events: none;
   }
   &::after {
@@ -164,7 +168,7 @@
     right: 0;
     top: 100%;
     height: 80px;
-    background: linear-gradient(180deg, rgba(201, 168, 76, 0.06), transparent 80%);
+    background: linear-gradient(180deg, var(--gold-soft-06), transparent 80%);
     pointer-events: none;
   }
 }
@@ -274,85 +278,15 @@
   }
 }
 
-.dice-face {
-  position: absolute;
-  width: var(--dice-size);
-  height: var(--dice-size);
-  border-radius: calc(var(--dice-size) * 0.127);
-  display: grid;
-  padding: calc(var(--dice-size) * 0.16);
-  gap: calc(var(--dice-size) * 0.055);
-}
+// Face grid + pip layout — shared with <app-die> via styles/_die.scss mixin.
+@include die.face-grid('.dice-face', '.pip');
 
-// Obsidian style (dark / violet faces + gold-glowing pips)
-.dice-style-obsidian {
-  .dice-face {
-    background:
-      radial-gradient(circle at 30% 25%, #4a2870 0%, #2a1240 35%, #15071f 100%);
-    border: 2px solid #6a3a98;
-    box-shadow:
-      inset 0 0 24px rgba(168, 100, 220, 0.18),
-      inset 0 2px 0 rgba(180, 120, 220, 0.35),
-      inset 0 -2px 8px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(180, 120, 220, 0.15);
-  }
-  .pip {
-    background: radial-gradient(circle at 30% 30%, #ffe9a8 0%, #C9A84C 60%, #8a6a20 100%);
-    box-shadow:
-      inset 0 1px 2px rgba(255, 255, 255, 0.4),
-      0 0 8px rgba(201, 168, 76, 0.7),
-      0 0 16px rgba(201, 168, 76, 0.35);
-  }
-  @media (max-width: 480px) {
-    // Tight glow on small screens — keeps the pips crisp instead of bleeding.
-    .pip {
-      box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.45),
-        0 0 4px rgba(201, 168, 76, 0.9);
-    }
-  }
-}
+// .dice-face is rendered inside the 3D cube — absolute positioning so all
+// 6 faces stack on top of each other within the .dice cube parent.
+.dice-face { position: absolute; }
 
-// Pip layout per face — matches the mockup's grid-area placement.
-.dice-face--1 { grid-template: 1fr / 1fr; place-items: center; }
-.dice-face--2 { grid-template: 1fr 1fr / 1fr 1fr; }
-.dice-face--3 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
-.dice-face--4 { grid-template: 1fr 1fr / 1fr 1fr; }
-.dice-face--5 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
-.dice-face--6 {
-  grid-template: 1fr 1fr 1fr / 1fr 1fr;
-  padding: calc(var(--dice-size) * 0.127) calc(var(--dice-size) * 0.20);
-  gap: calc(var(--dice-size) * 0.036);
-}
-
-.pip {
-  width: calc(var(--dice-size) * 0.127);
-  height: calc(var(--dice-size) * 0.127);
-  border-radius: 50%;
-  align-self: center;
-  justify-self: center;
-}
-
-.dice-face--2 .pip:nth-child(1) { grid-area: 1 / 1; }
-.dice-face--2 .pip:nth-child(2) { grid-area: 2 / 2; }
-
-.dice-face--3 .pip:nth-child(1) { grid-area: 1 / 1; }
-.dice-face--3 .pip:nth-child(2) { grid-area: 2 / 2; }
-.dice-face--3 .pip:nth-child(3) { grid-area: 3 / 3; }
-
-.dice-face--4 .pip:nth-child(1) { grid-area: 1 / 1; }
-.dice-face--4 .pip:nth-child(2) { grid-area: 1 / 2; }
-.dice-face--4 .pip:nth-child(3) { grid-area: 2 / 1; }
-.dice-face--4 .pip:nth-child(4) { grid-area: 2 / 2; }
-
-.dice-face--5 .pip:nth-child(1) { grid-area: 1 / 1; }
-.dice-face--5 .pip:nth-child(2) { grid-area: 1 / 3; }
-.dice-face--5 .pip:nth-child(3) { grid-area: 2 / 2; }
-.dice-face--5 .pip:nth-child(4) { grid-area: 3 / 1; }
-.dice-face--5 .pip:nth-child(5) { grid-area: 3 / 3; }
-
-.dice-face--6 .pip:nth-child(odd)  { grid-column: 1; }
-.dice-face--6 .pip:nth-child(even) { grid-column: 2; }
+// Obsidian skin — shared with <app-die> via the same partial.
+.dice-style-obsidian { @include die.obsidian-skin('.dice-face', '.pip'); }
 
 // Face positions in 3D space.
 .dice-face--1 { transform: translateZ(var(--dice-half)); }
@@ -405,9 +339,9 @@
   justify-content: center;
   text-align: center;
 
-  &__label { font-size: 0.78rem; color: #9e9e9e; }
-  &__total { font: 700 1rem/1 'Rajdhani', sans-serif; color: #eaeaea; }
-  &__total--opp { color: #79b8ff; }
+  &__label { font-size: 0.78rem; color: var(--text-muted); }
+  &__total { font: 700 1rem/1 'Rajdhani', sans-serif; color: var(--text-primary); }
+  &__total--opp { color: var(--cyan-300); }
   &__sum   { font-size: 1.3rem; }
   &__sep   { font-size: 0.7rem; color: #6a6a6a; padding: 0 6px; }
 }
@@ -428,12 +362,12 @@
   &--lost {
     background: linear-gradient(135deg, rgba(255, 82, 82, 0.12), rgba(255, 82, 82, 0.04));
     border-color: rgba(255, 82, 82, 0.3);
-    .dice-banner__icon { background: #ff5252; color: #fff; }
+    .dice-banner__icon { background: var(--danger-strong); color: #fff; }
   }
   &--draw {
     background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 193, 7, 0.04));
     border-color: rgba(255, 193, 7, 0.3);
-    .dice-banner__icon { background: #ffc107; color: #1a1208; }
+    .dice-banner__icon { background: var(--warning); color: var(--text-inverse); }
   }
 
   &__icon {
@@ -443,8 +377,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #4caf50;
-    color: #1a1208;
+    background: var(--success);
+    color: var(--text-inverse);
     box-shadow: 0 0 16px rgba(76, 175, 80, 0.5);
     flex-shrink: 0;
     .material-icons-round { font-size: 24px; }
@@ -452,14 +386,14 @@
   &__text {
     font: 800 1.05rem/1.1 'Rajdhani', 'Inter', sans-serif;
     letter-spacing: 0.04em;
-    color: #eaeaea;
+    color: var(--text-primary);
     text-align: left;
 
     small {
       display: block;
       font-size: 0.78rem;
       font-weight: 600;
-      color: #9e9e9e;
+      color: var(--text-muted);
       letter-spacing: 0.04em;
       margin-top: 2px;
     }
@@ -486,7 +420,7 @@
     font: 700 0.72rem/1 'Rajdhani', 'Inter', sans-serif;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #C9A84C;
+    color: var(--gold);
   }
 }
 
@@ -512,22 +446,22 @@
   color: inherit;
 
   &:hover {
-    border-color: rgba(201, 168, 76, 0.4);
-    background: rgba(201, 168, 76, 0.06);
+    border-color: var(--gold-soft-40);
+    background: var(--gold-soft-06);
     transform: translateY(-2px);
   }
   &.selected {
-    border-color: #C9A84C;
-    background: linear-gradient(135deg, rgba(201, 168, 76, 0.18), rgba(201, 168, 76, 0.04));
-    box-shadow: 0 6px 20px rgba(201, 168, 76, 0.25);
+    border-color: var(--gold);
+    background: linear-gradient(135deg, var(--gold-soft-18), var(--gold-soft-04));
+    box-shadow: 0 6px 20px var(--gold-soft-25);
   }
 
-  .material-icons-round { font-size: 28px; color: #C9A84C; }
+  .material-icons-round { font-size: 28px; color: var(--gold); }
 
   &__title {
     font: 700 0.95rem/1.2 'Rajdhani', 'Inter', sans-serif;
     letter-spacing: 0.04em;
-    color: #eaeaea;
+    color: var(--text-primary);
   }
 }
 
@@ -544,10 +478,10 @@
   border: none;
   cursor: pointer;
   overflow: hidden;
-  background: linear-gradient(135deg, #d4b25a 0%, #C9A84C 50%, #a8862e 100%);
-  color: #1a1208;
+  background: linear-gradient(135deg, var(--gold-100) 0%, var(--gold) 50%, var(--gold-700) 100%);
+  color: var(--text-inverse);
   box-shadow:
-    0 6px 24px rgba(201, 168, 76, 0.35),
+    0 6px 24px var(--gold-soft-35),
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
     inset 0 -2px 0 rgba(0, 0, 0, 0.2);
   transition: all 200ms ease;
@@ -559,7 +493,7 @@
     transform: translateY(-2px);
     filter: brightness(1.08);
     box-shadow:
-      0 12px 36px rgba(201, 168, 76, 0.55),
+      0 12px 36px var(--gold-soft-55),
       inset 0 1px 0 rgba(255, 255, 255, 0.4),
       inset 0 -2px 0 rgba(0, 0, 0, 0.2);
   }
@@ -578,28 +512,28 @@
   gap: 14px;
   padding: 24px 20px;
   border-radius: 12px;
-  background: rgba(74, 144, 217, 0.06);
-  border: 1px solid rgba(74, 144, 217, 0.25);
+  background: var(--cyan-soft-06);
+  border: 1px solid var(--cyan-soft-25);
   width: 100%;
   max-width: 400px;
 
   &__spinner {
     width: 36px;
     height: 36px;
-    border: 3px solid rgba(74, 144, 217, 0.2);
-    border-top-color: #79b8ff;
+    border: 3px solid var(--cyan-soft-20);
+    border-top-color: var(--cyan-300);
     border-radius: 50%;
     animation: dice-spin 1s linear infinite;
   }
   &__title {
     font: 700 1rem/1.2 'Rajdhani', 'Inter', sans-serif;
     letter-spacing: 0.05em;
-    color: #eaeaea;
+    color: var(--text-primary);
     text-align: center;
   }
   &__desc {
     font-size: 0.82rem;
-    color: #9e9e9e;
+    color: var(--text-muted);
     text-align: center;
     max-width: 320px;
     line-height: 1.4;
@@ -623,18 +557,18 @@
   width: 100%;
   max-width: 480px;
   background:
-    radial-gradient(ellipse at top, rgba(201, 168, 76, 0.2), transparent 70%),
+    radial-gradient(ellipse at top, var(--gold-soft-20), transparent 70%),
     linear-gradient(160deg, rgba(30, 30, 46, 0.7), rgba(15, 15, 28, 0.7));
-  border: 1.5px solid rgba(201, 168, 76, 0.45);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 168, 76, 0.15);
+  border: 1.5px solid var(--gold-soft-45);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--gold-soft-15);
   animation: dice-announce-pop 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
   &--second {
     background:
-      radial-gradient(ellipse at top, rgba(74, 144, 217, 0.2), transparent 70%),
+      radial-gradient(ellipse at top, var(--cyan-soft-20), transparent 70%),
       linear-gradient(160deg, rgba(30, 30, 46, 0.7), rgba(15, 15, 28, 0.7));
-    border-color: rgba(74, 144, 217, 0.45);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(74, 144, 217, 0.15);
+    border-color: var(--cyan-soft-45);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--cyan-soft-15);
   }
 
   &__icon {
@@ -644,16 +578,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #d4b25a, #C9A84C);
-    color: #1a1208;
-    box-shadow: 0 6px 20px rgba(201, 168, 76, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    background: linear-gradient(135deg, var(--gold-100), var(--gold));
+    color: var(--text-inverse);
+    box-shadow: 0 6px 20px var(--gold-soft-50), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 
     .material-icons-round { font-size: 32px; }
   }
   &--second &__icon {
-    background: linear-gradient(135deg, #79b8ff, #4a90d9);
+    background: linear-gradient(135deg, var(--cyan-300), var(--cyan-500));
     color: #0a1428;
-    box-shadow: 0 6px 20px rgba(74, 144, 217, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 20px var(--cyan-soft-50), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   }
 
   &__headline {
@@ -661,13 +595,13 @@
     letter-spacing: 0.04em;
     text-align: center;
     text-wrap: balance;
-    background: linear-gradient(135deg, #ffe9a8, #C9A84C);
+    background: linear-gradient(135deg, var(--gold-50), var(--gold));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
   }
   &--second &__headline {
-    background: linear-gradient(135deg, #d8ecff, #79b8ff);
+    background: linear-gradient(135deg, #d8ecff, var(--cyan-300));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -684,26 +618,26 @@
   &__progress-bar {
     height: 100%;
     width: 0;
-    background: linear-gradient(90deg, #C9A84C, #ffe9a8);
+    background: linear-gradient(90deg, var(--gold), var(--gold-50));
     border-radius: 2px;
-    box-shadow: 0 0 10px rgba(201, 168, 76, 0.6);
+    box-shadow: 0 0 10px var(--gold-soft-60);
     animation: dice-final-progress 2.5s linear forwards;
   }
   &--second &__progress-bar {
-    background: linear-gradient(90deg, #4a90d9, #79b8ff);
-    box-shadow: 0 0 10px rgba(74, 144, 217, 0.6);
+    background: linear-gradient(90deg, var(--cyan-500), var(--cyan-300));
+    box-shadow: 0 0 10px var(--cyan-soft-60);
   }
 
   &__hint {
     font-size: 0.78rem;
-    color: #9e9e9e;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
     gap: 6px;
 
-    .material-icons-round { font-size: 14px; color: #C9A84C; }
+    .material-icons-round { font-size: 14px; color: var(--gold); }
   }
-  &--second &__hint .material-icons-round { color: #79b8ff; }
+  &--second &__hint .material-icons-round { color: var(--cyan-300); }
 }
 
 @keyframes dice-announce-pop {

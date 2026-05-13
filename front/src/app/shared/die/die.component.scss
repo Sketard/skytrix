@@ -1,0 +1,35 @@
+@use '../../styles/die' as die;
+
+:host {
+  // --dice-size is the single sizing knob — inherited from a parent
+  // container or set inline. Defaults to 110px (mockup reference) so
+  // the component works standalone for previews.
+  --dice-size: var(--die-size, 110px);
+  display: inline-block;
+  width: var(--dice-size);
+  height: var(--dice-size);
+}
+
+// Face grid + pip layout — shared with <app-pvp-dice-arena> via the partial.
+@include die.face-grid('.die-face', '.die-pip');
+
+// Obsidian skin (default).
+.die-style--obsidian { @include die.obsidian-skin('.die-face', '.die-pip'); }
+
+// Gold variant — gold face, dark engraved pips. Unique to <app-die> so
+// stays inline rather than in the shared partial.
+.die-style--gold {
+  background: radial-gradient(circle at 25% 25%, #fff4d6 0%, var(--gold-50) 30%, var(--gold) 100%);
+  border: 3px solid #b88828;
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.15),
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+
+  .die-pip {
+    background: radial-gradient(circle at 30% 30%, #5a3a08, #2a1808);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.5),
+      0 1px 1px rgba(255, 255, 255, 0.2);
+  }
+}

@@ -146,18 +146,34 @@
   --gold:      #C9A84C;
   --gold-700:  #a8862e;
   --gold-900:  #8a6a20;
+  --gold-soft-06: rgba(201, 168, 76, 0.06);
   --gold-soft-08: rgba(201, 168, 76, 0.08);
+  --gold-soft-10: rgba(201, 168, 76, 0.10);
   --gold-soft-12: rgba(201, 168, 76, 0.12);
+  --gold-soft-15: rgba(201, 168, 76, 0.15);
+  --gold-soft-18: rgba(201, 168, 76, 0.18);
+  --gold-soft-20: rgba(201, 168, 76, 0.20);
+  --gold-soft-25: rgba(201, 168, 76, 0.25);
   --gold-soft-30: rgba(201, 168, 76, 0.30);
   --gold-soft-40: rgba(201, 168, 76, 0.40);
+  --gold-soft-04: rgba(201, 168, 76, 0.04);
+  --gold-soft-35: rgba(201, 168, 76, 0.35);
+  --gold-soft-45: rgba(201, 168, 76, 0.45);
   --gold-soft-50: rgba(201, 168, 76, 0.50);
+  --gold-soft-55: rgba(201, 168, 76, 0.55);
+  --gold-soft-60: rgba(201, 168, 76, 0.60);
 
   // --- Cyan (secondary / "second player" accent) ---
   --cyan-300: #79b8ff;
   --cyan-500: #4a90d9;
+  --cyan-soft-06: rgba(74, 144, 217, 0.06);
   --cyan-soft-15: rgba(74, 144, 217, 0.15);
+  --cyan-soft-20: rgba(74, 144, 217, 0.20);
   --cyan-soft-25: rgba(74, 144, 217, 0.25);
   --cyan-soft-40: rgba(74, 144, 217, 0.40);
+  --cyan-soft-45: rgba(74, 144, 217, 0.45);
+  --cyan-soft-50: rgba(74, 144, 217, 0.50);
+  --cyan-soft-60: rgba(74, 144, 217, 0.60);
 
   // --- Semantic — extended palette ---
   --success:       #4caf50;
@@ -176,6 +192,17 @@
   --surface-hover:     rgba(255, 255, 255, 0.06);
   --border-soft:       rgba(255, 255, 255, 0.10);
   --border-medium:     rgba(255, 255, 255, 0.18);
+
+  // --- Gradients DS — shared composites consumed by .screen-bg utility
+  // and any card/dialog/skeleton that wants the holo-arena mood. Single
+  // source so dialog skins stay in lockstep.
+  --gradient-card-ds: linear-gradient(135deg, var(--surface-card-ds) 0%, var(--surface-card-low) 100%);
+  --gradient-arena-radial: radial-gradient(ellipse at top, #1a1a2e 0%, var(--surface-bg-deep) 65%, var(--surface-bg) 100%);
+  --gradient-arena-grid:
+    linear-gradient(to right, var(--gold-soft-08) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--gold-soft-08) 1px, transparent 1px);
+  --gradient-arena-glow-gold: radial-gradient(circle, rgba(201, 168, 76, 0.55), transparent 70%);
+  --gradient-arena-glow-cyan: radial-gradient(circle, rgba(74, 144, 217, 0.45), transparent 70%);
 
   // --- Text — DS extended scale (legacy --text-primary/--text-secondary above) ---
   --text-muted:    #9e9e9e;

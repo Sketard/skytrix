@@ -4,6 +4,9 @@ import {
   startFirstPlayerPhase,
   handlePreDuelResponse,
   disposeFirstPlayer,
+  DICE_TIE_REROLL_MS,
+  DICE_SUSPENSE_MS,
+  FINAL_BANNER_MS,
   type FirstPlayerCoordinatorConfig,
 } from './first-player-coordinator.js';
 import type { ActiveDuelSession } from './types.js';
@@ -12,6 +15,9 @@ import type { ServerMessage, Player } from './ws-protocol.js';
 // =============================================================================
 // Fixtures
 // =============================================================================
+
+const DICE_ROLL_TIMEOUT_MS = 30_000;
+const FIRST_PLAYER_TIMEOUT_MS = 15_000;
 
 interface SentMessage {
   player: 0 | 1;
@@ -36,8 +42,8 @@ function makeConfig(spy: SpyHooks, overrides: Partial<FirstPlayerCoordinatorConf
       return msg;
     },
     startDuelWithOrder: (_s, firstPlayer) => spy.starts.push({ firstPlayer }),
-    diceRollTimeoutMs: 30_000,
-    firstPlayerTimeoutMs: 15_000,
+    diceRollTimeoutMs: DICE_ROLL_TIMEOUT_MS,
+    firstPlayerTimeoutMs: FIRST_PLAYER_TIMEOUT_MS,
     ...overrides,
   };
 }
@@ -113,7 +119,15 @@ function mockDice(...values: number[]): () => number {
 // =============================================================================
 
 describe('first-player-coordinator', () => {
-  beforeEach(() => vi.useFakeTimers());
+  let spy: SpyHooks;
+  let s: ActiveDuelSession;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    spy = makeSpy();
+    s = makeSession();
+    configureFirstPlayerCoordinator(makeConfig(spy));
+  });
   afterEach(() => vi.useRealTimers());
 
   // ==========================================================================
@@ -122,10 +136,6 @@ describe('first-player-coordinator', () => {
 
   describe('startFirstPlayerPhase', () => {
     it('sets phase=ROLLING_DICE, builds firstPlayerState, sends DICE_ROLL to both', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-
       startFirstPlayerPhase(s);
 
       expect(s.phase).toBe('ROLLING_DICE');
@@ -140,14 +150,11 @@ describe('first-player-coordinator', () => {
     });
 
     it('auto-rolls both players after diceRollTimeoutMs', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      // Force same dice for both = tie → DICE_RESULT with winner=null.
+// Force same dice for both = tie → DICE_RESULT with winner=null.
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(3, 4, 3, 4));
 
       startFirstPlayerPhase(s);
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(DICE_ROLL_TIMEOUT_MS);
 
       const results = diceResultMsgs(spy);
       expect(results).toHaveLength(2);
@@ -168,11 +175,8 @@ describe('first-player-coordinator', () => {
 
   describe('resolveDiceRound — winner formula', () => {
     it('higher sum wins (player 0)', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      // P0 rolls [6,6]=12, P1 rolls [1,1]=2.
-      const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
+// P0 rolls [6,6]=12, P1 rolls [1,1]=2.
+            const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
 
       startFirstPlayerPhase(s);
       handlePreDuelResponse(s, 0, 'DICE_ROLL', {});
@@ -187,9 +191,6 @@ describe('first-player-coordinator', () => {
     });
 
     it('higher sum wins (player 1)', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(2, 3, 5, 6));
 
       startFirstPlayerPhase(s);
@@ -203,9 +204,6 @@ describe('first-player-coordinator', () => {
     });
 
     it('tie → winner null and auto-reroll after 1.8s', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(4, 5, 5, 4));
 
       startFirstPlayerPhase(s);
@@ -222,7 +220,7 @@ describe('first-player-coordinator', () => {
       expect(promptsBefore).toHaveLength(2); // initial only
 
       // Advance past the 1.8s suspense.
-      vi.advanceTimersByTime(1_800);
+      vi.advanceTimersByTime(DICE_TIE_REROLL_MS);
       const promptsAfter = spy.sent.filter(x => x.message.type === 'DICE_ROLL');
       expect(promptsAfter).toHaveLength(4); // 2 initial + 2 reroll
       expect(s.firstPlayerState!.round).toBe(1);
@@ -231,10 +229,7 @@ describe('first-player-coordinator', () => {
     });
 
     it('forces a winner after the 10th consecutive tie (MAX_ROUNDS)', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      // round=9 → this resolution is round 10 → must force a winner.
+// round=9 → this resolution is round 10 → must force a winner.
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(() => 0.99);
 
       startFirstPlayerPhase(s, 9);
@@ -254,9 +249,6 @@ describe('first-player-coordinator', () => {
 
   describe('resolveDiceRound — perspective filtering', () => {
     it('runs DICE_RESULT through filterMessage once per player', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
 
       startFirstPlayerPhase(s);
@@ -271,12 +263,12 @@ describe('first-player-coordinator', () => {
     });
 
     it('skips the send when filterMessage returns null for that player', () => {
-      const spy = makeSpy();
+      // Re-configure with a custom filterMessage — beforeEach's default
+      // identity filter is overridden by the second `configure` call.
       configureFirstPlayerCoordinator(makeConfig(spy, {
         filterMessage: (msg, p) => (p === 1 && msg.type === 'DICE_RESULT' ? null : msg),
       }));
-      const s = makeSession();
-      const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
+            const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
 
       startFirstPlayerPhase(s);
       handlePreDuelResponse(s, 0, 'DICE_ROLL', {});
@@ -296,9 +288,6 @@ describe('first-player-coordinator', () => {
 
   describe('CHOOSE_FIRST_PLAYER transition', () => {
     it('promotes to CHOOSE_FIRST_PLAYER after the 1.5s suspense and prompts the winner only', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
 
       startFirstPlayerPhase(s);
@@ -306,7 +295,7 @@ describe('first-player-coordinator', () => {
       handlePreDuelResponse(s, 1, 'DICE_ROLL', {});
       expect(s.phase).toBe('DICE_RESOLVED');
 
-      vi.advanceTimersByTime(1_500);
+      vi.advanceTimersByTime(DICE_SUSPENSE_MS);
 
       expect(s.phase).toBe('CHOOSE_FIRST_PLAYER');
       expect(s.awaitingResponse).toEqual([true, false]);
@@ -333,14 +322,11 @@ describe('first-player-coordinator', () => {
       startFirstPlayerPhase(s);
       handlePreDuelResponse(s, 0, 'DICE_ROLL', {});
       handlePreDuelResponse(s, 1, 'DICE_ROLL', {});
-      vi.advanceTimersByTime(1_500);
+      vi.advanceTimersByTime(DICE_SUSPENSE_MS);
       return () => rndSpy.mockRestore();
     }
 
     it('goFirst=true keeps the responding player going first', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const cleanup = arriveAtChoose(spy, s, 0);
 
       const handled = handlePreDuelResponse(s, 0, 'SELECT_FIRST_PLAYER', { goFirst: true });
@@ -358,9 +344,6 @@ describe('first-player-coordinator', () => {
     });
 
     it('goFirst=false flips: opponent goes first', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const cleanup = arriveAtChoose(spy, s, 0);
 
       handlePreDuelResponse(s, 0, 'SELECT_FIRST_PLAYER', { goFirst: false });
@@ -373,34 +356,28 @@ describe('first-player-coordinator', () => {
     });
 
     it('calls startDuelWithOrder after the 2.5s banner delay', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const cleanup = arriveAtChoose(spy, s, 0);
 
       handlePreDuelResponse(s, 0, 'SELECT_FIRST_PLAYER', { goFirst: true });
       expect(spy.starts).toHaveLength(0);
 
-      vi.advanceTimersByTime(2_500);
+      vi.advanceTimersByTime(FINAL_BANNER_MS);
       expect(spy.starts).toEqual([{ firstPlayer: 0 }]);
 
       cleanup();
     });
 
     it('firstPlayerTimeout auto-resolves as "winner goes first"', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const cleanup = arriveAtChoose(spy, s, 1);
 
       // Winner stays silent for the configured firstPlayerTimeoutMs (15_000).
-      vi.advanceTimersByTime(15_000);
+      vi.advanceTimersByTime(FIRST_PLAYER_TIMEOUT_MS);
       expect(s.phase).toBe('FIRST_PLAYER_RESOLVED');
       const finals = firstPlayerResultMsgs(spy);
       const for1 = finals.find(x => x.player === 1)!.message as Extract<ServerMessage, { type: 'FIRST_PLAYER_RESULT' }>;
       expect(for1.goFirst).toBe(true);
 
-      vi.advanceTimersByTime(2_500);
+      vi.advanceTimersByTime(FINAL_BANNER_MS);
       expect(spy.starts).toEqual([{ firstPlayer: 1 }]);
 
       cleanup();
@@ -413,18 +390,12 @@ describe('first-player-coordinator', () => {
 
   describe('handlePreDuelResponse — DICE_ROLL invariants', () => {
     it('returns true for the DICE_ROLL prompt during ROLLING_DICE phase', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      startFirstPlayerPhase(s);
+startFirstPlayerPhase(s);
       expect(handlePreDuelResponse(s, 0, 'DICE_ROLL', {})).toBe(true);
     });
 
     it('ignores a second confirmation from the same player (no double-roll)', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(3, 3));
+const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(3, 3));
       startFirstPlayerPhase(s);
 
       handlePreDuelResponse(s, 0, 'DICE_ROLL', {});
@@ -438,9 +409,6 @@ describe('first-player-coordinator', () => {
     });
 
     it('does not resolve until both have confirmed', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
       startFirstPlayerPhase(s);
 
@@ -454,18 +422,12 @@ describe('first-player-coordinator', () => {
     });
 
     it('returns false for prompts that are not pre-duel (e.g. SELECT_CARD)', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      s.phase = 'DUELING';
+s.phase = 'DUELING';
       expect(handlePreDuelResponse(s, 0, 'SELECT_CARD', { selectedIndices: [0] })).toBe(false);
     });
 
     it('returns false when phase is not ROLLING_DICE even if promptType is DICE_ROLL', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      s.phase = 'DUELING';
+s.phase = 'DUELING';
       expect(handlePreDuelResponse(s, 0, 'DICE_ROLL', {})).toBe(false);
     });
   });
@@ -476,48 +438,36 @@ describe('first-player-coordinator', () => {
 
   describe('disposeFirstPlayer', () => {
     it('clears all timers and nulls firstPlayerState', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
-      startFirstPlayerPhase(s);
+startFirstPlayerPhase(s);
 
       disposeFirstPlayer(s);
 
       expect(s.firstPlayerState).toBeNull();
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(DICE_ROLL_TIMEOUT_MS);
       expect(diceResultMsgs(spy)).toHaveLength(0);
     });
 
     it('is idempotent (safe when firstPlayerState is already null)', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
 
       expect(() => disposeFirstPlayer(s)).not.toThrow();
       expect(s.firstPlayerState).toBeNull();
     });
 
     it('the firstPlayer-timeout timer is cleared on dispose', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
       startFirstPlayerPhase(s);
       handlePreDuelResponse(s, 0, 'DICE_ROLL', {});
       handlePreDuelResponse(s, 1, 'DICE_ROLL', {});
-      vi.advanceTimersByTime(1_500); // arrive at CHOOSE_FIRST_PLAYER
+      vi.advanceTimersByTime(DICE_SUSPENSE_MS); // arrive at CHOOSE_FIRST_PLAYER
 
       disposeFirstPlayer(s);
-      vi.advanceTimersByTime(15_000);
+      vi.advanceTimersByTime(FIRST_PLAYER_TIMEOUT_MS);
       expect(firstPlayerResultMsgs(spy)).toHaveLength(0);
 
       rndSpy.mockRestore();
     });
 
     it('the 1.8s tie reroll timer is cleared on dispose', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(4, 5, 5, 4));
       startFirstPlayerPhase(s);
 
@@ -525,7 +475,7 @@ describe('first-player-coordinator', () => {
       handlePreDuelResponse(s, 1, 'DICE_ROLL', {});
 
       disposeFirstPlayer(s);
-      vi.advanceTimersByTime(1_800);
+      vi.advanceTimersByTime(DICE_TIE_REROLL_MS);
 
       const newPrompts = spy.sent.filter(x => x.message.type === 'DICE_ROLL');
       // 2 initial only — a zombie reroll would push to 4.
@@ -535,9 +485,6 @@ describe('first-player-coordinator', () => {
     });
 
     it('the 1.5s DICE_RESOLVED transition timer is cleared on dispose', () => {
-      const spy = makeSpy();
-      configureFirstPlayerCoordinator(makeConfig(spy));
-      const s = makeSession();
       const rndSpy = vi.spyOn(Math, 'random').mockImplementation(mockDice(6, 6, 1, 1));
       startFirstPlayerPhase(s);
 
@@ -545,7 +492,7 @@ describe('first-player-coordinator', () => {
       handlePreDuelResponse(s, 1, 'DICE_ROLL', {});
 
       disposeFirstPlayer(s);
-      vi.advanceTimersByTime(1_500);
+      vi.advanceTimersByTime(DICE_SUSPENSE_MS);
 
       expect(spy.sent.find(x => x.message.type === 'SELECT_FIRST_PLAYER')).toBeUndefined();
       expect(spy.sent.find(x => x.message.type === 'WAITING_RESPONSE')).toBeUndefined();

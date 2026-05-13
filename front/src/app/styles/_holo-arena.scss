@@ -1,0 +1,75 @@
+// =============================================================================
+// Holo-arena background utility — animated perspective grid + dual glow blobs.
+// Mirrors `_mockups/mockup-1-holo-arena.html` `.screen-bg` (lines 257-277).
+//
+// Usage in any screen template:
+//
+//   <div class="screen-bg" aria-hidden="true">
+//     <div class="screen-bg-grid"></div>
+//     <div class="screen-bg-glow screen-bg-glow--gold"></div>
+//     <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+//   </div>
+//
+// The root element MUST be `position: relative` so the absolutely-positioned
+// `.screen-bg` (inset:0) covers it. Honors `prefers-reduced-motion`.
+// =============================================================================
+
+.screen-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--gradient-arena-radial);
+}
+
+.screen-bg-grid {
+  position: absolute;
+  inset: -10% -10% -20% -10%;
+  background-image: var(--gradient-arena-grid);
+  background-size: 48px 48px;
+  transform: perspective(900px) rotateX(60deg) translateY(-5%);
+  transform-origin: 50% 30%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 55%, transparent 95%);
+  opacity: 0.6;
+  animation: screen-bg-grid-drift 24s linear infinite;
+}
+
+@keyframes screen-bg-grid-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 48px 48px; }
+}
+
+.screen-bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.screen-bg-glow--gold {
+  top: -20%;
+  left: -10%;
+  width: 60vw;
+  height: 60vw;
+  max-width: 600px;
+  max-height: 600px;
+  background: var(--gradient-arena-glow-gold);
+  opacity: 0.4;
+}
+
+.screen-bg-glow--cyan {
+  bottom: -20%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  max-width: 600px;
+  max-height: 600px;
+  background: var(--gradient-arena-glow-cyan);
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-bg-grid { animation: none; }
+}

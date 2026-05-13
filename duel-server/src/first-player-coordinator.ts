@@ -2,7 +2,7 @@ import type { ActiveDuelSession } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import type { DiceRoll } from './types.js';
-import { diceSum, extractCardCodesForPlayer } from './types.js';
+import { diceSum } from './types.js';
 
 /**
  * Pre-duel first-player coordinator (2D6 dice mechanic, since 2026-05-13).
@@ -17,31 +17,27 @@ import { diceSum, extractCardCodesForPlayer } from './types.js';
  *   ROLLING_DICE ─winner──> DICE_RESOLVED ─after suspense──> CHOOSE_FIRST_PLAYER
  *   CHOOSE_FIRST_PLAYER ─answer──> FIRST_PLAYER_RESOLVED ─after banner──> DUELING
  *
- * The module owns NO state of its own. Per-session timers live on
- * `session.firstPlayerState.timers`. The bridge into worker spawning
- * (`startDuelWithOrder`) is injected at boot via `configureFirstPlayerCoordinator`
- * — that callback flips the phase to DUELING, swaps decks if needed, and
- * posts INIT_DUEL to the worker.
+ * State machine entry points (named steps, in firing order):
+ *   1. startFirstPlayerPhase       — DICE_ROLL prompts.
+ *   2. resolveDiceRound            — emit DICE_RESULT, route tie | winner.
+ *   3. scheduleTieReroll           — tie path → re-enter step 1 after pause.
+ *   4. promoteToChooseFirstPlayer  — winner path → SELECT_FIRST_PLAYER prompt.
+ *   5. scheduleFirstPlayerTimeout  — auto-resolve if winner stays silent.
+ *   6. broadcastFinalAndBridge     — FIRST_PLAYER_RESULT + bridge to duel.
  *
- * All timers used by this state machine are pushed into
- * `session.firstPlayerState.timers` so `disposeFirstPlayer()` cancels them
- * cleanly:
- *   - diceRollTimeoutMs auto-resolve (un-confirmed roll for one or both players)
- *   - 1.8s tie auto-reroll (winner === null → next round)
- *   - DICE_SUSPENSE_MS DICE_RESOLVED → CHOOSE_FIRST_PLAYER transition
- *   - firstPlayerTimeoutMs SELECT_FIRST_PLAYER auto-resolve (winner stays silent)
- *   - FINAL_BANNER_MS FIRST_PLAYER_RESOLVED → DUELING bridge
- *
- * The phase-guards inside each callback are kept as a belt-and-braces safety
- * net (the timer queue is unconditionally drained, but a callback that's
+ * Phase guards inside each scheduled callback are kept as a belt-and-braces
+ * safety net (the timer queue is unconditionally drained, but a callback
  * already in the JS task queue can still fire once after `clearTimeout` —
  * the guard short-circuits it).
  */
 
-const MAX_ROUNDS = 10;
-const DICE_TIE_REROLL_MS = 1_800;
-const DICE_SUSPENSE_MS = 1_500;
-const FINAL_BANNER_MS = 2_500;
+// All durations are exported so the spec can reference them by name instead
+// of hard-coding the same magic numbers in two places — a tweak silently
+// breaks the test if the spec lags behind.
+export const MAX_ROUNDS = 10;
+export const DICE_TIE_REROLL_MS = 1_800;
+export const DICE_SUSPENSE_MS = 1_500;
+export const FINAL_BANNER_MS = 2_500;
 
 export interface FirstPlayerCoordinatorConfig {
   /** Send a server message to one player. Routes through the host's WS layer. */
@@ -65,6 +61,10 @@ export interface FirstPlayerCoordinatorConfig {
   firstPlayerTimeoutMs: number;
 }
 
+interface ChooseFirstPlayerData {
+  goFirst?: boolean;
+}
+
 const configurable = createConfigurable<FirstPlayerCoordinatorConfig>('first-player-coordinator');
 export const configureFirstPlayerCoordinator = configurable.configure;
 export const isFirstPlayerCoordinatorConfigured = configurable.isConfigured;
@@ -73,6 +73,10 @@ const getCfg = configurable.get;
 /** Rolls one 2D6 result. Each die is uniform [1..6]. */
 function rollDice(): DiceRoll {
   return [1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)];
+}
+
+function pushTimer(session: ActiveDuelSession, t: ReturnType<typeof setTimeout>): void {
+  session.firstPlayerState?.timers.push(t);
 }
 
 /**
@@ -94,6 +98,7 @@ export function disposeFirstPlayer(session: ActiveDuelSession): void {
   session.firstPlayerState = null;
 }
 
+// ───── Step 1: enter ROLLING_DICE, prompt both players ──────────────────────
 /**
  * Enter (or re-enter, on a tie) the dice-rolling phase. Both players receive
  * `DICE_ROLL`. After `diceRollTimeoutMs` un-confirmed rolls are filled in
@@ -112,43 +117,55 @@ export function startFirstPlayerPhase(session: ActiveDuelSession, round = 0): vo
   cfg.sendToPlayer(session, 0, prompt0);
   cfg.sendToPlayer(session, 1, prompt1);
 
-  session.firstPlayerState.timers.push(setTimeout(() => {
-    if (session.phase !== 'ROLLING_DICE' || !session.firstPlayerState) return;
-    for (const p of [0, 1] as const) {
-      if (session.firstPlayerState.rolls[p] === null) {
-        session.firstPlayerState.rolls[p] = rollDice();
-        session.awaitingResponse[p] = false;
-      }
-    }
-    resolveDiceRound(session);
-  }, cfg.diceRollTimeoutMs));
+  pushTimer(session, setTimeout(() => autoFillStalledRolls(session), cfg.diceRollTimeoutMs));
 }
 
-/**
- * Resolve a round. Three outcomes:
- *  - Different sums: declare winner via DICE_RESULT, schedule
- *    CHOOSE_FIRST_PLAYER prompt after DICE_SUSPENSE_MS.
- *  - Same sums, under `MAX_ROUNDS`: emit DICE_RESULT with winner=null,
- *    schedule the next round after DICE_TIE_REROLL_MS.
- *  - Same sums, at `MAX_ROUNDS`: force a random winner (else bad-faith
- *    players could draw the duel indefinitely).
- */
+function autoFillStalledRolls(session: ActiveDuelSession): void {
+  if (session.phase !== 'ROLLING_DICE' || !session.firstPlayerState) return;
+  for (const p of [0, 1] as const) {
+    if (session.firstPlayerState.rolls[p] === null) {
+      session.firstPlayerState.rolls[p] = rollDice();
+      session.awaitingResponse[p] = false;
+    }
+  }
+  resolveDiceRound(session);
+}
+
+// ───── Step 2: resolve the round, route to tie or winner branch ─────────────
 function resolveDiceRound(session: ActiveDuelSession): void {
   if (!session.firstPlayerState) return;
   const [r0, r1] = session.firstPlayerState.rolls;
   if (r0 === null || r1 === null) return;
   const round = session.firstPlayerState.round;
-  const cfg = getCfg();
 
   const sum0 = diceSum(r0);
   const sum1 = diceSum(r1);
-  let winner: Player | null = null;
-  if (sum0 !== sum1) {
-    winner = sum0 > sum1 ? 0 : 1;
-  } else if (round + 1 >= MAX_ROUNDS) {
-    winner = Math.random() < 0.5 ? 0 : 1;
-  }
+  const winner = decideWinner(sum0, sum1, round);
 
+  broadcastDiceResult(session, r0, r1, sum0, sum1, winner);
+
+  if (winner === null) {
+    scheduleTieReroll(session, round);
+    return;
+  }
+  scheduleChooseFirstPlayerPromotion(session, winner);
+}
+
+function decideWinner(sum0: number, sum1: number, round: number): Player | null {
+  if (sum0 !== sum1) return sum0 > sum1 ? 0 : 1;
+  // Hard cap on consecutive ties — else bad-faith players could draw the
+  // duel indefinitely. Force a random winner at the ceiling.
+  if (round + 1 >= MAX_ROUNDS) return Math.random() < 0.5 ? 0 : 1;
+  return null;
+}
+
+function broadcastDiceResult(
+  session: ActiveDuelSession,
+  r0: DiceRoll, r1: DiceRoll,
+  sum0: number, sum1: number,
+  winner: Player | null,
+): void {
+  const cfg = getCfg();
   const result: ServerMessage = {
     type: 'DICE_RESULT',
     dice0: [r0[0], r0[1]],
@@ -161,68 +178,56 @@ function resolveDiceRound(session: ActiveDuelSession): void {
     const filtered = cfg.filterMessage(result, p);
     if (filtered) cfg.sendToPlayer(session, p, filtered);
   }
-
-  if (winner === null) {
-    // Tie — auto-reroll. Timer tracked so dispose clears a stale re-entry.
-    session.firstPlayerState.timers.push(setTimeout(() => {
-      if (session.phase !== 'ROLLING_DICE') return;
-      startFirstPlayerPhase(session, round + 1);
-    }, DICE_TIE_REROLL_MS));
-    return;
-  }
-
-  session.phase = 'DICE_RESOLVED';
-  const diceWinner = winner;
-  // Suspense before promoting to CHOOSE_FIRST_PLAYER — tracked so dispose
-  // cancels it.
-  session.firstPlayerState.timers.push(setTimeout(() => {
-    if (session.phase !== 'DICE_RESOLVED') return;
-    session.phase = 'CHOOSE_FIRST_PLAYER';
-    session.awaitingResponse = [false, false];
-    session.awaitingResponse[diceWinner] = true;
-    const prompt: ServerMessage = { type: 'SELECT_FIRST_PLAYER', player: diceWinner };
-    session.lastSentPrompt = [null, null];
-    session.lastSentPrompt[diceWinner] = prompt;
-    cfg.sendToPlayer(session, diceWinner, prompt);
-    cfg.sendToPlayer(session, diceWinner === 0 ? 1 : 0, { type: 'WAITING_RESPONSE' });
-
-    if (session.firstPlayerState) {
-      session.firstPlayerState.timers.push(setTimeout(() => {
-        if (session.phase !== 'CHOOSE_FIRST_PLAYER') return;
-        // Stalled winner — auto-resolve as "winner goes first" (sensible
-        // default; the loser doesn't get to pick if the winner ghosts).
-        broadcastFinalAndBridge(session, diceWinner);
-      }, cfg.firstPlayerTimeoutMs));
-    }
-  }, DICE_SUSPENSE_MS));
 }
 
-/**
- * Final transition: broadcast FIRST_PLAYER_RESULT (perspective-filtered),
- * flip phase, then schedule the bridge into the duel after the banner
- * window. Used by both the winner's explicit choice path and the
- * auto-resolve timeout path.
- */
+// ───── Step 3: tie path — reroll after a pause ──────────────────────────────
+function scheduleTieReroll(session: ActiveDuelSession, round: number): void {
+  pushTimer(session, setTimeout(() => {
+    if (session.phase !== 'ROLLING_DICE') return;
+    startFirstPlayerPhase(session, round + 1);
+  }, DICE_TIE_REROLL_MS));
+}
+
+// ───── Step 4: winner path — promote to CHOOSE_FIRST_PLAYER after suspense ─
+function scheduleChooseFirstPlayerPromotion(session: ActiveDuelSession, winner: 0 | 1): void {
+  session.phase = 'DICE_RESOLVED';
+  pushTimer(session, setTimeout(() => promoteToChooseFirstPlayer(session, winner), DICE_SUSPENSE_MS));
+}
+
+function promoteToChooseFirstPlayer(session: ActiveDuelSession, winner: 0 | 1): void {
+  if (session.phase !== 'DICE_RESOLVED') return;
+  const cfg = getCfg();
+  session.phase = 'CHOOSE_FIRST_PLAYER';
+  session.awaitingResponse = [false, false];
+  session.awaitingResponse[winner] = true;
+  const prompt: ServerMessage = { type: 'SELECT_FIRST_PLAYER', player: winner };
+  session.lastSentPrompt = [null, null];
+  session.lastSentPrompt[winner] = prompt;
+  cfg.sendToPlayer(session, winner, prompt);
+  cfg.sendToPlayer(session, winner === 0 ? 1 : 0, { type: 'WAITING_RESPONSE' });
+  scheduleFirstPlayerTimeout(session, winner);
+}
+
+// ───── Step 5: auto-resolve if winner stays silent ──────────────────────────
+function scheduleFirstPlayerTimeout(session: ActiveDuelSession, winner: 0 | 1): void {
+  const cfg = getCfg();
+  pushTimer(session, setTimeout(() => {
+    if (session.phase !== 'CHOOSE_FIRST_PLAYER') return;
+    // Sensible default — the loser doesn't get to pick if the winner ghosts.
+    broadcastFinalAndBridge(session, winner);
+  }, cfg.firstPlayerTimeoutMs));
+}
+
+// ───── Step 6: final banner + bridge to OCGCore duel ────────────────────────
 function broadcastFinalAndBridge(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
   const cfg = getCfg();
-  // Phase 3.16: prefetch hint — give each player their own decklist's card
-  // codes ahead of FIRST_PLAYER_RESULT so the 2.5s announce window doubles
-  // as a browser image-cache warmup. session.decks is still in pre-swap
-  // order at this point (the player-0/1 swap inside startDuelWithOrder
-  // hasn't happened yet), and session.players[i].deck matches session.decks[i],
-  // so player i receives the deck they actually own. No info leak: each side
-  // gets only its own deck.
-  cfg.sendToPlayer(session, 0, { type: 'DECK_PREFETCH', cardCodes: extractCardCodesForPlayer(session.decks, 0) });
-  cfg.sendToPlayer(session, 1, { type: 'DECK_PREFETCH', cardCodes: extractCardCodesForPlayer(session.decks, 1) });
   cfg.sendToPlayer(session, 0, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 0 });
   cfg.sendToPlayer(session, 1, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 1 });
   session.phase = 'FIRST_PLAYER_RESOLVED';
-  if (session.firstPlayerState) {
-    session.firstPlayerState.timers.push(setTimeout(() => {
-      if (session.phase !== 'FIRST_PLAYER_RESOLVED') return;
-      cfg.startDuelWithOrder(session, firstPlayer);
-    }, FINAL_BANNER_MS));
-  }
+  pushTimer(session, setTimeout(() => {
+    if (session.phase !== 'FIRST_PLAYER_RESOLVED') return;
+    cfg.startDuelWithOrder(session, firstPlayer);
+  }, FINAL_BANNER_MS));
 }
 
 /**
@@ -238,7 +243,7 @@ export function handlePreDuelResponse(
   session: ActiveDuelSession,
   playerIndex: 0 | 1,
   promptType: string,
-  _data: Record<string, unknown>,
+  data: Record<string, unknown>,
 ): boolean {
   if (session.phase === 'ROLLING_DICE' && promptType === 'DICE_ROLL' && session.firstPlayerState) {
     // Idempotent: re-confirmation by the same player is a no-op (the dice
@@ -258,7 +263,7 @@ export function handlePreDuelResponse(
 
   if (session.phase === 'CHOOSE_FIRST_PLAYER' && promptType === 'SELECT_FIRST_PLAYER' && session.firstPlayerState) {
     clearCoordinatorTimers(session);
-    const goFirst = _data['goFirst'] === true;
+    const goFirst = (data as ChooseFirstPlayerData).goFirst === true;
     const firstPlayer: 0 | 1 = goFirst ? playerIndex : (playerIndex === 0 ? 1 : 0);
     session.awaitingResponse[playerIndex] = false;
     session.lastSentPrompt[playerIndex] = null;

@@ -75,14 +75,23 @@ public class RoomService {
         // (we send the canonical viewer=null variant; the lobby client only
         // reads pseudo + roomCode + status).
         var dtoForBroadcast = roomMapper.toRoomDTO(room, null);
+        afterCommit(() -> roomLobbyEventService.broadcastRoomCreated(dtoForBroadcast));
+
+        return roomMapper.toRoomDTO(room, user.getId());
+    }
+
+    /**
+     * Run {@code action} once the surrounding {@code @Transactional} commits.
+     * Centralises the {@link TransactionSynchronizationManager} ceremony so
+     * callers express intent ("emit after commit") instead of plumbing.
+     */
+    private static void afterCommit(Runnable action) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                roomLobbyEventService.broadcastRoomCreated(dtoForBroadcast);
+                action.run();
             }
         });
-
-        return roomMapper.toRoomDTO(room, user.getId());
     }
 
     // TODO [H3 review]: pessimistic lock held during duelServerClient.createDuel() external HTTP call.
@@ -132,13 +141,10 @@ public class RoomService {
 
             var creatorDto = roomMapper.toRoomDTO(room, room.getPlayer1().getId());
             var roomCodeForBroadcast = room.getRoomCode();
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    roomEventService.sendRoomReady(roomCodeForBroadcast, creatorDto);
-                    // Room left WAITING → drop it from every lobby listing.
-                    roomLobbyEventService.broadcastRoomRemoved(roomCodeForBroadcast);
-                }
+            afterCommit(() -> {
+                roomEventService.sendRoomReady(roomCodeForBroadcast, creatorDto);
+                // Room left WAITING → drop it from every lobby listing.
+                roomLobbyEventService.broadcastRoomRemoved(roomCodeForBroadcast);
             });
 
             log.info("Room {} joined by user {} — duel {} started", room.getRoomCode(), user.getPseudo(), room.getDuelServerId());
@@ -234,26 +240,7 @@ public class RoomService {
                 && (room.getPlayer2() == null || !userId.equals(room.getPlayer2().getId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not a participant of this room");
         }
-        if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CLOSED) {
-            return;
-        }
-        var wasListedInLobby = room.getStatus() == RoomStatus.WAITING;
-        if (room.getDuelServerId() != null) {
-            duelServerClient.terminateDuel(room.getDuelServerId());
-        }
-        room.setStatus(RoomStatus.ENDED);
-        roomRepository.save(room);
-        roomEventService.evict(roomCode);
-        log.info("Room {} ended by user {}", roomCode, userId);
-
-        if (wasListedInLobby) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    roomLobbyEventService.broadcastRoomRemoved(roomCode);
-                }
-            });
-        }
+        closeRoomInternal(room, "ended by user " + userId);
     }
 
     /**
@@ -267,6 +254,16 @@ public class RoomService {
         var adminId = authService.getConnectedUserId();
         var room = roomRepository.findByRoomCode(roomCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+        closeRoomInternal(room, "force-closed by admin " + adminId);
+    }
+
+    /**
+     * Shared close path for {@link #endRoom} and {@link #forceCloseRoom}.
+     * Authorization is enforced by the caller — by the time we land here the
+     * caller is allowed to close this room. Idempotent on already-ENDED /
+     * CLOSED rooms.
+     */
+    private void closeRoomInternal(Room room, String actorLog) {
         if (room.getStatus() == RoomStatus.ENDED || room.getStatus() == RoomStatus.CLOSED) {
             return;
         }
@@ -276,16 +273,12 @@ public class RoomService {
         }
         room.setStatus(RoomStatus.ENDED);
         roomRepository.save(room);
+        var roomCode = room.getRoomCode();
         roomEventService.evict(roomCode);
-        log.info("Room {} force-closed by admin {}", roomCode, adminId);
+        log.info("Room {} {}", roomCode, actorLog);
 
         if (wasListedInLobby) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    roomLobbyEventService.broadcastRoomRemoved(roomCode);
-                }
-            });
+            afterCommit(() -> roomLobbyEventService.broadcastRoomRemoved(roomCode));
         }
     }
 

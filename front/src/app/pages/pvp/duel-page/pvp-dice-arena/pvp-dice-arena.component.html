@@ -1,5 +1,10 @@
 @if (stage() !== 'idle') {
   <div class="dice-arena-overlay" role="status" aria-live="polite">
+    <div class="screen-bg" aria-hidden="true">
+      <div class="screen-bg-grid"></div>
+      <div class="screen-bg-glow screen-bg-glow--gold"></div>
+      <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+    </div>
     <div class="dice-screen-container">
       <span class="dice-screen-tag">
         <span class="material-icons-round" aria-hidden="true">casino</span>

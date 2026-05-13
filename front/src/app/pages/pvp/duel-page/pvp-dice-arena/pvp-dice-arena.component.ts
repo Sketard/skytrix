@@ -13,11 +13,16 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { DuelWebSocketService } from '../duel-web-socket.service';
 import { DuelCardArtService } from '../duel-card-art.service';
 import { DiceResultMsg } from '../../duel-ws.types';
+import {
+  DICE_AUTO_ROLL_DELAY_MS,
+  DICE_ROLL_ANIM_DURATION_MS,
+  DICE_FINAL_ANNOUNCE_MS,
+} from '../../pvp-timings';
 
 /** Pre-duel dice arena (Phase 3.14, since 2026-05-13). Owns the full
  *  pre-duel UX between waiting-room → board:
  *   - Stage 1 "ready"   — visible while DICE_ROLL prompt is pending,
- *                         auto-rolls after AUTO_ROLL_DELAY_MS.
+ *                         auto-rolls after DICE_AUTO_ROLL_DELAY_MS.
  *   - Stage 2 "rolling" — dice physics 1.8s while `diceInProgress=true`.
  *   - Stage 3 "result"  — final pose + roll-vs-strip + outcome sub-block
  *                         (won = SELECT_FIRST_PLAYER pick, lost = spinner,
@@ -30,9 +35,6 @@ import { DiceResultMsg } from '../../duel-ws.types';
 type Stage = 'idle' | 'ready' | 'rolling' | 'result' | 'final';
 type TurnChoice = 'first' | 'second';
 
-const AUTO_ROLL_DELAY_MS = 600;
-const ROLL_ANIM_DURATION_MS = 1800;
-const FINAL_ANNOUNCE_MS = 2500;
 
 @Component({
   selector: 'app-pvp-dice-arena',
@@ -131,7 +133,7 @@ export class PvpDiceArenaComponent {
         this.clearRollTimer();
         this.rollTimer = setTimeout(() => {
           this.stage.set('result');
-        }, ROLL_ANIM_DURATION_MS);
+        }, DICE_ROLL_ANIM_DURATION_MS);
       }
       return;
     }
@@ -170,7 +172,7 @@ export class PvpDiceArenaComponent {
       const prompt = this.ws.pendingPrompt();
       if (prompt?.type !== 'DICE_ROLL') return;
       this.ws.sendResponse('DICE_ROLL', {});
-    }, AUTO_ROLL_DELAY_MS);
+    }, DICE_AUTO_ROLL_DELAY_MS);
   }
 
   private scheduleFinalDismiss(): void {
@@ -179,7 +181,7 @@ export class PvpDiceArenaComponent {
       // After the announce window, the server has already sent DUEL_STARTING
       // and the board takes over. We just yield the visual to idle.
       this.stage.set('idle');
-    }, FINAL_ANNOUNCE_MS);
+    }, DICE_FINAL_ANNOUNCE_MS);
   }
 
   /** Fire-and-forget warmup for the deck card art during the 2.5s announce.

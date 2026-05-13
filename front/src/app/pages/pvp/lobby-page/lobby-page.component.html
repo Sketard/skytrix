@@ -1,3 +1,9 @@
+<div class="screen-bg" aria-hidden="true">
+  <div class="screen-bg-grid"></div>
+  <div class="screen-bg-glow screen-bg-glow--gold"></div>
+  <div class="screen-bg-glow screen-bg-glow--cyan"></div>
+</div>
+
 <div class="lobby-container">
   <header class="lobby-header">
     <div class="lobby-header-title">
@@ -40,7 +46,7 @@
     </div>
   </div>
 
-  @if (showLiveSyncBanner()) {
+  @if (store.showLiveSyncBanner()) {
     <div class="lobby-live-fallback" role="status" aria-live="polite">
       <mat-icon class="lobby-live-fallback__icon">cloud_off</mat-icon>
       <span class="lobby-live-fallback__text">{{ 'lobby.liveSyncUnavailable' | translate }}</span>
@@ -66,15 +72,15 @@
     }
   </label>
 
-  @if (loading() && rooms().length === 0) {
+  @if (store.loading() && store.rooms().length === 0) {
     <div class="room-list-skeleton">
       <app-room-card-skeleton [count]="4"></app-room-card-skeleton>
     </div>
-  } @else if (error()) {
+  } @else if (store.error()) {
     <div class="lobby-empty">
       <mat-icon class="lobby-empty-icon">wifi_off</mat-icon>
       <p class="lobby-empty-title">{{ 'lobby.emptyError' | translate }}</p>
-      <button mat-raised-button class="lobby-cta-secondary" (click)="fetchRooms()">{{ 'common.retry' | translate }}</button>
+      <button mat-raised-button class="lobby-cta-secondary" (click)="store.fetchSnapshot()">{{ 'common.retry' | translate }}</button>
     </div>
   } @else if (showEmptyState()) {
     <div class="lobby-empty">
@@ -107,7 +113,7 @@
         maxBufferPx="480">
       <div *cdkVirtualFor="let room of filteredRooms(); trackBy: trackByRoomCode"
            class="room-card"
-           [class.room-card--new]="isNewRoom(room.roomCode)">
+           [class.room-card--new]="store.isNewRoom(room.roomCode)">
         <div class="room-avatar-wrap">
           <app-avatar class="room-avatar" [pseudo]="room.player1.pseudo" size="md"></app-avatar>
           @if (room.player1.role === 'ADMIN') {

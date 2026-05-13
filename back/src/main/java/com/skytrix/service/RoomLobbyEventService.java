@@ -104,27 +104,34 @@ public class RoomLobbyEventService {
     }
 
     private void broadcast(String eventName, Object payload) {
-        for (var entry : emitters.entrySet()) {
-            try {
-                entry.getValue().send(SseEmitter.event()
-                        .name(eventName)
-                        .data(payload, MediaType.APPLICATION_JSON));
-            } catch (IOException | IllegalStateException e) {
-                // Emitter is dead — drop it and let onError/onCompletion
-                // clean up the rest.
-                emitters.remove(entry.getKey());
-                try { entry.getValue().completeWithError(e); } catch (Exception ignored) {}
-            }
-        }
+        forEachEmitter(emitter -> emitter.send(SseEmitter.event()
+                .name(eventName)
+                .data(payload, MediaType.APPLICATION_JSON)));
     }
 
     private void pingAll() {
+        // `.comment(...)` writes `:` lines that EventSource silently
+        // ignores — no event reaches the application, but the TCP
+        // bytes keep the connection warm.
+        forEachEmitter(emitter -> emitter.send(SseEmitter.event().comment("keep-alive")));
+    }
+
+    /**
+     * Iterate every live emitter and apply {@code action}. Dead emitters
+     * (IOException, IllegalStateException) are dropped from the map AND
+     * marked complete with the original error, so onError/onCompletion fires
+     * once. Eliminates the broadcast/pingAll boilerplate where the only
+     * differences were the lambda body.
+     */
+    @FunctionalInterface
+    private interface EmitterAction {
+        void apply(SseEmitter emitter) throws IOException;
+    }
+
+    private void forEachEmitter(EmitterAction action) {
         for (var entry : emitters.entrySet()) {
             try {
-                // `.comment(...)` writes `:` lines that EventSource silently
-                // ignores — no event reaches the application, but the TCP
-                // bytes keep the connection warm.
-                entry.getValue().send(SseEmitter.event().comment("keep-alive"));
+                action.apply(entry.getValue());
             } catch (IOException | IllegalStateException e) {
                 emitters.remove(entry.getKey());
                 try { entry.getValue().completeWithError(e); } catch (Exception ignored) {}

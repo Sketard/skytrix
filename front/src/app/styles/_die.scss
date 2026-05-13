@@ -1,0 +1,95 @@
+// =============================================================================
+// Die face + pip layout — shared partial.
+//
+// Consumers:
+//   - <app-die>            (front/src/app/shared/die/die.component.ts) — 2D leaf
+//   - <app-pvp-dice-arena> (pvp-dice-arena.component.scss) — 3D rolling cube
+//
+// Mixed-in via `@use 'app/styles/die' as die;` and `@include die.face-grid('.dice-face', '.pip');`
+// so both consumers can pick their own class names. The 3D cube and the 2D
+// chip both need identical face geometry → DRY single source of truth.
+//
+// The mixin emits ONLY the grid-template + per-face pip-area rules. Visual
+// skin (obsidian vs gold), 3D positioning (translateZ), and sizing
+// (--dice-size) are owned by the consumer.
+// =============================================================================
+
+@mixin face-grid($face-sel, $pip-sel) {
+  #{$face-sel} {
+    width: var(--dice-size);
+    height: var(--dice-size);
+    border-radius: calc(var(--dice-size) * 0.127);
+    display: grid;
+    padding: calc(var(--dice-size) * 0.16);
+    gap: calc(var(--dice-size) * 0.055);
+  }
+
+  #{$face-sel}--1 { grid-template: 1fr / 1fr; place-items: center; }
+  #{$face-sel}--2 { grid-template: 1fr 1fr / 1fr 1fr; }
+  #{$face-sel}--3 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+  #{$face-sel}--4 { grid-template: 1fr 1fr / 1fr 1fr; }
+  #{$face-sel}--5 { grid-template: 1fr 1fr 1fr / 1fr 1fr 1fr; }
+  #{$face-sel}--6 {
+    grid-template: 1fr 1fr 1fr / 1fr 1fr;
+    padding: calc(var(--dice-size) * 0.127) calc(var(--dice-size) * 0.20);
+    gap: calc(var(--dice-size) * 0.036);
+  }
+
+  #{$pip-sel} {
+    width: calc(var(--dice-size) * 0.127);
+    height: calc(var(--dice-size) * 0.127);
+    border-radius: 50%;
+    align-self: center;
+    justify-self: center;
+  }
+
+  #{$face-sel}--2 #{$pip-sel}:nth-child(1) { grid-area: 1 / 1; }
+  #{$face-sel}--2 #{$pip-sel}:nth-child(2) { grid-area: 2 / 2; }
+
+  #{$face-sel}--3 #{$pip-sel}:nth-child(1) { grid-area: 1 / 1; }
+  #{$face-sel}--3 #{$pip-sel}:nth-child(2) { grid-area: 2 / 2; }
+  #{$face-sel}--3 #{$pip-sel}:nth-child(3) { grid-area: 3 / 3; }
+
+  #{$face-sel}--4 #{$pip-sel}:nth-child(1) { grid-area: 1 / 1; }
+  #{$face-sel}--4 #{$pip-sel}:nth-child(2) { grid-area: 1 / 2; }
+  #{$face-sel}--4 #{$pip-sel}:nth-child(3) { grid-area: 2 / 1; }
+  #{$face-sel}--4 #{$pip-sel}:nth-child(4) { grid-area: 2 / 2; }
+
+  #{$face-sel}--5 #{$pip-sel}:nth-child(1) { grid-area: 1 / 1; }
+  #{$face-sel}--5 #{$pip-sel}:nth-child(2) { grid-area: 1 / 3; }
+  #{$face-sel}--5 #{$pip-sel}:nth-child(3) { grid-area: 2 / 2; }
+  #{$face-sel}--5 #{$pip-sel}:nth-child(4) { grid-area: 3 / 1; }
+  #{$face-sel}--5 #{$pip-sel}:nth-child(5) { grid-area: 3 / 3; }
+
+  #{$face-sel}--6 #{$pip-sel}:nth-child(odd)  { grid-column: 1; }
+  #{$face-sel}--6 #{$pip-sel}:nth-child(even) { grid-column: 2; }
+}
+
+// Obsidian skin — dark/violet face, gold-glowing pips. Mixed in with a face
+// selector + pip selector so consumers pick names.
+@mixin obsidian-skin($face-sel, $pip-sel) {
+  #{$face-sel} {
+    background:
+      radial-gradient(circle at 30% 25%, #4a2870 0%, #2a1240 35%, #15071f 100%);
+    border: 2px solid #6a3a98;
+    box-shadow:
+      inset 0 0 24px rgba(168, 100, 220, 0.18),
+      inset 0 2px 0 rgba(180, 120, 220, 0.35),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(180, 120, 220, 0.15);
+  }
+  #{$pip-sel} {
+    background: radial-gradient(circle at 30% 30%, var(--gold-50) 0%, var(--gold) 60%, var(--gold-900) 100%);
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.4),
+      0 0 8px var(--gold-soft-50),
+      0 0 16px var(--gold-soft-30);
+  }
+  @media (max-width: 480px) {
+    #{$pip-sel} {
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.45),
+        0 0 4px rgba(201, 168, 76, 0.9);
+    }
+  }
+}
