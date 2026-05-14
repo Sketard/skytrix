@@ -355,6 +355,41 @@ describe('first-player-coordinator', () => {
       cleanup();
     });
 
+    it('emits DECK_PREFETCH BEFORE FIRST_PLAYER_RESULT, with per-player cardCodes (no spoil)', () => {
+      // Regression guard: a 2026-05-13 audit "dead-code purge" silently
+      // dropped both DECK_PREFETCH emissions, which surfaced as blank
+      // card art in the opening hand because the FINAL_BANNER_MS window
+      // (2.5s warmup) had nothing to prefetch. Restored 2026-05-14.
+      s.decks = [
+        { main: [10, 20, 30], extra: [40] },
+        { main: [50, 60, 70], extra: [80] },
+      ];
+      const cleanup = arriveAtChoose(spy, s, 0);
+
+      handlePreDuelResponse(s, 0, 'SELECT_FIRST_PLAYER', { goFirst: true });
+
+      // Find the DECK_PREFETCH messages and the FIRST_PLAYER_RESULT
+      // messages by their position in the sent log.
+      const prefetchIdxP0 = spy.sent.findIndex(s => s.message.type === 'DECK_PREFETCH' && s.player === 0);
+      const prefetchIdxP1 = spy.sent.findIndex(s => s.message.type === 'DECK_PREFETCH' && s.player === 1);
+      const finalIdxP0 = spy.sent.findIndex(s => s.message.type === 'FIRST_PLAYER_RESULT' && s.player === 0);
+      expect(prefetchIdxP0, 'DECK_PREFETCH must be emitted to player 0').toBeGreaterThanOrEqual(0);
+      expect(prefetchIdxP1, 'DECK_PREFETCH must be emitted to player 1').toBeGreaterThanOrEqual(0);
+      expect(prefetchIdxP0, 'DECK_PREFETCH must precede FIRST_PLAYER_RESULT (warmup window)').toBeLessThan(finalIdxP0);
+
+      const p0Prefetch = spy.sent[prefetchIdxP0]!.message as Extract<ServerMessage, { type: 'DECK_PREFETCH' }>;
+      const p1Prefetch = spy.sent[prefetchIdxP1]!.message as Extract<ServerMessage, { type: 'DECK_PREFETCH' }>;
+      expect(p0Prefetch.cardCodes.length, 'player 0 must receive their own cardCodes').toBeGreaterThan(0);
+      expect(p1Prefetch.cardCodes.length, 'player 1 must receive their own cardCodes').toBeGreaterThan(0);
+
+      // No-spoil: each side receives ONLY their own deck — opponent
+      // codes must not leak through DECK_PREFETCH.
+      expect(p0Prefetch.cardCodes).not.toContain(50);
+      expect(p1Prefetch.cardCodes).not.toContain(10);
+
+      cleanup();
+    });
+
     it('calls startDuelWithOrder after the 2.5s banner delay', () => {
       const cleanup = arriveAtChoose(spy, s, 0);
 

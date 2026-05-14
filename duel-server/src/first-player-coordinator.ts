@@ -2,7 +2,7 @@ import type { ActiveDuelSession } from './types.js';
 import type { ServerMessage, Player } from './ws-protocol.js';
 import { createConfigurable } from './configurable.js';
 import type { DiceRoll } from './types.js';
-import { diceSum } from './types.js';
+import { diceSum, extractCardCodesForPlayer } from './types.js';
 
 /**
  * Pre-duel first-player coordinator (2D6 dice mechanic, since 2026-05-13).
@@ -221,6 +221,14 @@ function scheduleFirstPlayerTimeout(session: ActiveDuelSession, winner: 0 | 1): 
 // ───── Step 6: final banner + bridge to OCGCore duel ────────────────────────
 function broadcastFinalAndBridge(session: ActiveDuelSession, firstPlayer: 0 | 1): void {
   const cfg = getCfg();
+  // Phase 3.16 warmup: ship each side's own cardCodes RIGHT BEFORE the
+  // FIRST_PLAYER_RESULT banner so the front-end has the full
+  // FINAL_BANNER_MS (2.5s) to prime the image cache before DUEL_STARTING
+  // bridges into the board. No info leak — each side gets only its deck.
+  // (Regression note: silently dropped during the 2026-05-13 audit
+  // "dead-code purge" — restore mandatory or hand cards render blank.)
+  cfg.sendToPlayer(session, 0, { type: 'DECK_PREFETCH', cardCodes: extractCardCodesForPlayer(session.decks, 0) });
+  cfg.sendToPlayer(session, 1, { type: 'DECK_PREFETCH', cardCodes: extractCardCodesForPlayer(session.decks, 1) });
   cfg.sendToPlayer(session, 0, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 0 });
   cfg.sendToPlayer(session, 1, { type: 'FIRST_PLAYER_RESULT', goFirst: firstPlayer === 1 });
   session.phase = 'FIRST_PLAYER_RESOLVED';
